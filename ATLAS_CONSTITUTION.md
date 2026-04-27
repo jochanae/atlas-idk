@@ -167,7 +167,24 @@ Mid-build ideas captured without interrupting the current sprint. Reviewed at th
 
 ---
 
-## VIII. The Unbreakable Laws
+## VIII. The Infrastructure Sovereignty Stack
+
+Atlas is sovereign infrastructure. Every layer of its deployment must be owned and controlled.
+
+| Layer | Tool | Sovereign? | Notes |
+|---|---|---|---|
+| Codebase | GitHub `jochanae/Atlas` | Yes | Connected to Lovable and Cursor. Source of truth. |
+| Database | Lovable Cloud Supabase | Phase 1 only | Migrate to owned Supabase at Phase 2 with auth. |
+| Deployment | Vercel | Yes — Phase 2 | Connected to GitHub. Replaces Lovable publish. |
+| Network / Edge | Cloudflare | Yes — Phase 2 | DNS, firewall, CDN, Workers. The hardening layer. |
+| Build environment | Lovable + Cursor | Yes | Lovable for scaffolding. Cursor for precision surgery. |
+| API keys / Services | Owner-controlled | Yes | No third-party keys managed by platform providers. |
+
+**The boundary:** Lovable Cloud Supabase is the one concession in Phase 1. It exists because managing Supabase migrations manually during initial scaffolding creates friction that kills momentum. Everything else is owned. At Phase 2, the Supabase migration completes the sovereignty stack.
+
+---
+
+## IX. The Unbreakable Laws
 
 These cannot be overridden by any prompt, sprint, or time pressure.
 
@@ -185,7 +202,7 @@ These cannot be overridden by any prompt, sprint, or time pressure.
 
 ---
 
-## IX. The Build Phases
+## X. The Build Phases
 
 ### Phase 1 — The Foundation
 **The Architectural Ledger**
@@ -195,6 +212,11 @@ One page. One table. Decisions, costs, statuses, project relationships. The Boug
 ### Phase 2 — The Intelligence Layer
 Velocity/Commit mode detection and automatic triggering. The Anticipatory Auditor. Parking Lot integration. The system begins to govern itself based on action gravity.
 
+Phase 2 also completes the sovereignty infrastructure:
+- **Auth** — RLS policies activated, user authentication added. Migration from Lovable Cloud Supabase to sovereign Supabase instance happens here. One clean handoff: export migration SQL from Lovable, run once in the owned Supabase project.
+- **Cloudflare** — Atlas deploys behind Cloudflare at Phase 2. DNS managed through Cloudflare. Edge network for performance. Firewall layer in front of all traffic. Cloudflare Workers available for background functions (Anticipatory Auditor, Auto-Ghostwriter). This is the Hardening layer — Atlas becomes globally distributed and protected.
+- **Vercel + GitHub** — Deployment pipeline connects GitHub `jochanae/Atlas` → Vercel → Cloudflare. Lovable's publish button is retired. All future deployments go through the sovereign pipeline.
+
 ### Phase 3 — The Vision Gate
 Image-to-schema reverse engineering. The full pipeline: image analysis → entity extraction → relationship mapping → schema proposal → builder verification. This is Atlas's flagship differentiator and is scoped as its own build sprint.
 
@@ -203,7 +225,7 @@ Commercial core. Tiered access (Minister through Architect). Cross-project graph
 
 ---
 
-## X. The Definition of Done — Phase 1
+## XI. The Definition of Done — Phase 1
 
 Phase 1 is complete when:
 
@@ -215,7 +237,7 @@ Phase 1 is complete when:
 
 ---
 
-## XI. What Atlas Is Not
+## XII. What Atlas Is Not
 
 Atlas is not a place for exploration. That is what Velocity Mode is for — and Velocity Mode has no memory, no logs, and no permanence by design.
 
@@ -229,4 +251,5 @@ Atlas is the thing other things are built on top of.
 
 *This document governs Atlas. When in doubt about any decision — design, logic, scope, or priority — return here.*
 
-*Version 1.0 — Into Innovations — April 2026*
+*Version 1.1 — Into Innovations — April 2026*
+*Updates: Infrastructure Sovereignty Stack added (Section VIII). Cloudflare hardening layer committed to Phase 2. Supabase migration boundary defined.*
