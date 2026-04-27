@@ -14,7 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bought_lessons: {
+        Row: {
+          description: string | null
+          financial_cost: number | null
+          id: string
+          linked_decision_id: string
+          time_cost: number | null
+        }
+        Insert: {
+          description?: string | null
+          financial_cost?: number | null
+          id?: string
+          linked_decision_id: string
+          time_cost?: number | null
+        }
+        Update: {
+          description?: string | null
+          financial_cost?: number | null
+          id?: string
+          linked_decision_id?: string
+          time_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bought_lessons_linked_decision_id_fkey"
+            columns: ["linked_decision_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_entries: {
+        Row: {
+          cost_of_lesson: number | null
+          created_at: string
+          description: string | null
+          id: string
+          is_violation: boolean
+          project_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          cost_of_lesson?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_violation?: boolean
+          project_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          cost_of_lesson?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_violation?: boolean
+          project_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
