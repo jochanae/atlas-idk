@@ -108,6 +108,11 @@ For when the builder sees the interface before anything else. Upload a UI image 
 ### The Whisper Gate — Conceptual First
 For when the builder only has a vibe, a direction, or scattered thoughts. Atlas interviews the builder — structured questions, not open chat — until the scattered thoughts become a formal ATLAS_CONSTITUTION.md. The output of the Whisper Gate is always a governing document, never code.
 
+### The Archive Gate — Legacy First
+For when the builder has an existing project — a ZIP file, an old codebase, a Replit export — that needs to be audited, modernized, or used as a starting point. Atlas ingests the archive, maps the existing plumbing, identifies structural debt, and places the builder at the Front Door with their history intact rather than starting from a blank page.
+
+*Archive Gate pipeline: ZIP/file ingestion → structure mapping → debt identification → schema audit → modernization proposal → builder entry.*
+
 ---
 
 ## VI. The Color System
@@ -139,9 +144,52 @@ When Atlas enters Velocity Mode, the interface shifts to Phosphor. The system si
 **The Scarcity Rule:**
 Signal color is reserved for active states, critical indicators, and committed decisions. If everything is highlighted, nothing is important. This is not a preference — it is a system law.
 
-Typography uses Inter or equivalent sans-serif for all interface text. Monospaced font for all numbers, timestamps, and system data.
+**The Footer Audit Line:**
+A single thin line at the bottom of the interface. Always visible. Never intrusive.
+- **Phosphor cyan** — plumbing is sound. Atlas is watching silently.
+- **Volcanic amber** — Atlas has found something. One moment needed before continuing.
+
+This line is the only place Atlas communicates its audit status during active builds. It does not interrupt. It does not block. It signals.
+
+Typography uses JetBrains Mono or IBM Plex Mono for all numbers, timestamps, and system data. Geist or DM Sans for all interface labels and body text. Never Inter, Roboto, or Arial.
 
 No gradients. No decorative color. No glow effects.
+
+---
+
+## VII. The Builder Surface
+
+Atlas has two presentation layers depending on the device and context. Both serve the same system — they just speak different visual languages.
+
+### The IDE Shell (Desktop)
+The primary workspace for active building. Familiar to any builder immediately — it signals "this is a place where things get constructed" before a single word is read.
+
+- **Left panel** — navigation, file tree, project selector, entry gate options
+- **Center panel** — primary workspace: chat interface, live canvas, or ledger depending on mode
+- **Right panel** — Parking Lot, recommendations, audit status, connector relationships
+- **Footer** — the audit line. One thin line. Always present.
+
+### The Chat Interface (Mobile / Entry)
+On mobile, Atlas presents as a clean, focused conversational interface. Not a shrunken desktop — a purpose-built mobile experience. The chat IS the workspace. Everything else is accessible but not competing for attention.
+
+The communication quality matches Compani — a thinking partner, not an engineering manual. Powered by Claude Sonnet 4.6.
+
+### The Anti-Freeze Gateway (Front Door)
+Atlas never presents a blank page or a blinking cursor. Every new session opens with an active gateway that removes the freeze.
+
+**Vibe Cards** — a row of visually rendered starting points. Common build archetypes (fintech dashboard, booking app, SaaS landing page, etc.). Tapping a card starts the conversation immediately with context already loaded.
+
+**Guided Discovery** — three questions that generate a Project_Compass.md by the third answer:
+1. Are we building for yourself or to sell?
+2. Do you have a design in mind or should Atlas show patterns?
+3. Do you have a ZIP, GitHub repo, or image to start from?
+
+**Drop Zone** — drag anything in. A screenshot, a ZIP, a link. Atlas responds with what it found and where to go next.
+
+**Empire Suggestion** — for returning users, Atlas opens with a contextual suggestion based on previous builds. "You finished the IntoIQ funnel. Want to apply that same logic to a new project?"
+
+### Ghost Mode
+When an experienced builder advances past guided steps, Atlas does not disappear — it shifts to Ghost Mode. It watches the plumbing silently in the background. It does not interrupt Velocity Mode work. It activates only when a structurally irreversible decision is detected, surfacing the Commit Mode prompt exactly once. Ghost Mode ensures the Sovereign rules are followed even when the expert is moving at full speed.
 
 ---
 
@@ -164,6 +212,12 @@ The institutional memory. Mistakes with a cost attached — searchable, transfer
 **Parking Lot**
 Mid-build ideas captured without interrupting the current sprint. Reviewed at the start of each new sprint. Checked by the Anticipatory Auditor for conflicts with current commits.
 `id · project_id · idea · priority · created_at`
+
+**Recommendations**
+Every AI suggestion generated during a build session. Never deleted. Never lost when the conversation scrolls. Each recommendation stays alive until the builder makes a decision on it.
+`id · project_id · session_id · content · definition · benefit · priority · status [Pending / Accepted / Parked / Dismissed] · created_at`
+
+The status field is the key. A recommendation is never just "gone." It is always in one of four states. Pending means it hasn't been decided. Parked means it moved to the Parking Lot with full context intact. Accepted means it was implemented. Dismissed means the builder chose not to — and that choice is recorded.
 
 ---
 
@@ -198,7 +252,7 @@ These cannot be overridden by any prompt, sprint, or time pressure.
 
 5. **Signal color is never decorative.** Ember orange and cyan are reserved for system state communication. They are not used for branding, emphasis, or aesthetics.
 
-6. **The Vision Gate always outputs a verified schema.** An uploaded image is never treated as a build directive. It is treated as a signal to be decoded. The output is always a schema proposal that must be verified before any code is written.
+7. **Ghost Mode never fully disengages.** An experienced builder can advance past guided steps, but Atlas never stops watching. Ghost Mode is always active in the background. The only thing that changes is whether Atlas speaks.
 
 ---
 
@@ -209,19 +263,39 @@ These cannot be overridden by any prompt, sprint, or time pressure.
 
 One page. One table. Decisions, costs, statuses, project relationships. The Bought Lessons engine. This is the only thing built in Phase 1. Phase 1 is complete when a bought lesson can be logged, linked to a project, and displayed on a clean, scannable interface.
 
-### Phase 2 — The Intelligence Layer
-Velocity/Commit mode detection and automatic triggering. The Anticipatory Auditor. Parking Lot integration. The system begins to govern itself based on action gravity.
+### Phase 2 — The Builder Surface + Intelligence Layer
+Phase 2 is the largest phase. It builds the face of Atlas — the thing that makes it feel like a builder tool — on top of the foundation Phase 1 established.
+
+**The IDE Shell** — the full split-panel layout. Left navigation, center workspace, right Parking Lot panel, footer audit line. Desktop and mobile experiences built as separate intentional layouts, not one responsive stylesheet.
+
+**The Chat Interface** — Claude Sonnet 4.6 as the conversational engine. The Whisper Gate becomes a live experience, not just a concept. The Anti-Freeze Gateway is the front door: Vibe Cards, Guided Discovery, Drop Zone, Empire Suggestion.
+
+**Recommendation Persistence** — every AI suggestion gets a unique ID and a status. Nothing disappears. The Recommendations table goes live. The right panel displays all pending recommendations with expandable definitions, benefit descriptions, and priority context. The builder decides: implement now, park it, or dismiss it.
+
+**Ghost Mode** — active for experienced builders. Atlas watches silently, activates only on structurally irreversible decisions.
+
+**Velocity/Commit mode detection** — automatic triggering based on action gravity. The footer audit line shifts color to signal mode changes.
+
+**The Anticipatory Auditor** — Parking Lot cross-referenced against committed decisions before every sprint.
 
 Phase 2 also completes the sovereignty infrastructure:
-- **Auth** — RLS policies activated, user authentication added. Migration from Lovable Cloud Supabase to sovereign Supabase instance happens here. One clean handoff: export migration SQL from Lovable, run once in the owned Supabase project.
-- **Cloudflare** — Atlas deploys behind Cloudflare at Phase 2. DNS managed through Cloudflare. Edge network for performance. Firewall layer in front of all traffic. Cloudflare Workers available for background functions (Anticipatory Auditor, Auto-Ghostwriter). This is the Hardening layer — Atlas becomes globally distributed and protected.
-- **Vercel + GitHub** — Deployment pipeline connects GitHub `jochanae/Atlas` → Vercel → Cloudflare. Lovable's publish button is retired. All future deployments go through the sovereign pipeline.
+- **Auth** — RLS policies activated, user authentication added. Migration from Lovable Cloud Supabase to sovereign Supabase instance happens here.
+- **Cloudflare** — Atlas deploys behind Cloudflare. DNS, edge network, firewall, Workers for background functions.
+- **Vercel + GitHub** — sovereign deployment pipeline activated. Lovable's publish button retired.
 
-### Phase 3 — The Vision Gate
-Image-to-schema reverse engineering. The full pipeline: image analysis → entity extraction → relationship mapping → schema proposal → builder verification. This is Atlas's flagship differentiator and is scoped as its own build sprint.
+### Phase 3 — The Vision Gate + Archive Gate
+Image-to-schema reverse engineering. The full three-pass pipeline: Pass 1 visual component identification, Pass 2 entity extraction, Pass 3 relationship mapping and foreign key construction. Output is always a verified schema proposal, never direct code generation.
+
+Archive Gate activation: ZIP and legacy codebase ingestion, structure mapping, debt identification, modernization proposals.
 
 ### Phase 4 — The Sovereign Layer
-Commercial core. Tiered access (Minister through Architect). Cross-project graph memory — architectural relationships between builds, not just stored facts. Auto-Ghostwriter for SPEC.md and LAWS.md. Sovereign Export. Atlas becomes a product other builders can purchase and operate.
+Commercial core. Tiered access (Minister through Architect). Cross-project graph memory. Auto-Ghostwriter for SPEC.md and LAWS.md. Sovereign Export. Pattern Vault — reusable Success Blueprints that can eventually be published for other builders. Atlas becomes a product other builders can purchase and operate.
+
+**Parked for Phase 4 (do not build earlier):**
+- Dependency Forge — automatic provisioning of libraries and connectors based on conversation
+- GitHub deep indexing — mapping functions and schemas across all repos to suggest reuse
+- Unified Variable Store — propagating changes across all Into Innovations projects
+- Pattern publishing — allowing builders to share their own Success Blueprints
 
 ---
 
@@ -251,5 +325,5 @@ Atlas is the thing other things are built on top of.
 
 *This document governs Atlas. When in doubt about any decision — design, logic, scope, or priority — return here.*
 
-*Version 1.1 — Into Innovations — April 2026*
-*Updates: Infrastructure Sovereignty Stack added (Section VIII). Cloudflare hardening layer committed to Phase 2. Supabase migration boundary defined.*
+*Version 1.2 — Into Innovations — April 2026*
+*Updates: Builder Surface added (Section VII). Archive Gate added as fourth entry. Recommendation Persistence added to data architecture. Ghost Mode added to Unbreakable Laws. Footer Audit Line added to color system. Phase 2 expanded to include IDE Shell and full builder surface. Phase 4 Parking Lot items formally parked.*
