@@ -213,7 +213,7 @@ function Row({
         <StatusTag status={entry.status as LedgerStatus} />
       </td>
       <td className="py-3 px-4 align-top text-right font-mono text-[12px]">
-        {formatCost(entry.cost_of_lesson)}
+        {entry.cost_of_lesson === null ? "—" : formatCost(entry.cost_of_lesson)}
       </td>
       <td className="py-3 px-4 align-top font-mono text-[11px] text-muted-foreground">
         {relativeTime(entry.created_at)}

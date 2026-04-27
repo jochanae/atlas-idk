@@ -143,7 +143,10 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
                 <option value="Violated">Violated</option>
               </select>
             </Field>
-            <Field label="Cost of Lesson (USD)">
+            <Field
+              label="Cost of Lesson (USD)"
+              hint="optional — fill in if a mistake occurred"
+            >
               <input
                 type="number"
                 step="any"
@@ -206,11 +209,24 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
-      <span className="block text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-mono mb-1.5">
-        {label}
+      <span className="flex items-baseline gap-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-mono mb-1.5">
+        <span>{label}</span>
+        {hint ? (
+          <span className="normal-case tracking-normal text-[10px] text-muted-foreground/70">
+            {hint}
+          </span>
+        ) : null}
       </span>
       {children}
     </label>
