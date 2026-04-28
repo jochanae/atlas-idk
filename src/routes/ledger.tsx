@@ -69,16 +69,19 @@ function ArchitecturalLedger() {
   }, [entries, projectFilter, statusFilter]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Toaster />
+    <div className="min-h-screen bg-background text-foreground pb-1">
+      <FooterAuditLine />
 
       {/* Header */}
       <header className="border-b border-border">
-        <div className="max-w-[1400px] mx-auto px-8 py-6 flex items-end justify-between">
+        <div className="max-w-[1400px] mx-auto px-8 py-6 flex items-end justify-between gap-4">
           <div>
             <div className="flex items-baseline gap-3">
+              <Link to="/" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
+                ← Workspace
+              </Link>
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
-                Atlas · Phase 01
+                Architectural Ledger
               </span>
             </div>
             <h1 className="text-2xl font-semibold tracking-tight mt-1">
@@ -89,12 +92,20 @@ function ArchitecturalLedger() {
             </p>
           </div>
 
-          <button
-            onClick={() => setDialogOpen(true)}
-            className="px-4 py-2 text-xs font-medium uppercase tracking-[0.1em] bg-[color:var(--ember)] text-[color:var(--background)] rounded-sm hover:brightness-110 transition-all"
-          >
-            + Add Entry
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={signOut}
+              className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
+            >
+              sign out
+            </button>
+            <button
+              onClick={() => setDialogOpen(true)}
+              className="px-4 py-2 text-xs font-medium uppercase tracking-[0.1em] bg-[color:var(--ember)] text-[color:var(--background)] rounded-sm hover:brightness-110 transition-all"
+            >
+              + Add Entry
+            </button>
+          </div>
         </div>
       </header>
 

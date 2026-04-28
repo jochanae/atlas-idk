@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import type { Project, LedgerStatus } from "@/lib/atlas";
 import { toast } from "sonner";
 
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState("");
   const [newProject, setNewProject] = useState("");
@@ -32,6 +34,7 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return toast.error("Not signed in");
     if (!title.trim()) return toast.error("Title required");
     if (!projectId && !newProject.trim()) return toast.error("Select or create a project");
 
@@ -41,7 +44,7 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
       if (!pid) {
         const { data, error } = await supabase
           .from("projects")
-          .insert({ name: newProject.trim() })
+          .insert({ name: newProject.trim(), user_id: user.id })
           .select("id")
           .single();
         if (error) throw error;
@@ -50,6 +53,7 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
 
       const { error } = await supabase.from("ledger_entries").insert({
         project_id: pid,
+        user_id: user.id,
         title: title.trim(),
         description: description.trim() || null,
         status,
