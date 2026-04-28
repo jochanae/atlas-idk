@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Toaster } from "@/components/ui/sonner";
+import { useAuth } from "@/lib/auth";
 import {
   formatCost,
   relativeTime,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/atlas";
 import { StatusTag } from "@/components/atlas/StatusTag";
 import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
+import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 
 export const Route = createFileRoute("/ledger")({
   component: ArchitecturalLedger,
@@ -27,6 +28,8 @@ export const Route = createFileRoute("/ledger")({
 });
 
 function ArchitecturalLedger() {
+  const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,14 +47,18 @@ function ArchitecturalLedger() {
         .order("created_at", { ascending: false }),
       supabase.from("projects").select("*").order("name"),
     ]);
-    if (e.data) setEntries(e.data as LedgerEntry[]);
+    if (e.data) setEntries(e.data as unknown as LedgerEntry[]);
     if (p.data) setProjects(p.data as Project[]);
     setLoading(false);
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (!authLoading && !user) navigate({ to: "/auth" });
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) load();
+  }, [user]);
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
