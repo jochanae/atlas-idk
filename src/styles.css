@@ -39,6 +39,8 @@
   --color-ring: var(--ember);
   --color-ember: var(--ember);
   --color-violated: var(--violated);
+  --color-phosphor: var(--phosphor);
+  --color-warning: var(--warning);
 }
 
 :root {
@@ -51,6 +53,9 @@
   --ember: #EA580C;
   --violated: #7F1D1D;
   --border: #292524;
+  /* Phase 2 — Phosphor accents (activity / forward motion) */
+  --phosphor: #06B6D4;
+  --warning: #F59E0B;
 }
 
 .dark {
@@ -62,6 +67,8 @@
   --ember: #EA580C;
   --violated: #7F1D1D;
   --border: #292524;
+  --phosphor: #06B6D4;
+  --warning: #F59E0B;
 }
 
 @layer base {

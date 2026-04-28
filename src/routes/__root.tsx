@@ -1,4 +1,12 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+} from "@tanstack/react-router";
+import { AuthProvider } from "@/lib/auth";
+import { Toaster } from "@/components/ui/sonner";
 
 import "../styles.css";
 
@@ -29,14 +37,21 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Atlas — Architectural Ledger" },
-      { name: "description", content: "Atlas: a decision enforcement system. Permanent record of architectural decisions, costs, and bought lessons." },
+      { title: "Atlas — Decision Enforcement System" },
+      {
+        name: "description",
+        content:
+          "Atlas: a decision enforcement system. Permanent record of architectural decisions, costs, and bought lessons.",
+      },
       { name: "author", content: "Into Innovations" },
-      { property: "og:title", content: "Atlas — Architectural Ledger" },
-      { property: "og:description", content: "Decision enforcement system. Phase 1: The Architectural Ledger." },
+      { property: "og:title", content: "Atlas — Decision Enforcement System" },
+      {
+        property: "og:description",
+        content:
+          "Chat, workspace, and preview surfaces over a permanent ledger of decisions.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
   }),
   shellComponent: RootShell,
@@ -59,5 +74,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <AuthProvider>
+      <Toaster />
+      <Outlet />
+    </AuthProvider>
+  );
 }
