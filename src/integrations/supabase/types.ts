@@ -21,6 +21,7 @@ export type Database = {
           id: string
           linked_decision_id: string
           time_cost: number | null
+          user_id: string
         }
         Insert: {
           description?: string | null
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           linked_decision_id: string
           time_cost?: number | null
+          user_id: string
         }
         Update: {
           description?: string | null
@@ -35,6 +37,7 @@ export type Database = {
           id?: string
           linked_decision_id?: string
           time_cost?: number | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -42,6 +45,44 @@ export type Database = {
             columns: ["linked_decision_id"]
             isOneToOne: false
             referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          intent_type: string | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          intent_type?: string | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          intent_type?: string | null
+          role?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -56,6 +97,7 @@ export type Database = {
           project_id: string
           status: string
           title: string
+          user_id: string
         }
         Insert: {
           cost_of_lesson?: number | null
@@ -66,6 +108,7 @@ export type Database = {
           project_id: string
           status?: string
           title: string
+          user_id: string
         }
         Update: {
           cost_of_lesson?: number | null
@@ -76,6 +119,7 @@ export type Database = {
           project_id?: string
           status?: string
           title?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -87,26 +131,196 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string
           id: string
           name: string
           status: string
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           status?: string
+          user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           status?: string
+          user_id?: string
         }
         Relationships: []
+      }
+      recommendations: {
+        Row: {
+          benefit: string | null
+          content: string
+          created_at: string
+          definition: string | null
+          id: string
+          priority: string
+          project_id: string
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          benefit?: string | null
+          content: string
+          created_at?: string
+          definition?: string | null
+          id?: string
+          priority?: string
+          project_id: string
+          session_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          benefit?: string | null
+          content?: string
+          created_at?: string
+          definition?: string | null
+          id?: string
+          priority?: string
+          project_id?: string
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          status?: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_nodes: {
+        Row: {
+          content: Json | null
+          created_at: string
+          id: string
+          project_id: string
+          session_id: string | null
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          project_id: string
+          session_id?: string | null
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          session_id?: string | null
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_nodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_nodes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
