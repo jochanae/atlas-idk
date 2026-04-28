@@ -12,7 +12,7 @@ import {
 import { StatusTag } from "@/components/atlas/StatusTag";
 import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/ledger")({
   component: ArchitecturalLedger,
   head: () => ({
     meta: [
