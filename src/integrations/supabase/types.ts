@@ -92,6 +92,7 @@ export type Database = {
           cost_of_lesson: number | null
           created_at: string
           description: string | null
+          extracted_from_session_id: string | null
           id: string
           is_violation: boolean
           project_id: string
@@ -103,6 +104,7 @@ export type Database = {
           cost_of_lesson?: number | null
           created_at?: string
           description?: string | null
+          extracted_from_session_id?: string | null
           id?: string
           is_violation?: boolean
           project_id: string
@@ -114,6 +116,7 @@ export type Database = {
           cost_of_lesson?: number | null
           created_at?: string
           description?: string | null
+          extracted_from_session_id?: string | null
           id?: string
           is_violation?: boolean
           project_id?: string
@@ -122,6 +125,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ledger_entries_extracted_from_session_id_fkey"
+            columns: ["extracted_from_session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ledger_entries_project_id_fkey"
             columns: ["project_id"]
