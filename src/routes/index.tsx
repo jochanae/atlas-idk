@@ -3,7 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
-import { AtlasFrontDoor } from "@/components/atlas/AtlasFrontDoor";
+import {
+  AtlasFrontDoor,
+  type ModeId,
+  type RecentSession,
+} from "@/components/atlas/AtlasFrontDoor";
 import {
   relativeTime,
   type ChatMessage,
@@ -13,11 +17,6 @@ import {
   type WorkspaceNode,
 } from "@/lib/atlas";
 import { toast } from "sonner";
-
-type IndexSearch = {
-  sessionId?: string;
-  initialMessage?: string;
-};
 
 type CommitExtraction =
   | {
@@ -37,11 +36,6 @@ type ConflictDetails = {
 
 export const Route = createFileRoute("/")({
   component: WorkspacePage,
-  validateSearch: (search: Record<string, unknown>): IndexSearch => ({
-    sessionId: typeof search.sessionId === "string" ? search.sessionId : undefined,
-    initialMessage:
-      typeof search.initialMessage === "string" ? search.initialMessage : undefined,
-  }),
   head: () => ({
     meta: [
       { title: "Atlas — Workspace" },
@@ -53,17 +47,9 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-const VIBE_CARDS = [
-  { title: "Start a new project", body: "I want to start something new." },
-  { title: "Audit an existing build", body: "Help me audit my current project." },
-  { title: "Describe your vision", body: "I have an idea I want to talk through." },
-  { title: "Upload something to analyze", body: "I have a file or screenshot to share." },
-];
-
 function WorkspacePage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { sessionId, initialMessage } = Route.useSearch();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -74,9 +60,13 @@ function WorkspacePage() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [auditWarning, setAuditWarning] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"chat" | "workspace" | "preview">("chat");
+  const [surface, setSurface] = useState<"chat" | "workspace" | "preview">("chat");
   const [expandedRec, setExpandedRec] = useState<string | null>(null);
-  const initialSentRef = useRef<string | null>(null);
+  const [transitioning, setTransitioning] = useState(false);
+  const [activeMode, setActiveMode] = useState<ModeId>("think");
+  const [recents, setRecents] = useState<RecentSession[]>([]);
+  const [showAllRecents, setShowAllRecents] = useState(false);
+  const [inputFocusSignal, setInputFocusSignal] = useState(0);
 
   // Auth gate
   useEffect(() => {
@@ -98,50 +88,44 @@ function WorkspacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Reset session state when sessionId param clears (back to front door)
+  const loadRecents = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("sessions")
+      .select("id, title, mode, created_at")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(4);
+    setRecents((data ?? []) as RecentSession[]);
+  };
   useEffect(() => {
-    if (!sessionId) {
-      setSession(null);
-      setMessages([]);
-    }
-  }, [sessionId]);
-
-  // Load the selected session by id
-  useEffect(() => {
-    if (!user || !sessionId) return;
-    (async () => {
-      const { data } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq("id", sessionId)
-        .maybeSingle();
-      if (data) {
-        const s = data as AtlasSession;
-        setSession(s);
-        setActiveProjectId(s.project_id);
-      }
-    })();
-  }, [user, sessionId]);
+    loadRecents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Load messages, nodes, recs for the session/project
-  const refresh = async () => {
-    if (!session || !activeProjectId) return;
+  const refresh = async (
+    targetSession = session,
+    targetProjectId = activeProjectId,
+  ) => {
+    if (!targetSession || !targetProjectId) return;
     const [m, n, r] = await Promise.all([
       supabase
         .from("chat_messages")
         .select("*")
-        .eq("session_id", session.id)
+        .eq("session_id", targetSession.id)
         .order("created_at"),
       supabase
         .from("workspace_nodes")
         .select("*")
-        .eq("project_id", activeProjectId)
+        .eq("project_id", targetProjectId)
         .neq("status", "archived")
         .order("updated_at", { ascending: false }),
       supabase
         .from("recommendations")
         .select("*")
-        .eq("project_id", activeProjectId)
+        .eq("project_id", targetProjectId)
         .order("created_at", { ascending: false }),
     ]);
     if (m.data) setMessages(m.data as ChatMessage[]);
@@ -152,17 +136,6 @@ function WorkspacePage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
-
-  // Auto-send the initial message coming from the front door, exactly once
-  useEffect(() => {
-    if (!session || !initialMessage) return;
-    if (initialSentRef.current === session.id) return;
-    initialSentRef.current = session.id;
-    send(initialMessage);
-    // Clear the search param so refreshes don't resend
-    navigate({ to: "/", search: { sessionId: session.id }, replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, initialMessage]);
 
   const pendingRecs = useMemo(
     () => recs.filter((r) => r.status === "pending"),
@@ -179,42 +152,96 @@ function WorkspacePage() {
     await send(`Proceed anyway. Continue with the original request: ${previousUserMessage.content}`);
   };
 
+  const ensureSession = async (text: string) => {
+    if (session && activeProjectId) return { session, projectId: activeProjectId };
+    if (!user || !activeProjectId) return null;
+
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert({
+        project_id: activeProjectId,
+        user_id: user.id,
+        title: text.slice(0, 60),
+        mode: activeMode,
+        status: "active",
+      })
+      .select("*")
+      .single();
+    if (error) throw error;
+
+    const created = data as AtlasSession;
+    setSession(created);
+    setRecents((prev) => [
+      {
+        id: created.id,
+        title: created.title,
+        mode: activeMode,
+        created_at: created.created_at,
+      },
+      ...prev.filter((recent) => recent.id !== created.id),
+    ].slice(0, 4));
+    return { session: created, projectId: activeProjectId };
+  };
+
   const send = async (text: string) => {
-    if (!text.trim() || !session || !activeProjectId || sending) return;
+    if (!text.trim() || sending) return;
     setSending(true);
     setAuditWarning(false);
     setInput("");
-    // Optimistic user message
-    const optimistic: ChatMessage = {
-      id: crypto.randomUUID(),
-      session_id: session.id,
-      user_id: user!.id,
-      role: "user",
-      content: text,
-      intent_type: null,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, optimistic]);
+    setTransitioning(true);
+    setSurface("chat");
 
     try {
+      const target = await ensureSession(text);
+      if (!target) throw new Error("No project available");
+
+      const optimistic: ChatMessage = {
+        id: crypto.randomUUID(),
+        session_id: target.session.id,
+        user_id: user!.id,
+        role: "user",
+        content: text,
+        intent_type: null,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, optimistic]);
+
       const { data, error } = await supabase.functions.invoke("atlas-chat", {
         body: {
-          sessionId: session.id,
-          projectId: activeProjectId,
+          sessionId: target.session.id,
+          projectId: target.projectId,
           message: text,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
         },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      await refresh();
+      await refresh(target.session, target.projectId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Atlas failed to respond";
       toast.error(msg);
       setAuditWarning(true);
+      if (!session && messages.length === 0) setTransitioning(false);
     } finally {
       setSending(false);
     }
+  };
+
+  const openSession = async (targetSessionId: string) => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("id", targetSessionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error) return toast.error(error.message);
+    if (!data) return;
+    const selected = data as AtlasSession;
+    setSession(selected);
+    setActiveProjectId(selected.project_id);
+    setSurface("chat");
+    await refresh(selected, selected.project_id);
   };
 
   const updateRec = async (id: string, status: Recommendation["status"]) => {
@@ -252,142 +279,92 @@ function WorkspacePage() {
     );
   }
 
-  // Front door: shown when no active session is selected
-  if (!sessionId) {
-    return <AtlasFrontDoor />;
-  }
-
-  // Session in URL but not yet loaded
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="font-mono text-xs text-muted-foreground">loading session…</span>
-      </div>
-    );
-  }
+  const isActive = !!session || transitioning || messages.length > 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground overflow-hidden">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
-
-      {/* Top bar */}
-      <header className="border-b border-border shrink-0">
-        <div className="px-4 md:px-6 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="font-semibold tracking-tight text-sm">Atlas</span>
-            <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
-              Workspace
-            </span>
-            {projects.length > 0 && (
-              <select
-                value={activeProjectId ?? ""}
-                onChange={(e) => setActiveProjectId(e.target.value)}
-                className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[color:var(--ember)] max-w-[180px] truncate"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/ledger"
-              className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground hover:text-foreground"
-            >
-              Ledger
-            </Link>
-            <button
-              onClick={signOut}
-              className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
-            >
-              sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile tabs */}
-      <div className="md:hidden border-b border-border flex shrink-0">
-        {(["chat", "workspace", "preview"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setMobileTab(t)}
-            className={`flex-1 py-2.5 text-[10px] font-mono uppercase tracking-[0.15em] ${
-              mobileTab === t
-                ? "text-[color:var(--ember)] border-b-2 border-[color:var(--ember)]"
-                : "text-muted-foreground"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {/* Three-panel layout */}
-      <main className="flex-1 flex overflow-hidden">
-        {/* Chat (30%) */}
-        <section
-          className={`${
-            mobileTab === "chat" ? "flex" : "hidden"
-          } md:flex md:w-[30%] flex-col border-r border-border min-w-0`}
+      <main className="relative min-h-screen overflow-hidden">
+        <AtlasFrontDoor
+          active={isActive}
+          input={input}
+          onInputChange={setInput}
+          sending={sending}
+          activeMode={activeMode}
+          inputFocusSignal={inputFocusSignal}
+          onModeChange={setActiveMode}
+          onSend={send}
+          recents={recents}
+          showAllRecents={showAllRecents}
+          onOpenSession={openSession}
+          onToggleRecents={() => setShowAllRecents((value) => !value)}
+          headerActions={
+            session ? (
+              <div className="flex items-center gap-3 min-w-0">
+                {projects.length > 0 && (
+                  <select
+                    value={activeProjectId ?? ""}
+                    onChange={(e) => setActiveProjectId(e.target.value)}
+                    className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[color:var(--ember)] max-w-[140px] truncate"
+                  >
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <Link
+                  to="/ledger"
+                  className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground hover:text-foreground"
+                >
+                  Ledger
+                </Link>
+                <button
+                  onClick={signOut}
+                  className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
+                >
+                  sign out
+                </button>
+              </div>
+            ) : null
+          }
+          secondaryPanel={
+            session && surface !== "chat" ? (
+              <section className="absolute inset-x-0 top-12 bottom-24 z-20 bg-background/95 backdrop-blur-sm border-y border-border">
+                {surface === "workspace" ? (
+                  <WorkspacePanel nodes={nodes} />
+                ) : (
+                  <PreviewPanel
+                    recs={pendingRecs}
+                    expanded={expandedRec}
+                    setExpanded={setExpandedRec}
+                    onAction={updateRec}
+                  />
+                )}
+              </section>
+            ) : null
+          }
+          bottomTabs={
+            session ? (
+              <SurfaceSwitcher active={surface} onChange={setSurface} />
+            ) : null
+          }
         >
           <ChatPanel
             messages={messages}
             sending={sending}
-            input={input}
             setInput={setInput}
-            onSend={send}
-            onVibeCard={(body) => send(body)}
-            sessionId={session.id}
+            sessionId={session?.id ?? ""}
             projectId={activeProjectId}
             userId={user.id}
             onRefresh={refresh}
             onContinueAfterConflict={continueAfterConflict}
+            onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
           />
-        </section>
-
-        {/* Workspace (40%) */}
-        <section
-          className={`${
-            mobileTab === "workspace" ? "flex" : "hidden"
-          } md:flex md:w-[40%] flex-col border-r border-border bg-[color:var(--surface)]/30 min-w-0`}
-        >
-          <WorkspacePanel nodes={nodes} />
-        </section>
-
-        {/* Preview (30%) */}
-        <section
-          className={`${
-            mobileTab === "preview" ? "flex" : "hidden"
-          } md:flex md:w-[30%] flex-col min-w-0`}
-        >
-          <PreviewPanel
-            recs={pendingRecs}
-            expanded={expandedRec}
-            setExpanded={setExpandedRec}
-            onAction={updateRec}
-          />
-        </section>
+        </AtlasFrontDoor>
       </main>
 
-      <style>{`
-        .atlas-input {
-          width: 100%;
-          background: var(--background);
-          color: var(--foreground);
-          border: 1px solid var(--border);
-          border-radius: 3px;
-          padding: 9px 11px;
-          font-size: 13px;
-          outline: none;
-          transition: border-color 120ms;
-        }
-        .atlas-input:focus { border-color: var(--ember); }
-        .atlas-input::placeholder { color: var(--muted-text); }
-      `}</style>
     </div>
   );
 }
@@ -396,30 +373,25 @@ function WorkspacePage() {
 function ChatPanel({
   messages,
   sending,
-  input,
   setInput,
-  onSend,
-  onVibeCard,
   sessionId,
   projectId,
   userId,
   onRefresh,
   onContinueAfterConflict,
+  onRequestInputFocus,
 }: {
   messages: ChatMessage[];
   sending: boolean;
-  input: string;
   setInput: (v: string) => void;
-  onSend: (text: string) => void;
-  onVibeCard: (body: string) => void;
   sessionId: string;
   projectId: string | null;
   userId: string;
   onRefresh: () => Promise<void>;
   onContinueAfterConflict: (messageId: string) => Promise<void>;
+  onRequestInputFocus: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const statusTimerRef = useRef<number | null>(null);
   const fadeTimerRef = useRef<number | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -526,36 +498,28 @@ function ChatPanel({
 
   const reconsider = (messageId: string) => {
     setDismissedConflicts((prev) => new Set(prev).add(messageId));
-    inputRef.current?.focus();
+    onRequestInputFocus();
   };
 
   return (
     <>
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-          Chat
-        </span>
-        <span className="font-mono text-[10px] text-muted-foreground/60">
-          {messages.length} msg
-        </span>
-      </div>
-
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 ? (
-          <AntiFreezeGateway onVibeCard={onVibeCard} />
-        ) : (
-          messages.map((m) => {
+        {messages.map((m) => {
             const parsedConflict =
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
             if (parsedConflict && dismissedConflicts.has(m.id)) return null;
             const conflict = parsedConflict;
             const showCommitButton =
               m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
+            const isUser = m.role === "user";
 
             return (
-              <div key={m.id} className="space-y-1">
+              <div
+                key={m.id}
+                className={`space-y-1 ${isUser ? "ml-auto max-w-[85%] text-right" : "max-w-[92%]"}`}
+              >
                 <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
-                  {m.role === "user" ? "you" : "atlas"} · {relativeTime(m.created_at)}
+                  {isUser ? "YOU" : "ATLAS"} · {relativeTime(m.created_at)}
                 </div>
                 {conflict ? (
                   <ConflictWarningCard
@@ -570,9 +534,7 @@ function ChatPanel({
                 ) : (
                   <div
                     className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
-                      m.role === "assistant"
-                        ? "text-foreground"
-                        : "text-foreground/80"
+                      isUser ? "text-foreground/80" : "text-foreground"
                     }`}
                   >
                     {m.content}
@@ -613,47 +575,12 @@ function ChatPanel({
                 )}
               </div>
             );
-          })
-        )}
+          })}
         {sending && (
           <div className="font-mono text-[10px] text-[color:var(--phosphor)] uppercase tracking-[0.15em]">
             atlas thinking…
           </div>
         )}
-      </div>
-
-      <div className="border-t border-border p-3">
-        <DropZone
-          onText={(t) => setInput(input ? input + "\n" + t : t)}
-          onSend={onSend}
-        >
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSend(input);
-              }
-            }}
-            placeholder="Tell Atlas what you're building…"
-            rows={2}
-            className="atlas-input resize-none font-sans"
-          />
-        </DropZone>
-        <div className="flex items-center justify-between mt-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/50">
-            ↵ send · ⇧↵ newline · drop file
-          </span>
-          <button
-            onClick={() => onSend(input)}
-            disabled={sending || !input.trim()}
-            className="px-3 py-1 text-[10px] font-medium uppercase tracking-[0.1em] bg-[color:var(--ember)] text-[color:var(--background)] rounded-sm hover:brightness-110 disabled:opacity-40 transition-all"
-          >
-            Send
-          </button>
-        </div>
       </div>
     </>
   );
@@ -732,73 +659,65 @@ function ConflictWarningCard({
   );
 }
 
-function AntiFreezeGateway({ onVibeCard }: { onVibeCard: (body: string) => void }) {
-  return (
-    <div className="space-y-4 pt-4">
-      <div className="space-y-1.5">
-        <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-[color:var(--ember)]">
-          Atlas is ready
-        </div>
-        <p className="text-[13px] text-muted-foreground leading-relaxed">
-          Pick a starting point, or just tell me what you're building.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        {VIBE_CARDS.map((c) => (
-          <button
-            key={c.title}
-            onClick={() => onVibeCard(c.body)}
-            className="text-left px-3 py-2.5 border border-border rounded-sm bg-[color:var(--surface)]/50 hover:border-[color:var(--phosphor)] hover:bg-[color:var(--surface)] transition-colors"
-          >
-            <div className="text-[12px] font-medium">{c.title}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">
-              {c.body}
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function DropZone({
-  children,
-  onText,
+function SurfaceSwitcher({
+  active,
+  onChange,
 }: {
-  children: React.ReactNode;
-  onText: (t: string) => void;
-  onSend: (t: string) => void;
+  active: "chat" | "workspace" | "preview";
+  onChange: (surface: "chat" | "workspace" | "preview") => void;
 }) {
-  const [hover, setHover] = useState(false);
+  const items: Array<{
+    id: "chat" | "workspace" | "preview";
+    label: string;
+    icon: React.ReactNode;
+  }> = [
+    {
+      id: "chat",
+      label: "Chat",
+      icon: (
+        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M4 5.5h12v7H8l-4 3v-10Z" />
+        </svg>
+      ),
+    },
+    {
+      id: "workspace",
+      label: "Workspace",
+      icon: (
+        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M3.5 4.5h13v11h-13z" />
+          <path d="M7.5 4.5v11M3.5 8h13" />
+        </svg>
+      ),
+    },
+    {
+      id: "preview",
+      label: "Preview",
+      icon: (
+        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M2.5 10s2.5-4.5 7.5-4.5 7.5 4.5 7.5 4.5-2.5 4.5-7.5 4.5S2.5 10 2.5 10Z" />
+          <circle cx="10" cy="10" r="2" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setHover(true);
-      }}
-      onDragLeave={() => setHover(false)}
-      onDrop={async (e) => {
-        e.preventDefault();
-        setHover(false);
-        const file = e.dataTransfer.files[0];
-        if (!file) return;
-        if (file.type.startsWith("text/") || file.name.endsWith(".md")) {
-          const text = await file.text();
-          onText(`[${file.name}]\n${text.slice(0, 4000)}`);
-        } else {
-          onText(`[attached: ${file.name} · ${(file.size / 1024).toFixed(1)}kb]`);
-        }
-      }}
-      className={`relative ${hover ? "ring-1 ring-[color:var(--phosphor)] rounded-sm" : ""}`}
-    >
-      {children}
-      {hover && (
-        <div className="absolute inset-0 bg-[color:var(--phosphor)]/10 flex items-center justify-center pointer-events-none rounded-sm">
-          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-[color:var(--phosphor)]">
-            drop to attach
-          </span>
-        </div>
-      )}
+    <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2">
+      {items.map((item) => {
+        const isActive = active === item.id;
+        return (
+          <button
+            key={item.id}
+            aria-label={item.label}
+            onClick={() => onChange(item.id)}
+            className="flex h-7 w-7 items-center justify-center bg-transparent"
+            style={{ color: isActive ? "#EA580C" : "#78716C" }}
+          >
+            {item.icon}
+          </button>
+        );
+      })}
     </div>
   );
 }

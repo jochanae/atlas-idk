@@ -1,10 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+import { type ReactNode, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 
-const MODES = [
+export const MODES = [
   { id: "think", label: "Think", color: "ember" },
   { id: "build", label: "Build", color: "ember" },
   { id: "explore", label: "Explore", color: "phosphor" },
@@ -12,40 +9,54 @@ const MODES = [
   { id: "audit", label: "Audit", color: "ember" },
 ] as const;
 
-type ModeId = typeof MODES[number]["id"];
+export type ModeId = typeof MODES[number]["id"];
 
-interface RecentSession {
+export interface RecentSession {
   id: string;
   title: string;
   mode: string | null;
   created_at: string;
 }
 
-export function AtlasFrontDoor() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [activeMode, setActiveMode] = useState<ModeId>("think");
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [recents, setRecents] = useState<RecentSession[]>([]);
-  const [showAllRecents, setShowAllRecents] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+type AtlasFrontDoorProps = {
+  active: boolean;
+  activeMode: ModeId;
+  input: string;
+  sending: boolean;
+  recents: RecentSession[];
+  showAllRecents: boolean;
+  headerActions: ReactNode;
+  bottomTabs?: ReactNode;
+  secondaryPanel?: ReactNode;
+  inputFocusSignal: number;
+  onModeChange: (mode: ModeId) => void;
+  onInputChange: (value: string) => void;
+  onSend: (text: string, mode: ModeId) => void;
+  onOpenSession: (sessionId: string) => void;
+  onToggleRecents: () => void;
+  children?: ReactNode;
+};
+
+export function AtlasFrontDoor({
+  active,
+  activeMode,
+  input,
+  sending,
+  recents,
+  showAllRecents,
+  headerActions,
+  bottomTabs,
+  secondaryPanel,
+  inputFocusSignal,
+  onModeChange,
+  onInputChange,
+  onSend,
+  onOpenSession,
+  onToggleRecents,
+  children,
+}: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("sessions")
-      .select("id, title, mode, created_at")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(4)
-      .then(({ data }) => {
-        if (data) setRecents(data as RecentSession[]);
-      });
-  }, [user]);
 
   useEffect(() => {
     const row = pillsRef.current;
@@ -53,74 +64,41 @@ export function AtlasFrontDoor() {
     row.scrollLeft = (row.scrollWidth - row.clientWidth) / 2;
   }, []);
 
-  const handleSend = async () => {
-    if (!input.trim() || !user || sending) return;
-    setSending(true);
-    const { data: project } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("user_id", user.id)
-      .order("created_at")
-      .limit(1)
-      .single();
-    if (!project) { setSending(false); return; }
-    const { data: session } = await supabase
-      .from("sessions")
-      .insert({ project_id: project.id, user_id: user.id, title: input.slice(0, 60), mode: activeMode, status: "active" })
-      .select("id")
-      .single();
-    if (session) {
-      navigate({ to: "/", search: { sessionId: session.id, initialMessage: input } });
-    }
-    setSending(false);
-  };
+  useEffect(() => {
+    if (inputFocusSignal > 0) textareaRef.current?.focus();
+  }, [inputFocusSignal]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSend(input, activeMode);
+    }
   };
 
   const visibleRecents = showAllRecents ? recents : recents.slice(0, 1);
   const hiddenCount = recents.length - 1;
-  const activeSession = recents[0];
-
-  const handleWorkspaceNav = () => {
-    setMenuOpen(false);
-    if (activeSession) {
-      navigate({ to: "/", search: { sessionId: activeSession.id } });
-      return;
-    }
-    navigate({ to: "/" });
-  };
-
-  const handleSignOut = async () => {
-    setMenuOpen(false);
-    await signOut();
-  };
 
   return (
-    <div style={{ background: "#0C0A09", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-
+    <div style={{ background: "#0C0A09", minHeight: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px 8px" }}>
         <span style={{ fontSize: 18, fontWeight: 500, color: "#E7E5E4", letterSpacing: "0.08em" }}>Atlas</span>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => navigate({ to: "/ledger" })}
-            style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid #2C2926", background: "#1C1917", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-          >
-            <svg viewBox="0 0 16 16" width={14} height={14} stroke="#78716C" fill="none" strokeWidth={1.5}><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>
-          </button>
-          <button
-            onClick={() => setMenuOpen((open) => !open)}
-            style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid #2C2926", background: "#1C1917", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-          >
-            <svg viewBox="0 0 16 16" width={14} height={14} stroke="#78716C" fill="none" strokeWidth={1.5}><path d="M2 4h12M2 8h8M2 12h10"/></svg>
-          </button>
-        </div>
+        {headerActions}
       </div>
 
       {/* Presence zone */}
-      <div style={{ textAlign: "center", padding: "36px 24px 24px" }}>
+      <div
+        style={{
+          textAlign: "center",
+          padding: active ? "0 24px" : "36px 24px 24px",
+          opacity: active ? 0 : 1,
+          maxHeight: active ? 0 : 140,
+          overflow: "hidden",
+          transform: active ? "translateY(-8px)" : "translateY(0)",
+          transition: "opacity 300ms ease, transform 300ms ease, max-height 300ms ease, padding 300ms ease",
+          pointerEvents: active ? "none" : "auto",
+        }}
+      >
         <div style={{ fontSize: 24, fontWeight: 400, color: "#E7E5E4", lineHeight: 1.3, letterSpacing: "-0.01em", marginBottom: 8 }}>
           What's on your mind?
         </div>
@@ -130,7 +108,22 @@ export function AtlasFrontDoor() {
       </div>
 
       {/* Mode pills */}
-      <div ref={pillsRef} style={{ display: "flex", justifyContent: "center", padding: "0 20px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
+      <div
+        ref={pillsRef}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          padding: active ? "0 20px" : "0 20px 20px",
+          maxHeight: active ? 0 : 48,
+          overflowX: "auto",
+          overflowY: "hidden",
+          scrollbarWidth: "none",
+          opacity: active ? 0 : 1,
+          transform: active ? "translateY(-12px)" : "translateY(0)",
+          transition: "opacity 200ms ease, transform 200ms ease, max-height 200ms ease, padding 200ms ease",
+          pointerEvents: active ? "none" : "auto",
+        }}
+      >
         <div style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto" }}>
           {MODES.map((m) => {
             const isActive = activeMode === m.id;
@@ -139,7 +132,7 @@ export function AtlasFrontDoor() {
             return (
               <button
                 key={m.id}
-                onClick={() => setActiveMode(m.id)}
+                onClick={() => onModeChange(m.id)}
                 style={{
                   flexShrink: 0,
                   padding: "5px 14px",
@@ -161,12 +154,66 @@ export function AtlasFrontDoor() {
         </div>
       </div>
 
+      <div
+        style={{
+          flex: active ? 1 : "0 1 auto",
+          minHeight: 0,
+          opacity: active ? 1 : 0,
+          transition: "opacity 300ms ease",
+          pointerEvents: active ? "auto" : "none",
+          display: active ? "flex" : "none",
+          flexDirection: "column",
+        }}
+      >
+        {children}
+      </div>
+
+      {!active && recents.length > 0 && (
+        <div style={{ marginTop: 20, flex: 1 }}>
+          <div style={{ padding: "0 20px 10px", fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            Continue where you left off
+          </div>
+          {visibleRecents.map((s) => {
+            const isPhosphor = s.mode === "explore";
+            const dotColor = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
+            return (
+              <div
+                key={s.id}
+                onClick={() => onOpenSession(s.id)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderTop: "0.5px solid #1C1917", cursor: "pointer" }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "#78716C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2 }}>
+                    {s.title || "Untitled session"}
+                  </div>
+                  <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.04em" }}>
+                    {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
+                  </div>
+                </div>
+                <span style={{ fontSize: 14, color: "#2C2926" }}>›</span>
+              </div>
+            );
+          })}
+          {hiddenCount > 0 && (
+            <button
+              onClick={onToggleRecents}
+              style={{ width: "100%", padding: "10px 20px", background: "transparent", border: "none", fontFamily: "monospace", fontSize: 10, color: "#2C2926", letterSpacing: "0.08em", cursor: "pointer", textAlign: "left" }}
+            >
+              {showAllRecents ? "show less" : `${hiddenCount} more`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {secondaryPanel}
+
       {/* Input zone */}
-      <div style={{ margin: "0 16px", background: "#1C1917", borderRadius: 14, border: "0.5px solid #2C2926", padding: "14px 16px" }}>
+      <div style={{ margin: active ? "0 16px 18px" : "0 16px", background: "#1C1917", borderRadius: 14, border: "0.5px solid #2C2926", padding: "14px 16px", transition: "margin 300ms ease" }}>
         <textarea
           ref={textareaRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="anything on your mind, a build, an idea, a decision…"
           rows={2}
@@ -195,7 +242,7 @@ export function AtlasFrontDoor() {
             ))}
           </div>
           <button
-            onClick={handleSend}
+            onClick={() => onSend(input, activeMode)}
             disabled={!input.trim() || sending}
             style={{
               width: 32, height: 32, borderRadius: 8,
@@ -213,73 +260,7 @@ export function AtlasFrontDoor() {
         </div>
       </div>
 
-      {/* Recent sessions */}
-      {recents.length > 0 && (
-        <div style={{ marginTop: 20, flex: 1 }}>
-          <div style={{ padding: "0 20px 10px", fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            Continue where you left off
-          </div>
-          {visibleRecents.map((s) => {
-            const isPhosphor = s.mode === "explore";
-            const dotColor = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
-            return (
-              <div
-                key={s.id}
-                onClick={() => navigate({ to: "/", search: { sessionId: s.id } })}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderTop: "0.5px solid #1C1917", cursor: "pointer" }}
-              >
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "#78716C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2 }}>
-                    {s.title || "Untitled session"}
-                  </div>
-                  <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.04em" }}>
-                    {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
-                  </div>
-                </div>
-                <span style={{ fontSize: 14, color: "#2C2926" }}>›</span>
-              </div>
-            );
-          })}
-          {hiddenCount > 0 && (
-            <button
-              onClick={() => setShowAllRecents(!showAllRecents)}
-              style={{ width: "100%", padding: "10px 20px", background: "transparent", border: "none", fontFamily: "monospace", fontSize: 10, color: "#2C2926", letterSpacing: "0.08em", cursor: "pointer", textAlign: "left" }}
-            >
-              {showAllRecents ? "show less" : `${hiddenCount} more`}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Footer audit line */}
-      {menuOpen && (
-        <>
-          <button
-            aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 20, background: "transparent", border: "none", padding: 0 }}
-          />
-          <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 21, background: "#1C1917", borderTop: "0.5px solid #2C2926" }}>
-            {[
-              { label: "Ledger", onClick: () => { setMenuOpen(false); navigate({ to: "/ledger" }); } },
-              { label: "Workspace", onClick: handleWorkspaceNav },
-              { label: "Sign out", onClick: handleSignOut },
-            ].map((item) => (
-              <button
-                key={item.label}
-                onClick={item.onClick}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#E7E5E4"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#78716C"; }}
-                style={{ display: "block", width: "100%", padding: "16px 20px", background: "transparent", border: "none", color: "#78716C", fontSize: 14, textAlign: "left", cursor: "pointer" }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-      <div style={{ height: 2, background: "#06B6D4", opacity: 0.7, marginTop: "auto" }} />
+      {bottomTabs}
     </div>
   );
 }
