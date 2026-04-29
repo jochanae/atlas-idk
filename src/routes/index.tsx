@@ -19,6 +19,22 @@ type IndexSearch = {
   initialMessage?: string;
 };
 
+type CommitExtraction =
+  | {
+      decision_found: true;
+      title: string;
+      description: string;
+      constraint: string;
+      confidence: "high" | "medium" | "low";
+    }
+  | { decision_found: false };
+
+type ConflictDetails = {
+  conflict: string;
+  committed: string;
+  committedOn: string;
+};
+
 export const Route = createFileRoute("/")({
   component: WorkspacePage,
   validateSearch: (search: Record<string, unknown>): IndexSearch => ({
@@ -152,6 +168,16 @@ function WorkspacePage() {
     () => recs.filter((r) => r.status === "pending"),
     [recs],
   );
+
+  const continueAfterConflict = async (conflictMessageId: string) => {
+    const conflictIndex = messages.findIndex((m) => m.id === conflictMessageId);
+    const previousUserMessage = [...messages]
+      .slice(0, conflictIndex)
+      .reverse()
+      .find((m) => m.role === "user");
+    if (!previousUserMessage) return;
+    await send(`Proceed anyway. Continue with the original request: ${previousUserMessage.content}`);
+  };
 
   const send = async (text: string) => {
     if (!text.trim() || !session || !activeProjectId || sending) return;
@@ -306,6 +332,11 @@ function WorkspacePage() {
             setInput={setInput}
             onSend={send}
             onVibeCard={(body) => send(body)}
+            sessionId={session.id}
+            projectId={activeProjectId}
+            userId={user.id}
+            onRefresh={refresh}
+            onContinueAfterConflict={continueAfterConflict}
           />
         </section>
 
@@ -360,6 +391,11 @@ function ChatPanel({
   setInput,
   onSend,
   onVibeCard,
+  sessionId,
+  projectId,
+  userId,
+  onRefresh,
+  onContinueAfterConflict,
 }: {
   messages: ChatMessage[];
   sending: boolean;
@@ -367,14 +403,122 @@ function ChatPanel({
   setInput: (v: string) => void;
   onSend: (text: string) => void;
   onVibeCard: (body: string) => void;
+  sessionId: string;
+  projectId: string | null;
+  userId: string;
+  onRefresh: () => Promise<void>;
+  onContinueAfterConflict: (messageId: string) => Promise<void>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const statusTimerRef = useRef<number | null>(null);
+  const fadeTimerRef = useRef<number | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [commitStatus, setCommitStatus] = useState<{
+    text: string;
+    color: string;
+    visible: boolean;
+  } | null>(null);
+  const [dismissedConflicts, setDismissedConflicts] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const latestAtlasResponseId = [...messages]
+    .reverse()
+    .find((m) => m.role === "assistant")?.id;
+
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
   }, [messages.length, sending]);
+
+  useEffect(() => {
+    return () => {
+      if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current);
+      if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
+    };
+  }, []);
+
+  const showCommitStatus = (text: string, color: string) => {
+    if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current);
+    if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
+    setCommitStatus({ text, color, visible: true });
+    statusTimerRef.current = window.setTimeout(() => {
+      setCommitStatus((current) =>
+        current ? { ...current, visible: false } : current,
+      );
+    }, 2600);
+    fadeTimerRef.current = window.setTimeout(() => {
+      setCommitStatus(null);
+    }, 3000);
+  };
+
+  const commitDecision = async () => {
+    if (!projectId || extracting) return;
+    setExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("atlas-commit", {
+        body: { sessionId, projectId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const extraction = data as CommitExtraction;
+      if (!extraction.decision_found) {
+        showCommitStatus("No clear decision found", "#78716C");
+        return;
+      }
+
+      const description = [
+        extraction.description,
+        extraction.constraint ? `Constraint: ${extraction.constraint}` : "",
+        extraction.confidence ? `Confidence: ${extraction.confidence}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      const { error: insertError } = await supabase.from("ledger_entries").insert({
+        user_id: userId,
+        project_id: projectId,
+        extracted_from_session_id: sessionId,
+        title: extraction.title,
+        description,
+        status: "Active",
+      });
+      if (insertError) throw insertError;
+
+      showCommitStatus("Decision logged to ledger", "#EA580C");
+      await onRefresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to commit decision";
+      toast.error(msg);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const proceedAnyway = async (messageId: string, committedOn: string) => {
+    if (!projectId) return;
+    const { error } = await supabase
+      .from("ledger_entries")
+      .update({ status: "Violated", is_violation: true })
+      .eq("project_id", projectId)
+      .eq("user_id", userId)
+      .eq("title", committedOn);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setDismissedConflicts((prev) => new Set(prev).add(messageId));
+    await onRefresh();
+    await onContinueAfterConflict(messageId);
+  };
+
+  const reconsider = (messageId: string) => {
+    setDismissedConflicts((prev) => new Set(prev).add(messageId));
+    inputRef.current?.focus();
+  };
 
   return (
     <>
@@ -391,22 +535,76 @@ function ChatPanel({
         {messages.length === 0 ? (
           <AntiFreezeGateway onVibeCard={onVibeCard} />
         ) : (
-          messages.map((m) => (
-            <div key={m.id} className="space-y-1">
-              <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
-                {m.role === "user" ? "you" : "atlas"} · {relativeTime(m.created_at)}
+          messages.map((m) => {
+            const parsedConflict =
+              m.role === "assistant" ? parseConflictResponse(m.content) : null;
+            if (parsedConflict && dismissedConflicts.has(m.id)) return null;
+            const conflict = parsedConflict;
+            const showCommitButton =
+              m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
+
+            return (
+              <div key={m.id} className="space-y-1">
+                <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
+                  {m.role === "user" ? "you" : "atlas"} · {relativeTime(m.created_at)}
+                </div>
+                {conflict ? (
+                  <ConflictWarningCard
+                    conflict={conflict}
+                    onProceed={() => proceedAnyway(m.id, conflict.committedOn)}
+                    onUpdate={() => {
+                      setInput(`Update the decision: ${conflict.committedOn}`);
+                      reconsider(m.id);
+                    }}
+                    onReconsider={() => reconsider(m.id)}
+                  />
+                ) : (
+                  <div
+                    className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
+                      m.role === "assistant"
+                        ? "text-foreground"
+                        : "text-foreground/80"
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                )}
+                {showCommitButton && (
+                  <div className="pt-1 space-y-1.5">
+                    <button
+                      onClick={commitDecision}
+                      disabled={extracting}
+                      style={{
+                        background: "transparent",
+                        border: "0.5px solid #2C2926",
+                        color: "#78716C",
+                        fontFamily: "monospace",
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        borderRadius: 6,
+                        padding: "4px 10px",
+                      }}
+                    >
+                      {extracting ? "extracting…" : "COMMIT DECISION →"}
+                    </button>
+                    {commitStatus && (
+                      <div
+                        style={{
+                          color: commitStatus.color,
+                          opacity: commitStatus.visible ? 1 : 0,
+                          transition: "opacity 400ms ease",
+                        }}
+                        className="font-mono text-[10px]"
+                      >
+                        {commitStatus.text}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div
-                className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
-                  m.role === "assistant"
-                    ? "text-foreground"
-                    : "text-foreground/80"
-                }`}
-              >
-                {m.content}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
         {sending && (
           <div className="font-mono text-[10px] text-[color:var(--phosphor)] uppercase tracking-[0.15em]">
@@ -421,6 +619,7 @@ function ChatPanel({
           onSend={onSend}
         >
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -448,6 +647,79 @@ function ChatPanel({
         </div>
       </div>
     </>
+  );
+}
+
+function parseConflictResponse(content: string): ConflictDetails | null {
+  if (!content.startsWith("CONFLICT_DETECTED:")) return null;
+
+  const lines = content.split("\n").map((line) => line.trim());
+  const readValue = (prefix: string) =>
+    lines.find((line) => line.startsWith(prefix))?.slice(prefix.length).trim() ?? "";
+
+  return {
+    conflict: readValue("CONFLICT_DETECTED:"),
+    committed: readValue("COMMITTED:"),
+    committedOn: readValue("COMMITTED_ON:"),
+  };
+}
+
+function ConflictWarningCard({
+  conflict,
+  onProceed,
+  onUpdate,
+  onReconsider,
+}: {
+  conflict: ConflictDetails;
+  onProceed: () => void;
+  onUpdate: () => void;
+  onReconsider: () => void;
+}) {
+  const buttonStyle = {
+    width: "100%",
+    background: "transparent",
+    border: "0.5px solid #2C2926",
+    color: "#78716C",
+    fontFamily: "monospace",
+    fontSize: 10,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.08em",
+    borderRadius: 6,
+    padding: "7px 10px",
+    textAlign: "left" as const,
+  };
+
+  return (
+    <div
+      style={{
+        borderTop: "2px solid #EA580C",
+        background: "#1C1917",
+        borderRadius: 8,
+        padding: "12px 16px",
+      }}
+      className="space-y-3"
+    >
+      <div style={{ color: "#EA580C", fontFamily: "monospace", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        COMMITMENT CONFLICT
+      </div>
+      <div style={{ color: "#E7E5E4", fontSize: 14 }}>
+        {conflict.conflict}
+      </div>
+      <div style={{ color: "#78716C", fontSize: 12, fontFamily: "monospace" }}>
+        {conflict.committedOn || conflict.committed}
+      </div>
+      <div className="space-y-2">
+        <button onClick={onProceed} style={buttonStyle}>
+          Proceed anyway
+        </button>
+        <button onClick={onUpdate} style={buttonStyle}>
+          Update the decision
+        </button>
+        <button onClick={onReconsider} style={buttonStyle}>
+          Reconsider
+        </button>
+      </div>
+    </div>
   );
 }
 
