@@ -22,13 +22,15 @@ interface RecentSession {
 }
 
 export function AtlasFrontDoor() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [activeMode, setActiveMode] = useState<ModeId>("think");
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [recents, setRecents] = useState<RecentSession[]>([]);
   const [showAllRecents, setShowAllRecents] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pillsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -44,6 +46,12 @@ export function AtlasFrontDoor() {
         if (data) setRecents(data as RecentSession[]);
       });
   }, [user]);
+
+  useEffect(() => {
+    const row = pillsRef.current;
+    if (!row || row.scrollWidth <= row.clientWidth) return;
+    row.scrollLeft = (row.scrollWidth - row.clientWidth) / 2;
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || !user || sending) return;
@@ -73,6 +81,21 @@ export function AtlasFrontDoor() {
 
   const visibleRecents = showAllRecents ? recents : recents.slice(0, 1);
   const hiddenCount = recents.length - 1;
+  const activeSession = recents[0];
+
+  const handleWorkspaceNav = () => {
+    setMenuOpen(false);
+    if (activeSession) {
+      navigate({ to: "/", search: { sessionId: activeSession.id } });
+      return;
+    }
+    navigate({ to: "/" });
+  };
+
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await signOut();
+  };
 
   return (
     <div style={{ background: "#0C0A09", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
@@ -81,14 +104,18 @@ export function AtlasFrontDoor() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px 8px" }}>
         <span style={{ fontSize: 18, fontWeight: 500, color: "#E7E5E4", letterSpacing: "0.08em" }}>Atlas</span>
         <div style={{ display: "flex", gap: 8 }}>
-          {[
-            <svg key="s" viewBox="0 0 16 16" width={14} height={14} stroke="#78716C" fill="none" strokeWidth={1.5}><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>,
-            <svg key="m" viewBox="0 0 16 16" width={14} height={14} stroke="#78716C" fill="none" strokeWidth={1.5}><path d="M2 4h12M2 8h8M2 12h10"/></svg>
-          ].map((icon, i) => (
-            <button key={i} style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid #2C2926", background: "#1C1917", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-              {icon}
-            </button>
-          ))}
+          <button
+            onClick={() => navigate({ to: "/ledger" })}
+            style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid #2C2926", background: "#1C1917", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          >
+            <svg viewBox="0 0 16 16" width={14} height={14} stroke="#78716C" fill="none" strokeWidth={1.5}><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/></svg>
+          </button>
+          <button
+            onClick={() => setMenuOpen((open) => !open)}
+            style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid #2C2926", background: "#1C1917", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          >
+            <svg viewBox="0 0 16 16" width={14} height={14} stroke="#78716C" fill="none" strokeWidth={1.5}><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+          </button>
         </div>
       </div>
 
@@ -103,33 +130,35 @@ export function AtlasFrontDoor() {
       </div>
 
       {/* Mode pills */}
-      <div style={{ display: "flex", gap: 6, padding: "0 20px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
-        {MODES.map((m) => {
-          const isActive = activeMode === m.id;
-          const isPhosphor = m.color === "phosphor";
-          const activeColor = isPhosphor ? "#06B6D4" : "#EA580C";
-          return (
-            <button
-              key={m.id}
-              onClick={() => setActiveMode(m.id)}
-              style={{
-                flexShrink: 0,
-                padding: "5px 14px",
-                borderRadius: 20,
-                border: `0.5px solid ${isActive ? activeColor : "#2C2926"}`,
-                background: isActive && isPhosphor ? "#080C10" : "#1C1917",
-                fontFamily: "monospace",
-                fontSize: 11,
-                color: isActive ? activeColor : "#78716C",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              {m.label}
-            </button>
-          );
-        })}
+      <div ref={pillsRef} style={{ display: "flex", justifyContent: "center", padding: "0 20px 20px", overflowX: "auto", scrollbarWidth: "none" }}>
+        <div style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto" }}>
+          {MODES.map((m) => {
+            const isActive = activeMode === m.id;
+            const isPhosphor = m.color === "phosphor";
+            const activeColor = isPhosphor ? "#06B6D4" : "#EA580C";
+            return (
+              <button
+                key={m.id}
+                onClick={() => setActiveMode(m.id)}
+                style={{
+                  flexShrink: 0,
+                  padding: "5px 14px",
+                  borderRadius: 20,
+                  border: `0.5px solid ${isActive ? activeColor : "#2C2926"}`,
+                  background: isActive && isPhosphor ? "#080C10" : "#1C1917",
+                  fontFamily: "monospace",
+                  fontSize: 11,
+                  color: isActive ? activeColor : "#78716C",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Input zone */}
@@ -224,6 +253,32 @@ export function AtlasFrontDoor() {
       )}
 
       {/* Footer audit line */}
+      {menuOpen && (
+        <>
+          <button
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 20, background: "transparent", border: "none", padding: 0 }}
+          />
+          <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 21, background: "#1C1917", borderTop: "0.5px solid #2C2926" }}>
+            {[
+              { label: "Ledger", onClick: () => { setMenuOpen(false); navigate({ to: "/ledger" }); } },
+              { label: "Workspace", onClick: handleWorkspaceNav },
+              { label: "Sign out", onClick: handleSignOut },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={item.onClick}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#E7E5E4"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#78716C"; }}
+                style={{ display: "block", width: "100%", padding: "16px 20px", background: "transparent", border: "none", color: "#78716C", fontSize: 14, textAlign: "left", cursor: "pointer" }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div style={{ height: 2, background: "#06B6D4", opacity: 0.7, marginTop: "auto" }} />
     </div>
   );
