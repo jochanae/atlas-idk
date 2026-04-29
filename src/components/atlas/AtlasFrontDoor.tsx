@@ -34,6 +34,7 @@ type AtlasFrontDoorProps = {
   onSend: (text: string, mode: ModeId) => void;
   onOpenSession: (sessionId: string) => void;
   onToggleRecents: () => void;
+  onWordmarkClick?: () => void;
   children?: ReactNode;
 };
 
@@ -53,6 +54,7 @@ export function AtlasFrontDoor({
   onSend,
   onOpenSession,
   onToggleRecents,
+  onWordmarkClick,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,12 @@ export function AtlasFrontDoor({
     <div style={{ background: "#0C0A09", minHeight: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
       {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px 8px" }}>
-        <span style={{ fontSize: 18, fontWeight: 500, color: "#E7E5E4", letterSpacing: "0.08em" }}>Atlas</span>
+        <button
+          onClick={onWordmarkClick}
+          style={{ background: "transparent", border: "none", padding: 0, fontSize: 18, fontWeight: 500, color: "#E7E5E4", letterSpacing: "0.08em", cursor: onWordmarkClick ? "pointer" : "default" }}
+        >
+          Atlas
+        </button>
         {headerActions}
       </div>
 
@@ -173,28 +180,7 @@ export function AtlasFrontDoor({
           <div style={{ padding: "0 20px 10px", fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.1em", textTransform: "uppercase" }}>
             Continue where you left off
           </div>
-          {visibleRecents.map((s) => {
-            const isPhosphor = s.mode === "explore";
-            const dotColor = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
-            return (
-              <div
-                key={s.id}
-                onClick={() => onOpenSession(s.id)}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderTop: "0.5px solid #1C1917", cursor: "pointer" }}
-              >
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "#78716C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2 }}>
-                    {s.title || "Untitled session"}
-                  </div>
-                  <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.04em" }}>
-                    {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
-                  </div>
-                </div>
-                <span style={{ fontSize: 14, color: "#2C2926" }}>›</span>
-              </div>
-            );
-          })}
+          <SessionHistoryList sessions={visibleRecents} onOpenSession={onOpenSession} />
           {hiddenCount > 0 && (
             <button
               onClick={onToggleRecents}
@@ -262,5 +248,41 @@ export function AtlasFrontDoor({
 
       {bottomTabs}
     </div>
+  );
+}
+
+export function SessionHistoryList({
+  sessions,
+  onOpenSession,
+}: {
+  sessions: RecentSession[];
+  onOpenSession: (sessionId: string) => void;
+}) {
+  return (
+    <>
+      {sessions.map((session) => {
+        const isPhosphor = session.mode === "explore";
+        const dotColor = isPhosphor ? "#06B6D4" : session.mode ? "#EA580C" : "#2C2926";
+
+        return (
+          <button
+            key={session.id}
+            onClick={() => onOpenSession(session.id)}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", border: "none", borderTop: "0.5px solid #1C1917", background: "transparent", cursor: "pointer", textAlign: "left" }}
+          >
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: "#78716C", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2 }}>
+                {session.title || "Untitled session"}
+              </div>
+              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                {session.mode || "think"} · {formatDistanceToNow(new Date(session.created_at), { addSuffix: true })}
+              </div>
+            </div>
+            <span style={{ fontSize: 14, color: "#2C2926" }}>›</span>
+          </button>
+        );
+      })}
+    </>
   );
 }

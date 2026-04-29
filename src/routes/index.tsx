@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import {
   AtlasFrontDoor,
+  SessionHistoryList,
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
@@ -67,6 +68,8 @@ function WorkspacePage() {
   const [recents, setRecents] = useState<RecentSession[]>([]);
   const [showAllRecents, setShowAllRecents] = useState(false);
   const [inputFocusSignal, setInputFocusSignal] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [entrySurface, setEntrySurface] = useState(false);
 
   // Auth gate
   useEffect(() => {
@@ -96,7 +99,7 @@ function WorkspacePage() {
       .eq("user_id", user.id)
       .eq("status", "active")
       .order("created_at", { ascending: false })
-      .limit(4);
+      .limit(8);
     setRecents((data ?? []) as RecentSession[]);
   };
   useEffect(() => {
@@ -179,7 +182,7 @@ function WorkspacePage() {
         created_at: created.created_at,
       },
       ...prev.filter((recent) => recent.id !== created.id),
-    ].slice(0, 4));
+    ].slice(0, 8));
     return { session: created, projectId: activeProjectId };
   };
 
@@ -254,6 +257,8 @@ function WorkspacePage() {
     setSession(selected);
     setActiveProjectId(selected.project_id);
     setSurface("chat");
+    setEntrySurface(false);
+    setHistoryOpen(false);
     await refresh(selected, selected.project_id);
   };
 
@@ -292,7 +297,7 @@ function WorkspacePage() {
     );
   }
 
-  const isActive = !!session || transitioning || messages.length > 0;
+  const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
@@ -311,8 +316,15 @@ function WorkspacePage() {
           showAllRecents={showAllRecents}
           onOpenSession={openSession}
           onToggleRecents={() => setShowAllRecents((value) => !value)}
+          onWordmarkClick={() => {
+            if (session) {
+              setEntrySurface(true);
+              setSurface("chat");
+              setHistoryOpen(false);
+            }
+          }}
           headerActions={
-            session ? (
+            session && !entrySurface ? (
               <div className="flex items-center gap-3 min-w-0">
                 {projects.length > 0 && (
                   <select
@@ -360,7 +372,19 @@ function WorkspacePage() {
           }
           bottomTabs={
             session ? (
-              <SurfaceSwitcher active={surface} onChange={setSurface} />
+              <SurfaceSwitcher
+                active={surface}
+                historyOpen={historyOpen}
+                onChange={(nextSurface) => {
+                  setHistoryOpen(false);
+                  setEntrySurface(false);
+                  setSurface(nextSurface);
+                }}
+                onHistory={() => {
+                  setEntrySurface(false);
+                  setHistoryOpen((open) => !open);
+                }}
+              />
             ) : null
           }
         >
@@ -376,6 +400,13 @@ function WorkspacePage() {
             onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
           />
         </AtlasFrontDoor>
+        {session && (
+          <HistoryPanel
+            open={historyOpen}
+            recents={recents}
+            onOpenSession={openSession}
+          />
+        )}
       </main>
 
     </div>
@@ -674,16 +705,29 @@ function ConflictWarningCard({
 
 function SurfaceSwitcher({
   active,
+  historyOpen,
   onChange,
+  onHistory,
 }: {
   active: "chat" | "workspace" | "preview";
+  historyOpen: boolean;
   onChange: (surface: "chat" | "workspace" | "preview") => void;
+  onHistory: () => void;
 }) {
   const items: Array<{
-    id: "chat" | "workspace" | "preview";
+    id: "chat" | "workspace" | "preview" | "history";
     label: string;
     icon: React.ReactNode;
   }> = [
+    {
+      id: "history",
+      label: "History",
+      icon: (
+        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+          <path d="M5 4.5h10M5 8h10M5 11.5h7M4 15h9" />
+        </svg>
+      ),
+    },
     {
       id: "chat",
       label: "Chat",
@@ -718,12 +762,19 @@ function SurfaceSwitcher({
   return (
     <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2">
       {items.map((item) => {
-        const isActive = active === item.id;
+        const isHistory = item.id === "history";
+        const isActive = isHistory ? historyOpen : active === item.id;
         return (
           <button
             key={item.id}
             aria-label={item.label}
-            onClick={() => onChange(item.id)}
+            onClick={() => {
+              if (item.id === "history") {
+                onHistory();
+              } else {
+                onChange(item.id);
+              }
+            }}
             className="flex h-7 w-7 items-center justify-center bg-transparent"
             style={{ color: isActive ? "#EA580C" : "#78716C" }}
           >
@@ -732,6 +783,38 @@ function SurfaceSwitcher({
         );
       })}
     </div>
+  );
+}
+
+function HistoryPanel({
+  open,
+  recents,
+  onOpenSession,
+}: {
+  open: boolean;
+  recents: RecentSession[];
+  onOpenSession: (sessionId: string) => void;
+}) {
+  return (
+    <aside
+      style={{
+        position: "fixed",
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: 280,
+        background: "#0C0A09",
+        borderRight: "0.5px solid #2C2926",
+        transform: open ? "translateX(0)" : "translateX(-100%)",
+        transition: "transform 200ms ease",
+        zIndex: 40,
+      }}
+    >
+      <div style={{ padding: "16px 20px 12px", fontFamily: "monospace", fontSize: 10, color: "#78716C", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+        Conversation history
+      </div>
+      <SessionHistoryList sessions={recents} onOpenSession={onOpenSession} />
+    </aside>
   );
 }
 
