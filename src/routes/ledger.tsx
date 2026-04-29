@@ -70,8 +70,9 @@ function ArchitecturalLedger() {
   }, [entries, projectFilter, statusFilter]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-1">
+    <div className="min-h-screen bg-background text-foreground pb-20 md:pb-1 md:pl-14">
       <FooterAuditLine />
+      <AtlasNav />
 
       {/* Header */}
       <header className="border-b border-border">
