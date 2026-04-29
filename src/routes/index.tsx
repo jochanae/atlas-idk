@@ -800,6 +800,7 @@ function HistoryPanel({
 }) {
   return (
     <aside
+      className="md:left-14"
       style={{
         position: "fixed",
         top: 0,
@@ -810,7 +811,7 @@ function HistoryPanel({
         borderRight: "0.5px solid #2C2926",
         transform: open ? "translateX(0)" : "translateX(-100%)",
         transition: "transform 200ms ease",
-        zIndex: 40,
+        zIndex: 45,
       }}
     >
       <div style={{ padding: "16px 20px 12px", fontFamily: "monospace", fontSize: 10, color: "#78716C", letterSpacing: "0.1em", textTransform: "uppercase" }}>
