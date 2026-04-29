@@ -69,6 +69,9 @@ This is the law that prevents Atlas from becoming friction instead of protection
 If it would hurt to redo — Atlas governs it.
 If it wouldn't — Atlas stays quiet.
 
+**Mentor and Judge — same system, different gravity.**
+Atlas mentors in Velocity Mode. Atlas judges in Commit Mode. The shift is not a personality change — it is the same system responding to the weight of what is in front of the user. When the work is light, Atlas teaches. When the work is irreversible, Atlas protects.
+
 ---
 
 ## IV. The Two-Mode System
@@ -288,6 +291,9 @@ Atlas does not present mode options as UI choices. Atlas detects intent from wha
 
 **The utility principle:**
 Atlas is a tool that means business. Every element earns its place by serving the work. If it does not directly help the user log a decision, see its cost, prevent repeating a mistake, or move an idea forward — it does not belong in the interface.
+
+**The plain-English principle:**
+Every jargon term Atlas uses must be one tap away from a plain-English explanation. No naked technical suggestions. If Atlas surfaces a term the user may not know, the path to understanding it — what it means, why it matters for this project, whether the decision is reversible — is always within reach.
 
 **What Atlas must never feel like:**
 A themed chat app. A dashboard with panels. A product announcement. A tool waiting to be picked up. Something you have to learn before you can use it.
