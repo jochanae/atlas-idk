@@ -18,7 +18,7 @@ interface RecentSession {
   id: string;
   title: string;
   mode: string | null;
-  updated_at: string;
+  created_at: string;
 }
 
 export function AtlasFrontDoor() {
@@ -35,10 +35,10 @@ export function AtlasFrontDoor() {
     if (!user) return;
     supabase
       .from("sessions")
-      .select("id, title, mode, updated_at")
+      .select("id, title, mode, created_at")
       .eq("user_id", user.id)
       .eq("status", "active")
-      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(4)
       .then(({ data }) => {
         if (data) setRecents(data as RecentSession[]);
@@ -205,7 +205,7 @@ export function AtlasFrontDoor() {
                     {s.title || "Untitled session"}
                   </div>
                   <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.04em" }}>
-                    {s.mode || "think"} · {formatDistanceToNow(new Date(s.updated_at), { addSuffix: true })}
+                    {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
                   </div>
                 </div>
                 <span style={{ fontSize: 14, color: "#2C2926" }}>›</span>
