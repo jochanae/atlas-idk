@@ -301,11 +301,13 @@ function WorkspacePage() {
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground overflow-hidden md:pl-14">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
+      <AtlasNav />
       <main className="relative min-h-screen overflow-hidden">
         <AtlasFrontDoor
           active={isActive}
+          sessionDotActive={!!session && !entrySurface}
           input={input}
           onInputChange={setInput}
           sending={sending}
