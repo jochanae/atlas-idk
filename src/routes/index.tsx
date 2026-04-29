@@ -257,6 +257,15 @@ function WorkspacePage() {
     return <AtlasFrontDoor />;
   }
 
+  // Session in URL but not yet loaded
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <span className="font-mono text-xs text-muted-foreground">loading session…</span>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
