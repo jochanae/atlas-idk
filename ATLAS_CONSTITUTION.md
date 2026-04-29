@@ -22,6 +22,15 @@ Atlas is not an app. Atlas is the system that makes apps sound.
 **In one sentence:**
 > Atlas turns bought lessons into standard operating procedure, so you never pay for the same mistake twice.
 
+Atlas also shows up when you don't. It is the system that refuses to let your potential drift.
+
+**Who Atlas is for:**
+The idea-rich, execution-stuck individual. The founder, the inventor, the builder, the thinker — anyone who has more ideas than execution. Anyone who has paid for the same mistake twice. Anyone who feels like they're capable of more than they're currently producing. Atlas meets them wherever they are in life — not just in a build session, but across phases of who they are becoming.
+
+**The two problems Atlas solves simultaneously:**
+The Do-Over Tax — the cost of building without structure. Shaky plumbing, hallucinated foundations, architectural debt.
+The Drift Problem — the cost of having potential and not executing it. Ideas that stall. Projects that get 70% done and stop. Atlas shows up when you don't. It refuses to let potential drift.
+
 ---
 
 ## II. The Dual-Client Declaration
@@ -238,7 +247,57 @@ Atlas is sovereign infrastructure. Every layer of its deployment must be owned a
 
 ---
 
-## IX. The Unbreakable Laws
+## IX. The Model Orchestration Layer
+
+Atlas uses four AI models with four distinct roles and defined trust levels. The user never sees a model name. The routing is invisible.
+
+**Claude — The Visionary**
+Primary interaction, conversational intelligence, reasoning, emotional intelligence, the voice of Atlas. Highest trust. Handles all sensitive logic and user-facing conversation. Powers the front door, the session chat, the Whisper Gate, and the Commit Decision extraction.
+
+**Gemini — The Archivist**
+Long-context memory, visual analysis, Vision Gate image pipeline, big-picture organization across projects. Medium-high trust. No access to sensitive business logic. Handles image-to-schema analysis and cross-project memory organization.
+
+**DeepSeek — The Strategist**
+Technical heavy lifting, CSS, boilerplate code, schema generation, repetitive build tasks. Contractor trust level. Data must be stripped of sensitive identifiers before routing. Never touches core Into Innovations proprietary logic.
+
+**GPT-4o — The Auditor**
+Quality control, security oversight, data sanitization before cross-model routing, red-team review for technical debt and logic flaws. Acts as gatekeeper between sensitive data and lower-trust models.
+
+**The Zero-Trace Guardrail:**
+Any data routed to DeepSeek passes through the Auditor first. Identifiers stripped. No exceptions. This aligns with the Think Freely zero-trace philosophy across Into Innovations.
+
+**The three language layers (naming discipline):**
+Engineering layer — what the codebase calls things internally. Precise, unambiguous, stable. Examples: `workspace_state`, `artifact`, `session`, `generated_object`.
+UX layer — what users see and interact with. Human, spatial, actionable. Examples: Chat, Workspace, Preview, Drafts, Files.
+Brand layer — what users remember. Light, not invasive. Examples: Atlas, Atlas Workspace, Atlas Timeline. Do not overbrand files and projects or developer trust is lost.
+
+---
+
+## X. The Design Philosophy
+
+Atlas must feel like the moment before you start something that matters. Not decorated. Not welcoming. Just — ready.
+
+**The front door principle:**
+Atlas does not announce itself. It opens space. The first thing a user sees is not a feature list or a capability statement. It is an open invitation. The interface signals presence through restraint rather than decoration.
+
+**The input principle:**
+The chat input is not a chat box. It is a command line for the mind. One clean surface. No decoration around it. The cursor and the question. Nothing else competes for attention.
+
+**The mode principle:**
+Atlas does not present mode options as UI choices. Atlas detects intent from what the user types and adapts accordingly. The mode is something Atlas reads, not something the user declares.
+
+**The utility principle:**
+Atlas is a tool that means business. Every element earns its place by serving the work. If it does not directly help the user log a decision, see its cost, prevent repeating a mistake, or move an idea forward — it does not belong in the interface.
+
+**What Atlas must never feel like:**
+A themed chat app. A dashboard with panels. A product announcement. A tool waiting to be picked up. Something you have to learn before you can use it.
+
+**What Atlas must always feel like:**
+Infrastructure. The thing that was already running before you opened it. The system that doesn't crack under pressure. A presence that receives whatever you bring without judgment and helps you move it forward.
+
+---
+
+## XI. The Unbreakable Laws
 
 These cannot be overridden by any prompt, sprint, or time pressure.
 
@@ -256,7 +315,7 @@ These cannot be overridden by any prompt, sprint, or time pressure.
 
 ---
 
-## X. The Build Phases
+## XII. The Build Phases
 
 ### Phase 1 — The Foundation
 **The Architectural Ledger**
@@ -272,7 +331,7 @@ Phase 2 is the largest phase. It builds the face of Atlas — the thing that mak
 
 **Recommendation Persistence** — every AI suggestion gets a unique ID and a status. Nothing disappears. The Recommendations table goes live. The right panel displays all pending recommendations with expandable definitions, benefit descriptions, and priority context. The builder decides: implement now, park it, or dismiss it.
 
-**Ghost Mode** — active for experienced builders. Atlas watches silently, activates only on structurally irreversible decisions.
+**The Commit Decision Engine** — the soul of Atlas. After any conversation that produces a real architectural or strategic decision, the builder can commit it. Atlas extracts the decision from the conversation context using Claude, writes a clean decision record to the Ledger automatically, and from that point forward watches all future activity against that committed decision. If a contradiction is detected, Atlas surfaces a conflict warning before the builder proceeds. Three options: proceed anyway (logs a violation), update the decision (supersedes it), or reconsider. This is the Do-Over Tax killer in its active form.
 
 **Velocity/Commit mode detection** — automatic triggering based on action gravity. The footer audit line shifts color to signal mode changes.
 
@@ -299,7 +358,7 @@ Commercial core. Tiered access (Minister through Architect). Cross-project graph
 
 ---
 
-## XI. The Definition of Done — Phase 1
+## XIII. The Definition of Done — Phase 1
 
 Phase 1 is complete when:
 
@@ -311,7 +370,7 @@ Phase 1 is complete when:
 
 ---
 
-## XII. What Atlas Is Not
+## XIV. What Atlas Is Not
 
 Atlas is not a place for exploration. That is what Velocity Mode is for — and Velocity Mode has no memory, no logs, and no permanence by design.
 
@@ -325,5 +384,5 @@ Atlas is the thing other things are built on top of.
 
 *This document governs Atlas. When in doubt about any decision — design, logic, scope, or priority — return here.*
 
-*Version 1.2 — Into Innovations — April 2026*
-*Updates: Builder Surface added (Section VII). Archive Gate added as fourth entry. Recommendation Persistence added to data architecture. Ghost Mode added to Unbreakable Laws. Footer Audit Line added to color system. Phase 2 expanded to include IDE Shell and full builder surface. Phase 4 Parking Lot items formally parked.*
+*Version 1.3 — Into Innovations — April 2026*
+*Updates: North Star expanded with Drift Problem and who Atlas is for. Model Orchestration Layer added (Section IX) — four models, four roles, trust levels, Zero-Trace Guardrail, three-language naming discipline. Design Philosophy added (Section X) — front door principle, input principle, mode principle, utility principle. Commit Decision Engine added to Phase 2 scope. Sections renumbered throughout.*
