@@ -141,6 +141,60 @@ export type Database = {
           },
         ]
       }
+      parked_items: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string | null
+          label: string
+          project_id: string | null
+          resolved_at: string | null
+          session_id: string | null
+          source_context: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string | null
+          label: string
+          project_id?: string | null
+          resolved_at?: string | null
+          session_id?: string | null
+          source_context?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string | null
+          label?: string
+          project_id?: string | null
+          resolved_at?: string | null
+          session_id?: string | null
+          source_context?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parked_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parked_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
