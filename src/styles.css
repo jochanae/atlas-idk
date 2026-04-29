@@ -43,7 +43,9 @@
   --color-warning: var(--warning);
 }
 
-:root {
+/* Obsidian (default) — luxury dark cinematic */
+:root,
+.theme-obsidian {
   --radius: 3px;
   --background: #0C0A09;
   --surface: #1C1917;
@@ -53,9 +55,13 @@
   --ember: #EA580C;
   --violated: #7F1D1D;
   --border: #292524;
-  /* Phase 2 — Phosphor accents (activity / forward motion) */
   --phosphor: #06B6D4;
   --warning: #F59E0B;
+  /* Glass + motion */
+  --glass-bg: rgba(12, 10, 9, 0.72);
+  --glass-border: rgba(231, 229, 228, 0.06);
+  --glass-blur: 18px;
+  --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -69,6 +75,28 @@
   --border: #292524;
   --phosphor: #06B6D4;
   --warning: #F59E0B;
+  --glass-bg: rgba(12, 10, 9, 0.72);
+  --glass-border: rgba(231, 229, 228, 0.06);
+  --glass-blur: 18px;
+  --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Parchment (light) — scaffold only, toggle ships visual-only this pass */
+.theme-parchment {
+  --background: #F5F1E8;
+  --surface: #ECE6D7;
+  --surface-alt: #E2DBC8;
+  --foreground: #1C1917;
+  --muted-text: #78716C;
+  --ember: #C2410C;
+  --violated: #991B1B;
+  --border: #D6CFBC;
+  --phosphor: #0E7490;
+  --warning: #B45309;
+  --glass-bg: rgba(245, 241, 232, 0.78);
+  --glass-border: rgba(28, 25, 23, 0.08);
+  --glass-blur: 18px;
+  --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer base {

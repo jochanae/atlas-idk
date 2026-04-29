@@ -9,6 +9,7 @@ import {
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
+import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import {
   relativeTime,
   type ChatMessage,
@@ -103,12 +104,21 @@ function WorkspacePage() {
   const [transitioning, setTransitioning] = useState(false);
   const [activeMode, setActiveMode] = useState<ModeId>("think");
   const [recents, setRecents] = useState<RecentSession[]>([]);
-  const [showAllRecents, setShowAllRecents] = useState(false);
   const [inputFocusSignal, setInputFocusSignal] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [entrySurface, setEntrySurface] = useState(false);
   const [parkingOpen, setParkingOpen] = useState(false);
   const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
+  const [ledgerCount, setLedgerCount] = useState(0);
+
+  // Apply theme class to <html>
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("theme-obsidian", "theme-parchment");
+    root.classList.add(theme === "obsidian" ? "theme-obsidian" : "theme-parchment");
+  }, [theme]);
 
   // Auth gate
   useEffect(() => {
@@ -163,6 +173,18 @@ function WorkspacePage() {
     loadParkedItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Ledger count for sidebar badge
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { count } = await supabase
+        .from("ledger_entries")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      setLedgerCount(count ?? 0);
+    })();
+  }, [user, session?.id]);
 
   // Load messages, nodes, recs for the session/project
   const refresh = async (
@@ -369,10 +391,7 @@ function WorkspacePage() {
           inputFocusSignal={inputFocusSignal}
           onModeChange={setActiveMode}
           onSend={send}
-          recents={recents}
-          showAllRecents={showAllRecents}
-          onOpenSession={openSession}
-          onToggleRecents={() => setShowAllRecents((value) => !value)}
+          sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
               setEntrySurface(true);
@@ -494,7 +513,32 @@ function WorkspacePage() {
           />
         )}
       </main>
-
+      <AtlasSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        recents={recents}
+        parkedCount={parkedItems.length}
+        ledgerCount={ledgerCount}
+        onNewSession={() => {
+          setSession(null);
+          setMessages([]);
+          setEntrySurface(true);
+          setSidebarOpen(false);
+          setInputFocusSignal((v) => v + 1);
+        }}
+        onOpenSession={(id) => {
+          setSidebarOpen(false);
+          openSession(id);
+        }}
+        onOpenParking={() => {
+          setSidebarOpen(false);
+          setParkingOpen(true);
+        }}
+        email={user?.email ?? null}
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
+        onSignOut={signOut}
+      />
     </div>
   );
 }
