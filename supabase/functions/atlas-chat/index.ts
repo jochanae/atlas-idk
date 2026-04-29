@@ -145,6 +145,23 @@ Deno.serve(async (req) => {
       content: message,
     });
 
+    const { data: currentSession, error: sessionErr } = await userClient
+      .from("sessions")
+      .select("title")
+      .eq("id", sessionId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (sessionErr) throw sessionErr;
+
+    if (!currentSession?.title || currentSession.title === "Session") {
+      const { error: titleErr } = await userClient
+        .from("sessions")
+        .update({ title: message.slice(0, 60) })
+        .eq("id", sessionId)
+        .eq("user_id", user.id);
+      if (titleErr) throw titleErr;
+    }
+
     const messages = [
       ...(history ?? []).map((m: { role: string; content: string }) => ({
         role: m.role,

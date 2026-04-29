@@ -161,7 +161,7 @@ function WorkspacePage() {
       .insert({
         project_id: activeProjectId,
         user_id: user.id,
-        title: text.slice(0, 60),
+        title: "Session",
         mode: activeMode,
         status: "active",
       })
@@ -174,7 +174,7 @@ function WorkspacePage() {
     setRecents((prev) => [
       {
         id: created.id,
-        title: created.title,
+        title: "Session",
         mode: activeMode,
         created_at: created.created_at,
       },
@@ -216,6 +216,19 @@ function WorkspacePage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      const updatedTitle = text.slice(0, 60);
+      setSession((current) =>
+        current && current.id === target.session.id
+          ? { ...current, title: updatedTitle }
+          : current,
+      );
+      setRecents((prev) =>
+        prev.map((recent) =>
+          recent.id === target.session.id
+            ? { ...recent, title: updatedTitle }
+            : recent,
+        ),
+      );
       await refresh(target.session, target.projectId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Atlas failed to respond";
