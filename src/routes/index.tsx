@@ -513,7 +513,32 @@ function WorkspacePage() {
           />
         )}
       </main>
-
+      <AtlasSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        recents={recents}
+        parkedCount={parkedItems.length}
+        ledgerCount={ledgerCount}
+        onNewSession={() => {
+          setSession(null);
+          setMessages([]);
+          setEntrySurface(true);
+          setSidebarOpen(false);
+          setInputFocusSignal((v) => v + 1);
+        }}
+        onOpenSession={(id) => {
+          setSidebarOpen(false);
+          openSession(id);
+        }}
+        onOpenParking={() => {
+          setSidebarOpen(false);
+          setParkingOpen(true);
+        }}
+        email={user?.email ?? null}
+        theme={theme}
+        onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
+        onSignOut={signOut}
+      />
     </div>
   );
 }
