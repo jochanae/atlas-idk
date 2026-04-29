@@ -5,10 +5,10 @@ import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import {
   AtlasFrontDoor,
-  SessionHistoryList,
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
+import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import {
   relativeTime,
   type ChatMessage,
