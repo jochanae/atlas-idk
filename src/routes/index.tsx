@@ -137,6 +137,17 @@ function WorkspacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
 
+  // Auto-send the initial message coming from the front door, exactly once
+  useEffect(() => {
+    if (!session || !initialMessage) return;
+    if (initialSentRef.current === session.id) return;
+    initialSentRef.current = session.id;
+    send(initialMessage);
+    // Clear the search param so refreshes don't resend
+    navigate({ to: "/", search: { sessionId: session.id }, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, initialMessage]);
+
   const pendingRecs = useMemo(
     () => recs.filter((r) => r.status === "pending"),
     [recs],
