@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
+import { AtlasFrontDoor } from "@/components/atlas/AtlasFrontDoor";
 import {
   relativeTime,
   type ChatMessage,
@@ -13,8 +14,18 @@ import {
 } from "@/lib/atlas";
 import { toast } from "sonner";
 
+type IndexSearch = {
+  sessionId?: string;
+  initialMessage?: string;
+};
+
 export const Route = createFileRoute("/")({
   component: WorkspacePage,
+  validateSearch: (search: Record<string, unknown>): IndexSearch => ({
+    sessionId: typeof search.sessionId === "string" ? search.sessionId : undefined,
+    initialMessage:
+      typeof search.initialMessage === "string" ? search.initialMessage : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Atlas — Workspace" },
