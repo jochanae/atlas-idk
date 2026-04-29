@@ -12,6 +12,7 @@ import {
 import { StatusTag } from "@/components/atlas/StatusTag";
 import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
+import { AtlasNav } from "@/components/atlas/AtlasNav";
 
 export const Route = createFileRoute("/ledger")({
   component: ArchitecturalLedger,
