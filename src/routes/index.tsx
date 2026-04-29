@@ -104,12 +104,21 @@ function WorkspacePage() {
   const [transitioning, setTransitioning] = useState(false);
   const [activeMode, setActiveMode] = useState<ModeId>("think");
   const [recents, setRecents] = useState<RecentSession[]>([]);
-  const [showAllRecents, setShowAllRecents] = useState(false);
   const [inputFocusSignal, setInputFocusSignal] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [entrySurface, setEntrySurface] = useState(false);
   const [parkingOpen, setParkingOpen] = useState(false);
   const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
+  const [ledgerCount, setLedgerCount] = useState(0);
+
+  // Apply theme class to <html>
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("theme-obsidian", "theme-parchment");
+    root.classList.add(theme === "obsidian" ? "theme-obsidian" : "theme-parchment");
+  }, [theme]);
 
   // Auth gate
   useEffect(() => {
