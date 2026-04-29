@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
@@ -34,6 +34,43 @@ type ConflictDetails = {
   committed: string;
   committedOn: string;
 };
+
+type ParkedItem = {
+  id: string;
+  user_id: string;
+  project_id: string;
+  session_id: string | null;
+  label: string;
+  source_context: string;
+  kind: string;
+  status: "parked" | "resolved" | "dismissed";
+  created_at: string;
+  resolved_at: string | null;
+};
+
+type SelectionChip = {
+  text: string;
+  top: number;
+  left: number;
+};
+
+type UntypedTable = {
+  select: (columns?: string) => UntypedTable;
+  insert: (values: Record<string, unknown>) => Promise<{ error: Error | null }>;
+  update: (values: Record<string, unknown>) => UntypedTable;
+  eq: (column: string, value: unknown) => UntypedTable;
+  order: (column: string, options?: { ascending?: boolean }) => UntypedTable;
+  then: <TResult1 = { data: unknown; error: Error | null }, TResult2 = never>(
+    onfulfilled?:
+      | ((value: { data: unknown; error: Error | null }) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+  ) => Promise<TResult1 | TResult2>;
+};
+
+function parkedItemsTable() {
+  return (supabase as unknown as { from: (table: "parked_items") => UntypedTable }).from("parked_items");
+}
 
 export const Route = createFileRoute("/")({
   component: WorkspacePage,
@@ -70,6 +107,8 @@ function WorkspacePage() {
   const [inputFocusSignal, setInputFocusSignal] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [entrySurface, setEntrySurface] = useState(false);
+  const [parkingOpen, setParkingOpen] = useState(false);
+  const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
 
   // Auth gate
   useEffect(() => {
@@ -104,6 +143,24 @@ function WorkspacePage() {
   };
   useEffect(() => {
     loadRecents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const loadParkedItems = async () => {
+    if (!user) return;
+    const { data, error } = await parkedItemsTable()
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "parked")
+      .order("created_at", { ascending: false });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setParkedItems((data ?? []) as ParkedItem[]);
+  };
+  useEffect(() => {
+    loadParkedItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -345,6 +402,11 @@ function WorkspacePage() {
                 >
                   Ledger
                 </Link>
+                <ParkingLotButton
+                  count={parkedItems.length}
+                  open={parkingOpen}
+                  onClick={() => setParkingOpen((open) => !open)}
+                />
                 <button
                   onClick={signOut}
                   className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
@@ -396,6 +458,7 @@ function WorkspacePage() {
             projectId={activeProjectId}
             userId={user.id}
             onRefresh={refresh}
+            onParkedChange={loadParkedItems}
             onContinueAfterConflict={continueAfterConflict}
             onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
           />
@@ -405,6 +468,29 @@ function WorkspacePage() {
             open={historyOpen}
             recents={recents}
             onOpenSession={openSession}
+          />
+        )}
+        {session && (
+          <ParkingLotDrawer
+            open={parkingOpen}
+            items={parkedItems}
+            projects={projects}
+            onClose={() => setParkingOpen(false)}
+            onAction={async (itemId, status) => {
+              const values =
+                status === "resolved"
+                  ? { status, resolved_at: new Date().toISOString() }
+                  : { status };
+              const { error } = await parkedItemsTable()
+                .update(values)
+                .eq("id", itemId)
+                .eq("user_id", user.id);
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
+              setParkedItems((prev) => prev.filter((item) => item.id !== itemId));
+            }}
           />
         )}
       </main>
@@ -422,6 +508,7 @@ function ChatPanel({
   projectId,
   userId,
   onRefresh,
+  onParkedChange,
   onContinueAfterConflict,
   onRequestInputFocus,
 }: {
@@ -432,13 +519,22 @@ function ChatPanel({
   projectId: string | null;
   userId: string;
   onRefresh: () => Promise<void>;
+  onParkedChange: () => Promise<void>;
   onContinueAfterConflict: (messageId: string) => Promise<void>;
   onRequestInputFocus: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chipRef = useRef<HTMLButtonElement>(null);
   const statusTimerRef = useRef<number | null>(null);
   const fadeTimerRef = useRef<number | null>(null);
+  const parkedTimerRef = useRef<number | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [parkedMessageId, setParkedMessageId] = useState<string | null>(null);
+  const [selectionChip, setSelectionChip] = useState<{
+    text: string;
+    top: number;
+    left: number;
+  } | null>(null);
   const [commitStatus, setCommitStatus] = useState<{
     text: string;
     color: string;
@@ -462,7 +558,17 @@ function ChatPanel({
     return () => {
       if (statusTimerRef.current) window.clearTimeout(statusTimerRef.current);
       if (fadeTimerRef.current) window.clearTimeout(fadeTimerRef.current);
+      if (parkedTimerRef.current) window.clearTimeout(parkedTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const closeChip = (event: MouseEvent) => {
+      if (chipRef.current?.contains(event.target as Node)) return;
+      setSelectionChip(null);
+    };
+    document.addEventListener("mousedown", closeChip);
+    return () => document.removeEventListener("mousedown", closeChip);
   }, []);
 
   const showCommitStatus = (text: string, color: string) => {
@@ -545,16 +651,130 @@ function ChatPanel({
     onRequestInputFocus();
   };
 
+  const insertParkedItem = async ({
+    label,
+    sourceContext,
+    kind,
+  }: {
+    label: string;
+    sourceContext: string;
+    kind: string;
+  }) => {
+    if (!projectId || !sessionId) return false;
+    const { error } = await parkedItemsTable().insert({
+      user_id: userId,
+      project_id: projectId,
+      session_id: sessionId,
+      label,
+      source_context: sourceContext,
+      kind,
+      status: "parked",
+    });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    await onParkedChange();
+    return true;
+  };
+
+  const parkMessage = async (message: ChatMessage) => {
+    const ok = await insertParkedItem({
+      label: message.content.slice(0, 120),
+      sourceContext: "chat message",
+      kind: "suggestion",
+    });
+    if (!ok) return;
+    setParkedMessageId(message.id);
+    if (parkedTimerRef.current) window.clearTimeout(parkedTimerRef.current);
+    parkedTimerRef.current = window.setTimeout(() => {
+      setParkedMessageId(null);
+    }, 2000);
+  };
+
+  const captureSelection = () => {
+    const selection = document.getSelection();
+    const selectedText = selection?.toString().trim();
+    const container = scrollRef.current;
+    if (!selection || !selectedText || !container || selection.rangeCount === 0) {
+      setSelectionChip(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!container.contains(range.commonAncestorContainer)) {
+      setSelectionChip(null);
+      return;
+    }
+
+    const rect = range.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    setSelectionChip({
+      text: selectedText.slice(0, 200),
+      top: rect.top - containerRect.top + container.scrollTop - 34,
+      left: rect.left - containerRect.left + container.scrollLeft,
+    });
+  };
+
+  const parkSelection = async () => {
+    if (!selectionChip) return;
+    const ok = await insertParkedItem({
+      label: selectionChip.text,
+      sourceContext: "text selection",
+      kind: "term",
+    });
+    if (!ok) return;
+    document.getSelection()?.removeAllRanges();
+    setSelectionChip(null);
+  };
+
   return (
     <>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div
+        ref={scrollRef}
+        onMouseUp={captureSelection}
+        onKeyUp={captureSelection}
+        className="relative flex-1 overflow-y-auto px-4 py-4 space-y-4"
+      >
+        {selectionChip && (
+          <button
+            ref={chipRef}
+            onClick={parkSelection}
+            style={{
+              position: "absolute",
+              top: selectionChip.top,
+              left: selectionChip.left,
+              zIndex: 30,
+              background: "#0C0A09",
+              border: "0.5px solid #2C2926",
+              color: "#78716C",
+              fontFamily: "monospace",
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              borderRadius: 6,
+              padding: "4px 10px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "#EA580C";
+              e.currentTarget.style.color = "#EA580C";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#2C2926";
+              e.currentTarget.style.color = "#78716C";
+            }}
+          >
+            Park this
+          </button>
+        )}
         {messages.map((m) => {
             const parsedConflict =
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
             if (parsedConflict && dismissedConflicts.has(m.id)) return null;
             const conflict = parsedConflict;
-            const showCommitButton =
+            const showActionRow =
               m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
+            const showParkButton = m.role === "assistant" && !conflict;
             const isUser = m.role === "user";
 
             return (
@@ -584,25 +804,31 @@ function ChatPanel({
                     {m.content}
                   </div>
                 )}
-                {showCommitButton && (
-                  <div className="pt-1 space-y-1.5">
-                    <button
-                      onClick={commitDecision}
-                      disabled={extracting}
-                      style={{
-                        background: "transparent",
-                        border: "0.5px solid #2C2926",
-                        color: "#78716C",
-                        fontFamily: "monospace",
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        borderRadius: 6,
-                        padding: "4px 10px",
-                      }}
-                    >
-                      {extracting ? "extracting…" : "COMMIT DECISION →"}
-                    </button>
+                {showParkButton && (
+                  <div className="pt-1 flex flex-wrap gap-1.5">
+                    {showActionRow && (
+                      <button
+                        onClick={commitDecision}
+                        disabled={extracting}
+                        style={{
+                          background: "transparent",
+                          border: "0.5px solid #2C2926",
+                          color: "#78716C",
+                          fontFamily: "monospace",
+                          fontSize: 10,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          borderRadius: 6,
+                          padding: "4px 10px",
+                        }}
+                      >
+                        {extracting ? "extracting…" : "COMMIT DECISION →"}
+                      </button>
+                    )}
+                    <ParkButton
+                      parked={parkedMessageId === m.id}
+                      onClick={() => parkMessage(m)}
+                    />
                     {commitStatus && (
                       <div
                         style={{
@@ -627,6 +853,41 @@ function ChatPanel({
         )}
       </div>
     </>
+  );
+}
+
+function ParkButton({
+  parked,
+  onClick,
+}: {
+  parked: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: "transparent",
+        border: "0.5px solid #2C2926",
+        color: parked ? "#EA580C" : "#78716C",
+        fontFamily: "monospace",
+        fontSize: 10,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        borderRadius: 6,
+        padding: "4px 10px",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "#EA580C";
+        e.currentTarget.style.color = "#EA580C";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "#2C2926";
+        e.currentTarget.style.color = parked ? "#EA580C" : "#78716C";
+      }}
+    >
+      {parked ? "PARKED ✓" : "PARK →"}
+    </button>
   );
 }
 
@@ -703,6 +964,48 @@ function ConflictWarningCard({
   );
 }
 
+function ParkingLotButton({
+  count,
+  open,
+  onClick,
+}: {
+  count: number;
+  open: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Parking Lot"
+      className="relative flex h-7 w-7 items-center justify-center bg-transparent font-mono text-[12px]"
+      style={{ color: open ? "#EA580C" : "#78716C" }}
+    >
+      P
+      {count > 0 && (
+        <span
+          style={{
+            position: "absolute",
+            top: -5,
+            right: -6,
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            background: "#EA580C",
+            color: "#0C0A09",
+            fontSize: 9,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            lineHeight: 1,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function SurfaceSwitcher({
   active,
   historyOpen,
@@ -717,7 +1020,7 @@ function SurfaceSwitcher({
   const items: Array<{
     id: "chat" | "workspace" | "preview" | "history";
     label: string;
-    icon: React.ReactNode;
+    icon: ReactNode;
   }> = [
     {
       id: "history",
@@ -783,6 +1086,138 @@ function SurfaceSwitcher({
         );
       })}
     </div>
+  );
+}
+
+function ParkingLotDrawer({
+  open,
+  items,
+  projects,
+  onClose,
+  onAction,
+}: {
+  open: boolean;
+  items: ParkedItem[];
+  projects: Project[];
+  onClose: () => void;
+  onAction: (itemId: string, status: "resolved" | "dismissed") => Promise<void>;
+}) {
+  const [fadingIds, setFadingIds] = useState<Set<string>>(() => new Set());
+  const projectNames = new Map(projects.map((project) => [project.id, project.name]));
+  const groupedItems = items.reduce<Record<string, ParkedItem[]>>((groups, item) => {
+    const key = item.project_id;
+    groups[key] = groups[key] ? [...groups[key], item] : [item];
+    return groups;
+  }, {});
+
+  const handleAction = (itemId: string, status: "resolved" | "dismissed") => {
+    setFadingIds((current) => new Set(current).add(itemId));
+    window.setTimeout(() => {
+      onAction(itemId, status);
+      setFadingIds((current) => {
+        const next = new Set(current);
+        next.delete(itemId);
+        return next;
+      });
+    }, 160);
+  };
+
+  return (
+    <>
+      {open && (
+        <button
+          aria-label="Close parking lot"
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-transparent"
+        />
+      )}
+      <aside
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: "min(300px, 100vw)",
+          background: "#0C0A09",
+          borderLeft: "0.5px solid #2C2926",
+          transform: open ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 200ms ease",
+          zIndex: 50,
+        }}
+      >
+        <div className="flex items-center justify-between px-4 py-4">
+          <div style={{ fontFamily: "monospace", fontSize: 11, color: "#78716C", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            PARKING LOT
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "transparent", border: "none", color: "#3C3530", fontSize: 18 }}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ padding: "0 16px 12px", fontFamily: "monospace", fontSize: 10, color: "#3C3530" }}>
+          {items.length} waiting · 0 resolved
+        </div>
+        <div className="space-y-3 overflow-y-auto px-4 pb-6">
+          {items.length === 0 ? (
+            <div className="flex min-h-[240px] items-center justify-center text-center">
+              <p style={{ fontFamily: "monospace", fontSize: 11, color: "#3C3530", maxWidth: 220 }}>
+                Nothing parked yet. Tap Park on any message or select text to save it.
+              </p>
+            </div>
+          ) : (
+            Object.entries(groupedItems).map(([projectId, group]) => (
+              <div key={projectId} className="space-y-1.5">
+                {Object.keys(groupedItems).length > 1 && (
+                  <div style={{ fontFamily: "monospace", fontSize: 9, color: "#57524E", textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 0" }}>
+                    {projectNames.get(projectId) ?? "Project"}
+                  </div>
+                )}
+                {group.map((item) => {
+                  const fading = fadingIds.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2 py-2 transition-opacity duration-150"
+                      style={{ opacity: fading ? 0 : 1 }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div style={{ color: "#E7E5E4", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {item.label}
+                        </div>
+                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", marginTop: 2 }}>
+                          {item.source_context} · {relativeTime(item.created_at)}
+                        </div>
+                      </div>
+                      <span style={{ background: "#1C1917", color: "#57524E", fontFamily: "monospace", fontSize: 9, textTransform: "uppercase", borderRadius: 999, padding: "2px 6px" }}>
+                        {item.kind}
+                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          onClick={() => handleAction(item.id, "resolved")}
+                          style={{ background: "transparent", border: "none", color: "#3C3530", fontFamily: "monospace", fontSize: 9 }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = "#EA580C"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = "#3C3530"; }}
+                        >
+                          RESOLVE
+                        </button>
+                        <button
+                          onClick={() => handleAction(item.id, "dismissed")}
+                          style={{ background: "transparent", border: "none", color: "#3C3530", fontFamily: "monospace", fontSize: 9 }}
+                        >
+                          DISMISS
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
+          )}
+        </div>
+      </aside>
+    </>
   );
 }
 
