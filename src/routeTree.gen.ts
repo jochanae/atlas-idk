@@ -9,16 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
-const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
-  id: '/think-freely',
-  path: '/think-freely',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LedgerRoute = LedgerRouteImport.update({
   id: '/ledger',
   path: '/ledger',
@@ -39,45 +33,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ledger': typeof LedgerRoute
-  '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ledger': typeof LedgerRoute
-  '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ledger': typeof LedgerRoute
-  '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/ledger' | '/think-freely'
+  fullPaths: '/' | '/auth' | '/ledger'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/ledger' | '/think-freely'
-  id: '__root__' | '/' | '/auth' | '/ledger' | '/think-freely'
+  to: '/' | '/auth' | '/ledger'
+  id: '__root__' | '/' | '/auth' | '/ledger'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   LedgerRoute: typeof LedgerRoute
-  ThinkFreelyRoute: typeof ThinkFreelyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/think-freely': {
-      id: '/think-freely'
-      path: '/think-freely'
-      fullPath: '/think-freely'
-      preLoaderRoute: typeof ThinkFreelyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/ledger': {
       id: '/ledger'
       path: '/ledger'
@@ -106,7 +89,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   LedgerRoute: LedgerRoute,
-  ThinkFreelyRoute: ThinkFreelyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

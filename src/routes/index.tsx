@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
-import { AtlasNav } from "@/components/atlas/AtlasNav";
 import {
   AtlasFrontDoor,
   SessionHistoryList,
@@ -301,13 +300,11 @@ function WorkspacePage() {
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden md:pl-14">
+    <div className="min-h-screen bg-background text-foreground overflow-hidden">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
-      <AtlasNav />
       <main className="relative min-h-screen overflow-hidden">
         <AtlasFrontDoor
           active={isActive}
-          sessionDotActive={!!session && !entrySurface}
           input={input}
           onInputChange={setInput}
           sending={sending}
@@ -763,7 +760,7 @@ function SurfaceSwitcher({
   ];
 
   return (
-    <div className="fixed right-4 z-30 flex items-center gap-2 bottom-[72px] md:bottom-5 md:left-[72px] md:right-auto">
+    <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2">
       {items.map((item) => {
         const isHistory = item.id === "history";
         const isActive = isHistory ? historyOpen : active === item.id;
@@ -800,7 +797,6 @@ function HistoryPanel({
 }) {
   return (
     <aside
-      className="md:left-14"
       style={{
         position: "fixed",
         top: 0,
@@ -811,7 +807,7 @@ function HistoryPanel({
         borderRight: "0.5px solid #2C2926",
         transform: open ? "translateX(0)" : "translateX(-100%)",
         transition: "transform 200ms ease",
-        zIndex: 45,
+        zIndex: 40,
       }}
     >
       <div style={{ padding: "16px 20px 12px", fontFamily: "monospace", fontSize: 10, color: "#78716C", letterSpacing: "0.1em", textTransform: "uppercase" }}>
