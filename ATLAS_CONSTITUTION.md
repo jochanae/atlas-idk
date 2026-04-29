@@ -362,7 +362,7 @@ These cannot be overridden by any prompt, sprint, or time pressure.
 
 ---
 
-## XII. The Build Phases
+## XIII. The Build Phases
 
 ### Phase 1 — The Foundation
 **The Architectural Ledger**
@@ -405,7 +405,7 @@ Commercial core. Tiered access (Minister through Architect). Cross-project graph
 
 ---
 
-## XIII. The Definition of Done — Phase 1
+## XIV. The Definition of Done — Phase 1
 
 Phase 1 is complete when:
 
@@ -417,7 +417,7 @@ Phase 1 is complete when:
 
 ---
 
-## XIV. What Atlas Is Not
+## XV. What Atlas Is Not
 
 Atlas is not a place for exploration. That is what Velocity Mode is for — and Velocity Mode has no memory, no logs, and no permanence by design.
 
