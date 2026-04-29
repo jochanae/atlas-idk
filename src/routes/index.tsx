@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import {
   AtlasFrontDoor,
+  SessionHistoryList,
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
