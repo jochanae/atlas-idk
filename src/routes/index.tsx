@@ -226,6 +226,11 @@ function WorkspacePage() {
     );
   }
 
+  // Front door: shown when no active session is selected
+  if (!sessionId) {
+    return <AtlasFrontDoor />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
