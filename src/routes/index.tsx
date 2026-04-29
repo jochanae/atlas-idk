@@ -174,6 +174,18 @@ function WorkspacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Ledger count for sidebar badge
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { count } = await supabase
+        .from("ledger_entries")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      setLedgerCount(count ?? 0);
+    })();
+  }, [user, session?.id]);
+
   // Load messages, nodes, recs for the session/project
   const refresh = async (
     targetSession = session,
