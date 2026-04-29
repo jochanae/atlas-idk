@@ -87,6 +87,60 @@ export type Database = {
           },
         ]
       }
+      knowledge_entries: {
+        Row: {
+          category: string
+          common_mistake: string | null
+          created_at: string
+          frequency: string | null
+          id: string
+          one_liner: string
+          reversibility: string | null
+          reversibility_label: string | null
+          slug: string
+          status: string
+          term: string
+          usage_count: number
+          what_it_means: string | null
+          what_to_do_next: string | null
+          why_it_comes_up: string | null
+        }
+        Insert: {
+          category: string
+          common_mistake?: string | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          one_liner: string
+          reversibility?: string | null
+          reversibility_label?: string | null
+          slug: string
+          status?: string
+          term: string
+          usage_count?: number
+          what_it_means?: string | null
+          what_to_do_next?: string | null
+          why_it_comes_up?: string | null
+        }
+        Update: {
+          category?: string
+          common_mistake?: string | null
+          created_at?: string
+          frequency?: string | null
+          id?: string
+          one_liner?: string
+          reversibility?: string | null
+          reversibility_label?: string | null
+          slug?: string
+          status?: string
+          term?: string
+          usage_count?: number
+          what_it_means?: string | null
+          what_to_do_next?: string | null
+          why_it_comes_up?: string | null
+        }
+        Relationships: []
+      }
       ledger_entries: {
         Row: {
           cost_of_lesson: number | null
