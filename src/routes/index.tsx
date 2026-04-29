@@ -391,10 +391,7 @@ function WorkspacePage() {
           inputFocusSignal={inputFocusSignal}
           onModeChange={setActiveMode}
           onSend={send}
-          recents={recents}
-          showAllRecents={showAllRecents}
-          onOpenSession={openSession}
-          onToggleRecents={() => setShowAllRecents((value) => !value)}
+          sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
               setEntrySurface(true);
