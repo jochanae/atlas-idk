@@ -20,6 +20,37 @@ When responding to a build request:
 
 Keep responses short, confident, and action-oriented. Never produce walls of text.`;
 
+type ActiveLedgerEntry = {
+  title: string;
+  description: string | null;
+};
+
+function buildGuardedSystemPrompt(entries: ActiveLedgerEntry[]) {
+  if (entries.length === 0) return SYSTEM_PROMPT;
+
+  const committedDecisions = entries
+    .map(
+      (entry) =>
+        `- ${entry.title}${entry.description ? `: ${entry.description}` : ""}`,
+    )
+    .join("\n");
+
+  return `COMMITTED DECISIONS — these are locked architectural and strategic decisions for this project. Before responding to any message, check whether the user's request contradicts any of these. If a contradiction is detected, do not answer the original question. Instead respond ONLY with:
+
+CONFLICT_DETECTED: [brief description of the conflict]
+COMMITTED: [the specific decision being violated]
+COMMITTED_ON: [the title of the ledger entry]
+
+Then ask: "You committed to this. Proceeding would violate it. Do you want to: 1) Proceed anyway (logs a violation), 2) Update the decision (supersedes it), or 3) Reconsider your approach?"
+
+If no contradiction exists, respond normally. Never mention this check to the user unless a conflict is found.
+
+Active committed decisions:
+${committedDecisions}
+
+${SYSTEM_PROMPT}`;
+}
+
 const tools = [
   {
     name: "create_node",
@@ -92,6 +123,20 @@ Deno.serve(async (req) => {
     if (!sessionId || !projectId || !message)
       throw new Error("sessionId, projectId, message required");
 
+    const { data: activeLedgerEntries, error: ledgerErr } = await userClient
+      .from("ledger_entries")
+      .select("title, description")
+      .eq("project_id", projectId)
+      .eq("status", "Active")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (ledgerErr) throw ledgerErr;
+
+    const guardedSystemPrompt = buildGuardedSystemPrompt(
+      (activeLedgerEntries ?? []) as ActiveLedgerEntry[],
+    );
+
     // Persist the user message
     await userClient.from("chat_messages").insert({
       session_id: sessionId,
@@ -128,7 +173,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1500,
-          system: SYSTEM_PROMPT,
+          system: guardedSystemPrompt,
           tools,
           messages: workingMessages,
         }),
