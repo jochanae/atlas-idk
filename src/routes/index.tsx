@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
+import { AtlasFrontDoor } from "@/components/atlas/AtlasFrontDoor";
 import {
   relativeTime,
   type ChatMessage,
@@ -13,8 +14,18 @@ import {
 } from "@/lib/atlas";
 import { toast } from "sonner";
 
+type IndexSearch = {
+  sessionId?: string;
+  initialMessage?: string;
+};
+
 export const Route = createFileRoute("/")({
   component: WorkspacePage,
+  validateSearch: (search: Record<string, unknown>): IndexSearch => ({
+    sessionId: typeof search.sessionId === "string" ? search.sessionId : undefined,
+    initialMessage:
+      typeof search.initialMessage === "string" ? search.initialMessage : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Atlas — Workspace" },
@@ -36,6 +47,7 @@ const VIBE_CARDS = [
 function WorkspacePage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { sessionId, initialMessage } = Route.useSearch();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -48,13 +60,14 @@ function WorkspacePage() {
   const [auditWarning, setAuditWarning] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "workspace" | "preview">("chat");
   const [expandedRec, setExpandedRec] = useState<string | null>(null);
+  const initialSentRef = useRef<string | null>(null);
 
   // Auth gate
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/auth" });
   }, [user, authLoading, navigate]);
 
-  // Load projects, set active
+  // Load projects
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -64,37 +77,35 @@ function WorkspacePage() {
         .order("created_at");
       const list = (data ?? []) as Project[];
       setProjects(list);
-      if (list[0]) setActiveProjectId(list[0].id);
+      if (list[0] && !activeProjectId) setActiveProjectId(list[0].id);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Ensure session for active project
+  // Reset session state when sessionId param clears (back to front door)
   useEffect(() => {
-    if (!user || !activeProjectId) return;
+    if (!sessionId) {
+      setSession(null);
+      setMessages([]);
+    }
+  }, [sessionId]);
+
+  // Load the selected session by id
+  useEffect(() => {
+    if (!user || !sessionId) return;
     (async () => {
-      const { data: existing } = await supabase
+      const { data } = await supabase
         .from("sessions")
         .select("*")
-        .eq("project_id", activeProjectId)
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (existing && existing[0]) {
-        setSession(existing[0] as AtlasSession);
-      } else {
-        const { data: created } = await supabase
-          .from("sessions")
-          .insert({
-            project_id: activeProjectId,
-            user_id: user.id,
-            title: "Session",
-          })
-          .select("*")
-          .single();
-        if (created) setSession(created as AtlasSession);
+        .eq("id", sessionId)
+        .maybeSingle();
+      if (data) {
+        const s = data as AtlasSession;
+        setSession(s);
+        setActiveProjectId(s.project_id);
       }
     })();
-  }, [user, activeProjectId]);
+  }, [user, sessionId]);
 
   // Load messages, nodes, recs for the session/project
   const refresh = async () => {
@@ -125,6 +136,17 @@ function WorkspacePage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id]);
+
+  // Auto-send the initial message coming from the front door, exactly once
+  useEffect(() => {
+    if (!session || !initialMessage) return;
+    if (initialSentRef.current === session.id) return;
+    initialSentRef.current = session.id;
+    send(initialMessage);
+    // Clear the search param so refreshes don't resend
+    navigate({ to: "/", search: { sessionId: session.id }, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, initialMessage]);
 
   const pendingRecs = useMemo(
     () => recs.filter((r) => r.status === "pending"),
@@ -202,6 +224,11 @@ function WorkspacePage() {
         <span className="font-mono text-xs text-muted-foreground">loading…</span>
       </div>
     );
+  }
+
+  // Front door: shown when no active session is selected
+  if (!sessionId) {
+    return <AtlasFrontDoor />;
   }
 
   return (
