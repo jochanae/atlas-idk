@@ -763,7 +763,7 @@ function SurfaceSwitcher({
   ];
 
   return (
-    <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2">
+    <div className="fixed right-4 z-30 flex items-center gap-2 bottom-[72px] md:bottom-5 md:left-[72px] md:right-auto">
       {items.map((item) => {
         const isHistory = item.id === "history";
         const isActive = isHistory ? historyOpen : active === item.id;
