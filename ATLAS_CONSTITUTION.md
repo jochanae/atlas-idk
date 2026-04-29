@@ -431,5 +431,5 @@ Atlas is the thing other things are built on top of.
 
 *This document governs Atlas. When in doubt about any decision — design, logic, scope, or priority — return here.*
 
-*Version 1.3 — Into Innovations — April 2026*
-*Updates: North Star expanded with Drift Problem and who Atlas is for. Model Orchestration Layer added (Section IX) — four models, four roles, trust levels, Zero-Trace Guardrail, three-language naming discipline. Design Philosophy added (Section X) — front door principle, input principle, mode principle, utility principle. Commit Decision Engine added to Phase 2 scope. Sections renumbered throughout.*
+*Version 1.4 — Into Innovations — April 2026*
+*Updates: Section III reframed as Mentor + Judge — same system, different gravity. Section X gained the plain-English principle — no naked technical suggestions. Section XI added — The Mentor Layer, with three primitives built in order: Parking Lot (Phase 1), Glossary-in-Context (Phase 2), "What Should I Be Thinking About Now" (Phase 3). Sections XII–XV renumbered.*
