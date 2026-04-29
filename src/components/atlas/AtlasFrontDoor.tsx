@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
 export const MODES = [
@@ -29,6 +29,8 @@ type AtlasFrontDoorProps = {
   bottomTabs?: ReactNode;
   secondaryPanel?: ReactNode;
   inputFocusSignal: number;
+  /** Anchor color shown below the input (orange when a session is active). */
+  sessionDotActive?: boolean;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
@@ -49,6 +51,7 @@ export function AtlasFrontDoor({
   bottomTabs,
   secondaryPanel,
   inputFocusSignal,
+  sessionDotActive = false,
   onModeChange,
   onInputChange,
   onSend,
@@ -59,6 +62,7 @@ export function AtlasFrontDoor({
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
     const row = pillsRef.current;
@@ -79,6 +83,22 @@ export function AtlasFrontDoor({
 
   const visibleRecents = showAllRecents ? recents : recents.slice(0, 1);
   const hiddenCount = recents.length - 1;
+
+  // Context-aware tray: real backdrop-blur over content (active workspace),
+  // gradient "machined hardware" over the bare front door background.
+  const trayStyle: React.CSSProperties = active
+    ? {
+        background: "rgba(28, 25, 23, 0.55)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: "0.5px solid rgba(120, 113, 108, 0.18)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+      }
+    : {
+        background: "linear-gradient(180deg, #1C1917 0%, #211E1B 100%)",
+        border: "0.5px solid #2C2926",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 0 rgba(0,0,0,0.4)",
+      };
 
   return (
     <div style={{ background: "#0C0A09", minHeight: "100dvh", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
@@ -107,57 +127,10 @@ export function AtlasFrontDoor({
         }}
       >
         <div style={{ fontSize: 24, fontWeight: 400, color: "#E7E5E4", lineHeight: 1.3, letterSpacing: "-0.01em", marginBottom: 8 }}>
-          What's on your mind?
+          What needs a decision?
         </div>
         <div style={{ fontFamily: "monospace", fontSize: 12, color: "#57524E", letterSpacing: "0.06em" }}>
           atlas is ready
-        </div>
-      </div>
-
-      {/* Mode pills */}
-      <div
-        ref={pillsRef}
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          padding: active ? "0 20px" : "0 20px 20px",
-          maxHeight: active ? 0 : 48,
-          overflowX: "auto",
-          overflowY: "hidden",
-          scrollbarWidth: "none",
-          opacity: active ? 0 : 1,
-          transform: active ? "translateY(-12px)" : "translateY(0)",
-          transition: "opacity 200ms ease, transform 200ms ease, max-height 200ms ease, padding 200ms ease",
-          pointerEvents: active ? "none" : "auto",
-        }}
-      >
-        <div style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto" }}>
-          {MODES.map((m) => {
-            const isActive = activeMode === m.id;
-            const isPhosphor = m.color === "phosphor";
-            const activeColor = isPhosphor ? "#06B6D4" : "#EA580C";
-            return (
-              <button
-                key={m.id}
-                onClick={() => onModeChange(m.id)}
-                style={{
-                  flexShrink: 0,
-                  padding: "5px 14px",
-                  borderRadius: 20,
-                  border: `0.5px solid ${isActive ? activeColor : "#2C2926"}`,
-                  background: isActive && isPhosphor ? "#080C10" : "#1C1917",
-                  fontFamily: "monospace",
-                  fontSize: 11,
-                  color: isActive ? activeColor : "#78716C",
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                }}
-              >
-                {m.label}
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -194,56 +167,170 @@ export function AtlasFrontDoor({
 
       {secondaryPanel}
 
-      {/* Input zone */}
-      <div style={{ margin: active ? "0 16px 18px" : "0 16px", background: "#1C1917", borderRadius: 14, border: "0.5px solid #2C2926", padding: "14px 16px", transition: "margin 300ms ease" }}>
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="anything on your mind, a build, an idea, a decision…"
-          rows={2}
+      {/* Mode-chip tool tray (above input) */}
+      <div style={{ padding: "0 16px 8px" }}>
+        <div
+          ref={pillsRef}
           style={{
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            color: "#E7E5E4",
-            fontSize: 15,
-            lineHeight: 1.5,
-            resize: "none",
-            fontFamily: "inherit",
+            display: "flex",
+            justifyContent: "center",
+            padding: "6px 8px",
+            borderRadius: 14,
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            transition: "background 300ms ease, border-color 300ms ease",
+            ...trayStyle,
           }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[
-              <svg key="u" viewBox="0 0 16 16" width={13} height={13} stroke="#4A4540" fill="none" strokeWidth={1.5}><path d="M8 1v10M4 7l4 4 4-4"/><path d="M2 14h12"/></svg>,
-              <svg key="a" viewBox="0 0 16 16" width={13} height={13} stroke="#4A4540" fill="none" strokeWidth={1.5}><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8h6M8 5v6"/></svg>,
-              <svg key="p" viewBox="0 0 16 16" width={13} height={13} stroke="#4A4540" fill="none" strokeWidth={1.5}><circle cx="8" cy="6" r="2"/><path d="M4 14c0-2.2 1.8-4 4-4s4 1.8 4 4"/></svg>
-            ].map((icon, i) => (
-              <button key={i} style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid #2C2926", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                {icon}
-              </button>
-            ))}
+        >
+          <div style={{ display: "flex", gap: 4, width: "max-content", margin: "0 auto" }}>
+            {MODES.map((m) => {
+              const isActive = activeMode === m.id;
+              const isPhosphor = m.color === "phosphor";
+              const activeColor = isPhosphor ? "#06B6D4" : "#EA580C";
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => onModeChange(m.id)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "5px 12px",
+                    borderRadius: 18,
+                    border: `0.5px solid ${isActive ? activeColor : "transparent"}`,
+                    background: isActive
+                      ? isPhosphor
+                        ? "rgba(6, 182, 212, 0.08)"
+                        : "rgba(234, 88, 12, 0.08)"
+                      : "transparent",
+                    fontFamily: "monospace",
+                    fontSize: 11,
+                    color: isActive ? activeColor : "#78716C",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "color 150ms ease, background 150ms ease, border-color 150ms ease",
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
+        </div>
+      </div>
+
+      {/* Input zone with Context Rail (left) */}
+      <div style={{ margin: active ? "0 16px 18px" : "0 16px", display: "flex", gap: 8, alignItems: "stretch", transition: "margin 300ms ease" }}>
+        {/* Context Rail */}
+        <div style={{ position: "relative", display: "flex", alignItems: "flex-end" }}>
           <button
-            onClick={() => onSend(input, activeMode)}
-            disabled={!input.trim() || sending}
+            onClick={() => setContextOpen((v) => !v)}
+            aria-label="Attach context"
             style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "#EA580C",
-              border: "none",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              opacity: input.trim() ? 1 : 0.3,
-              cursor: input.trim() ? "pointer" : "default",
+              width: 40,
+              height: 40,
+              alignSelf: "flex-end",
+              marginBottom: 2,
+              borderRadius: 12,
+              border: "0.5px solid #2C2926",
+              background: contextOpen ? "#211E1B" : "#1C1917",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "background 150ms ease, border-color 150ms ease",
             }}
           >
-            <svg viewBox="0 0 16 16" width={14} height={14} stroke="#0C0A09" fill="none" strokeWidth={2}>
-              <path d="M2 8h12M8 2l6 6-6 6"/>
+            <svg viewBox="0 0 16 16" width={15} height={15} fill="none" stroke={contextOpen ? "#EA580C" : "#78716C"} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11.5 6.5l-4.6 4.6a2.2 2.2 0 0 1-3.1-3.1l5.2-5.2a3.3 3.3 0 0 1 4.7 4.7l-5.4 5.4a4.4 4.4 0 0 1-6.2-6.2l5-5" />
             </svg>
           </button>
+          {contextOpen && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 50,
+                left: 0,
+                width: 240,
+                padding: 14,
+                borderRadius: 12,
+                background: "rgba(28, 25, 23, 0.92)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                border: "0.5px solid #2C2926",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                zIndex: 30,
+              }}
+            >
+              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#57524E", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+                Context
+              </div>
+              <div style={{ fontSize: 13, color: "#78716C", lineHeight: 1.5 }}>
+                Drop a file or paste a link to ground this decision.
+              </div>
+              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", letterSpacing: "0.06em", marginTop: 10 }}>
+                file uploads · coming soon
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Composer */}
+        <div style={{ flex: 1, background: "#1C1917", borderRadius: 14, border: "0.5px solid #2C2926", padding: "14px 16px" }}>
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="anything on your mind, a build, an idea, a decision…"
+            rows={2}
+            style={{
+              width: "100%",
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "#E7E5E4",
+              fontSize: 15,
+              lineHeight: 1.5,
+              resize: "none",
+              fontFamily: "inherit",
+            }}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: 8 }}>
+            <button
+              onClick={() => onSend(input, activeMode)}
+              disabled={!input.trim() || sending}
+              style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: "#EA580C",
+                border: "none",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: input.trim() ? 1 : 0.3,
+                cursor: input.trim() ? "pointer" : "default",
+              }}
+            >
+              <svg viewBox="0 0 16 16" width={14} height={14} stroke="#0C0A09" fill="none" strokeWidth={2}>
+                <path d="M2 8h12M8 2l6 6-6 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Session anchor dot — below input */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "0 0 14px", marginTop: -6 }}>
+        <span
+          aria-label={sessionDotActive ? "Session active" : "No session"}
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: sessionDotActive ? "#EA580C" : "#2C2926",
+            boxShadow: sessionDotActive ? "0 0 8px rgba(234, 88, 12, 0.5)" : "none",
+            animation: sessionDotActive ? "atlasPulse 2s ease-in-out infinite" : "none",
+          }}
+        />
+        <style>{`@keyframes atlasPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
       </div>
 
       {bottomTabs}
