@@ -34,6 +34,8 @@ type AtlasFrontDoorProps = {
   /** Recent sessions shown under the resting input as "Continue where you left off". */
   recents?: RecentSession[];
   onOpenSession?: (sessionId: string) => void;
+  /** Optional handler invoked when the user taps "View all" under recents. */
+  onViewAllRecents?: () => void;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
@@ -56,6 +58,7 @@ export function AtlasFrontDoor({
   userName,
   recents,
   onOpenSession,
+  onViewAllRecents,
   onModeChange,
   onInputChange,
   onSend,
@@ -169,7 +172,7 @@ export function AtlasFrontDoor({
           {headerActions}
         </div>
       </div>
-      {!active && <AmbientClock />}
+      
 
       {/* Stage: holds resting hero + active chat in the SAME box for cross-fade */}
       <div
@@ -483,17 +486,23 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
+          {/* Inline timestamp — anchored under the input, in flow (not floating). */}
+          <InlineTimestamp />
+
           {/* Continue where you left off — recent sessions list. Only when not active. */}
           {recents && recents.length > 0 && onOpenSession && (
             <div
               style={{
-                margin: "32px 0 0",
+                margin: "20px 0 0",
                 animation: "atlas-recents-in 480ms cubic-bezier(0.4, 0, 0.2, 1) 200ms backwards",
               }}
             >
               <div
                 style={{
                   padding: "0 22px 6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   fontFamily: "var(--font-mono)",
                   fontSize: 9.5,
                   letterSpacing: "0.14em",
@@ -502,10 +511,30 @@ export function AtlasFrontDoor({
                   opacity: 0.7,
                 }}
               >
-                Continue where you left off
+                <span>Continue where you left off</span>
+                {recents.length > 3 && onViewAllRecents && (
+                  <button
+                    type="button"
+                    onClick={onViewAllRecents}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 9.5,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: "var(--accent-gold)",
+                      opacity: 0.85,
+                      cursor: "pointer",
+                    }}
+                  >
+                    View all →
+                  </button>
+                )}
               </div>
               <SessionHistoryList
-                sessions={recents.slice(0, 5)}
+                sessions={recents.slice(0, 3)}
                 onOpenSession={onOpenSession}
               />
             </div>
@@ -844,7 +873,7 @@ function greetingFor(now: Date, name?: string | null): string {
   return first ? `Good ${period}, ${first}.` : `Good ${period}.`;
 }
 
-function AmbientClock() {
+function InlineTimestamp() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
@@ -864,16 +893,13 @@ function AmbientClock() {
     <div
       aria-hidden
       style={{
-        position: "fixed",
-        right: "max(18px, env(safe-area-inset-right))",
-        bottom: "max(24px, calc(env(safe-area-inset-bottom) + 14px))",
+        textAlign: "center",
+        padding: "10px 22px 0",
         fontFamily: "var(--font-mono)",
         fontSize: 10,
         letterSpacing: "0.18em",
         color: "color-mix(in oklab, var(--foreground) 42%, transparent)",
         userSelect: "none",
-        pointerEvents: "none",
-        zIndex: 5,
       }}
     >
       {stamp}
