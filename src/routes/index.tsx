@@ -2015,6 +2015,8 @@ function ChatPanel({
         className="relative flex-1 overflow-y-auto px-5 py-6 flex flex-col"
         style={{ gap: "var(--bubble-gap, 20px)" }}
       >
+        {/* Spacer pushes messages to bottom when few, scrolls normally when many */}
+        <div style={{ flex: 1, minHeight: 0 }} />
         {selectionChip && (
           <button
             ref={chipRef}
