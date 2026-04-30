@@ -940,6 +940,7 @@ function WorkspacePage() {
 function ChatPanel({
   messages,
   sending,
+  onStop,
   setInput,
   sessionId,
   projectId,
@@ -957,6 +958,7 @@ function ChatPanel({
 }: {
   messages: ChatMessage[];
   sending: boolean;
+  onStop: () => void;
   setInput: (v: string) => void;
   sessionId: string;
   projectId: string | null;
