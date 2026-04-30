@@ -568,6 +568,49 @@ function WorkspacePage() {
     setRecs((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   };
 
+  // §XI Phase 3 — actions on a thinking prompt
+  const askThinkingPrompt = async (prompt: ThinkingPrompt) => {
+    setThinkingPrompts((prev) => prev.filter((p) => p.id !== prompt.id));
+    await supabase
+      .from("recommendations")
+      .update({ status: "accepted" })
+      .eq("id", prompt.id);
+    setInput(prompt.content);
+    setInputFocusSignal((v) => v + 1);
+    void send(prompt.content);
+  };
+
+  const parkThinkingPrompt = async (prompt: ThinkingPrompt) => {
+    if (!user || !activeProjectId) return;
+    setThinkingPrompts((prev) => prev.filter((p) => p.id !== prompt.id));
+    await Promise.all([
+      supabase
+        .from("recommendations")
+        .update({ status: "parked" })
+        .eq("id", prompt.id),
+      parkedItemsTable().insert({
+        user_id: user.id,
+        project_id: activeProjectId,
+        session_id: session?.id ?? null,
+        label: prompt.content,
+        source_context: "thinking prompt",
+        kind: "question",
+        status: "parked",
+      }),
+    ]);
+    await loadParkedItems();
+    toast.success("Parked");
+  };
+
+  const dismissThinkingPrompt = async (prompt: ThinkingPrompt) => {
+    setThinkingPrompts((prev) => prev.filter((p) => p.id !== prompt.id));
+    await supabase
+      .from("recommendations")
+      .update({ status: "dismissed" })
+      .eq("id", prompt.id);
+  };
+
+
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
   const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
   const activeProject = useMemo(
