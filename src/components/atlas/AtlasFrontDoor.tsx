@@ -777,7 +777,7 @@ export function AtlasFrontDoor({
             willChange: "opacity, transform",
           }}
         >
-          {active && <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />}
+          {/* ModeDropdown moved to fixed header area */}
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
             {children}
           </div>
