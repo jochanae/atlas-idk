@@ -851,7 +851,13 @@ function WorkspacePage() {
             )}
           </div>
         </AtlasFrontDoor>
-        {isActive && <ArtifactDrawer artifacts={artifacts} />}
+        {isActive && (
+          <ArtifactDrawer
+            artifacts={artifacts}
+            forceOpen={mobileArtifactDrawerOpen}
+            onForceOpenChange={setMobileArtifactDrawerOpen}
+          />
+        )}
         {session && (
           <HistoryPanel
             open={historyOpen}
