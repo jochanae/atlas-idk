@@ -592,8 +592,9 @@ export function AtlasFrontDoor({
             const m = MODES.find((x) => x.id === activeMode);
             if (!m) return null;
             const isPhosphor = m.color === "phosphor";
-            const accent = isPhosphor ? "var(--phosphor)" : "var(--ember)";
-            const glow = isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
+            const isGold = m.color === "accent-gold";
+            const accent = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
+            const glow = isGold ? "rgba(202,169,104,0.35)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
             return (
               <div
                 style={{
