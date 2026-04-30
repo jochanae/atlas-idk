@@ -57,6 +57,8 @@ type AtlasFrontDoorProps = {
   /** Contextual HUD element rendered above the active input */
   contextualHUD?: ReactNode;
   taskQueue?: ReactNode;
+  /** When true, placeholder switches to queue-specific language */
+  queueActive?: boolean;
   onAddToQueue?: (text: string) => void;
   children?: ReactNode;
 };
