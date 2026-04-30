@@ -226,6 +226,86 @@ function WorkspacePage() {
     })();
   }, [user, session?.id]);
 
+  // §XI Phase 3 — Load pending thinking prompts for the active project
+  const loadThinkingPrompts = async (projectId?: string | null) => {
+    const pid = projectId ?? activeProjectId;
+    if (!user || !pid) {
+      setThinkingPrompts([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("recommendations")
+      .select("id, content, definition, benefit")
+      .eq("project_id", pid)
+      .eq("user_id", user.id)
+      .eq("kind", "thinking_prompt")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (error) return;
+    setThinkingPrompts(
+      ((data ?? []) as Array<{
+        id: string;
+        content: string;
+        definition: string | null;
+        benefit: string | null;
+      }>).map((r) => ({
+        id: r.id,
+        content: r.content,
+        definition: r.definition ?? "",
+        benefit: r.benefit ?? "",
+      })),
+    );
+  };
+
+  const regenerateThinkingPrompts = async () => {
+    if (!user || !activeProjectId) return;
+    setThinkingLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "atlas-thinking",
+        {
+          body: { projectId: activeProjectId, sessionId: session?.id ?? null },
+        },
+      );
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      await loadThinkingPrompts(activeProjectId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to refresh prompts";
+      toast.error(msg);
+    } finally {
+      setThinkingLoading(false);
+    }
+  };
+
+  // Load prompts when project changes; regenerate on key state shifts
+  useEffect(() => {
+    loadThinkingPrompts(activeProjectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, activeProjectId]);
+
+  // Auto-regenerate when ledger grows or compass is created (debounced via deps)
+  const lastTriggerRef = useRef<{ ledger: number; compass: boolean | null }>({
+    ledger: 0,
+    compass: null,
+  });
+  useEffect(() => {
+    if (!user || !activeProjectId || hasCompass !== true) return;
+    const prev = lastTriggerRef.current;
+    const ledgerGrew = ledgerCount > prev.ledger && prev.ledger > 0;
+    const compassJustAppeared = prev.compass === false && hasCompass === true;
+    lastTriggerRef.current = { ledger: ledgerCount, compass: hasCompass };
+    if (ledgerGrew || compassJustAppeared) {
+      regenerateThinkingPrompts();
+    } else if (prev.ledger === 0 && ledgerCount === 0 && thinkingPrompts.length === 0 && !thinkingLoading) {
+      // First-load opportunity when compass exists
+      regenerateThinkingPrompts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ledgerCount, hasCompass, activeProjectId, user?.id]);
+
+
   // Whisper Gate: check if active project already has a Compass
   useEffect(() => {
     if (!user || !activeProjectId) {
