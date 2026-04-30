@@ -89,6 +89,8 @@ export function AtlasFrontDoor({
   onGenerateCode,
   onSystemMenuSelect,
   contextualHUD,
+  taskQueue,
+  onAddToQueue,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
