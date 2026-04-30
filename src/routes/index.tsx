@@ -1829,6 +1829,7 @@ function ChatPanel({
   onRollback: (m: ChatMessage) => void;
   recentRollbackMsgId: string | null;
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
+  activeMode?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
