@@ -28,6 +28,7 @@ import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
+import { BottomSheet } from "@/components/atlas/BottomSheet";
 import { MobileSurfaceBar } from "@/components/atlas/MobileSurfaceBar";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
