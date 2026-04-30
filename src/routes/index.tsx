@@ -986,11 +986,11 @@ function WorkspacePage() {
             <DependencyGraph
               steps={planSteps}
               onPromoteToQueue={promoteStepToQueue}
+              onExportJSON={planSteps.length > 0 ? exportPlanJSON : undefined}
               onStepTap={(step) => {
                 setAdaptivePlaceholder(`expand on "${step.label}"…`);
                 setInput(`Expand on the plan step: ${step.label}`);
                 setInputFocusSignal((v) => v + 1);
-                // Clear adaptive placeholder after 5s
                 setTimeout(() => setAdaptivePlaceholder(null), 5000);
               }}
             />
