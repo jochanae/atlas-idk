@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { haptic } from "@/lib/haptics";
 
 export interface QueueItem {
   id: string;
