@@ -589,7 +589,7 @@ export function SessionHistoryList({
 
 function greetingFor(now: Date, name?: string | null): string {
   const h = now.getHours();
-  const period = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+  const period = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
   const first = (name || "").trim().split(/\s+/)[0];
   return first ? `Good ${period}, ${first}.` : `Good ${period}.`;
 }
