@@ -246,15 +246,15 @@ function WorkspacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Ledger count for sidebar badge
+  // Ledger count for sidebar badge — counts committed entries.
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { count } = await supabase
-        .from("ledger_entries")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-      setLedgerCount(count ?? 0);
+      const { data } = await entriesTable()
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "committed");
+      setLedgerCount((data ?? []).length);
     })();
   }, [user, session?.id]);
 
@@ -620,14 +620,15 @@ function WorkspacePage() {
         .from("recommendations")
         .update({ status: "parked" })
         .eq("id", prompt.id),
-      parkedItemsTable().insert({
+      entriesTable().insert({
         user_id: user.id,
         project_id: activeProjectId,
         session_id: session?.id ?? null,
-        label: prompt.content,
-        source_context: "thinking prompt",
-        kind: "question",
         status: "parked",
+        title: prompt.content,
+        summary: "thinking prompt",
+        severity: "parked",
+        verb: "note",
       }),
     ]);
     await loadParkedItems();
@@ -861,11 +862,16 @@ function WorkspacePage() {
             projects={projects}
             onClose={() => setParkingOpen(false)}
             onAction={async (itemId, status) => {
-              const values =
-                status === "resolved"
-                  ? { status, resolved_at: new Date().toISOString() }
-                  : { status };
-              const { error } = await parkedItemsTable()
+              // Drawer surfaces "resolved" / "dismissed". In the unified
+              // model "resolved" means the user committed it; "dismissed"
+              // means archive. Both are status flips on the same Entry row.
+              const newStatus =
+                status === "resolved" ? "committed" : "archived";
+              const values: Record<string, unknown> =
+                newStatus === "committed"
+                  ? { status: "committed", severity: "committed" }
+                  : { status: "archived" };
+              const { error } = await entriesTable()
                 .update(values)
                 .eq("id", itemId)
                 .eq("user_id", user.id);
@@ -1158,13 +1164,15 @@ function ChatPanel({
         .filter(Boolean)
         .join("\n\n");
 
-      const { error: insertError } = await supabase.from("ledger_entries").insert({
+      const { error: insertError } = await entriesTable().insert({
         user_id: userId,
         project_id: projectId,
-        extracted_from_session_id: sessionId,
+        session_id: sessionId,
+        status: "committed",
+        severity: "committed",
+        verb: "note",
         title: extraction.title,
-        description,
-        status: "Active",
+        summary: description,
       });
       if (insertError) throw insertError;
 
@@ -1180,15 +1188,36 @@ function ChatPanel({
 
   const proceedAnyway = async (messageId: string, committedOn: string) => {
     if (!projectId) return;
-    const { error } = await supabase
-      .from("ledger_entries")
-      .update({ status: "Violated", is_violation: true })
+    // Mark the matching committed entry as a violation. Locked rows are
+    // immutable except for archiving — but is_violation is metadata on
+    // the original committed row that we tolerate updating in the trigger
+    // by not changing any of the guarded fields. To avoid the trigger,
+    // we instead create a new draft entry that supersedes the original.
+    const { data: original } = await entriesTable()
+      .select("*")
       .eq("project_id", projectId)
       .eq("user_id", userId)
-      .eq("title", committedOn);
-    if (error) {
-      toast.error(error.message);
-      return;
+      .eq("status", "committed")
+      .eq("title", committedOn)
+      .limit(1);
+    if (original && original.length > 0) {
+      const orig = original[0];
+      const { error } = await entriesTable().insert({
+        user_id: userId,
+        project_id: projectId,
+        session_id: sessionId,
+        status: "committed",
+        severity: "blocker",
+        verb: "audit",
+        is_violation: true,
+        title: `VIOLATION: ${orig.title}`,
+        summary: `Violation logged against committed decision "${orig.title}".`,
+        supersedes_id: orig.id,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
     setDismissedConflicts((prev) => new Set(prev).add(messageId));
     await onRefresh();
