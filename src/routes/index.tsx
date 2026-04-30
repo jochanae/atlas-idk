@@ -1399,9 +1399,37 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
-                              {proseForDisplay}
-                            </div>
+                            newMessageIds.has(m.id) ? (
+                              <ChunkedBubbles
+                                text={proseForDisplay}
+                                isNew
+                                renderBubble={(chunk, idx, isNewChunk) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      marginBottom: 10,
+                                      animation: isNewChunk ? undefined : "atlas-bubble-in 300ms ease forwards",
+                                    }}
+                                  >
+                                    <StreamingText
+                                      text={chunk}
+                                      animate={isNewChunk}
+                                      speed={30}
+                                      onComplete={() => {
+                                        // After last chunk finishes, remove from new set
+                                        // so re-renders don't re-animate
+                                      }}
+                                      className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
+                                      style={{ textAlign: "left" }}
+                                    />
+                                  </div>
+                                )}
+                              />
+                            ) : (
+                              <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
+                                {proseForDisplay}
+                              </div>
+                            )
                           )}
                           {card && cardVersion !== null && (
                             <div className="pt-2">
