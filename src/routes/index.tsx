@@ -772,6 +772,12 @@ function WorkspacePage() {
               onParkedChange={loadParkedItems}
               onContinueAfterConflict={continueAfterConflict}
               onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
+              thinkingPrompts={thinkingPrompts}
+              thinkingLoading={thinkingLoading}
+              onAskThinkingPrompt={askThinkingPrompt}
+              onParkThinkingPrompt={parkThinkingPrompt}
+              onDismissThinkingPrompt={dismissThinkingPrompt}
+              onRefreshThinkingPrompts={regenerateThinkingPrompts}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
