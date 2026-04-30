@@ -349,6 +349,7 @@ export type Database = {
           created_at: string
           definition: string | null
           id: string
+          kind: string
           priority: string
           project_id: string
           session_id: string
@@ -361,6 +362,7 @@ export type Database = {
           created_at?: string
           definition?: string | null
           id?: string
+          kind?: string
           priority?: string
           project_id: string
           session_id: string
@@ -373,6 +375,7 @@ export type Database = {
           created_at?: string
           definition?: string | null
           id?: string
+          kind?: string
           priority?: string
           project_id?: string
           session_id?: string
