@@ -206,7 +206,10 @@ function WorkspacePage() {
 
   const loadParkedItems = async () => {
     if (!user) return;
-    const { data, error } = await parkedItemsTable()
+    // Parking Lot = entries with status='parked'. Same object as Ledger,
+    // different state. We map Entry rows back to the legacy ParkedItem
+    // shape so existing UI components keep rendering unchanged.
+    const { data, error } = await entriesTable()
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "parked")
@@ -215,7 +218,28 @@ function WorkspacePage() {
       toast.error(error.message);
       return;
     }
-    setParkedItems((data ?? []) as ParkedItem[]);
+    const rows = ((data ?? []) as unknown as Array<{
+      id: string;
+      user_id: string;
+      project_id: string;
+      session_id: string | null;
+      title: string;
+      summary: string | null;
+      verb: string | null;
+      created_at: string;
+    }>).map<ParkedItem>((e) => ({
+      id: e.id,
+      user_id: e.user_id,
+      project_id: e.project_id,
+      session_id: e.session_id,
+      label: e.title,
+      source_context: e.summary ?? "",
+      kind: e.verb ?? "other",
+      status: "parked",
+      created_at: e.created_at,
+      resolved_at: null,
+    }));
+    setParkedItems(rows);
   };
   useEffect(() => {
     loadParkedItems();
