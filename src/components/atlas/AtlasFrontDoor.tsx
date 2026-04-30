@@ -140,12 +140,15 @@ export function AtlasFrontDoor({
         >
           <div style={{ textAlign: "center", padding: "0 24px 44px" }}>
             <div
+              className="atlas-greeting"
               style={{
-                fontSize: 26,
                 fontWeight: 300,
                 color: "var(--foreground)",
                 lineHeight: 1.3,
                 letterSpacing: "-0.005em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               {greetingFor(new Date(), userName)}
