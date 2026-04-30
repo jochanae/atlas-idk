@@ -178,6 +178,7 @@ function WorkspacePage() {
   const [diffNewCode, setDiffNewCode] = useState("");
   const [diffLabels, setDiffLabels] = useState<{ old: string; new: string }>({ old: "Before", new: "After" });
   const [collaborateOpen, setCollaborateOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
