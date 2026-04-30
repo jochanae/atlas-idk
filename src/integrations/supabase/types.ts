@@ -60,6 +60,7 @@ export type Database = {
           intent_type: string | null
           role: string
           session_id: string
+          surfaced_memories: Json | null
           user_id: string
         }
         Insert: {
@@ -72,6 +73,7 @@ export type Database = {
           intent_type?: string | null
           role: string
           session_id: string
+          surfaced_memories?: Json | null
           user_id: string
         }
         Update: {
@@ -84,6 +86,7 @@ export type Database = {
           intent_type?: string | null
           role?: string
           session_id?: string
+          surfaced_memories?: Json | null
           user_id?: string
         }
         Relationships: [
