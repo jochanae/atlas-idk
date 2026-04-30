@@ -1703,6 +1703,70 @@ function ChatPanel({
   );
 }
 
+const ACTION_ICONS: Record<string, { svg: React.ReactNode; title: string }> = {
+  Copy: {
+    title: "Copy",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="5" width="8" height="8" rx="1.5" />
+        <path d="M3 11V3a1.5 1.5 0 011.5-1.5H11" />
+      </svg>
+    ),
+  },
+  Edit: {
+    title: "Edit",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11.5 1.5l3 3L5 14H2v-3z" />
+      </svg>
+    ),
+  },
+  Regenerate: {
+    title: "Regenerate",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 8a7 7 0 0112.9-3.7M15 1v4h-4" />
+        <path d="M15 8a7 7 0 01-12.9 3.7M1 15v-4h4" />
+      </svg>
+    ),
+  },
+  Commit: {
+    title: "Commit to Ledger",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 2h8a2 2 0 012 2v8l-3-2-3 2-3-2-3 2V4a2 2 0 012-2z" />
+        <path d="M6 6h4M6 9h2" />
+      </svg>
+    ),
+  },
+  Park: {
+    title: "Park",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="8" cy="8" r="6" />
+        <path d="M6 5h2.5a2 2 0 010 4H6V5z" />
+        <path d="M6 9v3" />
+      </svg>
+    ),
+  },
+  "Extracting…": {
+    title: "Extracting…",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
+        <path d="M8 2v4M8 10v4M2 8h4M10 8h4" style={{ animation: "atlas-pulse 1.2s ease-in-out infinite" }} />
+      </svg>
+    ),
+  },
+  "Parked ✓": {
+    title: "Parked",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="var(--ember)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 8.5l3 3 7-7" />
+      </svg>
+    ),
+  },
+};
+
 function MessageActionButton({
   label,
   onClick,
@@ -1714,36 +1778,38 @@ function MessageActionButton({
   disabled?: boolean;
   active?: boolean;
 }) {
+  const iconData = ACTION_ICONS[label];
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      aria-label={iconData?.title ?? label}
+      title={iconData?.title ?? label}
       style={{
         background: "transparent",
-        border: "0.5px solid var(--border)",
+        border: "none",
         color: active ? "var(--ember)" : "var(--muted-text)",
-        fontFamily: "var(--font-mono)",
-        fontSize: 10,
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
+        padding: 6,
         borderRadius: 6,
-        padding: "4px 10px",
         cursor: disabled ? "default" : "pointer",
-        opacity: disabled ? 0.5 : 1,
-        transition: "border-color 160ms ease, color 160ms ease",
+        opacity: disabled ? 0.4 : 0.55,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "opacity 160ms ease, color 160ms ease",
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
-          e.currentTarget.style.borderColor = "var(--ember)";
+          e.currentTarget.style.opacity = "1";
           e.currentTarget.style.color = "var(--ember)";
         }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.opacity = disabled ? "0.4" : "0.55";
         e.currentTarget.style.color = active ? "var(--ember)" : "var(--muted-text)";
       }}
     >
-      {label}
+      {iconData?.svg ?? <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</span>}
     </button>
   );
 }
