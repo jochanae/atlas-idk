@@ -52,6 +52,7 @@ export function SessionBreadcrumb({
         alignItems: "center",
         gap: 6,
         minWidth: 0,
+        opacity: 0.5,
         animation: "atlas-tag-in 400ms cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
