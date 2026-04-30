@@ -181,6 +181,8 @@ function WorkspacePage() {
   const [collaborateOpen, setCollaborateOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+  const [queueExecuting, setQueueExecuting] = useState(false);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
