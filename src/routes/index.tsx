@@ -206,6 +206,7 @@ function WorkspacePage() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [preRollbackMessages, setPreRollbackMessages] = useState<ChatMessage[] | null>(null);
   const [snapshotBrowserOpen, setSnapshotBrowserOpen] = useState(false);
+  const [integrityOpen, setIntegrityOpen] = useState(false);
   const [rollbackNaming, setRollbackNaming] = useState(false);
   const [rollbackNameInput, setRollbackNameInput] = useState("");
 
