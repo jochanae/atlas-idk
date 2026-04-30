@@ -396,14 +396,6 @@ function WorkspacePage() {
     setRecs((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   };
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="font-mono text-xs text-muted-foreground">loading…</span>
-      </div>
-    );
-  }
-
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
   const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
   const activeProject = useMemo(
@@ -411,6 +403,14 @@ function WorkspacePage() {
     [projects, activeProjectId],
   );
   const showWideDrawer = isActive && artifacts.length > 0 && isWideViewport;
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <span className="font-mono text-xs text-muted-foreground">loading…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
