@@ -645,6 +645,19 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
+      {/* Task Queue — rendered above contextual HUD when items exist */}
+      {active && taskQueue && (
+        <div
+          style={{
+            margin: "0 20px 6px",
+            flexShrink: 0,
+            animation: "atlas-bubble-in 200ms ease forwards",
+          }}
+        >
+          {taskQueue}
+        </div>
+      )}
+
       {/* Floating Contextual HUD — glass layer above the input bar */}
       {active && contextualHUD && (
         <div
