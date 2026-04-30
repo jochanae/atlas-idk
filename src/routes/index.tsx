@@ -1469,6 +1469,7 @@ function WorkspacePage() {
                 touched: lockedFiles.map((f) => f.filename),
               },
               status: "committed",
+              mode: activeMode,
             });
             setLedgerCount((c) => c + 1);
             setFileTreeOpen(false);
