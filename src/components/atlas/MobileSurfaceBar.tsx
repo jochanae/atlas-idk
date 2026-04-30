@@ -161,20 +161,23 @@ export function MobileSurfaceBar({ active, onChange, buildState = "idle" }: Prop
           />
         )}
 
-        <span
-          aria-hidden="true"
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 9,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: isWorking ? BUILD_COLORS[buildState] : "var(--accent-gold)",
-            opacity: expanded ? 0.5 : 0.7,
-            transition: "opacity 160ms ease, color 160ms ease",
-          }}
-        >
-          {isWorking ? BUILD_LABELS[buildState] : activeSurface.label}
-        </span>
+        {/* Only show text label when build is actively working */}
+        {isWorking && (
+          <span
+            aria-hidden="true"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: BUILD_COLORS[buildState],
+              opacity: expanded ? 0.5 : 0.7,
+              transition: "opacity 160ms ease, color 160ms ease",
+            }}
+          >
+            {BUILD_LABELS[buildState]}
+          </span>
+        )}
 
         <ChevronDown
           aria-hidden="true"
