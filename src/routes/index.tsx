@@ -23,7 +23,7 @@ import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
-import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
+// OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
@@ -193,7 +193,7 @@ function WorkspacePage() {
   const [diffLabels, setDiffLabels] = useState<{ old: string; new: string }>({ old: "Before", new: "After" });
   const [collaborateOpen, setCollaborateOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  // showOnboarding removed — no welcome card
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [queueExecuting, setQueueExecuting] = useState(false);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
@@ -1580,19 +1580,7 @@ function WorkspacePage() {
         open={integrityOpen}
         onClose={() => setIntegrityOpen(false)}
       />
-      <OnboardingFlow
-        show={showOnboarding && recents.length === 0 && !session}
-        userName={
-          (user.user_metadata?.display_name as string | undefined) ||
-          (user.user_metadata?.full_name as string | undefined) ||
-          (user.email ? user.email.split("@")[0] : null)
-        }
-        onComplete={() => setShowOnboarding(false)}
-        onStartSession={(mode) => {
-          setActiveMode(mode as ModeId);
-          setInputFocusSignal((v) => v + 1);
-        }}
-      />
+      {/* OnboardingFlow removed — context refinement happens conversationally */}
     </div>
   );
 
