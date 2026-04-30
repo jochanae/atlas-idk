@@ -674,6 +674,7 @@ function WorkspacePage() {
           inputFocusSignal={inputFocusSignal}
           onModeChange={setActiveMode}
           onSend={send}
+          onStop={stopSending}
           recents={recents}
           onOpenSession={openSession}
           onViewAllRecents={() => {
