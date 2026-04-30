@@ -80,6 +80,10 @@ function parkedItemsTable() {
   return (supabase as unknown as { from: (table: "parked_items") => UntypedTable }).from("parked_items");
 }
 
+function compassTable() {
+  return (supabase as unknown as { from: (table: "project_compass") => UntypedTable }).from("project_compass");
+}
+
 export const Route = createFileRoute("/")({
   component: WorkspacePage,
   head: () => ({
