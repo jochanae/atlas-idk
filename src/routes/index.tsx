@@ -991,9 +991,9 @@ function WorkspacePage() {
   };
 
   const mainShell = (
-    <div className="atlas-shell-host min-h-screen h-full bg-background text-foreground overflow-hidden flex flex-col">
+    <div className="atlas-shell-host min-h-screen h-full bg-background text-foreground flex flex-col" style={{ overflow: "visible" }}>
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
-      <main className="relative flex-1 min-h-0 overflow-hidden">
+      <main className="relative flex-1 min-h-0" style={{ overflow: "visible" }}>
 
         <AtlasFrontDoor
           active={isActive}
@@ -2067,7 +2067,7 @@ function ChatPanel({
                             YOU · {relativeTime(m.created_at)}
                           </div>
                           <div
-                            className="text-[14px] leading-[1.7] whitespace-pre-wrap text-foreground/80"
+                            className="text-[16px] leading-[1.7] whitespace-pre-wrap text-foreground/80"
                             style={{
                               textAlign: "left",
                               ...(isLongMessage && !isExpanded
@@ -2160,14 +2160,14 @@ function ChatPanel({
                                         // After last chunk finishes, remove from new set
                                         // so re-renders don't re-animate
                                       }}
-                                     className="text-[14px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
+                                     className="text-[16px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
                                       style={{ textAlign: "left" }}
                                     />
                                   </div>
                                 )}
                               />
                             ) : (
-                              <div className="text-[14px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
+                              <div className="text-[16px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
                                 {proseForDisplay}
                               </div>
                             )

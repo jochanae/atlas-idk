@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState, useCallback } from "react";
 import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 import { SystemMenu } from "./SystemMenu";
@@ -76,6 +76,113 @@ type AtlasFrontDoorProps = {
   adaptivePlaceholder?: string | null;
   children?: ReactNode;
 };
+
+function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onModeChange: (m: ModeId) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const m = MODES.find((x) => x.id === activeMode)!;
+  const isPhosphor = m.color === "phosphor";
+  const isGold = m.color === "accent-gold";
+  const accent = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
+  const glow = isGold ? "rgba(202,169,104,0.35)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
+
+  return (
+    <div ref={ref} style={{ position: "fixed", top: 72, left: 0, right: 0, zIndex: 45, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{ position: "relative", pointerEvents: "auto" }}>
+        <button
+          type="button"
+          onClick={() => { setOpen((o) => !o); haptic("light"); }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 14px",
+            borderRadius: 999,
+            border: `0.5px solid ${accent}`,
+            background: "var(--surface)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: accent,
+            boxShadow: `0 0 10px -3px ${glow}`,
+            cursor: "pointer",
+            transition: "all 180ms var(--ease-cinematic)",
+          }}
+          title="Switch mode"
+        >
+          <span aria-hidden style={{ width: 5, height: 5, borderRadius: "50%", background: accent, boxShadow: `0 0 6px ${accent}` }} />
+          {m.label}
+          <svg viewBox="0 0 16 16" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" style={{ marginLeft: 2, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms ease" }}>
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+        {open && (
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 8px)",
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "rgba(15, 15, 15, 0.85)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              border: "0.5px solid rgba(212, 175, 55, 0.20)",
+              borderRadius: 14,
+              padding: "6px",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+              minWidth: 160,
+              animation: "atlas-sys-menu-in 180ms ease forwards",
+            }}
+          >
+            {MODES.map((mode) => {
+              const isActive = mode.id === activeMode;
+              const mp = mode.color === "phosphor";
+              const mg = mode.color === "accent-gold";
+              const c = mg ? "var(--accent-gold)" : mp ? "var(--phosphor)" : "var(--ember)";
+              return (
+                <button
+                  key={mode.id}
+                  onClick={() => { onModeChange(mode.id); setOpen(false); haptic("light"); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    width: "100%",
+                    padding: "10px 14px",
+                    border: "none",
+                    borderRadius: 10,
+                    background: isActive ? "rgba(212, 175, 55, 0.08)" : "transparent",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: isActive ? c : "var(--muted-text)",
+                    cursor: "pointer",
+                    transition: "background 120ms ease, color 120ms ease",
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: isActive ? c : "var(--muted-text)", opacity: isActive ? 1 : 0.4, flexShrink: 0 }} />
+                  {mode.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function AtlasFrontDoor({
   active,
@@ -190,8 +297,10 @@ export function AtlasFrontDoor({
       <div
         className="atlas-sticky-header"
         style={{
-          position: "sticky",
+          position: "fixed",
           top: 0,
+          left: 0,
+          right: 0,
           zIndex: 50,
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
@@ -245,7 +354,7 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Stage: scrollable content area beneath sticky header */}
+      {/* Stage: scrollable content area beneath fixed header */}
       <div
         style={{
           flex: 1,
@@ -255,6 +364,7 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
+          paddingTop: 72,
         }}
       >
         {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
@@ -395,7 +505,7 @@ export function AtlasFrontDoor({
                     left: 0,
                     right: 0,
                     color: "var(--muted-text)",
-                    fontSize: 15,
+                    fontSize: 16,
                     lineHeight: 1.5,
                     opacity: 0.85,
                     pointerEvents: "none",
@@ -425,7 +535,7 @@ export function AtlasFrontDoor({
                   border: "none",
                   outline: "none",
                   color: "var(--foreground)",
-                  fontSize: 15,
+                  fontSize: 16,
                   lineHeight: 1.5,
                   resize: "none",
                   fontFamily: "inherit",
@@ -481,8 +591,8 @@ export function AtlasFrontDoor({
                   title="Voice (coming soon)"
                   className="atlas-icon-btn atlas-mic-btn"
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 46,
+                    height: 46,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -514,8 +624,8 @@ export function AtlasFrontDoor({
                   aria-label={sending ? "Stop Atlas" : "Send"}
                   title={sending ? "Stop Atlas" : "Send"}
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 46,
+                    height: 46,
                     borderRadius: 8,
                     background: sending
                       ? "var(--surface)"
@@ -626,66 +736,7 @@ export function AtlasFrontDoor({
             willChange: "opacity, transform",
           }}
         >
-          {/* Collapsed mode indicator — replaces the row of pills in active state */}
-          {active && (() => {
-            const m = MODES.find((x) => x.id === activeMode);
-            if (!m) return null;
-            const isPhosphor = m.color === "phosphor";
-            const isGold = m.color === "accent-gold";
-            const accent = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
-            const glow = isGold ? "rgba(202,169,104,0.35)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
-            return (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  padding: "10px 16px 6px",
-                  flexShrink: 0,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    const idx = MODES.findIndex((x) => x.id === activeMode);
-                    const next = MODES[(idx + 1) % MODES.length];
-                    onModeChange(next.id);
-                    haptic("light");
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "3px 10px",
-                    borderRadius: 999,
-                    border: `0.5px solid ${accent}`,
-                    background: "var(--surface)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 9.5,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: accent,
-                    boxShadow: `0 0 10px -3px ${glow}`,
-                    animation: "atlas-tag-in 400ms cubic-bezier(0.4, 0, 0.2, 1)",
-                    cursor: "pointer",
-                    transition: "all 180ms var(--ease-cinematic)",
-                  }}
-                  title={`Switch mode (${m.label})`}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: accent,
-                      boxShadow: `0 0 6px ${accent}`,
-                    }}
-                  />
-                  {m.label}
-                </button>
-              </div>
-            );
-          })()}
+          {active && <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />}
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
             {children}
           </div>
@@ -795,7 +846,7 @@ export function AtlasFrontDoor({
               border: "none",
               outline: "none",
               color: "var(--foreground)",
-              fontSize: 15,
+              fontSize: 16,
               lineHeight: 1.5,
               letterSpacing: "-0.01em",
               resize: "none",
