@@ -14,6 +14,15 @@ export const MODES = [
 
 export type ModeId = typeof MODES[number]["id"];
 
+const MODE_PLACEHOLDERS: Record<ModeId, string> = {
+  think: "What's the core logic?",
+  plan: "Outline the next phase…",
+  build: "Define the next component…",
+  explore: "Search the architecture…",
+  decide: "What are you choosing between?",
+  audit: "What needs inspection?",
+};
+
 export interface RecentSession {
   id: string;
   title: string;
@@ -634,7 +643,14 @@ export function AtlasFrontDoor({
                   flexShrink: 0,
                 }}
               >
-                <span
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = MODES.findIndex((x) => x.id === activeMode);
+                    const next = MODES[(idx + 1) % MODES.length];
+                    onModeChange(next.id);
+                    haptic("light");
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -650,7 +666,10 @@ export function AtlasFrontDoor({
                     color: accent,
                     boxShadow: `0 0 10px -3px ${glow}`,
                     animation: "atlas-tag-in 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    cursor: "pointer",
+                    transition: "all 180ms var(--ease-cinematic)",
                   }}
+                  title={`Switch mode (${m.label})`}
                 >
                   <span
                     aria-hidden
@@ -663,7 +682,7 @@ export function AtlasFrontDoor({
                     }}
                   />
                   {m.label}
-                </span>
+                </button>
               </div>
             );
           })()}
@@ -741,14 +760,18 @@ export function AtlasFrontDoor({
       {/* Active-mode input docked at bottom — solid anchor with utility bar */}
       {active && (
         <div
-          className="atlas-active-input-shell"
+          className={`atlas-active-input-shell${sending ? " atlas-breathing" : ""}`}
           style={{
-            margin: "0 16px 14px",
+            margin: "0 16px 24px",
             background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
             borderRadius: 14,
-            border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+            border: sending
+              ? "1.5px solid rgba(212, 175, 55, 0.6)"
+              : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
             padding: "12px 14px 8px",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
+            boxShadow: sending
+              ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 20px -4px rgba(212, 175, 55, 0.35)"
+              : "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
             transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             flexShrink: 0,
           }}
@@ -758,7 +781,13 @@ export function AtlasFrontDoor({
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="reply to atlas…"
+            placeholder={
+              adaptivePlaceholder
+                ? adaptivePlaceholder
+                : queueActive
+                  ? "add a follow-up to the queue…"
+                  : MODE_PLACEHOLDERS[activeMode]
+            }
             rows={1}
             style={{
               width: "100%",
@@ -779,8 +808,6 @@ export function AtlasFrontDoor({
               scrollbarWidth: "thin",
               scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
-            onFocus={(e) => { if (e.currentTarget.placeholder) e.currentTarget.placeholder = ""; }}
-            onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.placeholder = "reply to atlas…"; }}
           />
           {/* Utility Bar: structured, evenly spaced, muted gold */}
           <div
@@ -885,6 +912,19 @@ export function AtlasFrontDoor({
             inset 0 1px 0 rgba(255,255,255,0.04),
             0 6px 24px rgba(0,0,0,0.4),
             0 0 20px -4px color-mix(in oklab, var(--accent-gold) 50%, transparent) !important;
+        }
+        @keyframes atlas-breathing-glow {
+          0%, 100% {
+            border-color: rgba(212, 175, 55, 0.35);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 12px -4px rgba(212, 175, 55, 0.2);
+          }
+          50% {
+            border-color: rgba(212, 175, 55, 0.75);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 24px -2px rgba(212, 175, 55, 0.45);
+          }
+        }
+        .atlas-breathing {
+          animation: atlas-breathing-glow 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite !important;
         }
         .atlas-active-input-shell textarea::-webkit-scrollbar {
           width: 3px;
