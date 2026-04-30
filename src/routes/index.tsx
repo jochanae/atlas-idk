@@ -1057,6 +1057,9 @@ function WorkspacePage() {
                 onExecuteAll={executeAllQueue}
                 onExecuteOne={executeQueueItem}
                 executing={queueExecuting}
+                onJumpToPlanStep={jumpToPlanStep}
+                autoExpandId={autoExpandQueueId}
+              />
               />
             ) : undefined
           }
