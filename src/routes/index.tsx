@@ -1964,7 +1964,8 @@ function ChatPanel({
         ref={scrollRef}
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
-        className="relative flex-1 overflow-y-auto px-4 py-4 flex flex-col justify-end gap-4"
+        className="relative flex-1 overflow-y-auto px-5 py-6 flex flex-col justify-end"
+        style={{ gap: "var(--bubble-gap, 20px)" }}
       >
         {selectionChip && (
           <button
