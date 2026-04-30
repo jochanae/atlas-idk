@@ -66,7 +66,7 @@ function AuthPage() {
           <div className="flex items-baseline gap-3">
             <span className="font-semibold tracking-tight text-base">Atlas</span>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
-              Decision Enforcement
+              Enter Atlas
             </span>
           </div>
         </div>
@@ -236,8 +236,10 @@ function OAuthButtons() {
         .atlas-oauth-btn:hover:not(:disabled) {
           border-color: color-mix(in oklab, var(--accent-gold) 65%, var(--border));
           background: #111114;
-          box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-gold) 15%, transparent),
-                      0 6px 24px -10px color-mix(in oklab, var(--accent-gold) 30%, transparent);
+          opacity: 0.8;
+          box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-gold) 20%, transparent),
+                      0 0 24px -4px color-mix(in oklab, var(--accent-gold) 45%, transparent),
+                      0 6px 24px -10px color-mix(in oklab, var(--accent-gold) 35%, transparent);
           transform: translateY(-1px);
         }
         .atlas-oauth-btn:disabled { opacity: 0.55; cursor: not-allowed; }

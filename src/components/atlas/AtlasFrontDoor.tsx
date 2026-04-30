@@ -140,12 +140,15 @@ export function AtlasFrontDoor({
         >
           <div style={{ textAlign: "center", padding: "0 24px 44px" }}>
             <div
+              className="atlas-greeting"
               style={{
-                fontSize: 26,
                 fontWeight: 300,
                 color: "var(--foreground)",
                 lineHeight: 1.3,
                 letterSpacing: "-0.005em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               {greetingFor(new Date(), userName)}
@@ -155,6 +158,7 @@ export function AtlasFrontDoor({
           {/* Mode pills */}
           <div
             ref={pillsRef}
+            className="atlas-pills-row"
             style={{
               display: "flex",
               justifyContent: "center",
@@ -164,7 +168,10 @@ export function AtlasFrontDoor({
               scrollbarWidth: "none",
             }}
           >
-            <div style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto" }}>
+            <div
+              className="atlas-pills-inner"
+              style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto", flexWrap: "nowrap" }}
+            >
               {MODES.map((m) => {
                 const isActive = activeMode === m.id;
                 const isPhosphor = m.color === "phosphor";
@@ -173,6 +180,7 @@ export function AtlasFrontDoor({
                   <button
                     key={m.id}
                     onClick={() => onModeChange(m.id)}
+                    className="atlas-mode-pill"
                     style={{
                       flexShrink: 0,
                       padding: "5px 14px",
@@ -482,6 +490,14 @@ export function AtlasFrontDoor({
       {bottomTabs}
 
       <style>{`
+        .atlas-greeting { font-size: 26px; }
+        @media (max-width: 480px) {
+          .atlas-greeting { font-size: 22px; }
+        }
+        @media (max-width: 360px) {
+          .atlas-greeting { font-size: 19px; }
+          .atlas-mode-pill { font-size: 10px !important; padding: 4px 10px !important; }
+        }
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -615,8 +631,8 @@ function AmbientClock() {
       aria-hidden
       style={{
         position: "fixed",
-        right: 18,
-        bottom: 14,
+        right: "max(18px, env(safe-area-inset-right))",
+        bottom: "max(24px, calc(env(safe-area-inset-bottom) + 14px))",
         fontFamily: "var(--font-mono)",
         fontSize: 10,
         letterSpacing: "0.18em",
