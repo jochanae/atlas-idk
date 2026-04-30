@@ -2299,6 +2299,8 @@ function ChatPanel({
                     </div>
                     {showParkButton && (
                        <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                          {/* Rollback — always visible */}
+                          <MessageActionButton label="Rollback" onClick={() => { onRollback(m); }} />
                           {/* History — always visible */}
                           <MessageActionButton label="History" onClick={() => { toast("History coming soon"); }} />
                           {/* Regenerate — always visible */}
