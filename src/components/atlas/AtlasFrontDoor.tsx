@@ -162,17 +162,34 @@ export function AtlasFrontDoor({
       </div>
       {!active && <AmbientClock />}
 
-      {/* Front door hero — vertically centered, cinematic */}
-      {!active && (
+      {/* Stage: holds resting hero + active chat in the SAME box for cross-fade */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
         <div
+          aria-hidden={active}
           style={{
-            flex: 1,
+            position: active ? "absolute" : "relative",
+            inset: active ? 0 : "auto",
+            flex: active ? "none" : 1,
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
             alignItems: "stretch",
             padding: "8vh 0 4vh",
-            animation: "atlas-rise 420ms var(--ease-cinematic)",
+            opacity: active ? 0 : 1,
+            transform: active ? "translateY(-20px)" : "translateY(0)",
+            pointerEvents: active ? "none" : "auto",
+            transition:
+              "opacity 400ms cubic-bezier(0.4, 0, 0.2, 1), transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+            willChange: "opacity, transform",
           }}
         >
           <div style={{ textAlign: "center", padding: "0 24px 44px" }}>
