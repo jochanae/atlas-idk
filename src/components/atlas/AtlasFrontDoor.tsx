@@ -34,6 +34,8 @@ type AtlasFrontDoorProps = {
   /** Recent sessions shown under the resting input as "Continue where you left off". */
   recents?: RecentSession[];
   onOpenSession?: (sessionId: string) => void;
+  /** Optional handler invoked when the user taps "View all" under recents. */
+  onViewAllRecents?: () => void;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
@@ -56,6 +58,7 @@ export function AtlasFrontDoor({
   userName,
   recents,
   onOpenSession,
+  onViewAllRecents,
   onModeChange,
   onInputChange,
   onSend,
@@ -169,7 +172,7 @@ export function AtlasFrontDoor({
           {headerActions}
         </div>
       </div>
-      {!active && <AmbientClock />}
+      
 
       {/* Stage: holds resting hero + active chat in the SAME box for cross-fade */}
       <div
