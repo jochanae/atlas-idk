@@ -490,6 +490,14 @@ export function AtlasFrontDoor({
       {bottomTabs}
 
       <style>{`
+        .atlas-greeting { font-size: 26px; }
+        @media (max-width: 480px) {
+          .atlas-greeting { font-size: 22px; }
+        }
+        @media (max-width: 360px) {
+          .atlas-greeting { font-size: 19px; }
+          .atlas-mode-pill { font-size: 10px !important; padding: 4px 10px !important; }
+        }
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
