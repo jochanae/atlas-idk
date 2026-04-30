@@ -23,6 +23,7 @@ import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/compon
 import { SeverityDot } from "@/components/atlas/StatusGlyph";
 import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { CommitCard } from "@/components/atlas/CommitCard";
+import { MemoryChips, type SurfacedMemory } from "@/components/atlas/MemoryChips";
 import {
   parseAtlasMessage,
   type CommitCardPayload,
