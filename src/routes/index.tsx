@@ -121,6 +121,9 @@ function WorkspacePage() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // Holds the AbortController for the in-flight atlas-chat call so the user
+  // can cancel mid-flight via the Stop button.
+  const sendAbortRef = useRef<AbortController | null>(null);
   const [auditWarning, setAuditWarning] = useState(false);
   const [surface, setSurface] = useState<"chat" | "workspace" | "preview">("chat");
   const [expandedRec, setExpandedRec] = useState<string | null>(null);
@@ -446,12 +449,16 @@ function WorkspacePage() {
     setTransitioning(true);
     setSurface("chat");
 
+    const controller = new AbortController();
+    sendAbortRef.current = controller;
+    const optimisticId = crypto.randomUUID();
+
     try {
       const target = await ensureSession(text);
       if (!target) throw new Error("No project available");
 
       const optimistic: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: optimisticId,
         session_id: target.session.id,
         user_id: user!.id,
         role: "user",
@@ -468,7 +475,11 @@ function WorkspacePage() {
           message: text,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
         },
+        // supabase-js v2 forwards this signal to fetch — calling
+        // controller.abort() rejects this invoke immediately.
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const updatedTitle = text.slice(0, 60);
@@ -486,13 +497,30 @@ function WorkspacePage() {
       );
       await refresh(target.session, target.projectId);
     } catch (e) {
+      // User-initiated abort — clean up quietly, don't show an error toast.
+      if (controller.signal.aborted || (e instanceof Error && e.name === "AbortError")) {
+        // Drop the optimistic user message so the unsent prompt doesn't linger
+        // in the transcript pretending it was delivered.
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+        // Restore the text so they can edit and resend.
+        setInput(text);
+        toast("Atlas stopped.", { description: "Your message was not sent." });
+        if (!session && messages.length === 0) setTransitioning(false);
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Atlas failed to respond";
       toast.error(msg);
       setAuditWarning(true);
       if (!session && messages.length === 0) setTransitioning(false);
     } finally {
+      sendAbortRef.current = null;
       setSending(false);
     }
+  };
+
+  /** Cancel the in-flight atlas-chat request, if any. */
+  const stopSending = () => {
+    sendAbortRef.current?.abort();
   };
 
   const openSession = async (targetSessionId: string) => {
@@ -646,6 +674,7 @@ function WorkspacePage() {
           inputFocusSignal={inputFocusSignal}
           onModeChange={setActiveMode}
           onSend={send}
+          onStop={stopSending}
           recents={recents}
           onOpenSession={openSession}
           onViewAllRecents={() => {
@@ -776,6 +805,7 @@ function WorkspacePage() {
             <ChatPanel
               messages={messages}
               sending={sending}
+              onStop={stopSending}
               setInput={setInput}
               sessionId={session?.id ?? ""}
               projectId={activeProjectId}
@@ -912,6 +942,7 @@ function WorkspacePage() {
 function ChatPanel({
   messages,
   sending,
+  onStop,
   setInput,
   sessionId,
   projectId,
@@ -929,6 +960,7 @@ function ChatPanel({
 }: {
   messages: ChatMessage[];
   sending: boolean;
+  onStop: () => void;
   setInput: (v: string) => void;
   sessionId: string;
   projectId: string | null;
@@ -1383,8 +1415,24 @@ function ChatPanel({
             );
           })}
         {sending && (
-          <div className="font-mono text-[10px] text-[color:var(--phosphor)] uppercase tracking-[0.15em]">
-            atlas thinking…
+          <div className="flex items-center gap-2">
+            <div className="font-mono text-[10px] text-[color:var(--phosphor)] uppercase tracking-[0.15em]">
+              atlas thinking…
+            </div>
+            <button
+              type="button"
+              onClick={onStop}
+              className="font-mono text-[10px] uppercase tracking-[0.15em] rounded-sm px-2 py-0.5 transition-colors"
+              style={{
+                background: "transparent",
+                border: "0.5px solid var(--ember)",
+                color: "var(--ember)",
+              }}
+              aria-label="Stop Atlas"
+              title="Stop Atlas"
+            >
+              ◼ Stop
+            </button>
           </div>
         )}
       </div>
