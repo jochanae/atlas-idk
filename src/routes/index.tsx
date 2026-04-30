@@ -1066,6 +1066,22 @@ function WorkspacePage() {
           onAddToQueue={addToQueue}
           queueActive={queueItems.some((i) => i.status === "pending")}
           adaptivePlaceholder={adaptivePlaceholder}
+          mobileSurfaceBar={
+            session ? (
+              <MobileSurfaceBar
+                active={surface === "workspace" ? "chat" : surface === "preview" ? "preview" : "chat"}
+                onChange={(s) => {
+                  if (s === "ledger") {
+                    navigate({ to: "/ledger" });
+                  } else if (s === "preview") {
+                    setSurface("preview");
+                  } else {
+                    setSurface("chat");
+                  }
+                }}
+              />
+            ) : undefined
+          }
           planGraph={
             <DependencyGraph
               steps={planSteps}
