@@ -1652,6 +1652,13 @@ function WorkspacePage() {
       <StructuralIntegrityPanel
         open={integrityOpen}
         onClose={() => setIntegrityOpen(false)}
+        onHarden={(command) => {
+          setInput(command);
+          setIntegrityOpen(false);
+          setSurface("chat");
+          setInputFocusSignal((s) => s + 1);
+          toast.success("Fix command loaded — review and send.");
+        }}
       />
       {/* OnboardingFlow removed — context refinement happens conversationally */}
     </div>
