@@ -2167,7 +2167,7 @@ function ChatPanel({
                                 )}
                               />
                             ) : (
-                              <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
+                              <div className="text-[14px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
                                 {proseForDisplay}
                               </div>
                             )
