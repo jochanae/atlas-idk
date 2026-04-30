@@ -250,7 +250,7 @@ function createZipBlob(files: Array<{ filename: string; content: string }>): Blo
   return new Blob(parts, { type: "text/plain;charset=utf-8" });
 }
 
-export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
+export function FileTreeDrawer({ open, onClose, files, onFileSelect, onLockToLedger }: Props) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [checkedPaths, setCheckedPaths] = useState<Set<string>>(() => new Set());
