@@ -81,7 +81,8 @@ export function GitHubDrawer({ open, onClose, projectId, generatedFiles = [] }: 
           toast.error(e instanceof Error ? e.message : "OAuth failed");
         });
     }
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [repoUrl, setRepoUrl] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [ghUser, setGhUser] = useState<GHUser | null>(null);
