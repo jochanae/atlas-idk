@@ -98,6 +98,8 @@ export function AtlasFrontDoor({
   taskQueue,
   queueActive,
   onAddToQueue,
+  planGraph,
+  adaptivePlaceholder,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
