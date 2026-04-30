@@ -267,7 +267,61 @@
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
+/* Streaming state pulse — smoother than atlas-pulse, for build indicators */
+@keyframes atlas-state-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Interactive glow cue on the surface trigger so users know it's tappable */
+.atlas-surface-trigger {
+  position: relative;
+}
+.atlas-surface-trigger::after {
+  content: "";
+  position: absolute;
+  inset: -2px -6px;
+  border-radius: 10px;
+  background: radial-gradient(ellipse at center, color-mix(in oklab, var(--accent-gold) 8%, transparent) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 600ms ease;
+  pointer-events: none;
+}
+.atlas-surface-trigger:hover::after,
+.atlas-surface-trigger:focus-visible::after {
+  opacity: 1;
+}
+
 /* Hide mobile surface bar on desktop (desktop uses DesktopWorkspace nav rail) */
 @media (min-width: 1024px) {
   .atlas-mobile-surface-bar { display: none !important; }
+}
+
+/* Adaptive: on very small screens (Fold outer ≤ 320px), use FAB layout */
+@media (max-width: 320px) {
+  .atlas-mobile-surface-bar {
+    position: fixed !important;
+    bottom: 90px !important;
+    right: 12px !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 55;
+    flex-direction: column !important;
+  }
+  .atlas-mobile-surface-bar .atlas-surface-trigger {
+    width: 40px;
+    height: 40px;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    justify-content: center;
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    border: 0.5px solid var(--glass-border) !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  /* Hide text in FAB mode, show only chevron */
+  .atlas-mobile-surface-bar .atlas-surface-trigger span[aria-hidden] {
+    display: none;
+  }
 }
