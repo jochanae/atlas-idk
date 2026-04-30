@@ -1323,6 +1323,12 @@ function WorkspacePage() {
               onRefreshThinkingPrompts={regenerateThinkingPrompts}
               onRollback={handleRollback}
               recentRollbackMsgId={recentRollbackMsgId}
+              onOpenDiff={(userContent, assistantContent) => {
+                setDiffOldCode(userContent);
+                setDiffNewCode(assistantContent);
+                setDiffLabels({ old: "Your prompt", new: "Atlas response" });
+                setDiffOpen(true);
+              }}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
