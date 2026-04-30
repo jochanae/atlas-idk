@@ -12,6 +12,10 @@ import {
 import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
+import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
+import { SessionFooter } from "@/components/atlas/SessionFooter";
+import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
+import { detectArtifacts } from "@/lib/artifacts";
 import {
   relativeTime,
   type ChatMessage,
@@ -114,6 +118,28 @@ function WorkspacePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
+  const [commitPulse, setCommitPulse] = useState(false);
+  const [isWideViewport, setIsWideViewport] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : false,
+  );
+
+  // Track viewport for adaptive shell padding (drawer right-pane reserves space)
+  useEffect(() => {
+    const onResize = () => setIsWideViewport(window.innerWidth >= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Pulse the breadcrumb gold dot briefly when ledger count grows
+  const prevLedgerCount = useRef(ledgerCount);
+  useEffect(() => {
+    if (ledgerCount > prevLedgerCount.current) {
+      setCommitPulse(true);
+      const t = window.setTimeout(() => setCommitPulse(false), 4000);
+      return () => window.clearTimeout(t);
+    }
+    prevLedgerCount.current = ledgerCount;
+  }, [ledgerCount]);
 
   // Apply theme class to <html>
   useEffect(() => {
@@ -379,6 +405,12 @@ function WorkspacePage() {
   }
 
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
+  const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
+  const activeProject = useMemo(
+    () => projects.find((p) => p.id === activeProjectId) ?? null,
+    [projects, activeProjectId],
+  );
+  const showWideDrawer = isActive && artifacts.length > 0 && isWideViewport;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
@@ -411,25 +443,20 @@ function WorkspacePage() {
             <div className="flex items-center gap-3 min-w-0" style={{ height: 40 }}>
               {session && !entrySurface && (
                 <>
-                  {projects.length > 0 && (
-                    <select
-                      value={activeProjectId ?? ""}
-                      onChange={(e) => setActiveProjectId(e.target.value)}
-                      className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[color:var(--ember)] max-w-[140px] truncate"
-                    >
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <Link
-                    to="/ledger"
-                    className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground hover:text-foreground"
-                  >
-                    Ledger
-                  </Link>
+                  <SessionBreadcrumb
+                    projectName={activeProject?.name ?? null}
+                    sessionTitle={session.title || "New session"}
+                    onHomeClick={() => {
+                      setEntrySurface(true);
+                      setSurface("chat");
+                      setHistoryOpen(false);
+                    }}
+                    onProjectClick={() => {
+                      // Future: open project picker. For now, jump to ledger scoped view.
+                      navigate({ to: "/ledger" });
+                    }}
+                    pulse={commitPulse}
+                  />
                   <ParkingLotButton
                     count={parkedItems.length}
                     open={parkingOpen}
@@ -479,19 +506,38 @@ function WorkspacePage() {
             ) : null
           }
         >
-          <ChatPanel
-            messages={messages}
-            sending={sending}
-            setInput={setInput}
-            sessionId={session?.id ?? ""}
-            projectId={activeProjectId}
-            userId={user.id}
-            onRefresh={refresh}
-            onParkedChange={loadParkedItems}
-            onContinueAfterConflict={continueAfterConflict}
-            onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
-          />
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+              maxWidth: 800,
+              margin: "0 auto",
+              paddingRight: showWideDrawer ? "min(420px, 38vw)" : 0,
+              transition: "padding-right 360ms cubic-bezier(0.4, 0, 0.2, 1)",
+              boxSizing: "content-box",
+            }}
+          >
+            <ChatPanel
+              messages={messages}
+              sending={sending}
+              setInput={setInput}
+              sessionId={session?.id ?? ""}
+              projectId={activeProjectId}
+              userId={user.id}
+              onRefresh={refresh}
+              onParkedChange={loadParkedItems}
+              onContinueAfterConflict={continueAfterConflict}
+              onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
+            />
+            {isActive && (
+              <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
+            )}
+          </div>
         </AtlasFrontDoor>
+        {isActive && <ArtifactDrawer artifacts={artifacts} />}
         {session && (
           <HistoryPanel
             open={historyOpen}
