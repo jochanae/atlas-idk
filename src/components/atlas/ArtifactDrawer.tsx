@@ -178,7 +178,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
           borderTopRightRadius: 16,
           boxShadow:
             "0 -2px 0 color-mix(in oklab, var(--accent-gold) 10%, transparent), 0 -18px 48px rgba(0,0,0,0.55)",
-          zIndex: 40,
+          zIndex: 70,
           display: "flex",
           flexDirection: "column",
           transition: "height 320ms cubic-bezier(0.4, 0, 0.2, 1)",
