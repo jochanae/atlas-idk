@@ -873,6 +873,20 @@ function WorkspacePage() {
           }
           onAddToQueue={addToQueue}
           queueActive={queueItems.some((i) => i.status === "pending")}
+          adaptivePlaceholder={adaptivePlaceholder}
+          planGraph={
+            <DependencyGraph
+              steps={planSteps}
+              onPromoteToQueue={promoteStepToQueue}
+              onStepTap={(step) => {
+                setAdaptivePlaceholder(`expand on "${step.label}"…`);
+                setInput(`Expand on the plan step: ${step.label}`);
+                setInputFocusSignal((v) => v + 1);
+                // Clear adaptive placeholder after 5s
+                setTimeout(() => setAdaptivePlaceholder(null), 5000);
+              }}
+            />
+          }
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD
