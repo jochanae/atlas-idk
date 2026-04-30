@@ -157,7 +157,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.5)",
-            zIndex: 39,
+            zIndex: 69,
             animation: "atlas-fade-in 240ms ease",
           }}
         />
