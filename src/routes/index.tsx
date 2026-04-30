@@ -17,6 +17,7 @@ import { UserMenu } from "@/components/atlas/UserMenu";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
+import { LivePreview } from "@/components/atlas/LivePreview";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
@@ -150,6 +151,12 @@ function WorkspacePage() {
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
   const [mobileArtifactDrawerOpen, setMobileArtifactDrawerOpen] = useState(false);
+  // Code generation / preview state
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [generatedFilename, setGeneratedFilename] = useState<string | null>(null);
+  const [codegenLoading, setCodegenLoading] = useState(false);
+  const [codegenError, setCodegenError] = useState<string | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; url: string; type: string }>>([]);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -447,6 +454,15 @@ function WorkspacePage() {
 
   const send = async (text: string) => {
     if (!text.trim() || sending) return;
+
+    // Detect /build command → route to code generation
+    const buildMatch = text.match(/^\/build\s+(.+)/is);
+    if (buildMatch) {
+      setInput("");
+      generateCode(buildMatch[1].trim());
+      return;
+    }
+
     setSending(true);
     setAuditWarning(false);
     setInput("");
@@ -528,6 +544,36 @@ function WorkspacePage() {
   const stopSending = () => {
     sendAbortRef.current?.abort();
   };
+
+  /** Generate a React component via atlas-codegen */
+  const generateCode = useCallback(async (prompt: string) => {
+    if (!user || !activeProjectId) return;
+    setCodegenLoading(true);
+    setCodegenError(null);
+    setSurface("preview");
+    try {
+      const { data, error } = await supabase.functions.invoke("atlas-codegen", {
+        body: {
+          projectId: activeProjectId,
+          sessionId: session?.id ?? null,
+          prompt,
+          context: attachedFiles.length > 0
+            ? `Attached files: ${attachedFiles.map(f => f.name).join(", ")}`
+            : undefined,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setGeneratedCode(data.file?.content ?? null);
+      setGeneratedFilename(data.file?.filename ?? null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Code generation failed";
+      setCodegenError(msg);
+      toast.error(msg);
+    } finally {
+      setCodegenLoading(false);
+    }
+  }, [user, activeProjectId, session?.id, attachedFiles]);
 
   const openSession = async (targetSessionId: string) => {
     if (!user) return;
@@ -693,6 +739,10 @@ function WorkspacePage() {
             (user.user_metadata?.name as string | undefined) ||
             (user.email ? user.email.split("@")[0] : null)
           }
+          userId={user.id}
+          projectId={activeProjectId}
+          onFilesUploaded={(files) => setAttachedFiles((prev) => [...prev, ...files])}
+          onGenerateCode={generateCode}
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
@@ -748,11 +798,11 @@ function WorkspacePage() {
                 {surface === "workspace" ? (
                   <WorkspacePanel nodes={nodes} />
                 ) : (
-                  <PreviewPanel
-                    recs={pendingRecs}
-                    expanded={expandedRec}
-                    setExpanded={setExpandedRec}
-                    onAction={updateRec}
+                  <LivePreview
+                    code={generatedCode}
+                    filename={generatedFilename ?? undefined}
+                    loading={codegenLoading}
+                    error={codegenError}
                   />
                 )}
               </section>

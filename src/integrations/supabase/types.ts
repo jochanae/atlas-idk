@@ -183,6 +183,59 @@ export type Database = {
           },
         ]
       }
+      generated_files: {
+        Row: {
+          content: string
+          created_at: string
+          filename: string
+          id: string
+          language: string
+          parent_id: string | null
+          project_id: string
+          session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          filename: string
+          id?: string
+          language?: string
+          parent_id?: string | null
+          project_id: string
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          language?: string
+          parent_id?: string | null
+          project_id?: string
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_files_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "generated_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_entries: {
         Row: {
           category: string

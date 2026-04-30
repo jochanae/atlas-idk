@@ -45,6 +45,12 @@ type AtlasFrontDoorProps = {
   /** Cancels the in-flight Atlas request. Required when sending=true. */
   onStop?: () => void;
   onWordmarkClick?: () => void;
+  /** Props forwarded to SystemMenu for file upload */
+  userId?: string;
+  projectId?: string | null;
+  onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
+  /** Called when user selects "Build" from system menu or uses /build command */
+  onGenerateCode?: (prompt: string) => void;
   children?: ReactNode;
 };
 
@@ -70,6 +76,10 @@ export function AtlasFrontDoor({
   onSend,
   onStop,
   onWordmarkClick,
+  userId,
+  projectId,
+  onFilesUploaded,
+  onGenerateCode,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -368,7 +378,18 @@ export function AtlasFrontDoor({
             >
               {/* Left: system menu trigger */}
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <SystemMenu />
+                <SystemMenu
+                  userId={userId}
+                  projectId={projectId}
+                  onFilesUploaded={onFilesUploaded}
+                  onSelect={(id) => {
+                    if (id === "blueprints") {
+                      // TODO: open blueprints library
+                    } else if (id === "design") {
+                      // TODO: open design system
+                    }
+                  }}
+                />
               </div>
 
               {/* Right: hint + mic + send */}
