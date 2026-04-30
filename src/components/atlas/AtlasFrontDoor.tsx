@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState, useCallback } from "react";
 import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 import { SystemMenu } from "./SystemMenu";
