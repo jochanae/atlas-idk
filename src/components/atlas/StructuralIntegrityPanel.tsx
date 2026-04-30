@@ -606,6 +606,7 @@ export function StructuralIntegrityPanel({ open, onClose, onHarden }: Structural
                               Harden
                             </button>
                           )}
+                        </div>
                       </div>
                     )}
                   </div>
