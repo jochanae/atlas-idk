@@ -272,8 +272,8 @@ export function AtlasFrontDoor({
                   title="Add (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -297,8 +297,8 @@ export function AtlasFrontDoor({
                   title="Attach file (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -340,8 +340,8 @@ export function AtlasFrontDoor({
                   title="Voice (coming soon)"
                   className="atlas-icon-btn atlas-mic-btn"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
