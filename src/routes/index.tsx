@@ -446,28 +446,6 @@ function WorkspacePage() {
     setDiffOpen(false);
   }, []);
 
-  // Export plan steps as JSON blueprint
-  const exportPlanJSON = useCallback(() => {
-    if (!planSteps.length) return;
-    const blueprint = {
-      exportedAt: new Date().toISOString(),
-      project: activeProject?.name ?? "Unknown",
-      steps: planSteps.map((s) => ({
-        id: s.id,
-        label: s.label,
-        dependsOn: s.dependsOn,
-      })),
-    };
-    const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `atlas-blueprint-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Blueprint downloaded");
-  }, [planSteps, activeProject]);
-
 
   // Track whether the active project already has a Compass (used by thinking prompts)
   useEffect(() => {
