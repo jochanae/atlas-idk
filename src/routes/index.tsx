@@ -1301,8 +1301,8 @@ function ChatPanel({
                 <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
                   {isUser ? "YOU" : "ATLAS"} · {relativeTime(m.created_at)}
                 </div>
-                {!isUser && Array.isArray((m as { surfaced_memories?: SurfacedMemory[] }).surfaced_memories) && (
-                  <MemoryChips memories={(m as { surfaced_memories?: SurfacedMemory[] }).surfaced_memories ?? []} />
+                {!isUser && Array.isArray(m.surfaced_memories) && m.surfaced_memories.length > 0 && (
+                  <MemoryChips memories={m.surfaced_memories as SurfacedMemory[]} />
                 )}
                 {conflict ? (
                   <ConflictWarningCard
