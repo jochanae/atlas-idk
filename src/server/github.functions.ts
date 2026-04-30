@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const GITHUB_API = "https://api.github.com";
+const GITHUB_OAUTH_AUTHORIZE = "https://github.com/login/oauth/authorize";
+const GITHUB_OAUTH_TOKEN = "https://github.com/login/oauth/access_token";
 
 async function ghFetch(path: string, token: string, options?: RequestInit) {
   const res = await fetch(`${GITHUB_API}${path}`, {
