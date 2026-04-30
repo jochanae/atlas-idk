@@ -536,7 +536,36 @@ function WorkspacePage() {
     sendAbortRef.current?.abort();
   };
 
-  const openSession = async (targetSessionId: string) => {
+  /** Generate a React component via atlas-codegen */
+  const generateCode = useCallback(async (prompt: string) => {
+    if (!user || !activeProjectId) return;
+    setCodegenLoading(true);
+    setCodegenError(null);
+    setSurface("preview");
+    try {
+      const { data, error } = await supabase.functions.invoke("atlas-codegen", {
+        body: {
+          projectId: activeProjectId,
+          sessionId: session?.id ?? null,
+          prompt,
+          context: attachedFiles.length > 0
+            ? `Attached files: ${attachedFiles.map(f => f.name).join(", ")}`
+            : undefined,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setGeneratedCode(data.file?.content ?? null);
+      setGeneratedFilename(data.file?.filename ?? null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Code generation failed";
+      setCodegenError(msg);
+      toast.error(msg);
+    } finally {
+      setCodegenLoading(false);
+    }
+  }, [user, activeProjectId, session?.id, attachedFiles]);
+
     if (!user) return;
     const { data, error } = await supabase
       .from("sessions")
