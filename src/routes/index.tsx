@@ -696,30 +696,38 @@ function WorkspacePage() {
               setHistoryOpen(false);
             }
           }}
+          headerCenter={
+            activeProject ? (
+              <ProjectHeaderCenter
+                projectName={activeProject.name}
+                sessionActive={!!session && !entrySurface}
+                onRename={async (newName) => {
+                  const { error } = await supabase
+                    .from("projects")
+                    .update({ name: newName })
+                    .eq("id", activeProject.id)
+                    .eq("user_id", user.id);
+                  if (error) {
+                    toast.error(error.message);
+                  } else {
+                    setProjects((prev) =>
+                      prev.map((p) => (p.id === activeProject.id ? { ...p, name: newName } : p)),
+                    );
+                  }
+                }}
+                onOpenParking={() => setParkingOpen(true)}
+                onNavigateLedger={() => navigate({ to: "/ledger" })}
+              />
+            ) : undefined
+          }
           headerActions={
-            <div className="flex items-center gap-3 min-w-0" style={{ height: 40 }}>
+            <div className="flex items-center gap-2 min-w-0" style={{ height: 36 }}>
               {session && !entrySurface && (
-                <>
-                  <SessionBreadcrumb
-                    projectName={activeProject?.name ?? null}
-                    sessionTitle={session.title || "New session"}
-                    onHomeClick={() => {
-                      setEntrySurface(true);
-                      setSurface("chat");
-                      setHistoryOpen(false);
-                    }}
-                    onProjectClick={() => {
-                      // Future: open project picker. For now, jump to ledger scoped view.
-                      navigate({ to: "/ledger" });
-                    }}
-                    pulse={commitPulse}
-                  />
-                  <ParkingLotButton
-                    count={parkedItems.length}
-                    open={parkingOpen}
-                    onClick={() => setParkingOpen((open) => !open)}
-                  />
-                </>
+                <ParkingLotButton
+                  count={parkedItems.length}
+                  open={parkingOpen}
+                  onClick={() => setParkingOpen((open) => !open)}
+                />
               )}
               <UserMenu
                 user={user}
