@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ModeId } from "./AtlasFrontDoor";
 
 const LINES: Record<ModeId, string[]> = {
@@ -46,62 +46,91 @@ const PAUSE_MS = 320;
 
 type Phase = "typing" | "holding" | "erasing" | "pausing";
 
-export function RotatingPlaceholder({ mode, paused }: { mode: ModeId; paused: boolean }) {
-  const [text, setText] = useState("");
-  const [lineIndex, setLineIndex] = useState(0);
-  const [phase, setPhase] = useState<Phase>("typing");
-  const timerRef = useRef<number | null>(null);
+type PlaceholderState = {
+  text: string;
+  lineIndex: number;
+  phase: Phase;
+};
 
-  // Reset on mode change
+const INITIAL_STATE: PlaceholderState = {
+  text: "",
+  lineIndex: 0,
+  phase: "typing",
+};
+
+export function RotatingPlaceholder({ mode, paused }: { mode: ModeId; paused: boolean }) {
+  const [state, setState] = useState<PlaceholderState>(INITIAL_STATE);
+
   useEffect(() => {
-    setText("");
-    setLineIndex(0);
-    setPhase("typing");
+    setState(INITIAL_STATE);
   }, [mode]);
 
   useEffect(() => {
     if (paused) return;
+
     const lines = LINES[mode];
-    const target = lines[lineIndex % lines.length];
+    const delay =
+      state.phase === "holding"
+        ? HOLD_MS
+        : state.phase === "erasing"
+          ? ERASE_MS
+          : state.phase === "pausing"
+            ? PAUSE_MS
+            : TYPE_MS;
 
-    const clear = () => {
-      if (timerRef.current) {
-        window.clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
+    const timeout = window.setTimeout(() => {
+      setState((current) => {
+        const target = lines[current.lineIndex % lines.length];
 
-    if (phase === "typing") {
-      if (text.length < target.length) {
-        timerRef.current = window.setTimeout(() => {
-          setText(target.slice(0, text.length + 1));
-        }, TYPE_MS);
-      } else {
-        timerRef.current = window.setTimeout(() => setPhase("holding"), 0);
-      }
-    } else if (phase === "holding") {
-      timerRef.current = window.setTimeout(() => setPhase("erasing"), HOLD_MS);
-    } else if (phase === "erasing") {
-      if (text.length > 0) {
-        timerRef.current = window.setTimeout(() => {
-          setText((t) => t.slice(0, -1));
-        }, ERASE_MS);
-      } else {
-        timerRef.current = window.setTimeout(() => setPhase("pausing"), 0);
-      }
-    } else if (phase === "pausing") {
-      timerRef.current = window.setTimeout(() => {
-        setLineIndex((i) => (i + 1) % lines.length);
-        setPhase("typing");
-      }, PAUSE_MS);
-    }
+        if (current.phase === "typing") {
+          if (current.text.length < target.length) {
+            return {
+              ...current,
+              text: target.slice(0, current.text.length + 1),
+            };
+          }
 
-    return clear;
-  }, [text, phase, lineIndex, mode, paused]);
+          return {
+            ...current,
+            phase: "holding",
+          };
+        }
+
+        if (current.phase === "holding") {
+          return {
+            ...current,
+            phase: "erasing",
+          };
+        }
+
+        if (current.phase === "erasing") {
+          if (current.text.length > 0) {
+            return {
+              ...current,
+              text: current.text.slice(0, -1),
+            };
+          }
+
+          return {
+            text: "",
+            lineIndex: (current.lineIndex + 1) % lines.length,
+            phase: "pausing",
+          };
+        }
+
+        return {
+          ...current,
+          phase: "typing",
+        };
+      });
+    }, delay);
+
+    return () => window.clearTimeout(timeout);
+  }, [mode, paused, state]);
 
   return (
     <span aria-hidden style={{ pointerEvents: "none" }}>
-      {text}
+      {state.text}
       <span
         style={{
           display: "inline-block",
