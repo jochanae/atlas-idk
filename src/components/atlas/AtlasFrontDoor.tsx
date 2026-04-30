@@ -53,6 +53,8 @@ type AtlasFrontDoorProps = {
   onGenerateCode?: (prompt: string) => void;
   /** Called when user opens a system menu feature drawer */
   onSystemMenuSelect?: (id: string) => void;
+  /** Contextual HUD element rendered above the active input */
+  contextualHUD?: ReactNode;
   children?: ReactNode;
 };
 
@@ -83,6 +85,7 @@ export function AtlasFrontDoor({
   onFilesUploaded,
   onGenerateCode,
   onSystemMenuSelect,
+  contextualHUD,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -628,6 +631,12 @@ export function AtlasFrontDoor({
             flexShrink: 0,
           }}
         >
+          {/* Contextual HUD — suggestion chips above input */}
+          {contextualHUD && (
+            <div style={{ marginBottom: 8 }}>
+              {contextualHUD}
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={input}
