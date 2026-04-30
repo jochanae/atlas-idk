@@ -264,63 +264,63 @@ export function AtlasFrontDoor({
                 gap: 12,
               }}
             >
-              {/* Left: action triggers */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {/* Left: attach actions (inside the border) */}
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <button
                   type="button"
-                  aria-label="Attach"
-                  title="Attach (coming soon)"
+                  aria-label="Add"
+                  title="Add (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                     width: 32,
-                     height: 32,
-                     borderRadius: 8,
-                     background: "color-mix(in oklab, var(--surface-alt) 68%, transparent)",
-                     border: "1px solid color-mix(in oklab, var(--border) 86%, transparent)",
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    background: "transparent",
+                    border: "none",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                     color: "color-mix(in oklab, var(--foreground) 54%, var(--muted-text))",
+                    color: "color-mix(in oklab, var(--accent-gold) 55%, var(--muted-text))",
                     cursor: "pointer",
-                     boxShadow: "inset 0 1px 0 color-mix(in oklab, white 8%, transparent)",
-                     transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic), border-color 180ms var(--ease-cinematic), transform 180ms var(--ease-cinematic)",
-                     flexShrink: 0,
+                    opacity: 0.55,
+                    transition: "opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), transform 160ms var(--ease-cinematic)",
+                    flexShrink: 0,
                   }}
                 >
-                  <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.6}>
+                  <svg viewBox="0 0 16 16" width={15} height={15} stroke="currentColor" fill="none" strokeWidth={1.6}>
                     <path d="M8 3v10M3 8h10" strokeLinecap="round" />
                   </svg>
                 </button>
                 <button
                   type="button"
-                  aria-label="Voice input"
-                  title="Voice (coming soon)"
+                  aria-label="Attach file"
+                  title="Attach file (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                     width: 32,
-                     height: 32,
-                     borderRadius: 8,
-                     background: "color-mix(in oklab, var(--surface-alt) 68%, transparent)",
-                     border: "1px solid color-mix(in oklab, var(--border) 86%, transparent)",
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    background: "transparent",
+                    border: "none",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                     color: "color-mix(in oklab, var(--foreground) 54%, var(--muted-text))",
+                    color: "color-mix(in oklab, var(--accent-gold) 55%, var(--muted-text))",
                     cursor: "pointer",
-                     boxShadow: "inset 0 1px 0 color-mix(in oklab, white 8%, transparent)",
-                     transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic), border-color 180ms var(--ease-cinematic), transform 180ms var(--ease-cinematic)",
-                     flexShrink: 0,
+                    opacity: 0.55,
+                    transition: "opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), transform 160ms var(--ease-cinematic)",
+                    flexShrink: 0,
                   }}
                 >
-                  <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.6}>
-                    <rect x="6" y="2" width="4" height="8" rx="2" />
-                    <path d="M3.5 8a4.5 4.5 0 0 0 9 0M8 12.5V14" strokeLinecap="round" />
+                  {/* Paperclip */}
+                  <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
                   </svg>
                 </button>
               </div>
 
-              {/* Right: hint + send */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Right: hint + mic + send */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
@@ -332,8 +332,41 @@ export function AtlasFrontDoor({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  type <span style={{ color: "var(--ember)", opacity: 0.85 }}>/</span> for shortcuts
+                  type <span style={{ color: "var(--accent-gold)", opacity: 0.9 }}>/</span> for shortcuts
                 </span>
+                <button
+                  type="button"
+                  aria-label="Voice input"
+                  title="Voice (coming soon)"
+                  className="atlas-icon-btn atlas-mic-btn"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    background: "transparent",
+                    border: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 2,
+                    color: "color-mix(in oklab, var(--accent-gold) 55%, var(--muted-text))",
+                    cursor: "pointer",
+                    opacity: 0.55,
+                    transition: "opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), transform 160ms var(--ease-cinematic)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.6}>
+                    <rect x="6" y="2" width="4" height="8" rx="2" />
+                    <path d="M3.5 8a4.5 4.5 0 0 0 9 0M8 12.5V14" strokeLinecap="round" />
+                  </svg>
+                  {/* Waveform */}
+                  <span className="atlas-wave" aria-hidden style={{ display: "inline-flex", alignItems: "center", gap: 1.5, height: 12 }}>
+                    <i style={{ width: 1.5, background: "currentColor", borderRadius: 1, display: "block" }} />
+                    <i style={{ width: 1.5, background: "currentColor", borderRadius: 1, display: "block" }} />
+                    <i style={{ width: 1.5, background: "currentColor", borderRadius: 1, display: "block" }} />
+                  </span>
+                </button>
                 <button
                   onClick={() => onSend(input, activeMode)}
                   disabled={!input.trim() || sending}
