@@ -881,22 +881,6 @@ function WorkspacePage() {
       renderMobile={() => mainShell}
       renderCanvas={() => mainShell}
       renderInspectorPanes={() => ({
-        whisper: activeProject ? (
-          <div className="p-4">
-            <WhisperGate
-              projectName={activeProject.name}
-              submitting={whisperSubmitting}
-              onSubmit={submitWhisper}
-              onSkip={() => {}}
-            />
-          </div>
-        ) : (
-          <div className="p-6 text-center">
-            <p className="text-[11px] font-mono text-muted-foreground">
-              Select a project to begin a Whisper.
-            </p>
-          </div>
-        ),
         recs:
           pendingRecs.length === 0 ? undefined : (
             <div className="p-3 space-y-2">
