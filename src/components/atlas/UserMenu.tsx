@@ -43,7 +43,7 @@ export function UserMenu({ user, theme, onThemeChange, onSignOut, onOpenShortcut
 
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
-      <UserAvatar user={user} size={36} onClick={() => setOpen((o) => !o)} showStatusPulse />
+      <UserAvatar user={user} size={44} onClick={() => setOpen((o) => !o)} showStatusPulse />
 
       {open && (
         <div

@@ -150,16 +150,35 @@ interface StructuralIntegrityPanelProps {
 export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityPanelProps) {
   const items = useMemo(() => buildAuditManifest(), []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState<AuditItem["category"] | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<AuditItem["status"] | "all">("all");
+
+  const filtered = useMemo(() => {
+    let result = items;
+    if (filterCategory !== "all") result = result.filter((i) => i.category === filterCategory);
+    if (filterStatus !== "all") result = result.filter((i) => i.status === filterStatus);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((i) =>
+        i.label.toLowerCase().includes(q) ||
+        i.file.toLowerCase().includes(q) ||
+        (i.functionName?.toLowerCase().includes(q)) ||
+        (i.notes?.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [items, filterCategory, filterStatus, search]);
 
   const categories = useMemo(() => {
     const map = new Map<string, AuditItem[]>();
-    for (const item of items) {
+    for (const item of filtered) {
       const list = map.get(item.category) ?? [];
       list.push(item);
       map.set(item.category, list);
     }
     return map;
-  }, [items]);
+  }, [filtered]);
 
   const summary = useMemo(() => {
     const counts = { functional: 0, partial: 0, stub: 0, missing: 0 };
@@ -285,8 +304,65 @@ export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityP
           ))}
         </div>
 
+        {/* Search & Filters */}
+        <div style={{ padding: "10px 20px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search systems, files, functions…"
+            style={{
+              width: "100%", padding: "8px 12px", borderRadius: 8,
+              border: "1px solid var(--border)", background: "var(--surface)",
+              color: "var(--foreground)", fontSize: 12, fontFamily: "var(--font-mono)",
+              outline: "none",
+            }}
+          />
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {(["all", ...Object.keys(CATEGORY_LABELS)] as const).map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setFilterCategory(cat as typeof filterCategory)}
+                style={{
+                  padding: "3px 10px", borderRadius: 12, fontSize: 9.5,
+                  fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase",
+                  border: `0.5px solid ${filterCategory === cat ? "var(--accent-gold)" : "var(--border)"}`,
+                  background: filterCategory === cat ? "color-mix(in oklab, var(--accent-gold) 12%, var(--surface))" : "var(--surface)",
+                  color: filterCategory === cat ? "var(--accent-gold)" : "var(--muted-text)",
+                  cursor: "pointer", transition: "all 150ms ease",
+                }}
+              >
+                {cat === "all" ? "All" : CATEGORY_LABELS[cat as AuditItem["category"]]}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {(["all", "functional", "partial", "stub", "missing"] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setFilterStatus(st as typeof filterStatus)}
+                style={{
+                  padding: "3px 10px", borderRadius: 12, fontSize: 9.5,
+                  fontFamily: "var(--font-mono)", letterSpacing: "0.06em",
+                  border: `0.5px solid ${filterStatus === st ? (st === "all" ? "var(--accent-gold)" : STATUS_COLORS[st]) : "var(--border)"}`,
+                  background: filterStatus === st ? `color-mix(in oklab, ${st === "all" ? "var(--accent-gold)" : STATUS_COLORS[st]} 12%, var(--surface))` : "var(--surface)",
+                  color: filterStatus === st ? (st === "all" ? "var(--accent-gold)" : STATUS_COLORS[st]) : "var(--muted-text)",
+                  cursor: "pointer", transition: "all 150ms ease",
+                }}
+              >
+                {st === "all" ? "All" : STATUS_LABELS[st]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Audit items by category */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
+          {filtered.length === 0 && (
+            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted-text)", fontFamily: "var(--font-mono)", fontSize: 12 }}>
+              No items match your filters.
+            </div>
+          )}
           {[...categories.entries()].map(([cat, catItems]) => (
             <div key={cat} style={{ marginBottom: 20 }}>
               <div style={{

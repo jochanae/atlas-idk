@@ -177,15 +177,25 @@ export function AtlasFrontDoor({
         overflow: "hidden",
       }}
     >
-      {/* Three-point header: sidebar | project center | avatar/actions */}
+      {/* Floating glass header — sticky, curved bottom, obsidian glassmorphism */}
       <div
+        className="atlas-sticky-header"
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
-          padding: "14px 18px 10px",
+          padding: "14px 18px 12px",
           minHeight: 56,
           gap: 8,
+          background: "color-mix(in oklab, var(--background) 82%, transparent)",
+          backdropFilter: "blur(14px) saturate(1.3)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+          borderRadius: "0 0 20px 20px",
+          borderBottom: "1px solid color-mix(in oklab, var(--accent-gold) 15%, var(--border))",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)",
         }}
       >
         {/* Left: sidebar toggle */}
@@ -897,12 +907,13 @@ export function AtlasFrontDoor({
           50%      { height: 10px; }
         }
         .atlas-avatar:hover {
-          transform: translateY(-1px);
-          border-color: color-mix(in oklab, var(--accent-gold) 70%, var(--border)) !important;
+          transform: translateY(-1px) scale(1.04);
+          border-color: color-mix(in oklab, var(--accent-gold) 80%, var(--border)) !important;
           box-shadow:
-            inset 0 1px 0 color-mix(in oklab, white 10%, transparent),
-            0 0 0 1px color-mix(in oklab, var(--accent-gold) 35%, transparent),
-            0 0 18px -4px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
+            0 0 0 3px color-mix(in oklab, var(--accent-gold) 18%, transparent),
+            0 0 24px -2px color-mix(in oklab, var(--accent-gold) 55%, transparent),
+            0 0 48px -8px color-mix(in oklab, var(--accent-gold) 25%, transparent),
+            0 4px 18px -4px rgba(0,0,0,0.55) !important;
         }
       `}</style>
     </div>

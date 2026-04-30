@@ -1143,7 +1143,7 @@ function WorkspacePage() {
             ) : undefined
           }
           headerActions={
-            <div className="flex items-center gap-2 min-w-0" style={{ height: 36 }}>
+            <div className="flex items-center gap-2 min-w-0" style={{ height: 44 }}>
               {session && !entrySurface && (
                 <ParkingLotButton
                   count={parkedItems.length}

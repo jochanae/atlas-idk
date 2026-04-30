@@ -74,9 +74,13 @@ export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }
           background: showImage
             ? "transparent"
             : "linear-gradient(135deg, #2A2724 0%, #1C1917 55%, color-mix(in oklab, var(--accent-gold) 65%, #1C1917) 100%)",
-          border: "1px solid color-mix(in oklab, var(--accent-gold) 40%, transparent)",
-          boxShadow:
-            "0 0 0 1px color-mix(in oklab, var(--accent-gold) 8%, transparent), 0 4px 18px -4px color-mix(in oklab, var(--accent-gold) 22%, transparent), 0 2px 10px -2px rgba(0,0,0,0.55)",
+          border: `2px solid color-mix(in oklab, var(--accent-gold) 55%, transparent)`,
+          boxShadow: [
+            `0 0 0 2px color-mix(in oklab, var(--accent-gold) 12%, transparent)`,
+            `0 0 20px -2px color-mix(in oklab, var(--accent-gold) 40%, transparent)`,
+            `0 0 40px -6px color-mix(in oklab, var(--accent-gold) 20%, transparent)`,
+            `0 4px 18px -4px rgba(0,0,0,0.55)`,
+          ].join(", "),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
