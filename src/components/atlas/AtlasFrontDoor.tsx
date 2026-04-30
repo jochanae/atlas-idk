@@ -84,16 +84,18 @@ export function AtlasFrontDoor({
         overflow: "hidden",
       }}
     >
-      {/* Top bar — sidebar toggle anchored left of wordmark */}
+      {/* Top bar — sidebar toggle anchored left of wordmark, avatar right */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px 8px",
+          padding: "10px 14px 8px",
+          minHeight: 56,
+          gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 40 }}>
           {sidebarToggle}
           <button
             onClick={onWordmarkClick}
@@ -101,17 +103,23 @@ export function AtlasFrontDoor({
               background: "transparent",
               border: "none",
               padding: 0,
+              height: 40,
+              display: "inline-flex",
+              alignItems: "center",
               fontSize: 18,
               fontWeight: 500,
               color: "var(--foreground)",
               letterSpacing: "0.08em",
+              lineHeight: 1,
               cursor: onWordmarkClick ? "pointer" : "default",
             }}
           >
             Atlas
           </button>
         </div>
-        {headerActions}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 40 }}>
+          {headerActions}
+        </div>
       </div>
 
       {/* Front door hero — vertically centered, cinematic */}
