@@ -2299,6 +2299,8 @@ function ChatPanel({
                     </div>
                     {showParkButton && (
                        <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                          {/* Rollback — always visible */}
+                          <MessageActionButton label="Rollback" onClick={() => { onRollback(m); }} />
                           {/* History — always visible */}
                           <MessageActionButton label="History" onClick={() => { toast("History coming soon"); }} />
                           {/* Regenerate — always visible */}
@@ -2351,17 +2353,6 @@ function ChatPanel({
                                     View Differential
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => { onRollback(m); setMoreMenuOpenId(null); }}
-                                  style={moreMenuActionStyle}
-                                >
-                                  <span style={moreMenuIconStyle}>
-                                    <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-                                      <path d="M3 8a5 5 0 119 3" /><path d="M3 4v4h4" />
-                                    </svg>
-                                  </span>
-                                  Rollback
-                                </button>
                                 {showActionRow && (
                                   <button onClick={() => { commitDecision(); setMoreMenuOpenId(null); }} disabled={extracting} style={moreMenuActionStyle}>
                                     <span style={moreMenuIconStyle}>
