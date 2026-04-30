@@ -94,6 +94,7 @@ export function UserAvatar({ user, size = 36, onClick }: Props) {
             height: "100%",
             objectFit: "cover",
             display: "block",
+            borderRadius: "50%",
           }}
         />
       ) : (
