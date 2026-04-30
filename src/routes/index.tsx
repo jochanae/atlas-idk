@@ -486,6 +486,8 @@ function WorkspacePage() {
       if (controller.signal.aborted) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      // Mark the new assistant message for streaming animation
+      if (data?.message?.id) newMessageIds.add(data.message.id);
       const updatedTitle = text.slice(0, 60);
       setSession((current) =>
         current && current.id === target.session.id
