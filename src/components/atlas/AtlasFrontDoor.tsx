@@ -190,10 +190,12 @@ export function AtlasFrontDoor({
           padding: "14px 18px 12px",
           minHeight: 56,
           gap: 8,
-          background: "color-mix(in oklab, var(--background) 94%, transparent)",
+          background: "rgba(15, 15, 15, 0.75)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
           borderRadius: "0 0 24px 24px",
-          borderBottom: "1px solid color-mix(in oklab, var(--accent-gold) 15%, var(--border))",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.55), 0 2px 12px rgba(0,0,0,0.35), 0 0 0 0.5px color-mix(in oklab, var(--accent-gold) 8%, transparent)",
+          borderBottom: "1px solid rgba(212, 175, 55, 0.20)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(212, 175, 55, 0.08)",
           flexShrink: 0,
         }}
       >

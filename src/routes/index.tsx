@@ -2181,9 +2181,7 @@ function ChatPanel({
                       )}
                     </div>
                     {showParkButton && (
-                      <div style={{ display: "flex", gap: 12, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
-                        {/* Output Actions group */}
-                        <div style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: 16, marginTop: 4, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
                           <span style={{
                             display: "inline-flex",
@@ -2192,9 +2190,6 @@ function ChatPanel({
                           }}>
                             <MessageActionButton label="Rollback" onClick={() => onRollback(m)} />
                           </span>
-                        </div>
-                        {/* Structural Actions group */}
-                        <div style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
                           {showActionRow && (
                             <>
                               <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
@@ -2202,7 +2197,6 @@ function ChatPanel({
                             </>
                           )}
                           <MessageActionButton label={parkedMessageId === m.id ? "Parked ✓" : "Park"} onClick={() => parkMessage(m)} active={parkedMessageId === m.id} />
-                        </div>
                         {commitStatus && (
                           <div style={{ color: commitStatus.color, opacity: commitStatus.visible ? 1 : 0, transition: "opacity 400ms ease" }} className="font-mono text-[10px]">
                             {commitStatus.text}
