@@ -90,8 +90,8 @@ export function AtlasFrontDoor({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "10px 14px 8px",
-          minHeight: 56,
+          padding: "18px 22px 10px",
+          minHeight: 64,
           gap: 8,
         }}
       >

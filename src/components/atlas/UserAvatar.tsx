@@ -67,14 +67,14 @@ export function UserAvatar({ user, size = 36, onClick }: Props) {
         height: size,
         minWidth: size,
         borderRadius: "50%",
-        padding: 0,
+        padding: 2, // 2px transparent gap between image and halo border
         cursor: onClick ? "pointer" : "default",
         background: showImage
-          ? "var(--surface)"
+          ? "transparent"
           : "linear-gradient(135deg, #2A2724 0%, #1C1917 55%, color-mix(in oklab, var(--accent-gold) 65%, #1C1917) 100%)",
-        border: "1px solid color-mix(in oklab, var(--accent-gold) 35%, var(--border))",
+        border: "1px solid color-mix(in oklab, var(--accent-gold) 40%, transparent)",
         boxShadow:
-          "inset 0 1px 0 color-mix(in oklab, white 8%, transparent), 0 0 0 1px color-mix(in oklab, var(--accent-gold) 12%, transparent)",
+          "0 0 0 1px color-mix(in oklab, var(--accent-gold) 8%, transparent), 0 4px 18px -4px color-mix(in oklab, var(--accent-gold) 22%, transparent), 0 2px 10px -2px rgba(0,0,0,0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -94,6 +94,7 @@ export function UserAvatar({ user, size = 36, onClick }: Props) {
             height: "100%",
             objectFit: "cover",
             display: "block",
+            borderRadius: "50%",
           }}
         />
       ) : (
