@@ -26,6 +26,8 @@ type AtlasFrontDoorProps = {
   headerActions: ReactNode;
   bottomTabs?: ReactNode;
   secondaryPanel?: ReactNode;
+  utilityBarLeft?: ReactNode;
+  utilityBarRight?: ReactNode;
   inputFocusSignal: number;
   sidebarToggle?: ReactNode;
   userName?: string | null;
