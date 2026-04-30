@@ -28,6 +28,7 @@ import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
+import { MobileSurfaceBar } from "@/components/atlas/MobileSurfaceBar";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
 import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
@@ -638,6 +639,7 @@ function WorkspacePage() {
         ? "\n\n[SYSTEM: User is in Plan Mode. Respond with an architectural breakdown. Format steps as a numbered list. Each step should be a clear, actionable phase. If steps depend on each other, mention the dependency explicitly (e.g. 'depends on step 1'). Do NOT write code.]"
         : "";
 
+      const thinkStart = Date.now();
       const { data, error } = await supabase.functions.invoke("atlas-chat", {
         body: {
           sessionId: target.session.id,
@@ -647,9 +649,27 @@ function WorkspacePage() {
         },
         signal: controller.signal,
       });
+      const thinkSeconds = Math.round((Date.now() - thinkStart) / 1000);
       if (controller.signal.aborted) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Automated ledger logging — "Thought for Xs" timeline entry
+      try {
+        await entriesTable().insert({
+          user_id: user!.id,
+          project_id: target.projectId,
+          session_id: target.session.id,
+          status: "committed",
+          severity: "neutral",
+          title: `Thought for ${thinkSeconds}s`,
+          summary: `Atlas processed: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
+          verb: "note",
+        });
+        setLedgerCount((c) => c + 1);
+      } catch {
+        // Non-critical — don't block chat flow
+      }
       // Mark the new assistant message for streaming animation
       if (data?.message?.id) newMessageIds.add(data.message.id);
       const updatedTitle = text.slice(0, 60);
@@ -1065,6 +1085,22 @@ function WorkspacePage() {
           onAddToQueue={addToQueue}
           queueActive={queueItems.some((i) => i.status === "pending")}
           adaptivePlaceholder={adaptivePlaceholder}
+          mobileSurfaceBar={
+            session ? (
+              <MobileSurfaceBar
+                active={surface === "workspace" ? "chat" : surface === "preview" ? "preview" : "chat"}
+                onChange={(s) => {
+                  if (s === "ledger") {
+                    navigate({ to: "/ledger" });
+                  } else if (s === "preview") {
+                    setSurface("preview");
+                  } else {
+                    setSurface("chat");
+                  }
+                }}
+              />
+            ) : undefined
+          }
           planGraph={
             <DependencyGraph
               steps={planSteps}
@@ -1089,12 +1125,12 @@ function WorkspacePage() {
                   setInputFocusSignal((v) => v + 1);
                   setTimeout(() => setAdaptivePlaceholder(null), 5000);
                 }}
-                onDiffRequest={(text) => {
-                  // Show diff comparing the chip text against the last assistant message
+                onDiffRequest={() => {
+                  const lastUser = [...messages].reverse().find((m) => m.role === "user");
                   const lastAtlas = [...messages].reverse().find((m) => m.role === "assistant");
-                  setDiffOldCode(lastAtlas?.content ?? "");
-                  setDiffNewCode(text);
-                  setDiffLabels({ old: "Atlas response", new: "Selected chip" });
+                  setDiffOldCode(lastUser?.content ?? "(no user message)");
+                  setDiffNewCode(lastAtlas?.content ?? "(no response)");
+                  setDiffLabels({ old: "Your prompt", new: "Atlas response" });
                   setDiffOpen(true);
                 }}
                 onParkMultiple={async (items) => {

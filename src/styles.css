@@ -239,3 +239,18 @@
   .atlas-mode-icon { display: none; }
   .atlas-mode-pill { gap: 0 !important; }
 }
+
+/* Bottom sheet animations */
+@keyframes atlas-bs-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes atlas-bs-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Hide mobile surface bar on desktop (desktop uses DesktopWorkspace nav rail) */
+@media (min-width: 1024px) {
+  .atlas-mobile-surface-bar { display: none !important; }
+}

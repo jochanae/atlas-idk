@@ -94,6 +94,8 @@ type AtlasFrontDoorProps = {
   planGraph?: ReactNode;
   /** Adaptive placeholder set from external tap events */
   adaptivePlaceholder?: string | null;
+  /** Mobile surface bar rendered below header in active mode */
+  mobileSurfaceBar?: ReactNode;
   children?: ReactNode;
 };
 
@@ -242,6 +244,7 @@ export function AtlasFrontDoor({
   onAddToQueue,
   planGraph,
   adaptivePlaceholder,
+  mobileSurfaceBar,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -381,6 +384,24 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
+      {/* Mobile surface bar — fixed below header in active mode */}
+      {active && mobileSurfaceBar && (
+        <div
+          style={{
+            position: "fixed",
+            top: "var(--header-height)",
+            left: 0,
+            right: 0,
+            zIndex: 49,
+            display: "flex",
+            justifyContent: "center",
+            padding: "6px 16px",
+          }}
+        >
+          {mobileSurfaceBar}
+        </div>
+      )}
+
       {/* Stage: scrollable content area beneath fixed header */}
       <div
         style={{
@@ -391,7 +412,9 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
-          paddingTop: "calc(var(--header-height) + 16px)",
+          paddingTop: active && mobileSurfaceBar
+            ? "calc(var(--header-height) + 52px)"
+            : "calc(var(--header-height) + 16px)",
         }}
       >
         {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
@@ -823,12 +846,22 @@ export function AtlasFrontDoor({
         </div>
       )}
 
-      {/* Active-mode input docked at bottom — solid anchor with utility bar */}
+      {/* Active-mode input — fixed at bottom, floating above bezel */}
       {active && (
         <div
           className={`atlas-active-input-shell${sending ? " atlas-breathing" : ""}`}
           style={{
-            margin: "0 var(--shell-edge) 24px",
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 48,
+            margin: 0,
+            padding: "0 var(--shell-edge) 24px",
+            background: "linear-gradient(to top, var(--background) 70%, transparent)",
+          }}
+        >
+          <div style={{
             background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
             borderRadius: "var(--input-radius)",
             border: sending
@@ -929,6 +962,7 @@ export function AtlasFrontDoor({
                 )}
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
