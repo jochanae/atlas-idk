@@ -627,10 +627,40 @@ function WorkspacePage() {
     );
   }
 
-  return (
+  // Map current 3-mode surface state ("chat"|"workspace"|"preview") + parking drawer
+  // onto the canonical 4-surface nav for the desktop workspace.
+  const desktopActiveSurface: WorkspaceSurfaceId = parkingOpen
+    ? "parking"
+    : surface === "workspace"
+      ? "compass"
+      : surface === "preview"
+        ? "ledger"
+        : "chat";
+
+  const handleDesktopSurfaceChange = (next: WorkspaceSurfaceId) => {
+    setHistoryOpen(false);
+    setEntrySurface(false);
+    if (next === "parking") {
+      setParkingOpen(true);
+      return;
+    }
+    setParkingOpen(false);
+    if (next === "ledger") {
+      navigate({ to: "/ledger" });
+      return;
+    }
+    if (next === "compass") {
+      setSurface("workspace");
+      return;
+    }
+    setSurface("chat");
+  };
+
+  const mainShell = (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
       <main className="relative min-h-screen overflow-hidden">
+
         <AtlasFrontDoor
           active={isActive}
           input={input}
