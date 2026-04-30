@@ -270,6 +270,54 @@ export type Database = {
         }
         Relationships: []
       }
+      project_compass: {
+        Row: {
+          aesthetics: string | null
+          attachment_hint: string | null
+          audience: string | null
+          compass_md: string | null
+          created_at: string
+          has_attachment: boolean
+          id: string
+          project_id: string
+          seed_material: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          aesthetics?: string | null
+          attachment_hint?: string | null
+          audience?: string | null
+          compass_md?: string | null
+          created_at?: string
+          has_attachment?: boolean
+          id?: string
+          project_id: string
+          seed_material?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          aesthetics?: string | null
+          attachment_hint?: string | null
+          audience?: string | null
+          compass_md?: string | null
+          created_at?: string
+          has_attachment?: boolean
+          id?: string
+          project_id?: string
+          seed_material?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string
