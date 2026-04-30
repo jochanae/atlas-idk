@@ -1,6 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
-@font-face { font-family: 'Geist'; src: local('Geist'); }
-@font-face { font-family: 'Geist Mono'; src: local('Geist Mono'); }
+@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css');
+@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.min.css');
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -67,11 +66,18 @@
   --phosphor: #06B6D4;
   --warning: #F59E0B;
   --accent-gold: #C9A24C;
+  --gold-glow: rgba(201, 162, 76, 0.35);
+  --gold-subtle: rgba(201, 162, 76, 0.08);
+  --gold-border: rgba(201, 162, 76, 0.18);
   /* Glass + motion */
   --glass-bg: rgba(12, 10, 9, 0.72);
   --glass-border: rgba(231, 229, 228, 0.06);
   --glass-blur: 18px;
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Chat spacing */
+  --bubble-gap: 20px;
+  --bubble-padding-x: 18px;
+  --bubble-padding-y: 14px;
 }
 
 .dark {

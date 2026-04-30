@@ -1964,7 +1964,8 @@ function ChatPanel({
         ref={scrollRef}
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
-        className="relative flex-1 overflow-y-auto px-4 py-4 flex flex-col justify-end gap-4"
+        className="relative flex-1 overflow-y-auto px-5 py-6 flex flex-col justify-end"
+        style={{ gap: "var(--bubble-gap, 20px)" }}
       >
         {selectionChip && (
           <button
@@ -2051,9 +2052,9 @@ function ChatPanel({
                           onClick={isLongMessage ? toggleExpand : undefined}
                           style={{
                             background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
-                            border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+                            border: "0.5px solid var(--gold-border)",
                             borderRadius: "16px 4px 16px 16px",
-                            padding: "12px 16px",
+                            padding: "var(--bubble-padding-y) var(--bubble-padding-x)",
                             cursor: isLongMessage ? "pointer" : "default",
                             position: "relative",
                             transition: "all 280ms cubic-bezier(0.4, 0, 0.2, 1)",
@@ -2066,7 +2067,7 @@ function ChatPanel({
                             YOU · {relativeTime(m.created_at)}
                           </div>
                           <div
-                            className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80"
+                            className="text-[14px] leading-[1.7] whitespace-pre-wrap text-foreground/80"
                             style={{
                               textAlign: "left",
                               ...(isLongMessage && !isExpanded
@@ -2117,7 +2118,7 @@ function ChatPanel({
                   })() : (
                   <>
                     {/* Atlas response — no card, formatted text */}
-                    <div style={{ padding: "8px 4px" }}>
+                    <div style={{ padding: "10px 6px" }}>
                       <div
                         className="font-mono text-[9px] uppercase tracking-[0.15em]"
                         style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 10 }}
@@ -2159,14 +2160,14 @@ function ChatPanel({
                                         // After last chunk finishes, remove from new set
                                         // so re-renders don't re-animate
                                       }}
-                                      className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
+                                     className="text-[14px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
                                       style={{ textAlign: "left" }}
                                     />
                                   </div>
                                 )}
                               />
                             ) : (
-                              <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
+                              <div className="text-[14px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
                                 {proseForDisplay}
                               </div>
                             )
