@@ -145,6 +145,8 @@ const CATEGORY_LABELS: Record<AuditItem["category"], string> = {
 interface StructuralIntegrityPanelProps {
   open: boolean;
   onClose: () => void;
+  /** Called when the user taps "Harden" on an audit item. Receives a /fix command string to inject into chat. */
+  onHarden?: (command: string, item: AuditItem) => void;
 }
 
 const PRESETS_KEY = "atlas-integrity-presets";
