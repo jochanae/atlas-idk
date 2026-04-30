@@ -1444,6 +1444,7 @@ function WorkspacePage() {
                 setDiffOpen(true);
               }}
               activeMode={activeMode}
+              buildHistory={buildHistory}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
