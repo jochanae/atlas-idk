@@ -211,6 +211,8 @@ function WorkspacePage() {
   const [integrityOpen, setIntegrityOpen] = useState(false);
   const [rollbackNaming, setRollbackNaming] = useState(false);
   const [rollbackNameInput, setRollbackNameInput] = useState("");
+  const [snapshotCompareA, setSnapshotCompareA] = useState<string | null>(null);
+  const [snapshotCompareB, setSnapshotCompareB] = useState<string | null>(null);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
