@@ -333,7 +333,11 @@ export function AtlasSidebar({
                   paddingTop: 4,
                 }}
               >
-                {projects.map((p) => (
+                {projects.length === 0 ? (
+                  <div style={{ gridColumn: "1 / -1", padding: "12px 4px", textAlign: "center" }}>
+                    <EmptyState text="no projects yet — start a session to create one." />
+                  </div>
+                ) : projects.map((p) => (
                   <div
                     key={p.id}
                     style={{
@@ -353,7 +357,6 @@ export function AtlasSidebar({
                       e.currentTarget.style.boxShadow = "none";
                     }}
                   >
-                    {/* Thumbnail */}
                     <div
                       style={{
                         width: "100%",
@@ -375,15 +378,14 @@ export function AtlasSidebar({
                         <span
                           style={{
                             fontSize: 20,
-                            color: "var(--muted-text)",
-                            opacity: 0.3,
+                            color: "var(--accent-gold)",
+                            opacity: 0.25,
                           }}
                         >
                           ◻
                         </span>
                       )}
                     </div>
-                    {/* Name */}
                     <div
                       style={{
                         padding: "5px 7px",
