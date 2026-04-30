@@ -1758,11 +1758,32 @@ function ChatPanel({
     .reverse()
     .find((m) => m.role === "assistant")?.id;
 
+  // Scroll to bottom on new messages
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
+  }, [messages.length, sending]);
+
+  // Auto-scroll during streaming: observe content height changes
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const isNearBottom = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      return scrollHeight - scrollTop - clientHeight < 120;
+    };
+    const ro = new ResizeObserver(() => {
+      if (isNearBottom()) {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      }
+    });
+    // Observe the scroll container's content
+    for (const child of Array.from(container.children)) {
+      ro.observe(child);
+    }
+    return () => ro.disconnect();
   }, [messages.length, sending]);
 
   useEffect(() => {
