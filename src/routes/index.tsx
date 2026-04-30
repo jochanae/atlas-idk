@@ -211,6 +211,8 @@ function WorkspacePage() {
   const [integrityOpen, setIntegrityOpen] = useState(false);
   const [rollbackNaming, setRollbackNaming] = useState(false);
   const [rollbackNameInput, setRollbackNameInput] = useState("");
+  const [snapshotCompareA, setSnapshotCompareA] = useState<string | null>(null);
+  const [snapshotCompareB, setSnapshotCompareB] = useState<string | null>(null);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -1598,6 +1600,56 @@ function WorkspacePage() {
                 ↶ Undo Last Rollback
               </button>
             )}
+            {/* Compare bar */}
+            {snapshots.length >= 2 && (
+              <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--glass-border)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted-text)" }}>Compare</span>
+                <select
+                  value={snapshotCompareA ?? ""}
+                  onChange={(e) => setSnapshotCompareA(e.target.value || null)}
+                  style={{ flex: 1, minWidth: 80, padding: "4px 6px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-mono)", fontSize: 10 }}
+                >
+                  <option value="">Select A…</option>
+                  {snapshots.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <span style={{ color: "var(--muted-text)", fontSize: 10 }}>↔</span>
+                <select
+                  value={snapshotCompareB ?? ""}
+                  onChange={(e) => setSnapshotCompareB(e.target.value || null)}
+                  style={{ flex: 1, minWidth: 80, padding: "4px 6px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-mono)", fontSize: 10 }}
+                >
+                  <option value="">Select B…</option>
+                  {snapshots.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <button
+                  onClick={() => {
+                    const snapA = snapshots.find((s) => s.id === snapshotCompareA);
+                    const snapB = snapshots.find((s) => s.id === snapshotCompareB);
+                    if (!snapA || !snapB) return;
+                    const summaryA = snapA.messagesAtPoint.map((m) => `[${m.role}] ${m.content.slice(0, 120)}`).join("\n");
+                    const summaryB = snapB.messagesAtPoint.map((m) => `[${m.role}] ${m.content.slice(0, 120)}`).join("\n");
+                    setDiffOldCode(summaryA);
+                    setDiffNewCode(summaryB);
+                    setDiffLabels({ old: snapA.name, new: snapB.name });
+                    setDiffOpen(true);
+                    setSnapshotBrowserOpen(false);
+                    haptic("medium");
+                  }}
+                  disabled={!snapshotCompareA || !snapshotCompareB || snapshotCompareA === snapshotCompareB}
+                  style={{
+                    padding: "4px 10px", borderRadius: 6,
+                    background: (snapshotCompareA && snapshotCompareB && snapshotCompareA !== snapshotCompareB) ? "color-mix(in oklab, var(--accent-gold) 15%, var(--surface))" : "var(--surface)",
+                    border: `0.5px solid ${(snapshotCompareA && snapshotCompareB && snapshotCompareA !== snapshotCompareB) ? "var(--accent-gold)" : "var(--border)"}`,
+                    color: (snapshotCompareA && snapshotCompareB && snapshotCompareA !== snapshotCompareB) ? "var(--accent-gold)" : "var(--muted-text)",
+                    fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase",
+                    cursor: (snapshotCompareA && snapshotCompareB && snapshotCompareA !== snapshotCompareB) ? "pointer" : "default",
+                    opacity: (snapshotCompareA && snapshotCompareB && snapshotCompareA !== snapshotCompareB) ? 1 : 0.4,
+                  }}
+                >
+                  Diff
+                </button>
+              </div>
+            )}
             {/* Snapshot list */}
             <div style={{ flex: 1, overflow: "auto", padding: "8px 12px" }}>
               {snapshots.length === 0 ? (
@@ -1612,14 +1664,14 @@ function WorkspacePage() {
                       padding: "10px 12px",
                       marginBottom: 6,
                       borderRadius: 8,
-                      border: "0.5px solid var(--glass-border)",
-                      background: "var(--background)",
+                      border: `0.5px solid ${(snapshotCompareA === snap.id || snapshotCompareB === snap.id) ? "var(--accent-gold)" : "var(--glass-border)"}`,
+                      background: (snapshotCompareA === snap.id || snapshotCompareB === snap.id) ? "color-mix(in oklab, var(--accent-gold) 6%, var(--background))" : "var(--background)",
                       cursor: "pointer",
                       transition: "border-color 160ms ease",
                     }}
                     onClick={() => restoreSnapshot(snap)}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-gold)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--glass-border)"; }}
+                    onMouseLeave={(e) => { if (snapshotCompareA !== snap.id && snapshotCompareB !== snap.id) e.currentTarget.style.borderColor = "var(--glass-border)"; }}
                   >
                     <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--foreground)", marginBottom: 4 }}>
                       {snap.name}
@@ -1652,6 +1704,13 @@ function WorkspacePage() {
       <StructuralIntegrityPanel
         open={integrityOpen}
         onClose={() => setIntegrityOpen(false)}
+        onHarden={(command) => {
+          setInput(command);
+          setIntegrityOpen(false);
+          setSurface("chat");
+          setInputFocusSignal((s) => s + 1);
+          toast.success("Fix command loaded — review and send.");
+        }}
       />
       {/* OnboardingFlow removed — context refinement happens conversationally */}
     </div>

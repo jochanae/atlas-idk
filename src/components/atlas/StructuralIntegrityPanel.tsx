@@ -145,6 +145,8 @@ const CATEGORY_LABELS: Record<AuditItem["category"], string> = {
 interface StructuralIntegrityPanelProps {
   open: boolean;
   onClose: () => void;
+  /** Called when the user taps "Harden" on an audit item. Receives a /fix command string to inject into chat. */
+  onHarden?: (command: string, item: AuditItem) => void;
 }
 
 const PRESETS_KEY = "atlas-integrity-presets";
@@ -167,7 +169,7 @@ function savePresets(presets: FilterPreset[]) {
   try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch {}
 }
 
-export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityPanelProps) {
+export function StructuralIntegrityPanel({ open, onClose, onHarden }: StructuralIntegrityPanelProps) {
   const items = useMemo(() => buildAuditManifest(), []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -570,6 +572,40 @@ export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityP
                           >
                             {item.excerpt}
                           </pre>
+                          {/* Harden action — pipes /fix command into chat */}
+                          {item.status !== "functional" && onHarden && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const command = `/fix ${item.category}::${item.id} — ${item.label} [${item.status}] in ${item.file}${item.functionName ? ` → ${item.functionName}` : ""}`;
+                                onHarden(command, item);
+                                haptic("medium");
+                              }}
+                              style={{
+                                marginTop: 8,
+                                padding: "6px 14px",
+                                borderRadius: 8,
+                                background: "color-mix(in oklab, var(--phosphor, #22c55e) 12%, var(--surface))",
+                                border: "0.5px solid color-mix(in oklab, var(--phosphor, #22c55e) 30%, var(--border))",
+                                color: "var(--phosphor, #22c55e)",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: 10,
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase" as const,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                transition: "all 160ms ease",
+                              }}
+                            >
+                              <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                                <path d="M8 2v4l3 2" />
+                                <circle cx="8" cy="8" r="6" />
+                              </svg>
+                              Harden
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
