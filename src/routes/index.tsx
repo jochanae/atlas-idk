@@ -11,6 +11,7 @@ import {
 } from "@/components/atlas/AtlasFrontDoor";
 import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import { UserAvatar } from "@/components/atlas/UserAvatar";
+import { UserMenu } from "@/components/atlas/UserMenu";
 import {
   relativeTime,
   type ChatMessage,
