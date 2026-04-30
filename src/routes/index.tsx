@@ -194,6 +194,9 @@ function WorkspacePage() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [queueExecuting, setQueueExecuting] = useState(false);
+  const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
+  const [depGraphOpen, setDepGraphOpen] = useState(false);
+  const [adaptivePlaceholder, setAdaptivePlaceholder] = useState<string | null>(null);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
