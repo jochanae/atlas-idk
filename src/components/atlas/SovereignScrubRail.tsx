@@ -114,7 +114,7 @@ export function SovereignScrubRail({ notches, scrollContainerRef, visible = true
         zIndex: 55,
         cursor: "grab",
         transition: "width 250ms cubic-bezier(.2,.8,.2,1), opacity 300ms ease",
-        opacity: active || hoverY != null ? 1 : 0.3,
+        opacity: active || hoverY != null ? 1 : 0.5,
         display: "flex",
         alignItems: "stretch",
       }}

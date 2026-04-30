@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { ChevronDown, Pencil, Settings, Archive, Copy } from "lucide-react";
 import { MODES, ModeIcon, type ModeId } from "./AtlasFrontDoor";
 import { haptic } from "@/lib/haptics";
+
+type Surface = "chat" | "ledger" | "preview";
 
 type Props = {
   projectName: string | null;
@@ -11,7 +13,35 @@ type Props = {
   onNavigateLedger?: () => void;
   activeMode?: ModeId;
   onModeChange?: (mode: ModeId) => void;
+  /** Surface navigation via long-press */
+  activeSurface?: Surface;
+  onSurfaceChange?: (s: Surface) => void;
 };
+
+const SURFACES: Array<{ id: Surface; label: string }> = [
+  { id: "chat", label: "Chat" },
+  { id: "ledger", label: "Ledger" },
+  { id: "preview", label: "Preview" },
+];
+
+const HINT_STORAGE_KEY = "atlas-hold-hint-last-switch";
+const HINT_COOLDOWN_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+function shouldShowHint(): boolean {
+  try {
+    const last = localStorage.getItem(HINT_STORAGE_KEY);
+    if (!last) return true;
+    return Date.now() - Number(last) > HINT_COOLDOWN_MS;
+  } catch {
+    return true;
+  }
+}
+
+function recordSurfaceSwitch() {
+  try {
+    localStorage.setItem(HINT_STORAGE_KEY, String(Date.now()));
+  } catch {}
+}
 
 export function ProjectHeaderCenter({
   projectName,
@@ -21,26 +51,47 @@ export function ProjectHeaderCenter({
   onNavigateLedger,
   activeMode,
   onModeChange,
+  activeSurface,
+  onSurfaceChange,
 }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modeExpanded, setModeExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [surfacePanelOpen, setSurfacePanelOpen] = useState(false);
+  const [hintVisible, setHintVisible] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const surfacePanelRef = useRef<HTMLDivElement>(null);
 
   const displayName = projectName || "Untitled";
   const isUntitled = !projectName || projectName === "Untitled";
 
+  // Show ghost hint on mount if user hasn't switched surfaces recently
+  useEffect(() => {
+    if (!sessionActive) return;
+    if (shouldShowHint()) {
+      const t = setTimeout(() => setHintVisible(true), 1200);
+      const t2 = setTimeout(() => setHintVisible(false), 6000);
+      return () => { clearTimeout(t); clearTimeout(t2); };
+    }
+  }, [sessionActive]);
+
   // Close dropdown on outside click / Escape
   useEffect(() => {
-    if (!dropdownOpen) return;
+    if (!dropdownOpen && !surfacePanelOpen) return;
     const onDocClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+        setSurfacePanelOpen(false);
+      }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDropdownOpen(false);
+      if (e.key === "Escape") {
+        setDropdownOpen(false);
+        setSurfacePanelOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
@@ -48,8 +99,7 @@ export function ProjectHeaderCenter({
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [dropdownOpen]);
-
+  }, [dropdownOpen, surfacePanelOpen]);
 
   useEffect(() => {
     if (renaming) {
@@ -72,8 +122,42 @@ export function ProjectHeaderCenter({
     setRenaming(false);
   };
 
+  // Long-press handlers
+  const handlePointerDown = useCallback(() => {
+    if (renaming) return;
+    longPressTimer.current = setTimeout(() => {
+      haptic("medium");
+      setSurfacePanelOpen(true);
+      setDropdownOpen(false);
+      setHintVisible(false);
+    }, 500);
+  }, [renaming]);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const handlePointerCancel = handlePointerUp;
+
+  const handleClick = useCallback(() => {
+    // Only open dropdown if not coming from a long-press
+    if (!surfacePanelOpen) {
+      setDropdownOpen((o) => !o);
+    }
+  }, [surfacePanelOpen]);
+
+  const handleSurfaceSelect = useCallback((s: Surface) => {
+    onSurfaceChange?.(s);
+    setSurfacePanelOpen(false);
+    recordSurfaceSwitch();
+    haptic("light");
+  }, [onSurfaceChange]);
+
   return (
-    <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div ref={wrapRef} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
       {renaming ? (
         <input
           ref={inputRef}
@@ -101,7 +185,11 @@ export function ProjectHeaderCenter({
         />
       ) : (
         <button
-          onClick={() => setDropdownOpen((o) => !o)}
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onContextMenu={(e) => e.preventDefault()}
           style={{
             background: "transparent",
             border: "none",
@@ -112,11 +200,12 @@ export function ProjectHeaderCenter({
             cursor: "pointer",
             borderRadius: 8,
             transition: "background 160ms ease",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
-          {/* Active session glow dot */}
           {sessionActive && (
             <span
               style={{
@@ -144,7 +233,6 @@ export function ProjectHeaderCenter({
           >
             {displayName}
           </span>
-          {/* Inline mode label (display only — picker is in dropdown) */}
           {activeMode && (() => {
             const modeInfo = MODES.find((x) => x.id === activeMode)!;
             const isPhosphor = modeInfo.color === "phosphor";
@@ -191,8 +279,84 @@ export function ProjectHeaderCenter({
         </button>
       )}
 
-      {/* Dropdown */}
-      {dropdownOpen && (
+      {/* Ghost hint: HOLD TO NAVIGATE */}
+      {sessionActive && hintVisible && !surfacePanelOpen && !dropdownOpen && (
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--accent-gold)",
+            opacity: 0.55,
+            marginTop: 2,
+            animation: "atlas-hint-fade 4.8s ease forwards",
+            pointerEvents: "none",
+          }}
+        >
+          Hold to navigate
+        </span>
+      )}
+
+      {/* Surface navigation panel (long-press triggered) */}
+      {surfacePanelOpen && (
+        <div
+          ref={surfacePanelRef}
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: 2,
+            padding: "6px 8px",
+            borderRadius: 14,
+            background: "var(--glass-bg)",
+            backdropFilter: "blur(var(--glass-blur)) saturate(140%)",
+            WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
+            border: "0.5px solid var(--glass-border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(212,175,55,0.06)",
+            zIndex: 90,
+            animation: "atlas-menu-in 200ms cubic-bezier(.2,.8,.2,1)",
+            transformOrigin: "top center",
+          }}
+        >
+          {SURFACES.map((s) => {
+            const isActive = activeSurface === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => handleSurfaceSelect(s.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: isActive
+                    ? "color-mix(in oklab, var(--accent-gold) 12%, transparent)"
+                    : "transparent",
+                  color: isActive ? "var(--accent-gold)" : "var(--muted-text)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "all 160ms ease",
+                  minHeight: 34,
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Regular Dropdown */}
+      {dropdownOpen && !surfacePanelOpen && (
         <div
           role="menu"
           style={{
@@ -219,7 +383,7 @@ export function ProjectHeaderCenter({
           <DropdownItem
             icon={<Settings size={13} />}
             label="Project settings"
-            onClick={() => { setDropdownOpen(false); /* stub */ }}
+            onClick={() => { setDropdownOpen(false); }}
             hint="Soon"
           />
           <DropdownItem
@@ -230,7 +394,7 @@ export function ProjectHeaderCenter({
           <DropdownItem
             icon={<Copy size={13} />}
             label="Clone project"
-            onClick={() => { setDropdownOpen(false); /* stub */ }}
+            onClick={() => { setDropdownOpen(false); }}
             hint="Soon"
           />
           <div
@@ -253,7 +417,6 @@ export function ProjectHeaderCenter({
             label="View ledger"
             onClick={() => { setDropdownOpen(false); onNavigateLedger?.(); }}
           />
-          {/* Collapsible Mode section */}
           {activeMode && onModeChange && (
             <>
               <div
