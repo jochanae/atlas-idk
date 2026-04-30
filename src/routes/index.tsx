@@ -2398,6 +2398,15 @@ function ChatPanel({
 }
 
 const ACTION_ICONS: Record<string, { svg: React.ReactNode; title: string }> = {
+  History: {
+    title: "History",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z" />
+        <path d="M8 4.5V8l2.5 1.5" />
+      </svg>
+    ),
+  },
   Rollback: {
     title: "Rollback to this point",
     svg: (
