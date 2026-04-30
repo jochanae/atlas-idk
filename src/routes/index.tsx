@@ -124,6 +124,9 @@ function WorkspacePage() {
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
   const [commitPulse, setCommitPulse] = useState(false);
+  const [hasCompass, setHasCompass] = useState<boolean | null>(null);
+  const [whisperOpen, setWhisperOpen] = useState(false);
+  const [whisperSubmitting, setWhisperSubmitting] = useState(false);
   const [isWideViewport, setIsWideViewport] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
