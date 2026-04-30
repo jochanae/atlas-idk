@@ -70,10 +70,22 @@ export function EntryCard({
                 <CapsuleTag severity="blocker" size="xs">VIOLATION</CapsuleTag>
               )}
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-              {relativeTime(entry.created_at)}
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+              <span>{relativeTime(entry.created_at)}</span>
               {entry.cost_of_lesson !== null && entry.cost_of_lesson !== undefined && (
-                <> · {formatCost(entry.cost_of_lesson)}</>
+                <span>· {formatCost(entry.cost_of_lesson)}</span>
+              )}
+              {entry.mode && (
+                <span
+                  className="inline-flex items-center px-1.5 py-px rounded text-[8.5px] tracking-[0.1em]"
+                  style={{
+                    background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+                    border: "0.5px solid color-mix(in oklab, var(--accent-gold) 20%, var(--border))",
+                    color: "var(--accent-gold)",
+                  }}
+                >
+                  {entry.mode}
+                </span>
               )}
             </div>
           </div>
