@@ -470,12 +470,15 @@ export function AtlasFrontDoor({
                     className="atlas-mode-pill"
                     style={{
                       flexShrink: 0,
-                      padding: "5px 14px",
-                      borderRadius: 20,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "7px 16px",
+                      borderRadius: 22,
                       border: `0.5px solid ${isActive ? activeColor : "var(--border)"}`,
                       background: isActive ? "var(--surface)" : "var(--surface)",
                       fontFamily: "var(--font-mono)",
-                      fontSize: 11,
+                      fontSize: 13,
                       color: isActive ? activeColor : "var(--muted-text)",
                       letterSpacing: "0.06em",
                       textTransform: "uppercase",
@@ -486,22 +489,7 @@ export function AtlasFrontDoor({
                       transition: "all 200ms var(--ease-cinematic)",
                     }}
                   >
-                    {m.id === "plan" && (
-                      <svg
-                        viewBox="0 0 16 16"
-                        width={11}
-                        height={11}
-                        stroke="currentColor"
-                        fill="none"
-                        strokeWidth={1.5}
-                        style={{ marginRight: 5, verticalAlign: "-1.5px" }}
-                      >
-                        <circle cx="8" cy="4" r="2" />
-                        <circle cx="4" cy="12" r="2" />
-                        <circle cx="12" cy="12" r="2" />
-                        <path d="M8 6v2M6.5 10.5 7.5 8M9.5 10.5 8.5 8" strokeLinecap="round" />
-                      </svg>
-                    )}
+                    <span className="atlas-mode-icon"><ModeIcon mode={m.id} size={13} /></span>
                     {m.label}
                   </button>
                 );
