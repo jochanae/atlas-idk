@@ -949,7 +949,61 @@ function WorkspacePage() {
       />
     </div>
   );
+
+  return (
+    <DesktopWorkspace
+      activeSurface={desktopActiveSurface}
+      onSurfaceChange={handleDesktopSurfaceChange}
+      onOpenHistory={() => {
+        setEntrySurface(false);
+        setHistoryOpen((open) => !open);
+      }}
+      parkedCount={parkedItems.length}
+      ledgerCount={ledgerCount}
+      renderMobile={() => mainShell}
+      renderCanvas={() => mainShell}
+      renderInspectorPanes={() => ({
+        whisper: activeProject ? (
+          <div className="p-4">
+            <WhisperGate
+              projectName={activeProject.name}
+              submitting={whisperSubmitting}
+              onSubmit={submitWhisper}
+              onSkip={() => {}}
+            />
+          </div>
+        ) : (
+          <div className="p-6 text-center">
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Select a project to begin a Whisper.
+            </p>
+          </div>
+        ),
+        recs:
+          pendingRecs.length === 0 ? undefined : (
+            <div className="p-3 space-y-2">
+              {pendingRecs.map((rec) => (
+                <div
+                  key={rec.id}
+                  className="rounded border border-border/50 bg-card/40 p-3"
+                >
+                  <p className="text-[11px] font-mono text-foreground leading-relaxed">
+                    {rec.title}
+                  </p>
+                  {rec.body && (
+                    <p className="text-[10px] font-mono text-muted-foreground mt-1.5 leading-relaxed">
+                      {rec.body}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ),
+      })}
+    />
+  );
 }
+
 
 /* -------- Chat Panel -------- */
 function ChatPanel({
