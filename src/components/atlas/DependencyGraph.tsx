@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { QueueItem } from "./TaskQueue";
+import { useRef, useState } from "react";
 
 export interface PlanStep {
   id: string;
@@ -9,8 +8,15 @@ export interface PlanStep {
 
 interface DependencyGraphProps {
   steps: PlanStep[];
-  onPromoteToQueue?: (step: PlanStep) => void;
+  onPromoteToQueue?: (step: PlanStep, context: PromoteContext) => void;
   onStepTap?: (step: PlanStep) => void;
+  onExportJSON?: () => void;
+}
+
+/** Context passed alongside a promoted step so the queue knows "why". */
+export interface PromoteContext {
+  dependencyLabels: string[];
+  dependentLabels: string[];
 }
 
 const NODE_W = 140;
@@ -19,8 +25,52 @@ const GAP_X = 180;
 const GAP_Y = 72;
 const PAD = 24;
 
+/** Detect cycles via DFS. Returns the list of IDs in the first cycle found, or null. */
+function detectCycle(steps: PlanStep[]): string[] | null {
+  const adj = new Map<string, string[]>();
+  for (const s of steps) {
+    adj.set(s.id, [...s.dependsOn]);
+  }
+
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = new Map<string, number>();
+  const parent = new Map<string, string | null>();
+  for (const s of steps) color.set(s.id, WHITE);
+
+  for (const s of steps) {
+    if (color.get(s.id) !== WHITE) continue;
+    const stack: string[] = [s.id];
+    while (stack.length) {
+      const u = stack[stack.length - 1];
+      if (color.get(u) === WHITE) {
+        color.set(u, GRAY);
+        for (const v of adj.get(u) ?? []) {
+          if (color.get(v) === GRAY) {
+            // Found cycle — trace it
+            const cycle: string[] = [v];
+            let cur = u;
+            while (cur !== v) {
+              cycle.push(cur);
+              cur = parent.get(cur) ?? v;
+            }
+            cycle.push(v);
+            return cycle;
+          }
+          if (color.get(v) === WHITE) {
+            parent.set(v, u);
+            stack.push(v);
+          }
+        }
+      } else {
+        color.set(u, BLACK);
+        stack.pop();
+      }
+    }
+  }
+  return null;
+}
+
 function layoutNodes(steps: PlanStep[]) {
-  // Topological sort into layers
   const incoming = new Map<string, Set<string>>();
   const outgoing = new Map<string, Set<string>>();
   for (const s of steps) {
@@ -45,7 +95,7 @@ function layoutNodes(steps: PlanStep[]) {
       if (unmet.length === 0) layer.push(id);
     }
     if (layer.length === 0) {
-      // Cycle — just dump remaining
+      // Cycle fallback — dump remaining so layout completes
       layer.push(...remaining);
     }
     for (const id of layer) {
@@ -75,7 +125,7 @@ function layoutNodes(steps: PlanStep[]) {
   return { positions, width: Math.max(maxX, 300), height: Math.max(maxY, 120) };
 }
 
-export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: DependencyGraphProps) {
+export function DependencyGraph({ steps, onPromoteToQueue, onStepTap, onExportJSON }: DependencyGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -96,11 +146,25 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
     );
   }
 
-  const { positions, width, height } = layoutNodes(steps);
+  const cycleIds = detectCycle(steps);
+  const cycleSet = new Set(cycleIds ?? []);
   const stepMap = new Map(steps.map((s) => [s.id, s]));
 
+  const { positions, width, height } = layoutNodes(steps);
+
+  // Build dependency context for a step
+  const buildContext = (step: PlanStep): PromoteContext => {
+    const dependencyLabels = step.dependsOn
+      .map((id) => stepMap.get(id)?.label)
+      .filter(Boolean) as string[];
+    const dependentLabels = steps
+      .filter((s) => s.dependsOn.includes(step.id))
+      .map((s) => s.label);
+    return { dependencyLabels, dependentLabels };
+  };
+
   // Edges
-  const edges: { from: { x: number; y: number }; to: { x: number; y: number }; key: string }[] = [];
+  const edges: { from: { x: number; y: number }; to: { x: number; y: number }; key: string; inCycle: boolean }[] = [];
   for (const step of steps) {
     const toPos = positions.get(step.id);
     if (!toPos) continue;
@@ -111,6 +175,7 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
         from: { x: fromPos.x + NODE_W, y: fromPos.y + NODE_H / 2 },
         to: { x: toPos.x, y: toPos.y + NODE_H / 2 },
         key: `${depId}->${step.id}`,
+        inCycle: cycleSet.has(depId) && cycleSet.has(step.id),
       });
     }
   }
@@ -122,7 +187,7 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
         border: "1px solid color-mix(in oklab, var(--accent-gold) 15%, var(--border))",
         borderRadius: 12,
         overflow: "auto",
-        maxHeight: 320,
+        maxHeight: 360,
       }}
     >
       {/* Header */}
@@ -147,7 +212,60 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
         >
           Dependency Map · {steps.length} steps
         </span>
+        {onExportJSON && (
+          <button
+            onClick={onExportJSON}
+            style={{
+              background: "color-mix(in oklab, var(--accent-gold) 12%, transparent)",
+              border: "0.5px solid color-mix(in oklab, var(--accent-gold) 30%, var(--border))",
+              borderRadius: 6,
+              padding: "3px 10px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--accent-gold)",
+              cursor: "pointer",
+              transition: "opacity 160ms ease",
+            }}
+          >
+            ↓ Blueprint
+          </button>
+        )}
       </div>
+
+      {/* Cycle Warning Banner */}
+      {cycleIds && cycleIds.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            margin: "8px 12px 4px",
+            padding: "8px 12px",
+            background: "color-mix(in oklab, var(--accent-gold) 10%, var(--surface))",
+            border: "1px solid color-mix(in oklab, var(--accent-gold) 40%, var(--border))",
+            borderRadius: 8,
+            animation: "atlas-bubble-in 300ms ease forwards",
+          }}
+        >
+          <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="var(--accent-gold)" strokeWidth={1.4} strokeLinecap="round">
+            <path d="M8 1L1 14h14L8 1z" />
+            <path d="M8 6v4M8 12v.5" />
+          </svg>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              color: "var(--accent-gold)",
+              letterSpacing: "0.05em",
+              lineHeight: 1.4,
+            }}
+          >
+            <strong>Cycle detected</strong> — {[...new Set(cycleIds)].map((id) => stepMap.get(id)?.label ?? id).join(" → ")}. Resolve dependencies to unlock execution order.
+          </span>
+        </div>
+      )}
 
       <svg
         ref={svgRef}
@@ -164,9 +282,10 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
               key={e.key}
               d={`M${e.from.x},${e.from.y} C${midX},${e.from.y} ${midX},${e.to.y} ${e.to.x},${e.to.y}`}
               fill="none"
-              stroke="var(--accent-gold)"
-              strokeWidth={1.5}
-              strokeOpacity={0.4}
+              stroke={e.inCycle ? "var(--ember)" : "var(--accent-gold)"}
+              strokeWidth={e.inCycle ? 2 : 1.5}
+              strokeOpacity={e.inCycle ? 0.7 : 0.4}
+              strokeDasharray={e.inCycle ? "4 3" : undefined}
               markerEnd="url(#arrow)"
             />
           );
@@ -184,6 +303,7 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
           const pos = positions.get(step.id);
           if (!pos) return null;
           const isHovered = hoveredId === step.id;
+          const isCycled = cycleSet.has(step.id);
           return (
             <g
               key={step.id}
@@ -199,16 +319,17 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
                 height={NODE_H}
                 rx={10}
                 fill={isHovered ? "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 20%)" : "var(--surface)"}
-                stroke={isHovered ? "var(--accent-gold)" : "color-mix(in oklab, var(--accent-gold) 25%, var(--border))"}
-                strokeWidth={1}
+                stroke={isCycled ? "var(--ember)" : isHovered ? "var(--accent-gold)" : "color-mix(in oklab, var(--accent-gold) 25%, var(--border))"}
+                strokeWidth={isCycled ? 1.5 : 1}
+                strokeDasharray={isCycled ? "3 2" : undefined}
               />
               {/* Gold dot */}
-              <circle cx={pos.x + 12} cy={pos.y + NODE_H / 2} r={3} fill="var(--accent-gold)" fillOpacity={0.6} />
+              <circle cx={pos.x + 12} cy={pos.y + NODE_H / 2} r={3} fill={isCycled ? "var(--ember)" : "var(--accent-gold)"} fillOpacity={0.6} />
               <text
                 x={pos.x + 22}
                 y={pos.y + NODE_H / 2 + 1}
                 dominantBaseline="central"
-                fill="var(--foreground)"
+                fill={isCycled ? "var(--ember)" : "var(--foreground)"}
                 fontSize={11}
                 fontFamily="var(--font-mono)"
               >
@@ -219,7 +340,7 @@ export function DependencyGraph({ steps, onPromoteToQueue, onStepTap }: Dependen
                 <g
                   onClick={(e) => {
                     e.stopPropagation();
-                    onPromoteToQueue(step);
+                    onPromoteToQueue(step, buildContext(step));
                   }}
                   style={{ cursor: "pointer" }}
                 >

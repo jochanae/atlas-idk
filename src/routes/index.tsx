@@ -560,6 +560,7 @@ function WorkspacePage() {
     setSending(true);
     setAuditWarning(false);
     setInput("");
+    setAdaptivePlaceholder(null);
     setTransitioning(true);
     setSurface("chat");
 
@@ -809,9 +810,15 @@ function WorkspacePage() {
     setQueueExecuting(false);
   }, [queueItems, executeQueueItem]);
 
-  // Promote a plan step to the queue
-  const promoteStepToQueue = useCallback((step: PlanStep) => {
-    addToQueue(step.label);
+  // Promote a plan step to the queue — with full dependency context
+  const promoteStepToQueue = useCallback((step: PlanStep, context?: import("@/components/atlas/DependencyGraph").PromoteContext) => {
+    const contextSuffix = context
+      ? [
+          context.dependencyLabels.length ? ` [depends on: ${context.dependencyLabels.join(", ")}]` : "",
+          context.dependentLabels.length ? ` [unlocks: ${context.dependentLabels.join(", ")}]` : "",
+        ].join("")
+      : "";
+    addToQueue(step.label + contextSuffix);
   }, [addToQueue]);
 
   // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
@@ -843,6 +850,29 @@ function WorkspacePage() {
     () => projects.find((p) => p.id === activeProjectId) ?? null,
     [projects, activeProjectId],
   );
+
+  // Export plan steps as JSON blueprint
+  const exportPlanJSON = useCallback(() => {
+    if (!planSteps.length) return;
+    const blueprint = {
+      exportedAt: new Date().toISOString(),
+      project: activeProject?.name ?? "Unknown",
+      steps: planSteps.map((s) => ({
+        id: s.id,
+        label: s.label,
+        dependsOn: s.dependsOn,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `atlas-blueprint-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Blueprint downloaded");
+  }, [planSteps, activeProject]);
+
   const showWideDrawer = isActive && artifacts.length > 0 && isWideViewport;
 
   if (authLoading || !user) {
@@ -890,7 +920,7 @@ function WorkspacePage() {
         <AtlasFrontDoor
           active={isActive}
           input={input}
-          onInputChange={(v) => { setInput(v); if (v && adaptivePlaceholder) setAdaptivePlaceholder(null); }}
+          onInputChange={(v) => { setInput(v); if (adaptivePlaceholder) setAdaptivePlaceholder(null); }}
           sending={sending}
           activeMode={activeMode}
           inputFocusSignal={inputFocusSignal}
@@ -957,11 +987,11 @@ function WorkspacePage() {
             <DependencyGraph
               steps={planSteps}
               onPromoteToQueue={promoteStepToQueue}
+              onExportJSON={planSteps.length > 0 ? exportPlanJSON : undefined}
               onStepTap={(step) => {
                 setAdaptivePlaceholder(`expand on "${step.label}"…`);
                 setInput(`Expand on the plan step: ${step.label}`);
                 setInputFocusSignal((v) => v + 1);
-                // Clear adaptive placeholder after 5s
                 setTimeout(() => setAdaptivePlaceholder(null), 5000);
               }}
             />
