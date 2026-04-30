@@ -1216,6 +1216,65 @@ function ChatPanel({
     }, 2000);
   };
 
+  const [committingCardId, setCommittingCardId] = useState<string | null>(null);
+
+  const commitCardMessage = async (message: ChatMessage, card: CommitCardPayload) => {
+    if (!projectId) return;
+    setCommittingCardId(message.id);
+    try {
+      const status =
+        card.severity === "blocker"
+          ? "Violated"
+          : card.severity === "parked"
+            ? "Active"
+            : "Active";
+      const buildId = card.build_id ?? null;
+      const { data: entry, error } = await supabase
+        .from("ledger_entries")
+        .insert({
+          project_id: projectId,
+          user_id: userId,
+          title: card.title,
+          description: card.summary + (card.details ? `\n\n${card.details}` : ""),
+          status,
+          is_violation: card.severity === "blocker",
+          severity: card.severity,
+          verb: card.verb ?? null,
+          build_id: buildId,
+          card_schema_version: card.v,
+          extracted_from_session_id: sessionId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      // Lock the AI turn — server returns the updated row but optimistic UI
+      // is enough; subsequent refresh() will rehydrate.
+      await supabase
+        .from("chat_messages")
+        .update({ committed_card_id: entry.id })
+        .eq("id", message.id);
+
+      toast.success("Committed to ledger");
+      await onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Commit failed");
+    } finally {
+      setCommittingCardId(null);
+    }
+  };
+
+  const parkCardMessage = async (message: ChatMessage, card: CommitCardPayload) => {
+    const ok = await insertParkedItem({
+      label: card.title,
+      sourceContext: card.summary,
+      kind: "commit_card",
+    });
+    if (!ok) return;
+    toast.success("Parked");
+  };
+
+
   const captureSelection = () => {
     const selection = document.getSelection();
     const selectedText = selection?.toString().trim();
