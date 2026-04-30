@@ -50,8 +50,24 @@ export function ProjectHeaderCenter({
       document.removeEventListener("keydown", onKey);
     };
   }, [dropdownOpen]);
-
+  // Close mode picker on outside click
   useEffect(() => {
+    if (!modePickerOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (modeRef.current && !modeRef.current.contains(e.target as Node))
+        setModePickerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModePickerOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modePickerOpen]);
+
     if (renaming) {
       inputRef.current?.focus();
       inputRef.current?.select();
