@@ -8,7 +8,6 @@ import {
   Inbox,
   Github,
   FileCode2,
-  Sparkles,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -22,7 +21,7 @@ import {
  *   1. Nav rail        — surface switcher + history/parking shortcuts
  *   2. Atlas chat      — (mounted by parent into `chatPane`)
  *   3. Main canvas     — primary surface (Conversation/Compass/Ledger/Parking)
- *   4. Right inspector — tabbed: Whisper • GitHub • Code/Preview • Recommendations
+ *   4. Right inspector — tabbed: GitHub • Code/Preview • Recommendations
  *
  * On <1024px, render `mobileFallback` (the existing single-column shell).
  *
@@ -30,7 +29,7 @@ import {
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
-export type InspectorTabId = "whisper" | "github" | "code" | "recs";
+export type InspectorTabId = "github" | "code" | "recs";
 
 export interface DesktopWorkspaceProps {
   // Mobile fallback — render-prop, only mounted on <lg viewports
@@ -63,7 +62,6 @@ const SURFACES: Array<{ id: SurfaceId; label: string; Icon: typeof MessageSquare
 ];
 
 const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Github }> = [
-  { id: "whisper", label: "Whisper", Icon: Sparkles },
   { id: "github", label: "GitHub", Icon: Github },
   { id: "code", label: "Code", Icon: FileCode2 },
   { id: "recs", label: "Recs", Icon: ScrollText },
@@ -85,7 +83,7 @@ export function DesktopWorkspace({
   const isDesktop = useIsDesktop();
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("whisper");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("github");
   const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
 
   // Render only the active branch — prevents double-mounting heavy components
@@ -349,7 +347,6 @@ function Inspector({
 
 function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
   const messages: Record<InspectorTabId, string> = {
-    whisper: "Whisper Gate is available from the project's entry surface.",
     github: "Connect a GitHub repository to view branches, commits, and files here.",
     code: "Generated code and previews will appear here.",
     recs: "No recommendations yet. They appear as Atlas notices patterns.",
