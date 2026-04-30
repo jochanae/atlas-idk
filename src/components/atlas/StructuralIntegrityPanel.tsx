@@ -147,12 +147,60 @@ interface StructuralIntegrityPanelProps {
   onClose: () => void;
 }
 
+const PRESETS_KEY = "atlas-integrity-presets";
+
+interface FilterPreset {
+  name: string;
+  search: string;
+  category: AuditItem["category"] | "all";
+  status: AuditItem["status"] | "all";
+}
+
+function loadPresets(): FilterPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function savePresets(presets: FilterPreset[]) {
+  try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch {}
+}
+
 export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityPanelProps) {
   const items = useMemo(() => buildAuditManifest(), []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<AuditItem["category"] | "all">("all");
   const [filterStatus, setFilterStatus] = useState<AuditItem["status"] | "all">("all");
+  const [presets, setPresets] = useState<FilterPreset[]>(loadPresets);
+  const [showSavePreset, setShowSavePreset] = useState(false);
+  const [presetName, setPresetName] = useState("");
+
+  const handleSavePreset = () => {
+    if (!presetName.trim()) return;
+    const newPreset: FilterPreset = { name: presetName.trim(), search, category: filterCategory, status: filterStatus };
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    savePresets(updated);
+    setPresetName("");
+    setShowSavePreset(false);
+    haptic("medium");
+  };
+
+  const handleLoadPreset = (p: FilterPreset) => {
+    setSearch(p.search);
+    setFilterCategory(p.category);
+    setFilterStatus(p.status);
+    haptic("light");
+  };
+
+  const handleDeletePreset = (idx: number) => {
+    const updated = presets.filter((_, i) => i !== idx);
+    setPresets(updated);
+    savePresets(updated);
+    haptic("light");
+  };
 
   const filtered = useMemo(() => {
     let result = items;
