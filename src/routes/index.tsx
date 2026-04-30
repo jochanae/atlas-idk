@@ -1287,27 +1287,17 @@ function ChatPanel({
     if (!projectId) return;
     setCommittingCardId(message.id);
     try {
-      const status =
-        card.severity === "blocker"
-          ? "Violated"
-          : card.severity === "parked"
-            ? "Active"
-            : "Active";
       // Use the unified createEntryFromCard helper. It writes to entries
       // (status='committed'), stamps locked_at via trigger, AND locks the
       // originating chat turn by setting committed_card_id.
-      try {
-        await createEntryFromCard({
-          userId,
-          projectId,
-          sessionId,
-          sourceMessageId: message.id,
-          payload: card,
-          status: "committed",
-        });
-      } catch (err) {
-        throw err;
-      }
+      await createEntryFromCard({
+        userId,
+        projectId,
+        sessionId,
+        sourceMessageId: message.id,
+        payload: card,
+        status: "committed",
+      });
 
       toast.success("Committed to ledger");
       await onRefresh();
