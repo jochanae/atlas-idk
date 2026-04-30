@@ -93,8 +93,36 @@ export function SystemMenu({ onSelect, userId, projectId, onFilesUploaded }: Sys
       input.type = "file";
       input.multiple = true;
       input.accept = "image/*,application/pdf,.doc,.docx,.txt,.csv,.json";
-      input.onchange = () => {
+      input.onchange = async () => {
+        if (!input.files?.length) return;
+        if (!userId) {
+          toast.error("Sign in to attach files");
+          return;
+        }
         triggerHaptic("thump");
+        const uploaded: Array<{ name: string; url: string; type: string }> = [];
+        for (const file of Array.from(input.files)) {
+          const path = `${userId}/${projectId ?? "general"}/${Date.now()}-${file.name}`;
+          const { error } = await supabase.storage
+            .from("project-assets")
+            .upload(path, file, { upsert: false });
+          if (error) {
+            toast.error(`Upload failed: ${file.name}`);
+            continue;
+          }
+          const { data: urlData } = supabase.storage
+            .from("project-assets")
+            .getPublicUrl(path);
+          uploaded.push({
+            name: file.name,
+            url: urlData.publicUrl,
+            type: file.type,
+          });
+        }
+        if (uploaded.length > 0) {
+          toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} attached`);
+          onFilesUploaded?.(uploaded);
+        }
         onSelect?.(id);
       };
       input.click();
