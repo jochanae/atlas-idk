@@ -35,6 +35,7 @@ import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
 import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
 import { BuildStateTimeline, type BuildStateEntry } from "@/components/atlas/BuildStateTimeline";
 import { LiveConsoleStream, type ConsoleEntry } from "@/components/atlas/LiveConsoleStream";
+import { SovereignScrubRail, type ScrubNotch } from "@/components/atlas/SovereignScrubRail";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
