@@ -16,6 +16,7 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { WhisperGate, type WhisperAnswers } from "@/components/atlas/WhisperGate";
+import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { detectArtifacts } from "@/lib/artifacts";
 import {
   relativeTime,
