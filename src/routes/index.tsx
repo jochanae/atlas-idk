@@ -1352,7 +1352,7 @@ function WorkspacePage() {
           }}
         >
           <div
-            onClick={() => setDiffOpen(false)}
+            onClick={cancelRollback}
             style={{
               position: "absolute",
               inset: 0,
@@ -1371,22 +1371,160 @@ function WorkspacePage() {
               border: "0.5px solid var(--glass-border)",
               overflow: "hidden",
               boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <DiffViewer
-              oldCode={diffOldCode}
-              newCode={diffNewCode}
-              oldLabel={diffLabels.old}
-              newLabel={diffLabels.new}
-              onAccept={rollbackPreview ? confirmRollback : () => {
-                toast.success("Changes accepted");
-                setDiffOpen(false);
-              }}
-              onReject={rollbackPreview ? cancelRollback : () => {
-                toast("Changes rejected");
-                setDiffOpen(false);
-              }}
-            />
+            {/* Snapshot naming bar — shown during rollback */}
+            {rollbackNaming && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderBottom: "0.5px solid var(--glass-border)",
+                  background: "color-mix(in oklab, var(--accent-gold) 6%, var(--surface))",
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent-gold)", whiteSpace: "nowrap" }}>
+                  Snapshot Name
+                </span>
+                <input
+                  value={rollbackNameInput}
+                  onChange={(e) => setRollbackNameInput(e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: "var(--background)",
+                    border: "0.5px solid var(--glass-border)",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
+                    color: "var(--foreground)",
+                    outline: "none",
+                  }}
+                  placeholder="Name this snapshot…"
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmRollback(); }}
+                />
+              </div>
+            )}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <DiffViewer
+                oldCode={diffOldCode}
+                newCode={diffNewCode}
+                oldLabel={diffLabels.old}
+                newLabel={diffLabels.new}
+                acceptLabel={rollbackPreview ? "Revert" : "Accept"}
+                rejectLabel={rollbackPreview ? "Cancel" : "Reject"}
+                onAccept={rollbackPreview ? confirmRollback : () => {
+                  toast.success("Changes accepted");
+                  setDiffOpen(false);
+                }}
+                onReject={rollbackPreview ? cancelRollback : () => {
+                  toast("Changes rejected");
+                  setDiffOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Snapshot Browser Drawer */}
+      {snapshotBrowserOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 75,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <div
+            onClick={() => setSnapshotBrowserOpen(false)}
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)" }}
+          />
+          <div
+            style={{
+              position: "relative",
+              width: "min(360px, 90vw)",
+              height: "100%",
+              background: "var(--surface)",
+              borderLeft: "0.5px solid var(--glass-border)",
+              boxShadow: "-8px 0 32px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              animation: "atlas-bubble-in 200ms ease forwards",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "0.5px solid var(--glass-border)" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-gold)" }}>
+                Snapshots · {snapshots.length}
+              </span>
+              <button onClick={() => setSnapshotBrowserOpen(false)} style={{ background: "none", border: "none", color: "var(--muted-text)", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+            </div>
+            {/* Undo bar */}
+            {preRollbackMessages && (
+              <button
+                onClick={undoRollback}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  margin: "8px 12px",
+                  padding: "8px 12px",
+                  background: "color-mix(in oklab, var(--ember) 10%, var(--surface))",
+                  border: "0.5px solid color-mix(in oklab, var(--ember) 30%, var(--border))",
+                  borderRadius: 8,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  color: "var(--ember)",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                }}
+              >
+                ↶ Undo Last Rollback
+              </button>
+            )}
+            {/* Snapshot list */}
+            <div style={{ flex: 1, overflow: "auto", padding: "8px 12px" }}>
+              {snapshots.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--muted-text)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                  No snapshots yet. Rollback a message to create one.
+                </div>
+              ) : (
+                snapshots.map((snap) => (
+                  <div
+                    key={snap.id}
+                    style={{
+                      padding: "10px 12px",
+                      marginBottom: 6,
+                      borderRadius: 8,
+                      border: "0.5px solid var(--glass-border)",
+                      background: "var(--background)",
+                      cursor: "pointer",
+                      transition: "border-color 160ms ease",
+                    }}
+                    onClick={() => restoreSnapshot(snap)}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-gold)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--glass-border)"; }}
+                  >
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--foreground)", marginBottom: 4 }}>
+                      {snap.name}
+                    </div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted-text)", display: "flex", gap: 8 }}>
+                      <span>{snap.messagesAtPoint.length} messages</span>
+                      <span>{new Date(snap.createdAt).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
