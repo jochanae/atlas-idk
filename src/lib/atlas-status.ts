@@ -11,9 +11,42 @@ import type { Severity, Verb } from "@/components/atlas/StatusGlyph";
 export type { Severity, Verb };
 
 export const SEVERITIES: Severity[] = ["blocker", "parked", "committed", "neutral"];
-export const VERBS: Verb[] = ["new", "bug", "perf", "note", "wip", "audit", "merge"];
+export const VERBS: Verb[] = ["new", "bug", "perf", "note", "wip", "audit", "merge", "plan"];
 
 export const CARD_SCHEMA_CURRENT = 1 as const;
+
+/**
+ * Entry lifecycle status. The single discriminator that decides which
+ * "lens" (Ledger / Parking Lot) renders an entry. Same object, two states.
+ */
+export type EntryStatus = "committed" | "parked" | "draft" | "archived";
+
+/**
+ * The unified Entry type. Mirrors the public.entries table.
+ * Ledger view = filter status='committed'. Parking Lot = filter status='parked'.
+ */
+export interface Entry {
+  id: string;
+  user_id: string;
+  project_id: string;
+  session_id: string | null;
+  status: EntryStatus;
+  title: string;
+  summary: string | null;
+  details: string | null;
+  severity: Severity;
+  verb: Verb | null;
+  build_id: string | null;
+  touched: string[] | null;
+  source_message_id: string | null;
+  card_schema_version: number;
+  is_violation: boolean;
+  cost_of_lesson: number | null;
+  supersedes_id: string | null;
+  locked_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 /**
  * v1 CommitCard payload. The AI emits this as a JSON block when it has
