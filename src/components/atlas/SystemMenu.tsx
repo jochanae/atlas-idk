@@ -188,6 +188,8 @@ export function SystemMenu({ onSelect }: SystemMenuProps) {
               left: 0,
               zIndex: 92,
               minWidth: 220,
+              maxHeight: "min(360px, calc(100dvh - 120px))",
+              overflowY: "auto",
               background: "rgba(28, 25, 23, 0.88)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
