@@ -458,32 +458,44 @@ export function AtlasFrontDoor({
                   </span>
                 </button>
                 <button
-                  onClick={() => onSend(input, activeMode)}
-                  disabled={!input.trim() || sending}
+                  onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
+                  disabled={sending ? !onStop : !input.trim()}
+                  aria-label={sending ? "Stop Atlas" : "Send"}
+                  title={sending ? "Stop Atlas" : "Send"}
                   style={{
                     width: 40,
                     height: 40,
                     borderRadius: 8,
-                    background: input.trim() ? "var(--ember)" : "var(--surface)",
-                    border: input.trim() ? "none" : "0.5px solid var(--border)",
+                    background: sending
+                      ? "var(--surface)"
+                      : input.trim() ? "var(--ember)" : "var(--surface)",
+                    border: sending
+                      ? "0.5px solid var(--ember)"
+                      : input.trim() ? "none" : "0.5px solid var(--border)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: input.trim() ? "pointer" : "default",
-                    boxShadow: input.trim() ? "0 0 16px -2px rgba(234,88,12,0.55)" : "none",
+                    cursor: sending || input.trim() ? "pointer" : "default",
+                    boxShadow: !sending && input.trim() ? "0 0 16px -2px rgba(234,88,12,0.55)" : "none",
                     transition: "all 220ms var(--ease-cinematic)",
                   }}
                 >
-                  <svg
-                    viewBox="0 0 16 16"
-                    width={14}
-                    height={14}
-                    stroke={input.trim() ? "var(--background)" : "var(--muted-text)"}
-                    fill="none"
-                    strokeWidth={2}
-                  >
-                    <path d="M2 8h12M8 2l6 6-6 6" />
-                  </svg>
+                  {sending ? (
+                    <svg viewBox="0 0 16 16" width={12} height={12} fill="var(--ember)">
+                      <rect x="3" y="3" width="10" height="10" rx="1.5" />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 16 16"
+                      width={14}
+                      height={14}
+                      stroke={input.trim() ? "var(--background)" : "var(--muted-text)"}
+                      fill="none"
+                      strokeWidth={2}
+                    >
+                      <path d="M2 8h12M8 2l6 6-6 6" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
