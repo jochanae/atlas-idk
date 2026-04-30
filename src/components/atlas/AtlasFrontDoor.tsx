@@ -673,6 +673,39 @@ export function AtlasFrontDoor({
             0 8px 32px rgba(0,0,0,0.45),
             0 0 22px -6px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
         }
+        .atlas-active-input-shell:focus-within {
+          border-color: color-mix(in oklab, var(--accent-gold) 45%, var(--border)) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.04),
+            0 6px 24px rgba(0,0,0,0.4),
+            0 0 16px -6px color-mix(in oklab, var(--accent-gold) 45%, transparent) !important;
+        }
+        .atlas-utility-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 7px;
+          background: transparent;
+          border: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: color-mix(in oklab, var(--accent-gold) 50%, var(--muted-text));
+          cursor: pointer;
+          opacity: 0.7;
+          transition: opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), background 160ms var(--ease-cinematic);
+          flex-shrink: 0;
+          position: relative;
+        }
+        .atlas-utility-btn:hover {
+          opacity: 1;
+          color: var(--accent-gold);
+          background: color-mix(in oklab, var(--accent-gold) 8%, transparent);
+        }
+        .atlas-utility-btn[data-active="true"] {
+          opacity: 1;
+          color: var(--accent-gold);
+          background: color-mix(in oklab, var(--accent-gold) 12%, transparent);
+        }
         .atlas-icon-btn:hover {
           opacity: 1 !important;
           color: var(--accent-gold) !important;
