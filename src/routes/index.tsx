@@ -817,6 +817,7 @@ function WorkspacePage() {
             }}
           >
             <ChatPanel
+              newMessageIds={newMessageIds}
               messages={messages}
               sending={sending}
               onStop={stopSending}
