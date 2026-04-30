@@ -686,28 +686,39 @@ export function AtlasFrontDoor({
             <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               {utilityBarRight}
               <button
-                onClick={() => onSend(input, activeMode)}
-                disabled={!input.trim() || sending}
-                aria-label="Send"
+                onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
+                disabled={sending ? !onStop : !input.trim()}
+                aria-label={sending ? "Stop Atlas" : "Send"}
+                title={sending ? "Stop Atlas" : "Send"}
                 style={{
                   width: 32,
                   height: 32,
                   marginLeft: 6,
                   borderRadius: 8,
-                  background: input.trim() ? "var(--ember)" : "transparent",
-                  border: input.trim() ? "none" : "0.5px solid var(--border)",
+                  background: sending
+                    ? "transparent"
+                    : input.trim() ? "var(--ember)" : "transparent",
+                  border: sending
+                    ? "0.5px solid var(--ember)"
+                    : input.trim() ? "none" : "0.5px solid var(--border)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: input.trim() ? 1 : 0.4,
-                  cursor: input.trim() ? "pointer" : "default",
+                  opacity: sending || input.trim() ? 1 : 0.4,
+                  cursor: sending || input.trim() ? "pointer" : "default",
                   transition: "all 220ms var(--ease-cinematic)",
                   flexShrink: 0,
                 }}
               >
-                <svg viewBox="0 0 16 16" width={13} height={13} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} fill="none" strokeWidth={2}>
-                  <path d="M2 8h12M8 2l6 6-6 6" />
-                </svg>
+                {sending ? (
+                  <svg viewBox="0 0 16 16" width={11} height={11} fill="var(--ember)">
+                    <rect x="3" y="3" width="10" height="10" rx="1.5" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 16 16" width={13} height={13} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} fill="none" strokeWidth={2}>
+                    <path d="M2 8h12M8 2l6 6-6 6" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
