@@ -2067,7 +2067,7 @@ function ChatPanel({
                             YOU · {relativeTime(m.created_at)}
                           </div>
                           <div
-                            className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80"
+                            className="text-[14px] leading-[1.7] whitespace-pre-wrap text-foreground/80"
                             style={{
                               textAlign: "left",
                               ...(isLongMessage && !isExpanded
