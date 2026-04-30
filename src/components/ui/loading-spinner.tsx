@@ -6,9 +6,8 @@
  * Animation: Scale up + rotate + fade out in sequence
  * 
  * Ported from CoinsBloom — adapted for Atlas color system.
+ * Uses CSS animations instead of framer-motion for SSR compatibility.
  */
-
-import { motion } from 'framer-motion';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
@@ -45,12 +44,11 @@ export function LoadingSpinner({ size = 'lg', className, text, colorScheme = 'at
   const config = sizeMap[size];
   const colors = colorSchemes[colorScheme];
   const circleCount = 5;
-  const animationDuration = 2.5;
   const staggerDelay = 0.3;
-  
+
   return (
     <div className={`flex flex-col items-center justify-center gap-3 ${className || ''}`}>
-      <div 
+      <div
         className="relative flex items-center justify-center"
         style={{ width: config.glow, height: config.glow }}
         role="status"
@@ -58,30 +56,22 @@ export function LoadingSpinner({ size = 'lg', className, text, colorScheme = 'at
       >
         {/* Blurred background orbs for smooth glow */}
         {Array.from({ length: 5 }).map((_, i) => (
-          <motion.div
+          <div
             key={`blur-${i}`}
-            className="absolute rounded-full blur-xl"
+            className="absolute rounded-full"
             style={{
               width: config.circle * 0.8,
               height: config.circle * 0.8,
               background: colors.blur,
-            }}
-            animate={{
-              scale: [0.3, 1.5, 2],
-              opacity: [0, 0.5, 0],
-            }}
-            transition={{
-              duration: animationDuration,
-              repeat: Infinity,
-              delay: i * staggerDelay,
-              ease: [0.4, 0, 0.2, 1],
+              filter: 'blur(16px)',
+              animation: `atlas-bloom-blur 2.5s ease-in-out ${i * staggerDelay}s infinite`,
             }}
           />
         ))}
-        
+
         {/* 5 overlapping circles with staggered animations */}
         {Array.from({ length: circleCount }).map((_, i) => (
-          <motion.div
+          <div
             key={i}
             className="absolute rounded-full"
             style={{
@@ -89,18 +79,7 @@ export function LoadingSpinner({ size = 'lg', className, text, colorScheme = 'at
               height: config.circle,
               background: colors.gradient,
               boxShadow: `0 0 30px ${colors.glow}`,
-            }}
-            animate={{
-              scale: [0.2, 0.7, 1, 1, 1.1, 1.3],
-              opacity: [0, 0.7, 1, 1, 0.7, 0],
-              rotate: [0, 90, 180, 270, 320, 360],
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              delay: i * 0.3,
-              ease: "easeOut",
-              times: [0, 0.25, 0.35, 0.65, 0.75, 1],
+              animation: `atlas-bloom-circle 2.5s ease-out ${i * staggerDelay}s infinite`,
             }}
           />
         ))}
@@ -113,6 +92,22 @@ export function LoadingSpinner({ size = 'lg', className, text, colorScheme = 'at
           {text}
         </p>
       )}
+
+      <style>{`
+        @keyframes atlas-bloom-circle {
+          0%   { transform: scale(0.2) rotate(0deg);   opacity: 0; }
+          25%  { transform: scale(0.7) rotate(90deg);  opacity: 0.7; }
+          35%  { transform: scale(1)   rotate(180deg); opacity: 1; }
+          65%  { transform: scale(1)   rotate(270deg); opacity: 1; }
+          75%  { transform: scale(1.1) rotate(320deg); opacity: 0.7; }
+          100% { transform: scale(1.3) rotate(360deg); opacity: 0; }
+        }
+        @keyframes atlas-bloom-blur {
+          0%   { transform: scale(0.3); opacity: 0; }
+          50%  { transform: scale(1.5); opacity: 0.5; }
+          100% { transform: scale(2);   opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
