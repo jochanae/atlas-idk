@@ -1598,40 +1598,105 @@ function WorkspacePage() {
                 ↶ Undo Last Rollback
               </button>
             )}
-            {/* Snapshot list */}
-            <div style={{ flex: 1, overflow: "auto", padding: "8px 12px" }}>
-              {snapshots.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--muted-text)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
-                  No snapshots yet. Rollback a message to create one.
-                </div>
-              ) : (
-                snapshots.map((snap) => (
-                  <div
-                    key={snap.id}
-                    style={{
-                      padding: "10px 12px",
-                      marginBottom: 6,
-                      borderRadius: 8,
-                      border: "0.5px solid var(--glass-border)",
-                      background: "var(--background)",
-                      cursor: "pointer",
-                      transition: "border-color 160ms ease",
-                    }}
-                    onClick={() => restoreSnapshot(snap)}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-gold)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--glass-border)"; }}
-                  >
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--foreground)", marginBottom: 4 }}>
-                      {snap.name}
+            {/* Compare mode state is local to the drawer */}
+            {(() => {
+              // eslint-disable-next-line react-hooks/rules-of-hooks
+              const [compareA, setCompareA] = useState<string | null>(null);
+              // eslint-disable-next-line react-hooks/rules-of-hooks
+              const [compareB, setCompareB] = useState<string | null>(null);
+
+              const snapA = snapshots.find((s) => s.id === compareA);
+              const snapB = snapshots.find((s) => s.id === compareB);
+              const canCompare = snapA && snapB && compareA !== compareB;
+
+              const handleCompare = () => {
+                if (!snapA || !snapB) return;
+                const summaryA = snapA.messagesAtPoint.map((m) => `[${m.role}] ${m.content.slice(0, 120)}`).join("\n");
+                const summaryB = snapB.messagesAtPoint.map((m) => `[${m.role}] ${m.content.slice(0, 120)}`).join("\n");
+                setDiffOldCode(summaryA);
+                setDiffNewCode(summaryB);
+                setDiffLabels({ old: snapA.name, new: snapB.name });
+                setDiffOpen(true);
+                setSnapshotBrowserOpen(false);
+                haptic("medium");
+              };
+
+              return (
+                <>
+                  {/* Compare bar */}
+                  {snapshots.length >= 2 && (
+                    <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--glass-border)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted-text)" }}>Compare</span>
+                      <select
+                        value={compareA ?? ""}
+                        onChange={(e) => setCompareA(e.target.value || null)}
+                        style={{ flex: 1, minWidth: 80, padding: "4px 6px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-mono)", fontSize: 10 }}
+                      >
+                        <option value="">Select A…</option>
+                        {snapshots.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                      <span style={{ color: "var(--muted-text)", fontSize: 10 }}>↔</span>
+                      <select
+                        value={compareB ?? ""}
+                        onChange={(e) => setCompareB(e.target.value || null)}
+                        style={{ flex: 1, minWidth: 80, padding: "4px 6px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-mono)", fontSize: 10 }}
+                      >
+                        <option value="">Select B…</option>
+                        {snapshots.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                      <button
+                        onClick={handleCompare}
+                        disabled={!canCompare}
+                        style={{
+                          padding: "4px 10px", borderRadius: 6,
+                          background: canCompare ? "color-mix(in oklab, var(--accent-gold) 15%, var(--surface))" : "var(--surface)",
+                          border: `0.5px solid ${canCompare ? "var(--accent-gold)" : "var(--border)"}`,
+                          color: canCompare ? "var(--accent-gold)" : "var(--muted-text)",
+                          fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase",
+                          cursor: canCompare ? "pointer" : "default", opacity: canCompare ? 1 : 0.4,
+                        }}
+                      >
+                        Diff
+                      </button>
                     </div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted-text)", display: "flex", gap: 8 }}>
-                      <span>{snap.messagesAtPoint.length} messages</span>
-                      <span>{new Date(snap.createdAt).toLocaleTimeString()}</span>
-                    </div>
+                  )}
+                  {/* Snapshot list */}
+                  <div style={{ flex: 1, overflow: "auto", padding: "8px 12px" }}>
+                    {snapshots.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--muted-text)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                        No snapshots yet. Rollback a message to create one.
+                      </div>
+                    ) : (
+                      snapshots.map((snap) => (
+                        <div
+                          key={snap.id}
+                          style={{
+                            padding: "10px 12px",
+                            marginBottom: 6,
+                            borderRadius: 8,
+                            border: `0.5px solid ${(compareA === snap.id || compareB === snap.id) ? "var(--accent-gold)" : "var(--glass-border)"}`,
+                            background: (compareA === snap.id || compareB === snap.id) ? "color-mix(in oklab, var(--accent-gold) 6%, var(--background))" : "var(--background)",
+                            cursor: "pointer",
+                            transition: "border-color 160ms ease",
+                          }}
+                          onClick={() => restoreSnapshot(snap)}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-gold)"; }}
+                          onMouseLeave={(e) => { if (compareA !== snap.id && compareB !== snap.id) e.currentTarget.style.borderColor = "var(--glass-border)"; }}
+                        >
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--foreground)", marginBottom: 4 }}>
+                            {snap.name}
+                          </div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted-text)", display: "flex", gap: 8 }}>
+                            <span>{snap.messagesAtPoint.length} messages</span>
+                            <span>{new Date(snap.createdAt).toLocaleTimeString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
