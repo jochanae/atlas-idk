@@ -1501,6 +1501,51 @@ function ChatPanel({
   );
 }
 
+function MessageActionButton({
+  label,
+  onClick,
+  disabled,
+  active,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        background: "transparent",
+        border: "0.5px solid var(--border)",
+        color: active ? "var(--ember)" : "var(--muted-text)",
+        fontFamily: "var(--font-mono)",
+        fontSize: 10,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        borderRadius: 6,
+        padding: "4px 10px",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        transition: "border-color 160ms ease, color 160ms ease",
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = "var(--ember)";
+          e.currentTarget.style.color = "var(--ember)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.color = active ? "var(--ember)" : "var(--muted-text)";
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function ParkButton({
   parked,
   onClick,
