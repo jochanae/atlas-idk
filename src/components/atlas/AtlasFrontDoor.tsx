@@ -247,7 +247,7 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Stage: scrollable content area beneath sticky header */}
+      {/* Stage: scrollable content area beneath fixed header */}
       <div
         style={{
           flex: 1,
@@ -257,6 +257,7 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
+          paddingTop: 72,
         }}
       >
         {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
