@@ -54,6 +54,8 @@ export function AtlasFrontDoor({
   inputFocusSignal,
   sidebarToggle,
   userName,
+  recents,
+  onOpenSession,
   onModeChange,
   onInputChange,
   onSend,
