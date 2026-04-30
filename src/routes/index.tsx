@@ -863,6 +863,8 @@ function WorkspacePage() {
   }, [queueItems, executeQueueItem]);
 
   // Promote a plan step to the queue — with full dependency context
+  const [autoExpandQueueId, setAutoExpandQueueId] = useState<string | null>(null);
+
   const promoteStepToQueue = useCallback((step: PlanStep, context?: import("@/components/atlas/DependencyGraph").PromoteContext) => {
     const contextSuffix = context
       ? [
@@ -870,19 +872,32 @@ function WorkspacePage() {
           context.dependentLabels.length ? ` [unlocks: ${context.dependentLabels.join(", ")}]` : "",
         ].join("")
       : "";
-    // Carry full dependency metadata into the queue item
+    const newId = crypto.randomUUID();
     setQueueItems((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: newId,
         text: step.label + contextSuffix,
         status: "pending" as const,
         planStepId: step.id,
         dependsOn: step.dependsOn,
       },
     ]);
+    setAutoExpandQueueId(newId);
     haptic("light");
   }, []);
+
+  const jumpToPlanStep = useCallback((planStepId: string) => {
+    setActiveMode("plan");
+    haptic("light");
+    const step = planSteps.find((s) => s.id === planStepId);
+    if (step) {
+      setAdaptivePlaceholder(`expand on "${step.label}"…`);
+      setInput(`Expand on the plan step: ${step.label}`);
+      setInputFocusSignal((v) => v + 1);
+      setTimeout(() => setAdaptivePlaceholder(null), 5000);
+    }
+  }, [planSteps, setActiveMode]);
 
   // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
   useEffect(() => {
