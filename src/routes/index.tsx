@@ -866,8 +866,19 @@ function WorkspacePage() {
           context.dependentLabels.length ? ` [unlocks: ${context.dependentLabels.join(", ")}]` : "",
         ].join("")
       : "";
-    addToQueue(step.label + contextSuffix);
-  }, [addToQueue]);
+    // Carry full dependency metadata into the queue item
+    setQueueItems((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        text: step.label + contextSuffix,
+        status: "pending" as const,
+        planStepId: step.id,
+        dependsOn: step.dependsOn,
+      },
+    ]);
+    haptic("light");
+  }, []);
 
   // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
   useEffect(() => {
