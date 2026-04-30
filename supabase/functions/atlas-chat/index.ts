@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
             eq: (col: string, val: unknown) => {
               order: (col: string, opts: { ascending: boolean }) => {
                 limit: (n: number) => Promise<{
-                  data: Array<{ title: string; summary: string | null }> | null;
+                  data: Array<{ id: string; title: string; summary: string | null; created_at: string }> | null;
                   error: Error | null;
                 }>;
               };
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
     };
 
     const { data: activeLedgerEntries, error: ledgerErr } = await entriesAny
-      .select("title, summary")
+      .select("id, title, summary, created_at")
       .eq("project_id", projectId)
       .eq("user_id", user.id)
       .eq("status", "committed")
@@ -195,12 +195,51 @@ Deno.serve(async (req) => {
       .limit(10);
     if (ledgerErr) throw ledgerErr;
 
+    const ledgerRows = activeLedgerEntries ?? [];
     const guardedSystemPrompt = buildGuardedSystemPrompt(
-      (activeLedgerEntries ?? []).map((e) => ({
+      ledgerRows.map((e) => ({
+        id: e.id,
         title: e.title,
         description: e.summary,
       })),
     );
+
+    // Memory surfacing — pick the entries most relevant to this turn so
+    // the UI can render tappable "Remembered from..." chips above the reply.
+    // Cheap keyword-overlap heuristic; good enough until we add embeddings.
+    const STOPWORDS = new Set([
+      "the","a","an","and","or","but","if","then","of","to","in","on","for",
+      "with","is","are","was","were","be","been","being","this","that","it",
+      "as","by","at","from","i","you","we","they","my","your","our","their",
+      "do","does","did","have","has","had","not","no","can","could","should",
+      "would","what","why","how","when","where","which","who","so","just","up",
+      "down","out","about","over","under","into","than","too","very","also",
+    ]);
+    const tokenize = (s: string) =>
+      new Set(
+        (s ?? "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
+      );
+    const messageTokens = tokenize(message);
+    const surfacedMemories = ledgerRows
+      .map((e) => {
+        const entryTokens = tokenize(`${e.title} ${e.summary ?? ""}`);
+        let score = 0;
+        for (const t of messageTokens) if (entryTokens.has(t)) score += 1;
+        return { entry: e, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((x) => ({
+        id: x.entry.id,
+        title: x.entry.title,
+        created_at: x.entry.created_at,
+      }));
+
 
     // Persist the user message
     await userClient.from("chat_messages").insert({
