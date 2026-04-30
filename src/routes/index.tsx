@@ -1307,8 +1307,8 @@ function WorkspacePage() {
                 onNavigateLedger={() => navigate({ to: "/ledger" })}
                 activeMode={activeMode}
                 onModeChange={setActiveMode}
-                activeSurface={surface}
-                onSurfaceChange={setSurface}
+                activeSurface={surface === "workspace" ? "ledger" : surface}
+                onSurfaceChange={(s) => setSurface(s === "ledger" ? "workspace" : s)}
               />
             ) : undefined
           }
