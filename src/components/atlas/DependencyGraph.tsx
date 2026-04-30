@@ -153,6 +153,7 @@ export function DependencyGraph({ steps: rawSteps, onPromoteToQueue, onStepTap, 
   const steps = sanitizeSteps(rawSteps);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [cycleCopied, setCycleCopied] = useState(false);
 
   if (steps.length === 0) {
     return (
