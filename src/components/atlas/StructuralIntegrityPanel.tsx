@@ -169,7 +169,7 @@ function savePresets(presets: FilterPreset[]) {
   try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch {}
 }
 
-export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityPanelProps) {
+export function StructuralIntegrityPanel({ open, onClose, onHarden }: StructuralIntegrityPanelProps) {
   const items = useMemo(() => buildAuditManifest(), []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
