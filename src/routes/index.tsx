@@ -705,7 +705,7 @@ function WorkspacePage() {
     const item = queueItems.find((i) => i.id === id);
     if (!item) return;
     try { await send(item.text); setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "done" as const } : i)); }
-    catch { setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "error" as const } : i)); }
+    catch { setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "failed" as const } : i)); }
   }, [queueItems]);
 
   const executeAllQueue = useCallback(async () => {
