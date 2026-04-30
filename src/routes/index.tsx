@@ -809,9 +809,15 @@ function WorkspacePage() {
     setQueueExecuting(false);
   }, [queueItems, executeQueueItem]);
 
-  // Promote a plan step to the queue
-  const promoteStepToQueue = useCallback((step: PlanStep) => {
-    addToQueue(step.label);
+  // Promote a plan step to the queue — with full dependency context
+  const promoteStepToQueue = useCallback((step: PlanStep, context?: import("@/components/atlas/DependencyGraph").PromoteContext) => {
+    const contextSuffix = context
+      ? [
+          context.dependencyLabels.length ? ` [depends on: ${context.dependencyLabels.join(", ")}]` : "",
+          context.dependentLabels.length ? ` [unlocks: ${context.dependentLabels.join(", ")}]` : "",
+        ].join("")
+      : "";
+    addToQueue(step.label + contextSuffix);
   }, [addToQueue]);
 
   // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
