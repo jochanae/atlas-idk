@@ -25,6 +25,7 @@ import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
 import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
+import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
@@ -177,6 +178,7 @@ function WorkspacePage() {
   const [diffNewCode, setDiffNewCode] = useState("");
   const [diffLabels, setDiffLabels] = useState<{ old: string; new: string }>({ old: "Before", new: "After" });
   const [collaborateOpen, setCollaborateOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
@@ -788,6 +790,7 @@ function WorkspacePage() {
               setDiffOpen(true);
             }
             else if (id === "collaborate") setCollaborateOpen(true);
+            else if (id === "github") setGithubOpen(true);
           }}
           contextualHUD={
             session && messages.length > 0 ? (
@@ -1117,6 +1120,11 @@ function WorkspacePage() {
         onClose={() => setCollaborateOpen(false)}
         projectName={activeProject?.name}
         sessionId={session?.id}
+      />
+      <GitHubDrawer
+        open={githubOpen}
+        onClose={() => setGithubOpen(false)}
+        projectId={activeProjectId}
       />
       <OnboardingFlow
         show={showOnboarding && recents.length === 0 && !session}
