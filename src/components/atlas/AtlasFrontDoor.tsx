@@ -93,14 +93,17 @@ export function AtlasFrontDoor({
   const [pillsOverflow, setPillsOverflow] = useState(false);
 
   const TEXTAREA_MIN_HEIGHT = 48;
-  const TEXTAREA_MAX_HEIGHT = 160;
+  const TEXTAREA_MAX_HEIGHT_RESTING = 160;
+  // Active mode: cap at 40% of viewport so keyboard + chat stay visible
+  const TEXTAREA_MAX_HEIGHT_ACTIVE = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.4) : 200;
 
-  const adjustTextareaHeight = (element: HTMLTextAreaElement | null) => {
+  const adjustTextareaHeight = (element: HTMLTextAreaElement | null, maxH?: number) => {
     if (!element) return;
+    const cap = maxH ?? (active ? TEXTAREA_MAX_HEIGHT_ACTIVE : TEXTAREA_MAX_HEIGHT_RESTING);
     element.style.height = "0px";
-    const nextHeight = Math.max(TEXTAREA_MIN_HEIGHT, Math.min(element.scrollHeight, TEXTAREA_MAX_HEIGHT));
+    const nextHeight = Math.max(TEXTAREA_MIN_HEIGHT, Math.min(element.scrollHeight, cap));
     element.style.height = `${nextHeight}px`;
-    element.style.overflowY = element.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
+    element.style.overflowY = element.scrollHeight > cap ? "auto" : "hidden";
   };
 
   const handleInputChange = (value: string) => {
@@ -139,10 +142,12 @@ export function AtlasFrontDoor({
   }, [input, active]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // In resting mode, Enter sends. In active mode, Enter = newline, only send button submits.
+    if (!active && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSend(input, activeMode);
     }
+    // In active mode, Enter always inserts newline (default textarea behavior)
   };
 
   const showPlaceholder = !input && !active;
@@ -367,7 +372,7 @@ export function AtlasFrontDoor({
                   position: "relative",
                   zIndex: 1,
                   minHeight: TEXTAREA_MIN_HEIGHT,
-                  maxHeight: TEXTAREA_MAX_HEIGHT,
+                  maxHeight: TEXTAREA_MAX_HEIGHT_RESTING,
                   overflowY: "hidden",
                   display: "block",
                 }}
@@ -616,13 +621,26 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
+      {/* Floating Contextual HUD — glass layer above the input bar */}
+      {active && contextualHUD && (
+        <div
+          style={{
+            margin: "0 20px 6px",
+            flexShrink: 0,
+            animation: "atlas-bubble-in 200ms ease forwards",
+          }}
+        >
+          {contextualHUD}
+        </div>
+      )}
+
       {/* Active-mode input docked at bottom — solid anchor with utility bar */}
       {active && (
         <div
           className="atlas-active-input-shell"
           style={{
             margin: "0 16px 14px",
-            background: "var(--surface)",
+            background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
             borderRadius: 14,
             border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
             padding: "12px 14px 8px",
@@ -631,12 +649,6 @@ export function AtlasFrontDoor({
             flexShrink: 0,
           }}
         >
-          {/* Contextual HUD — suggestion chips above input */}
-          {contextualHUD && (
-            <div style={{ marginBottom: 8 }}>
-              {contextualHUD}
-            </div>
-          )}
           <textarea
             ref={textareaRef}
             value={input}
@@ -655,9 +667,11 @@ export function AtlasFrontDoor({
               resize: "none",
               fontFamily: "inherit",
               minHeight: TEXTAREA_MIN_HEIGHT,
-              maxHeight: 120,
+              maxHeight: TEXTAREA_MAX_HEIGHT_ACTIVE,
               overflowY: "hidden",
               display: "block",
+              scrollbarWidth: "thin",
+              scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
           />
           {/* Utility Bar: structured, evenly spaced, muted gold */}
@@ -758,11 +772,21 @@ export function AtlasFrontDoor({
             0 0 22px -6px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
         }
         .atlas-active-input-shell:focus-within {
-          border-color: color-mix(in oklab, var(--accent-gold) 45%, var(--border)) !important;
+          border-color: color-mix(in oklab, var(--accent-gold) 55%, var(--border)) !important;
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.04),
             0 6px 24px rgba(0,0,0,0.4),
-            0 0 16px -6px color-mix(in oklab, var(--accent-gold) 45%, transparent) !important;
+            0 0 20px -4px color-mix(in oklab, var(--accent-gold) 50%, transparent) !important;
+        }
+        .atlas-active-input-shell textarea::-webkit-scrollbar {
+          width: 3px;
+        }
+        .atlas-active-input-shell textarea::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .atlas-active-input-shell textarea::-webkit-scrollbar-thumb {
+          background: color-mix(in oklab, var(--accent-gold) 30%, transparent);
+          border-radius: 2px;
         }
         .atlas-utility-btn {
           width: 32px;
