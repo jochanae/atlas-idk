@@ -697,7 +697,7 @@ function WorkspacePage() {
 
   // ── Task Queue handlers ──
   const addToQueue = useCallback((text: string) => {
-    setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const, createdAt: Date.now() }]);
+    setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const }]);
   }, []);
 
   const executeQueueItem = useCallback(async (id: string) => {
@@ -705,7 +705,7 @@ function WorkspacePage() {
     const item = queueItems.find((i) => i.id === id);
     if (!item) return;
     try { await send(item.text); setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "done" as const } : i)); }
-    catch { setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "error" as const } : i)); }
+    catch { setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "failed" as const } : i)); }
   }, [queueItems]);
 
   const executeAllQueue = useCallback(async () => {
@@ -830,6 +830,7 @@ function WorkspacePage() {
             ) : undefined
           }
           onAddToQueue={addToQueue}
+          queueActive={queueItems.some((i) => i.status === "pending")}
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD

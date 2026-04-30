@@ -57,6 +57,8 @@ type AtlasFrontDoorProps = {
   /** Contextual HUD element rendered above the active input */
   contextualHUD?: ReactNode;
   taskQueue?: ReactNode;
+  /** When true, placeholder switches to queue-specific language */
+  queueActive?: boolean;
   onAddToQueue?: (text: string) => void;
   children?: ReactNode;
 };
@@ -89,6 +91,9 @@ export function AtlasFrontDoor({
   onGenerateCode,
   onSystemMenuSelect,
   contextualHUD,
+  taskQueue,
+  queueActive,
+  onAddToQueue,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -371,7 +376,11 @@ export function AtlasFrontDoor({
                     textOverflow: "ellipsis",
                   }}
                 >
-                  <RotatingPlaceholder mode={activeMode} paused={false} />
+                  {queueActive ? (
+                    <span aria-hidden style={{ pointerEvents: "none" }}>add a follow-up to the queue…</span>
+                  ) : (
+                    <RotatingPlaceholder mode={activeMode} paused={false} />
+                  )}
                 </div>
               )}
               <textarea
@@ -642,6 +651,19 @@ export function AtlasFrontDoor({
           </div>
         </div>
       </div>
+
+      {/* Task Queue — rendered above contextual HUD when items exist */}
+      {active && taskQueue && (
+        <div
+          style={{
+            margin: "0 20px 6px",
+            flexShrink: 0,
+            animation: "atlas-bubble-in 200ms ease forwards",
+          }}
+        >
+          {taskQueue}
+        </div>
+      )}
 
       {/* Floating Contextual HUD — glass layer above the input bar */}
       {active && contextualHUD && (
