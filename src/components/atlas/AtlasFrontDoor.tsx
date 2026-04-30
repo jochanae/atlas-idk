@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
+import { SystemMenu } from "./SystemMenu";
 
 export const MODES = [
   { id: "think", label: "Think", color: "ember" },
