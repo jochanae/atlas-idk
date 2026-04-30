@@ -4,6 +4,7 @@ import { SystemMenu } from "./SystemMenu";
 
 export const MODES = [
   { id: "think", label: "Think", color: "ember" },
+  { id: "plan", label: "Plan", color: "accent-gold" },
   { id: "build", label: "Build", color: "ember" },
   { id: "explore", label: "Explore", color: "phosphor" },
   { id: "decide", label: "Decide", color: "ember" },
