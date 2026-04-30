@@ -439,6 +439,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    const memoriesForMessage = surfacedMemories.length > 0 ? surfacedMemories : null;
+
     const { data: insertedMessage, error: insertError } = await userClient
       .from("chat_messages")
       .insert({
@@ -448,6 +450,7 @@ Deno.serve(async (req) => {
         content: finalText,
         card_payload: cardPayload,
         card_schema_version: cardSchemaVersion,
+        surfaced_memories: memoriesForMessage,
       })
       .select("*")
       .single();
@@ -461,6 +464,7 @@ Deno.serve(async (req) => {
         createdRecs,
         card: cardPayload,
         cardSchemaVersion,
+        surfacedMemories,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
