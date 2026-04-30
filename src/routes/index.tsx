@@ -29,6 +29,7 @@ import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
+import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
@@ -143,7 +144,17 @@ function WorkspacePage() {
   const [surface, setSurface] = useState<"chat" | "workspace" | "preview">("chat");
   const [expandedRec, setExpandedRec] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
-  const [activeMode, setActiveMode] = useState<ModeId>("think");
+  const [activeMode, setActiveModeRaw] = useState<ModeId>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("atlas-active-mode");
+      if (stored && ["think", "plan", "build", "explore", "decide", "audit"].includes(stored)) return stored as ModeId;
+    }
+    return "think";
+  });
+  const setActiveMode = useCallback((mode: ModeId) => {
+    setActiveModeRaw(mode);
+    try { localStorage.setItem("atlas-active-mode", mode); } catch {}
+  }, []);
   const [recents, setRecents] = useState<RecentSession[]>([]);
   const [inputFocusSignal, setInputFocusSignal] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -183,6 +194,9 @@ function WorkspacePage() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [queueExecuting, setQueueExecuting] = useState(false);
+  const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
+  const [depGraphOpen, setDepGraphOpen] = useState(false);
+  const [adaptivePlaceholder, setAdaptivePlaceholder] = useState<string | null>(null);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -514,15 +528,17 @@ function WorkspacePage() {
       };
       setMessages((prev) => [...prev, optimistic]);
 
+      const planModeHint = activeMode === "plan"
+        ? "\n\n[SYSTEM: User is in Plan Mode. Respond with an architectural breakdown. Format steps as a numbered list. Each step should be a clear, actionable phase. If steps depend on each other, mention the dependency explicitly (e.g. 'depends on step 1'). Do NOT write code.]"
+        : "";
+
       const { data, error } = await supabase.functions.invoke("atlas-chat", {
         body: {
           sessionId: target.session.id,
           projectId: target.projectId,
-          message: text,
+          message: text + planModeHint,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
         },
-        // supabase-js v2 forwards this signal to fetch — calling
-        // controller.abort() rejects this invoke immediately.
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
@@ -543,6 +559,29 @@ function WorkspacePage() {
             : recent,
         ),
       );
+      // If in Plan mode, extract numbered steps from the response
+      if (activeMode === "plan" && data?.message?.content) {
+        const content = data.message.content as string;
+        const stepRegex = /(?:^|\n)\s*(\d+)\.\s+\*{0,2}(.+?)\*{0,2}(?:\n|$)/g;
+        const extracted: PlanStep[] = [];
+        let match: RegExpExecArray | null;
+        while ((match = stepRegex.exec(content)) !== null) {
+          const label = match[2].replace(/\*+/g, "").trim().slice(0, 60);
+          const stepNum = match[1];
+          // Check for "depends on step N" mentions
+          const depMatch = match[2].match(/depends?\s+on\s+step\s+(\d+)/i);
+          const deps: string[] = [];
+          if (depMatch) {
+            const depIdx = extracted.findIndex((s) => s.id.endsWith(`-${depMatch[1]}`));
+            if (depIdx >= 0) deps.push(extracted[depIdx].id);
+          } else if (extracted.length > 0) {
+            // Default: each step depends on the previous
+            deps.push(extracted[extracted.length - 1].id);
+          }
+          extracted.push({ id: `plan-${stepNum}`, label, dependsOn: deps });
+        }
+        if (extracted.length > 0) setPlanSteps(extracted);
+      }
       await refresh(target.session, target.projectId);
     } catch (e) {
       // User-initiated abort — clean up quietly, don't show an error toast.
@@ -716,6 +755,34 @@ function WorkspacePage() {
     setQueueExecuting(false);
   }, [queueItems, executeQueueItem]);
 
+  // Promote a plan step to the queue
+  const promoteStepToQueue = useCallback((step: PlanStep) => {
+    addToQueue(step.label);
+  }, [addToQueue]);
+
+  // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const pending = queueItems.filter((i) => i.status === "pending");
+      if (e.shiftKey && e.key === "Enter" && pending.length) {
+        e.preventDefault();
+        executeAllQueue();
+        return;
+      }
+      if (e.key === "Backspace" && pending.length) {
+        e.preventDefault();
+        setQueueItems((prev) => {
+          const lastPending = [...prev].reverse().find((i) => i.status === "pending");
+          return lastPending ? prev.filter((i) => i.id !== lastPending.id) : prev;
+        });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [queueItems, executeAllQueue]);
+
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
   const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
   const activeProject = useMemo(
@@ -769,7 +836,7 @@ function WorkspacePage() {
         <AtlasFrontDoor
           active={isActive}
           input={input}
-          onInputChange={setInput}
+          onInputChange={(v) => { setInput(v); if (v && adaptivePlaceholder) setAdaptivePlaceholder(null); }}
           sending={sending}
           activeMode={activeMode}
           inputFocusSignal={inputFocusSignal}
@@ -831,6 +898,20 @@ function WorkspacePage() {
           }
           onAddToQueue={addToQueue}
           queueActive={queueItems.some((i) => i.status === "pending")}
+          adaptivePlaceholder={adaptivePlaceholder}
+          planGraph={
+            <DependencyGraph
+              steps={planSteps}
+              onPromoteToQueue={promoteStepToQueue}
+              onStepTap={(step) => {
+                setAdaptivePlaceholder(`expand on "${step.label}"…`);
+                setInput(`Expand on the plan step: ${step.label}`);
+                setInputFocusSignal((v) => v + 1);
+                // Clear adaptive placeholder after 5s
+                setTimeout(() => setAdaptivePlaceholder(null), 5000);
+              }}
+            />
+          }
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD
@@ -838,7 +919,9 @@ function WorkspacePage() {
                 recommendations={recs}
                 onTap={(text) => {
                   setInput(text);
+                  setAdaptivePlaceholder(text.slice(0, 40) + "…");
                   setInputFocusSignal((v) => v + 1);
+                  setTimeout(() => setAdaptivePlaceholder(null), 5000);
                 }}
                 onDiffRequest={(text) => {
                   // Show diff comparing the chip text against the last assistant message
