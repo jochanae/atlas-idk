@@ -1,13 +1,12 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useState } from "react";
 
-export type QueueItem = {
+export interface QueueItem {
   id: string;
   text: string;
-  status: "pending" | "running" | "done" | "error";
-  createdAt: number;
-};
+  status: "pending" | "running" | "done" | "failed";
+}
 
-type Props = {
+interface TaskQueueProps {
   items: QueueItem[];
   onReorder: (items: QueueItem[]) => void;
   onEdit: (id: string, text: string) => void;
@@ -16,12 +15,8 @@ type Props = {
   onExecuteAll: () => void;
   onExecuteOne: (id: string) => void;
   executing: boolean;
-};
+}
 
-/**
- * TaskQueue — collapsible async queue above the input area.
- * Drag-and-drop reorder, item menus, badge count, batch execute.
- */
 export function TaskQueue({
   items,
   onReorder,
@@ -31,52 +26,17 @@ export function TaskQueue({
   onExecuteAll,
   onExecuteOne,
   executing,
-}: Props) {
-  const [expanded, setExpanded] = useState(false);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+}: TaskQueueProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
-  const editRef = useRef<HTMLInputElement>(null);
+  const dragIdRef = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
-  const pendingItems = items.filter((i) => i.status === "pending");
-  const count = pendingItems.length;
-
-  useEffect(() => {
-    if (editingId && editRef.current) editRef.current.focus();
-  }, [editingId]);
-
-  const handleDragStart = (idx: number) => {
-    setDragIdx(idx);
-  };
-
-  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    setOverIdx(idx);
-  }, []);
-
-  const handleDrop = useCallback(
-    (idx: number) => {
-      if (dragIdx === null || dragIdx === idx) {
-        setDragIdx(null);
-        setOverIdx(null);
-        return;
-      }
-      const newItems = [...items];
-      const [moved] = newItems.splice(dragIdx, 1);
-      newItems.splice(idx, 0, moved);
-      onReorder(newItems);
-      setDragIdx(null);
-      setOverIdx(null);
-    },
-    [dragIdx, items, onReorder],
-  );
+  const pending = items.filter((i) => i.status === "pending");
 
   const startEdit = (item: QueueItem) => {
     setEditingId(item.id);
     setEditText(item.text);
-    setMenuOpen(null);
   };
 
   const commitEdit = () => {
@@ -87,330 +47,300 @@ export function TaskQueue({
     setEditText("");
   };
 
-  if (count === 0 && items.every((i) => i.status !== "running")) return null;
+  const handleDragStart = (id: string) => {
+    dragIdRef.current = id;
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (dragIdRef.current && dragIdRef.current !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDrop = useCallback(
+    (targetId: string) => {
+      const fromId = dragIdRef.current;
+      if (!fromId || fromId === targetId) {
+        setDragOverId(null);
+        return;
+      }
+      const fromIdx = items.findIndex((i) => i.id === fromId);
+      const toIdx = items.findIndex((i) => i.id === targetId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const next = [...items];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      onReorder(next);
+      dragIdRef.current = null;
+      setDragOverId(null);
+    },
+    [items, onReorder],
+  );
+
+  if (items.length === 0) return null;
+
+  const statusIcon = (s: QueueItem["status"]) => {
+    if (s === "done")
+      return (
+        <svg viewBox="0 0 16 16" width={12} height={12} stroke="var(--phosphor)" fill="none" strokeWidth={2}>
+          <path d="M3 8.5l3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    if (s === "running")
+      return (
+        <span
+          style={{
+            display: "inline-block",
+            width: 10,
+            height: 10,
+            border: "2px solid var(--accent-gold)",
+            borderTopColor: "transparent",
+            borderRadius: "50%",
+            animation: "atlas-spin 700ms linear infinite",
+          }}
+        />
+      );
+    if (s === "failed")
+      return (
+        <svg viewBox="0 0 16 16" width={12} height={12} stroke="var(--ember)" fill="none" strokeWidth={2}>
+          <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+        </svg>
+      );
+    return (
+      <span
+        style={{
+          display: "inline-block",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          border: "1.5px solid var(--muted-text)",
+          opacity: 0.5,
+        }}
+      />
+    );
+  };
 
   return (
     <div
       style={{
-        borderRadius: 14,
-        background: "var(--surface)",
-        border: "0.5px solid var(--glass-border)",
-        overflow: "hidden",
-        transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
-        animation: "atlas-bubble-in 200ms ease forwards",
+        background: "color-mix(in oklab, var(--surface) 92%, var(--accent-gold) 8%)",
+        border: "1px solid color-mix(in oklab, var(--accent-gold) 15%, var(--border))",
+        borderRadius: 12,
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
       }}
     >
-      {/* Header bar — always visible */}
-      <button
-        onClick={() => setExpanded(!expanded)}
+      {/* Header */}
+      <div
         style={{
-          width: "100%",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: 10,
-          padding: "10px 14px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--foreground)",
+          paddingBottom: 4,
         }}
       >
-        {/* Expand chevron */}
-        <svg
-          viewBox="0 0 16 16"
-          width={10}
-          height={10}
-          stroke="var(--muted-text)"
-          fill="none"
-          strokeWidth={2}
-          strokeLinecap="round"
-          style={{
-            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 200ms ease",
-          }}
-        >
-          <path d="M4 6l4 4 4-4" />
-        </svg>
-
         <span
           style={{
             fontFamily: "var(--font-mono)",
-            fontSize: 10.5,
-            letterSpacing: "0.08em",
+            fontSize: 9.5,
+            letterSpacing: "0.14em",
             textTransform: "uppercase",
             color: "var(--accent-gold)",
+            opacity: 0.9,
           }}
         >
-          Queue
+          Queue · {pending.length} pending
         </span>
-
-        {/* Badge */}
-        {count > 0 && (
-          <span
+        {pending.length > 0 && (
+          <button
+            type="button"
+            onClick={onExecuteAll}
+            disabled={executing}
             style={{
-              minWidth: 18,
-              height: 18,
-              borderRadius: 9,
-              background: "color-mix(in oklab, var(--accent-gold) 15%, transparent)",
-              border: "0.5px solid color-mix(in oklab, var(--accent-gold) 30%, transparent)",
-              color: "var(--accent-gold)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 10px",
+              borderRadius: 8,
+              border: "none",
+              background: "var(--ember)",
+              color: "var(--background)",
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 5px",
-            }}
-          >
-            {count}
-          </span>
-        )}
-
-        <span style={{ flex: 1 }} />
-
-        {/* Execute all button */}
-        {count > 0 && (
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              onExecuteAll();
-            }}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              background: executing
-                ? "color-mix(in oklab, var(--accent-gold) 10%, transparent)"
-                : "color-mix(in oklab, var(--accent-gold) 15%, transparent)",
-              border: "0.5px solid color-mix(in oklab, var(--accent-gold) 25%, transparent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
               cursor: executing ? "default" : "pointer",
-              transition: "all 160ms ease",
+              opacity: executing ? 0.5 : 1,
+              boxShadow: "0 0 12px -2px rgba(234,88,12,0.5)",
+              transition: "opacity 200ms",
             }}
           >
-            {executing ? (
-              <div
-                style={{
-                  width: 12,
-                  height: 12,
-                  border: "1.5px solid var(--accent-gold)",
-                  borderTopColor: "transparent",
-                  borderRadius: "50%",
-                  animation: "spin 600ms linear infinite",
-                }}
-              />
-            ) : (
-              <svg viewBox="0 0 16 16" width={12} height={12} fill="var(--accent-gold)" stroke="none">
-                <path d="M5 3l8 5-8 5z" />
-              </svg>
-            )}
-          </span>
+            <svg viewBox="0 0 16 16" width={10} height={10} fill="currentColor">
+              <path d="M4 2l10 6-10 6z" />
+            </svg>
+            Run all
+          </button>
         )}
-      </button>
+      </div>
 
-      {/* Expanded item list */}
-      {expanded && (
-        <div
-          style={{
-            borderTop: "0.5px solid var(--glass-border)",
-            maxHeight: 240,
-            overflowY: "auto",
-          }}
-        >
-          {items.map((item, idx) => {
-            const isDragging = dragIdx === idx;
-            const isOver = overIdx === idx;
-            const isEditing = editingId === item.id;
-
-            return (
-              <div
-                key={item.id}
-                draggable={!isEditing}
-                onDragStart={() => handleDragStart(idx)}
-                onDragOver={(e) => handleDragOver(e, idx)}
-                onDrop={() => handleDrop(idx)}
-                onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 14px",
-                  borderTop: isOver ? "2px solid var(--accent-gold)" : "none",
-                  opacity: isDragging ? 0.4 : 1,
-                  background: item.status === "running"
-                    ? "color-mix(in oklab, var(--accent-gold) 5%, transparent)"
-                    : item.status === "done"
-                      ? "color-mix(in oklab, #22c55e 5%, transparent)"
-                      : item.status === "error"
-                        ? "color-mix(in oklab, var(--ember) 5%, transparent)"
-                        : "transparent",
-                  transition: "opacity 160ms ease, background 160ms ease",
-                }}
-              >
-                {/* Drag handle */}
-                <span
-                  style={{
-                    cursor: "grab",
-                    color: "var(--accent-gold)",
-                    opacity: 0.4,
-                    fontSize: 10,
-                    flexShrink: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    lineHeight: 0,
-                  }}
-                  title="Drag to reorder"
+      {/* Items */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {items.map((item, idx) => {
+          const isDragOver = dragOverId === item.id;
+          return (
+            <div
+              key={item.id}
+              draggable={item.status === "pending"}
+              onDragStart={() => handleDragStart(item.id)}
+              onDragOver={(e) => handleDragOver(e, item.id)}
+              onDragEnd={() => setDragOverId(null)}
+              onDrop={() => handleDrop(item.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 8px",
+                borderRadius: 8,
+                background: isDragOver
+                  ? "color-mix(in oklab, var(--accent-gold) 12%, var(--surface))"
+                  : "var(--surface)",
+                border: isDragOver
+                  ? "1px dashed var(--accent-gold)"
+                  : "1px solid color-mix(in oklab, var(--border) 60%, transparent)",
+                transition: "background 150ms, border 150ms",
+                opacity: item.status === "done" ? 0.5 : 1,
+                cursor: item.status === "pending" ? "grab" : "default",
+              }}
+            >
+              {/* Grab handle */}
+              {item.status === "pending" && (
+                <svg
+                  viewBox="0 0 16 16"
+                  width={12}
+                  height={12}
+                  fill="var(--accent-gold)"
+                  style={{ opacity: 0.5, flexShrink: 0, cursor: "grab" }}
                 >
-                  <span>⠿</span>
-                </span>
+                  <circle cx="5" cy="4" r="1.2" />
+                  <circle cx="5" cy="8" r="1.2" />
+                  <circle cx="5" cy="12" r="1.2" />
+                  <circle cx="11" cy="4" r="1.2" />
+                  <circle cx="11" cy="8" r="1.2" />
+                  <circle cx="11" cy="12" r="1.2" />
+                </svg>
+              )}
 
-                {/* Status indicator */}
-                <div
+              {/* Status */}
+              <span style={{ flexShrink: 0 }}>{statusIcon(item.status)}</span>
+
+              {/* Text / edit */}
+              {editingId === item.id ? (
+                <input
+                  autoFocus
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onBlur={commitEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitEdit();
+                    if (e.key === "Escape") setEditingId(null);
+                  }}
                   style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    background:
-                      item.status === "running" ? "var(--accent-gold)"
-                        : item.status === "done" ? "#22c55e"
-                          : item.status === "error" ? "var(--ember)"
-                            : "var(--muted-text)",
-                    boxShadow: item.status === "running" ? "0 0 6px var(--accent-gold)" : "none",
-                    animation: item.status === "running" ? "pulse 1.5s ease infinite" : "none",
+                    flex: 1,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "var(--foreground)",
+                    fontSize: 13,
+                    fontFamily: "inherit",
+                    padding: 0,
                   }}
                 />
+              ) : (
+                <span
+                  onDoubleClick={() => item.status === "pending" && startEdit(item)}
+                  style={{
+                    flex: 1,
+                    fontSize: 13,
+                    color: "var(--foreground)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    cursor: item.status === "pending" ? "text" : "default",
+                  }}
+                  title={item.text}
+                >
+                  {item.text}
+                </span>
+              )}
 
-                {/* Text */}
-                {isEditing ? (
-                  <input
-                    ref={editRef}
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    onBlur={commitEdit}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitEdit();
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid var(--accent-gold)",
-                      background: "var(--surface-alt)",
-                      color: "var(--foreground)",
-                      fontFamily: "var(--font-sans)",
-                      fontSize: 12,
-                      outline: "none",
-                    }}
-                  />
-                ) : (
-                  <span
-                    style={{
-                      flex: 1,
-                      fontSize: 12,
-                      color: item.status === "done" ? "var(--muted-text)" : "var(--foreground)",
-                      textDecoration: item.status === "done" ? "line-through" : "none",
-                      fontFamily: "var(--font-sans)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => {
-                      if (item.status === "pending") onExecuteOne(item.id);
-                    }}
-                  >
-                    {item.text}
-                  </span>
-                )}
+              {/* Order badge */}
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  color: "var(--muted-text)",
+                  opacity: 0.5,
+                  flexShrink: 0,
+                }}
+              >
+                #{idx + 1}
+              </span>
 
-                {/* More menu */}
-                <div style={{ position: "relative", flexShrink: 0 }}>
+              {/* Actions */}
+              {item.status === "pending" && (
+                <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                  {/* Execute one */}
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(menuOpen === item.id ? null : item.id);
-                    }}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 6,
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--muted-text)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 14,
-                    }}
+                    type="button"
+                    onClick={() => onExecuteOne(item.id)}
+                    disabled={executing}
+                    title="Execute"
+                    style={iconBtnStyle}
                   >
-                    ⋯
+                    <svg viewBox="0 0 16 16" width={10} height={10} fill="var(--ember)">
+                      <path d="M5 3l8 5-8 5z" />
+                    </svg>
                   </button>
-
-                  {menuOpen === item.id && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        right: 0,
-                        top: "100%",
-                        zIndex: 10,
-                        minWidth: 130,
-                        padding: "4px 0",
-                        borderRadius: 10,
-                        background: "rgba(28, 25, 23, 0.95)",
-                        backdropFilter: "blur(16px)",
-                        border: "0.5px solid var(--glass-border)",
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                        animation: "atlas-bubble-in 120ms ease forwards",
-                      }}
-                    >
-                      {[
-                        { label: "Edit", action: () => startEdit(item) },
-                        { label: "Duplicate", action: () => { onDuplicate(item.id); setMenuOpen(null); } },
-                        { label: "Remove", action: () => { onRemove(item.id); setMenuOpen(null); }, color: "var(--ember)" },
-                      ].map((opt) => (
-                        <button
-                          key={opt.label}
-                          onClick={opt.action}
-                          style={{
-                            width: "100%",
-                            padding: "8px 14px",
-                            background: "transparent",
-                            border: "none",
-                            color: opt.color ?? "var(--foreground)",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: 11,
-                            textAlign: "left",
-                            cursor: "pointer",
-                            transition: "background 100ms ease",
-                          }}
-                          onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "color-mix(in oklab, var(--accent-gold) 8%, transparent)"; }}
-                          onMouseLeave={(e) => { (e.target as HTMLElement).style.background = "transparent"; }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {/* Duplicate */}
+                  <button type="button" onClick={() => onDuplicate(item.id)} title="Duplicate" style={iconBtnStyle}>
+                    <svg viewBox="0 0 16 16" width={10} height={10} stroke="var(--muted-text)" fill="none" strokeWidth={1.5}>
+                      <rect x="2" y="5" width="8" height="8" rx="1.5" />
+                      <path d="M6 5V3.5A1.5 1.5 0 0 1 7.5 2h5A1.5 1.5 0 0 1 14 3.5v5a1.5 1.5 0 0 1-1.5 1.5H11" />
+                    </svg>
+                  </button>
+                  {/* Remove */}
+                  <button type="button" onClick={() => onRemove(item.id)} title="Remove" style={iconBtnStyle}>
+                    <svg viewBox="0 0 16 16" width={10} height={10} stroke="var(--muted-text)" fill="none" strokeWidth={1.5}>
+                      <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+                    </svg>
+                  </button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
+        @keyframes atlas-spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
 }
+
+const iconBtnStyle: React.CSSProperties = {
+  width: 24,
+  height: 24,
+  borderRadius: 6,
+  background: "transparent",
+  border: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  opacity: 0.6,
+  transition: "opacity 150ms",
+};
