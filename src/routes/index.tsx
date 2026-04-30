@@ -1138,6 +1138,11 @@ function WorkspacePage() {
             else if (id === "github") setGithubOpen(true);
             else if (id === "snapshots") setSnapshotBrowserOpen(true);
             else if (id === "integrity") setIntegrityOpen(true);
+            else if (id === "research") {
+              setInput("/research ");
+              setSurface("chat");
+              setInputFocusSignal((s) => s + 1);
+            }
           }}
           taskQueue={
             session ? (
