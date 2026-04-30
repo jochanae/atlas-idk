@@ -60,6 +60,10 @@ type AtlasFrontDoorProps = {
   /** When true, placeholder switches to queue-specific language */
   queueActive?: boolean;
   onAddToQueue?: (text: string) => void;
+  /** Plan mode dependency graph (rendered above queue when Plan is active) */
+  planGraph?: ReactNode;
+  /** Adaptive placeholder set from external tap events */
+  adaptivePlaceholder?: string | null;
   children?: ReactNode;
 };
 
