@@ -395,6 +395,57 @@ function WorkspacePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ledgerCount, hasCompass, activeProjectId, user?.id]);
 
+  // ── Rollback & History ──
+  const handleRollback = useCallback((targetMessage: ChatMessage) => {
+    if (!user || !activeProjectId || !session) return;
+    const idx = messages.findIndex((m) => m.id === targetMessage.id);
+    if (idx < 0) return;
+    const snapshotMessages = messages.slice(0, idx + 1);
+    const snapshotLabel = `Snapshot @ ${targetMessage.content.slice(0, 40).replace(/\n/g, " ")}…`;
+    const currentSummary = messages.map((m) => `[${m.role}] ${m.content.slice(0, 80)}`).join("\n");
+    const historicalSummary = snapshotMessages.map((m) => `[${m.role}] ${m.content.slice(0, 80)}`).join("\n");
+    setDiffOldCode(currentSummary);
+    setDiffNewCode(historicalSummary);
+    setDiffLabels({ old: "Current State", new: "Rollback Target" });
+    setRollbackPreview({ messageId: targetMessage.id, snapshotLabel, messagesAtPoint: snapshotMessages });
+    setDiffOpen(true);
+  }, [messages, user, activeProjectId, session]);
+
+  const confirmRollback = useCallback(async () => {
+    if (!rollbackPreview || !user || !activeProjectId || !session) return;
+    setMessages(rollbackPreview.messagesAtPoint);
+    try {
+      await createEntryFromCard({
+        userId: user.id,
+        projectId: activeProjectId,
+        sessionId: session.id,
+        sourceMessageId: rollbackPreview.messageId,
+        payload: {
+          v: 1,
+          title: "System Reversion",
+          summary: `Rolled back to: ${rollbackPreview.snapshotLabel}`,
+          severity: "neutral",
+          verb: "audit",
+        },
+        status: "committed",
+      });
+      setLedgerCount((c) => c + 1);
+    } catch (e) {
+      console.error("Rollback ledger entry failed", e);
+    }
+    setAdaptivePlaceholder(`Code reverted to ${rollbackPreview.snapshotLabel.slice(0, 50)}. What's next?`);
+    setRecentRollbackMsgId(rollbackPreview.messageId);
+    setTimeout(() => setRecentRollbackMsgId(null), 3000);
+    setRollbackPreview(null);
+    setDiffOpen(false);
+    toast.success("Rolled back successfully");
+  }, [rollbackPreview, user, activeProjectId, session]);
+
+  const cancelRollback = useCallback(() => {
+    setRollbackPreview(null);
+    setDiffOpen(false);
+  }, []);
+
 
   // Track whether the active project already has a Compass (used by thinking prompts)
   useEffect(() => {
