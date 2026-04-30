@@ -1146,6 +1146,7 @@ function WorkspacePage() {
         open={githubOpen}
         onClose={() => setGithubOpen(false)}
         projectId={activeProjectId}
+        generatedFiles={generatedFiles}
       />
       <OnboardingFlow
         show={showOnboarding && recents.length === 0 && !session}
