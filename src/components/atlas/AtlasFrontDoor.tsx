@@ -155,7 +155,7 @@ export function AtlasFrontDoor({
         {/* Left: sidebar toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, height: 36 }}>
           {sidebarToggle}
-          {!headerCenter && (
+          {(
             <button
               onClick={onWordmarkClick}
               style={{
