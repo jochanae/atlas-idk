@@ -2362,25 +2362,41 @@ function ChatPanel({
                         <div
                           onClick={isLongMessage ? toggleExpand : undefined}
                           style={{
-                            background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
-                            border: "0.5px solid var(--gold-border)",
+                            background: "rgba(28, 28, 32, 0.85)",
                             borderRadius: "16px 4px 16px 16px",
                             padding: "var(--bubble-padding-y) var(--bubble-padding-x)",
+                            paddingLeft: "calc(var(--bubble-padding-x) + 8px)",
                             cursor: isLongMessage ? "pointer" : "default",
                             position: "relative",
+                            borderLeft: "2px solid var(--accent-gold)",
+                            border: "none",
                             transition: "all 280ms cubic-bezier(0.4, 0, 0.2, 1)",
                           }}
                         >
+                          {/* Gold accent bar */}
+                          <div style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 8,
+                            bottom: 8,
+                            width: 2,
+                            borderRadius: 1,
+                            background: "var(--accent-gold)",
+                            opacity: 0.6,
+                          }} />
                           <div
                             className="font-mono text-[9px] uppercase tracking-[0.15em]"
-                            style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 8, textAlign: "right" }}
+                            style={{ color: "var(--muted-text)", opacity: 0.5, marginBottom: 8, textAlign: "right" }}
                           >
                             YOU · {relativeTime(m.created_at)}
                           </div>
                           <div
-                            className="text-[16px] leading-[1.7] whitespace-pre-wrap text-foreground/80"
+                            className="text-[15px] leading-[1.7] whitespace-pre-wrap"
                             style={{
                               textAlign: "left",
+                              fontFamily: "var(--font-mono)",
+                              letterSpacing: "-0.01em",
+                              color: "rgba(255, 255, 255, 0.75)",
                               ...(isLongMessage && !isExpanded
                                 ? {
                                     display: "-webkit-box",
@@ -2395,7 +2411,6 @@ function ChatPanel({
                           >
                             {m.content}
                           </div>
-                          {/* Gold chevron for collapsible messages */}
                           {isLongMessage && (
                             <div
                               style={{
@@ -2403,7 +2418,7 @@ function ChatPanel({
                                 right: 12,
                                 bottom: 10,
                                 color: "var(--accent-gold)",
-                                opacity: 0.6,
+                                opacity: 0.4,
                                 transition: "transform 200ms ease, opacity 160ms ease",
                                 transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
                               }}

@@ -511,11 +511,13 @@ export function AtlasFrontDoor({
             className="atlas-input-shell"
             style={{
               margin: "0 var(--shell-edge)",
-              background: "var(--surface)",
+              background: "rgba(18, 18, 22, 0.65)",
+              backdropFilter: "blur(24px) saturate(140%)",
+              WebkitBackdropFilter: "blur(24px) saturate(140%)",
               borderRadius: "var(--input-radius)",
-              border: "1px solid color-mix(in oklab, var(--accent-gold) 20%, transparent)",
+              border: "1px solid var(--accent-gold)",
               padding: "20px 22px",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
               position: "relative",
               transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             }}
@@ -842,15 +844,17 @@ export function AtlasFrontDoor({
           }}
         >
           <div style={{
-            background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
+            background: "rgba(18, 18, 22, 0.65)",
+            backdropFilter: "blur(24px) saturate(140%)",
+            WebkitBackdropFilter: "blur(24px) saturate(140%)",
             borderRadius: "var(--input-radius)",
             border: sending
-              ? "1.5px solid rgba(212, 175, 55, 0.6)"
-              : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+              ? "1px solid rgba(212, 175, 55, 0.7)"
+              : "1px solid var(--accent-gold)",
             padding: "16px 18px 12px",
             boxShadow: sending
-              ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 20px -4px rgba(212, 175, 55, 0.35)"
-              : "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
+              ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 20px -4px rgba(212, 175, 55, 0.25)"
+              : "inset 0 1px 0 rgba(255,255,255,0.03)",
             transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             flexShrink: 0,
           }}
