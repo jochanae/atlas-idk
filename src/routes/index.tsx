@@ -697,7 +697,7 @@ function WorkspacePage() {
             }
           }}
           headerCenter={
-            activeProject ? (
+            isActive && activeProject ? (
               <ProjectHeaderCenter
                 projectName={activeProject.name}
                 sessionActive={!!session && !entrySurface}
