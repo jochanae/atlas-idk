@@ -2160,7 +2160,7 @@ function ChatPanel({
                                         // After last chunk finishes, remove from new set
                                         // so re-renders don't re-animate
                                       }}
-                                      className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
+                                     className="text-[14px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
                                       style={{ textAlign: "left" }}
                                     />
                                   </div>
