@@ -1200,6 +1200,16 @@ function ChatPanel({
             Park this
           </button>
         )}
+        {(thinkingPrompts.length > 0 || thinkingLoading) && (
+          <ThinkingPromptCard
+            prompts={thinkingPrompts}
+            loading={thinkingLoading}
+            onAsk={onAskThinkingPrompt}
+            onPark={onParkThinkingPrompt}
+            onDismiss={onDismissThinkingPrompt}
+            onRefresh={onRefreshThinkingPrompts}
+          />
+        )}
         {messages.map((m) => {
             const parsedConflict =
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
