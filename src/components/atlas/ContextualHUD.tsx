@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, type CSSProperties } from "react";
 
 type Suggestion = {
   id: string;
@@ -45,8 +45,10 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [batch, setBatch] = useState<BatchState>({ phase: "idle" });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const undoTimerRef = useRef<number | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const result: Suggestion[] = [];
@@ -174,6 +176,21 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
     setHoveredId(null);
   };
 
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const close = (event: MouseEvent | TouchEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpenId(null);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("touchstart", close);
+    };
+  }, [menuOpenId]);
+
   if (visibleSuggestions.length === 0 && batch.phase === "idle") return null;
 
   const hasSelection = selected.size > 0;
@@ -188,6 +205,43 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
   };
 
   const isParking = batch.phase === "parking";
+  const menuActionStyle: CSSProperties = {
+    width: "100%",
+    minHeight: 46,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "none",
+    background: "transparent",
+    color: "var(--foreground)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontFamily: "var(--font-sans)",
+    fontSize: 14,
+    lineHeight: 1.4,
+    cursor: "pointer",
+    textAlign: "left",
+  };
+  const menuIconWrapStyle: CSSProperties = {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+    color: "var(--accent-gold)",
+    flexShrink: 0,
+  };
+  const handleMenuPark = async (item: Suggestion) => {
+    setMenuOpenId(null);
+    const result = await onParkMultiple([item]);
+    setBatch({ phase: "done", count: 1, entryIds: result.entryIds });
+    clearUndoTimer();
+    undoTimerRef.current = window.setTimeout(() => {
+      setBatch({ phase: "idle" });
+    }, 5000);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -195,11 +249,11 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
       <div
         style={{
           display: "flex",
-          gap: 6,
+          gap: 10,
           overflowX: "auto",
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
-          paddingBottom: 2,
+          paddingBottom: 4,
           opacity: isParking ? 0.4 : 1,
           pointerEvents: isParking ? "none" : "auto",
           transition: "opacity 200ms ease",
@@ -226,15 +280,16 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
                 }}
                 style={{
                   maxWidth: 260,
-                  padding: "6px 28px 6px 12px",
-                  borderRadius: 18,
+                  minHeight: 48,
+                  padding: "11px 46px 11px 16px",
+                  borderRadius: 22,
                   background: isSelected
                     ? "color-mix(in oklab, var(--accent-gold) 15%, var(--surface))"
                     : "var(--surface)",
                   border: `0.5px solid ${isSelected ? "var(--accent-gold)" : "var(--border)"}`,
                   color: isSelected ? "var(--accent-gold)" : "var(--muted-text)",
-                  fontSize: 12,
-                  lineHeight: 1.4,
+                  fontSize: 14,
+                  lineHeight: 1.5,
                   cursor: "pointer",
                   transition: "all 180ms ease",
                   whiteSpace: "nowrap",
@@ -249,75 +304,116 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
                 {s.text}
               </button>
 
-              {/* Close × button */}
+              {/* Three-dot menu trigger */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDismissed((prev) => new Set(prev).add(s.id));
-                  setSelected((prev) => {
-                    const next = new Set(prev);
-                    next.delete(s.id);
-                    return next;
-                  });
+                  setMenuOpenId((current) => (current === s.id ? null : s.id));
                 }}
                 style={{
                   position: "absolute",
-                  top: 2,
-                  right: 4,
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
+                  top: "50%",
+                  right: 8,
+                  transform: "translateY(-50%)",
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
                   background: "transparent",
                   border: "none",
                   color: "var(--muted-text)",
-                  fontSize: 10,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: 0.5,
-                  transition: "opacity 120ms ease",
+                  opacity: menuOpenId === s.id ? 1 : 0.72,
+                  transition: "opacity 120ms ease, color 120ms ease, background 120ms ease",
                 }}
-                onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = "1"; }}
-                onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = "0.5"; }}
-                aria-label="Dismiss tip"
+                aria-label="More actions"
               >
-                ×
+                <svg viewBox="0 0 16 16" width={14} height={14} fill="currentColor" aria-hidden>
+                  <circle cx="8" cy="3.25" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="8" cy="12.75" r="1.25" />
+                </svg>
               </button>
 
-              {/* Diff icon — bottom-right of chip */}
-              {onDiffRequest && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDiffRequest(s.text);
-                  }}
+              {menuOpenId === s.id && (
+                <div
+                  ref={menuRef}
                   style={{
                     position: "absolute",
-                    bottom: 2,
-                    right: 4,
-                    width: 14,
-                    height: 14,
-                    borderRadius: 3,
-                    background: "transparent",
-                    border: "none",
-                    color: "var(--muted-text)",
-                    cursor: "pointer",
+                    right: 0,
+                    top: "calc(100% + 10px)",
+                    minWidth: 220,
+                    padding: 8,
+                    borderRadius: 18,
+                    background: "color-mix(in oklab, var(--surface) 82%, transparent)",
+                    backdropFilter: "blur(15px)",
+                    WebkitBackdropFilter: "blur(15px)",
+                    border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+                    boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
+                    zIndex: 9999,
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: 0.35,
-                    transition: "opacity 120ms ease",
+                    flexDirection: "column",
+                    gap: 4,
+                    animation: "atlas-bubble-in 160ms ease forwards",
                   }}
-                  onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = "1"; }}
-                  onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = "0.35"; }}
-                  aria-label="View diff"
-                  title="View in Diff"
                 >
-                  <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={1.2}>
-                    <path d="M2 2h3v3H2zM7 7h3v3H7zM5 3.5h2M6.5 5v2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
+                  {onDiffRequest && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDiffRequest(s.text);
+                        setMenuOpenId(null);
+                      }}
+                      style={menuActionStyle}
+                    >
+                      <span style={menuIconWrapStyle}>
+                        <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+                          <rect x="2.5" y="3" width="4.5" height="4.5" rx="0.75" />
+                          <rect x="9" y="8.5" width="4.5" height="4.5" rx="0.75" />
+                          <path d="M7 5.25h2M8 6.25v2" strokeLinecap="round" />
+                        </svg>
+                      </span>
+                      <span>View Differential</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await handleMenuPark(s);
+                    }}
+                    style={menuActionStyle}
+                  >
+                    <span style={menuIconWrapStyle}>
+                      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+                        <path d="M2.5 5.5h11v7.5h-11z" />
+                        <path d="M2.5 5.5 4.5 3.5h3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <span>Send to Parking Lot</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDismissed((prev) => new Set(prev).add(s.id));
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        next.delete(s.id);
+                        return next;
+                      });
+                      setMenuOpenId(null);
+                    }}
+                    style={menuActionStyle}
+                  >
+                    <span style={menuIconWrapStyle}>
+                      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.7}>
+                        <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                    <span>Dismiss</span>
+                  </button>
+                </div>
               )}
 
               {/* Hover preview tooltip */}

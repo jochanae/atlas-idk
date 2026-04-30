@@ -55,6 +55,12 @@
 :root,
 .theme-obsidian {
   --radius: 3px;
+  --header-height: 64px;
+  --mode-pill-top: 78px;
+  --touch-target: 56px;
+  --touch-target-compact: 40px;
+  --shell-edge: 20px;
+  --input-radius: 18px;
   --background: #0C0A09;
   --surface: #1C1917;
   --surface-alt: #211E1B;
@@ -75,9 +81,9 @@
   --glass-blur: 18px;
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
   /* Chat spacing */
-  --bubble-gap: 24px;
-  --bubble-padding-x: 20px;
-  --bubble-padding-y: 16px;
+  --bubble-gap: 30px;
+  --bubble-padding-x: 24px;
+  --bubble-padding-y: 20px;
 }
 
 .dark {
@@ -100,6 +106,12 @@
 
 /* Parchment (light) — scaffold only, toggle ships visual-only this pass */
 .theme-parchment {
+  --header-height: 64px;
+  --mode-pill-top: 78px;
+  --touch-target: 56px;
+  --touch-target-compact: 40px;
+  --shell-edge: 20px;
+  --input-radius: 18px;
   --background: #F5F1E8;
   --surface: #ECE6D7;
   --surface-alt: #E2DBC8;

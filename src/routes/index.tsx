@@ -2338,8 +2338,10 @@ function MessageActionButton({
         background: "transparent",
         border: "none",
         color: active ? "var(--ember)" : "var(--muted-text)",
-        padding: 6,
-        borderRadius: 6,
+        minWidth: 40,
+        minHeight: 40,
+        padding: 8,
+        borderRadius: 10,
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.4 : 0.55,
         display: "inline-flex",
@@ -2566,7 +2568,7 @@ function UtilityBarSurfaces({
   ];
 
   return (
-    <>
+    <div className="atlas-utility-row">
       {items.map((item) => {
         const isHistory = item.id === "history";
         const isActive = isHistory ? historyOpen : active === item.id;
@@ -2590,7 +2592,7 @@ function UtilityBarSurfaces({
           </button>
         );
       })}
-    </>
+    </div>
   );
 }
 

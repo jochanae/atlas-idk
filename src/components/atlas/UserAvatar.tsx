@@ -92,8 +92,8 @@ export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }
             alt=""
             onError={() => setImgFailed(true)}
             style={{
-              width: "112%",
-              height: "112%",
+              width: "115%",
+              height: "115%",
               objectFit: "cover",
               display: "block",
               borderRadius: "50%",

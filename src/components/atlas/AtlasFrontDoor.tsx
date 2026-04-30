@@ -97,7 +97,7 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
   const glow = isGold ? "rgba(202,169,104,0.35)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
 
   return (
-    <div ref={ref} style={{ position: "fixed", top: 72, left: 0, right: 0, zIndex: 45, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+    <div ref={ref} style={{ position: "fixed", top: "var(--mode-pill-top)", left: 0, right: 0, zIndex: 9999, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
       <div style={{ position: "relative", pointerEvents: "auto" }}>
         <button
           type="button"
@@ -105,17 +105,20 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
-            padding: "5px 14px",
+            gap: 8,
+            minHeight: 44,
+            padding: "10px 18px",
             borderRadius: 999,
             border: `0.5px solid ${accent}`,
-            background: "var(--surface)",
+            background: "color-mix(in oklab, var(--surface) 86%, transparent)",
+            backdropFilter: "blur(15px)",
+            WebkitBackdropFilter: "blur(15px)",
             fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            letterSpacing: "0.12em",
+            fontSize: 13,
+            letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: accent,
-            boxShadow: `0 0 10px -3px ${glow}`,
+            boxShadow: `0 0 14px -3px ${glow}`,
             cursor: "pointer",
             transition: "all 180ms var(--ease-cinematic)",
           }}
@@ -135,13 +138,14 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
               left: "50%",
               transform: "translateX(-50%)",
               background: "rgba(15, 15, 15, 0.85)",
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+              backdropFilter: "blur(15px)",
+              WebkitBackdropFilter: "blur(15px)",
               border: "0.5px solid rgba(212, 175, 55, 0.20)",
-              borderRadius: 14,
-              padding: "6px",
+              borderRadius: 16,
+              padding: "8px",
               boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
-              minWidth: 160,
+              minWidth: 188,
+              zIndex: 9999,
               animation: "atlas-sys-menu-in 180ms ease forwards",
             }}
           >
@@ -159,12 +163,13 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
                     alignItems: "center",
                     gap: 10,
                     width: "100%",
-                    padding: "10px 14px",
+                    minHeight: 48,
+                    padding: "12px 14px",
                     border: "none",
-                    borderRadius: 10,
+                    borderRadius: 12,
                     background: isActive ? "rgba(212, 175, 55, 0.08)" : "transparent",
                     fontFamily: "var(--font-mono)",
-                    fontSize: 12,
+                    fontSize: 13,
                     letterSpacing: "0.08em",
                     textTransform: "uppercase",
                     color: isActive ? c : "var(--muted-text)",
@@ -288,9 +293,11 @@ export function AtlasFrontDoor({
       style={{
         background: "var(--background)",
         height: "100dvh",
+          minHeight: "100dvh",
         display: "flex",
         flexDirection: "column",
         position: "relative",
+          overflow: "hidden",
       }}
     >
       {/* Floating glass header — fixed, curved bottom, obsidian glassmorphism */}
@@ -306,7 +313,7 @@ export function AtlasFrontDoor({
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
           padding: "14px 18px 12px",
-          minHeight: 56,
+          minHeight: "var(--header-height)",
           gap: 8,
           background: "rgba(15, 15, 15, 0.75)",
           backdropFilter: "blur(16px)",
@@ -364,7 +371,7 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
-          paddingTop: 72,
+          paddingTop: "calc(var(--header-height) + 16px)",
         }}
       >
         {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
@@ -486,11 +493,11 @@ export function AtlasFrontDoor({
           <div
             className="atlas-input-shell"
             style={{
-              margin: "0 16px",
+              margin: "0 var(--shell-edge)",
               background: "var(--surface)",
-              borderRadius: 14,
+              borderRadius: "var(--input-radius)",
               border: "1px solid color-mix(in oklab, var(--accent-gold) 20%, transparent)",
-              padding: "16px 18px",
+              padding: "20px 22px",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)",
               position: "relative",
               transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
@@ -505,8 +512,8 @@ export function AtlasFrontDoor({
                     left: 0,
                     right: 0,
                     color: "var(--muted-text)",
-                    fontSize: 16,
-                    lineHeight: 1.5,
+                    fontSize: 18,
+                    lineHeight: 1.55,
                     opacity: 0.85,
                     pointerEvents: "none",
                     whiteSpace: "nowrap",
@@ -535,13 +542,13 @@ export function AtlasFrontDoor({
                   border: "none",
                   outline: "none",
                   color: "var(--foreground)",
-                  fontSize: 16,
-                  lineHeight: 1.5,
+                  fontSize: 18,
+                  lineHeight: 1.6,
                   resize: "none",
                   fontFamily: "inherit",
                   position: "relative",
                   zIndex: 1,
-                  minHeight: TEXTAREA_MIN_HEIGHT,
+                  minHeight: 60,
                   maxHeight: TEXTAREA_MAX_HEIGHT_RESTING,
                   overflowY: "hidden",
                   display: "block",
@@ -558,7 +565,7 @@ export function AtlasFrontDoor({
               }}
             >
               {/* Left: system menu trigger */}
-              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <SystemMenu
                   userId={userId}
                   projectId={projectId}
@@ -570,12 +577,12 @@ export function AtlasFrontDoor({
               </div>
 
               {/* Right: hint + mic + send */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span
                   className="atlas-shortcut-hint"
                   style={{
                     fontFamily: "var(--font-mono)",
-                    fontSize: 10,
+                    fontSize: 11,
                     letterSpacing: "0.06em",
                     color: "var(--muted-text)",
                     opacity: 0.45,
@@ -591,9 +598,9 @@ export function AtlasFrontDoor({
                   title="Voice (coming soon)"
                   className="atlas-icon-btn atlas-mic-btn"
                   style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 8,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 12,
                     background: "transparent",
                     border: "none",
                     display: "flex",
@@ -624,9 +631,9 @@ export function AtlasFrontDoor({
                   aria-label={sending ? "Stop Atlas" : "Send"}
                   title={sending ? "Stop Atlas" : "Send"}
                   style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 8,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 12,
                     background: sending
                       ? "var(--surface)"
                       : input.trim() ? "var(--ember)" : "var(--surface)",
@@ -747,7 +754,7 @@ export function AtlasFrontDoor({
       {active && activeMode === "plan" && (
         <div
           style={{
-            margin: "0 20px 6px",
+            margin: "0 var(--shell-edge) 8px",
             flexShrink: 0,
             animation: "atlas-bubble-in 200ms ease forwards",
           }}
@@ -786,7 +793,7 @@ export function AtlasFrontDoor({
       {active && taskQueue && (
         <div
           style={{
-            margin: "0 20px 6px",
+            margin: "0 var(--shell-edge) 8px",
             flexShrink: 0,
             animation: "atlas-bubble-in 200ms ease forwards",
           }}
@@ -799,7 +806,7 @@ export function AtlasFrontDoor({
       {active && contextualHUD && (
         <div
           style={{
-            margin: "0 20px 6px",
+            margin: "0 var(--shell-edge) 8px",
             flexShrink: 0,
             animation: "atlas-bubble-in 200ms ease forwards",
           }}
@@ -813,13 +820,13 @@ export function AtlasFrontDoor({
         <div
           className={`atlas-active-input-shell${sending ? " atlas-breathing" : ""}`}
           style={{
-            margin: "0 16px 24px",
+            margin: "0 var(--shell-edge) 24px",
             background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
-            borderRadius: 14,
+            borderRadius: "var(--input-radius)",
             border: sending
               ? "1.5px solid rgba(212, 175, 55, 0.6)"
               : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
-            padding: "12px 14px 8px",
+            padding: "16px 18px 12px",
             boxShadow: sending
               ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 20px -4px rgba(212, 175, 55, 0.35)"
               : "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
@@ -846,13 +853,13 @@ export function AtlasFrontDoor({
               border: "none",
               outline: "none",
               color: "var(--foreground)",
-              fontSize: 16,
-              lineHeight: 1.5,
+              fontSize: 18,
+              lineHeight: 1.6,
               letterSpacing: "-0.01em",
               resize: "none",
               fontFamily: "var(--font-mono)",
-              padding: "4px 6px",
-              minHeight: TEXTAREA_MIN_HEIGHT,
+              padding: "6px 8px",
+              minHeight: 60,
               maxHeight: TEXTAREA_MAX_HEIGHT_ACTIVE,
               overflowY: "hidden",
               display: "block",
@@ -864,18 +871,19 @@ export function AtlasFrontDoor({
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "space-evenly",
               alignItems: "center",
-              marginTop: 6,
-              paddingTop: 6,
+              width: "100%",
+              marginTop: 10,
+              paddingTop: 10,
               borderTop: "0.5px solid color-mix(in oklab, var(--border) 70%, transparent)",
               gap: 12,
             }}
           >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 12, justifyContent: "space-evenly", width: "100%" }}>
               {utilityBarLeft}
             </div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 12, justifyContent: "space-evenly", width: "100%" }}>
               {utilityBarRight}
               <button
                 onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
@@ -883,10 +891,10 @@ export function AtlasFrontDoor({
                 aria-label={sending ? "Stop Atlas" : "Send"}
                 title={sending ? "Stop Atlas" : "Send"}
                 style={{
-                  width: 32,
-                  height: 32,
-                  marginLeft: 6,
-                  borderRadius: 8,
+                  width: 44,
+                  height: 44,
+                  marginLeft: 0,
+                  borderRadius: 12,
                   background: sending
                     ? "transparent"
                     : input.trim() ? "var(--ember)" : "transparent",
@@ -936,7 +944,7 @@ export function AtlasFrontDoor({
         @media (max-width: 360px) {
           .atlas-greeting { font-size: 19px; }
           .atlas-mode-pill { font-size: 9px !important; padding: 3px 7px !important; }
-          .atlas-input-shell { margin: 0 12px !important; padding: 14px 14px !important; }
+          .atlas-input-shell, .atlas-active-input-shell { margin: 0 12px 20px !important; padding: 14px 14px !important; }
         }
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
@@ -988,9 +996,9 @@ export function AtlasFrontDoor({
           border-radius: 2px;
         }
         .atlas-utility-btn {
-          width: 32px;
-          height: 32px;
-          border-radius: 7px;
+          width: var(--touch-target-compact);
+          height: var(--touch-target-compact);
+          border-radius: 10px;
           background: transparent;
           border: none;
           display: inline-flex;
@@ -1007,6 +1015,12 @@ export function AtlasFrontDoor({
           opacity: 1;
           color: var(--accent-gold);
           background: color-mix(in oklab, var(--accent-gold) 8%, transparent);
+        }
+        .atlas-utility-row {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+          width: 100%;
         }
         .atlas-utility-btn[data-active="true"] {
           opacity: 1;
