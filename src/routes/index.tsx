@@ -1299,7 +1299,7 @@ function WorkspacePage() {
           }
           secondaryPanel={
             session && surface !== "chat" ? (
-              <section className="absolute inset-x-0 top-12 bottom-24 z-20 bg-background/95 backdrop-blur-sm border-y border-border">
+              <section className="absolute inset-x-0 top-12 bottom-0 z-50 bg-background/95 backdrop-blur-sm border-y border-border">
                 {surface === "workspace" ? (
                   <WorkspacePanel nodes={nodes} />
                 ) : (
