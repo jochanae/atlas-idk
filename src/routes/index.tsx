@@ -2369,12 +2369,17 @@ function MessageActionButton({
       onMouseEnter={(e) => {
         if (!disabled) {
           e.currentTarget.style.opacity = "1";
-          e.currentTarget.style.color = "var(--ember)";
+          e.currentTarget.style.color = "var(--accent-gold)";
+          e.currentTarget.style.filter = "drop-shadow(0 0 6px color-mix(in oklab, var(--accent-gold) 50%, transparent))";
         }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.opacity = disabled ? "0.4" : "0.55";
         e.currentTarget.style.color = active ? "var(--ember)" : "var(--muted-text)";
+        e.currentTarget.style.filter = "none";
+      }}
+      onPointerDown={() => {
+        try { if ("vibrate" in navigator) navigator.vibrate(10); } catch {}
       }}
     >
       {iconData?.svg ?? <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</span>}
