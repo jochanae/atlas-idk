@@ -102,6 +102,18 @@ const MENU_ITEMS = [
     ),
   },
   {
+    id: "research",
+    label: "Sovereign Research",
+    description: "AI search filtered by your project DNA",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="7" cy="7" r="5" />
+        <path d="M11 11l3.5 3.5" />
+        <path d="M7 4v3l2 1" />
+      </svg>
+    ),
+  },
+  {
     id: "connectors",
     label: "Connectors",
     description: "APIs & integrations",

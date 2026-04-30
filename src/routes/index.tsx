@@ -613,6 +613,59 @@ function WorkspacePage() {
       return;
     }
 
+    // Detect /research command → route to sovereign research
+    const researchMatch = text.match(/^\/research\s+(.+)/is);
+    if (researchMatch) {
+      setInput("");
+      setSending(true);
+      setTransitioning(true);
+      setSurface("chat");
+      const query = researchMatch[1].trim();
+      const optimisticId = crypto.randomUUID();
+      try {
+        const target = await ensureSession(query);
+        if (!target) throw new Error("No project available");
+        const optimistic: ChatMessage = {
+          id: optimisticId,
+          session_id: target.session.id,
+          user_id: user!.id,
+          role: "user",
+          content: `/research ${query}`,
+          intent_type: "research",
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, optimistic]);
+        const { data, error } = await supabase.functions.invoke("atlas-research", {
+          body: { projectId: target.projectId, query },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const researchContent = data?.research ?? "No results returned.";
+        const contextNote = data?.context
+          ? `\n\n---\n*Research context: ${data.context.project} · Compass: ${data.context.compassLoaded ? "✓" : "✗"} · ${data.context.ledgerEntriesUsed} ledger entries applied*`
+          : "";
+        const assistantMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          session_id: target.session.id,
+          user_id: user!.id,
+          role: "assistant",
+          content: researchContent + contextNote,
+          intent_type: "research",
+          created_at: new Date().toISOString(),
+        };
+        newMessageIds.add(assistantMsg.id);
+        setMessages((prev) => [...prev, assistantMsg]);
+        setAdaptivePlaceholder("Follow up on the research, or ask something new…");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Research failed";
+        toast.error(msg);
+      } finally {
+        setSending(false);
+        setTransitioning(false);
+      }
+      return;
+    }
+
     setSending(true);
     setAuditWarning(false);
     setInput("");
@@ -1085,6 +1138,11 @@ function WorkspacePage() {
             else if (id === "github") setGithubOpen(true);
             else if (id === "snapshots") setSnapshotBrowserOpen(true);
             else if (id === "integrity") setIntegrityOpen(true);
+            else if (id === "research") {
+              setInput("/research ");
+              setSurface("chat");
+              setInputFocusSignal((s) => s + 1);
+            }
           }}
           taskQueue={
             session ? (
