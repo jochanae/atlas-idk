@@ -189,6 +189,10 @@ function WorkspacePage() {
   const [designSystemOpen, setDesignSystemOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<Array<{ filename: string; language: string; content: string }>>([]);
+  // Build state history & console stream
+  const [buildHistory, setBuildHistory] = useState<BuildStateEntry[]>([]);
+  const [consoleLogs, setConsoleLogs] = useState<ConsoleEntry[]>([]);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   // New feature state (items 7–10)
   const [fileTreeOpen, setFileTreeOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
