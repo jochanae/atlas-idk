@@ -29,6 +29,7 @@ import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
+import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
