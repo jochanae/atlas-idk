@@ -239,19 +239,12 @@ function TreeNodeView({
 
 /** Simple ZIP file generator — no external dependency required. */
 function createZipBlob(files: Array<{ filename: string; content: string }>): Blob {
-  // We use a simple concatenated text archive with clear delimiters.
-  // For a real ZIP, use JSZip — but this works offline with zero deps.
-  // Each file is prefixed with its path and separated by a line.
-  const encoder = new TextEncoder();
-  const parts: Uint8Array[] = [];
-
+  const parts: string[] = [];
   for (const file of files) {
-    const header = `\n${"═".repeat(60)}\n// FILE: ${file.filename}\n${"═".repeat(60)}\n\n`;
-    parts.push(encoder.encode(header));
-    parts.push(encoder.encode(file.content));
-    parts.push(encoder.encode("\n"));
+    parts.push(`\n${"═".repeat(60)}\n// FILE: ${file.filename}\n${"═".repeat(60)}\n\n`);
+    parts.push(file.content);
+    parts.push("\n");
   }
-
   return new Blob(parts, { type: "text/plain;charset=utf-8" });
 }
 
