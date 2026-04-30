@@ -1132,7 +1132,7 @@ function ParkingLotButton({
   );
 }
 
-function SurfaceSwitcher({
+function UtilityBarSurfaces({
   active,
   historyOpen,
   onChange,
@@ -1152,17 +1152,8 @@ function SurfaceSwitcher({
       id: "history",
       label: "History",
       icon: (
-        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+        <svg viewBox="0 0 20 20" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path d="M5 4.5h10M5 8h10M5 11.5h7M4 15h9" />
-        </svg>
-      ),
-    },
-    {
-      id: "chat",
-      label: "Chat",
-      icon: (
-        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
-          <path d="M4 5.5h12v7H8l-4 3v-10Z" />
         </svg>
       ),
     },
@@ -1170,7 +1161,7 @@ function SurfaceSwitcher({
       id: "workspace",
       label: "Workspace",
       icon: (
-        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+        <svg viewBox="0 0 20 20" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path d="M3.5 4.5h13v11h-13z" />
           <path d="M7.5 4.5v11M3.5 8h13" />
         </svg>
@@ -1180,7 +1171,7 @@ function SurfaceSwitcher({
       id: "preview",
       label: "Preview",
       icon: (
-        <svg viewBox="0 0 20 20" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1.4}>
+        <svg viewBox="0 0 20 20" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path d="M2.5 10s2.5-4.5 7.5-4.5 7.5 4.5 7.5 4.5-2.5 4.5-7.5 4.5S2.5 10 2.5 10Z" />
           <circle cx="10" cy="10" r="2" />
         </svg>
@@ -1189,29 +1180,31 @@ function SurfaceSwitcher({
   ];
 
   return (
-    <div className="fixed bottom-5 right-4 z-30 flex items-center gap-2">
+    <>
       {items.map((item) => {
         const isHistory = item.id === "history";
         const isActive = isHistory ? historyOpen : active === item.id;
         return (
           <button
             key={item.id}
+            type="button"
             aria-label={item.label}
+            title={item.label}
+            data-active={isActive ? "true" : "false"}
             onClick={() => {
               if (item.id === "history") {
                 onHistory();
               } else {
-                onChange(item.id);
+                onChange(item.id as "chat" | "workspace" | "preview");
               }
             }}
-            className="flex h-7 w-7 items-center justify-center bg-transparent"
-            style={{ color: isActive ? "#EA580C" : "#78716C" }}
+            className="atlas-utility-btn"
           >
             {item.icon}
           </button>
         );
       })}
-    </div>
+    </>
   );
 }
 
