@@ -91,6 +91,17 @@ const MENU_ITEMS = [
     ),
   },
   {
+    id: "integrity",
+    label: "Structural Integrity",
+    description: "Audit system health & code verification",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 1l6 3v4c0 3.5-2.5 6.5-6 7.5C4.5 14.5 2 11.5 2 8V4l6-3z" />
+        <path d="M6 8l2 2 3-3" />
+      </svg>
+    ),
+  },
+  {
     id: "connectors",
     label: "Connectors",
     description: "APIs & integrations",
