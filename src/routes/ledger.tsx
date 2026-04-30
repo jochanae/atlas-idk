@@ -267,7 +267,8 @@ function Row({
   return (
     <>
       <tr
-        className={`${bg} group border-l-2 border-l-transparent hover:border-l-[color:var(--ember)] hover:bg-[color:var(--surface-alt)] transition-colors cursor-pointer`}
+        data-entry-id={entry.id}
+        className={`${bg} group border-l-2 ${expanded ? "border-l-[color:var(--ember)]" : "border-l-transparent"} hover:border-l-[color:var(--ember)] hover:bg-[color:var(--surface-alt)] transition-colors cursor-pointer`}
         onClick={onToggle}
       >
         <td className="py-3 px-4 align-top">
