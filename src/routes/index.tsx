@@ -1023,6 +1023,85 @@ function WorkspacePage() {
         files={generatedFiles}
         projectName={activeProject?.name}
       />
+      <FileTreeDrawer
+        open={fileTreeOpen}
+        onClose={() => setFileTreeOpen(false)}
+        files={generatedFiles}
+        onFileSelect={(file) => {
+          setGeneratedCode(file.content);
+          setGeneratedFilename(file.filename);
+          setSurface("preview");
+          setFileTreeOpen(false);
+        }}
+      />
+      {diffOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 80,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            onClick={() => setDiffOpen(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              margin: "40px auto",
+              width: "min(700px, 95vw)",
+              height: "calc(100vh - 80px)",
+              background: "var(--surface)",
+              borderRadius: 12,
+              border: "0.5px solid var(--glass-border)",
+              overflow: "hidden",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+            }}
+          >
+            <DiffViewer
+              oldCode={diffOldCode}
+              newCode={diffNewCode}
+              oldLabel={diffLabels.old}
+              newLabel={diffLabels.new}
+              onAccept={() => {
+                toast.success("Changes accepted");
+                setDiffOpen(false);
+              }}
+              onReject={() => {
+                toast("Changes rejected");
+                setDiffOpen(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+      <CollaborationDrawer
+        open={collaborateOpen}
+        onClose={() => setCollaborateOpen(false)}
+        projectName={activeProject?.name}
+        sessionId={session?.id}
+      />
+      <OnboardingFlow
+        show={showOnboarding && recents.length === 0 && !session}
+        userName={
+          (user.user_metadata?.display_name as string | undefined) ||
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.email ? user.email.split("@")[0] : null)
+        }
+        onComplete={() => setShowOnboarding(false)}
+        onStartSession={(mode) => {
+          setActiveMode(mode as ModeId);
+          setInputFocusSignal((v) => v + 1);
+        }}
+      />
     </div>
   );
 
