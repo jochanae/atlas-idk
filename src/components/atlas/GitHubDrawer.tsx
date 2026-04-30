@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import {
@@ -53,7 +53,7 @@ export function GitHubDrawer({ open, onClose, projectId, generatedFiles = [] }: 
   const [oauthLoading, setOauthLoading] = useState(false);
 
   // Handle OAuth callback on mount
-  useState(() => {
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
