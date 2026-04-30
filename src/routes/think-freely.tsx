@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useEffect } from "react";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import { useAuth } from "@/lib/auth";
@@ -27,7 +28,7 @@ function ThinkFreelyPage() {
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="font-mono text-xs text-muted-foreground">loading…</span>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }

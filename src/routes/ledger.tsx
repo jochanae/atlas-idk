@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -188,8 +189,8 @@ function ArchitecturalLedger() {
 
       <main className="max-w-[1400px] mx-auto px-8 py-6">
         {loading ? (
-          <div className="py-24 text-center font-mono text-xs text-muted-foreground">
-            loading ledger…
+          <div className="py-24 flex items-center justify-center">
+            <LoadingSpinner size="lg" text="Loading ledger…" />
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState
