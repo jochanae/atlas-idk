@@ -244,6 +244,7 @@ export function AtlasFrontDoor({
   onAddToQueue,
   planGraph,
   adaptivePlaceholder,
+  mobileSurfaceBar,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
