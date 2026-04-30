@@ -739,6 +739,10 @@ function WorkspacePage() {
             (user.user_metadata?.name as string | undefined) ||
             (user.email ? user.email.split("@")[0] : null)
           }
+          userId={user.id}
+          projectId={activeProjectId}
+          onFilesUploaded={(files) => setAttachedFiles((prev) => [...prev, ...files])}
+          onGenerateCode={generateCode}
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
