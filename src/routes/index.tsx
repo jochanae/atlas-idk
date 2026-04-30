@@ -815,6 +815,21 @@ function WorkspacePage() {
             else if (id === "collaborate") setCollaborateOpen(true);
             else if (id === "github") setGithubOpen(true);
           }}
+          taskQueue={
+            session ? (
+              <TaskQueue
+                items={queueItems}
+                onReorder={setQueueItems}
+                onEdit={(id, text) => setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, text } : i))}
+                onRemove={(id) => setQueueItems((prev) => prev.filter((i) => i.id !== id))}
+                onDuplicate={(id) => { const item = queueItems.find((i) => i.id === id); if (item) addToQueue(item.text); }}
+                onExecuteAll={executeAllQueue}
+                onExecuteOne={executeQueueItem}
+                executing={queueExecuting}
+              />
+            ) : undefined
+          }
+          onAddToQueue={addToQueue}
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD
