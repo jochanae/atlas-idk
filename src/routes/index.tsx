@@ -560,6 +560,7 @@ function WorkspacePage() {
     setSending(true);
     setAuditWarning(false);
     setInput("");
+    setAdaptivePlaceholder(null);
     setTransitioning(true);
     setSurface("chat");
 
