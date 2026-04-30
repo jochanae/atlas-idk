@@ -98,7 +98,7 @@ export function DesktopWorkspace({
         )}
 
         <div className="flex-1 min-h-0">
-          <PanelGroup direction="horizontal" autoSaveId="atlas-workspace-v1">
+          <PanelGroup orientation="horizontal" id="atlas-workspace-v1" className="h-full w-full flex">
             {/* ── Pane 1: Nav rail ─────────────────────────────────────── */}
             <Panel
               defaultSize={navCollapsed ? 4 : 14}
