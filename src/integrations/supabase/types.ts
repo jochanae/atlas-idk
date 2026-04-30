@@ -116,6 +116,7 @@ export type Database = {
           id: string
           is_violation: boolean
           locked_at: string | null
+          mode: string | null
           project_id: string
           session_id: string | null
           severity: string
@@ -138,6 +139,7 @@ export type Database = {
           id?: string
           is_violation?: boolean
           locked_at?: string | null
+          mode?: string | null
           project_id: string
           session_id?: string | null
           severity?: string
@@ -160,6 +162,7 @@ export type Database = {
           id?: string
           is_violation?: boolean
           locked_at?: string | null
+          mode?: string | null
           project_id?: string
           session_id?: string | null
           severity?: string
