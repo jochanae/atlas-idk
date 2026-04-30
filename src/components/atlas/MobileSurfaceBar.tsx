@@ -43,6 +43,21 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
 
 export function MobileSurfaceBar({ active, onChange }: Props) {
   const [expanded, setExpanded] = useState(false);
+  // Track whether panel should render (stays true during exit animation)
+  const [mounted, setMounted] = useState(false);
+  const [animating, setAnimating] = useState<"in" | "out" | null>(null);
+
+  useEffect(() => {
+    if (expanded) {
+      setMounted(true);
+      // Trigger enter on next frame so the initial styles apply first
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating("in")));
+    } else if (mounted) {
+      setAnimating("out");
+      const timer = setTimeout(() => { setMounted(false); setAnimating(null); }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [expanded]);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
