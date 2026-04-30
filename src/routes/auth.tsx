@@ -71,10 +71,12 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
             <h1 className="text-xl font-semibold tracking-tight">
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {mode === "signin" ? "Welcome back." : "Create your account."}
             </h1>
             <p className="text-xs text-muted-foreground font-mono mt-2">
-              The system remembers everything.
+              {mode === "signin"
+                ? "Pick up where the record left off."
+                : "Begin the permanent record."}
             </p>
           </div>
 
