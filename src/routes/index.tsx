@@ -789,6 +789,34 @@ function WorkspacePage() {
             }
             else if (id === "collaborate") setCollaborateOpen(true);
           }}
+          contextualHUD={
+            session && messages.length > 0 ? (
+              <ContextualHUD
+                messages={messages.map((m) => ({ role: m.role, content: m.content }))}
+                recommendations={recs}
+                onTap={(text) => {
+                  setInput(text);
+                  setInputFocusSignal((v) => v + 1);
+                }}
+                onParkMultiple={async (items) => {
+                  for (const item of items) {
+                    await entriesTable().insert({
+                      user_id: user.id,
+                      project_id: activeProjectId!,
+                      session_id: session.id,
+                      status: "parked",
+                      severity: "parked",
+                      title: item.text.slice(0, 120),
+                      summary: `From contextual HUD (${item.source})`,
+                      verb: "note",
+                    });
+                  }
+                  await loadParkedItems();
+                  toast.success(`Parked ${items.length} item${items.length > 1 ? "s" : ""}`);
+                }}
+              />
+            ) : undefined
+          }
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
