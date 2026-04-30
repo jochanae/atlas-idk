@@ -32,6 +32,7 @@ export function TaskQueue({
   executing,
 }: TaskQueueProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
