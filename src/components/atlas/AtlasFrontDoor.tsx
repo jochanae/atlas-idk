@@ -94,6 +94,8 @@ type AtlasFrontDoorProps = {
   planGraph?: ReactNode;
   /** Adaptive placeholder set from external tap events */
   adaptivePlaceholder?: string | null;
+  /** Mobile surface bar rendered below header in active mode */
+  mobileSurfaceBar?: ReactNode;
   children?: ReactNode;
 };
 
