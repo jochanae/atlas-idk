@@ -1567,39 +1567,88 @@ function ChatPanel({
                 key={m.id}
                 className={`${isUser ? "ml-auto max-w-[85%]" : "max-w-[92%]"}`}
               >
-                {isUser ? (
-                  <>
-                    {/* User message card */}
-                    <div
-                      style={{
-                        background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
-                        border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
-                        borderRadius: 12,
-                        padding: "12px 16px",
-                      }}
-                    >
-                      <div
-                        className="font-mono text-[9px] uppercase tracking-[0.15em]"
-                        style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 8, textAlign: "right" }}
-                      >
-                        YOU · {relativeTime(m.created_at)}
-                      </div>
-                      <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80" style={{ textAlign: "left" }}>
-                        {m.content}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 6 }}>
-                      <MessageActionButton
-                        label="Copy"
-                        onClick={() => { navigator.clipboard.writeText(m.content); toast.success("Copied"); }}
-                      />
-                      <MessageActionButton
-                        label="Edit"
-                        onClick={() => { setInput(m.content); onRequestInputFocus(); }}
-                      />
-                    </div>
-                  </>
-                ) : (
+                {isUser ? (() => {
+                    const isExpanded = expandedMessages.has(m.id);
+                    const isLongMessage = m.content.length > 140 || m.content.split("\n").length > 3;
+                    const toggleExpand = () => {
+                      setExpandedMessages((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(m.id)) next.delete(m.id);
+                        else next.add(m.id);
+                        return next;
+                      });
+                    };
+                    return (
+                      <>
+                        {/* User message card — collapsible */}
+                        <div
+                          onClick={isLongMessage ? toggleExpand : undefined}
+                          style={{
+                            background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
+                            border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+                            borderRadius: 12,
+                            padding: "12px 16px",
+                            cursor: isLongMessage ? "pointer" : "default",
+                            position: "relative",
+                            transition: "all 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                          }}
+                        >
+                          <div
+                            className="font-mono text-[9px] uppercase tracking-[0.15em]"
+                            style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 8, textAlign: "right" }}
+                          >
+                            YOU · {relativeTime(m.created_at)}
+                          </div>
+                          <div
+                            className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80"
+                            style={{
+                              textAlign: "left",
+                              ...(isLongMessage && !isExpanded
+                                ? {
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical" as const,
+                                    overflow: "hidden",
+                                    whiteSpace: "pre-wrap",
+                                  }
+                                : {}),
+                              transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                            }}
+                          >
+                            {m.content}
+                          </div>
+                          {/* Gold chevron for collapsible messages */}
+                          {isLongMessage && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                right: 12,
+                                bottom: 10,
+                                color: "var(--accent-gold)",
+                                opacity: 0.6,
+                                transition: "transform 200ms ease, opacity 160ms ease",
+                                transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                              }}
+                            >
+                              <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 6l4 4 4-4" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 6 }}>
+                          <MessageActionButton
+                            label="Copy"
+                            onClick={() => { navigator.clipboard.writeText(m.content); toast.success("Copied"); }}
+                          />
+                          <MessageActionButton
+                            label="Edit"
+                            onClick={() => { setInput(m.content); onRequestInputFocus(); }}
+                          />
+                        </div>
+                      </>
+                    );
+                  })() : (
                   <>
                     {/* Atlas response — no card, formatted text */}
                     <div style={{ padding: "8px 4px" }}>
