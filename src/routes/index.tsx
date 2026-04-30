@@ -35,6 +35,7 @@ import {
   type Session as AtlasSession,
   type WorkspaceNode,
 } from "@/lib/atlas";
+import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
 
 type CommitExtraction =
@@ -53,6 +54,9 @@ type ConflictDetails = {
   committedOn: string;
 };
 
+// Legacy ParkedItem shape used by existing UI code. We map Entry rows
+// (status='parked') into this shape so the rest of the file keeps working
+// without rewriting the consuming components.
 type ParkedItem = {
   id: string;
   user_id: string;
@@ -85,10 +89,6 @@ type UntypedTable = {
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) => Promise<TResult1 | TResult2>;
 };
-
-function parkedItemsTable() {
-  return (supabase as unknown as { from: (table: "parked_items") => UntypedTable }).from("parked_items");
-}
 
 function compassTable() {
   return (supabase as unknown as { from: (table: "project_compass") => UntypedTable }).from("project_compass");
