@@ -1,0 +1,266 @@
+import { useEffect, useRef, useState } from "react";
+
+const MENU_ITEMS = [
+  {
+    id: "attach",
+    label: "Attach",
+    description: "Files & images",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
+      </svg>
+    ),
+  },
+  {
+    id: "blueprints",
+    label: "Blueprints",
+    description: "UI templates & structures",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="5" height="5" rx="0.5" />
+        <rect x="9" y="2" width="5" height="5" rx="0.5" />
+        <rect x="2" y="9" width="5" height="5" rx="0.5" />
+        <rect x="9" y="9" width="5" height="5" rx="0.5" />
+      </svg>
+    ),
+  },
+  {
+    id: "design",
+    label: "Design",
+    description: "Themes & CSS architecture",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="8" cy="8" r="3" />
+        <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" />
+      </svg>
+    ),
+  },
+  {
+    id: "connectors",
+    label: "Connectors",
+    description: "APIs & integrations",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 3h4M6 13h4M3 6v4M13 6v4" />
+        <circle cx="8" cy="8" r="2" />
+      </svg>
+    ),
+  },
+  {
+    id: "databases",
+    label: "Databases",
+    description: "Memory, ledgers & storage",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="8" cy="4" rx="5" ry="2" />
+        <path d="M3 4v8c0 1.1 2.24 2 5 2s5-.9 5-2V4" />
+        <path d="M3 8c0 1.1 2.24 2 5 2s5-.9 5-2" />
+      </svg>
+    ),
+  },
+] as const;
+
+function triggerHaptic(style: "pulse" | "thump") {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(style === "pulse" ? 10 : 30);
+  }
+}
+
+interface SystemMenuProps {
+  onSelect?: (id: string) => void;
+}
+
+export function SystemMenu({ onSelect }: SystemMenuProps) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) triggerHaptic("pulse");
+  };
+
+  const handleSelect = (id: string) => {
+    if (id === "attach") {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.multiple = true;
+      input.accept = "image/*,application/pdf,.doc,.docx,.txt,.csv,.json";
+      input.onchange = () => {
+        triggerHaptic("thump");
+        onSelect?.(id);
+      };
+      input.click();
+    } else {
+      onSelect?.(id);
+    }
+    setOpen(false);
+  };
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        btnRef.current &&
+        !btnRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
+
+  return (
+    <>
+      {/* Backdrop blur */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 90,
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background: "rgba(0,0,0,0.25)",
+            animation: "atlas-sys-backdrop-in 250ms ease forwards",
+          }}
+        />
+      )}
+
+      <div style={{ position: "relative" }}>
+        {/* Plus button trigger */}
+        <button
+          ref={btnRef}
+          type="button"
+          aria-label="System menu"
+          aria-expanded={open}
+          onClick={toggle}
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 8,
+            background: open ? "var(--surface-alt)" : "transparent",
+            border: open ? "1px solid var(--accent-gold)" : "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: open
+              ? "var(--accent-gold)"
+              : "color-mix(in oklab, var(--accent-gold) 55%, var(--muted-text))",
+            cursor: "pointer",
+            opacity: open ? 1 : 0.55,
+            transition:
+              "opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), transform 260ms var(--ease-cinematic), background 160ms var(--ease-cinematic)",
+            transform: open ? "rotate(45deg)" : "rotate(0deg)",
+            flexShrink: 0,
+            position: "relative",
+            zIndex: 92,
+          }}
+        >
+          <svg viewBox="0 0 16 16" width={15} height={15} stroke="currentColor" fill="none" strokeWidth={1.6}>
+            <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {/* Menu panel */}
+        {open && (
+          <div
+            ref={menuRef}
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 10px)",
+              left: 0,
+              zIndex: 92,
+              minWidth: 220,
+              background: "rgba(28, 25, 23, 0.88)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid color-mix(in oklab, var(--accent-gold) 25%, transparent)",
+              borderRadius: 12,
+              padding: "6px 0",
+              boxShadow:
+                "0 24px 64px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(201,162,76,0.12), inset 0 1px 0 rgba(255,255,255,0.04)",
+              animation: "atlas-sys-menu-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+              transformOrigin: "bottom left",
+            }}
+          >
+            {MENU_ITEMS.map((item, i) => (
+              <button
+                key={item.id}
+                onClick={() => handleSelect(item.id)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px 16px",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--foreground)",
+                  fontFamily: "var(--font-sans)",
+                  fontSize: 13,
+                  textAlign: "left",
+                  transition: "background 120ms ease",
+                  animation: `atlas-sys-item-in 180ms ease ${60 + i * 40}ms backwards`,
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "color-mix(in oklab, var(--accent-gold) 8%, transparent)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                }}
+              >
+                <span
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+                    border: "0.5px solid color-mix(in oklab, var(--accent-gold) 15%, transparent)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent-gold)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.icon}
+                </span>
+                <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <span style={{ fontWeight: 500, letterSpacing: "0.01em" }}>{item.label}</span>
+                  <span
+                    style={{
+                      fontSize: 10.5,
+                      color: "var(--muted-text)",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {item.description}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
