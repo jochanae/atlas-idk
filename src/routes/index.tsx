@@ -143,6 +143,7 @@ function WorkspacePage() {
   const [isWideViewport, setIsWideViewport] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
+  const [mobileArtifactDrawerOpen, setMobileArtifactDrawerOpen] = useState(false);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
