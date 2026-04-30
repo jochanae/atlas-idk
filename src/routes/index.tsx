@@ -574,6 +574,9 @@ function WorkspacePage() {
       if (data?.error) throw new Error(data.error);
       setGeneratedCode(data.file?.content ?? null);
       setGeneratedFilename(data.file?.filename ?? null);
+      if (data.file?.content && data.file?.filename) {
+        setGeneratedFiles((prev) => [...prev, { filename: data.file.filename, language: data.file.language ?? "tsx", content: data.file.content }]);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Code generation failed";
       setCodegenError(msg);
