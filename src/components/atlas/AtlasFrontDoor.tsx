@@ -206,7 +206,7 @@ export function AtlasFrontDoor({
               margin: "0 16px",
               background: "var(--surface)",
               borderRadius: 14,
-              border: "1px solid rgba(234,88,12,0.20)",
+              border: "1px solid color-mix(in oklab, var(--accent-gold) 20%, transparent)",
               padding: "16px 18px",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)",
               position: "relative",
