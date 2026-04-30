@@ -23,6 +23,26 @@ const MODE_PLACEHOLDERS: Record<ModeId, string> = {
   audit: "What needs inspection?",
 };
 
+/** Minimalist SVG icons for each mode — 16×16 viewBox, stroke-based */
+function ModeIcon({ mode, size = 13 }: { mode: ModeId; size?: number }) {
+  const s = { width: size, height: size, flexShrink: 0 } as const;
+  const common = { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  switch (mode) {
+    case "think":
+      return (<svg {...common} style={s}><path d="M8 1a4.5 4.5 0 0 0-1.5 8.74V12h3V9.74A4.5 4.5 0 0 0 8 1z" /><path d="M6.5 13.5h3M7 15h2" /></svg>);
+    case "plan":
+      return (<svg {...common} style={s}><circle cx="8" cy="4" r="2" /><circle cx="4" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><path d="M8 6v2M6.5 10.5 7.5 8M9.5 10.5 8.5 8" /></svg>);
+    case "build":
+      return (<svg {...common} style={s}><path d="M5 2v12M11 2v12M5 5h6M5 11h6" /></svg>);
+    case "explore":
+      return (<svg {...common} style={s}><circle cx="8" cy="8" r="6" /><path d="M8 2v2M8 12v2M2 8h2M12 8h2" /><path d="M8 5l2 3-2 3-2-3z" fill="currentColor" stroke="none" /></svg>);
+    case "decide":
+      return (<svg {...common} style={s}><path d="M4 8.5l2.5 3L12 5" /></svg>);
+    case "audit":
+      return (<svg {...common} style={s}><path d="M4 2h8l1 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5z" /><path d="M6 7h4M6 10h2" /></svg>);
+  }
+}
+
 export interface RecentSession {
   id: string;
   title: string;
