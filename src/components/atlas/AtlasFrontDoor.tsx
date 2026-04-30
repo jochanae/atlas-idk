@@ -137,29 +137,17 @@ export function AtlasFrontDoor({
             animation: "atlas-rise 420ms var(--ease-cinematic)",
           }}
         >
-          <div style={{ textAlign: "center", padding: "0 24px 28px" }}>
+          <div style={{ textAlign: "center", padding: "0 24px 44px" }}>
             <div
               style={{
                 fontSize: 26,
-                fontWeight: 400,
+                fontWeight: 300,
                 color: "var(--foreground)",
                 lineHeight: 1.3,
-                letterSpacing: "-0.01em",
-                marginBottom: 10,
+                letterSpacing: "-0.005em",
               }}
             >
-              What's on your mind?
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                color: "var(--muted-text)",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
-            >
-              atlas is ready
+              {greetingFor(new Date(), userName)}
             </div>
           </div>
 
