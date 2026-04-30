@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { haptic } from "@/lib/haptics";
 import {
   validateGitHubToken,
   getRepoInfo,
@@ -130,6 +131,7 @@ export function GitHubDrawer({ open, onClose, projectId, generatedFiles = [] }: 
       });
       setLastSync(new Date().toLocaleTimeString());
       toast.success(`Pushed ${files.length} file(s) — ${result.commitSha.slice(0, 7)}`);
+      haptic("medium");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Push failed";
       toast.error(msg);
