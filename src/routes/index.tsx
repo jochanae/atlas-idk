@@ -770,6 +770,23 @@ function WorkspacePage() {
             if (id === "blueprints") setBlueprintsOpen(true);
             else if (id === "design") setDesignSystemOpen(true);
             else if (id === "connectors") setExportOpen(true);
+            else if (id === "filetree") setFileTreeOpen(true);
+            else if (id === "diff") {
+              // Show diff of the last two generated files if available
+              if (generatedFiles.length >= 2) {
+                const prev = generatedFiles[generatedFiles.length - 2];
+                const curr = generatedFiles[generatedFiles.length - 1];
+                setDiffOldCode(prev.content);
+                setDiffNewCode(curr.content);
+                setDiffLabels({ old: prev.filename, new: curr.filename });
+              } else if (generatedFiles.length === 1) {
+                setDiffOldCode("");
+                setDiffNewCode(generatedFiles[0].content);
+                setDiffLabels({ old: "(empty)", new: generatedFiles[0].filename });
+              }
+              setDiffOpen(true);
+            }
+            else if (id === "collaborate") setCollaborateOpen(true);
           }}
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
