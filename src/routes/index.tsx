@@ -932,6 +932,12 @@ function ChatPanel({
   onParkedChange,
   onContinueAfterConflict,
   onRequestInputFocus,
+  thinkingPrompts,
+  thinkingLoading,
+  onAskThinkingPrompt,
+  onParkThinkingPrompt,
+  onDismissThinkingPrompt,
+  onRefreshThinkingPrompts,
 }: {
   messages: ChatMessage[];
   sending: boolean;
@@ -943,6 +949,12 @@ function ChatPanel({
   onParkedChange: () => Promise<void>;
   onContinueAfterConflict: (messageId: string) => Promise<void>;
   onRequestInputFocus: () => void;
+  thinkingPrompts: ThinkingPrompt[];
+  thinkingLoading: boolean;
+  onAskThinkingPrompt: (p: ThinkingPrompt) => void | Promise<void>;
+  onParkThinkingPrompt: (p: ThinkingPrompt) => void | Promise<void>;
+  onDismissThinkingPrompt: (p: ThinkingPrompt) => void | Promise<void>;
+  onRefreshThinkingPrompts: () => void | Promise<void>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
