@@ -233,7 +233,7 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Stage: holds resting hero + active chat in the SAME box for cross-fade */}
+      {/* Stage: scrollable content area beneath sticky header */}
       <div
         style={{
           flex: 1,
@@ -241,6 +241,8 @@ export function AtlasFrontDoor({
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          overflowY: "auto",
+          overflowX: "hidden",
         }}
       >
         {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
