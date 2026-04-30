@@ -591,8 +591,8 @@ export function AtlasFrontDoor({
                   title="Voice (coming soon)"
                   className="atlas-icon-btn atlas-mic-btn"
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 46,
+                    height: 46,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -624,8 +624,8 @@ export function AtlasFrontDoor({
                   aria-label={sending ? "Stop Atlas" : "Send"}
                   title={sending ? "Stop Atlas" : "Send"}
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 46,
+                    height: 46,
                     borderRadius: 8,
                     background: sending
                       ? "var(--surface)"
