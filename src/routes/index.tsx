@@ -404,21 +404,43 @@ function WorkspacePage() {
   // ── Rollback & History ──
   const handleRollback = useCallback((targetMessage: ChatMessage) => {
     if (!user || !activeProjectId || !session) return;
+    // Permission check: only session owner can rollback
+    if (session.user_id !== user.id) {
+      toast.error("Only the session owner can rollback.");
+      return;
+    }
     const idx = messages.findIndex((m) => m.id === targetMessage.id);
     if (idx < 0) return;
     const snapshotMessages = messages.slice(0, idx + 1);
-    const snapshotLabel = `Snapshot @ ${targetMessage.content.slice(0, 40).replace(/\n/g, " ")}…`;
+    const autoName = `Snapshot @ ${targetMessage.content.slice(0, 40).replace(/\n/g, " ")}…`;
     const currentSummary = messages.map((m) => `[${m.role}] ${m.content.slice(0, 80)}`).join("\n");
     const historicalSummary = snapshotMessages.map((m) => `[${m.role}] ${m.content.slice(0, 80)}`).join("\n");
     setDiffOldCode(currentSummary);
     setDiffNewCode(historicalSummary);
     setDiffLabels({ old: "Current State", new: "Rollback Target" });
-    setRollbackPreview({ messageId: targetMessage.id, snapshotLabel, messagesAtPoint: snapshotMessages });
+    setRollbackPreview({ messageId: targetMessage.id, snapshotLabel: autoName, messagesAtPoint: snapshotMessages });
+    setRollbackNameInput(autoName);
+    setRollbackNaming(true);
     setDiffOpen(true);
   }, [messages, user, activeProjectId, session]);
 
   const confirmRollback = useCallback(async () => {
     if (!rollbackPreview || !user || !activeProjectId || !session) return;
+    const snapshotName = rollbackNameInput.trim() || rollbackPreview.snapshotLabel;
+    // Save pre-rollback state for undo
+    setPreRollbackMessages([...messages]);
+    // Save as a named snapshot
+    setSnapshots((prev) => [
+      {
+        id: crypto.randomUUID(),
+        name: snapshotName,
+        messageId: rollbackPreview.messageId,
+        messagesAtPoint: rollbackPreview.messagesAtPoint,
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+    // Execute rollback
     setMessages(rollbackPreview.messagesAtPoint);
     try {
       await createEntryFromCard({
@@ -429,7 +451,7 @@ function WorkspacePage() {
         payload: {
           v: 1,
           title: "System Reversion",
-          summary: `Rolled back to: ${rollbackPreview.snapshotLabel}`,
+          summary: `Rolled back to: ${snapshotName}`,
           severity: "neutral",
           verb: "audit",
         },
@@ -439,18 +461,38 @@ function WorkspacePage() {
     } catch (e) {
       console.error("Rollback ledger entry failed", e);
     }
-    setAdaptivePlaceholder(`Code reverted to ${rollbackPreview.snapshotLabel.slice(0, 50)}. What's next?`);
+    setAdaptivePlaceholder(`Code reverted to ${snapshotName.slice(0, 50)}. What's next?`);
     setRecentRollbackMsgId(rollbackPreview.messageId);
     setTimeout(() => setRecentRollbackMsgId(null), 3000);
     setRollbackPreview(null);
+    setRollbackNaming(false);
     setDiffOpen(false);
     toast.success("Rolled back successfully");
-  }, [rollbackPreview, user, activeProjectId, session]);
+  }, [rollbackPreview, rollbackNameInput, messages, user, activeProjectId, session]);
 
   const cancelRollback = useCallback(() => {
     setRollbackPreview(null);
+    setRollbackNaming(false);
     setDiffOpen(false);
   }, []);
+
+  // Undo last rollback — restores pre-rollback message state
+  const undoRollback = useCallback(() => {
+    if (!preRollbackMessages) return;
+    setMessages(preRollbackMessages);
+    setPreRollbackMessages(null);
+    setAdaptivePlaceholder(null);
+    toast.success("Rollback undone");
+  }, [preRollbackMessages]);
+
+  // Restore from a named snapshot
+  const restoreSnapshot = useCallback((snapshot: Snapshot) => {
+    setPreRollbackMessages([...messages]);
+    setMessages(snapshot.messagesAtPoint);
+    setSnapshotBrowserOpen(false);
+    setAdaptivePlaceholder(`Restored "${snapshot.name}". What's next?`);
+    toast.success(`Restored: ${snapshot.name}`);
+  }, [messages]);
 
 
   // Track whether the active project already has a Compass (used by thinking prompts)
