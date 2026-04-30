@@ -53,6 +53,7 @@ export function AtlasFrontDoor({
   input,
   sending,
   headerActions,
+  headerCenter,
   bottomTabs,
   secondaryPanel,
   utilityBarLeft,
