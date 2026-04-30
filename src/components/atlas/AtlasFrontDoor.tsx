@@ -161,11 +161,12 @@ export function AtlasFrontDoor({
             className="atlas-pills-row"
             style={{
               display: "flex",
-              justifyContent: "center",
+              justifyContent: "flex-start",
               padding: "0 16px 22px",
               overflowX: "auto",
               overflowY: "hidden",
               scrollbarWidth: "none",
+              WebkitOverflowScrolling: "touch",
             }}
           >
             <div
@@ -329,6 +330,7 @@ export function AtlasFrontDoor({
               {/* Right: hint + mic + send */}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span
+                  className="atlas-shortcut-hint"
                   style={{
                     fontFamily: "var(--font-mono)",
                     fontSize: 10,
@@ -493,6 +495,9 @@ export function AtlasFrontDoor({
         .atlas-greeting { font-size: 26px; }
         @media (max-width: 480px) {
           .atlas-greeting { font-size: 22px; }
+        }
+        @media (max-width: 420px) {
+          .atlas-shortcut-hint { display: none; }
         }
         @media (max-width: 360px) {
           .atlas-greeting { font-size: 19px; }
