@@ -149,7 +149,6 @@ export function AtlasFrontDoor({
     }
     // In active mode, Enter always inserts newline (default textarea behavior)
   };
-  };
 
   const showPlaceholder = !input && !active;
 
