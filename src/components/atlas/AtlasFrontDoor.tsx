@@ -396,8 +396,9 @@ export function AtlasFrontDoor({
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 6,
-            padding: "6px 16px",
+            gap: 8,
+            padding: "8px 16px 6px",
+            background: "linear-gradient(to bottom, var(--background) 85%, transparent)",
           }}
         >
           {mobileSurfaceBar}
