@@ -790,6 +790,7 @@ function WorkspacePage() {
               setDiffOpen(true);
             }
             else if (id === "collaborate") setCollaborateOpen(true);
+            else if (id === "github") setGithubOpen(true);
           }}
           contextualHUD={
             session && messages.length > 0 ? (
