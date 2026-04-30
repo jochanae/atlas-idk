@@ -384,8 +384,8 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Mobile surface bar — fixed below header in active mode */}
-      {active && mobileSurfaceBar && (
+      {/* Mobile surface bar + mode pill — fixed below header in active mode */}
+      {active && (
         <div
           style={{
             position: "fixed",
@@ -394,11 +394,15 @@ export function AtlasFrontDoor({
             right: 0,
             zIndex: 49,
             display: "flex",
-            justifyContent: "center",
-            padding: "6px 16px",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 16px 6px",
+            background: "linear-gradient(to bottom, var(--background) 85%, transparent)",
           }}
         >
           {mobileSurfaceBar}
+          <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />
         </div>
       )}
 
@@ -412,8 +416,8 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
-          paddingTop: active && mobileSurfaceBar
-            ? "calc(var(--header-height) + 52px)"
+          paddingTop: active
+            ? "calc(var(--header-height) + 100px)"
             : "calc(var(--header-height) + 16px)",
         }}
       >
@@ -774,7 +778,7 @@ export function AtlasFrontDoor({
             willChange: "opacity, transform",
           }}
         >
-          {active && <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />}
+          {/* ModeDropdown moved to fixed header area */}
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
             {children}
           </div>

@@ -28,6 +28,7 @@ import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
+import { BottomSheet } from "@/components/atlas/BottomSheet";
 import { MobileSurfaceBar } from "@/components/atlas/MobileSurfaceBar";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
@@ -1734,6 +1735,7 @@ function ChatPanel({
   const parkedTimerRef = useRef<number | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [parkedMessageId, setParkedMessageId] = useState<string | null>(null);
+  const [moreMenuOpenId, setMoreMenuOpenId] = useState<string | null>(null);
   // Track which user messages are expanded (all auto-collapse by default)
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(() => new Set());
   const [selectionChip, setSelectionChip] = useState<{
@@ -2006,15 +2008,46 @@ function ChatPanel({
     setSelectionChip(null);
   };
 
+  const moreMenuActionStyle: import("react").CSSProperties = {
+    width: "100%",
+    minHeight: 46,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "none",
+    background: "transparent",
+    color: "var(--foreground)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontFamily: "var(--font-sans)",
+    fontSize: 14,
+    lineHeight: 1.4,
+    cursor: "pointer",
+    textAlign: "left" as const,
+  };
+  const moreMenuIconStyle: import("react").CSSProperties = {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+    color: "var(--accent-gold)",
+    flexShrink: 0,
+  };
+
   return (
     <>
       <div
         ref={scrollRef}
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
-        className="relative flex-1 overflow-y-auto px-5 py-6 flex flex-col justify-end"
+        className="relative flex-1 overflow-y-auto px-5 pt-6 pb-44 flex flex-col"
         style={{ gap: "var(--bubble-gap, 20px)" }}
       >
+        {/* Spacer pushes messages to bottom when few, scrolls normally when many */}
+        <div style={{ flex: 1, minHeight: 0 }} />
         {selectionChip && (
           <button
             ref={chipRef}
@@ -2229,34 +2262,107 @@ function ChatPanel({
                       )}
                     </div>
                     {showParkButton && (
-                      <div style={{ display: "flex", gap: 16, marginTop: 4, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                          {/* Quick copy — always visible */}
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
-                          {onOpenDiff && (
-                            <MessageActionButton label="Diff" onClick={() => {
-                              const prevUser = [...messages].slice(0, messages.indexOf(m)).reverse().find((msg) => msg.role === "user");
-                              onOpenDiff(prevUser?.content ?? "(no user message)", proseForDisplay);
-                            }} />
-                          )}
-                          <span style={{
-                            display: "inline-flex",
-                            animation: recentRollbackMsgId === m.id ? "atlas-rollback-glow 2s ease-in-out infinite" : undefined,
-                            borderRadius: 6,
-                          }}>
-                            <MessageActionButton label="Rollback" onClick={() => onRollback(m)} />
-                          </span>
-                          {showActionRow && (
-                            <>
-                              <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
-                              <MessageActionButton label={extracting ? "Extracting…" : "Commit"} onClick={commitDecision} disabled={extracting} />
-                            </>
-                          )}
-                          <MessageActionButton label={parkedMessageId === m.id ? "Parked ✓" : "Park"} onClick={() => parkMessage(m)} active={parkedMessageId === m.id} />
-                        {commitStatus && (
-                          <div style={{ color: commitStatus.color, opacity: commitStatus.visible ? 1 : 0, transition: "opacity 400ms ease" }} className="font-mono text-[10px]">
-                            {commitStatus.text}
+                          {/* Three-dot more menu */}
+                          <div style={{ position: "relative" }}>
+                            <button
+                              onClick={() => setMoreMenuOpenId((cur) => cur === m.id ? null : m.id)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "var(--muted-text)",
+                                cursor: "pointer",
+                                padding: 6,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderRadius: 999,
+                                minWidth: 34,
+                                minHeight: 34,
+                              }}
+                              aria-label="More actions"
+                            >
+                              <svg viewBox="0 0 16 16" width={14} height={14} fill="currentColor">
+                                <circle cx="3.25" cy="8" r="1.25" />
+                                <circle cx="8" cy="8" r="1.25" />
+                                <circle cx="12.75" cy="8" r="1.25" />
+                              </svg>
+                            </button>
+                            {moreMenuOpenId === m.id && (
+                              <BottomSheet open onClose={() => setMoreMenuOpenId(null)}>
+                                {onOpenDiff && (
+                                  <button
+                                    onClick={() => {
+                                      const prevUser = [...messages].slice(0, messages.indexOf(m)).reverse().find((msg) => msg.role === "user");
+                                      onOpenDiff(prevUser?.content ?? "(no user message)", proseForDisplay);
+                                      setMoreMenuOpenId(null);
+                                    }}
+                                    style={moreMenuActionStyle}
+                                  >
+                                    <span style={moreMenuIconStyle}>
+                                      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+                                        <rect x="2.5" y="3" width="4.5" height="4.5" rx="0.75" />
+                                        <rect x="9" y="8.5" width="4.5" height="4.5" rx="0.75" />
+                                        <path d="M7 5.25h2M8 6.25v2" strokeLinecap="round" />
+                                      </svg>
+                                    </span>
+                                    View Differential
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { onRollback(m); setMoreMenuOpenId(null); }}
+                                  style={moreMenuActionStyle}
+                                >
+                                  <span style={moreMenuIconStyle}>
+                                    <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                                      <path d="M3 8a5 5 0 119 3" /><path d="M3 4v4h4" />
+                                    </svg>
+                                  </span>
+                                  Rollback
+                                </button>
+                                {showActionRow && (
+                                  <>
+                                    <button onClick={() => { toast("Regenerate coming soon"); setMoreMenuOpenId(null); }} style={moreMenuActionStyle}>
+                                      <span style={moreMenuIconStyle}>
+                                        <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                                          <path d="M13 8a5 5 0 11-9-3" /><path d="M13 12V8h-4" />
+                                        </svg>
+                                      </span>
+                                      Regenerate
+                                    </button>
+                                    <button onClick={() => { commitDecision(); setMoreMenuOpenId(null); }} disabled={extracting} style={moreMenuActionStyle}>
+                                      <span style={moreMenuIconStyle}>
+                                        <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M4 8l3 3 5-6" />
+                                        </svg>
+                                      </span>
+                                      {extracting ? "Extracting…" : "Commit to Ledger"}
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => { parkMessage(m); setMoreMenuOpenId(null); }}
+                                  style={moreMenuActionStyle}
+                                >
+                                  <span style={moreMenuIconStyle}>
+                                    <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+                                      <path d="M2.5 5.5h11v7.5h-11z" />
+                                      <path d="M2.5 5.5 4.5 3.5h3" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </span>
+                                  {parkedMessageId === m.id ? "Parked ✓" : "Send to Parking Lot"}
+                                </button>
+                              </BottomSheet>
+                            )}
                           </div>
-                        )}
-                      </div>
+                          {commitStatus && (
+                            <div style={{ color: commitStatus.color, opacity: commitStatus.visible ? 1 : 0, transition: "opacity 400ms ease" }} className="font-mono text-[10px]">
+                              {commitStatus.text}
+                            </div>
+                          )}
+                        </div>
                     )}
                   </>
                 )}
