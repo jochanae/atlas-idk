@@ -45,6 +45,12 @@ type AtlasFrontDoorProps = {
   /** Cancels the in-flight Atlas request. Required when sending=true. */
   onStop?: () => void;
   onWordmarkClick?: () => void;
+  /** Props forwarded to SystemMenu for file upload */
+  userId?: string;
+  projectId?: string | null;
+  onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
+  /** Called when user selects "Build" from system menu or uses /build command */
+  onGenerateCode?: (prompt: string) => void;
   children?: ReactNode;
 };
 
