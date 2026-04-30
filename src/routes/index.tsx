@@ -583,13 +583,15 @@ function WorkspacePage() {
     if (error) return toast.error(error.message);
 
     if (status === "accepted" && user) {
-      // Log to Architectural Ledger
-      await supabase.from("ledger_entries").insert({
+      // Log to Architectural Ledger as a committed Entry.
+      await entriesTable().insert({
         user_id: user.id,
         project_id: rec.project_id,
+        status: "committed",
+        severity: "committed",
+        verb: "note",
         title: rec.content,
-        description: `Accepted recommendation. ${rec.definition ?? ""}`.trim(),
-        status: "Active",
+        summary: `Accepted recommendation. ${rec.definition ?? ""}`.trim(),
       });
       toast.success("Accepted — logged to ledger");
     } else if (status === "parked") {
