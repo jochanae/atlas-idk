@@ -97,7 +97,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
           WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
           borderLeft: "0.5px solid var(--glass-border)",
           boxShadow: "-12px 0 48px rgba(0,0,0,0.5)",
-          zIndex: 40,
+          zIndex: 70,
           display: "flex",
           flexDirection: "column",
           color: "var(--foreground)",
