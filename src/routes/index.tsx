@@ -151,6 +151,12 @@ function WorkspacePage() {
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
   const [mobileArtifactDrawerOpen, setMobileArtifactDrawerOpen] = useState(false);
+  // Code generation / preview state
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [generatedFilename, setGeneratedFilename] = useState<string | null>(null);
+  const [codegenLoading, setCodegenLoading] = useState(false);
+  const [codegenError, setCodegenError] = useState<string | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; url: string; type: string }>>([]);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
