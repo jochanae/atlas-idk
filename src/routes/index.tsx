@@ -1298,11 +1298,11 @@ function WorkspacePage() {
               newCode={diffNewCode}
               oldLabel={diffLabels.old}
               newLabel={diffLabels.new}
-              onAccept={() => {
+              onAccept={rollbackPreview ? confirmRollback : () => {
                 toast.success("Changes accepted");
                 setDiffOpen(false);
               }}
-              onReject={() => {
+              onReject={rollbackPreview ? cancelRollback : () => {
                 toast("Changes rejected");
                 setDiffOpen(false);
               }}
