@@ -70,7 +70,7 @@ export function detectArtifacts(messages: ChatMessage[]): Artifact[] {
     // 3. Structured documents (>=4 markdown headings)
     const headings = m.content.match(/^#{2,3}\s+.+$/gm) ?? [];
     if (headings.length >= 4) {
-      const firstHeading = headings[0].replace(/^#+\s+/, "").trim();
+      const firstHeading = (headings[0] ?? "").replace(/^#+\s+/, "").trim();
       out.push({
         id: `${m.id}-doc`,
         messageId: m.id,
