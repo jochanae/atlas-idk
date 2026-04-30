@@ -559,6 +559,29 @@ function WorkspacePage() {
             : recent,
         ),
       );
+      // If in Plan mode, extract numbered steps from the response
+      if (activeMode === "plan" && data?.message?.content) {
+        const content = data.message.content as string;
+        const stepRegex = /(?:^|\n)\s*(\d+)\.\s+\*{0,2}(.+?)\*{0,2}(?:\n|$)/g;
+        const extracted: PlanStep[] = [];
+        let match: RegExpExecArray | null;
+        while ((match = stepRegex.exec(content)) !== null) {
+          const label = match[2].replace(/\*+/g, "").trim().slice(0, 60);
+          const stepNum = match[1];
+          // Check for "depends on step N" mentions
+          const depMatch = match[2].match(/depends?\s+on\s+step\s+(\d+)/i);
+          const deps: string[] = [];
+          if (depMatch) {
+            const depIdx = extracted.findIndex((s) => s.id.endsWith(`-${depMatch[1]}`));
+            if (depIdx >= 0) deps.push(extracted[depIdx].id);
+          } else if (extracted.length > 0) {
+            // Default: each step depends on the previous
+            deps.push(extracted[extracted.length - 1].id);
+          }
+          extracted.push({ id: `plan-${stepNum}`, label, dependsOn: deps });
+        }
+        if (extracted.length > 0) setPlanSteps(extracted);
+      }
       await refresh(target.session, target.projectId);
     } catch (e) {
       // User-initiated abort — clean up quietly, don't show an error toast.
