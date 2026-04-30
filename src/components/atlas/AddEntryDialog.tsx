@@ -144,16 +144,18 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Status">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as LedgerStatus)}
-                className="atlas-input"
-              >
-                <option value="Active">Active</option>
-                <option value="Superseded">Superseded</option>
-                <option value="Violated">Violated</option>
-              </select>
+            <Field label="Mark as violation?" hint="check if this records a broken constraint">
+              <label className="flex items-center gap-2 h-[36px]">
+                <input
+                  type="checkbox"
+                  checked={violation}
+                  onChange={(e) => setViolation(e.target.checked)}
+                  className="accent-[color:var(--ember)]"
+                />
+                <span className="text-[12px] text-muted-foreground">
+                  {violation ? "Logged as violation" : "Standard commit"}
+                </span>
+              </label>
             </Field>
             <Field
               label="Cost of Lesson (USD)"
