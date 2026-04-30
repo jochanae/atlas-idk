@@ -697,7 +697,7 @@ function WorkspacePage() {
 
   // ── Task Queue handlers ──
   const addToQueue = useCallback((text: string) => {
-    setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const, createdAt: Date.now() }]);
+    setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const }]);
   }, []);
 
   const executeQueueItem = useCallback(async (id: string) => {
