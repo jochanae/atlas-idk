@@ -338,7 +338,7 @@ export function AtlasFrontDoor({
           padding: "10px 16px 8px",
           minHeight: "var(--header-height)",
           gap: 8,
-          background: "color-mix(in oklab, var(--background) 45%, transparent)",
+          background: "transparent",
           backdropFilter: "blur(24px) saturate(150%)",
           WebkitBackdropFilter: "blur(24px) saturate(150%)",
           borderBottom: "0.5px solid var(--glass-border)",
