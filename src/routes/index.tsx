@@ -12,6 +12,10 @@ import {
 import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
+import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
+import { SessionFooter } from "@/components/atlas/SessionFooter";
+import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
+import { detectArtifacts } from "@/lib/artifacts";
 import {
   relativeTime,
   type ChatMessage,
