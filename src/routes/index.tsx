@@ -21,6 +21,10 @@ import { LivePreview } from "@/components/atlas/LivePreview";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
+import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
+import { DiffViewer } from "@/components/atlas/DiffViewer";
+import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
+import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
