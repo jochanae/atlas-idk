@@ -1735,6 +1735,7 @@ function ChatPanel({
   const parkedTimerRef = useRef<number | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [parkedMessageId, setParkedMessageId] = useState<string | null>(null);
+  const [moreMenuOpenId, setMoreMenuOpenId] = useState<string | null>(null);
   // Track which user messages are expanded (all auto-collapse by default)
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(() => new Set());
   const [selectionChip, setSelectionChip] = useState<{
