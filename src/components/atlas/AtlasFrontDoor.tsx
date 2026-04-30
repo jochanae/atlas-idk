@@ -330,6 +330,7 @@ export function AtlasFrontDoor({
               {/* Right: hint + mic + send */}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span
+                  className="atlas-shortcut-hint"
                   style={{
                     fontFamily: "var(--font-mono)",
                     fontSize: 10,
