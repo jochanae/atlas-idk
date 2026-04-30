@@ -1523,11 +1523,6 @@ function WorkspacePage() {
         projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
         buildHistory={buildHistory}
       />
-      <SovereignScrubRail
-        notches={scrubNotches}
-        scrollContainerRef={scrollRef}
-        visible={!!session && messages.length > 5}
-      />
       <BlueprintsDrawer
         open={blueprintsOpen}
         onClose={() => setBlueprintsOpen(false)}
