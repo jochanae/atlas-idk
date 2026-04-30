@@ -974,6 +974,7 @@ function ChatPanel({
   onDismissThinkingPrompt,
   onRefreshThinkingPrompts,
 }: {
+  newMessageIds: Set<string>;
   messages: ChatMessage[];
   sending: boolean;
   onStop: () => void;
