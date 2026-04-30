@@ -695,6 +695,26 @@ function WorkspacePage() {
       .eq("id", prompt.id);
   };
 
+  // ── Task Queue handlers ──
+  const addToQueue = useCallback((text: string) => {
+    setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const, createdAt: Date.now() }]);
+  }, []);
+
+  const executeQueueItem = useCallback(async (id: string) => {
+    setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "running" as const } : i));
+    const item = queueItems.find((i) => i.id === id);
+    if (!item) return;
+    try { await send(item.text); setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "done" as const } : i)); }
+    catch { setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "error" as const } : i)); }
+  }, [queueItems]);
+
+  const executeAllQueue = useCallback(async () => {
+    const pending = queueItems.filter((i) => i.status === "pending");
+    if (!pending.length) return;
+    setQueueExecuting(true);
+    for (const item of pending) { await executeQueueItem(item.id); }
+    setQueueExecuting(false);
+  }, [queueItems, executeQueueItem]);
 
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
   const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
