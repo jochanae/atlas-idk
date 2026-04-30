@@ -58,63 +58,93 @@ export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }
   const showImage = metaAvatar && !imgFailed;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={displayName || user.email || "Account"}
-      title={displayName || user.email || "Account"}
-      style={{
-        width: size,
-        height: size,
-        minWidth: size,
-        borderRadius: "50%",
-        padding: 2, // 2px transparent gap between image and halo border
-        cursor: onClick ? "pointer" : "default",
-        background: showImage
-          ? "transparent"
-          : "linear-gradient(135deg, #2A2724 0%, #1C1917 55%, color-mix(in oklab, var(--accent-gold) 65%, #1C1917) 100%)",
-        border: "1px solid color-mix(in oklab, var(--accent-gold) 40%, transparent)",
-        boxShadow:
-          "0 0 0 1px color-mix(in oklab, var(--accent-gold) 8%, transparent), 0 4px 18px -4px color-mix(in oklab, var(--accent-gold) 22%, transparent), 0 2px 10px -2px rgba(0,0,0,0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-        flexShrink: 0,
-        transition: "transform 180ms var(--ease-cinematic), box-shadow 180ms var(--ease-cinematic), border-color 180ms var(--ease-cinematic)",
-      }}
-      className="atlas-avatar"
-    >
-      {showImage ? (
-        <img
-          src={metaAvatar}
-          alt=""
-          onError={() => setImgFailed(true)}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-            borderRadius: "50%",
-          }}
-        />
-      ) : (
-        <span
-          style={{
-            fontFamily:
-              'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            fontWeight: 700,
-            fontSize: Math.max(11, Math.round(size * 0.38)),
-            letterSpacing: "0.02em",
-            color: "color-mix(in oklab, var(--accent-gold) 75%, #F5E6C7)",
-            textShadow: "0 1px 0 rgba(0,0,0,0.45)",
-            lineHeight: 1,
-            userSelect: "none",
-          }}
-        >
-          {initials}
-        </span>
+    <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={displayName || user.email || "Account"}
+        title={displayName || user.email || "Account"}
+        style={{
+          width: size,
+          height: size,
+          minWidth: size,
+          borderRadius: "50%",
+          padding: 2,
+          cursor: onClick ? "pointer" : "default",
+          background: showImage
+            ? "transparent"
+            : "linear-gradient(135deg, #2A2724 0%, #1C1917 55%, color-mix(in oklab, var(--accent-gold) 65%, #1C1917) 100%)",
+          border: "1px solid color-mix(in oklab, var(--accent-gold) 40%, transparent)",
+          boxShadow:
+            "0 0 0 1px color-mix(in oklab, var(--accent-gold) 8%, transparent), 0 4px 18px -4px color-mix(in oklab, var(--accent-gold) 22%, transparent), 0 2px 10px -2px rgba(0,0,0,0.55)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          flexShrink: 0,
+          transition:
+            "transform 180ms var(--ease-cinematic), box-shadow 180ms var(--ease-cinematic), border-color 180ms var(--ease-cinematic)",
+        }}
+        className="atlas-avatar"
+      >
+        {showImage ? (
+          <img
+            src={metaAvatar}
+            alt=""
+            onError={() => setImgFailed(true)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+              borderRadius: "50%",
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              fontFamily:
+                'Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              fontWeight: 700,
+              fontSize: Math.max(11, Math.round(size * 0.38)),
+              letterSpacing: "0.02em",
+              color: "color-mix(in oklab, var(--accent-gold) 75%, #F5E6C7)",
+              textShadow: "0 1px 0 rgba(0,0,0,0.45)",
+              lineHeight: 1,
+              userSelect: "none",
+            }}
+          >
+            {initials}
+          </span>
+        )}
+      </button>
+
+      {showStatusPulse && (
+        <>
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              width: 4,
+              height: 4,
+              borderRadius: "50%",
+              background: "color-mix(in oklab, var(--accent-gold) 50%, transparent)",
+              boxShadow:
+                "0 0 6px 1px color-mix(in oklab, var(--accent-gold) 45%, transparent), 0 0 0 1.5px color-mix(in oklab, #1C1917 70%, transparent)",
+              animation: "atlas-pulse-dot 2.4s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+          <style>{`
+            @keyframes atlas-pulse-dot {
+              0%, 100% { opacity: 0.5; transform: scale(1); }
+              50%      { opacity: 1;   transform: scale(1.35); }
+            }
+          `}</style>
+        </>
       )}
-    </button>
+    </span>
   );
 }
