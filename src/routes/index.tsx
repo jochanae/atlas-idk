@@ -639,6 +639,7 @@ function WorkspacePage() {
         ? "\n\n[SYSTEM: User is in Plan Mode. Respond with an architectural breakdown. Format steps as a numbered list. Each step should be a clear, actionable phase. If steps depend on each other, mention the dependency explicitly (e.g. 'depends on step 1'). Do NOT write code.]"
         : "";
 
+      const thinkStart = Date.now();
       const { data, error } = await supabase.functions.invoke("atlas-chat", {
         body: {
           sessionId: target.session.id,
@@ -648,9 +649,27 @@ function WorkspacePage() {
         },
         signal: controller.signal,
       });
+      const thinkSeconds = Math.round((Date.now() - thinkStart) / 1000);
       if (controller.signal.aborted) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Automated ledger logging — "Thought for Xs" timeline entry
+      try {
+        await entriesTable().insert({
+          user_id: user!.id,
+          project_id: target.projectId,
+          session_id: target.session.id,
+          status: "committed",
+          severity: "neutral",
+          title: `Thought for ${thinkSeconds}s`,
+          summary: `Atlas processed: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
+          verb: "note",
+        });
+        setLedgerCount((c) => c + 1);
+      } catch {
+        // Non-critical — don't block chat flow
+      }
       // Mark the new assistant message for streaming animation
       if (data?.message?.id) newMessageIds.add(data.message.id);
       const updatedTitle = text.slice(0, 60);
