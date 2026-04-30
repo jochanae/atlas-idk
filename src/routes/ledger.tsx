@@ -69,6 +69,19 @@ function ArchitecturalLedger() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // When arriving with ?focus=<id>, auto-expand and scroll the entry into view.
+  useEffect(() => {
+    if (!focus || entries.length === 0) return;
+    const exists = entries.some((e) => e.id === focus);
+    if (!exists) return;
+    setExpanded(focus);
+    // Wait a tick for the row to render expanded, then scroll.
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-entry-id="${focus}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [focus, entries]);
+
   const filtered = useMemo(() => {
     return entries.filter((e) => {
       if (projectFilter !== "all" && e.project_id !== projectFilter) return false;
