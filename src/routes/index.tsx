@@ -1139,6 +1139,8 @@ function WorkspacePage() {
         onClose={() => setCollaborateOpen(false)}
         projectName={activeProject?.name}
         sessionId={session?.id}
+        projectId={activeProjectId}
+        userId={user.id}
       />
       <GitHubDrawer
         open={githubOpen}
