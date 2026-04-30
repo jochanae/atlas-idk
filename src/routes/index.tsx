@@ -2008,6 +2008,35 @@ function ChatPanel({
     setSelectionChip(null);
   };
 
+  const moreMenuActionStyle: import("react").CSSProperties = {
+    width: "100%",
+    minHeight: 46,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "none",
+    background: "transparent",
+    color: "var(--foreground)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontFamily: "var(--font-sans)",
+    fontSize: 14,
+    lineHeight: 1.4,
+    cursor: "pointer",
+    textAlign: "left" as const,
+  };
+  const moreMenuIconStyle: import("react").CSSProperties = {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+    color: "var(--accent-gold)",
+    flexShrink: 0,
+  };
+
   return (
     <>
       <div
