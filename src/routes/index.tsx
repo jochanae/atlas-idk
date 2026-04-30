@@ -1731,6 +1731,7 @@ function ChatPanel({
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
   const statusTimerRef = useRef<number | null>(null);
   const fadeTimerRef = useRef<number | null>(null);
@@ -1757,11 +1758,32 @@ function ChatPanel({
     .reverse()
     .find((m) => m.role === "assistant")?.id;
 
+  // Scroll to bottom on new messages
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
+  }, [messages.length, sending]);
+
+  // Auto-scroll during streaming: observe content height changes
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const isNearBottom = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      return scrollHeight - scrollTop - clientHeight < 120;
+    };
+    const ro = new ResizeObserver(() => {
+      if (isNearBottom()) {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      }
+    });
+    // Observe the scroll container's content
+    for (const child of Array.from(container.children)) {
+      ro.observe(child);
+    }
+    return () => ro.disconnect();
   }, [messages.length, sending]);
 
   useEffect(() => {
@@ -2046,7 +2068,7 @@ function ChatPanel({
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
         className="relative flex-1 overflow-y-auto px-5 pt-6 pb-44 flex flex-col"
-        style={{ gap: "var(--bubble-gap, 20px)" }}
+        style={{ gap: "var(--bubble-gap, 20px)", overflowAnchor: "none" }}
       >
         {/* Spacer pushes messages to bottom when few, scrolls normally when many */}
         <div style={{ flex: 1, minHeight: 0 }} />
@@ -2394,6 +2416,8 @@ function ChatPanel({
             </button>
           </div>
         )}
+        {/* Scroll anchor — browser pins to this */}
+        <div ref={bottomAnchorRef} style={{ overflowAnchor: "auto", height: 1, flexShrink: 0 }} />
       </div>
     </>
   );
