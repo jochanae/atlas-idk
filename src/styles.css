@@ -353,3 +353,10 @@
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent;
 }
+
+@keyframes atlas-hint-fade {
+  0%   { opacity: 0; transform: translateY(2px); }
+  15%  { opacity: 0.55; transform: translateY(0); }
+  75%  { opacity: 0.55; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-2px); }
+}
