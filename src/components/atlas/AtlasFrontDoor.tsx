@@ -687,15 +687,9 @@ export function AtlasFrontDoor({
                       <rect x="3" y="3" width="10" height="10" rx="1.5" />
                     </svg>
                   ) : (
-                    <svg
-                      viewBox="0 0 16 16"
-                      width={14}
-                      height={14}
-                      stroke={input.trim() ? "var(--background)" : "var(--muted-text)"}
-                      fill="none"
-                      strokeWidth={2}
-                    >
-                      <path d="M2 8h12M8 2l6 6-6 6" />
+                    <svg viewBox="0 0 20 20" width={16} height={16} fill={input.trim() ? "var(--background)" : "none"} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
+                      <path d="M17 3 9.5 11.5" />
                     </svg>
                   )}
                 </button>
