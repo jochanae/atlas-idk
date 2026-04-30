@@ -170,14 +170,13 @@ export function AtlasFrontDoor({
     <div
       style={{
         background: "var(--background)",
-        minHeight: "100dvh",
+        height: "100dvh",
         display: "flex",
         flexDirection: "column",
         position: "relative",
-        overflow: "hidden",
       }}
     >
-      {/* Floating glass header — sticky, curved bottom, obsidian glassmorphism */}
+      {/* Floating glass header — fixed, curved bottom, obsidian glassmorphism */}
       <div
         className="atlas-sticky-header"
         style={{
@@ -190,12 +189,11 @@ export function AtlasFrontDoor({
           padding: "14px 18px 12px",
           minHeight: 56,
           gap: 8,
-          background: "color-mix(in oklab, var(--background) 82%, transparent)",
-          backdropFilter: "blur(14px) saturate(1.3)",
-          WebkitBackdropFilter: "blur(14px) saturate(1.3)",
-          borderRadius: "0 0 20px 20px",
+          background: "color-mix(in oklab, var(--background) 94%, transparent)",
+          borderRadius: "0 0 24px 24px",
           borderBottom: "1px solid color-mix(in oklab, var(--accent-gold) 15%, var(--border))",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.55), 0 2px 12px rgba(0,0,0,0.35), 0 0 0 0.5px color-mix(in oklab, var(--accent-gold) 8%, transparent)",
+          flexShrink: 0,
         }}
       >
         {/* Left: sidebar toggle */}
