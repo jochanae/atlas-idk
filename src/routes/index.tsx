@@ -1337,128 +1337,94 @@ function ChatPanel({
                 key={m.id}
                 className={`${isUser ? "ml-auto max-w-[85%]" : "max-w-[92%]"}`}
               >
-                {/* Message card */}
-                <div
-                  style={{
-                    background: isUser
-                      ? "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)"
-                      : "var(--surface)",
-                    border: `0.5px solid ${isUser ? "color-mix(in oklab, var(--accent-gold) 18%, var(--border))" : "var(--border)"}`,
-                    borderRadius: 12,
-                    padding: "12px 16px",
-                    position: "relative",
-                  }}
-                >
-                  <div
-                    className="font-mono text-[9px] uppercase tracking-[0.15em]"
-                    style={{
-                      color: "var(--muted-text)",
-                      opacity: 0.6,
-                      marginBottom: 8,
-                      textAlign: isUser ? "right" : "left",
-                    }}
-                  >
-                    {isUser ? "YOU" : "ATLAS"} · {relativeTime(m.created_at)}
-                  </div>
-                  {!isUser && Array.isArray(m.surfaced_memories) && m.surfaced_memories.length > 0 && (
-                    <div style={{ marginBottom: 8 }}>
-                      <MemoryChips memories={m.surfaced_memories as SurfacedMemory[]} />
-                    </div>
-                  )}
-                  {conflict ? (
-                    <ConflictWarningCard
-                      conflict={conflict}
-                      onProceed={() => proceedAnyway(m.id, conflict.committedOn)}
-                      onUpdate={() => {
-                        setInput(`Update the decision: ${conflict.committedOn}`);
-                        reconsider(m.id);
-                      }}
-                      onReconsider={() => reconsider(m.id)}
-                    />
-                  ) : (
-                    <>
-                      {proseForDisplay.trim() && (
-                        <div
-                          className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
-                            isUser ? "text-foreground/80" : "text-foreground"
-                          }`}
-                          style={{ textAlign: "left" }}
-                        >
-                          {proseForDisplay}
-                        </div>
-                      )}
-                      {card && cardVersion !== null && (
-                        <div className="pt-2">
-                          <CommitCard
-                            payload={card}
-                            schemaVersion={cardVersion}
-                            messageId={m.id}
-                            locked={isLocked}
-                            busy={committingCardId === m.id}
-                            onCommit={() => commitCardMessage(m, card)}
-                            onPark={() => parkCardMessage(m, card)}
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Action row under message card */}
                 {isUser ? (
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 6 }}>
-                    <MessageActionButton
-                      label="Edit"
-                      onClick={() => {
-                        setInput(m.content);
-                        onRequestInputFocus();
+                  <>
+                    {/* User message card */}
+                    <div
+                      style={{
+                        background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
+                        border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+                        borderRadius: 12,
+                        padding: "12px 16px",
                       }}
-                    />
-                  </div>
-                ) : showParkButton ? (
-                  <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <MessageActionButton
-                      label="Copy"
-                      onClick={() => {
-                        navigator.clipboard.writeText(proseForDisplay);
-                        toast.success("Copied");
-                      }}
-                    />
-                    {showActionRow && (
-                      <>
-                        <MessageActionButton
-                          label="Regenerate"
-                          onClick={() => {
-                            /* Stub — future: re-send the last user message */
-                            toast("Regenerate coming soon");
-                          }}
-                        />
-                        <MessageActionButton
-                          label={extracting ? "Extracting…" : "Commit"}
-                          onClick={commitDecision}
-                          disabled={extracting}
-                        />
-                      </>
-                    )}
-                    <MessageActionButton
-                      label={parkedMessageId === m.id ? "Parked ✓" : "Park"}
-                      onClick={() => parkMessage(m)}
-                      active={parkedMessageId === m.id}
-                    />
-                    {commitStatus && (
+                    >
                       <div
-                        style={{
-                          color: commitStatus.color,
-                          opacity: commitStatus.visible ? 1 : 0,
-                          transition: "opacity 400ms ease",
-                        }}
-                        className="font-mono text-[10px]"
+                        className="font-mono text-[9px] uppercase tracking-[0.15em]"
+                        style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 8, textAlign: "right" }}
                       >
-                        {commitStatus.text}
+                        YOU · {relativeTime(m.created_at)}
+                      </div>
+                      <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80" style={{ textAlign: "left" }}>
+                        {m.content}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 6 }}>
+                      <MessageActionButton
+                        label="Copy"
+                        onClick={() => { navigator.clipboard.writeText(m.content); toast.success("Copied"); }}
+                      />
+                      <MessageActionButton
+                        label="Edit"
+                        onClick={() => { setInput(m.content); onRequestInputFocus(); }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Atlas response — no card, formatted text */}
+                    <div style={{ padding: "8px 4px" }}>
+                      <div
+                        className="font-mono text-[9px] uppercase tracking-[0.15em]"
+                        style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 10 }}
+                      >
+                        ATLAS · {relativeTime(m.created_at)}
+                      </div>
+                      {Array.isArray(m.surfaced_memories) && m.surfaced_memories.length > 0 && (
+                        <div style={{ marginBottom: 8 }}>
+                          <MemoryChips memories={m.surfaced_memories as SurfacedMemory[]} />
+                        </div>
+                      )}
+                      {conflict ? (
+                        <ConflictWarningCard
+                          conflict={conflict}
+                          onProceed={() => proceedAnyway(m.id, conflict.committedOn)}
+                          onUpdate={() => { setInput(`Update the decision: ${conflict.committedOn}`); reconsider(m.id); }}
+                          onReconsider={() => reconsider(m.id)}
+                        />
+                      ) : (
+                        <>
+                          {proseForDisplay.trim() && (
+                            <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
+                              {proseForDisplay}
+                            </div>
+                          )}
+                          {card && cardVersion !== null && (
+                            <div className="pt-2">
+                              <CommitCard payload={card} schemaVersion={cardVersion} messageId={m.id} locked={isLocked} busy={committingCardId === m.id} onCommit={() => commitCardMessage(m, card)} onPark={() => parkCardMessage(m, card)} />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {showParkButton && (
+                      <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                        <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
+                        {showActionRow && (
+                          <>
+                            <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
+                            <MessageActionButton label={extracting ? "Extracting…" : "Commit"} onClick={commitDecision} disabled={extracting} />
+                          </>
+                        )}
+                        <MessageActionButton label={parkedMessageId === m.id ? "Parked ✓" : "Park"} onClick={() => parkMessage(m)} active={parkedMessageId === m.id} />
+                        {commitStatus && (
+                          <div style={{ color: commitStatus.color, opacity: commitStatus.visible ? 1 : 0, transition: "opacity 400ms ease" }} className="font-mono text-[10px]">
+                            {commitStatus.text}
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                ) : null}
+                  </>
+                )}
               </div>
             );
           })}
