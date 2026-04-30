@@ -1559,6 +1559,10 @@ function WorkspacePage() {
         projectId={activeProjectId}
         generatedFiles={generatedFiles}
       />
+      <StructuralIntegrityPanel
+        open={integrityOpen}
+        onClose={() => setIntegrityOpen(false)}
+      />
       <OnboardingFlow
         show={showOnboarding && recents.length === 0 && !session}
         userName={
