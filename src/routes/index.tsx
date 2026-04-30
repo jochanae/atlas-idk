@@ -120,6 +120,7 @@ function WorkspacePage() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [session, setSession] = useState<AtlasSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessageIds] = useState(() => new Set<string>());
   const [nodes, setNodes] = useState<WorkspaceNode[]>([]);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [input, setInput] = useState("");
