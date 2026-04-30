@@ -54,6 +54,7 @@ import {
 } from "@/lib/atlas";
 import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
+import { haptic } from "@/lib/haptics";
 
 type CommitExtraction =
   | {
