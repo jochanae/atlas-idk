@@ -40,19 +40,23 @@ const LINES: Record<ModeId, string[]> = {
 };
 
 const TYPE_MS = 55;
-const ERASE_MS = 28;
-const HOLD_MS = 1800;
+const ERASE_MS = 24;
+const HOLD_MS = 3000;
 const PAUSE_MS = 320;
+
+type Phase = "typing" | "holding" | "erasing" | "pausing";
 
 export function RotatingPlaceholder({ mode, paused }: { mode: ModeId; paused: boolean }) {
   const [text, setText] = useState("");
   const [lineIndex, setLineIndex] = useState(0);
+  const [phase, setPhase] = useState<Phase>("typing");
   const timerRef = useRef<number | null>(null);
 
   // Reset on mode change
   useEffect(() => {
     setText("");
     setLineIndex(0);
+    setPhase("typing");
   }, [mode]);
 
   useEffect(() => {
@@ -60,42 +64,40 @@ export function RotatingPlaceholder({ mode, paused }: { mode: ModeId; paused: bo
     const lines = LINES[mode];
     const target = lines[lineIndex % lines.length];
 
-    const tick = () => {
-      if (text.length < target.length) {
-        setText(target.slice(0, text.length + 1));
-      } else {
-        // Hold, then erase faster
-        timerRef.current = window.setTimeout(() => {
-          eraseLoop();
-        }, HOLD_MS);
-        return;
+    const clear = () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
       }
-      timerRef.current = window.setTimeout(tick, TYPE_MS);
     };
 
-    const eraseLoop = () => {
-      if (text.length === 0 && timerRef.current === null) return;
-      const erase = () => {
-        setText((t) => {
-          if (t.length <= 1) {
-            timerRef.current = window.setTimeout(() => {
-              setLineIndex((i) => (i + 1) % lines.length);
-            }, PAUSE_MS);
-            return "";
-          }
-          timerRef.current = window.setTimeout(erase, ERASE_MS);
-          return t.slice(0, -1);
-        });
-      };
-      erase();
-    };
+    if (phase === "typing") {
+      if (text.length < target.length) {
+        timerRef.current = window.setTimeout(() => {
+          setText(target.slice(0, text.length + 1));
+        }, TYPE_MS);
+      } else {
+        timerRef.current = window.setTimeout(() => setPhase("holding"), 0);
+      }
+    } else if (phase === "holding") {
+      timerRef.current = window.setTimeout(() => setPhase("erasing"), HOLD_MS);
+    } else if (phase === "erasing") {
+      if (text.length > 0) {
+        timerRef.current = window.setTimeout(() => {
+          setText((t) => t.slice(0, -1));
+        }, ERASE_MS);
+      } else {
+        timerRef.current = window.setTimeout(() => setPhase("pausing"), 0);
+      }
+    } else if (phase === "pausing") {
+      timerRef.current = window.setTimeout(() => {
+        setLineIndex((i) => (i + 1) % lines.length);
+        setPhase("typing");
+      }, PAUSE_MS);
+    }
 
-    timerRef.current = window.setTimeout(tick, TYPE_MS);
-    return () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    };
-  }, [text, lineIndex, mode, paused]);
+    return clear;
+  }, [text, phase, lineIndex, mode, paused]);
 
   return (
     <span aria-hidden style={{ pointerEvents: "none" }}>

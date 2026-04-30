@@ -199,16 +199,18 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
-          {/* Input — centered, etched glass */}
+          {/* Input — centered, etched glass with focus glow */}
           <div
+            className="atlas-input-shell"
             style={{
               margin: "0 16px",
               background: "var(--surface)",
               borderRadius: 14,
-              border: "0.5px solid var(--border)",
+              border: "1px solid rgba(234,88,12,0.20)",
               padding: "16px 18px",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)",
               position: "relative",
+              transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             }}
           >
             <div style={{ position: "relative" }}>
@@ -255,31 +257,103 @@ export function AtlasFrontDoor({
                 justifyContent: "space-between",
                 alignItems: "center",
                 marginTop: 12,
+                gap: 12,
               }}
             >
-              <div style={{ display: "flex", gap: 8 }} />
-              <button
-                onClick={() => onSend(input, activeMode)}
-                disabled={!input.trim() || sending}
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 8,
-                  background: "var(--ember)",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: input.trim() ? 1 : 0.3,
-                  cursor: input.trim() ? "pointer" : "default",
-                  boxShadow: input.trim() ? "0 0 16px -2px rgba(234,88,12,0.55)" : "none",
-                  transition: "all 200ms var(--ease-cinematic)",
-                }}
-              >
-                <svg viewBox="0 0 16 16" width={14} height={14} stroke="var(--background)" fill="none" strokeWidth={2}>
-                  <path d="M2 8h12M8 2l6 6-6 6" />
-                </svg>
-              </button>
+              {/* Left: action triggers */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  type="button"
+                  aria-label="Attach"
+                  title="Attach (coming soon)"
+                  className="atlas-icon-btn"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--muted-text)",
+                    cursor: "pointer",
+                    transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic)",
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.6}>
+                    <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Voice input"
+                  title="Voice (coming soon)"
+                  className="atlas-icon-btn"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--muted-text)",
+                    cursor: "pointer",
+                    transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic)",
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.6}>
+                    <rect x="6" y="2" width="4" height="8" rx="2" />
+                    <path d="M3.5 8a4.5 4.5 0 0 0 9 0M8 12.5V14" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Right: hint + send */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    letterSpacing: "0.06em",
+                    color: "var(--muted-text)",
+                    opacity: 0.45,
+                    userSelect: "none",
+                  }}
+                >
+                  type <span style={{ color: "var(--ember)", opacity: 0.85 }}>/</span> for shortcuts
+                </span>
+                <button
+                  onClick={() => onSend(input, activeMode)}
+                  disabled={!input.trim() || sending}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    background: input.trim() ? "var(--ember)" : "var(--surface)",
+                    border: input.trim() ? "none" : "0.5px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: input.trim() ? "pointer" : "default",
+                    boxShadow: input.trim() ? "0 0 16px -2px rgba(234,88,12,0.55)" : "none",
+                    transition: "all 220ms var(--ease-cinematic)",
+                  }}
+                >
+                  <svg
+                    viewBox="0 0 16 16"
+                    width={14}
+                    height={14}
+                    stroke={input.trim() ? "var(--background)" : "var(--muted-text)"}
+                    fill="none"
+                    strokeWidth={2}
+                  >
+                    <path d="M2 8h12M8 2l6 6-6 6" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -370,6 +444,17 @@ export function AtlasFrontDoor({
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        .atlas-input-shell:focus-within {
+          border-color: rgba(234,88,12,0.80) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.05),
+            0 8px 32px rgba(0,0,0,0.45),
+            0 0 24px -6px rgba(234,88,12,0.45) !important;
+        }
+        .atlas-icon-btn:hover {
+          color: var(--ember) !important;
+          background: rgba(234,88,12,0.08) !important;
         }
       `}</style>
     </div>
