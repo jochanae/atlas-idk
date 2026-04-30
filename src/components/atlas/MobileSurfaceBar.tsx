@@ -151,18 +151,18 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
         />
       </button>
 
-      {/* Expanded: glass slide-down panel with all three surfaces */}
-      {expanded && (
+      {/* Glass slide-down panel — stays mounted during exit transition */}
+      {mounted && (
         <div
           ref={panelRef}
           id="atlas-surface-panel"
           role="tablist"
           aria-label="Workspace sections"
+          aria-hidden={!expanded}
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
             left: "50%",
-            transform: "translateX(-50%)",
             display: "flex",
             gap: 2,
             padding: "6px 8px",
@@ -173,8 +173,13 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
             border: "0.5px solid var(--glass-border)",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(212,175,55,0.06)",
             zIndex: 60,
-            animation: "atlas-surface-slide 220ms cubic-bezier(.2,.8,.2,1)",
             transformOrigin: "top center",
+            transform: animating === "in"
+              ? "translateX(-50%) translateY(0) scale(1)"
+              : "translateX(-50%) translateY(-6px) scale(0.95)",
+            opacity: animating === "in" ? 1 : 0,
+            transition: "transform 200ms cubic-bezier(.2,.8,.2,1), opacity 200ms cubic-bezier(.2,.8,.2,1)",
+            pointerEvents: animating === "in" ? "auto" : "none",
           }}
         >
           {SURFACES.map((s) => {
