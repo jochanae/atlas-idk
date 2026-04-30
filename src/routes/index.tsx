@@ -18,6 +18,9 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
+import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
+import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
+import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
