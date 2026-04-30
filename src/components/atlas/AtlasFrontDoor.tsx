@@ -643,7 +643,14 @@ export function AtlasFrontDoor({
                   flexShrink: 0,
                 }}
               >
-                <span
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = MODES.findIndex((x) => x.id === activeMode);
+                    const next = MODES[(idx + 1) % MODES.length];
+                    onModeChange(next.id);
+                    haptic("light");
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -659,7 +666,10 @@ export function AtlasFrontDoor({
                     color: accent,
                     boxShadow: `0 0 10px -3px ${glow}`,
                     animation: "atlas-tag-in 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    cursor: "pointer",
+                    transition: "all 180ms var(--ease-cinematic)",
                   }}
+                  title={`Switch mode (${m.label})`}
                 >
                   <span
                     aria-hidden
@@ -672,7 +682,7 @@ export function AtlasFrontDoor({
                     }}
                   />
                   {m.label}
-                </span>
+                </button>
               </div>
             );
           })()}
