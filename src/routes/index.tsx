@@ -1013,6 +1013,7 @@ function WorkspacePage() {
             }
             else if (id === "collaborate") setCollaborateOpen(true);
             else if (id === "github") setGithubOpen(true);
+            else if (id === "snapshots") setSnapshotBrowserOpen(true);
           }}
           taskQueue={
             session ? (
