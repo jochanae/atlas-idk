@@ -1902,6 +1902,7 @@ function ParkedRow({
               fontSize: 13,
             }}
           >
+            <SeverityDot severity="parked" size={7} />
             <span
               aria-hidden
               style={{
@@ -1933,21 +1934,9 @@ function ParkedRow({
             {item.source_context} · {relativeTime(item.created_at)}
           </div>
         </button>
-        <span
-          style={{
-            background: "color-mix(in oklab, var(--surface) 80%, transparent)",
-            color: "var(--muted-text)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 9,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            borderRadius: 999,
-            padding: "2px 6px",
-            opacity: 0.7,
-          }}
-        >
-          {item.kind}
-        </span>
+        <CapsuleTag severity="parked" size="xs">
+          {item.kind === "commit_card" ? "PARKED" : item.kind}
+        </CapsuleTag>
       </div>
 
       {expanded && (
