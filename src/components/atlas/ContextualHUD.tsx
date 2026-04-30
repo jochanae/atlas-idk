@@ -339,27 +339,7 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
               </button>
 
               {menuOpenId === s.id && (
-                <div
-                  ref={menuRef}
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: "calc(100% + 10px)",
-                    minWidth: 220,
-                    padding: 8,
-                    borderRadius: 18,
-                    background: "color-mix(in oklab, var(--surface) 82%, transparent)",
-                    backdropFilter: "blur(15px)",
-                    WebkitBackdropFilter: "blur(15px)",
-                    border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
-                    boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
-                    zIndex: 9999,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                    animation: "atlas-bubble-in 160ms ease forwards",
-                  }}
-                >
+                <BottomSheet open onClose={() => setMenuOpenId(null)}>
                   {onDiffRequest && (
                     <button
                       onClick={(e) => {
@@ -414,7 +394,7 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
                     </span>
                     <span>Dismiss</span>
                   </button>
-                </div>
+                </BottomSheet>
               )}
 
               {/* Hover preview tooltip */}
