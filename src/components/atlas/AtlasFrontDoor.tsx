@@ -197,8 +197,8 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
                     transition: "background 120ms ease, color 120ms ease",
                   }}
                 >
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: isActive ? c : "var(--muted-text)", opacity: isActive ? 1 : 0.4, flexShrink: 0 }} />
-                  {mode.label}
+                  <ModeIcon mode={mode.id} size={14} />
+                   {mode.label}
                 </button>
               );
             })}
