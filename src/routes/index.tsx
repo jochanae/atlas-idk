@@ -198,8 +198,14 @@ function WorkspacePage() {
   const [depGraphOpen, setDepGraphOpen] = useState(false);
   const [adaptivePlaceholder, setAdaptivePlaceholder] = useState<string | null>(null);
   // Rollback & History system
+  type Snapshot = { id: string; name: string; messageId: string; messagesAtPoint: ChatMessage[]; createdAt: string };
   const [rollbackPreview, setRollbackPreview] = useState<{ messageId: string; snapshotLabel: string; messagesAtPoint: ChatMessage[] } | null>(null);
   const [recentRollbackMsgId, setRecentRollbackMsgId] = useState<string | null>(null);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [preRollbackMessages, setPreRollbackMessages] = useState<ChatMessage[] | null>(null);
+  const [snapshotBrowserOpen, setSnapshotBrowserOpen] = useState(false);
+  const [rollbackNaming, setRollbackNaming] = useState(false);
+  const [rollbackNameInput, setRollbackNameInput] = useState("");
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
