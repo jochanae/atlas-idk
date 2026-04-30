@@ -621,13 +621,26 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
+      {/* Floating Contextual HUD — glass layer above the input bar */}
+      {active && contextualHUD && (
+        <div
+          style={{
+            margin: "0 20px 6px",
+            flexShrink: 0,
+            animation: "atlas-bubble-in 200ms ease forwards",
+          }}
+        >
+          {contextualHUD}
+        </div>
+      )}
+
       {/* Active-mode input docked at bottom — solid anchor with utility bar */}
       {active && (
         <div
           className="atlas-active-input-shell"
           style={{
             margin: "0 16px 14px",
-            background: "var(--surface)",
+            background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
             borderRadius: 14,
             border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
             padding: "12px 14px 8px",
@@ -636,12 +649,6 @@ export function AtlasFrontDoor({
             flexShrink: 0,
           }}
         >
-          {/* Contextual HUD — suggestion chips above input */}
-          {contextualHUD && (
-            <div style={{ marginBottom: 8 }}>
-              {contextualHUD}
-            </div>
-          )}
           <textarea
             ref={textareaRef}
             value={input}
@@ -660,9 +667,11 @@ export function AtlasFrontDoor({
               resize: "none",
               fontFamily: "inherit",
               minHeight: TEXTAREA_MIN_HEIGHT,
-              maxHeight: 120,
+              maxHeight: TEXTAREA_MAX_HEIGHT_ACTIVE,
               overflowY: "hidden",
               display: "block",
+              scrollbarWidth: "thin",
+              scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
           />
           {/* Utility Bar: structured, evenly spaced, muted gold */}
