@@ -919,7 +919,9 @@ function WorkspacePage() {
                 recommendations={recs}
                 onTap={(text) => {
                   setInput(text);
+                  setAdaptivePlaceholder(text.slice(0, 40) + "…");
                   setInputFocusSignal((v) => v + 1);
+                  setTimeout(() => setAdaptivePlaceholder(null), 5000);
                 }}
                 onDiffRequest={(text) => {
                   // Show diff comparing the chip text against the last assistant message
