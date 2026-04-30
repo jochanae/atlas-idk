@@ -76,7 +76,7 @@ interface SystemMenuProps {
   onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
 }
 
-export function SystemMenu({ onSelect }: SystemMenuProps) {
+export function SystemMenu({ onSelect, userId, projectId, onFilesUploaded }: SystemMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
