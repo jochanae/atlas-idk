@@ -2074,6 +2074,7 @@ function ChatPanel({
         sourceMessageId: message.id,
         payload: card,
         status: "committed",
+        mode: activeMode,
       });
 
       toast.success("Committed to ledger");
