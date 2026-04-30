@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
@@ -14,7 +14,7 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
     id: "chat",
     label: "Chat",
     icon: (
-      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <svg aria-hidden="true" viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 12V4a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H5l-3 3z" />
       </svg>
     ),
@@ -23,7 +23,7 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
     id: "ledger",
     label: "Ledger",
     icon: (
-      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <svg aria-hidden="true" viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 2h8a1 1 0 011 1v10l-3-2-2 2-2-2-3 2V3a1 1 0 011-1z" />
         <path d="M6 6h4M6 9h2" />
       </svg>
@@ -33,7 +33,7 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
     id: "preview",
     label: "Preview",
     icon: (
-      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <svg aria-hidden="true" viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         <path d="M1.5 8s2-4 6.5-4 6.5 4 6.5 4-2 4-6.5 4S1.5 8 1.5 8z" />
         <circle cx="8" cy="8" r="1.5" />
       </svg>
@@ -43,13 +43,56 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
 
 export function MobileSurfaceBar({ active, onChange }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const activeSurface = SURFACES.find((s) => s.id === active) ?? SURFACES[0];
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setExpanded(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setExpanded(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [expanded]);
+
+  // Focus the active surface button when panel opens
+  useEffect(() => {
+    if (expanded && panelRef.current) {
+      const activeBtn = panelRef.current.querySelector<HTMLButtonElement>(
+        `[data-surface="${active}"]`,
+      );
+      activeBtn?.focus();
+    }
+  }, [expanded, active]);
 
   return (
     <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
       {/* Collapsed state: active tab breadcrumb + ghost toggle */}
       <button
+        ref={triggerRef}
+        aria-expanded={expanded}
+        aria-controls="atlas-surface-panel"
+        aria-label={`Current section: ${activeSurface.label}. Toggle navigation.`}
         onClick={() => {
           setExpanded((o) => !o);
           haptic("light");
@@ -67,6 +110,7 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
         }}
       >
         <span
+          aria-hidden="true"
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: 9,
@@ -80,6 +124,7 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
           {activeSurface.label}
         </span>
         <ChevronDown
+          aria-hidden="true"
           size={10}
           strokeWidth={1.5}
           style={{
@@ -94,6 +139,10 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
       {/* Expanded: glass slide-down panel with all three surfaces */}
       {expanded && (
         <div
+          ref={panelRef}
+          id="atlas-surface-panel"
+          role="tablist"
+          aria-label="Workspace sections"
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
@@ -118,9 +167,35 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
             return (
               <button
                 key={s.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`${s.label} section`}
+                data-surface={s.id}
+                tabIndex={isActive ? 0 : -1}
+                onKeyDown={(e) => {
+                  const idx = SURFACES.findIndex((x) => x.id === s.id);
+                  let nextIdx = -1;
+                  if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                    nextIdx = (idx + 1) % SURFACES.length;
+                  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                    nextIdx = (idx - 1 + SURFACES.length) % SURFACES.length;
+                  } else if (e.key === "Home") {
+                    nextIdx = 0;
+                  } else if (e.key === "End") {
+                    nextIdx = SURFACES.length - 1;
+                  }
+                  if (nextIdx >= 0) {
+                    e.preventDefault();
+                    const nextSurface = SURFACES[nextIdx];
+                    panelRef.current
+                      ?.querySelector<HTMLButtonElement>(`[data-surface="${nextSurface.id}"]`)
+                      ?.focus();
+                  }
+                }}
                 onClick={() => {
                   onChange(s.id);
                   setExpanded(false);
+                  triggerRef.current?.focus();
                   haptic("light");
                 }}
                 style={{
@@ -150,6 +225,11 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
           })}
         </div>
       )}
+
+      {/* Live region announces section changes to screen readers */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {`${activeSurface.label} section active`}
+      </div>
     </div>
   );
 }
