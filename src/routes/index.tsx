@@ -477,8 +477,6 @@ function WorkspacePage() {
         },
         // supabase-js v2 forwards this signal to fetch — calling
         // controller.abort() rejects this invoke immediately.
-        // @ts-expect-error: signal is supported in supabase-js >=2.43 but
-        // missing from the older @supabase/functions-js types in this version.
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
