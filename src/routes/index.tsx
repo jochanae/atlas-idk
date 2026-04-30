@@ -506,19 +506,38 @@ function WorkspacePage() {
             ) : null
           }
         >
-          <ChatPanel
-            messages={messages}
-            sending={sending}
-            setInput={setInput}
-            sessionId={session?.id ?? ""}
-            projectId={activeProjectId}
-            userId={user.id}
-            onRefresh={refresh}
-            onParkedChange={loadParkedItems}
-            onContinueAfterConflict={continueAfterConflict}
-            onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
-          />
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+              maxWidth: 800,
+              margin: "0 auto",
+              paddingRight: showWideDrawer ? "min(420px, 38vw)" : 0,
+              transition: "padding-right 360ms cubic-bezier(0.4, 0, 0.2, 1)",
+              boxSizing: "content-box",
+            }}
+          >
+            <ChatPanel
+              messages={messages}
+              sending={sending}
+              setInput={setInput}
+              sessionId={session?.id ?? ""}
+              projectId={activeProjectId}
+              userId={user.id}
+              onRefresh={refresh}
+              onParkedChange={loadParkedItems}
+              onContinueAfterConflict={continueAfterConflict}
+              onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
+            />
+            {isActive && (
+              <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
+            )}
+          </div>
         </AtlasFrontDoor>
+        {isActive && <ArtifactDrawer artifacts={artifacts} />}
         {session && (
           <HistoryPanel
             open={historyOpen}
