@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
+import { Route as ParkingLotRouteImport } from './routes/parking-lot'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
   id: '/think-freely',
   path: '/think-freely',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParkingLotRoute = ParkingLotRouteImport.update({
+  id: '/parking-lot',
+  path: '/parking-lot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LedgerRoute = LedgerRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ledger': typeof LedgerRoute
+  '/parking-lot': typeof ParkingLotRoute
   '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ledger': typeof LedgerRoute
+  '/parking-lot': typeof ParkingLotRoute
   '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ledger': typeof LedgerRoute
+  '/parking-lot': typeof ParkingLotRoute
   '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/ledger' | '/think-freely'
+  fullPaths: '/' | '/auth' | '/ledger' | '/parking-lot' | '/think-freely'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/ledger' | '/think-freely'
-  id: '__root__' | '/' | '/auth' | '/ledger' | '/think-freely'
+  to: '/' | '/auth' | '/ledger' | '/parking-lot' | '/think-freely'
+  id: '__root__' | '/' | '/auth' | '/ledger' | '/parking-lot' | '/think-freely'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   LedgerRoute: typeof LedgerRoute
+  ParkingLotRoute: typeof ParkingLotRoute
   ThinkFreelyRoute: typeof ThinkFreelyRoute
 }
 
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/think-freely'
       fullPath: '/think-freely'
       preLoaderRoute: typeof ThinkFreelyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parking-lot': {
+      id: '/parking-lot'
+      path: '/parking-lot'
+      fullPath: '/parking-lot'
+      preLoaderRoute: typeof ParkingLotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ledger': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   LedgerRoute: LedgerRoute,
+  ParkingLotRoute: ParkingLotRoute,
   ThinkFreelyRoute: ThinkFreelyRoute,
 }
 export const routeTree = rootRouteImport
