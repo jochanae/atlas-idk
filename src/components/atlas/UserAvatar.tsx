@@ -69,18 +69,13 @@ export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }
           height: size,
           minWidth: size,
           borderRadius: "50%",
-          padding: 2,
+          padding: 0,
           cursor: onClick ? "pointer" : "default",
           background: showImage
             ? "transparent"
             : "linear-gradient(135deg, #2A2724 0%, #1C1917 55%, color-mix(in oklab, var(--accent-gold) 65%, #1C1917) 100%)",
-          border: `2px solid color-mix(in oklab, var(--accent-gold) 55%, transparent)`,
-          boxShadow: [
-            `0 0 0 2px color-mix(in oklab, var(--accent-gold) 12%, transparent)`,
-            `0 0 20px -2px color-mix(in oklab, var(--accent-gold) 40%, transparent)`,
-            `0 0 40px -6px color-mix(in oklab, var(--accent-gold) 20%, transparent)`,
-            `0 4px 18px -4px rgba(0,0,0,0.55)`,
-          ].join(", "),
+          border: "1.5px solid rgba(212, 175, 55, 0.45)",
+          boxShadow: "0 0 8px rgba(212, 175, 55, 0.3), 0 4px 18px -4px rgba(0,0,0,0.55)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -97,8 +92,8 @@ export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }
             alt=""
             onError={() => setImgFailed(true)}
             style={{
-              width: "100%",
-              height: "100%",
+              width: "112%",
+              height: "112%",
               objectFit: "cover",
               display: "block",
               borderRadius: "50%",
