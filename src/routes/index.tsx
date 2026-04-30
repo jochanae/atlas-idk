@@ -10,6 +10,7 @@ import {
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
 import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
+import { UserAvatar } from "@/components/atlas/UserAvatar";
 import {
   relativeTime,
   type ChatMessage,
@@ -400,40 +401,37 @@ function WorkspacePage() {
             }
           }}
           headerActions={
-            session && !entrySurface ? (
-              <div className="flex items-center gap-3 min-w-0">
-                {projects.length > 0 && (
-                  <select
-                    value={activeProjectId ?? ""}
-                    onChange={(e) => setActiveProjectId(e.target.value)}
-                    className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[color:var(--ember)] max-w-[140px] truncate"
+            <div className="flex items-center gap-3 min-w-0" style={{ height: 40 }}>
+              {session && !entrySurface && (
+                <>
+                  {projects.length > 0 && (
+                    <select
+                      value={activeProjectId ?? ""}
+                      onChange={(e) => setActiveProjectId(e.target.value)}
+                      className="bg-background border border-border rounded-sm px-2 py-1 text-xs text-foreground focus:outline-none focus:border-[color:var(--ember)] max-w-[140px] truncate"
+                    >
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <Link
+                    to="/ledger"
+                    className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground hover:text-foreground"
                   >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <Link
-                  to="/ledger"
-                  className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground hover:text-foreground"
-                >
-                  Ledger
-                </Link>
-                <ParkingLotButton
-                  count={parkedItems.length}
-                  open={parkingOpen}
-                  onClick={() => setParkingOpen((open) => !open)}
-                />
-                <button
-                  onClick={signOut}
-                  className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
-                >
-                  sign out
-                </button>
-              </div>
-            ) : null
+                    Ledger
+                  </Link>
+                  <ParkingLotButton
+                    count={parkedItems.length}
+                    open={parkingOpen}
+                    onClick={() => setParkingOpen((open) => !open)}
+                  />
+                </>
+              )}
+              <UserAvatar user={user} size={36} onClick={signOut} />
+            </div>
           }
           secondaryPanel={
             session && surface !== "chat" ? (

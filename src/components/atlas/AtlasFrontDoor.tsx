@@ -84,16 +84,18 @@ export function AtlasFrontDoor({
         overflow: "hidden",
       }}
     >
-      {/* Top bar — sidebar toggle anchored left of wordmark */}
+      {/* Top bar — sidebar toggle anchored left of wordmark, avatar right */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px 8px",
+          padding: "10px 14px 8px",
+          minHeight: 56,
+          gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 40 }}>
           {sidebarToggle}
           <button
             onClick={onWordmarkClick}
@@ -101,17 +103,23 @@ export function AtlasFrontDoor({
               background: "transparent",
               border: "none",
               padding: 0,
+              height: 40,
+              display: "inline-flex",
+              alignItems: "center",
               fontSize: 18,
               fontWeight: 500,
               color: "var(--foreground)",
               letterSpacing: "0.08em",
+              lineHeight: 1,
               cursor: onWordmarkClick ? "pointer" : "default",
             }}
           >
             Atlas
           </button>
         </div>
-        {headerActions}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 40 }}>
+          {headerActions}
+        </div>
       </div>
 
       {/* Front door hero — vertically centered, cinematic */}
@@ -272,8 +280,8 @@ export function AtlasFrontDoor({
                   title="Add (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -297,8 +305,8 @@ export function AtlasFrontDoor({
                   title="Attach file (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -340,8 +348,8 @@ export function AtlasFrontDoor({
                   title="Voice (coming soon)"
                   className="atlas-icon-btn atlas-mic-btn"
                   style={{
-                    width: 30,
-                    height: 30,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: "transparent",
                     border: "none",
@@ -371,8 +379,8 @@ export function AtlasFrontDoor({
                   onClick={() => onSend(input, activeMode)}
                   disabled={!input.trim() || sending}
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: input.trim() ? "var(--ember)" : "var(--surface)",
                     border: input.trim() ? "none" : "0.5px solid var(--border)",
@@ -510,6 +518,14 @@ export function AtlasFrontDoor({
         @keyframes atlas-wave-bounce {
           0%, 100% { height: 3px; }
           50%      { height: 10px; }
+        }
+        .atlas-avatar:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in oklab, var(--accent-gold) 70%, var(--border)) !important;
+          box-shadow:
+            inset 0 1px 0 color-mix(in oklab, white 10%, transparent),
+            0 0 0 1px color-mix(in oklab, var(--accent-gold) 35%, transparent),
+            0 0 18px -4px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
         }
       `}</style>
     </div>

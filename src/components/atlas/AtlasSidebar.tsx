@@ -326,10 +326,15 @@ export function SidebarToggle({ onClick }: { onClick: () => void }) {
         border: "none",
         color: "var(--muted-text)",
         cursor: "pointer",
-        padding: 6,
-        marginRight: 4,
-        display: "flex",
+        width: 40,
+        height: 40,
+        padding: 0,
+        marginRight: 2,
+        display: "inline-flex",
         alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 8,
+        flexShrink: 0,
         transition: "color 180ms var(--ease-cinematic), filter 180ms var(--ease-cinematic)",
       }}
       onMouseEnter={(e) => {
