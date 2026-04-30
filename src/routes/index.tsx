@@ -1351,29 +1351,88 @@ function WorkspacePage() {
           utilityBarLeft={
             session ? (
               <>
-                <button
-                  type="button"
-                  aria-label="Add"
-                  title="Add (coming soon)"
-                  className="atlas-utility-btn"
-                >
-                  <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.6}>
-                    <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                  </svg>
-                </button>
+                <SystemMenu
+                  onSelect={(id) => {
+                    if (id === "blueprints") setBlueprintsOpen(true);
+                    else if (id === "design") setDesignSystemOpen(true);
+                    else if (id === "connectors") setExportOpen(true);
+                    else if (id === "filetree") setFileTreeOpen(true);
+                    else if (id === "diff") {
+                      if (generatedFiles.length >= 2) {
+                        const prev = generatedFiles[generatedFiles.length - 2];
+                        const curr = generatedFiles[generatedFiles.length - 1];
+                        setDiffOldCode(prev.content);
+                        setDiffNewCode(curr.content);
+                        setDiffLabels({ old: prev.filename, new: curr.filename });
+                      } else if (generatedFiles.length === 1) {
+                        setDiffOldCode("");
+                        setDiffNewCode(generatedFiles[0].content);
+                        setDiffLabels({ old: "(empty)", new: generatedFiles[0].filename });
+                      }
+                      setDiffOpen(true);
+                    }
+                    else if (id === "collaborate") setCollaborateOpen(true);
+                    else if (id === "github") setGithubOpen(true);
+                    else if (id === "snapshots") setSnapshotBrowserOpen(true);
+                    else if (id === "integrity") setIntegrityOpen(true);
+                    else if (id === "research") {
+                      setInput("/research ");
+                      setSurface("chat");
+                      setInputFocusSignal((s) => s + 1);
+                    }
+                  }}
+                  userId={user.id}
+                  projectId={activeProjectId}
+                  onFilesUploaded={(files) => setAttachedFiles((prev) => [...prev, ...files])}
+                />
                 <button
                   type="button"
                   aria-label="Attach file"
-                  title="Attach file (coming soon)"
+                  title="Attach file"
                   className="atlas-utility-btn"
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.multiple = true;
+                    input.accept = "image/*,application/pdf,.doc,.docx,.txt,.csv,.json";
+                    input.onchange = async () => {
+                      if (!input.files?.length) return;
+                      const uploaded: Array<{ name: string; url: string; type: string }> = [];
+                      for (const file of Array.from(input.files)) {
+                        const path = `${user.id}/${activeProjectId ?? "general"}/${Date.now()}-${file.name}`;
+                        const { error } = await supabase.storage
+                          .from("project-assets")
+                          .upload(path, file, { upsert: false });
+                        if (error) {
+                          toast.error(`Upload failed: ${file.name}`);
+                          continue;
+                        }
+                        const { data: urlData } = supabase.storage
+                          .from("project-assets")
+                          .getPublicUrl(path);
+                        uploaded.push({ name: file.name, url: urlData.publicUrl, type: file.type });
+                      }
+                      if (uploaded.length > 0) {
+                        toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} attached`);
+                        setAttachedFiles((prev) => [...prev, ...uploaded]);
+                      }
+                    };
+                    input.click();
+                  }}
                 >
                   <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
                   </svg>
                 </button>
+              </>
+            ) : null
+          }
+          utilityBarRight={
+            session ? (
+              <>
                 <button
                   type="button"
-                  aria-label="Voice"
+                  aria-label="Voice input"
                   title="Voice input (coming soon)"
                   className="atlas-utility-btn"
                 >
@@ -1383,24 +1442,20 @@ function WorkspacePage() {
                     <path d="M8 12.5v2" />
                   </svg>
                 </button>
+                <UtilityOverflowMenu
+                  activeSurface={surface}
+                  historyOpen={historyOpen}
+                  onSurfaceChange={(nextSurface) => {
+                    setHistoryOpen(false);
+                    setEntrySurface(false);
+                    setSurface(nextSurface);
+                  }}
+                  onHistory={() => {
+                    setEntrySurface(false);
+                    setHistoryOpen((open) => !open);
+                  }}
+                />
               </>
-            ) : null
-          }
-          utilityBarRight={
-            session ? (
-              <UtilityBarSurfaces
-                active={surface}
-                historyOpen={historyOpen}
-                onChange={(nextSurface) => {
-                  setHistoryOpen(false);
-                  setEntrySurface(false);
-                  setSurface(nextSurface);
-                }}
-                onHistory={() => {
-                  setEntrySurface(false);
-                  setHistoryOpen((open) => !open);
-                }}
-              />
             ) : null
           }
         >
