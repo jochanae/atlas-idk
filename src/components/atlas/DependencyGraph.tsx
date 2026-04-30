@@ -293,8 +293,14 @@ export function DependencyGraph({ steps: rawSteps, onPromoteToQueue, onStepTap, 
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const trace = [...new Set(cycleIds)].map((id) => stepMap.get(id)?.label ?? id).join(" → ");
-              navigator.clipboard.writeText(`Cycle: ${trace}`).then(
+              const uniqueIds = [...new Set(cycleIds)];
+              const traceLines = uniqueIds.map((id) => `${stepMap.get(id)?.label ?? id} (${id})`).join(" → ");
+              const edgeLines = uniqueIds.map((id, i) => {
+                const nextId = uniqueIds[(i + 1) % uniqueIds.length];
+                return `  ${id} → ${nextId}`;
+              }).join("\n");
+              const clipText = `Cycle detected\nTrace: ${traceLines}\nEdges:\n${edgeLines}`;
+              navigator.clipboard.writeText(clipText).then(
                 () => setCycleCopied(true),
                 () => {},
               );

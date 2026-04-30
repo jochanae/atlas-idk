@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
 
 export interface QueueItem {
@@ -19,6 +19,26 @@ interface TaskQueueProps {
   onExecuteAll: () => void;
   onExecuteOne: (id: string) => void;
   executing: boolean;
+  /** Called when user clicks a plan step link — parent should switch to Plan mode and highlight */
+  onJumpToPlanStep?: (planStepId: string) => void;
+  /** ID of a freshly promoted item whose context panel should auto-expand */
+  autoExpandId?: string | null;
+}
+
+const EXPAND_STORAGE_KEY = "atlas-queue-expanded";
+
+function loadExpandedSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(EXPAND_STORAGE_KEY);
+    if (raw) return new Set(JSON.parse(raw));
+  } catch {}
+  return new Set();
+}
+
+function persistExpandedSet(set: Set<string>) {
+  try {
+    localStorage.setItem(EXPAND_STORAGE_KEY, JSON.stringify([...set]));
+  } catch {}
 }
 
 export function TaskQueue({
@@ -30,12 +50,36 @@ export function TaskQueue({
   onExecuteAll,
   onExecuteOne,
   executing,
+  onJumpToPlanStep,
+  autoExpandId,
 }: TaskQueueProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(loadExpandedSet);
   const [editText, setEditText] = useState("");
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Auto-expand promoted items
+  useEffect(() => {
+    if (autoExpandId) {
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.add(autoExpandId);
+        persistExpandedSet(next);
+        return next;
+      });
+    }
+  }, [autoExpandId]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      persistExpandedSet(next);
+      return next;
+    });
+    haptic("light");
+  };
 
   const pending = items.filter((i) => i.status === "pending");
 
@@ -196,7 +240,7 @@ export function TaskQueue({
         {items.map((item, idx) => {
           const isDragOver = dragOverId === item.id;
           const hasPlanContext = !!item.planStepId;
-          const isExpanded = expandedItemId === item.id;
+          const isExpanded = expandedIds.has(item.id);
           return (
             <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             <div
@@ -290,8 +334,7 @@ export function TaskQueue({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setExpandedItemId(isExpanded ? null : item.id);
-                    haptic("light");
+                    toggleExpanded(item.id);
                   }}
                   title="View dependency context"
                   style={{
@@ -372,7 +415,7 @@ export function TaskQueue({
                       Plan Context
                     </span>
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{
                       fontFamily: "var(--font-mono)", fontSize: 10, padding: "2px 8px", borderRadius: 6,
                       background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
@@ -381,6 +424,30 @@ export function TaskQueue({
                     }}>
                       ID: {item.planStepId}
                     </span>
+                    {/* Jump to plan step link */}
+                    {onJumpToPlanStep && (
+                      <button
+                        type="button"
+                        onClick={() => onJumpToPlanStep(item.planStepId!)}
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 9,
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          background: "transparent",
+                          border: "0.5px solid color-mix(in oklab, var(--accent-gold) 30%, var(--border))",
+                          color: "var(--accent-gold)",
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                          textUnderlineOffset: 2,
+                          transition: "background 150ms",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 10%, transparent)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        ↗ View in Plan
+                      </button>
+                    )}
                   </div>
                   {item.dependsOn && item.dependsOn.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
