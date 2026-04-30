@@ -378,7 +378,18 @@ export function AtlasFrontDoor({
             >
               {/* Left: system menu trigger */}
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <SystemMenu />
+                <SystemMenu
+                  userId={userId}
+                  projectId={projectId}
+                  onFilesUploaded={onFilesUploaded}
+                  onSelect={(id) => {
+                    if (id === "blueprints") {
+                      // TODO: open blueprints library
+                    } else if (id === "design") {
+                      // TODO: open design system
+                    }
+                  }}
+                />
               </div>
 
               {/* Right: hint + mic + send */}
