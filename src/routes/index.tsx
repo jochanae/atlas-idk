@@ -1703,6 +1703,7 @@ function ChatPanel({
   onRefreshThinkingPrompts,
   onRollback,
   recentRollbackMsgId,
+  onOpenDiff,
 }: {
   newMessageIds: Set<string>;
   messages: ChatMessage[];
@@ -1724,6 +1725,7 @@ function ChatPanel({
   onRefreshThinkingPrompts: () => void | Promise<void>;
   onRollback: (m: ChatMessage) => void;
   recentRollbackMsgId: string | null;
+  onOpenDiff?: (userContent: string, assistantContent: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
