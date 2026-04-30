@@ -572,7 +572,40 @@ export function StructuralIntegrityPanel({ open, onClose, onHarden }: Structural
                           >
                             {item.excerpt}
                           </pre>
-                        </div>
+                          {/* Harden action — pipes /fix command into chat */}
+                          {item.status !== "functional" && onHarden && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const command = `/fix ${item.category}::${item.id} — ${item.label} [${item.status}] in ${item.file}${item.functionName ? ` → ${item.functionName}` : ""}`;
+                                onHarden(command, item);
+                                haptic("medium");
+                              }}
+                              style={{
+                                marginTop: 8,
+                                padding: "6px 14px",
+                                borderRadius: 8,
+                                background: "color-mix(in oklab, var(--phosphor, #22c55e) 12%, var(--surface))",
+                                border: "0.5px solid color-mix(in oklab, var(--phosphor, #22c55e) 30%, var(--border))",
+                                color: "var(--phosphor, #22c55e)",
+                                fontFamily: "var(--font-mono)",
+                                fontSize: 10,
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase" as const,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                transition: "all 160ms ease",
+                              }}
+                            >
+                              <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                                <path d="M8 2v4l3 2" />
+                                <circle cx="8" cy="8" r="6" />
+                              </svg>
+                              Harden
+                            </button>
+                          )}
                       </div>
                     )}
                   </div>
