@@ -15,7 +15,7 @@ import { UserMenu } from "@/components/atlas/UserMenu";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
-import { WhisperGate, type WhisperAnswers } from "@/components/atlas/WhisperGate";
+
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
 import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/components/atlas/DesktopWorkspace";
@@ -136,8 +136,6 @@ function WorkspacePage() {
   const [ledgerCount, setLedgerCount] = useState(0);
   const [commitPulse, setCommitPulse] = useState(false);
   const [hasCompass, setHasCompass] = useState<boolean | null>(null);
-  const [whisperOpen, setWhisperOpen] = useState(false);
-  const [whisperSubmitting, setWhisperSubmitting] = useState(false);
   const [thinkingPrompts, setThinkingPrompts] = useState<ThinkingPrompt[]>([]);
   const [thinkingLoading, setThinkingLoading] = useState(false);
   const [isWideViewport, setIsWideViewport] = useState(() =>
@@ -340,7 +338,7 @@ function WorkspacePage() {
   }, [ledgerCount, hasCompass, activeProjectId, user?.id]);
 
 
-  // Whisper Gate: check if active project already has a Compass
+  // Track whether the active project already has a Compass (used by thinking prompts)
   useEffect(() => {
     if (!user || !activeProjectId) {
       setHasCompass(null);
@@ -361,66 +359,6 @@ function WorkspacePage() {
     })();
   }, [user, activeProjectId]);
 
-  const submitWhisper = async (answers: WhisperAnswers) => {
-    if (!user || !activeProjectId) return;
-    setWhisperSubmitting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("atlas-whisper", {
-        body: {
-          projectId: activeProjectId,
-          audience: answers.audience,
-          aesthetics: answers.aesthetics,
-          seedMaterial: answers.seedMaterial,
-          hasAttachment: answers.hasAttachment,
-          attachmentHint: answers.attachmentHint,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const compassMd: string = data?.compass_md ?? "";
-
-      // Open a fresh whisper-mode session and seed the chat with the Compass
-      // so the Drawer auto-detects it as a structured doc artifact.
-      const { data: sessionRow, error: sessionError } = await supabase
-        .from("sessions")
-        .insert({
-          project_id: activeProjectId,
-          user_id: user.id,
-          title: "Project Compass",
-          mode: "whisper",
-          status: "active",
-        })
-        .select("*")
-        .single();
-      if (sessionError) throw sessionError;
-
-      const created = sessionRow as AtlasSession;
-
-      const intro = `**Project Compass drafted.** Open in the Drawer →\n\n${compassMd}`;
-      await supabase.from("chat_messages").insert({
-        session_id: created.id,
-        user_id: user.id,
-        role: "assistant",
-        content: intro,
-        intent_type: "whisper_compass",
-      });
-
-      setSession(created);
-      setEntrySurface(false);
-      setSurface("chat");
-      setHasCompass(true);
-      setWhisperOpen(false);
-      await refresh(created, activeProjectId);
-      await loadRecents();
-      toast.success("Compass drafted");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Whisper Gate failed";
-      toast.error(msg);
-    } finally {
-      setWhisperSubmitting(false);
-    }
-  };
   const refresh = async (
     targetSession = session,
     targetProjectId = activeProjectId,
@@ -900,79 +838,6 @@ function WorkspacePage() {
           />
         )}
 
-        {/* Whisper Gate — conceptual entry gate (§V) */}
-        {!isActive && activeProject && hasCompass === false && !whisperOpen && (
-          <button
-            type="button"
-            onClick={() => setWhisperOpen(true)}
-            style={{
-              position: "absolute",
-              left: "50%",
-              transform: "translateX(-50%)",
-              bottom: 24,
-              zIndex: 25,
-              background: "var(--surface)",
-              border: "0.5px solid color-mix(in oklab, var(--accent-gold) 45%, var(--border))",
-              color: "var(--accent-gold)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              padding: "8px 16px",
-              borderRadius: 999,
-              cursor: "pointer",
-              boxShadow: "0 0 18px -6px color-mix(in oklab, var(--accent-gold) 50%, transparent)",
-            }}
-          >
-            ◇ Begin Whisper Gate
-          </button>
-        )}
-        {whisperOpen && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 60,
-              background: "color-mix(in oklab, var(--background) 92%, transparent)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "flex-start",
-              paddingTop: 56,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => !whisperSubmitting && setWhisperOpen(false)}
-              aria-label="Close Whisper Gate"
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                background: "transparent",
-                border: "none",
-                color: "var(--muted-text)",
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                cursor: whisperSubmitting ? "default" : "pointer",
-                opacity: whisperSubmitting ? 0.3 : 0.7,
-                padding: 8,
-              }}
-            >
-              ✕ close
-            </button>
-            <WhisperGate
-              projectName={activeProject?.name}
-              submitting={whisperSubmitting}
-              onSubmit={submitWhisper}
-              onSkip={() => setWhisperOpen(false)}
-            />
-          </div>
-        )}
       </main>
       <AtlasSidebar
         open={sidebarOpen}
