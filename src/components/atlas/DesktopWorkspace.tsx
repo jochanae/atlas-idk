@@ -33,13 +33,13 @@ export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
 export type InspectorTabId = "whisper" | "github" | "code" | "recs";
 
 export interface DesktopWorkspaceProps {
-  // Mobile fallback — shown when viewport < lg
-  mobileFallback: ReactNode;
+  // Mobile fallback — render-prop, only mounted on <lg viewports
+  renderMobile: () => ReactNode;
 
-  // Desktop pane contents
-  canvas: ReactNode;
-  chatPane?: ReactNode;
-  inspectorPanes: Partial<Record<InspectorTabId, ReactNode>>;
+  // Desktop pane contents — render-props, only mounted on lg+ viewports
+  renderCanvas: () => ReactNode;
+  renderChatPane?: () => ReactNode;
+  renderInspectorPanes: () => Partial<Record<InspectorTabId, ReactNode>>;
 
   // Nav rail state
   activeSurface: SurfaceId;
@@ -48,11 +48,11 @@ export interface DesktopWorkspaceProps {
   parkedCount?: number;
   ledgerCount?: number;
 
-  // Top header (project breadcrumb, user menu) — rendered above all panes
-  header?: ReactNode;
+  // Top header (project breadcrumb, user menu) — rendered above all panes (desktop only)
+  renderHeader?: () => ReactNode;
 
-  // Footer audit line
-  footer?: ReactNode;
+  // Footer audit line (desktop only)
+  renderFooter?: () => ReactNode;
 }
 
 const SURFACES: Array<{ id: SurfaceId; label: string; Icon: typeof MessageSquare }> = [
