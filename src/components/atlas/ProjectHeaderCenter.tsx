@@ -68,6 +68,7 @@ export function ProjectHeaderCenter({
     };
   }, [modePickerOpen]);
 
+  useEffect(() => {
     if (renaming) {
       inputRef.current?.focus();
       inputRef.current?.select();
