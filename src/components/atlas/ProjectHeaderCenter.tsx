@@ -23,12 +23,11 @@ export function ProjectHeaderCenter({
   onModeChange,
 }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [modePickerOpen, setModePickerOpen] = useState(false);
+  const [modeExpanded, setModeExpanded] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const modeRef = useRef<HTMLDivElement>(null);
 
   const displayName = projectName || "Untitled";
   const isUntitled = !projectName || projectName === "Untitled";
