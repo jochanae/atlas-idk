@@ -566,6 +566,7 @@ function WorkspacePage() {
     }
   }, [user, activeProjectId, session?.id, attachedFiles]);
 
+  const openSession = async (targetSessionId: string) => {
     if (!user) return;
     const { data, error } = await supabase
       .from("sessions")
