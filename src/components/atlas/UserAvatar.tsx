@@ -23,7 +23,7 @@ function initialsFrom(name: string | null | undefined, email: string | null | un
   return source.slice(0, 2).toUpperCase();
 }
 
-export function UserAvatar({ user, size = 36, onClick }: Props) {
+export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }: Props) {
   const metaAvatar =
     (user.user_metadata?.avatar_url as string | undefined) ||
     (user.user_metadata?.picture as string | undefined) ||
