@@ -118,6 +118,28 @@ function WorkspacePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
+  const [commitPulse, setCommitPulse] = useState(false);
+  const [isWideViewport, setIsWideViewport] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : false,
+  );
+
+  // Track viewport for adaptive shell padding (drawer right-pane reserves space)
+  useEffect(() => {
+    const onResize = () => setIsWideViewport(window.innerWidth >= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Pulse the breadcrumb gold dot briefly when ledger count grows
+  const prevLedgerCount = useRef(ledgerCount);
+  useEffect(() => {
+    if (ledgerCount > prevLedgerCount.current) {
+      setCommitPulse(true);
+      const t = window.setTimeout(() => setCommitPulse(false), 4000);
+      return () => window.clearTimeout(t);
+    }
+    prevLedgerCount.current = ledgerCount;
+  }, [ledgerCount]);
 
   // Apply theme class to <html>
   useEffect(() => {
