@@ -627,7 +627,7 @@ function WorkspacePage() {
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="font-mono text-xs text-muted-foreground">loading…</span>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
