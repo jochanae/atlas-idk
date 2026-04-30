@@ -220,11 +220,15 @@ export function AtlasFrontDoor({
                     position: "absolute",
                     top: 0,
                     left: 0,
+                    right: 0,
                     color: "var(--muted-text)",
                     fontSize: 15,
                     lineHeight: 1.5,
                     opacity: 0.85,
                     pointerEvents: "none",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
                   <RotatingPlaceholder mode={activeMode} paused={false} />
@@ -268,17 +272,19 @@ export function AtlasFrontDoor({
                   title="Attach (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    background: "transparent",
-                    border: "none",
+                     width: 32,
+                     height: 32,
+                     borderRadius: 8,
+                     background: "color-mix(in oklab, var(--surface-alt) 68%, transparent)",
+                     border: "1px solid color-mix(in oklab, var(--border) 86%, transparent)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "var(--muted-text)",
+                     color: "color-mix(in oklab, var(--foreground) 54%, var(--muted-text))",
                     cursor: "pointer",
-                    transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic)",
+                     boxShadow: "inset 0 1px 0 color-mix(in oklab, white 8%, transparent)",
+                     transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic), border-color 180ms var(--ease-cinematic), transform 180ms var(--ease-cinematic)",
+                     flexShrink: 0,
                   }}
                 >
                   <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.6}>
@@ -291,17 +297,19 @@ export function AtlasFrontDoor({
                   title="Voice (coming soon)"
                   className="atlas-icon-btn"
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    background: "transparent",
-                    border: "none",
+                     width: 32,
+                     height: 32,
+                     borderRadius: 8,
+                     background: "color-mix(in oklab, var(--surface-alt) 68%, transparent)",
+                     border: "1px solid color-mix(in oklab, var(--border) 86%, transparent)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "var(--muted-text)",
+                     color: "color-mix(in oklab, var(--foreground) 54%, var(--muted-text))",
                     cursor: "pointer",
-                    transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic)",
+                     boxShadow: "inset 0 1px 0 color-mix(in oklab, white 8%, transparent)",
+                     transition: "color 180ms var(--ease-cinematic), background 180ms var(--ease-cinematic), border-color 180ms var(--ease-cinematic), transform 180ms var(--ease-cinematic)",
+                     flexShrink: 0,
                   }}
                 >
                   <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.6}>
@@ -321,6 +329,7 @@ export function AtlasFrontDoor({
                     color: "var(--muted-text)",
                     opacity: 0.45,
                     userSelect: "none",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   type <span style={{ color: "var(--ember)", opacity: 0.85 }}>/</span> for shortcuts
@@ -454,7 +463,9 @@ export function AtlasFrontDoor({
         }
         .atlas-icon-btn:hover {
           color: var(--ember) !important;
-          background: rgba(234,88,12,0.08) !important;
+          background: color-mix(in oklab, var(--ember) 12%, var(--surface-alt)) !important;
+          border-color: color-mix(in oklab, var(--ember) 45%, var(--border)) !important;
+          transform: translateY(-1px);
         }
       `}</style>
     </div>
