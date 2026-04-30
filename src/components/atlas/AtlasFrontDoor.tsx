@@ -55,6 +55,8 @@ type AtlasFrontDoorProps = {
   onSystemMenuSelect?: (id: string) => void;
   /** Contextual HUD element rendered above the active input */
   contextualHUD?: ReactNode;
+  taskQueue?: ReactNode;
+  onAddToQueue?: (text: string) => void;
   children?: ReactNode;
 };
 

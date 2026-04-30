@@ -28,6 +28,7 @@ import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
+import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
@@ -180,6 +181,8 @@ function WorkspacePage() {
   const [collaborateOpen, setCollaborateOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+  const [queueExecuting, setQueueExecuting] = useState(false);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -692,6 +695,26 @@ function WorkspacePage() {
       .eq("id", prompt.id);
   };
 
+  // ── Task Queue handlers ──
+  const addToQueue = useCallback((text: string) => {
+    setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const, createdAt: Date.now() }]);
+  }, []);
+
+  const executeQueueItem = useCallback(async (id: string) => {
+    setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "running" as const } : i));
+    const item = queueItems.find((i) => i.id === id);
+    if (!item) return;
+    try { await send(item.text); setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "done" as const } : i)); }
+    catch { setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, status: "error" as const } : i)); }
+  }, [queueItems]);
+
+  const executeAllQueue = useCallback(async () => {
+    const pending = queueItems.filter((i) => i.status === "pending");
+    if (!pending.length) return;
+    setQueueExecuting(true);
+    for (const item of pending) { await executeQueueItem(item.id); }
+    setQueueExecuting(false);
+  }, [queueItems, executeQueueItem]);
 
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
   const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
@@ -792,6 +815,21 @@ function WorkspacePage() {
             else if (id === "collaborate") setCollaborateOpen(true);
             else if (id === "github") setGithubOpen(true);
           }}
+          taskQueue={
+            session ? (
+              <TaskQueue
+                items={queueItems}
+                onReorder={setQueueItems}
+                onEdit={(id, text) => setQueueItems((prev) => prev.map((i) => i.id === id ? { ...i, text } : i))}
+                onRemove={(id) => setQueueItems((prev) => prev.filter((i) => i.id !== id))}
+                onDuplicate={(id) => { const item = queueItems.find((i) => i.id === id); if (item) addToQueue(item.text); }}
+                onExecuteAll={executeAllQueue}
+                onExecuteOne={executeQueueItem}
+                executing={queueExecuting}
+              />
+            ) : undefined
+          }
+          onAddToQueue={addToQueue}
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD
@@ -1146,6 +1184,7 @@ function WorkspacePage() {
         open={githubOpen}
         onClose={() => setGithubOpen(false)}
         projectId={activeProjectId}
+        generatedFiles={generatedFiles}
       />
       <OnboardingFlow
         show={showOnboarding && recents.length === 0 && !session}
