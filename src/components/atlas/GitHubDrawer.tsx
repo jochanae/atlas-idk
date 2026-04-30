@@ -440,6 +440,8 @@ export function GitHubDrawer({ open, onClose, projectId, generatedFiles = [] }: 
                   "Connect Repository"
                 )}
               </button>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
