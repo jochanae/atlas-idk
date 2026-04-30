@@ -15,6 +15,7 @@ import { UserMenu } from "@/components/atlas/UserMenu";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
+import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
