@@ -20,16 +20,27 @@ When you make a suggestion, say what it is, why it matters for what they're buil
 Keep responses short. One idea per response unless more is genuinely needed. Never produce a wall of text. Never start a response with "I" or with a greeting. Just begin with the thing that matters.
 
 ═══════════════════════════════════════════════════════════════
-COMMIT CARDS — earned cards only
+RESPONSE MODE — prose by default, cards when earned
 ═══════════════════════════════════════════════════════════════
 
-When — and ONLY when — your response contains something the user could meaningfully Commit to the ledger or Park for later (a real architectural decision, a new feature delivery, a flagged blocker, a stub being shipped), append a structured CommitCard at the END of your response inside a fenced block:
+Default to conversational, natural responses. Match the user's intent and energy. Only switch to structured CommitCard output when the response contains:
+  - a clear architectural or strategic decision the user could commit
+  - a structured plan with ordered phases, steps, or roadmap
+  - a reusable artifact (a delivered build, a flagged blocker, a stub being shipped)
+
+If you are chatting, asking a clarifying question, exploring an idea, or offering an opinion that isn't a deliverable, do NOT emit a card. Plain prose only. Cards must feel rare and important — earned, not default.
+
+═══════════════════════════════════════════════════════════════
+COMMIT CARDS — schema
+═══════════════════════════════════════════════════════════════
+
+When you DO have something committable, append a structured CommitCard at the END of your response inside a fenced block:
 
 \`\`\`atlas-card
 {
   "v": 1,
   "severity": "committed" | "parked" | "blocker" | "neutral",
-  "verb": "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge",
+  "verb": "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge" | "plan",
   "title": "Short title under 60 chars",
   "summary": "1-2 line plain-text summary of the deliverable.",
   "details": "Optional longer markdown for the Details drawer.",
@@ -43,11 +54,28 @@ Severity rules:
 - "blocker" — a critical issue that must be resolved before progress.
 - "neutral" — a notable note worth recording but not a decision.
 
-Verb rules: "new" for features, "bug" for defects, "perf" for speed, "note" for documentation/ledger entries, "wip" for stubs, "audit" for verification, "merge" for agreements/syntheses.
+Verb rules: "new" for features, "bug" for defects, "perf" for speed, "note" for documentation/ledger entries, "wip" for stubs, "audit" for verification, "merge" for agreements/syntheses, "plan" for ordered phases or roadmaps.
 
-Cards are EARNED, not default. If you are just chatting, asking a clarifying question, or offering an opinion that isn't a deliverable, do NOT emit a card. Plain prose only. The user has explicitly asked for cards to feel rare and important.
+═══════════════════════════════════════════════════════════════
+PLAN DETECTION
+═══════════════════════════════════════════════════════════════
 
-The prose BEFORE the card should be your normal short response. The card is the structured artifact, not a substitute for the conversation.`;
+If your response contains 3 or more clearly ordered steps, numbered phases, or explicit roadmap language ("Phase 1", "Step 1", "First...Then...Finally"), emit a CommitCard with verb="plan" and severity="parked" (plans start unresolved). The "details" field should hold the structured plan as markdown. The prose above the card stays conversational.
+
+For weaker structure (loose bullet lists, soft ordering), do NOT auto-emit. Let the user promote it manually.
+
+═══════════════════════════════════════════════════════════════
+TONE NORMALIZATION FOR COMMITTED OUTPUTS
+═══════════════════════════════════════════════════════════════
+
+The prose BEFORE the card matches the user's register — conversational, plain, energy-matched.
+
+The card payload (title, summary, details) MUST be normalized to a clean, professional, audit-ready tone regardless of the conversational tone above:
+  - Title: sentence case, no emoji, under 60 chars, declarative.
+  - Summary: 1-2 plain-text sentences, no slang, no questions.
+  - Details: structured markdown, no first-person, no filler.
+
+The card is a permanent artifact. It must read well to someone who joins the project six months from now without context.`;
 
 
 type ActiveLedgerEntry = {
@@ -153,18 +181,42 @@ Deno.serve(async (req) => {
     if (!sessionId || !projectId || !message)
       throw new Error("sessionId, projectId, message required");
 
-    const { data: activeLedgerEntries, error: ledgerErr } = await userClient
-      .from("ledger_entries")
-      .select("title, description")
+    // Conflict guard: pull committed entries (Ledger view) from the
+    // unified `entries` table. Same object as Parking Lot, filtered by
+    // status='committed'.
+    const entriesAny = userClient.from(
+      "entries" as unknown as Parameters<typeof userClient.from>[0],
+    ) as unknown as {
+      select: (cols: string) => {
+        eq: (col: string, val: unknown) => {
+          eq: (col: string, val: unknown) => {
+            eq: (col: string, val: unknown) => {
+              order: (col: string, opts: { ascending: boolean }) => {
+                limit: (n: number) => Promise<{
+                  data: Array<{ title: string; summary: string | null }> | null;
+                  error: Error | null;
+                }>;
+              };
+            };
+          };
+        };
+      };
+    };
+
+    const { data: activeLedgerEntries, error: ledgerErr } = await entriesAny
+      .select("title, summary")
       .eq("project_id", projectId)
-      .eq("status", "Active")
       .eq("user_id", user.id)
+      .eq("status", "committed")
       .order("created_at", { ascending: false })
       .limit(10);
     if (ledgerErr) throw ledgerErr;
 
     const guardedSystemPrompt = buildGuardedSystemPrompt(
-      (activeLedgerEntries ?? []) as ActiveLedgerEntry[],
+      (activeLedgerEntries ?? []).map((e) => ({
+        title: e.title,
+        description: e.summary,
+      })),
     );
 
     // Persist the user message
