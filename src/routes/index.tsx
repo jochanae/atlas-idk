@@ -1401,6 +1401,8 @@ function ChatPanel({
   onParkThinkingPrompt,
   onDismissThinkingPrompt,
   onRefreshThinkingPrompts,
+  onRollback,
+  recentRollbackMsgId,
 }: {
   newMessageIds: Set<string>;
   messages: ChatMessage[];
@@ -1420,6 +1422,8 @@ function ChatPanel({
   onParkThinkingPrompt: (p: ThinkingPrompt) => void | Promise<void>;
   onDismissThinkingPrompt: (p: ThinkingPrompt) => void | Promise<void>;
   onRefreshThinkingPrompts: () => void | Promise<void>;
+  onRollback: (m: ChatMessage) => void;
+  recentRollbackMsgId: string | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
