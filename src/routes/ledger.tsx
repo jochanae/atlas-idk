@@ -11,8 +11,13 @@ import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import { toast } from "sonner";
 
+type LedgerSearch = { focus?: string };
+
 export const Route = createFileRoute("/ledger")({
   component: ArchitecturalLedger,
+  validateSearch: (search: Record<string, unknown>): LedgerSearch => ({
+    focus: typeof search.focus === "string" ? search.focus : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Atlas — Architectural Ledger" },
@@ -28,6 +33,7 @@ export const Route = createFileRoute("/ledger")({
 function ArchitecturalLedger() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { focus } = Route.useSearch();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
