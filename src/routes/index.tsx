@@ -1365,15 +1365,28 @@ function ChatPanel({
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
             if (parsedConflict && dismissedConflicts.has(m.id)) return null;
             const conflict = parsedConflict;
-            const showActionRow =
-              m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
-            const showParkButton = m.role === "assistant" && !conflict;
             const isUser = m.role === "user";
+
+            // Detect a CommitCard payload — prefer DB-stored payload over re-parsing prose.
+            // Renderer branches on card_schema_version for backward compatibility.
+            const dbCard = m.card_payload as CommitCardPayload | null | undefined;
+            const dbVersion = m.card_schema_version ?? null;
+            const parsed = !dbCard && m.role === "assistant" && !conflict
+              ? parseAtlasMessage(m.content)
+              : null;
+            const card = dbCard ?? parsed?.card ?? null;
+            const cardVersion = dbVersion ?? parsed?.schemaVersion ?? null;
+            const proseForDisplay = parsed ? parsed.prose : m.content;
+            const isLocked = Boolean(m.committed_card_id);
+
+            const showActionRow =
+              !card && m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
+            const showParkButton = !card && m.role === "assistant" && !conflict;
 
             return (
               <div
                 key={m.id}
-                className={`space-y-1 ${isUser ? "ml-auto max-w-[85%] text-right" : "max-w-[92%]"}`}
+                className={`space-y-2 ${isUser ? "ml-auto max-w-[85%] text-right" : "max-w-[92%]"}`}
               >
                 <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
                   {isUser ? "YOU" : "ATLAS"} · {relativeTime(m.created_at)}
@@ -1389,13 +1402,30 @@ function ChatPanel({
                     onReconsider={() => reconsider(m.id)}
                   />
                 ) : (
-                  <div
-                    className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
-                      isUser ? "text-foreground/80" : "text-foreground"
-                    }`}
-                  >
-                    {m.content}
-                  </div>
+                  <>
+                    {proseForDisplay.trim() && (
+                      <div
+                        className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
+                          isUser ? "text-foreground/80" : "text-foreground"
+                        }`}
+                      >
+                        {proseForDisplay}
+                      </div>
+                    )}
+                    {card && cardVersion !== null && (
+                      <div className="pt-1">
+                        <CommitCard
+                          payload={card}
+                          schemaVersion={cardVersion}
+                          messageId={m.id}
+                          locked={isLocked}
+                          busy={committingCardId === m.id}
+                          onCommit={() => commitCardMessage(m, card)}
+                          onPark={() => parkCardMessage(m, card)}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
                 {showParkButton && (
                   <div className="pt-1 flex flex-wrap gap-1.5">
