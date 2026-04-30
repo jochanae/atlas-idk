@@ -142,10 +142,13 @@ export function AtlasFrontDoor({
   }, [input, active]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // In resting mode, Enter sends. In active mode, Enter = newline, only send button submits.
+    if (!active && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSend(input, activeMode);
     }
+    // In active mode, Enter always inserts newline (default textarea behavior)
+  };
   };
 
   const showPlaceholder = !input && !active;
@@ -370,7 +373,7 @@ export function AtlasFrontDoor({
                   position: "relative",
                   zIndex: 1,
                   minHeight: TEXTAREA_MIN_HEIGHT,
-                  maxHeight: TEXTAREA_MAX_HEIGHT,
+                  maxHeight: TEXTAREA_MAX_HEIGHT_RESTING,
                   overflowY: "hidden",
                   display: "block",
                 }}
