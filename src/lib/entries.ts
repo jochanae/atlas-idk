@@ -105,6 +105,7 @@ export async function createEntryFromCard(
     source_message_id: sourceMessageId,
     card_schema_version: payload.v,
     is_violation: payload.severity === "blocker",
+    mode: mode ?? null,
   };
   const { data, error } = await entriesTable()
     .insert(row)
