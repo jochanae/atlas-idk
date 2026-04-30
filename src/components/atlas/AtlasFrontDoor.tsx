@@ -772,11 +772,21 @@ export function AtlasFrontDoor({
             0 0 22px -6px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
         }
         .atlas-active-input-shell:focus-within {
-          border-color: color-mix(in oklab, var(--accent-gold) 45%, var(--border)) !important;
+          border-color: color-mix(in oklab, var(--accent-gold) 55%, var(--border)) !important;
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.04),
             0 6px 24px rgba(0,0,0,0.4),
-            0 0 16px -6px color-mix(in oklab, var(--accent-gold) 45%, transparent) !important;
+            0 0 20px -4px color-mix(in oklab, var(--accent-gold) 50%, transparent) !important;
+        }
+        .atlas-active-input-shell textarea::-webkit-scrollbar {
+          width: 3px;
+        }
+        .atlas-active-input-shell textarea::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .atlas-active-input-shell textarea::-webkit-scrollbar-thumb {
+          background: color-mix(in oklab, var(--accent-gold) 30%, transparent);
+          border-radius: 2px;
         }
         .atlas-utility-btn {
           width: 32px;
