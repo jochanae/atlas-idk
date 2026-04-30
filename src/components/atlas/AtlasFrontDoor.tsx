@@ -93,14 +93,17 @@ export function AtlasFrontDoor({
   const [pillsOverflow, setPillsOverflow] = useState(false);
 
   const TEXTAREA_MIN_HEIGHT = 48;
-  const TEXTAREA_MAX_HEIGHT = 160;
+  const TEXTAREA_MAX_HEIGHT_RESTING = 160;
+  // Active mode: cap at 40% of viewport so keyboard + chat stay visible
+  const TEXTAREA_MAX_HEIGHT_ACTIVE = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.4) : 200;
 
-  const adjustTextareaHeight = (element: HTMLTextAreaElement | null) => {
+  const adjustTextareaHeight = (element: HTMLTextAreaElement | null, maxH?: number) => {
     if (!element) return;
+    const cap = maxH ?? (active ? TEXTAREA_MAX_HEIGHT_ACTIVE : TEXTAREA_MAX_HEIGHT_RESTING);
     element.style.height = "0px";
-    const nextHeight = Math.max(TEXTAREA_MIN_HEIGHT, Math.min(element.scrollHeight, TEXTAREA_MAX_HEIGHT));
+    const nextHeight = Math.max(TEXTAREA_MIN_HEIGHT, Math.min(element.scrollHeight, cap));
     element.style.height = `${nextHeight}px`;
-    element.style.overflowY = element.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
+    element.style.overflowY = element.scrollHeight > cap ? "auto" : "hidden";
   };
 
   const handleInputChange = (value: string) => {
