@@ -384,7 +384,7 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Mobile surface bar + mode pill — fixed below header in active mode */}
+      {/* Mobile surface bar — fixed below header in active mode (mode pill moved into header center) */}
       {active && (
         <div
           style={{
@@ -402,7 +402,6 @@ export function AtlasFrontDoor({
           }}
         >
           {mobileSurfaceBar}
-          <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />
         </div>
       )}
 
