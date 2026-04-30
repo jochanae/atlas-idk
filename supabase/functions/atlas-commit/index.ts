@@ -1,6 +1,7 @@
 // Atlas commit edge function — extracts the strongest decision from a session.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are Atlas's decision extraction engine. Your job is to read a conversation and extract the single most important architectural or strategic decision that was made. Be precise and ruthless — if no real decision was made, say so.
+const SYSTEM_PROMPT = composeAtlasPrompt(`═══════════════════════════════════════════════════════════════
+ROLE — Decision extraction
+═══════════════════════════════════════════════════════════════
+
+You are reading a conversation and extracting the single most important architectural or strategic decision that was made. Be precise and ruthless — if no real decision was made, say so.
+
+Apply the card-tone normalization rules to the title and description. The output is a permanent ledger artifact.
 
 Return ONLY valid JSON in this exact structure:
 {
@@ -20,7 +27,7 @@ Return ONLY valid JSON in this exact structure:
 }
 
 If decision_found is false, return: {"decision_found": false}
-Nothing else. No markdown. No explanation. Pure JSON.`;
+Nothing else. No markdown. No explanation. Pure JSON.`);
 
 type ChatMessage = {
   role: string;
