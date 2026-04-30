@@ -88,7 +88,7 @@ interface CreateFromCardArgs {
 export async function createEntryFromCard(
   args: CreateFromCardArgs,
 ): Promise<Entry> {
-  const { userId, projectId, sessionId, sourceMessageId, payload, status } =
+  const { userId, projectId, sessionId, sourceMessageId, payload, status, mode } =
     args;
   const row: Record<string, unknown> = {
     user_id: userId,
