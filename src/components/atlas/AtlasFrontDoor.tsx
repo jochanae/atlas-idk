@@ -190,8 +190,10 @@ export function AtlasFrontDoor({
       <div
         className="atlas-sticky-header"
         style={{
-          position: "sticky",
+          position: "fixed",
           top: 0,
+          left: 0,
+          right: 0,
           zIndex: 50,
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
