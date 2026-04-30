@@ -366,59 +366,9 @@ export function AtlasFrontDoor({
                 gap: 12,
               }}
             >
-              {/* Left: attach actions (inside the border) */}
+              {/* Left: system menu trigger */}
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <button
-                  type="button"
-                  aria-label="Add"
-                  title="Add (coming soon)"
-                  className="atlas-icon-btn"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 8,
-                    background: "transparent",
-                    border: "none",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "color-mix(in oklab, var(--accent-gold) 55%, var(--muted-text))",
-                    cursor: "pointer",
-                    opacity: 0.55,
-                    transition: "opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), transform 160ms var(--ease-cinematic)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <svg viewBox="0 0 16 16" width={15} height={15} stroke="currentColor" fill="none" strokeWidth={1.6}>
-                    <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  aria-label="Attach file"
-                  title="Attach file (coming soon)"
-                  className="atlas-icon-btn"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 8,
-                    background: "transparent",
-                    border: "none",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "color-mix(in oklab, var(--accent-gold) 55%, var(--muted-text))",
-                    cursor: "pointer",
-                    opacity: 0.55,
-                    transition: "opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), transform 160ms var(--ease-cinematic)",
-                    flexShrink: 0,
-                  }}
-                >
-                  {/* Paperclip */}
-                  <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
-                  </svg>
-                </button>
+                <SystemMenu />
               </div>
 
               {/* Right: hint + mic + send */}
