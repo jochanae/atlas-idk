@@ -707,6 +707,8 @@ function WorkspacePage() {
           inputFocusSignal={inputFocusSignal}
           onModeChange={setActiveMode}
           onSend={send}
+          recents={recents}
+          onOpenSession={openSession}
           userName={
             (user.user_metadata?.display_name as string | undefined) ||
             (user.user_metadata?.full_name as string | undefined) ||
@@ -1058,28 +1060,6 @@ function WorkspacePage() {
                       </button>
                     );
                   })}
-                </div>
-                <div className="mt-2 pt-2 border-t border-border/40">
-                  <h3 className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">
-                    Recent sessions
-                  </h3>
-                  <div className="flex flex-col gap-0.5">
-                    {recents.length === 0 && (
-                      <p className="text-[11px] font-mono text-muted-foreground">
-                        No sessions yet.
-                      </p>
-                    )}
-                    {recents.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => openSession(s.id)}
-                        className="w-full text-left rounded px-3 py-1.5 text-[11.5px] text-foreground hover:bg-muted/50 truncate"
-                      >
-                        {s.title || "Untitled"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}

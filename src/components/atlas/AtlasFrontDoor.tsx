@@ -31,6 +31,9 @@ type AtlasFrontDoorProps = {
   inputFocusSignal: number;
   sidebarToggle?: ReactNode;
   userName?: string | null;
+  /** Recent sessions shown under the resting input as "Continue where you left off". */
+  recents?: RecentSession[];
+  onOpenSession?: (sessionId: string) => void;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
@@ -51,6 +54,8 @@ export function AtlasFrontDoor({
   inputFocusSignal,
   sidebarToggle,
   userName,
+  recents,
+  onOpenSession,
   onModeChange,
   onInputChange,
   onSend,
@@ -477,6 +482,34 @@ export function AtlasFrontDoor({
               </div>
             </div>
           </div>
+
+          {/* Continue where you left off — recent sessions list. Only when not active. */}
+          {recents && recents.length > 0 && onOpenSession && (
+            <div
+              style={{
+                margin: "32px 0 0",
+                animation: "atlas-recents-in 480ms cubic-bezier(0.4, 0, 0.2, 1) 200ms backwards",
+              }}
+            >
+              <div
+                style={{
+                  padding: "0 22px 6px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9.5,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: "var(--muted-text)",
+                  opacity: 0.7,
+                }}
+              >
+                Continue where you left off
+              </div>
+              <SessionHistoryList
+                sessions={recents.slice(0, 5)}
+                onOpenSession={onOpenSession}
+              />
+            </div>
+          )}
         </div>
 
         {/* Active session content — cross-fades in over the resting hero */}
@@ -665,6 +698,10 @@ export function AtlasFrontDoor({
         @keyframes atlas-tag-in {
           from { opacity: 0; transform: translateY(-4px) scale(0.92); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes atlas-recents-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
         .atlas-input-shell:focus-within {
           border-color: color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
