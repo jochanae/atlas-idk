@@ -1106,12 +1106,12 @@ function WorkspacePage() {
                   setInputFocusSignal((v) => v + 1);
                   setTimeout(() => setAdaptivePlaceholder(null), 5000);
                 }}
-                onDiffRequest={(text) => {
-                  // Show diff comparing the chip text against the last assistant message
+                onDiffRequest={() => {
+                  const lastUser = [...messages].reverse().find((m) => m.role === "user");
                   const lastAtlas = [...messages].reverse().find((m) => m.role === "assistant");
-                  setDiffOldCode(lastAtlas?.content ?? "");
-                  setDiffNewCode(text);
-                  setDiffLabels({ old: "Atlas response", new: "Selected chip" });
+                  setDiffOldCode(lastUser?.content ?? "(no user message)");
+                  setDiffNewCode(lastAtlas?.content ?? "(no response)");
+                  setDiffLabels({ old: "Your prompt", new: "Atlas response" });
                   setDiffOpen(true);
                 }}
                 onParkMultiple={async (items) => {
