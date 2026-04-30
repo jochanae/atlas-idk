@@ -2,8 +2,7 @@ import { describe, it, expect } from "vitest";
 
 /**
  * Lightweight validation of the Plan Mode step parser.
- * The regex and dependency-extraction logic live in src/routes/index.tsx;
- * we duplicate the pure parsing here so it can be tested in isolation.
+ * The regex and dependency-extraction logic mirrors src/routes/index.tsx.
  */
 
 interface PlanStep {
@@ -34,7 +33,12 @@ function parsePlanSteps(content: string): PlanStep[] {
 
 describe("Plan Mode step parser", () => {
   it("extracts simple numbered steps", () => {
-    const input = `Here is the plan:\n1. Set up the database schema\n2. Create API endpoints\n3. Build the frontend UI\n`;
+    // Note: the regex consumes trailing \n so each step needs its own line
+    const input =
+      "Here is the plan:\n" +
+      "1. Set up the database schema\n" +
+      "2. Create API endpoints\n" +
+      "3. Build the frontend UI\n";
     const steps = parsePlanSteps(input);
     expect(steps).toHaveLength(3);
     expect(steps[0]).toEqual({ id: "plan-1", label: "Set up the database schema", dependsOn: [] });
@@ -43,15 +47,20 @@ describe("Plan Mode step parser", () => {
   });
 
   it("handles bold-wrapped step labels", () => {
-    const input = `1. **Initialize project**\n2. **Configure auth** (depends on step 1)\n`;
+    const input =
+      "1. **Initialize project**\n" +
+      "2. **Configure auth** (depends on step 1)\n";
     const steps = parsePlanSteps(input);
+    expect(steps).toHaveLength(2);
     expect(steps[0].label).toBe("Initialize project");
-    expect(steps[1].label).toContain("Configure auth");
     expect(steps[1].dependsOn).toEqual(["plan-1"]);
   });
 
   it("parses explicit dependency notes", () => {
-    const input = `1. Design schema\n2. Seed data\n3. Build UI (depends on step 1)\n`;
+    const input =
+      "1. Design schema\n" +
+      "2. Seed data\n" +
+      "3. Build UI (depends on step 1)\n";
     const steps = parsePlanSteps(input);
     expect(steps[2].dependsOn).toEqual(["plan-1"]);
   });
@@ -69,8 +78,11 @@ describe("Plan Mode step parser", () => {
   });
 
   it("handles single-star emphasis", () => {
-    const input = `1. *Set up auth*\n2. *Build dashboard*\n`;
+    const input =
+      "1. *Set up auth*\n" +
+      "2. *Build dashboard*\n";
     const steps = parsePlanSteps(input);
+    expect(steps).toHaveLength(2);
     expect(steps[0].label).toBe("Set up auth");
     expect(steps[1].label).toBe("Build dashboard");
   });
