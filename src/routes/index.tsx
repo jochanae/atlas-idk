@@ -129,6 +129,8 @@ function WorkspacePage() {
   const [hasCompass, setHasCompass] = useState<boolean | null>(null);
   const [whisperOpen, setWhisperOpen] = useState(false);
   const [whisperSubmitting, setWhisperSubmitting] = useState(false);
+  const [thinkingPrompts, setThinkingPrompts] = useState<ThinkingPrompt[]>([]);
+  const [thinkingLoading, setThinkingLoading] = useState(false);
   const [isWideViewport, setIsWideViewport] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
