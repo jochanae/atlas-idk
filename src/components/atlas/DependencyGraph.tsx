@@ -289,6 +289,31 @@ export function DependencyGraph({ steps: rawSteps, onPromoteToQueue, onStepTap, 
           >
             <strong>Cycle detected</strong> — {[...new Set(cycleIds)].map((id) => stepMap.get(id)?.label ?? id).join(" → ")}. Resolve dependencies to unlock execution order.
           </span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const trace = [...new Set(cycleIds)].map((id) => stepMap.get(id)?.label ?? id).join(" → ");
+              navigator.clipboard.writeText(`Cycle: ${trace}`).then(
+                () => setCycleCopied(true),
+                () => {},
+              );
+              setTimeout(() => setCycleCopied(false), 1800);
+            }}
+            style={{
+              flexShrink: 0,
+              padding: "3px 8px",
+              borderRadius: 5,
+              border: "0.5px solid color-mix(in oklab, var(--accent-gold) 30%, var(--border))",
+              background: cycleCopied ? "color-mix(in oklab, var(--accent-gold) 20%, var(--surface))" : "transparent",
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              color: "var(--accent-gold)",
+              cursor: "pointer",
+              transition: "background 160ms ease",
+            }}
+          >
+            {cycleCopied ? "Copied" : "Copy"}
+          </button>
         </div>
       )}
 
