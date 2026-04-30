@@ -977,6 +977,23 @@ function WorkspacePage() {
         onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
         onSignOut={signOut}
       />
+      <BlueprintsDrawer
+        open={blueprintsOpen}
+        onClose={() => setBlueprintsOpen(false)}
+        onDeploy={(item) => generateCode(item.codegenPrompt)}
+      />
+      <DesignSystemDrawer
+        open={designSystemOpen}
+        onClose={() => setDesignSystemOpen(false)}
+        activeTheme={theme as "obsidian" | "parchment" | "midnight" | "ember"}
+        onThemeChange={(t) => setTheme(t as "obsidian" | "parchment")}
+      />
+      <ExportDrawer
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        files={generatedFiles}
+        projectName={activeProject?.name}
+      />
     </div>
   );
 
