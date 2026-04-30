@@ -33,6 +33,8 @@ import { MobileSurfaceBar } from "@/components/atlas/MobileSurfaceBar";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
 import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
+import { BuildStateTimeline, type BuildStateEntry } from "@/components/atlas/BuildStateTimeline";
+import { LiveConsoleStream, type ConsoleEntry } from "@/components/atlas/LiveConsoleStream";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
