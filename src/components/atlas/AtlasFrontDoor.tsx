@@ -416,7 +416,7 @@ export function AtlasFrontDoor({
           overflowY: "auto",
           overflowX: "hidden",
           paddingTop: active
-            ? "calc(var(--header-height) + 100px)"
+            ? "calc(var(--header-height) + 60px)"
             : "calc(var(--header-height) + 16px)",
         }}
       >
