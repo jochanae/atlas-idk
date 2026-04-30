@@ -2214,26 +2214,13 @@ function ChatPanel({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 10,
-              padding: "8px 16px",
-              background: "var(--surface)",
-              border: "0.5px solid var(--border)",
-              borderRadius: 20,
+              gap: 8,
+              padding: "6px 14px",
               width: "fit-content",
             }}
           >
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "var(--phosphor)",
-                animation: "atlas-pulse 1.8s ease-in-out infinite",
-                boxShadow: "0 0 8px var(--phosphor)",
-              }}
-            />
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--phosphor)" }}>
-              atlas thinking
+            <span className="font-mono text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--accent-gold)", opacity: 0.6 }}>
+              processing
             </span>
             <button
               type="button"
@@ -2243,7 +2230,6 @@ function ChatPanel({
                 background: "transparent",
                 border: "0.5px solid var(--ember)",
                 color: "var(--ember)",
-                marginLeft: 4,
               }}
               aria-label="Stop Atlas"
               title="Stop Atlas"
