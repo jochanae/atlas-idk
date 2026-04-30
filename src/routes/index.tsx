@@ -2052,7 +2052,7 @@ function ChatPanel({
                           style={{
                             background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
                             border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
-                            borderRadius: 12,
+                            borderRadius: "16px 4px 16px 16px",
                             padding: "12px 16px",
                             cursor: isLongMessage ? "pointer" : "default",
                             position: "relative",
