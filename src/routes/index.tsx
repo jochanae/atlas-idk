@@ -22,7 +22,6 @@ import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/compon
 import { CommitCard } from "@/components/atlas/CommitCard";
 import {
   parseAtlasMessage,
-  CARD_SCHEMA_CURRENT,
   type CommitCardPayload,
 } from "@/lib/atlas-status";
 import { detectArtifacts } from "@/lib/artifacts";
