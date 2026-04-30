@@ -1908,6 +1908,7 @@ function ChatPanel({
   recentRollbackMsgId,
   onOpenDiff,
   activeMode,
+  buildHistory,
 }: {
   newMessageIds: Set<string>;
   messages: ChatMessage[];
