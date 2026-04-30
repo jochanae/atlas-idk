@@ -6,6 +6,7 @@ type Props = {
   user: User;
   size?: number;
   onClick?: () => void;
+  showStatusPulse?: boolean;
 };
 
 function initialsFrom(name: string | null | undefined, email: string | null | undefined): string {
