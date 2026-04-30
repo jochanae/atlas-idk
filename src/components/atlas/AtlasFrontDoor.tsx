@@ -24,6 +24,8 @@ type AtlasFrontDoorProps = {
   input: string;
   sending: boolean;
   headerActions: ReactNode;
+  /** Center element for the header (project name + dropdown). Falls back to "Atlas" wordmark. */
+  headerCenter?: ReactNode;
   bottomTabs?: ReactNode;
   secondaryPanel?: ReactNode;
   utilityBarLeft?: ReactNode;
@@ -51,6 +53,7 @@ export function AtlasFrontDoor({
   input,
   sending,
   headerActions,
+  headerCenter,
   bottomTabs,
   secondaryPanel,
   utilityBarLeft,
@@ -138,44 +141,53 @@ export function AtlasFrontDoor({
         overflow: "hidden",
       }}
     >
-      {/* Top bar — sidebar toggle anchored left of wordmark, avatar right */}
+      {/* Three-point header: sidebar | project center | avatar/actions */}
       <div
         style={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "18px 22px 10px",
-          minHeight: 64,
+          padding: "14px 18px 10px",
+          minHeight: 56,
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 40 }}>
+        {/* Left: sidebar toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, height: 36 }}>
           {sidebarToggle}
-          <button
-            onClick={onWordmarkClick}
-            style={{
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              height: 40,
-              display: "inline-flex",
-              alignItems: "center",
-              fontSize: 18,
-              fontWeight: 500,
-              color: "var(--foreground)",
-              letterSpacing: "0.08em",
-              lineHeight: 1,
-              cursor: onWordmarkClick ? "pointer" : "default",
-            }}
-          >
-            Atlas
-          </button>
+          {!headerCenter && (
+            <button
+              onClick={onWordmarkClick}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                height: 36,
+                display: "inline-flex",
+                alignItems: "center",
+                fontSize: 16,
+                fontWeight: 500,
+                color: "var(--foreground)",
+                letterSpacing: "0.08em",
+                lineHeight: 1,
+                cursor: onWordmarkClick ? "pointer" : "default",
+              }}
+            >
+              Atlas
+            </button>
+          )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 40 }}>
+
+        {/* Center: project name + dropdown (or empty on resting) */}
+        <div style={{ display: "flex", justifyContent: "center", minWidth: 0 }}>
+          {headerCenter}
+        </div>
+
+        {/* Right: actions + avatar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, height: 36, justifyContent: "flex-end" }}>
           {headerActions}
         </div>
       </div>
-      
 
       {/* Stage: holds resting hero + active chat in the SAME box for cross-fade */}
       <div
