@@ -2052,7 +2052,7 @@ function ChatPanel({
                           style={{
                             background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
                             border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
-                            borderRadius: 12,
+                            borderRadius: "16px 4px 16px 16px",
                             padding: "12px 16px",
                             cursor: isLongMessage ? "pointer" : "default",
                             position: "relative",
@@ -2180,22 +2180,28 @@ function ChatPanel({
                       )}
                     </div>
                     {showParkButton && (
-                      <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
-                        <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
-                        <span style={{
-                          display: "inline-flex",
-                          animation: recentRollbackMsgId === m.id ? "atlas-rollback-glow 2s ease-in-out infinite" : undefined,
-                          borderRadius: 6,
-                        }}>
-                          <MessageActionButton label="Rollback" onClick={() => onRollback(m)} />
-                        </span>
-                        {showActionRow && (
-                          <>
-                            <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
-                            <MessageActionButton label={extracting ? "Extracting…" : "Commit"} onClick={commitDecision} disabled={extracting} />
-                          </>
-                        )}
-                        <MessageActionButton label={parkedMessageId === m.id ? "Parked ✓" : "Park"} onClick={() => parkMessage(m)} active={parkedMessageId === m.id} />
+                      <div style={{ display: "flex", gap: 12, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                        {/* Output Actions group */}
+                        <div style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+                          <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
+                          <span style={{
+                            display: "inline-flex",
+                            animation: recentRollbackMsgId === m.id ? "atlas-rollback-glow 2s ease-in-out infinite" : undefined,
+                            borderRadius: 6,
+                          }}>
+                            <MessageActionButton label="Rollback" onClick={() => onRollback(m)} />
+                          </span>
+                        </div>
+                        {/* Structural Actions group */}
+                        <div style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
+                          {showActionRow && (
+                            <>
+                              <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
+                              <MessageActionButton label={extracting ? "Extracting…" : "Commit"} onClick={commitDecision} disabled={extracting} />
+                            </>
+                          )}
+                          <MessageActionButton label={parkedMessageId === m.id ? "Parked ✓" : "Park"} onClick={() => parkMessage(m)} active={parkedMessageId === m.id} />
+                        </div>
                         {commitStatus && (
                           <div style={{ color: commitStatus.color, opacity: commitStatus.visible ? 1 : 0, transition: "opacity 400ms ease" }} className="font-mono text-[10px]">
                             {commitStatus.text}
@@ -2261,8 +2267,8 @@ const ACTION_ICONS: Record<string, { svg: React.ReactNode; title: string }> = {
     title: "Rollback to this point",
     svg: (
       <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 8a6 6 0 1112 0A6 6 0 012 8z" opacity={0.3} />
-        <path d="M5 8h6M5 8l2.5-2.5M5 8l2.5 2.5" />
+        <path d="M4 7l-2.5 2.5L4 12" />
+        <path d="M1.5 9.5H9a4 4 0 100-8H6" />
       </svg>
     ),
   },
@@ -2363,12 +2369,17 @@ function MessageActionButton({
       onMouseEnter={(e) => {
         if (!disabled) {
           e.currentTarget.style.opacity = "1";
-          e.currentTarget.style.color = "var(--ember)";
+          e.currentTarget.style.color = "var(--accent-gold)";
+          e.currentTarget.style.filter = "drop-shadow(0 0 6px color-mix(in oklab, var(--accent-gold) 50%, transparent))";
         }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.opacity = disabled ? "0.4" : "0.55";
         e.currentTarget.style.color = active ? "var(--ember)" : "var(--muted-text)";
+        e.currentTarget.style.filter = "none";
+      }}
+      onPointerDown={() => {
+        try { if ("vibrate" in navigator) navigator.vibrate(10); } catch {}
       }}
     >
       {iconData?.svg ?? <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{label}</span>}

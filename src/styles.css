@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+@font-face { font-family: 'Geist'; src: local('Geist'); }
+@font-face { font-family: 'Geist Mono'; src: local('Geist Mono'); }
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -13,8 +15,8 @@
   --radius-lg: 4px;
   --radius-xl: 6px;
 
-  --font-sans: 'Geist', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -118,6 +120,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
   }

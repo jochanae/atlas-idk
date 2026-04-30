@@ -739,8 +739,10 @@ export function AtlasFrontDoor({
               color: "var(--foreground)",
               fontSize: 15,
               lineHeight: 1.5,
+              letterSpacing: "-0.01em",
               resize: "none",
-              fontFamily: "inherit",
+              fontFamily: "var(--font-mono)",
+              padding: "4px 6px",
               minHeight: TEXTAREA_MIN_HEIGHT,
               maxHeight: TEXTAREA_MAX_HEIGHT_ACTIVE,
               overflowY: "hidden",
@@ -748,6 +750,8 @@ export function AtlasFrontDoor({
               scrollbarWidth: "thin",
               scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
+            onFocus={(e) => { if (e.currentTarget.placeholder) e.currentTarget.placeholder = ""; }}
+            onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.placeholder = "reply to atlas…"; }}
           />
           {/* Utility Bar: structured, evenly spaced, muted gold */}
           <div
