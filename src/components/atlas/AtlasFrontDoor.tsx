@@ -552,11 +552,14 @@ export function AtlasFrontDoor({
         @media (max-width: 420px) {
           .atlas-shortcut-hint { display: none; }
         }
+        @media (max-width: 400px) {
+          .atlas-pills-row { padding-left: 14px !important; padding-right: 14px !important; }
+          .atlas-pills-inner { gap: 5px !important; padding-inline: 0 !important; }
+          .atlas-mode-pill { font-size: 9.5px !important; padding: 4px 8px !important; letter-spacing: 0.04em !important; }
+        }
         @media (max-width: 360px) {
           .atlas-greeting { font-size: 19px; }
-          .atlas-pills-row { padding-left: 18px !important; padding-right: 18px !important; }
-          .atlas-pills-inner { gap: 6px !important; padding-inline: 2px !important; }
-          .atlas-mode-pill { font-size: 10px !important; padding: 4px 10px !important; }
+          .atlas-mode-pill { font-size: 9px !important; padding: 3px 7px !important; }
           .atlas-input-shell { margin: 0 12px !important; padding: 14px 14px !important; }
         }
         @keyframes atlas-rise {
