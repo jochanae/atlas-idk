@@ -35,9 +35,10 @@ type Props = {
 };
 
 const TOKEN_KEY = "atlas-github-pat";
+const OAUTH_STATE_KEY = "atlas-github-oauth-state";
 
 /**
- * GitHubDrawer — Connect via Personal Access Token, pick branch, push/pull code.
+ * GitHubDrawer — Connect via OAuth or Personal Access Token, pick branch, push/pull code.
  * Uses real GitHub API calls via server functions.
  */
 export function GitHubDrawer({ open, onClose, projectId, generatedFiles = [] }: Props) {
@@ -48,6 +49,39 @@ export function GitHubDrawer({ open, onClose, projectId, generatedFiles = [] }: 
   const [token, setToken] = useState(() =>
     typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) ?? "" : "",
   );
+  const [authMode, setAuthMode] = useState<"oauth" | "pat">("oauth");
+  const [oauthLoading, setOauthLoading] = useState(false);
+
+  // Handle OAuth callback on mount
+  useState(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    const savedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+    if (code && state && state === savedState) {
+      sessionStorage.removeItem(OAUTH_STATE_KEY);
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+      // Exchange code for token
+      exchangeGitHubCode({ data: { code, redirectUri: window.location.origin + window.location.pathname } })
+        .then((result) => {
+          setToken(result.access_token);
+          localStorage.setItem(TOKEN_KEY, result.access_token);
+          setStep("connected");
+          // Validate to get user info
+          return validateGitHubToken({ data: { token: result.access_token } });
+        })
+        .then((user) => {
+          setGhUser(user);
+          toast.success(`Connected via OAuth as ${user.login}`);
+          haptic("medium");
+        })
+        .catch((e) => {
+          toast.error(e instanceof Error ? e.message : "OAuth failed");
+        });
+    }
+  });
   const [repoUrl, setRepoUrl] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [ghUser, setGhUser] = useState<GHUser | null>(null);
