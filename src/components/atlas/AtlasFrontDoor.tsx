@@ -92,6 +92,7 @@ export function AtlasFrontDoor({
   onSystemMenuSelect,
   contextualHUD,
   taskQueue,
+  queueActive,
   onAddToQueue,
   children,
 }: AtlasFrontDoorProps) {
