@@ -640,6 +640,10 @@ export function AtlasFrontDoor({
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes atlas-tag-in {
+          from { opacity: 0; transform: translateY(-4px) scale(0.92); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
         .atlas-input-shell:focus-within {
           border-color: color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
           box-shadow:
