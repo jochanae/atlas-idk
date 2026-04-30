@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Pencil, Settings, Archive, Copy } from "lucide-react";
+import { MODES, ModeIcon, type ModeId } from "./AtlasFrontDoor";
+import { haptic } from "@/lib/haptics";
 
 type Props = {
   projectName: string | null;
@@ -7,6 +9,8 @@ type Props = {
   onRename: (newName: string) => void;
   onOpenParking?: () => void;
   onNavigateLedger?: () => void;
+  activeMode?: ModeId;
+  onModeChange?: (mode: ModeId) => void;
 };
 
 export function ProjectHeaderCenter({
@@ -15,12 +19,16 @@ export function ProjectHeaderCenter({
   onRename,
   onOpenParking,
   onNavigateLedger,
+  activeMode,
+  onModeChange,
 }: Props) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [modePickerOpen, setModePickerOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modeRef = useRef<HTMLDivElement>(null);
 
   const displayName = projectName || "Untitled";
   const isUntitled = !projectName || projectName === "Untitled";
@@ -42,6 +50,23 @@ export function ProjectHeaderCenter({
       document.removeEventListener("keydown", onKey);
     };
   }, [dropdownOpen]);
+  // Close mode picker on outside click
+  useEffect(() => {
+    if (!modePickerOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (modeRef.current && !modeRef.current.contains(e.target as Node))
+        setModePickerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModePickerOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [modePickerOpen]);
 
   useEffect(() => {
     if (renaming) {
@@ -136,6 +161,98 @@ export function ProjectHeaderCenter({
           >
             {displayName}
           </span>
+          {/* Inline mode badge */}
+          {activeMode && onModeChange && (() => {
+            const modeInfo = MODES.find((x) => x.id === activeMode)!;
+            const isPhosphor = modeInfo.color === "phosphor";
+            const isGold = modeInfo.color === "accent-gold";
+            const accent = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
+            return (
+              <div ref={modeRef} style={{ position: "relative", display: "inline-flex" }}>
+                <span style={{ color: "var(--muted-text)", opacity: 0.3, fontSize: 10, margin: "0 2px" }}>·</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setModePickerOpen((o) => !o); haptic("light"); }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 6px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    cursor: "pointer",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: accent,
+                    transition: "background 120ms ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,175,55,0.08)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  title="Switch mode"
+                >
+                  <ModeIcon mode={activeMode} size={10} />
+                  {modeInfo.label}
+                </button>
+                {modePickerOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "rgba(15, 15, 15, 0.9)",
+                      backdropFilter: "blur(15px)",
+                      WebkitBackdropFilter: "blur(15px)",
+                      border: "0.5px solid rgba(212, 175, 55, 0.20)",
+                      borderRadius: 12,
+                      padding: 6,
+                      boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+                      minWidth: 160,
+                      zIndex: 9999,
+                      animation: "atlas-menu-in 180ms cubic-bezier(.2,.8,.2,1)",
+                    }}
+                  >
+                    {MODES.map((mode) => {
+                      const isActive = mode.id === activeMode;
+                      const mp = mode.color === "phosphor";
+                      const mg = mode.color === "accent-gold";
+                      const c = mg ? "var(--accent-gold)" : mp ? "var(--phosphor)" : "var(--ember)";
+                      return (
+                        <button
+                          key={mode.id}
+                          onClick={(e) => { e.stopPropagation(); onModeChange(mode.id); setModePickerOpen(false); haptic("light"); }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            minHeight: 40,
+                            padding: "8px 12px",
+                            border: "none",
+                            borderRadius: 8,
+                            background: isActive ? "rgba(212, 175, 55, 0.08)" : "transparent",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 11,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            color: isActive ? c : "var(--muted-text)",
+                            cursor: "pointer",
+                            transition: "background 120ms ease, color 120ms ease",
+                          }}
+                        >
+                          <ModeIcon mode={mode.id} size={12} />
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {isUntitled && (
             <Pencil
               size={11}

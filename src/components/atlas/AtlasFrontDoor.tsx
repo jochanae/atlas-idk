@@ -24,7 +24,7 @@ const MODE_PLACEHOLDERS: Record<ModeId, string> = {
 };
 
 /** Minimalist SVG icons for each mode — 16×16 viewBox, stroke-based */
-function ModeIcon({ mode, size = 13 }: { mode: ModeId; size?: number }) {
+export function ModeIcon({ mode, size = 13 }: { mode: ModeId; size?: number }) {
   const s = { width: size, height: size, flexShrink: 0 } as const;
   const common = { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (mode) {
@@ -384,7 +384,7 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Mobile surface bar + mode pill — fixed below header in active mode */}
+      {/* Mobile surface bar — fixed below header in active mode (mode pill moved into header center) */}
       {active && (
         <div
           style={{
@@ -402,7 +402,6 @@ export function AtlasFrontDoor({
           }}
         >
           {mobileSurfaceBar}
-          <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />
         </div>
       )}
 
@@ -417,7 +416,7 @@ export function AtlasFrontDoor({
           overflowY: "auto",
           overflowX: "hidden",
           paddingTop: active
-            ? "calc(var(--header-height) + 100px)"
+            ? "calc(var(--header-height) + 60px)"
             : "calc(var(--header-height) + 16px)",
         }}
       >

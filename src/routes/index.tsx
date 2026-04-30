@@ -1209,6 +1209,8 @@ function WorkspacePage() {
                 }}
                 onOpenParking={() => setParkingOpen(true)}
                 onNavigateLedger={() => navigate({ to: "/ledger" })}
+                activeMode={activeMode}
+                onModeChange={setActiveMode}
               />
             ) : undefined
           }
