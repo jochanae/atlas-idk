@@ -70,7 +70,31 @@ function detectCycle(steps: PlanStep[]): string[] | null {
   return null;
 }
 
+function sanitizeSteps(raw: PlanStep[]): PlanStep[] {
+  const ids = new Set(raw.map((s) => s.id));
+  return raw.map((s) => ({
+    ...s,
+    // Strip dangling dependency refs that point to non-existent steps
+    dependsOn: s.dependsOn.filter((d) => ids.has(d)),
+  }));
+}
+
 function layoutNodes(steps: PlanStep[]) {
+  try {
+    return layoutNodesInner(steps);
+  } catch {
+    // Fallback: single-column linear layout
+    const positions = new Map<string, { x: number; y: number; layer: number; idx: number }>();
+    steps.forEach((s, i) => positions.set(s.id, { x: PAD, y: PAD + i * GAP_Y, layer: 0, idx: i }));
+    return {
+      positions,
+      width: NODE_W + PAD * 2,
+      height: Math.max((steps.length - 1) * GAP_Y + NODE_H + PAD * 2, 120),
+    };
+  }
+}
+
+function layoutNodesInner(steps: PlanStep[]) {
   const incoming = new Map<string, Set<string>>();
   const outgoing = new Map<string, Set<string>>();
   for (const s of steps) {
