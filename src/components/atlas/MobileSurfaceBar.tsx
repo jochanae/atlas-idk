@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
 type Surface = "chat" | "ledger" | "preview";
@@ -41,53 +42,114 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
 ];
 
 export function MobileSurfaceBar({ active, onChange }: Props) {
+  const [expanded, setExpanded] = useState(false);
+
+  const activeSurface = SURFACES.find((s) => s.id === active) ?? SURFACES[0];
+
   return (
-    <div
-      className="atlas-mobile-surface-bar"
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        gap: 2,
-        padding: "6px 8px",
-        borderRadius: 14,
-        background: "rgba(15, 15, 15, 0.6)",
-        border: "0.5px solid rgba(212, 175, 55, 0.12)",
-      }}
-    >
-      {SURFACES.map((s) => {
-        const isActive = active === s.id;
-        return (
-          <button
-            key={s.id}
-            onClick={() => {
-              onChange(s.id);
-              haptic("light");
-            }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "6px 14px",
-              borderRadius: 10,
-              border: "none",
-              background: isActive
-                ? "rgba(212, 175, 55, 0.12)"
-                : "transparent",
-              color: isActive ? "var(--accent-gold)" : "var(--muted-text)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              transition: "all 160ms ease",
-              minHeight: 34,
-            }}
-          >
-            {s.icon}
-            {s.label}
-          </button>
-        );
-      })}
+    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {/* Collapsed state: active tab breadcrumb + ghost toggle */}
+      <button
+        onClick={() => {
+          setExpanded((o) => !o);
+          haptic("light");
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 12px",
+          borderRadius: 10,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          transition: "all 160ms ease",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 9,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--accent-gold)",
+            opacity: expanded ? 0.5 : 0.7,
+            transition: "opacity 160ms ease",
+          }}
+        >
+          {activeSurface.label}
+        </span>
+        <ChevronDown
+          size={10}
+          strokeWidth={1.5}
+          style={{
+            color: "var(--accent-gold)",
+            opacity: 0.5,
+            transform: expanded ? "rotate(180deg)" : "rotate(0)",
+            transition: "transform 220ms cubic-bezier(.2,.8,.2,1)",
+          }}
+        />
+      </button>
+
+      {/* Expanded: glass slide-down panel with all three surfaces */}
+      {expanded && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: 2,
+            padding: "6px 8px",
+            borderRadius: 14,
+            background: "var(--glass-bg)",
+            backdropFilter: "blur(var(--glass-blur)) saturate(140%)",
+            WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
+            border: "0.5px solid var(--glass-border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(212,175,55,0.06)",
+            zIndex: 60,
+            animation: "atlas-surface-slide 220ms cubic-bezier(.2,.8,.2,1)",
+            transformOrigin: "top center",
+          }}
+        >
+          {SURFACES.map((s) => {
+            const isActive = active === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => {
+                  onChange(s.id);
+                  setExpanded(false);
+                  haptic("light");
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "6px 14px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: isActive
+                    ? "color-mix(in oklab, var(--accent-gold) 12%, transparent)"
+                    : "transparent",
+                  color: isActive ? "var(--accent-gold)" : "var(--muted-text)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "all 160ms ease",
+                  minHeight: 34,
+                }}
+              >
+                {s.icon}
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
