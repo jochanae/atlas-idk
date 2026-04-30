@@ -488,6 +488,36 @@ export type Database = {
         }
         Relationships: []
       }
+      project_invitations: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string
+          invited_email: string
+          project_id: string
+          role: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by: string
+          invited_email: string
+          project_id: string
+          role?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string
+          invited_email?: string
+          project_id?: string
+          role?: string
+          status?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           created_at: string
@@ -568,6 +598,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      session_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          resolved: boolean
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          resolved?: boolean
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          resolved?: boolean
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       sessions: {
         Row: {
