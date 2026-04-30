@@ -131,6 +131,7 @@
     letter-spacing: -0.01em;
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   .font-mono, code, pre, input, textarea {
