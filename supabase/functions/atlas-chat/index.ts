@@ -348,18 +348,45 @@ Deno.serve(async (req) => {
     if (!finalText.trim())
       finalText = "Done.";
 
-    await userClient.from("chat_messages").insert({
-      session_id: sessionId,
-      user_id: user.id,
-      role: "assistant",
-      content: finalText,
-    });
+    // Extract optional CommitCard JSON block from the assistant text.
+    // Renderer will branch on card_schema_version for backward compatibility.
+    let cardPayload: Record<string, unknown> | null = null;
+    let cardSchemaVersion: number | null = null;
+    const fenceMatch = finalText.match(/```atlas-card\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      try {
+        const parsed = JSON.parse(fenceMatch[1]) as { v?: number } & Record<string, unknown>;
+        if (typeof parsed.v === "number" && parsed.title && parsed.summary && parsed.severity) {
+          cardPayload = parsed;
+          cardSchemaVersion = parsed.v;
+        }
+      } catch (err) {
+        console.warn("atlas-chat: failed to parse atlas-card block", err);
+      }
+    }
+
+    const { data: insertedMessage, error: insertError } = await userClient
+      .from("chat_messages")
+      .insert({
+        session_id: sessionId,
+        user_id: user.id,
+        role: "assistant",
+        content: finalText,
+        card_payload: cardPayload,
+        card_schema_version: cardSchemaVersion,
+      })
+      .select("*")
+      .single();
+    if (insertError) throw insertError;
 
     return new Response(
       JSON.stringify({
         reply: finalText,
+        message: insertedMessage,
         createdNodes,
         createdRecs,
+        card: cardPayload,
+        cardSchemaVersion,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
