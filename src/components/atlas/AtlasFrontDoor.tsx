@@ -31,6 +31,9 @@ type AtlasFrontDoorProps = {
   inputFocusSignal: number;
   sidebarToggle?: ReactNode;
   userName?: string | null;
+  /** Recent sessions shown under the resting input as "Continue where you left off". */
+  recents?: RecentSession[];
+  onOpenSession?: (sessionId: string) => void;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
