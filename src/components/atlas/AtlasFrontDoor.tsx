@@ -629,66 +629,7 @@ export function AtlasFrontDoor({
             willChange: "opacity, transform",
           }}
         >
-          {/* Collapsed mode indicator — replaces the row of pills in active state */}
-          {active && (() => {
-            const m = MODES.find((x) => x.id === activeMode);
-            if (!m) return null;
-            const isPhosphor = m.color === "phosphor";
-            const isGold = m.color === "accent-gold";
-            const accent = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
-            const glow = isGold ? "rgba(202,169,104,0.35)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
-            return (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  padding: "10px 16px 6px",
-                  flexShrink: 0,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    const idx = MODES.findIndex((x) => x.id === activeMode);
-                    const next = MODES[(idx + 1) % MODES.length];
-                    onModeChange(next.id);
-                    haptic("light");
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "3px 10px",
-                    borderRadius: 999,
-                    border: `0.5px solid ${accent}`,
-                    background: "var(--surface)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 9.5,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: accent,
-                    boxShadow: `0 0 10px -3px ${glow}`,
-                    animation: "atlas-tag-in 400ms cubic-bezier(0.4, 0, 0.2, 1)",
-                    cursor: "pointer",
-                    transition: "all 180ms var(--ease-cinematic)",
-                  }}
-                  title={`Switch mode (${m.label})`}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: accent,
-                      boxShadow: `0 0 6px ${accent}`,
-                    }}
-                  />
-                  {m.label}
-                </button>
-              </div>
-            );
-          })()}
+          {active && <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />}
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
             {children}
           </div>
