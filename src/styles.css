@@ -41,6 +41,13 @@
   --color-violated: var(--violated);
   --color-phosphor: var(--phosphor);
   --color-warning: var(--warning);
+  --color-accent-gold: var(--accent-gold);
+
+  /* RAG severity tokens — bound to existing identity colors */
+  --color-rag-blocker: var(--ember);
+  --color-rag-parked: var(--accent-gold);
+  --color-rag-committed: var(--phosphor);
+  --color-rag-neutral: var(--muted-text);
 }
 
 /* Obsidian (default) — luxury dark cinematic */
