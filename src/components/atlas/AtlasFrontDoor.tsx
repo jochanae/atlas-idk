@@ -144,7 +144,7 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
           }}
           title="Switch mode"
         >
-          <span aria-hidden style={{ width: 5, height: 5, borderRadius: "50%", background: accent, boxShadow: `0 0 6px ${accent}` }} />
+          <span className="atlas-mode-icon"><ModeIcon mode={activeMode} size={13} /></span>
           {m.label}
           <svg viewBox="0 0 16 16" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" style={{ marginLeft: 2, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 200ms ease" }}>
             <path d="M4 6l4 4 4-4" />
