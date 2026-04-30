@@ -1121,6 +1121,11 @@ function WorkspacePage() {
         projectName={activeProject?.name}
         sessionId={session?.id}
       />
+      <GitHubDrawer
+        open={githubOpen}
+        onClose={() => setGithubOpen(false)}
+        projectId={activeProjectId}
+      />
       <OnboardingFlow
         show={showOnboarding && recents.length === 0 && !session}
         userName={
