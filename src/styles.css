@@ -233,3 +233,9 @@
   0%, 100% { box-shadow: 0 0 4px rgba(202,169,104,0.2); }
   50% { box-shadow: 0 0 14px rgba(202,169,104,0.6), 0 0 24px rgba(202,169,104,0.25); }
 }
+
+/* Hide mode icons on very narrow screens (Z Fold outer ≤ 320px) */
+@media (max-width: 320px) {
+  .atlas-mode-icon { display: none; }
+  .atlas-mode-pill { gap: 0 !important; }
+}
