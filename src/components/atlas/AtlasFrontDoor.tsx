@@ -660,6 +660,19 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
+      {/* Plan Mode Dependency Graph */}
+      {active && planGraph && activeMode === "plan" && (
+        <div
+          style={{
+            margin: "0 20px 6px",
+            flexShrink: 0,
+            animation: "atlas-bubble-in 200ms ease forwards",
+          }}
+        >
+          {planGraph}
+        </div>
+      )}
+
       {/* Task Queue — rendered above contextual HUD when items exist */}
       {active && taskQueue && (
         <div
