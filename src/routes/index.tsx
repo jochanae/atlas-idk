@@ -785,11 +785,11 @@ function WorkspacePage() {
                 {surface === "workspace" ? (
                   <WorkspacePanel nodes={nodes} />
                 ) : (
-                  <PreviewPanel
-                    recs={pendingRecs}
-                    expanded={expandedRec}
-                    setExpanded={setExpandedRec}
-                    onAction={updateRec}
+                  <LivePreview
+                    code={generatedCode}
+                    filename={generatedFilename ?? undefined}
+                    loading={codegenLoading}
+                    error={codegenError}
                   />
                 )}
               </section>
