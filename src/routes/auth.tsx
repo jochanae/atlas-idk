@@ -134,14 +134,6 @@ function AuthPage() {
             </button>
           </div>
 
-          <div className="mt-10 text-center">
-            <Link
-              to="/ledger"
-              className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground/60 hover:text-muted-foreground"
-            >
-              View ledger overview
-            </Link>
-          </div>
         </div>
       </main>
 
