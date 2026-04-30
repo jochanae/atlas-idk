@@ -25,6 +25,7 @@ import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
 import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
+import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
