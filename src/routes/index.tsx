@@ -1456,44 +1456,15 @@ function ParkingLotDrawer({
                     {projectNames.get(projectId) ?? "Project"}
                   </div>
                 )}
-                {group.map((item) => {
-                  const fading = fadingIds.has(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-2 py-2 transition-opacity duration-150"
-                      style={{ opacity: fading ? 0 : 1 }}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div style={{ color: "#E7E5E4", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {item.label}
-                        </div>
-                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", marginTop: 2 }}>
-                          {item.source_context} · {relativeTime(item.created_at)}
-                        </div>
-                      </div>
-                      <span style={{ background: "#1C1917", color: "#57524E", fontFamily: "monospace", fontSize: 9, textTransform: "uppercase", borderRadius: 999, padding: "2px 6px" }}>
-                        {item.kind}
-                      </span>
-                      <div className="flex flex-col items-end gap-1">
-                        <button
-                          onClick={() => handleAction(item.id, "resolved")}
-                          style={{ background: "transparent", border: "none", color: "#3C3530", fontFamily: "monospace", fontSize: 9 }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = "#EA580C"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = "#3C3530"; }}
-                        >
-                          RESOLVE
-                        </button>
-                        <button
-                          onClick={() => handleAction(item.id, "dismissed")}
-                          style={{ background: "transparent", border: "none", color: "#3C3530", fontFamily: "monospace", fontSize: 9 }}
-                        >
-                          DISMISS
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {group.map((item) => (
+                  <ParkedRow
+                    key={item.id}
+                    item={item}
+                    projectName={projectNames.get(item.project_id) ?? null}
+                    fading={fadingIds.has(item.id)}
+                    onAction={handleAction}
+                  />
+                ))}
               </div>
             ))
           )}
