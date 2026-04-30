@@ -18,6 +18,9 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
+import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
+import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
+import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
@@ -157,6 +160,11 @@ function WorkspacePage() {
   const [codegenLoading, setCodegenLoading] = useState(false);
   const [codegenError, setCodegenError] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; url: string; type: string }>>([]);
+  // Feature drawer state
+  const [blueprintsOpen, setBlueprintsOpen] = useState(false);
+  const [designSystemOpen, setDesignSystemOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [generatedFiles, setGeneratedFiles] = useState<Array<{ filename: string; language: string; content: string }>>([]);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -566,6 +574,9 @@ function WorkspacePage() {
       if (data?.error) throw new Error(data.error);
       setGeneratedCode(data.file?.content ?? null);
       setGeneratedFilename(data.file?.filename ?? null);
+      if (data.file?.content && data.file?.filename) {
+        setGeneratedFiles((prev) => [...prev, { filename: data.file.filename, language: data.file.language ?? "tsx", content: data.file.content }]);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Code generation failed";
       setCodegenError(msg);
@@ -743,6 +754,11 @@ function WorkspacePage() {
           projectId={activeProjectId}
           onFilesUploaded={(files) => setAttachedFiles((prev) => [...prev, ...files])}
           onGenerateCode={generateCode}
+          onSystemMenuSelect={(id) => {
+            if (id === "blueprints") setBlueprintsOpen(true);
+            else if (id === "design") setDesignSystemOpen(true);
+            else if (id === "connectors") setExportOpen(true);
+          }}
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
@@ -960,6 +976,23 @@ function WorkspacePage() {
         theme={theme}
         onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
         onSignOut={signOut}
+      />
+      <BlueprintsDrawer
+        open={blueprintsOpen}
+        onClose={() => setBlueprintsOpen(false)}
+        onDeploy={(item) => generateCode(item.codegenPrompt)}
+      />
+      <DesignSystemDrawer
+        open={designSystemOpen}
+        onClose={() => setDesignSystemOpen(false)}
+        activeTheme={theme as "obsidian" | "parchment" | "midnight" | "ember"}
+        onThemeChange={(t) => setTheme(t as "obsidian" | "parchment")}
+      />
+      <ExportDrawer
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        files={generatedFiles}
+        projectName={activeProject?.name}
       />
     </div>
   );

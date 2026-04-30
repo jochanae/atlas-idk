@@ -51,6 +51,8 @@ type AtlasFrontDoorProps = {
   onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
   /** Called when user selects "Build" from system menu or uses /build command */
   onGenerateCode?: (prompt: string) => void;
+  /** Called when user opens a system menu feature drawer */
+  onSystemMenuSelect?: (id: string) => void;
   children?: ReactNode;
 };
 
@@ -80,6 +82,7 @@ export function AtlasFrontDoor({
   projectId,
   onFilesUploaded,
   onGenerateCode,
+  onSystemMenuSelect,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -383,11 +386,7 @@ export function AtlasFrontDoor({
                   projectId={projectId}
                   onFilesUploaded={onFilesUploaded}
                   onSelect={(id) => {
-                    if (id === "blueprints") {
-                      // TODO: open blueprints library
-                    } else if (id === "design") {
-                      // TODO: open design system
-                    }
+                    onSystemMenuSelect?.(id);
                   }}
                 />
               </div>
