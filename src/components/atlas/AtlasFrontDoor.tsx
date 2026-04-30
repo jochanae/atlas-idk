@@ -82,6 +82,7 @@ export function AtlasFrontDoor({
   projectId,
   onFilesUploaded,
   onGenerateCode,
+  onSystemMenuSelect,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
