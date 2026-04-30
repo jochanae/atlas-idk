@@ -1239,14 +1239,25 @@ function ChatPanel({
     kind: string;
   }) => {
     if (!projectId || !sessionId) return false;
-    const { error } = await parkedItemsTable().insert({
+    // Park = create an Entry with status='parked'. Same object the Ledger
+    // uses; only `status` differs. We map the legacy (label, sourceContext,
+    // kind) shape onto (title, summary, verb).
+    const verbMap: Record<string, string> = {
+      suggestion: "note",
+      term: "note",
+      question: "note",
+      commit_card: "wip",
+      other: "note",
+    };
+    const { error } = await entriesTable().insert({
       user_id: userId,
       project_id: projectId,
       session_id: sessionId,
-      label,
-      source_context: sourceContext,
-      kind,
       status: "parked",
+      severity: "parked",
+      title: label,
+      summary: sourceContext,
+      verb: verbMap[kind] ?? "note",
     });
     if (error) {
       toast.error(error.message);
@@ -1282,32 +1293,21 @@ function ChatPanel({
           : card.severity === "parked"
             ? "Active"
             : "Active";
-      const buildId = card.build_id ?? null;
-      const { data: entry, error } = await supabase
-        .from("ledger_entries")
-        .insert({
-          project_id: projectId,
-          user_id: userId,
-          title: card.title,
-          description: card.summary + (card.details ? `\n\n${card.details}` : ""),
-          status,
-          is_violation: card.severity === "blocker",
-          severity: card.severity,
-          verb: card.verb ?? null,
-          build_id: buildId,
-          card_schema_version: card.v,
-          extracted_from_session_id: sessionId,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-
-      // Lock the AI turn — server returns the updated row but optimistic UI
-      // is enough; subsequent refresh() will rehydrate.
-      await supabase
-        .from("chat_messages")
-        .update({ committed_card_id: entry.id })
-        .eq("id", message.id);
+      // Use the unified createEntryFromCard helper. It writes to entries
+      // (status='committed'), stamps locked_at via trigger, AND locks the
+      // originating chat turn by setting committed_card_id.
+      try {
+        await createEntryFromCard({
+          userId,
+          projectId,
+          sessionId,
+          sourceMessageId: message.id,
+          payload: card,
+          status: "committed",
+        });
+      } catch (err) {
+        throw err;
+      }
 
       toast.success("Committed to ledger");
       await onRefresh();
