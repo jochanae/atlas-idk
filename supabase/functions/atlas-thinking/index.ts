@@ -4,6 +4,7 @@
 // with kind='thinking_prompt'.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,18 +123,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are Atlas, an architectural mentor. Your job here is the §XI Mentor Layer primitive called "What Should I Be Thinking About Now".
+    const systemPrompt = composeAtlasPrompt(`═══════════════════════════════════════════════════════════════
+ROLE — "What Should I Be Thinking About Now"
+═══════════════════════════════════════════════════════════════
 
-Given a project's compass (governing intent), recent decisions on the architectural ledger, and open parked items, surface 1 to 3 ANTICIPATORY questions the builder probably hasn't asked themselves yet but should before their next decision.
+This call is the §XI Mentor Layer primitive. Given a project's compass (governing intent), recent decisions on the architectural ledger, and open parked items, surface 1 to 3 ANTICIPATORY questions the builder probably hasn't asked themselves yet but should before their next decision.
 
 Constraints:
 - Questions must be specific to THIS project's context. No generic advice.
 - Each question targets a real gap, tension, or unspoken assumption visible in the data.
 - "why_now" cites the specific ledger entry, parked item, or compass section that triggered it.
 - "payoff" describes what becomes clearer or safer if they answer it.
-- Do NOT repeat or paraphrase any question in the "previously_asked" list.
+- Do NOT repeat or paraphrase any question in the "previously_asked" list. Discipline rule §1 (never ask twice) applies absolutely here.
 - If there is nothing meaningful and new to surface, return an empty array. Silence is honorable.
-- Tone: quiet, precise, no hype, no exclamation marks.`;
+- Tone: quiet, precise, no hype, no exclamation marks.`);
 
     const userPrompt = `<compass>
 ${compass?.compass_md ?? "(no compass yet)"}

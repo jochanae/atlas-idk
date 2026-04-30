@@ -2,6 +2,7 @@
 // Creates workspace_nodes and recommendations on the user's behalf via service role.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,17 +10,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are Atlas. You don't introduce yourself. You don't explain what you are. You just respond.
-
-You are a thinking partner for builders, inventors, and founders. You are precise, calm, and direct. You speak plainly. You never use technical jargon unless the person you're talking to uses it first. When you do use a technical term, you explain it in one plain sentence without being asked.
-
-Your job is to help the person in front of you move forward. If they have an idea, help them shape it. If they have a build question, help them answer it. If they're stuck, help them get unstuck. If they're about to make a mistake, say so once, clearly, without drama.
-
-When you make a suggestion, say what it is, why it matters for what they're building specifically, and whether it's reversible or not. That last part matters — people need to know if they can undo something before they commit to it.
-
-Keep responses short. One idea per response unless more is genuinely needed. Never produce a wall of text. Never start a response with "I" or with a greeting. Just begin with the thing that matters.
-
-═══════════════════════════════════════════════════════════════
+// Chat-specific extension. Voice, discipline, and card-tone normalization
+// come from the shared core via composeAtlasPrompt(). Keep this focused on
+// the conversational job: when to emit cards, the card schema, plan detection.
+const ATLAS_CHAT_ROLE = `═══════════════════════════════════════════════════════════════
 RESPONSE MODE — prose by default, cards when earned
 ═══════════════════════════════════════════════════════════════
 
@@ -62,23 +56,12 @@ PLAN DETECTION
 
 If your response contains 3 or more clearly ordered steps, numbered phases, or explicit roadmap language ("Phase 1", "Step 1", "First...Then...Finally"), emit a CommitCard with verb="plan" and severity="parked" (plans start unresolved). The "details" field should hold the structured plan as markdown. The prose above the card stays conversational.
 
-For weaker structure (loose bullet lists, soft ordering), do NOT auto-emit. Let the user promote it manually.
+For weaker structure (loose bullet lists, soft ordering), do NOT auto-emit. Let the user promote it manually.`;
 
-═══════════════════════════════════════════════════════════════
-TONE NORMALIZATION FOR COMMITTED OUTPUTS
-═══════════════════════════════════════════════════════════════
-
-The prose BEFORE the card matches the user's register — conversational, plain, energy-matched.
-
-The card payload (title, summary, details) MUST be normalized to a clean, professional, audit-ready tone regardless of the conversational tone above:
-  - Title: sentence case, no emoji, under 60 chars, declarative.
-  - Summary: 1-2 plain-text sentences, no slang, no questions.
-  - Details: structured markdown, no first-person, no filler.
-
-The card is a permanent artifact. It must read well to someone who joins the project six months from now without context.`;
-
+const SYSTEM_PROMPT = composeAtlasPrompt(ATLAS_CHAT_ROLE);
 
 type ActiveLedgerEntry = {
+  id: string;
   title: string;
   description: string | null;
 };
@@ -193,7 +176,7 @@ Deno.serve(async (req) => {
             eq: (col: string, val: unknown) => {
               order: (col: string, opts: { ascending: boolean }) => {
                 limit: (n: number) => Promise<{
-                  data: Array<{ title: string; summary: string | null }> | null;
+                  data: Array<{ id: string; title: string; summary: string | null; created_at: string }> | null;
                   error: Error | null;
                 }>;
               };
@@ -204,7 +187,7 @@ Deno.serve(async (req) => {
     };
 
     const { data: activeLedgerEntries, error: ledgerErr } = await entriesAny
-      .select("title, summary")
+      .select("id, title, summary, created_at")
       .eq("project_id", projectId)
       .eq("user_id", user.id)
       .eq("status", "committed")
@@ -212,12 +195,51 @@ Deno.serve(async (req) => {
       .limit(10);
     if (ledgerErr) throw ledgerErr;
 
+    const ledgerRows = activeLedgerEntries ?? [];
     const guardedSystemPrompt = buildGuardedSystemPrompt(
-      (activeLedgerEntries ?? []).map((e) => ({
+      ledgerRows.map((e) => ({
+        id: e.id,
         title: e.title,
         description: e.summary,
       })),
     );
+
+    // Memory surfacing — pick the entries most relevant to this turn so
+    // the UI can render tappable "Remembered from..." chips above the reply.
+    // Cheap keyword-overlap heuristic; good enough until we add embeddings.
+    const STOPWORDS = new Set([
+      "the","a","an","and","or","but","if","then","of","to","in","on","for",
+      "with","is","are","was","were","be","been","being","this","that","it",
+      "as","by","at","from","i","you","we","they","my","your","our","their",
+      "do","does","did","have","has","had","not","no","can","could","should",
+      "would","what","why","how","when","where","which","who","so","just","up",
+      "down","out","about","over","under","into","than","too","very","also",
+    ]);
+    const tokenize = (s: string) =>
+      new Set(
+        (s ?? "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
+      );
+    const messageTokens = tokenize(message);
+    const surfacedMemories = ledgerRows
+      .map((e) => {
+        const entryTokens = tokenize(`${e.title} ${e.summary ?? ""}`);
+        let score = 0;
+        for (const t of messageTokens) if (entryTokens.has(t)) score += 1;
+        return { entry: e, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((x) => ({
+        id: x.entry.id,
+        title: x.entry.title,
+        created_at: x.entry.created_at,
+      }));
+
 
     // Persist the user message
     await userClient.from("chat_messages").insert({
@@ -417,6 +439,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    const memoriesForMessage = surfacedMemories.length > 0 ? surfacedMemories : null;
+
     const { data: insertedMessage, error: insertError } = await userClient
       .from("chat_messages")
       .insert({
@@ -426,6 +450,7 @@ Deno.serve(async (req) => {
         content: finalText,
         card_payload: cardPayload,
         card_schema_version: cardSchemaVersion,
+        surfaced_memories: memoriesForMessage,
       })
       .select("*")
       .single();
@@ -439,6 +464,7 @@ Deno.serve(async (req) => {
         createdRecs,
         card: cardPayload,
         cardSchemaVersion,
+        surfacedMemories,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

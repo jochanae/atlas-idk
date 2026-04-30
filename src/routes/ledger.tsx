@@ -11,8 +11,13 @@ import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import { toast } from "sonner";
 
+type LedgerSearch = { focus?: string };
+
 export const Route = createFileRoute("/ledger")({
   component: ArchitecturalLedger,
+  validateSearch: (search: Record<string, unknown>): LedgerSearch => ({
+    focus: typeof search.focus === "string" ? search.focus : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Atlas — Architectural Ledger" },
@@ -28,6 +33,7 @@ export const Route = createFileRoute("/ledger")({
 function ArchitecturalLedger() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { focus } = Route.useSearch();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +68,19 @@ function ArchitecturalLedger() {
     if (user) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // When arriving with ?focus=<id>, auto-expand and scroll the entry into view.
+  useEffect(() => {
+    if (!focus || entries.length === 0) return;
+    const exists = entries.some((e) => e.id === focus);
+    if (!exists) return;
+    setExpanded(focus);
+    // Wait a tick for the row to render expanded, then scroll.
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-entry-id="${focus}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [focus, entries]);
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
@@ -248,7 +267,8 @@ function Row({
   return (
     <>
       <tr
-        className={`${bg} group border-l-2 border-l-transparent hover:border-l-[color:var(--ember)] hover:bg-[color:var(--surface-alt)] transition-colors cursor-pointer`}
+        data-entry-id={entry.id}
+        className={`${bg} group border-l-2 ${expanded ? "border-l-[color:var(--ember)]" : "border-l-transparent"} hover:border-l-[color:var(--ember)] hover:bg-[color:var(--surface-alt)] transition-colors cursor-pointer`}
         onClick={onToggle}
       >
         <td className="py-3 px-4 align-top">

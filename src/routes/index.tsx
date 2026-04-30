@@ -23,6 +23,7 @@ import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/compon
 import { SeverityDot } from "@/components/atlas/StatusGlyph";
 import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { CommitCard } from "@/components/atlas/CommitCard";
+import { MemoryChips, type SurfacedMemory } from "@/components/atlas/MemoryChips";
 import {
   parseAtlasMessage,
   type CommitCardPayload,
@@ -1300,6 +1301,9 @@ function ChatPanel({
                 <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
                   {isUser ? "YOU" : "ATLAS"} · {relativeTime(m.created_at)}
                 </div>
+                {!isUser && Array.isArray(m.surfaced_memories) && m.surfaced_memories.length > 0 && (
+                  <MemoryChips memories={m.surfaced_memories as SurfacedMemory[]} />
+                )}
                 {conflict ? (
                   <ConflictWarningCard
                     conflict={conflict}

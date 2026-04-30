@@ -84,6 +84,8 @@ export type ChatMessage = {
   card_schema_version?: number | null;
   /** Set when this assistant turn has been locked to a ledger entry. */
   committed_card_id?: string | null;
+  /** Ledger entries pulled into context for this reply (rendered as MemoryChips). */
+  surfaced_memories?: Array<{ id: string; title: string; created_at: string }> | null;
 };
 
 export function relativeTime(iso: string): string {
