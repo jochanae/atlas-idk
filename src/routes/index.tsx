@@ -19,6 +19,8 @@ import { WhisperGate, type WhisperAnswers } from "@/components/atlas/WhisperGate
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
 import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/components/atlas/DesktopWorkspace";
+import { SeverityDot } from "@/components/atlas/StatusGlyph";
+import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { CommitCard } from "@/components/atlas/CommitCard";
 import {
   parseAtlasMessage,
