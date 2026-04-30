@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect, type CSSProperties } from "react";
 
 type Suggestion = {
   id: string;
@@ -205,6 +205,43 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
   };
 
   const isParking = batch.phase === "parking";
+  const menuActionStyle: CSSProperties = {
+    width: "100%",
+    minHeight: 46,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "none",
+    background: "transparent",
+    color: "var(--foreground)",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontFamily: "var(--font-sans)",
+    fontSize: 14,
+    lineHeight: 1.4,
+    cursor: "pointer",
+    textAlign: "left",
+  };
+  const menuIconWrapStyle: CSSProperties = {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+    color: "var(--accent-gold)",
+    flexShrink: 0,
+  };
+  const handleMenuPark = async (item: Suggestion) => {
+    setMenuOpenId(null);
+    const result = await onParkMultiple([item]);
+    setBatch({ phase: "done", count: 1, entryIds: result.entryIds });
+    clearUndoTimer();
+    undoTimerRef.current = window.setTimeout(() => {
+      setBatch({ phase: "idle" });
+    }, 5000);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -344,10 +381,7 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
-                      setMenuOpenId(null);
-                      setSelected(new Set([s.id]));
-                      await onParkMultiple([s]);
-                      setBatch({ phase: "done", count: 1, entryIds: [] });
+                      await handleMenuPark(s);
                     }}
                     style={menuActionStyle}
                   >
