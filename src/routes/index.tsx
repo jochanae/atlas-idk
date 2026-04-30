@@ -682,6 +682,80 @@ function WorkspacePage() {
             }}
           />
         )}
+
+        {/* Whisper Gate — conceptual entry gate (§V) */}
+        {!isActive && activeProject && hasCompass === false && !whisperOpen && (
+          <button
+            type="button"
+            onClick={() => setWhisperOpen(true)}
+            style={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: 24,
+              zIndex: 25,
+              background: "var(--surface)",
+              border: "0.5px solid color-mix(in oklab, var(--accent-gold) 45%, var(--border))",
+              color: "var(--accent-gold)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              padding: "8px 16px",
+              borderRadius: 999,
+              cursor: "pointer",
+              boxShadow: "0 0 18px -6px color-mix(in oklab, var(--accent-gold) 50%, transparent)",
+            }}
+          >
+            ◇ Begin Whisper Gate
+          </button>
+        )}
+        {whisperOpen && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 60,
+              background: "color-mix(in oklab, var(--background) 92%, transparent)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              overflowY: "auto",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+              paddingTop: 56,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => !whisperSubmitting && setWhisperOpen(false)}
+              aria-label="Close Whisper Gate"
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                background: "transparent",
+                border: "none",
+                color: "var(--muted-text)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: whisperSubmitting ? "default" : "pointer",
+                opacity: whisperSubmitting ? 0.3 : 0.7,
+                padding: 8,
+              }}
+            >
+              ✕ close
+            </button>
+            <WhisperGate
+              projectName={activeProject?.name}
+              submitting={whisperSubmitting}
+              onSubmit={submitWhisper}
+              onSkip={() => setWhisperOpen(false)}
+            />
+          </div>
+        )}
       </main>
       <AtlasSidebar
         open={sidebarOpen}
