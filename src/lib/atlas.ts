@@ -18,6 +18,14 @@ export type LedgerEntry = {
   cost_of_lesson: number | null;
   is_violation: boolean;
   created_at: string;
+  /** RAG severity for the StatusGlyph (defaults to 'committed' for legacy rows). */
+  severity?: "blocker" | "parked" | "committed" | "neutral" | null;
+  /** Builder verb for the glyph. */
+  verb?: "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge" | null;
+  /** Short build identifier like 'BUILD-A4F2'. */
+  build_id?: string | null;
+  /** CommitCard schema version this entry was created from. */
+  card_schema_version?: number | null;
   projects?: { name: string } | null;
 };
 
@@ -70,6 +78,12 @@ export type ChatMessage = {
   content: string;
   intent_type: string | null;
   created_at: string;
+  /** Structured CommitCard payload (set when the AI delivered a card). */
+  card_payload?: Record<string, unknown> | null;
+  /** Schema version of card_payload — renderer branches on this. */
+  card_schema_version?: number | null;
+  /** Set when this assistant turn has been locked to a ledger entry. */
+  committed_card_id?: string | null;
 };
 
 export function relativeTime(iso: string): string {

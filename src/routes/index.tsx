@@ -19,6 +19,13 @@ import { WhisperGate, type WhisperAnswers } from "@/components/atlas/WhisperGate
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
 import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/components/atlas/DesktopWorkspace";
+import { SeverityDot } from "@/components/atlas/StatusGlyph";
+import { CapsuleTag } from "@/components/atlas/CapsuleTag";
+import { CommitCard } from "@/components/atlas/CommitCard";
+import {
+  parseAtlasMessage,
+  type CommitCardPayload,
+} from "@/lib/atlas-status";
 import { detectArtifacts } from "@/lib/artifacts";
 import {
   relativeTime,
@@ -1210,6 +1217,65 @@ function ChatPanel({
     }, 2000);
   };
 
+  const [committingCardId, setCommittingCardId] = useState<string | null>(null);
+
+  const commitCardMessage = async (message: ChatMessage, card: CommitCardPayload) => {
+    if (!projectId) return;
+    setCommittingCardId(message.id);
+    try {
+      const status =
+        card.severity === "blocker"
+          ? "Violated"
+          : card.severity === "parked"
+            ? "Active"
+            : "Active";
+      const buildId = card.build_id ?? null;
+      const { data: entry, error } = await supabase
+        .from("ledger_entries")
+        .insert({
+          project_id: projectId,
+          user_id: userId,
+          title: card.title,
+          description: card.summary + (card.details ? `\n\n${card.details}` : ""),
+          status,
+          is_violation: card.severity === "blocker",
+          severity: card.severity,
+          verb: card.verb ?? null,
+          build_id: buildId,
+          card_schema_version: card.v,
+          extracted_from_session_id: sessionId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      // Lock the AI turn — server returns the updated row but optimistic UI
+      // is enough; subsequent refresh() will rehydrate.
+      await supabase
+        .from("chat_messages")
+        .update({ committed_card_id: entry.id })
+        .eq("id", message.id);
+
+      toast.success("Committed to ledger");
+      await onRefresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Commit failed");
+    } finally {
+      setCommittingCardId(null);
+    }
+  };
+
+  const parkCardMessage = async (message: ChatMessage, card: CommitCardPayload) => {
+    const ok = await insertParkedItem({
+      label: card.title,
+      sourceContext: card.summary,
+      kind: "commit_card",
+    });
+    if (!ok) return;
+    toast.success("Parked");
+  };
+
+
   const captureSelection = () => {
     const selection = document.getSelection();
     const selectedText = selection?.toString().trim();
@@ -1300,15 +1366,28 @@ function ChatPanel({
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
             if (parsedConflict && dismissedConflicts.has(m.id)) return null;
             const conflict = parsedConflict;
-            const showActionRow =
-              m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
-            const showParkButton = m.role === "assistant" && !conflict;
             const isUser = m.role === "user";
+
+            // Detect a CommitCard payload — prefer DB-stored payload over re-parsing prose.
+            // Renderer branches on card_schema_version for backward compatibility.
+            const dbCard = m.card_payload as CommitCardPayload | null | undefined;
+            const dbVersion = m.card_schema_version ?? null;
+            const parsed = !dbCard && m.role === "assistant" && !conflict
+              ? parseAtlasMessage(m.content)
+              : null;
+            const card = dbCard ?? parsed?.card ?? null;
+            const cardVersion = dbVersion ?? parsed?.schemaVersion ?? null;
+            const proseForDisplay = parsed ? parsed.prose : m.content;
+            const isLocked = Boolean(m.committed_card_id);
+
+            const showActionRow =
+              !card && m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
+            const showParkButton = !card && m.role === "assistant" && !conflict;
 
             return (
               <div
                 key={m.id}
-                className={`space-y-1 ${isUser ? "ml-auto max-w-[85%] text-right" : "max-w-[92%]"}`}
+                className={`space-y-2 ${isUser ? "ml-auto max-w-[85%] text-right" : "max-w-[92%]"}`}
               >
                 <div className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted-foreground/60">
                   {isUser ? "YOU" : "ATLAS"} · {relativeTime(m.created_at)}
@@ -1324,13 +1403,30 @@ function ChatPanel({
                     onReconsider={() => reconsider(m.id)}
                   />
                 ) : (
-                  <div
-                    className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
-                      isUser ? "text-foreground/80" : "text-foreground"
-                    }`}
-                  >
-                    {m.content}
-                  </div>
+                  <>
+                    {proseForDisplay.trim() && (
+                      <div
+                        className={`text-[13px] leading-relaxed whitespace-pre-wrap ${
+                          isUser ? "text-foreground/80" : "text-foreground"
+                        }`}
+                      >
+                        {proseForDisplay}
+                      </div>
+                    )}
+                    {card && cardVersion !== null && (
+                      <div className="pt-1">
+                        <CommitCard
+                          payload={card}
+                          schemaVersion={cardVersion}
+                          messageId={m.id}
+                          locked={isLocked}
+                          busy={committingCardId === m.id}
+                          onCommit={() => commitCardMessage(m, card)}
+                          onPark={() => parkCardMessage(m, card)}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
                 {showParkButton && (
                   <div className="pt-1 flex flex-wrap gap-1.5">
@@ -1808,6 +1904,7 @@ function ParkedRow({
               fontSize: 13,
             }}
           >
+            <SeverityDot severity="parked" size={7} />
             <span
               aria-hidden
               style={{
@@ -1839,21 +1936,9 @@ function ParkedRow({
             {item.source_context} · {relativeTime(item.created_at)}
           </div>
         </button>
-        <span
-          style={{
-            background: "color-mix(in oklab, var(--surface) 80%, transparent)",
-            color: "var(--muted-text)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 9,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            borderRadius: 999,
-            padding: "2px 6px",
-            opacity: 0.7,
-          }}
-        >
-          {item.kind}
-        </span>
+        <CapsuleTag severity="parked" size="xs">
+          {item.kind === "commit_card" ? "PARKED" : item.kind}
+        </CapsuleTag>
       </div>
 
       {expanded && (

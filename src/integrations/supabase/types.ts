@@ -51,6 +51,9 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          card_payload: Json | null
+          card_schema_version: number | null
+          committed_card_id: string | null
           content: string
           created_at: string
           id: string
@@ -60,6 +63,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          card_payload?: Json | null
+          card_schema_version?: number | null
+          committed_card_id?: string | null
           content: string
           created_at?: string
           id?: string
@@ -69,6 +75,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          card_payload?: Json | null
+          card_schema_version?: number | null
+          committed_card_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -78,6 +87,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_committed_card_id_fkey"
+            columns: ["committed_card_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_session_id_fkey"
             columns: ["session_id"]
@@ -143,6 +159,8 @@ export type Database = {
       }
       ledger_entries: {
         Row: {
+          build_id: string | null
+          card_schema_version: number
           cost_of_lesson: number | null
           created_at: string
           description: string | null
@@ -150,11 +168,15 @@ export type Database = {
           id: string
           is_violation: boolean
           project_id: string
+          severity: string
           status: string
           title: string
           user_id: string
+          verb: string | null
         }
         Insert: {
+          build_id?: string | null
+          card_schema_version?: number
           cost_of_lesson?: number | null
           created_at?: string
           description?: string | null
@@ -162,11 +184,15 @@ export type Database = {
           id?: string
           is_violation?: boolean
           project_id: string
+          severity?: string
           status?: string
           title: string
           user_id: string
+          verb?: string | null
         }
         Update: {
+          build_id?: string | null
+          card_schema_version?: number
           cost_of_lesson?: number | null
           created_at?: string
           description?: string | null
@@ -174,9 +200,11 @@ export type Database = {
           id?: string
           is_violation?: boolean
           project_id?: string
+          severity?: string
           status?: string
           title?: string
           user_id?: string
+          verb?: string | null
         }
         Relationships: [
           {
@@ -197,6 +225,7 @@ export type Database = {
       }
       parked_items: {
         Row: {
+          card_schema_version: number
           created_at: string
           id: string
           kind: string | null
@@ -204,11 +233,14 @@ export type Database = {
           project_id: string | null
           resolved_at: string | null
           session_id: string | null
+          severity: string
           source_context: string | null
           status: string | null
           user_id: string
+          verb: string | null
         }
         Insert: {
+          card_schema_version?: number
           created_at?: string
           id?: string
           kind?: string | null
@@ -216,11 +248,14 @@ export type Database = {
           project_id?: string | null
           resolved_at?: string | null
           session_id?: string | null
+          severity?: string
           source_context?: string | null
           status?: string | null
           user_id: string
+          verb?: string | null
         }
         Update: {
+          card_schema_version?: number
           created_at?: string
           id?: string
           kind?: string | null
@@ -228,9 +263,11 @@ export type Database = {
           project_id?: string | null
           resolved_at?: string | null
           session_id?: string | null
+          severity?: string
           source_context?: string | null
           status?: string | null
           user_id?: string
+          verb?: string | null
         }
         Relationships: [
           {

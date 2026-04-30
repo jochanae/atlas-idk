@@ -10,6 +10,8 @@ import {
   type Project,
 } from "@/lib/atlas";
 import { StatusTag } from "@/components/atlas/StatusTag";
+import { StatusGlyph } from "@/components/atlas/StatusGlyph";
+import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 
@@ -222,7 +224,15 @@ function Row({
       onClick={onToggle}
     >
       <td className="py-3 px-4 align-top">
-        <div className="font-medium text-[13px] leading-snug">{entry.title}</div>
+        <div className="flex items-center gap-2">
+          <StatusGlyph
+            severity={entry.severity ?? (entry.is_violation ? "blocker" : "committed")}
+            verb={entry.verb ?? null}
+            size={14}
+          />
+          <div className="font-medium text-[13px] leading-snug">{entry.title}</div>
+          {entry.build_id && <CapsuleTag size="xs">#{entry.build_id}</CapsuleTag>}
+        </div>
       </td>
       <td className="py-3 px-4 align-top text-[12px] text-muted-foreground">
         {entry.projects?.name ?? "—"}
