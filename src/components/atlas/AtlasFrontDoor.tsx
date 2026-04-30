@@ -158,6 +158,7 @@ export function AtlasFrontDoor({
           {/* Mode pills */}
           <div
             ref={pillsRef}
+            className="atlas-pills-row"
             style={{
               display: "flex",
               justifyContent: "center",
@@ -167,7 +168,10 @@ export function AtlasFrontDoor({
               scrollbarWidth: "none",
             }}
           >
-            <div style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto" }}>
+            <div
+              className="atlas-pills-inner"
+              style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto", flexWrap: "nowrap" }}
+            >
               {MODES.map((m) => {
                 const isActive = activeMode === m.id;
                 const isPhosphor = m.color === "phosphor";
@@ -176,6 +180,7 @@ export function AtlasFrontDoor({
                   <button
                     key={m.id}
                     onClick={() => onModeChange(m.id)}
+                    className="atlas-mode-pill"
                     style={{
                       flexShrink: 0,
                       padding: "5px 14px",
