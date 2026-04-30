@@ -26,6 +26,7 @@ import { DiffViewer } from "@/components/atlas/DiffViewer";
 import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
+import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
