@@ -253,6 +253,108 @@ export function ProjectHeaderCenter({
             label="View ledger"
             onClick={() => { setDropdownOpen(false); onNavigateLedger?.(); }}
           />
+          {/* Collapsible Mode section */}
+          {activeMode && onModeChange && (
+            <>
+              <div
+                style={{
+                  height: 1,
+                  margin: "6px 8px",
+                  background: "color-mix(in oklab, var(--accent-gold) 8%, var(--border))",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => { setModeExpanded((o) => !o); haptic("light"); }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--foreground)",
+                  fontFamily: "Inter, var(--font-sans)",
+                  fontSize: 12.5,
+                  cursor: "pointer",
+                  transition: "background 160ms ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 8%, transparent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ display: "flex", alignItems: "center", color: "var(--muted-text)" }}>
+                  <ModeIcon mode={activeMode} size={13} />
+                </span>
+                <span style={{ flex: 1, textAlign: "left" }}>Mode</span>
+                <span style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: (() => {
+                    const mi = MODES.find((x) => x.id === activeMode)!;
+                    return mi.color === "accent-gold" ? "var(--accent-gold)" : mi.color === "phosphor" ? "var(--phosphor)" : "var(--ember)";
+                  })(),
+                  marginRight: 4,
+                }}>
+                  {MODES.find((x) => x.id === activeMode)!.label}
+                </span>
+                <ChevronDown
+                  size={10}
+                  strokeWidth={1.5}
+                  style={{
+                    color: "var(--muted-text)",
+                    transform: modeExpanded ? "rotate(180deg)" : "rotate(0)",
+                    transition: "transform 200ms ease",
+                  }}
+                />
+              </button>
+              {modeExpanded && (
+                <div style={{ padding: "2px 4px 4px" }}>
+                  {MODES.map((mode) => {
+                    const isActive = mode.id === activeMode;
+                    const mp = mode.color === "phosphor";
+                    const mg = mode.color === "accent-gold";
+                    const c = mg ? "var(--accent-gold)" : mp ? "var(--phosphor)" : "var(--ember)";
+                    return (
+                      <button
+                        key={mode.id}
+                        onClick={() => { onModeChange(mode.id); setModeExpanded(false); setDropdownOpen(false); haptic("light"); }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          width: "100%",
+                          minHeight: 36,
+                          padding: "6px 10px 6px 24px",
+                          border: "none",
+                          borderRadius: 8,
+                          background: isActive ? "rgba(212, 175, 55, 0.08)" : "transparent",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 11,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: isActive ? c : "var(--muted-text)",
+                          cursor: "pointer",
+                          transition: "background 120ms ease, color 120ms ease",
+                        }}
+                        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 6%, transparent)"; }}
+                        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <ModeIcon mode={mode.id} size={12} />
+                        {mode.label}
+                        {isActive && (
+                          <span style={{ marginLeft: "auto", fontSize: 10, opacity: 0.6 }}>✓</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
