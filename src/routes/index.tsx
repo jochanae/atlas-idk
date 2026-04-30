@@ -830,6 +830,7 @@ function WorkspacePage() {
             ) : undefined
           }
           onAddToQueue={addToQueue}
+          queueActive={queueItems.some((i) => i.status === "pending")}
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD
