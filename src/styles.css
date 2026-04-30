@@ -131,7 +131,7 @@
 
 /* Parchment overrides for header and panels */
 .theme-parchment .atlas-sovereign-glass {
-  background: color-mix(in oklab, var(--background) 50%, transparent) !important;
+  background: transparent !important;
   border-bottom-color: var(--glass-border) !important;
 }
 .theme-parchment .atlas-sticky-header button {
