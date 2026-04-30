@@ -488,17 +488,28 @@ export function AtlasFrontDoor({
           to   { opacity: 1; transform: translateY(0); }
         }
         .atlas-input-shell:focus-within {
-          border-color: rgba(234,88,12,0.80) !important;
+          border-color: color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.05),
             0 8px 32px rgba(0,0,0,0.45),
-            0 0 24px -6px rgba(234,88,12,0.45) !important;
+            0 0 22px -6px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
         }
         .atlas-icon-btn:hover {
-          color: var(--ember) !important;
-          background: color-mix(in oklab, var(--ember) 12%, var(--surface-alt)) !important;
-          border-color: color-mix(in oklab, var(--ember) 45%, var(--border)) !important;
+          opacity: 1 !important;
+          color: var(--accent-gold) !important;
           transform: translateY(-1px);
+        }
+        .atlas-mic-btn .atlas-wave i {
+          height: 3px;
+          opacity: 0.75;
+          animation: atlas-wave-bounce 1.1s ease-in-out infinite;
+        }
+        .atlas-mic-btn .atlas-wave i:nth-child(1) { animation-delay: 0ms; }
+        .atlas-mic-btn .atlas-wave i:nth-child(2) { animation-delay: 140ms; }
+        .atlas-mic-btn .atlas-wave i:nth-child(3) { animation-delay: 280ms; }
+        @keyframes atlas-wave-bounce {
+          0%, 100% { height: 3px; }
+          50%      { height: 10px; }
         }
       `}</style>
     </div>
