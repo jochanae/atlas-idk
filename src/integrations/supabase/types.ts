@@ -49,6 +49,39 @@ export type Database = {
           },
         ]
       }
+      build_states: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          id: string
+          label: string | null
+          project_id: string
+          session_id: string | null
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          label?: string | null
+          project_id: string
+          session_id?: string | null
+          state?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          label?: string | null
+          project_id?: string
+          session_id?: string | null
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           card_payload: Json | null
