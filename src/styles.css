@@ -262,6 +262,15 @@
   to { transform: translateY(0); }
 }
 
+@keyframes atlas-console-line-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes atlas-surface-slide {
   from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.95); }
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }

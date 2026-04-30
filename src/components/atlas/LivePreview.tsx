@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * LivePreview — renders generated React component code in a sandboxed iframe.
- * Uses srcdoc to create an isolated environment with Tailwind loaded via CDN.
+ * Supports bidirectional linking: click an element in preview → parent receives
+ * the component name; parent can highlight elements by sending a message back.
  */
 
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
   loading?: boolean;
   /** Error message */
   error?: string | null;
+  /** Called when user clicks an element in the preview — receives the nearest component/tag name */
+  onElementSelect?: (selector: string) => void;
 };
 
 const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
@@ -58,6 +61,17 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
       border-radius: 8px;
       margin: 16px;
     }
+    /* Bidirectional link highlight */
+    [data-atlas-highlight="true"] {
+      outline: 2px solid rgba(201,162,76,0.7) !important;
+      outline-offset: 2px;
+      border-radius: 4px;
+      animation: atlas-link-pulse 1.5s ease-in-out 2;
+    }
+    @keyframes atlas-link-pulse {
+      0%, 100% { outline-color: rgba(201,162,76,0.3); }
+      50% { outline-color: rgba(201,162,76,0.9); }
+    }
   <\/style>
 </head>
 <body>
@@ -85,40 +99,95 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
         '<div class="preview-error">Render error:\\n' + err.message + '</div>';
     }
   <\/script>
+  <script>
+    // Bidirectional linking — click handler
+    document.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var el = e.target;
+      // Walk up to find meaningful element
+      var tag = el.tagName.toLowerCase();
+      var cls = el.className ? ('.' + String(el.className).split(' ').filter(Boolean).slice(0,2).join('.')) : '';
+      var text = (el.textContent || '').trim().slice(0, 40);
+      var selector = tag + cls;
+      // Clear previous highlights
+      document.querySelectorAll('[data-atlas-highlight]').forEach(function(h) {
+        h.removeAttribute('data-atlas-highlight');
+      });
+      el.setAttribute('data-atlas-highlight', 'true');
+      window.parent.postMessage({
+        type: 'atlas-element-select',
+        selector: selector,
+        tag: tag,
+        text: text
+      }, '*');
+    }, true);
+
+    // Receive highlight commands from parent
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'atlas-highlight-element') {
+        document.querySelectorAll('[data-atlas-highlight]').forEach(function(h) {
+          h.removeAttribute('data-atlas-highlight');
+        });
+        try {
+          var target = document.querySelector(e.data.selector);
+          if (target) {
+            target.setAttribute('data-atlas-highlight', 'true');
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } catch(err) {}
+      }
+    });
+  <\/script>
 </body>
 </html>`;
 
 /**
- * Transform the AI-generated TSX so it works in the browser sandbox:
- * - Strip TypeScript types (simplified)
- * - Convert export default to a global variable
- * - Strip import statements (React is global in the sandbox)
+ * Transform the AI-generated TSX so it works in the browser sandbox.
  */
 function prepareForSandbox(code: string): string {
   let prepared = code
-    // Remove import statements
     .replace(/^import\s+.*?(?:from\s+['"].*?['"]|['"].*?['"])\s*;?\s*$/gm, "")
-    // Convert "export default function X" to "function DefaultComponent"
     .replace(
       /export\s+default\s+function\s+(\w+)/g,
       "function DefaultComponent",
     )
-    // Convert "export default" to "var DefaultComponent ="
     .replace(/export\s+default\s+/g, "var DefaultComponent = ")
-    // Remove named exports
     .replace(/export\s+(const|let|var|function|type|interface)\s/g, "$1 ")
-    // Remove TypeScript type annotations (simplified)
     .replace(/:\s*React\.FC(?:<[^>]*>)?/g, "")
     .replace(/:\s*JSX\.Element/g, "")
-    // Remove interface/type declarations
     .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, "");
 
   return prepared;
 }
 
-export function LivePreview({ code, filename, loading, error }: Props) {
+export function LivePreview({ code, filename, loading, error, onElementSelect }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeError, setIframeError] = useState<string | null>(null);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
+
+  // Listen for bidirectional link messages from iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "atlas-element-select") {
+        const label = e.data.text
+          ? `<${e.data.tag}> "${e.data.text}"`
+          : `<${e.data.tag}>${e.data.selector}`;
+        setSelectedElement(label);
+        onElementSelect?.(e.data.selector);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onElementSelect]);
+
+  /** Send highlight command to iframe */
+  const highlightInPreview = useCallback((selector: string) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "atlas-highlight-element", selector },
+      "*",
+    );
+  }, []);
 
   const srcdoc = code
     ? PREVIEW_SHELL(prepareForSandbox(code))
@@ -238,28 +307,48 @@ export function LivePreview({ code, filename, loading, error }: Props) {
         background: "var(--background)",
       }}
     >
-      {/* Filename bar */}
-      {filename && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 14px",
-            borderBottom: "0.5px solid var(--glass-border)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 10.5,
-            color: "var(--accent-gold)",
-            letterSpacing: "0.06em",
-            flexShrink: 0,
-          }}
-        >
-          <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={1.5}>
-            <path d="M5 12l-3-4 3-4M11 4l3 4-3 4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {filename}
-        </div>
-      )}
+      {/* Filename bar + bidirectional link indicator */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 14px",
+          borderBottom: "0.5px solid var(--glass-border)",
+          fontFamily: "var(--font-mono)",
+          fontSize: 10.5,
+          flexShrink: 0,
+        }}
+      >
+        {filename && (
+          <>
+            <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="var(--accent-gold)" strokeWidth={1.5}>
+              <path d="M5 12l-3-4 3-4M11 4l3 4-3 4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{ color: "var(--accent-gold)", letterSpacing: "0.06em" }}>
+              {filename}
+            </span>
+          </>
+        )}
+        {selectedElement && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 9,
+              color: "var(--phosphor)",
+              background: "color-mix(in oklab, var(--phosphor) 10%, transparent)",
+              padding: "2px 8px",
+              borderRadius: 6,
+              maxWidth: 180,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ↗ {selectedElement}
+          </span>
+        )}
+      </div>
       <iframe
         ref={iframeRef}
         srcDoc={srcdoc!}

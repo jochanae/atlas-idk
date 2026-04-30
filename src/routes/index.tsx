@@ -33,6 +33,8 @@ import { MobileSurfaceBar } from "@/components/atlas/MobileSurfaceBar";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
 import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
+import { BuildStateTimeline, type BuildStateEntry } from "@/components/atlas/BuildStateTimeline";
+import { LiveConsoleStream, type ConsoleEntry } from "@/components/atlas/LiveConsoleStream";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
@@ -187,6 +189,10 @@ function WorkspacePage() {
   const [designSystemOpen, setDesignSystemOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<Array<{ filename: string; language: string; content: string }>>([]);
+  // Build state history & console stream
+  const [buildHistory, setBuildHistory] = useState<BuildStateEntry[]>([]);
+  const [consoleLogs, setConsoleLogs] = useState<ConsoleEntry[]>([]);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   // New feature state (items 7–10)
   const [fileTreeOpen, setFileTreeOpen] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
@@ -793,12 +799,31 @@ function WorkspacePage() {
     sendAbortRef.current?.abort();
   };
 
+  /** Push a build state entry and a console log */
+  const pushBuildState = useCallback((state: BuildStateEntry["state"], label: string) => {
+    const entry: BuildStateEntry = { id: crypto.randomUUID(), state, label, timestamp: Date.now() };
+    setBuildHistory((prev) => {
+      // Close duration on previous entry
+      const updated = prev.length > 0
+        ? prev.map((e, i) => i === prev.length - 1 && !e.duration_ms ? { ...e, duration_ms: Date.now() - e.timestamp } : e)
+        : prev;
+      return [...updated, entry];
+    });
+    setConsoleLogs((prev) => [...prev, { id: crypto.randomUUID(), level: "system", message: label, timestamp: Date.now(), source: "build" }]);
+  }, []);
+
+  const pushConsole = useCallback((level: ConsoleEntry["level"], message: string, source?: string) => {
+    setConsoleLogs((prev) => [...prev, { id: crypto.randomUUID(), level, message, timestamp: Date.now(), source }]);
+  }, []);
+
   /** Generate a React component via atlas-codegen */
   const generateCode = useCallback(async (prompt: string) => {
     if (!user || !activeProjectId) return;
     setCodegenLoading(true);
     setCodegenError(null);
     setSurface("preview");
+    pushBuildState("building", `Building: ${prompt.slice(0, 60)}…`);
+    pushConsole("info", `▶ /build ${prompt.slice(0, 80)}`);
     try {
       const { data, error } = await supabase.functions.invoke("atlas-codegen", {
         body: {
@@ -812,11 +837,12 @@ function WorkspacePage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      pushBuildState("verifying", "Verifying output…");
+      pushConsole("info", `✓ Generated ${data.file?.filename ?? "component"}`);
       setGeneratedCode(data.file?.content ?? null);
       setGeneratedFilename(data.file?.filename ?? null);
       if (data.file?.content && data.file?.filename) {
         setGeneratedFiles((prev) => [...prev, { filename: data.file.filename, language: data.file.language ?? "tsx", content: data.file.content }]);
-        // Automated ledger logging — "Applied Patch" timeline entry
         try {
           await entriesTable().insert({
             user_id: user!.id,
@@ -833,8 +859,11 @@ function WorkspacePage() {
           // Non-critical
         }
       }
+      pushBuildState("idle", "Build complete");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Code generation failed";
+      pushBuildState("idle", `Build failed: ${msg.slice(0, 60)}`);
+      pushConsole("error", msg);
       setCodegenError(msg);
       toast.error(msg);
     } finally {
@@ -1308,6 +1337,9 @@ function WorkspacePage() {
                     filename={generatedFilename ?? undefined}
                     loading={codegenLoading}
                     error={codegenError}
+                    onElementSelect={(selector) => {
+                      pushConsole("info", `↗ Selected: ${selector}`, "preview");
+                    }}
                   />
                 )}
               </section>
