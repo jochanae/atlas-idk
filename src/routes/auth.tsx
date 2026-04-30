@@ -66,7 +66,7 @@ function AuthPage() {
           <div className="flex items-baseline gap-3">
             <span className="font-semibold tracking-tight text-base">Atlas</span>
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
-              Decision Enforcement
+              Enter Atlas
             </span>
           </div>
         </div>
