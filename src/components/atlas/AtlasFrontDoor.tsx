@@ -741,14 +741,18 @@ export function AtlasFrontDoor({
       {/* Active-mode input docked at bottom — solid anchor with utility bar */}
       {active && (
         <div
-          className="atlas-active-input-shell"
+          className={`atlas-active-input-shell${sending ? " atlas-breathing" : ""}`}
           style={{
-            margin: "0 16px 14px",
+            margin: "0 16px 24px",
             background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
             borderRadius: 14,
-            border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+            border: sending
+              ? "1.5px solid rgba(212, 175, 55, 0.6)"
+              : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
             padding: "12px 14px 8px",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
+            boxShadow: sending
+              ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 20px -4px rgba(212, 175, 55, 0.35)"
+              : "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
             transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             flexShrink: 0,
           }}
@@ -758,7 +762,13 @@ export function AtlasFrontDoor({
             value={input}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="reply to atlas…"
+            placeholder={
+              adaptivePlaceholder
+                ? adaptivePlaceholder
+                : queueActive
+                  ? "add a follow-up to the queue…"
+                  : MODE_PLACEHOLDERS[activeMode]
+            }
             rows={1}
             style={{
               width: "100%",
@@ -779,8 +789,6 @@ export function AtlasFrontDoor({
               scrollbarWidth: "thin",
               scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
-            onFocus={(e) => { if (e.currentTarget.placeholder) e.currentTarget.placeholder = ""; }}
-            onBlur={(e) => { if (!e.currentTarget.value) e.currentTarget.placeholder = "reply to atlas…"; }}
           />
           {/* Utility Bar: structured, evenly spaced, muted gold */}
           <div
