@@ -437,7 +437,12 @@ function WorkspacePage() {
                   />
                 </>
               )}
-              <UserAvatar user={user} size={36} onClick={signOut} />
+              <UserMenu
+                user={user}
+                theme={theme}
+                onThemeChange={setTheme}
+                onSignOut={signOut}
+              />
             </div>
           }
           secondaryPanel={
