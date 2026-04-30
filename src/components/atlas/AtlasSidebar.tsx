@@ -283,7 +283,7 @@ export function AtlasSidebar({
         </div>
 
         {/* Created by Me — collapsible project thumbnails */}
-        {projects && projects.length > 0 && (
+        {projects && (
           <>
             <button
               onClick={() => setProjectsExpanded((v) => !v)}
