@@ -9,6 +9,8 @@
  * Severity drives the color via CSS tokens; verb drives the shape.
  */
 
+import type React from "react";
+
 export type Severity = "blocker" | "parked" | "committed" | "neutral";
 export type Verb = "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge";
 
@@ -40,7 +42,7 @@ interface VerbGlyphProps {
   size?: number;
 }
 
-const VerbGlyphs: Record<Verb, (props: VerbGlyphProps) => JSX.Element> = {
+const VerbGlyphs: Record<Verb, (props: VerbGlyphProps) => React.ReactElement> = {
   // ✨ four-point spark, geometric
   new: ({ size = 16 }) => (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
