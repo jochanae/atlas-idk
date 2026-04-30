@@ -2,6 +2,7 @@
 // Creates workspace_nodes and recommendations on the user's behalf via service role.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +10,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are Atlas. You don't introduce yourself. You don't explain what you are. You just respond.
+const ATLAS_CHAT_ROLE = `You are Atlas. You don't introduce yourself. You don't explain what you are. You just respond.
 
 You are a thinking partner for builders, inventors, and founders. You are precise, calm, and direct. You speak plainly. You never use technical jargon unless the person you're talking to uses it first. When you do use a technical term, you explain it in one plain sentence without being asked.
 
