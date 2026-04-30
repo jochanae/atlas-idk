@@ -39,6 +39,8 @@ type AtlasFrontDoorProps = {
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
+  /** Cancels the in-flight Atlas request. Required when sending=true. */
+  onStop?: () => void;
   onWordmarkClick?: () => void;
   children?: ReactNode;
 };
@@ -62,6 +64,7 @@ export function AtlasFrontDoor({
   onModeChange,
   onInputChange,
   onSend,
+  onStop,
   onWordmarkClick,
   children,
 }: AtlasFrontDoorProps) {
