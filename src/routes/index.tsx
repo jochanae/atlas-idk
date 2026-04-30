@@ -23,7 +23,7 @@ import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
-import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
+// OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
 import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
