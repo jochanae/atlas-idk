@@ -687,15 +687,9 @@ export function AtlasFrontDoor({
                       <rect x="3" y="3" width="10" height="10" rx="1.5" />
                     </svg>
                   ) : (
-                    <svg
-                      viewBox="0 0 16 16"
-                      width={14}
-                      height={14}
-                      stroke={input.trim() ? "var(--background)" : "var(--muted-text)"}
-                      fill="none"
-                      strokeWidth={2}
-                    >
-                      <path d="M2 8h12M8 2l6 6-6 6" />
+                    <svg viewBox="0 0 20 20" width={16} height={16} fill={input.trim() ? "var(--background)" : "none"} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
+                      <path d="M17 3 9.5 11.5" />
                     </svg>
                   )}
                 </button>
@@ -911,23 +905,23 @@ export function AtlasFrontDoor({
               scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
           />
-          {/* Utility Bar: structured, evenly spaced, muted gold */}
+          {/* Utility Bar: 3 icons left | 3 icons right + send */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-evenly",
               alignItems: "center",
               width: "100%",
               marginTop: 10,
               paddingTop: 10,
               borderTop: "0.5px solid color-mix(in oklab, var(--border) 70%, transparent)",
-              gap: 12,
             }}
           >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 12, justifyContent: "space-evenly", width: "100%" }}>
+            {/* Left group — 3 icons */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
               {utilityBarLeft}
             </div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 12, justifyContent: "space-evenly", width: "100%" }}>
+            {/* Right group — 3 icons + send */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end" }}>
               {utilityBarRight}
               <button
                 onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
@@ -937,7 +931,6 @@ export function AtlasFrontDoor({
                 style={{
                   width: 44,
                   height: 44,
-                  marginLeft: 0,
                   borderRadius: 12,
                   background: sending
                     ? "transparent"
@@ -959,8 +952,9 @@ export function AtlasFrontDoor({
                     <rect x="3" y="3" width="10" height="10" rx="1.5" />
                   </svg>
                 ) : (
-                  <svg viewBox="0 0 16 16" width={13} height={13} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} fill="none" strokeWidth={2}>
-                    <path d="M2 8h12M8 2l6 6-6 6" />
+                  <svg viewBox="0 0 20 20" width={15} height={15} fill={input.trim() ? "var(--background)" : "none"} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
+                    <path d="M17 3 9.5 11.5" />
                   </svg>
                 )}
               </button>

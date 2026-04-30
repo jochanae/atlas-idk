@@ -1270,6 +1270,18 @@ function WorkspacePage() {
                     <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
                   </svg>
                 </button>
+                <button
+                  type="button"
+                  aria-label="Voice"
+                  title="Voice input (coming soon)"
+                  className="atlas-utility-btn"
+                >
+                  <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" />
+                    <path d="M3 7.5a5 5 0 0010 0" />
+                    <path d="M8 12.5v2" />
+                  </svg>
+                </button>
               </>
             ) : null
           }
