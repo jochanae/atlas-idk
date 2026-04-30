@@ -482,6 +482,34 @@ export function AtlasFrontDoor({
               </div>
             </div>
           </div>
+
+          {/* Continue where you left off — recent sessions list. Only when not active. */}
+          {recents && recents.length > 0 && onOpenSession && (
+            <div
+              style={{
+                margin: "32px 0 0",
+                animation: "atlas-recents-in 480ms cubic-bezier(0.4, 0, 0.2, 1) 200ms backwards",
+              }}
+            >
+              <div
+                style={{
+                  padding: "0 22px 6px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9.5,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: "var(--muted-text)",
+                  opacity: 0.7,
+                }}
+              >
+                Continue where you left off
+              </div>
+              <SessionHistoryList
+                sessions={recents.slice(0, 5)}
+                onOpenSession={onOpenSession}
+              />
+            </div>
+          )}
         </div>
 
         {/* Active session content — cross-fades in over the resting hero */}
