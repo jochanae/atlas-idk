@@ -51,6 +51,8 @@ type AtlasFrontDoorProps = {
   onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
   /** Called when user selects "Build" from system menu or uses /build command */
   onGenerateCode?: (prompt: string) => void;
+  /** Called when user opens a system menu feature drawer */
+  onSystemMenuSelect?: (id: string) => void;
   children?: ReactNode;
 };
 
