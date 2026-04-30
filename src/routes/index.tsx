@@ -1580,19 +1580,7 @@ function WorkspacePage() {
         open={integrityOpen}
         onClose={() => setIntegrityOpen(false)}
       />
-      <OnboardingFlow
-        show={showOnboarding && recents.length === 0 && !session}
-        userName={
-          (user.user_metadata?.display_name as string | undefined) ||
-          (user.user_metadata?.full_name as string | undefined) ||
-          (user.email ? user.email.split("@")[0] : null)
-        }
-        onComplete={() => setShowOnboarding(false)}
-        onStartSession={(mode) => {
-          setActiveMode(mode as ModeId);
-          setInputFocusSignal((v) => v + 1);
-        }}
-      />
+      {/* OnboardingFlow removed — context refinement happens conversationally */}
     </div>
   );
 
