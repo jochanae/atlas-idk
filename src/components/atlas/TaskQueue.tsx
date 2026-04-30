@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { haptic } from "@/lib/haptics";
 
 export interface QueueItem {
   id: string;
@@ -31,6 +32,7 @@ export function TaskQueue({
   executing,
 }: TaskQueueProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -193,9 +195,11 @@ export function TaskQueue({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {items.map((item, idx) => {
           const isDragOver = dragOverId === item.id;
+          const hasPlanContext = !!item.planStepId;
+          const isExpanded = expandedItemId === item.id;
           return (
+            <div key={item.id} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             <div
-              key={item.id}
               draggable={item.status === "pending"}
               onDragStart={() => handleDragStart(item.id)}
               onDragOver={(e) => handleDragOver(e, item.id)}
@@ -206,13 +210,14 @@ export function TaskQueue({
                 alignItems: "center",
                 gap: 8,
                 padding: "6px 8px",
-                borderRadius: 8,
+                borderRadius: isExpanded ? "8px 8px 0 0" : 8,
                 background: isDragOver
                   ? "color-mix(in oklab, var(--accent-gold) 12%, var(--surface))"
                   : "var(--surface)",
                 border: isDragOver
                   ? "1px dashed var(--accent-gold)"
-                  : "1px solid color-mix(in oklab, var(--border) 60%, transparent)",
+                  : `1px solid color-mix(in oklab, var(--border) 60%, transparent)`,
+                borderBottom: isExpanded ? "none" : undefined,
                 transition: "background 150ms, border 150ms",
                 opacity: item.status === "done" ? 0.5 : 1,
                 cursor: item.status === "pending" ? "grab" : "default",
@@ -279,6 +284,28 @@ export function TaskQueue({
                 </span>
               )}
 
+              {/* Plan context indicator */}
+              {hasPlanContext && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedItemId(isExpanded ? null : item.id);
+                    haptic("light");
+                  }}
+                  title="View dependency context"
+                  style={{
+                    ...iconBtnStyle,
+                    opacity: isExpanded ? 1 : 0.5,
+                    color: "var(--accent-gold)",
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width={10} height={10} fill="none" stroke="var(--accent-gold)" strokeWidth={1.5} strokeLinecap="round">
+                    <path d="M2 4h12M2 8h8M2 12h5" />
+                  </svg>
+                </button>
+              )}
+
               {/* Order badge */}
               <span
                 style={{
@@ -322,6 +349,70 @@ export function TaskQueue({
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Dependency context panel */}
+            {isExpanded && hasPlanContext && (
+              <div
+                style={{
+                  padding: "8px 12px 10px",
+                  borderRadius: "0 0 8px 8px",
+                  background: "color-mix(in oklab, var(--accent-gold) 4%, var(--surface))",
+                  border: "1px solid color-mix(in oklab, var(--border) 60%, transparent)",
+                  borderTop: "none",
+                  animation: "atlas-bubble-in 200ms ease forwards",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{
+                      fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em",
+                      textTransform: "uppercase", color: "var(--accent-gold)", opacity: 0.7,
+                    }}>
+                      Plan Context
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{
+                      fontFamily: "var(--font-mono)", fontSize: 10, padding: "2px 8px", borderRadius: 6,
+                      background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)",
+                      border: "0.5px solid color-mix(in oklab, var(--accent-gold) 20%, var(--border))",
+                      color: "var(--accent-gold)",
+                    }}>
+                      ID: {item.planStepId}
+                    </span>
+                  </div>
+                  {item.dependsOn && item.dependsOn.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <span style={{
+                        fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted-text)",
+                        letterSpacing: "0.08em", textTransform: "uppercase",
+                      }}>
+                        Depends on
+                      </span>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {item.dependsOn.map((depId) => (
+                          <span
+                            key={depId}
+                            style={{
+                              fontFamily: "var(--font-mono)", fontSize: 10, padding: "2px 8px", borderRadius: 6,
+                              background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--muted-text)",
+                            }}
+                          >
+                            {depId}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {(!item.dependsOn || item.dependsOn.length === 0) && (
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--muted-text)", opacity: 0.6 }}>
+                      No upstream dependencies — root step
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             </div>
           );
         })}
