@@ -143,6 +143,7 @@ function WorkspacePage() {
   const [isWideViewport, setIsWideViewport] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
+  const [mobileArtifactDrawerOpen, setMobileArtifactDrawerOpen] = useState(false);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -850,7 +851,13 @@ function WorkspacePage() {
             )}
           </div>
         </AtlasFrontDoor>
-        {isActive && <ArtifactDrawer artifacts={artifacts} />}
+        {isActive && (
+          <ArtifactDrawer
+            artifacts={artifacts}
+            forceOpen={mobileArtifactDrawerOpen}
+            onForceOpenChange={setMobileArtifactDrawerOpen}
+          />
+        )}
         {session && (
           <HistoryPanel
             open={historyOpen}
@@ -1006,6 +1013,19 @@ function WorkspacePage() {
           <MobileShell
             projectsCount={projects.length}
             artifactsCount={mobileArtifacts.length}
+            searchCorpus={{
+              projects: projects.map((p) => ({ id: p.id, name: p.name })),
+              sessions: recents.map((s) => ({ id: s.id, title: s.title })),
+              artifacts: mobileArtifacts.map((a) => ({
+                id: a.id,
+                title: a.title,
+                kind: a.kind,
+                language: a.language,
+              })),
+            }}
+            onPickProject={(id) => setActiveProjectId(id)}
+            onPickSession={(id) => openSession(id)}
+            onPickArtifact={() => setMobileArtifactDrawerOpen(true)}
             renderChat={() => mainShell}
             renderProjects={() => (
               <div className="h-full flex flex-col p-3 gap-3">
@@ -1065,10 +1085,15 @@ function WorkspacePage() {
             )}
             renderArtifact={() => (
               <div className="h-full flex flex-col p-3 gap-3">
-                <header className="flex-shrink-0">
+                <header className="flex-shrink-0 flex items-center justify-between">
                   <h2 className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                     Preview
                   </h2>
+                  {mobileArtifacts.length > 0 && (
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground/70">
+                      Tap to open
+                    </span>
+                  )}
                 </header>
                 {mobileArtifacts.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center p-6 text-center">
@@ -1079,9 +1104,11 @@ function WorkspacePage() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     {mobileArtifacts.map((a) => (
-                      <article
+                      <button
                         key={a.id}
-                        className="rounded border border-border/50 bg-card/40 p-3"
+                        type="button"
+                        onClick={() => setMobileArtifactDrawerOpen(true)}
+                        className="text-left rounded border border-border/50 bg-card/40 p-3 hover:border-accent/60 hover:bg-card/60 active:scale-[0.99] transition-all"
                       >
                         <div className="flex items-center gap-2 mb-1.5">
                           <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
@@ -1096,7 +1123,7 @@ function WorkspacePage() {
                           {a.body.slice(0, 600)}
                           {a.body.length > 600 ? "\n…" : ""}
                         </pre>
-                      </article>
+                      </button>
                     ))}
                   </div>
                 )}

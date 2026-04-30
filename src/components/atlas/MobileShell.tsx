@@ -1,12 +1,24 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { FolderOpen, MessageSquare, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  FolderOpen,
+  MessageSquare,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+  FileText,
+  Code2,
+  Table as TableIcon,
+} from "lucide-react";
 
 /**
  * MobileShell — three-pane swipeable native-feel shell.
@@ -23,12 +35,21 @@ import { FolderOpen, MessageSquare, Sparkles, ChevronLeft, ChevronRight } from "
  *   - Tap a top tab to jump to a pane.
  *   - Vertical scroll inside the chat pane is preserved (we only intercept
  *     horizontal-dominant gestures).
- *
- * This wrapper assumes you only mount it on small viewports — the desktop
- * shell handles ≥1024px on its own.
+ *   - Search icon in the tab bar opens a full-screen search overlay that
+ *     queries projects, recent sessions, and artifacts in the current thread.
+ *   - Pane snaps trigger an 8ms haptic pulse on supported devices.
  */
 
 export type MobilePane = "projects" | "chat" | "artifact";
+
+export type SearchableProject = { id: string; name: string };
+export type SearchableSession = { id: string; title: string | null };
+export type SearchableArtifact = {
+  id: string;
+  title: string;
+  kind: "code" | "doc" | "table";
+  language?: string;
+};
 
 export interface MobileShellProps {
   renderProjects: () => ReactNode;
@@ -39,6 +60,15 @@ export interface MobileShellProps {
   artifactsCount?: number;
   /** Initial pane on mount (default: "chat") */
   initialPane?: MobilePane;
+  /** Search corpus + handlers. If omitted, the search button is hidden. */
+  searchCorpus?: {
+    projects: SearchableProject[];
+    sessions: SearchableSession[];
+    artifacts: SearchableArtifact[];
+  };
+  onPickProject?: (id: string) => void;
+  onPickSession?: (id: string) => void;
+  onPickArtifact?: (id: string) => void;
 }
 
 const PANES: MobilePane[] = ["projects", "chat", "artifact"];
@@ -47,6 +77,16 @@ const VELOCITY_THRESHOLD = 0.45;     // px/ms — flick to advance regardless of
 const HORIZONTAL_DOMINANCE = 1.25;   // |dx| must exceed |dy| * this to be a swipe
 const EDGE_GRAB = 18;                // px from screen edge that always grabs
 
+function haptic(ms = 8) {
+  if (typeof navigator === "undefined") return;
+  // navigator.vibrate is no-op on iOS Safari, gracefully ignored.
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    /* noop */
+  }
+}
+
 export function MobileShell({
   renderProjects,
   renderChat,
@@ -54,10 +94,15 @@ export function MobileShell({
   projectsCount = 0,
   artifactsCount = 0,
   initialPane = "chat",
+  searchCorpus,
+  onPickProject,
+  onPickSession,
+  onPickArtifact,
 }: MobileShellProps) {
   const [pane, setPane] = useState<MobilePane>(initialPane);
   const [dragOffset, setDragOffset] = useState(0); // px, negative = pulling left pane in
   const [dragging, setDragging] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const widthRef = useRef(0);
   const startX = useRef(0);
@@ -79,7 +124,10 @@ export function MobileShell({
   const paneIndex = PANES.indexOf(pane);
 
   const goTo = useCallback((next: MobilePane) => {
-    setPane(next);
+    setPane((current) => {
+      if (current !== next) haptic(8);
+      return next;
+    });
     setDragOffset(0);
   }, []);
 
@@ -146,7 +194,9 @@ export function MobileShell({
     if (passed) {
       const dir = dx < 0 ? 1 : -1; // dragging content left = next pane
       const nextIndex = Math.min(PANES.length - 1, Math.max(0, paneIndex + dir));
-      setPane(PANES[nextIndex]);
+      const nextPane = PANES[nextIndex];
+      if (nextPane !== pane) haptic(8);
+      setPane(nextPane);
     }
     setDragOffset(0);
   };
@@ -156,6 +206,8 @@ export function MobileShell({
   const translatePx = dragOffset;
   const transform = `translate3d(calc(${translatePct}% + ${translatePx}px), 0, 0)`;
 
+  const showSearch = !!searchCorpus;
+
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       {/* Top pane indicator / quick switcher */}
@@ -164,6 +216,8 @@ export function MobileShell({
         onChange={goTo}
         projectsCount={projectsCount}
         artifactsCount={artifactsCount}
+        showSearch={showSearch}
+        onOpenSearch={() => setSearchOpen(true)}
       />
 
       {/* Swipeable track */}
@@ -197,6 +251,28 @@ export function MobileShell({
           </>
         )}
       </div>
+
+      {searchOpen && searchCorpus && (
+        <SearchOverlay
+          corpus={searchCorpus}
+          onClose={() => setSearchOpen(false)}
+          onPickProject={(id) => {
+            setSearchOpen(false);
+            onPickProject?.(id);
+            goTo("chat");
+          }}
+          onPickSession={(id) => {
+            setSearchOpen(false);
+            onPickSession?.(id);
+            goTo("chat");
+          }}
+          onPickArtifact={(id) => {
+            setSearchOpen(false);
+            onPickArtifact?.(id);
+            goTo("artifact");
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -221,11 +297,15 @@ function PaneTabs({
   onChange,
   projectsCount,
   artifactsCount,
+  showSearch,
+  onOpenSearch,
 }: {
   pane: MobilePane;
   onChange: (p: MobilePane) => void;
   projectsCount: number;
   artifactsCount: number;
+  showSearch: boolean;
+  onOpenSearch: () => void;
 }) {
   const tabs: Array<{ id: MobilePane; label: string; Icon: typeof FolderOpen; badge?: number }> = [
     { id: "projects", label: "Projects", Icon: FolderOpen, badge: projectsCount },
@@ -260,6 +340,16 @@ function PaneTabs({
           </button>
         );
       })}
+      {showSearch && (
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          aria-label="Search"
+          className="ml-1 flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+        >
+          <Search size={13} />
+        </button>
+      )}
     </div>
   );
 }
@@ -284,6 +374,184 @@ function EdgeHint({ side, onClick }: { side: "left" | "right"; onClick: () => vo
       ].join(" ")}
     >
       <Icon size={14} />
+    </button>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Search overlay
+
+function SearchOverlay({
+  corpus,
+  onClose,
+  onPickProject,
+  onPickSession,
+  onPickArtifact,
+}: {
+  corpus: NonNullable<MobileShellProps["searchCorpus"]>;
+  onClose: () => void;
+  onPickProject: (id: string) => void;
+  onPickSession: (id: string) => void;
+  onPickArtifact: (id: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const needle = q.trim().toLowerCase();
+  const { projects, sessions, artifacts } = useMemo(() => {
+    if (!needle) {
+      return {
+        projects: corpus.projects.slice(0, 5),
+        sessions: corpus.sessions.slice(0, 5),
+        artifacts: corpus.artifacts.slice(0, 5),
+      };
+    }
+    return {
+      projects: corpus.projects.filter((p) => p.name.toLowerCase().includes(needle)).slice(0, 8),
+      sessions: corpus.sessions
+        .filter((s) => (s.title ?? "untitled").toLowerCase().includes(needle))
+        .slice(0, 8),
+      artifacts: corpus.artifacts
+        .filter(
+          (a) =>
+            a.title.toLowerCase().includes(needle) ||
+            a.kind.toLowerCase().includes(needle) ||
+            (a.language ?? "").toLowerCase().includes(needle),
+        )
+        .slice(0, 8),
+    };
+  }, [corpus, needle]);
+
+  const empty =
+    projects.length === 0 && sessions.length === 0 && artifacts.length === 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-xl animate-in fade-in duration-150"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search"
+    >
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/40">
+        <Search size={14} className="text-muted-foreground flex-shrink-0" />
+        <input
+          ref={inputRef}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search projects, sessions, artifacts…"
+          className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/70 outline-none border-none"
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close search"
+          className="flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/40"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {empty && (
+          <p className="text-center text-[11px] font-mono text-muted-foreground py-8">
+            No matches.
+          </p>
+        )}
+
+        {projects.length > 0 && (
+          <SearchSection title="Projects">
+            {projects.map((p) => (
+              <SearchRow
+                key={p.id}
+                icon={<FolderOpen size={12} />}
+                label={p.name}
+                onClick={() => onPickProject(p.id)}
+              />
+            ))}
+          </SearchSection>
+        )}
+
+        {sessions.length > 0 && (
+          <SearchSection title="Recent sessions">
+            {sessions.map((s) => (
+              <SearchRow
+                key={s.id}
+                icon={<MessageSquare size={12} />}
+                label={s.title || "Untitled"}
+                onClick={() => onPickSession(s.id)}
+              />
+            ))}
+          </SearchSection>
+        )}
+
+        {artifacts.length > 0 && (
+          <SearchSection title="Artifacts">
+            {artifacts.map((a) => {
+              const Icon = a.kind === "code" ? Code2 : a.kind === "table" ? TableIcon : FileText;
+              return (
+                <SearchRow
+                  key={a.id}
+                  icon={<Icon size={12} />}
+                  label={a.title}
+                  meta={a.language ?? a.kind}
+                  onClick={() => onPickArtifact(a.id)}
+                />
+              );
+            })}
+          </SearchSection>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SearchSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-[9px] font-mono uppercase tracking-[0.14em] text-muted-foreground mb-1.5 px-1">
+        {title}
+      </h3>
+      <div className="flex flex-col gap-0.5">{children}</div>
+    </div>
+  );
+}
+
+function SearchRow({
+  icon,
+  label,
+  meta,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  meta?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-left text-[12px] text-foreground hover:bg-muted/40 transition-colors"
+    >
+      <span className="text-muted-foreground flex-shrink-0">{icon}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {meta && (
+        <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground flex-shrink-0">
+          {meta}
+        </span>
+      )}
     </button>
   );
 }
