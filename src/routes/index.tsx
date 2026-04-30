@@ -668,7 +668,7 @@ function WorkspacePage() {
       // If in Plan mode, extract numbered steps from the response
       if (activeMode === "plan" && data?.message?.content) {
         const content = data.message.content as string;
-        const stepRegex = /(?:^|\n)\s*(\d+)\.\s+\*{0,2}(.+?)\*{0,2}(?:\n|$)/g;
+        const stepRegex = /(?:^|\n)\s*(\d+)\.\s+\*{0,2}(.+?)\*{0,2}(?=\n|$)/g;
         const extracted: PlanStep[] = [];
         let match: RegExpExecArray | null;
         while ((match = stepRegex.exec(content)) !== null) {
