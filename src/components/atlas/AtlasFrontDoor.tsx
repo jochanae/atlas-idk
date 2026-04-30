@@ -202,7 +202,7 @@ export function AtlasFrontDoor({
           {sidebarToggle}
           {(
             <button
-              onClick={onWordmarkClick}
+              onClick={() => { onWordmarkClick?.(); haptic("light"); }}
               style={{
                 background: "transparent",
                 border: "none",
