@@ -955,6 +955,7 @@ function WorkspacePage() {
 
 /* -------- Chat Panel -------- */
 function ChatPanel({
+  newMessageIds,
   messages,
   sending,
   onStop,
