@@ -2052,9 +2052,9 @@ function ChatPanel({
                           onClick={isLongMessage ? toggleExpand : undefined}
                           style={{
                             background: "color-mix(in oklab, var(--surface) 80%, var(--accent-gold) 8%)",
-                            border: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+                            border: "0.5px solid var(--gold-border)",
                             borderRadius: "16px 4px 16px 16px",
-                            padding: "12px 16px",
+                            padding: "var(--bubble-padding-y) var(--bubble-padding-x)",
                             cursor: isLongMessage ? "pointer" : "default",
                             position: "relative",
                             transition: "all 280ms cubic-bezier(0.4, 0, 0.2, 1)",
