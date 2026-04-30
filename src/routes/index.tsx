@@ -1449,6 +1449,33 @@ function WorkspacePage() {
           setSurface("preview");
           setFileTreeOpen(false);
         }}
+        onLockToLedger={async (lockedFiles) => {
+          if (!user || !activeProjectId) return;
+          try {
+            const fileList = lockedFiles.map((f) => f.filename).join(", ");
+            await createEntryFromCard({
+              userId: user.id,
+              projectId: activeProjectId,
+              sessionId: session?.id ?? null,
+              sourceMessageId: messages[messages.length - 1]?.id ?? crypto.randomUUID(),
+              payload: {
+                v: 1,
+                title: `Architecture lock: ${lockedFiles.length} file${lockedFiles.length > 1 ? "s" : ""}`,
+                summary: `Locked file architecture as a constraint: ${fileList}`,
+                details: lockedFiles.map((f) => `### ${f.filename}\n\`\`\`${f.language}\n${f.content.slice(0, 500)}\n\`\`\``).join("\n\n"),
+                severity: "committed",
+                verb: "audit",
+                touched: lockedFiles.map((f) => f.filename),
+              },
+              status: "committed",
+            });
+            setLedgerCount((c) => c + 1);
+            setFileTreeOpen(false);
+            toast.success(`${lockedFiles.length} file${lockedFiles.length > 1 ? "s" : ""} locked to Ledger`);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to lock files");
+          }
+        }}
       />
       {diffOpen && (
         <div
