@@ -26,6 +26,8 @@ type AtlasFrontDoorProps = {
   headerActions: ReactNode;
   bottomTabs?: ReactNode;
   secondaryPanel?: ReactNode;
+  utilityBarLeft?: ReactNode;
+  utilityBarRight?: ReactNode;
   inputFocusSignal: number;
   sidebarToggle?: ReactNode;
   userName?: string | null;
@@ -44,6 +46,8 @@ export function AtlasFrontDoor({
   headerActions,
   bottomTabs,
   secondaryPanel,
+  utilityBarLeft,
+  utilityBarRight,
   inputFocusSignal,
   sidebarToggle,
   userName,
@@ -549,15 +553,19 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Active-mode input docked at bottom */}
+      {/* Active-mode input docked at bottom — solid anchor with utility bar */}
       {active && (
         <div
+          className="atlas-active-input-shell"
           style={{
-            margin: "0 16px 18px",
+            margin: "0 16px 14px",
             background: "var(--surface)",
             borderRadius: 14,
-            border: "0.5px solid var(--border)",
-            padding: "14px 16px",
+            border: "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+            padding: "12px 14px 8px",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
+            transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
+            flexShrink: 0,
           }}
         >
           <textarea
@@ -566,7 +574,7 @@ export function AtlasFrontDoor({
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="reply to atlas…"
-            rows={2}
+            rows={1}
             style={{
               width: "100%",
               background: "transparent",
@@ -578,39 +586,53 @@ export function AtlasFrontDoor({
               resize: "none",
               fontFamily: "inherit",
               minHeight: TEXTAREA_MIN_HEIGHT,
-              maxHeight: TEXTAREA_MAX_HEIGHT,
+              maxHeight: 120,
               overflowY: "hidden",
               display: "block",
             }}
           />
+          {/* Utility Bar: structured, evenly spaced, muted gold */}
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               alignItems: "center",
-              marginTop: 12,
+              marginTop: 6,
+              paddingTop: 6,
+              borderTop: "0.5px solid color-mix(in oklab, var(--border) 70%, transparent)",
+              gap: 12,
             }}
           >
-            <button
-              onClick={() => onSend(input, activeMode)}
-              disabled={!input.trim() || sending}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: "var(--ember)",
-                border: "none",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: input.trim() ? 1 : 0.3,
-                cursor: input.trim() ? "pointer" : "default",
-              }}
-            >
-              <svg viewBox="0 0 16 16" width={14} height={14} stroke="var(--background)" fill="none" strokeWidth={2}>
-                <path d="M2 8h12M8 2l6 6-6 6" />
-              </svg>
-            </button>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {utilityBarLeft}
+            </div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {utilityBarRight}
+              <button
+                onClick={() => onSend(input, activeMode)}
+                disabled={!input.trim() || sending}
+                aria-label="Send"
+                style={{
+                  width: 32,
+                  height: 32,
+                  marginLeft: 6,
+                  borderRadius: 8,
+                  background: input.trim() ? "var(--ember)" : "transparent",
+                  border: input.trim() ? "none" : "0.5px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: input.trim() ? 1 : 0.4,
+                  cursor: input.trim() ? "pointer" : "default",
+                  transition: "all 220ms var(--ease-cinematic)",
+                  flexShrink: 0,
+                }}
+              >
+                <svg viewBox="0 0 16 16" width={13} height={13} stroke={input.trim() ? "var(--background)" : "var(--muted-text)"} fill="none" strokeWidth={2}>
+                  <path d="M2 8h12M8 2l6 6-6 6" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -650,6 +672,39 @@ export function AtlasFrontDoor({
             inset 0 1px 0 rgba(255,255,255,0.05),
             0 8px 32px rgba(0,0,0,0.45),
             0 0 22px -6px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
+        }
+        .atlas-active-input-shell:focus-within {
+          border-color: color-mix(in oklab, var(--accent-gold) 45%, var(--border)) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.04),
+            0 6px 24px rgba(0,0,0,0.4),
+            0 0 16px -6px color-mix(in oklab, var(--accent-gold) 45%, transparent) !important;
+        }
+        .atlas-utility-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 7px;
+          background: transparent;
+          border: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: color-mix(in oklab, var(--accent-gold) 50%, var(--muted-text));
+          cursor: pointer;
+          opacity: 0.7;
+          transition: opacity 160ms var(--ease-cinematic), color 160ms var(--ease-cinematic), background 160ms var(--ease-cinematic);
+          flex-shrink: 0;
+          position: relative;
+        }
+        .atlas-utility-btn:hover {
+          opacity: 1;
+          color: var(--accent-gold);
+          background: color-mix(in oklab, var(--accent-gold) 8%, transparent);
+        }
+        .atlas-utility-btn[data-active="true"] {
+          opacity: 1;
+          color: var(--accent-gold);
+          background: color-mix(in oklab, var(--accent-gold) 12%, transparent);
         }
         .atlas-icon-btn:hover {
           opacity: 1 !important;
