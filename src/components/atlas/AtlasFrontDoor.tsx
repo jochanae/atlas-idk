@@ -123,6 +123,7 @@ export function AtlasFrontDoor({
           {headerActions}
         </div>
       </div>
+      {!active && <AmbientClock />}
 
       {/* Front door hero — vertically centered, cinematic */}
       {!active && (
