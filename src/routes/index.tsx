@@ -197,6 +197,9 @@ function WorkspacePage() {
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
   const [depGraphOpen, setDepGraphOpen] = useState(false);
   const [adaptivePlaceholder, setAdaptivePlaceholder] = useState<string | null>(null);
+  // Rollback & History system
+  const [rollbackPreview, setRollbackPreview] = useState<{ messageId: string; snapshotLabel: string; messagesAtPoint: ChatMessage[] } | null>(null);
+  const [recentRollbackMsgId, setRecentRollbackMsgId] = useState<string | null>(null);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
