@@ -754,7 +754,6 @@ export function AtlasFrontDoor({
       {active && activeMode === "plan" && (
         <div
           style={{
-            margin: "0 20px 6px",
             margin: "0 var(--shell-edge) 8px",
             flexShrink: 0,
             animation: "atlas-bubble-in 200ms ease forwards",
@@ -794,7 +793,6 @@ export function AtlasFrontDoor({
       {active && taskQueue && (
         <div
           style={{
-            margin: "0 20px 6px",
             margin: "0 var(--shell-edge) 8px",
             flexShrink: 0,
             animation: "atlas-bubble-in 200ms ease forwards",
@@ -808,7 +806,6 @@ export function AtlasFrontDoor({
       {active && contextualHUD && (
         <div
           style={{
-            margin: "0 20px 6px",
             margin: "0 var(--shell-edge) 8px",
             flexShrink: 0,
             animation: "atlas-bubble-in 200ms ease forwards",
