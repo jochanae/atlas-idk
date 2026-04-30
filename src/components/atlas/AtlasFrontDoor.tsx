@@ -445,6 +445,17 @@ export function AtlasFrontDoor({
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        .atlas-input-shell:focus-within {
+          border-color: rgba(234,88,12,0.80) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.05),
+            0 8px 32px rgba(0,0,0,0.45),
+            0 0 24px -6px rgba(234,88,12,0.45) !important;
+        }
+        .atlas-icon-btn:hover {
+          color: var(--ember) !important;
+          background: rgba(234,88,12,0.08) !important;
+        }
       `}</style>
     </div>
   );
