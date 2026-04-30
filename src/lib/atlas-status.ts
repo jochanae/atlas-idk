@@ -46,6 +46,8 @@ export interface Entry {
   locked_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Atlas mode that produced this entry (think/plan/build/explore/decide/audit). */
+  mode: string | null;
 }
 
 /**
