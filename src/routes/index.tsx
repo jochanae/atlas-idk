@@ -988,11 +988,11 @@ function WorkspacePage() {
                   className="rounded border border-border/50 bg-card/40 p-3"
                 >
                   <p className="text-[11px] font-mono text-foreground leading-relaxed">
-                    {rec.title}
+                    {rec.content}
                   </p>
-                  {rec.body && (
+                  {rec.definition && (
                     <p className="text-[10px] font-mono text-muted-foreground mt-1.5 leading-relaxed">
-                      {rec.body}
+                      {rec.definition}
                     </p>
                   )}
                 </div>
