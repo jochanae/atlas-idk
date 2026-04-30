@@ -57,6 +57,7 @@
   --border: #292524;
   --phosphor: #06B6D4;
   --warning: #F59E0B;
+  --accent-gold: #C9A24C;
   /* Glass + motion */
   --glass-bg: rgba(12, 10, 9, 0.72);
   --glass-border: rgba(231, 229, 228, 0.06);
@@ -75,6 +76,7 @@
   --border: #292524;
   --phosphor: #06B6D4;
   --warning: #F59E0B;
+  --accent-gold: #C9A24C;
   --glass-bg: rgba(12, 10, 9, 0.72);
   --glass-border: rgba(231, 229, 228, 0.06);
   --glass-blur: 18px;
@@ -93,6 +95,7 @@
   --border: #D6CFBC;
   --phosphor: #0E7490;
   --warning: #B45309;
+  --accent-gold: #A8852F;
   --glass-bg: rgba(245, 241, 232, 0.78);
   --glass-border: rgba(28, 25, 23, 0.08);
   --glass-blur: 18px;
