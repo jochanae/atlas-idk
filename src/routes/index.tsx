@@ -2566,7 +2566,7 @@ function UtilityBarSurfaces({
   ];
 
   return (
-    <>
+    <div className="atlas-utility-row">
       {items.map((item) => {
         const isHistory = item.id === "history";
         const isActive = isHistory ? historyOpen : active === item.id;
@@ -2590,7 +2590,7 @@ function UtilityBarSurfaces({
           </button>
         );
       })}
-    </>
+    </div>
   );
 }
 
