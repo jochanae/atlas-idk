@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
 
 type Surface = "chat" | "ledger" | "preview";
@@ -7,7 +8,7 @@ type Props = {
   onChange: (s: Surface) => void;
 };
 
-const SURFACES: Array<{ id: Surface; label: string; icon: JSX.Element }> = [
+const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
   {
     id: "chat",
     label: "Chat",
