@@ -1060,7 +1060,6 @@ function WorkspacePage() {
                 onJumpToPlanStep={jumpToPlanStep}
                 autoExpandId={autoExpandQueueId}
               />
-              />
             ) : undefined
           }
           onAddToQueue={addToQueue}
