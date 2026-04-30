@@ -159,13 +159,13 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
               top: "calc(100% + 8px)",
               left: "50%",
               transform: "translateX(-50%)",
-              background: "rgba(15, 15, 15, 0.85)",
-              backdropFilter: "blur(15px)",
-              WebkitBackdropFilter: "blur(15px)",
-              border: "0.5px solid rgba(212, 175, 55, 0.20)",
+              background: "var(--glass-bg)",
+              backdropFilter: "blur(var(--glass-blur)) saturate(140%)",
+              WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
+              border: "0.5px solid var(--glass-border)",
               borderRadius: 16,
               padding: "8px",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
               minWidth: 188,
               zIndex: 9999,
               animation: "atlas-sys-menu-in 180ms ease forwards",
@@ -323,9 +323,9 @@ export function AtlasFrontDoor({
           overflow: "hidden",
       }}
     >
-      {/* Floating glass header — fixed, curved bottom, obsidian glassmorphism */}
+      {/* Sovereign Glass header — see-through, frosted glassmorphism */}
       <div
-        className="atlas-sticky-header"
+        className="atlas-sticky-header atlas-sovereign-glass"
         style={{
           position: "fixed",
           top: 0,
@@ -335,19 +335,17 @@ export function AtlasFrontDoor({
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
-          padding: "14px 18px 12px",
+          padding: "10px 16px 8px",
           minHeight: "var(--header-height)",
           gap: 8,
-          background: "rgba(15, 15, 15, 0.75)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderRadius: "0 0 24px 24px",
-          borderBottom: "1px solid rgba(212, 175, 55, 0.20)",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(212, 175, 55, 0.08)",
+          background: "color-mix(in oklab, var(--background) 45%, transparent)",
+          backdropFilter: "blur(24px) saturate(150%)",
+          WebkitBackdropFilter: "blur(24px) saturate(150%)",
+          borderBottom: "0.5px solid var(--glass-border)",
           flexShrink: 0,
         }}
       >
-        {/* Left: sidebar toggle */}
+        {/* Left: sidebar toggle + Atlas wordmark */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, height: 36 }}>
           {sidebarToggle}
           {(
@@ -373,9 +371,15 @@ export function AtlasFrontDoor({
           )}
         </div>
 
-        {/* Center: project name + dropdown (or empty on resting) */}
-        <div style={{ display: "flex", justifyContent: "center", minWidth: 0 }}>
+        {/* Center: project name + mode (active) or empty (resting) */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0, gap: 0 }}>
           {headerCenter}
+          {/* Surface breadcrumb (collapsible MobileSurfaceBar sits here) */}
+          {active && mobileSurfaceBar && (
+            <div style={{ marginTop: -2 }}>
+              {mobileSurfaceBar}
+            </div>
+          )}
         </div>
 
         {/* Right: actions + avatar */}
@@ -383,27 +387,6 @@ export function AtlasFrontDoor({
           {headerActions}
         </div>
       </div>
-
-      {/* Mobile surface bar — fixed below header in active mode (mode pill moved into header center) */}
-      {active && (
-        <div
-          style={{
-            position: "fixed",
-            top: "var(--header-height)",
-            left: 0,
-            right: 0,
-            zIndex: 49,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 16px 6px",
-            background: "linear-gradient(to bottom, var(--background) 85%, transparent)",
-          }}
-        >
-          {mobileSurfaceBar}
-        </div>
-      )}
 
       {/* Stage: scrollable content area beneath fixed header */}
       <div
@@ -416,7 +399,7 @@ export function AtlasFrontDoor({
           overflowY: "auto",
           overflowX: "hidden",
           paddingTop: active
-            ? "calc(var(--header-height) + 60px)"
+            ? "calc(var(--header-height) + 16px)"
             : "calc(var(--header-height) + 16px)",
         }}
       >

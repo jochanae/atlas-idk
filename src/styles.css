@@ -104,7 +104,7 @@
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Parchment (light) — scaffold only, toggle ships visual-only this pass */
+/* Parchment (light) theme */
 .theme-parchment {
   --header-height: 64px;
   --mode-pill-top: 78px;
@@ -123,10 +123,22 @@
   --phosphor: #0E7490;
   --warning: #B45309;
   --accent-gold: #A8852F;
-  --glass-bg: rgba(245, 241, 232, 0.78);
-  --glass-border: rgba(28, 25, 23, 0.08);
-  --glass-blur: 18px;
+  --glass-bg: rgba(245, 241, 232, 0.55);
+  --glass-border: rgba(28, 25, 23, 0.10);
+  --glass-blur: 24px;
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Parchment overrides for header and panels */
+.theme-parchment .atlas-sovereign-glass {
+  background: color-mix(in oklab, var(--background) 50%, transparent) !important;
+  border-bottom-color: var(--glass-border) !important;
+}
+.theme-parchment .atlas-sticky-header button {
+  color: var(--foreground);
+}
+.theme-parchment .atlas-sticky-header .atlas-mobile-surface-bar button {
+  color: var(--muted-text);
 }
 
 @layer base {
@@ -248,6 +260,11 @@
 @keyframes atlas-bs-slide-up {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes atlas-surface-slide {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
 /* Hide mobile surface bar on desktop (desktop uses DesktopWorkspace nav rail) */
