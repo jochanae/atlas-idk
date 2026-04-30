@@ -17,6 +17,8 @@ type Props = {
   onFileSelect: (file: GeneratedFile) => void;
   /** Called when a parked snippet is dropped onto a file */
   onDropSnippet?: (fileIndex: number, snippet: string) => void;
+  /** Called when user locks selected files' architecture to the Ledger */
+  onLockToLedger?: (files: GeneratedFile[]) => void;
 };
 
 type TreeNode = {
