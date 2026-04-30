@@ -1347,6 +1347,7 @@ function WorkspacePage() {
                 setDiffLabels({ old: "Your prompt", new: "Atlas response" });
                 setDiffOpen(true);
               }}
+              activeMode={activeMode}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
