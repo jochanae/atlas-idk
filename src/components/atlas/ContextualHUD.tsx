@@ -4,6 +4,8 @@ type Suggestion = {
   id: string;
   text: string;
   source: "atlas" | "recommendation" | "context";
+  /** Optional longer preview text shown on hover */
+  preview?: string;
 };
 
 export type { Suggestion as HUDSuggestion };
@@ -21,6 +23,8 @@ type Props = {
   onParkMultiple: (items: Suggestion[]) => Promise<ParkResult>;
   /** Called when user undoes a park operation */
   onUndoPark?: (entryIds: string[]) => Promise<void>;
+  /** Called when user taps the diff icon on a chip */
+  onDiffRequest?: (text: string) => void;
 };
 
 type BatchState =
@@ -34,11 +38,15 @@ type BatchState =
  * Contextual HUD — tappable suggestion chips generated from recent conversation.
  * Tap = insert into message field. Long-press/right-click = multi-select.
  * Multi-select → Park sends to parking lot with progress + undo.
+ * × = dismiss chip temporarily. Hover = preview tooltip.
  */
-export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple, onUndoPark }: Props) {
+export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple, onUndoPark, onDiffRequest }: Props) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [batch, setBatch] = useState<BatchState>({ phase: "idle" });
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const undoTimerRef = useRef<number | null>(null);
+  const hoverTimerRef = useRef<number | null>(null);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const result: Suggestion[] = [];
@@ -56,7 +64,12 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
         .slice(0, 2);
 
       for (const q of questions) {
-        result.push({ id: `q-${result.length}`, text: q.trim(), source: "atlas" });
+        // Find surrounding context for preview
+        const idx = lastAtlas.content.indexOf(q.trim());
+        const preview = idx >= 0
+          ? lastAtlas.content.slice(Math.max(0, idx - 80), idx + q.trim().length + 80).trim()
+          : q.trim();
+        result.push({ id: `q-${result.length}`, text: q.trim(), source: "atlas", preview });
       }
 
       if (result.length === 0) {
@@ -68,6 +81,7 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
             id: `a-${result.length}`,
             text: phrase.length > 80 ? phrase.slice(0, 77) + "…" : phrase,
             source: "atlas",
+            preview: phrase,
           });
         }
       }
@@ -80,6 +94,7 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
             id: `rec-${rec.id}`,
             text: rec.content.length > 80 ? rec.content.slice(0, 77) + "…" : rec.content,
             source: "recommendation",
+            preview: rec.content,
           });
         }
       }
@@ -87,6 +102,12 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
 
     return result.slice(0, 4);
   }, [messages, recommendations]);
+
+  // Filter out dismissed chips
+  const visibleSuggestions = useMemo(
+    () => suggestions.filter((s) => !dismissed.has(s.id)),
+    [suggestions, dismissed],
+  );
 
   const clearUndoTimer = useCallback(() => {
     if (undoTimerRef.current) {
@@ -96,14 +117,13 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
   }, []);
 
   const handlePark = useCallback(async () => {
-    const items = suggestions.filter((s) => selected.has(s.id));
+    const items = visibleSuggestions.filter((s) => selected.has(s.id));
     if (items.length === 0) return;
 
     const total = items.length;
     setBatch({ phase: "parking", total, done: 0 });
     setSelected(new Set());
 
-    // Simulate per-item progress via timed steps, actual insert is batched
     const progressInterval = setInterval(() => {
       setBatch((prev) =>
         prev.phase === "parking" && prev.done < prev.total - 1
@@ -118,7 +138,6 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
 
       setBatch({ phase: "done", count: total, entryIds: result.entryIds });
 
-      // Auto-dismiss after 5s
       clearUndoTimer();
       undoTimerRef.current = window.setTimeout(() => {
         setBatch({ phase: "idle" });
@@ -127,7 +146,7 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
       clearInterval(progressInterval);
       setBatch({ phase: "idle" });
     }
-  }, [suggestions, selected, onParkMultiple, clearUndoTimer]);
+  }, [visibleSuggestions, selected, onParkMultiple, clearUndoTimer]);
 
   const handleUndo = useCallback(async () => {
     if (batch.phase !== "done" || !onUndoPark) return;
@@ -144,7 +163,18 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
     }
   }, [batch, onUndoPark, clearUndoTimer]);
 
-  if (suggestions.length === 0 && batch.phase === "idle") return null;
+  const handleHoverEnter = (id: string) => {
+    if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(() => setHoveredId(id), 400);
+  };
+
+  const handleHoverLeave = () => {
+    if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
+    setHoveredId(null);
+  };
+
+  if (visibleSuggestions.length === 0 && batch.phase === "idle") return null;
 
   const hasSelection = selected.size > 0;
 
@@ -175,44 +205,149 @@ export function ContextualHUD({ messages, recommendations, onTap, onParkMultiple
           transition: "opacity 200ms ease",
         }}
       >
-        {suggestions.map((s) => {
+        {visibleSuggestions.map((s) => {
           const isSelected = selected.has(s.id);
+          const isHovered = hoveredId === s.id;
           return (
-            <button
+            <div
               key={s.id}
-              onClick={() => {
-                if (hasSelection) toggleSelect(s.id);
-                else onTap(s.text);
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                toggleSelect(s.id);
-              }}
-              style={{
-                flexShrink: 0,
-                maxWidth: 260,
-                padding: "6px 12px",
-                borderRadius: 18,
-                background: isSelected
-                  ? "color-mix(in oklab, var(--accent-gold) 15%, var(--surface))"
-                  : "var(--surface)",
-                border: `0.5px solid ${isSelected ? "var(--accent-gold)" : "var(--border)"}`,
-                color: isSelected ? "var(--accent-gold)" : "var(--muted-text)",
-                fontSize: 12,
-                lineHeight: 1.4,
-                cursor: "pointer",
-                transition: "all 180ms ease",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                fontFamily: "var(--font-sans)",
-              }}
+              style={{ position: "relative", flexShrink: 0 }}
+              onMouseEnter={() => handleHoverEnter(s.id)}
+              onMouseLeave={handleHoverLeave}
             >
-              {s.source === "recommendation" && (
-                <span style={{ color: "var(--phosphor)", marginRight: 4, fontSize: 10 }}>◆</span>
+              <button
+                onClick={() => {
+                  if (hasSelection) toggleSelect(s.id);
+                  else onTap(s.text);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  toggleSelect(s.id);
+                }}
+                style={{
+                  maxWidth: 260,
+                  padding: "6px 28px 6px 12px",
+                  borderRadius: 18,
+                  background: isSelected
+                    ? "color-mix(in oklab, var(--accent-gold) 15%, var(--surface))"
+                    : "var(--surface)",
+                  border: `0.5px solid ${isSelected ? "var(--accent-gold)" : "var(--border)"}`,
+                  color: isSelected ? "var(--accent-gold)" : "var(--muted-text)",
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                  cursor: "pointer",
+                  transition: "all 180ms ease",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  fontFamily: "var(--font-sans)",
+                }}
+              >
+                {s.source === "recommendation" && (
+                  <span style={{ color: "var(--phosphor)", marginRight: 4, fontSize: 10 }}>◆</span>
+                )}
+                {s.text}
+              </button>
+
+              {/* Close × button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDismissed((prev) => new Set(prev).add(s.id));
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    next.delete(s.id);
+                    return next;
+                  });
+                }}
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 4,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--muted-text)",
+                  fontSize: 10,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: 0.5,
+                  transition: "opacity 120ms ease",
+                }}
+                onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = "1"; }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = "0.5"; }}
+                aria-label="Dismiss tip"
+              >
+                ×
+              </button>
+
+              {/* Diff icon — bottom-right of chip */}
+              {onDiffRequest && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDiffRequest(s.text);
+                  }}
+                  style={{
+                    position: "absolute",
+                    bottom: 2,
+                    right: 4,
+                    width: 14,
+                    height: 14,
+                    borderRadius: 3,
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--muted-text)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: 0.35,
+                    transition: "opacity 120ms ease",
+                  }}
+                  onMouseEnter={(e) => { (e.target as HTMLElement).style.opacity = "1"; }}
+                  onMouseLeave={(e) => { (e.target as HTMLElement).style.opacity = "0.35"; }}
+                  aria-label="View diff"
+                  title="View in Diff"
+                >
+                  <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={1.2}>
+                    <path d="M2 2h3v3H2zM7 7h3v3H7zM5 3.5h2M6.5 5v2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
               )}
-              {s.text}
-            </button>
+
+              {/* Hover preview tooltip */}
+              {isHovered && s.preview && s.preview !== s.text && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    left: 0,
+                    maxWidth: 300,
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    background: "var(--surface-alt)",
+                    border: "0.5px solid var(--glass-border)",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                    color: "var(--foreground)",
+                    fontSize: 11,
+                    lineHeight: 1.5,
+                    fontFamily: "var(--font-sans)",
+                    zIndex: 50,
+                    pointerEvents: "none",
+                    animation: "atlas-bubble-in 150ms ease forwards",
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {s.preview}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

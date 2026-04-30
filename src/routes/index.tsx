@@ -801,6 +801,14 @@ function WorkspacePage() {
                   setInput(text);
                   setInputFocusSignal((v) => v + 1);
                 }}
+                onDiffRequest={(text) => {
+                  // Show diff comparing the chip text against the last assistant message
+                  const lastAtlas = [...messages].reverse().find((m) => m.role === "assistant");
+                  setDiffOldCode(lastAtlas?.content ?? "");
+                  setDiffNewCode(text);
+                  setDiffLabels({ old: "Atlas response", new: "Selected chip" });
+                  setDiffOpen(true);
+                }}
                 onParkMultiple={async (items) => {
                   const entryIds: string[] = [];
                   for (const item of items) {
@@ -1131,6 +1139,8 @@ function WorkspacePage() {
         onClose={() => setCollaborateOpen(false)}
         projectName={activeProject?.name}
         sessionId={session?.id}
+        projectId={activeProjectId}
+        userId={user.id}
       />
       <GitHubDrawer
         open={githubOpen}

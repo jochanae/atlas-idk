@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 type GeneratedFile = {
   id?: string;
@@ -52,6 +52,14 @@ function buildTree(files: GeneratedFile[]): TreeNode[] {
   return root;
 }
 
+/** Collect all file paths from a tree node recursively */
+function collectFilePaths(node: TreeNode): string[] {
+  const paths: string[] = [];
+  if (node.file) paths.push(node.path);
+  for (const child of node.children) paths.push(...collectFilePaths(child));
+  return paths;
+}
+
 function FileIcon({ language }: { language: string }) {
   const color =
     language === "tsx" || language === "jsx"
@@ -84,96 +92,131 @@ function TreeNodeView({
   depth,
   onFileSelect,
   selectedPath,
+  checkedPaths,
+  onToggleCheck,
+  matchesSearch,
 }: {
   node: TreeNode;
   depth: number;
   onFileSelect: (file: GeneratedFile) => void;
   selectedPath: string | null;
+  checkedPaths: Set<string>;
+  onToggleCheck: (path: string, isFolder: boolean, node: TreeNode) => void;
+  matchesSearch: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
   const isFolder = node.children.length > 0 && !node.file;
   const isSelected = node.path === selectedPath;
+  const isChecked = checkedPaths.has(node.path);
+
+  if (!matchesSearch) return null;
 
   return (
     <div>
-      <button
-        onClick={() => {
-          if (isFolder) setExpanded(!expanded);
-          else if (node.file) onFileSelect(node.file);
-        }}
-        onDragOver={(e) => {
-          if (node.file) {
-            e.preventDefault();
-            e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 15%, transparent)";
-          }
-        }}
-        onDragLeave={(e) => {
-          e.currentTarget.style.background = "";
-        }}
-        onDrop={(e) => {
-          e.currentTarget.style.background = "";
-          // Accept dropped snippet text
-          const snippet = e.dataTransfer.getData("text/plain");
-          if (snippet && node.file) {
-            // Append snippet to file content (simple merge)
-            node.file.content += "\n\n" + snippet;
-            onFileSelect(node.file);
-          }
-        }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          width: "100%",
-          padding: "5px 10px",
-          paddingLeft: 10 + depth * 16,
-          background: isSelected
-            ? "color-mix(in oklab, var(--accent-gold) 10%, transparent)"
-            : "transparent",
-          border: "none",
-          borderLeft: isSelected
-            ? "2px solid var(--accent-gold)"
-            : "2px solid transparent",
-          color: isSelected ? "var(--foreground)" : "var(--muted-text)",
-          fontFamily: "var(--font-mono)",
-          fontSize: 11,
-          cursor: "pointer",
-          transition: "all 120ms ease",
-          textAlign: "left",
-        }}
-      >
-        {isFolder ? (
-          <>
-            <span style={{ opacity: 0.5, fontSize: 8, width: 8, flexShrink: 0 }}>
-              {expanded ? "▼" : "▶"}
-            </span>
-            <FolderIcon open={expanded} />
-          </>
-        ) : (
-          <>
-            <span style={{ width: 8, flexShrink: 0 }} />
-            <FileIcon language={node.file?.language ?? "tsx"} />
-          </>
-        )}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {node.name}
-        </span>
-        {node.file?.version && node.file.version > 1 && (
-          <span
-            style={{
-              fontSize: 9,
-              padding: "1px 5px",
-              borderRadius: 8,
-              background: "color-mix(in oklab, var(--phosphor) 15%, transparent)",
-              color: "var(--phosphor)",
-              marginLeft: "auto",
-              flexShrink: 0,
-            }}
-          >
-            v{node.file.version}
+      <div style={{ display: "flex", alignItems: "center" }}>
+        {/* Checkbox */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCheck(node.path, isFolder, node);
+          }}
+          style={{
+            width: 18,
+            height: 18,
+            flexShrink: 0,
+            marginLeft: 4 + depth * 16,
+            borderRadius: 3,
+            border: `1px solid ${isChecked ? "var(--accent-gold)" : "var(--border)"}`,
+            background: isChecked ? "color-mix(in oklab, var(--accent-gold) 20%, transparent)" : "transparent",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 120ms ease",
+          }}
+        >
+          {isChecked && (
+            <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="var(--accent-gold)" strokeWidth={2}>
+              <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+        <button
+          onClick={() => {
+            if (isFolder) setExpanded(!expanded);
+            else if (node.file) onFileSelect(node.file);
+          }}
+          onDragOver={(e) => {
+            if (node.file) {
+              e.preventDefault();
+              e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 15%, transparent)";
+            }
+          }}
+          onDragLeave={(e) => {
+            e.currentTarget.style.background = "";
+          }}
+          onDrop={(e) => {
+            e.currentTarget.style.background = "";
+            const snippet = e.dataTransfer.getData("text/plain");
+            if (snippet && node.file) {
+              node.file.content += "\n\n" + snippet;
+              onFileSelect(node.file);
+            }
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flex: 1,
+            padding: "5px 10px",
+            background: isSelected
+              ? "color-mix(in oklab, var(--accent-gold) 10%, transparent)"
+              : "transparent",
+            border: "none",
+            borderLeft: isSelected
+              ? "2px solid var(--accent-gold)"
+              : "2px solid transparent",
+            color: isSelected ? "var(--foreground)" : "var(--muted-text)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            cursor: "pointer",
+            transition: "all 120ms ease",
+            textAlign: "left",
+          }}
+        >
+          {isFolder ? (
+            <>
+              <span style={{ opacity: 0.5, fontSize: 8, width: 8, flexShrink: 0 }}>
+                {expanded ? "▼" : "▶"}
+              </span>
+              <FolderIcon open={expanded} />
+            </>
+          ) : (
+            <>
+              <span style={{ width: 8, flexShrink: 0 }} />
+              <FileIcon language={node.file?.language ?? "tsx"} />
+            </>
+          )}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {node.name}
           </span>
-        )}
-      </button>
+          {node.file?.version && node.file.version > 1 && (
+            <span
+              style={{
+                fontSize: 9,
+                padding: "1px 5px",
+                borderRadius: 8,
+                background: "color-mix(in oklab, var(--phosphor) 15%, transparent)",
+                color: "var(--phosphor)",
+                marginLeft: "auto",
+                flexShrink: 0,
+              }}
+            >
+              v{node.file.version}
+            </span>
+          )}
+        </button>
+      </div>
       {isFolder && expanded && (
         <div>
           {node.children.map((child) => (
@@ -183,6 +226,9 @@ function TreeNodeView({
               depth={depth + 1}
               onFileSelect={onFileSelect}
               selectedPath={selectedPath}
+              checkedPaths={checkedPaths}
+              onToggleCheck={onToggleCheck}
+              matchesSearch={matchesSearch}
             />
           ))}
         </div>
@@ -191,9 +237,84 @@ function TreeNodeView({
   );
 }
 
+/** Simple ZIP file generator — no external dependency required. */
+function createZipBlob(files: Array<{ filename: string; content: string }>): Blob {
+  const parts: string[] = [];
+  for (const file of files) {
+    parts.push(`\n${"═".repeat(60)}\n// FILE: ${file.filename}\n${"═".repeat(60)}\n\n`);
+    parts.push(file.content);
+    parts.push("\n");
+  }
+  return new Blob(parts, { type: "text/plain;charset=utf-8" });
+}
+
 export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [checkedPaths, setCheckedPaths] = useState<Set<string>>(() => new Set());
   const tree = useMemo(() => buildTree(files), [files]);
+
+  // Filter tree nodes by search
+  const matchingPaths = useMemo(() => {
+    if (!searchQuery.trim()) return null; // null = show all
+    const q = searchQuery.toLowerCase();
+    const matching = new Set<string>();
+    for (const file of files) {
+      if (file.filename.toLowerCase().includes(q)) {
+        // Add the file and all parent paths
+        const parts = file.filename.split("/");
+        let path = "";
+        for (const part of parts) {
+          path += (path ? "/" : "") + part;
+          matching.add(path);
+        }
+      }
+    }
+    return matching;
+  }, [files, searchQuery]);
+
+  const nodeMatchesSearch = useCallback(
+    (node: TreeNode): boolean => {
+      if (!matchingPaths) return true;
+      return matchingPaths.has(node.path);
+    },
+    [matchingPaths],
+  );
+
+  const handleToggleCheck = useCallback((path: string, isFolder: boolean, node: TreeNode) => {
+    setCheckedPaths((prev) => {
+      const next = new Set(prev);
+      if (isFolder) {
+        const childPaths = collectFilePaths(node);
+        const allChecked = childPaths.every((p) => prev.has(p));
+        if (allChecked) {
+          for (const p of childPaths) next.delete(p);
+        } else {
+          for (const p of childPaths) next.add(p);
+        }
+      } else {
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
+      }
+      return next;
+    });
+  }, []);
+
+  const checkedFiles = useMemo(
+    () => files.filter((f) => checkedPaths.has(f.filename)),
+    [files, checkedPaths],
+  );
+
+  const handleDownloadSelected = () => {
+    if (checkedFiles.length === 0) return;
+    const blob = createZipBlob(checkedFiles);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `atlas-export-${checkedFiles.length}-files.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!open) return null;
 
@@ -273,7 +394,61 @@ export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
           </button>
         </div>
 
-        {/* File count */}
+        {/* Search bar */}
+        <div style={{ padding: "8px 12px", borderBottom: "0.5px solid var(--glass-border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, position: "relative" }}>
+            <svg
+              viewBox="0 0 16 16"
+              width={12}
+              height={12}
+              fill="none"
+              stroke="var(--muted-text)"
+              strokeWidth={1.4}
+              style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+            >
+              <circle cx="7" cy="7" r="4" />
+              <path d="M10 10l3 3" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search files…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "6px 8px 6px 28px",
+                borderRadius: 8,
+                background: "var(--surface-alt)",
+                border: "0.5px solid var(--border)",
+                color: "var(--foreground)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                outline: "none",
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                style={{
+                  position: "absolute",
+                  right: 6,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--muted-text)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  padding: 2,
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* File count + selected count */}
         <div
           style={{
             padding: "8px 16px",
@@ -281,9 +456,16 @@ export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
             fontSize: 10,
             color: "var(--muted-text)",
             letterSpacing: "0.06em",
+            display: "flex",
+            justifyContent: "space-between",
           }}
         >
-          {files.length} file{files.length !== 1 ? "s" : ""} generated
+          <span>{files.length} file{files.length !== 1 ? "s" : ""} generated</span>
+          {checkedPaths.size > 0 && (
+            <span style={{ color: "var(--accent-gold)" }}>
+              {checkedFiles.length} selected
+            </span>
+          )}
         </div>
 
         {/* Tree */}
@@ -328,25 +510,64 @@ export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
                   onFileSelect(file);
                 }}
                 selectedPath={selectedPath}
+                checkedPaths={checkedPaths}
+                onToggleCheck={handleToggleCheck}
+                matchesSearch={nodeMatchesSearch(node)}
               />
             ))
           )}
         </div>
 
-        {/* Drop zone hint */}
+        {/* Footer: download selected or drag hint */}
         <div
           style={{
             padding: "10px 16px",
             borderTop: "0.5px solid var(--glass-border)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 9,
-            color: "var(--muted-text)",
-            opacity: 0.6,
-            letterSpacing: "0.06em",
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          Drag parked snippets onto files to merge
+          {checkedFiles.length > 0 ? (
+            <button
+              onClick={handleDownloadSelected}
+              style={{
+                width: "100%",
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: "var(--accent-gold)",
+                border: "none",
+                color: "var(--background)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={1.6}>
+                <path d="M8 2v9M5 8l3 3 3-3M3 13h10" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Download {checkedFiles.length} file{checkedFiles.length > 1 ? "s" : ""}
+            </button>
+          ) : (
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                color: "var(--muted-text)",
+                opacity: 0.6,
+                letterSpacing: "0.06em",
+                textAlign: "center",
+              }}
+            >
+              Drag parked snippets onto files to merge
+            </span>
+          )}
         </div>
       </div>
     </div>
