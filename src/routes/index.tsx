@@ -1029,6 +1029,7 @@ function WorkspacePage() {
             else if (id === "collaborate") setCollaborateOpen(true);
             else if (id === "github") setGithubOpen(true);
             else if (id === "snapshots") setSnapshotBrowserOpen(true);
+            else if (id === "integrity") setIntegrityOpen(true);
           }}
           taskQueue={
             session ? (
