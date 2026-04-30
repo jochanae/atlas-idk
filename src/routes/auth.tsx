@@ -63,12 +63,7 @@ function AuthPage() {
       <FooterAuditLine />
       <header className="border-b border-border">
         <div className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-baseline gap-3">
-            <span className="font-semibold tracking-tight text-base">Atlas</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
-              Enter Atlas
-            </span>
-          </div>
+          <span className="font-semibold tracking-tight text-base">Atlas</span>
         </div>
       </header>
 
