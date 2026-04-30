@@ -415,8 +415,8 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
-          paddingTop: active && mobileSurfaceBar
-            ? "calc(var(--header-height) + 52px)"
+          paddingTop: active
+            ? "calc(var(--header-height) + 100px)"
             : "calc(var(--header-height) + 16px)",
         }}
       >
