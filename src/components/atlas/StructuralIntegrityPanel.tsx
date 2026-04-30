@@ -150,16 +150,35 @@ interface StructuralIntegrityPanelProps {
 export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityPanelProps) {
   const items = useMemo(() => buildAuditManifest(), []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState<AuditItem["category"] | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<AuditItem["status"] | "all">("all");
+
+  const filtered = useMemo(() => {
+    let result = items;
+    if (filterCategory !== "all") result = result.filter((i) => i.category === filterCategory);
+    if (filterStatus !== "all") result = result.filter((i) => i.status === filterStatus);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((i) =>
+        i.label.toLowerCase().includes(q) ||
+        i.file.toLowerCase().includes(q) ||
+        (i.functionName?.toLowerCase().includes(q)) ||
+        (i.notes?.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [items, filterCategory, filterStatus, search]);
 
   const categories = useMemo(() => {
     const map = new Map<string, AuditItem[]>();
-    for (const item of items) {
+    for (const item of filtered) {
       const list = map.get(item.category) ?? [];
       list.push(item);
       map.set(item.category, list);
     }
     return map;
-  }, [items]);
+  }, [filtered]);
 
   const summary = useMemo(() => {
     const counts = { functional: 0, partial: 0, stub: 0, missing: 0 };
