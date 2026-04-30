@@ -198,8 +198,14 @@ function WorkspacePage() {
   const [depGraphOpen, setDepGraphOpen] = useState(false);
   const [adaptivePlaceholder, setAdaptivePlaceholder] = useState<string | null>(null);
   // Rollback & History system
+  type Snapshot = { id: string; name: string; messageId: string; messagesAtPoint: ChatMessage[]; createdAt: string };
   const [rollbackPreview, setRollbackPreview] = useState<{ messageId: string; snapshotLabel: string; messagesAtPoint: ChatMessage[] } | null>(null);
   const [recentRollbackMsgId, setRecentRollbackMsgId] = useState<string | null>(null);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [preRollbackMessages, setPreRollbackMessages] = useState<ChatMessage[] | null>(null);
+  const [snapshotBrowserOpen, setSnapshotBrowserOpen] = useState(false);
+  const [rollbackNaming, setRollbackNaming] = useState(false);
+  const [rollbackNameInput, setRollbackNameInput] = useState("");
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -398,21 +404,43 @@ function WorkspacePage() {
   // ── Rollback & History ──
   const handleRollback = useCallback((targetMessage: ChatMessage) => {
     if (!user || !activeProjectId || !session) return;
+    // Permission check: only session owner can rollback
+    if (session.user_id !== user.id) {
+      toast.error("Only the session owner can rollback.");
+      return;
+    }
     const idx = messages.findIndex((m) => m.id === targetMessage.id);
     if (idx < 0) return;
     const snapshotMessages = messages.slice(0, idx + 1);
-    const snapshotLabel = `Snapshot @ ${targetMessage.content.slice(0, 40).replace(/\n/g, " ")}…`;
+    const autoName = `Snapshot @ ${targetMessage.content.slice(0, 40).replace(/\n/g, " ")}…`;
     const currentSummary = messages.map((m) => `[${m.role}] ${m.content.slice(0, 80)}`).join("\n");
     const historicalSummary = snapshotMessages.map((m) => `[${m.role}] ${m.content.slice(0, 80)}`).join("\n");
     setDiffOldCode(currentSummary);
     setDiffNewCode(historicalSummary);
     setDiffLabels({ old: "Current State", new: "Rollback Target" });
-    setRollbackPreview({ messageId: targetMessage.id, snapshotLabel, messagesAtPoint: snapshotMessages });
+    setRollbackPreview({ messageId: targetMessage.id, snapshotLabel: autoName, messagesAtPoint: snapshotMessages });
+    setRollbackNameInput(autoName);
+    setRollbackNaming(true);
     setDiffOpen(true);
   }, [messages, user, activeProjectId, session]);
 
   const confirmRollback = useCallback(async () => {
     if (!rollbackPreview || !user || !activeProjectId || !session) return;
+    const snapshotName = rollbackNameInput.trim() || rollbackPreview.snapshotLabel;
+    // Save pre-rollback state for undo
+    setPreRollbackMessages([...messages]);
+    // Save as a named snapshot
+    setSnapshots((prev) => [
+      {
+        id: crypto.randomUUID(),
+        name: snapshotName,
+        messageId: rollbackPreview.messageId,
+        messagesAtPoint: rollbackPreview.messagesAtPoint,
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+    // Execute rollback
     setMessages(rollbackPreview.messagesAtPoint);
     try {
       await createEntryFromCard({
@@ -423,7 +451,7 @@ function WorkspacePage() {
         payload: {
           v: 1,
           title: "System Reversion",
-          summary: `Rolled back to: ${rollbackPreview.snapshotLabel}`,
+          summary: `Rolled back to: ${snapshotName}`,
           severity: "neutral",
           verb: "audit",
         },
@@ -433,18 +461,38 @@ function WorkspacePage() {
     } catch (e) {
       console.error("Rollback ledger entry failed", e);
     }
-    setAdaptivePlaceholder(`Code reverted to ${rollbackPreview.snapshotLabel.slice(0, 50)}. What's next?`);
+    setAdaptivePlaceholder(`Code reverted to ${snapshotName.slice(0, 50)}. What's next?`);
     setRecentRollbackMsgId(rollbackPreview.messageId);
     setTimeout(() => setRecentRollbackMsgId(null), 3000);
     setRollbackPreview(null);
+    setRollbackNaming(false);
     setDiffOpen(false);
     toast.success("Rolled back successfully");
-  }, [rollbackPreview, user, activeProjectId, session]);
+  }, [rollbackPreview, rollbackNameInput, messages, user, activeProjectId, session]);
 
   const cancelRollback = useCallback(() => {
     setRollbackPreview(null);
+    setRollbackNaming(false);
     setDiffOpen(false);
   }, []);
+
+  // Undo last rollback — restores pre-rollback message state
+  const undoRollback = useCallback(() => {
+    if (!preRollbackMessages) return;
+    setMessages(preRollbackMessages);
+    setPreRollbackMessages(null);
+    setAdaptivePlaceholder(null);
+    toast.success("Rollback undone");
+  }, [preRollbackMessages]);
+
+  // Restore from a named snapshot
+  const restoreSnapshot = useCallback((snapshot: Snapshot) => {
+    setPreRollbackMessages([...messages]);
+    setMessages(snapshot.messagesAtPoint);
+    setSnapshotBrowserOpen(false);
+    setAdaptivePlaceholder(`Restored "${snapshot.name}". What's next?`);
+    toast.success(`Restored: ${snapshot.name}`);
+  }, [messages]);
 
 
   // Track whether the active project already has a Compass (used by thinking prompts)
@@ -965,6 +1013,7 @@ function WorkspacePage() {
             }
             else if (id === "collaborate") setCollaborateOpen(true);
             else if (id === "github") setGithubOpen(true);
+            else if (id === "snapshots") setSnapshotBrowserOpen(true);
           }}
           taskQueue={
             session ? (
@@ -1304,7 +1353,7 @@ function WorkspacePage() {
           }}
         >
           <div
-            onClick={() => setDiffOpen(false)}
+            onClick={cancelRollback}
             style={{
               position: "absolute",
               inset: 0,
@@ -1323,22 +1372,160 @@ function WorkspacePage() {
               border: "0.5px solid var(--glass-border)",
               overflow: "hidden",
               boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <DiffViewer
-              oldCode={diffOldCode}
-              newCode={diffNewCode}
-              oldLabel={diffLabels.old}
-              newLabel={diffLabels.new}
-              onAccept={rollbackPreview ? confirmRollback : () => {
-                toast.success("Changes accepted");
-                setDiffOpen(false);
-              }}
-              onReject={rollbackPreview ? cancelRollback : () => {
-                toast("Changes rejected");
-                setDiffOpen(false);
-              }}
-            />
+            {/* Snapshot naming bar — shown during rollback */}
+            {rollbackNaming && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 14px",
+                  borderBottom: "0.5px solid var(--glass-border)",
+                  background: "color-mix(in oklab, var(--accent-gold) 6%, var(--surface))",
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--accent-gold)", whiteSpace: "nowrap" }}>
+                  Snapshot Name
+                </span>
+                <input
+                  value={rollbackNameInput}
+                  onChange={(e) => setRollbackNameInput(e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: "var(--background)",
+                    border: "0.5px solid var(--glass-border)",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
+                    color: "var(--foreground)",
+                    outline: "none",
+                  }}
+                  placeholder="Name this snapshot…"
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmRollback(); }}
+                />
+              </div>
+            )}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <DiffViewer
+                oldCode={diffOldCode}
+                newCode={diffNewCode}
+                oldLabel={diffLabels.old}
+                newLabel={diffLabels.new}
+                acceptLabel={rollbackPreview ? "Revert" : "Accept"}
+                rejectLabel={rollbackPreview ? "Cancel" : "Reject"}
+                onAccept={rollbackPreview ? confirmRollback : () => {
+                  toast.success("Changes accepted");
+                  setDiffOpen(false);
+                }}
+                onReject={rollbackPreview ? cancelRollback : () => {
+                  toast("Changes rejected");
+                  setDiffOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Snapshot Browser Drawer */}
+      {snapshotBrowserOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 75,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <div
+            onClick={() => setSnapshotBrowserOpen(false)}
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)" }}
+          />
+          <div
+            style={{
+              position: "relative",
+              width: "min(360px, 90vw)",
+              height: "100%",
+              background: "var(--surface)",
+              borderLeft: "0.5px solid var(--glass-border)",
+              boxShadow: "-8px 0 32px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              animation: "atlas-bubble-in 200ms ease forwards",
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderBottom: "0.5px solid var(--glass-border)" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-gold)" }}>
+                Snapshots · {snapshots.length}
+              </span>
+              <button onClick={() => setSnapshotBrowserOpen(false)} style={{ background: "none", border: "none", color: "var(--muted-text)", cursor: "pointer", fontSize: 16, padding: 4 }}>×</button>
+            </div>
+            {/* Undo bar */}
+            {preRollbackMessages && (
+              <button
+                onClick={undoRollback}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  margin: "8px 12px",
+                  padding: "8px 12px",
+                  background: "color-mix(in oklab, var(--ember) 10%, var(--surface))",
+                  border: "0.5px solid color-mix(in oklab, var(--ember) 30%, var(--border))",
+                  borderRadius: 8,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  color: "var(--ember)",
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                }}
+              >
+                ↶ Undo Last Rollback
+              </button>
+            )}
+            {/* Snapshot list */}
+            <div style={{ flex: 1, overflow: "auto", padding: "8px 12px" }}>
+              {snapshots.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--muted-text)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                  No snapshots yet. Rollback a message to create one.
+                </div>
+              ) : (
+                snapshots.map((snap) => (
+                  <div
+                    key={snap.id}
+                    style={{
+                      padding: "10px 12px",
+                      marginBottom: 6,
+                      borderRadius: 8,
+                      border: "0.5px solid var(--glass-border)",
+                      background: "var(--background)",
+                      cursor: "pointer",
+                      transition: "border-color 160ms ease",
+                    }}
+                    onClick={() => restoreSnapshot(snap)}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-gold)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--glass-border)"; }}
+                  >
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--foreground)", marginBottom: 4 }}>
+                      {snap.name}
+                    </div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted-text)", display: "flex", gap: 8 }}>
+                      <span>{snap.messagesAtPoint.length} messages</span>
+                      <span>{new Date(snap.createdAt).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

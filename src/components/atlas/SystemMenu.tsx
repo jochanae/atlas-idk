@@ -80,6 +80,17 @@ const MENU_ITEMS = [
     ),
   },
   {
+    id: "snapshots",
+    label: "Snapshots",
+    description: "Browse & restore rollback history",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 8a6 6 0 1112 0A6 6 0 012 8z" opacity={0.4} />
+        <path d="M8 4v4l2.5 1.5" />
+      </svg>
+    ),
+  },
+  {
     id: "connectors",
     label: "Connectors",
     description: "APIs & integrations",
