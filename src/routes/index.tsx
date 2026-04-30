@@ -2262,8 +2262,12 @@ function ChatPanel({
                       )}
                     </div>
                     {showParkButton && (
-                      <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
-                          {/* Quick copy — always visible */}
+                       <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                          {/* History — always visible */}
+                          <MessageActionButton label="History" onClick={() => { toast("History coming soon"); }} />
+                          {/* Regenerate — always visible */}
+                          <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
+                          {/* Copy — always visible */}
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
                           {/* Three-dot more menu */}
                           <div style={{ position: "relative" }}>
@@ -2323,24 +2327,14 @@ function ChatPanel({
                                   Rollback
                                 </button>
                                 {showActionRow && (
-                                  <>
-                                    <button onClick={() => { toast("Regenerate coming soon"); setMoreMenuOpenId(null); }} style={moreMenuActionStyle}>
-                                      <span style={moreMenuIconStyle}>
-                                        <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-                                          <path d="M13 8a5 5 0 11-9-3" /><path d="M13 12V8h-4" />
-                                        </svg>
-                                      </span>
-                                      Regenerate
-                                    </button>
-                                    <button onClick={() => { commitDecision(); setMoreMenuOpenId(null); }} disabled={extracting} style={moreMenuActionStyle}>
-                                      <span style={moreMenuIconStyle}>
-                                        <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M4 8l3 3 5-6" />
-                                        </svg>
-                                      </span>
-                                      {extracting ? "Extracting…" : "Commit to Ledger"}
-                                    </button>
-                                  </>
+                                  <button onClick={() => { commitDecision(); setMoreMenuOpenId(null); }} disabled={extracting} style={moreMenuActionStyle}>
+                                    <span style={moreMenuIconStyle}>
+                                      <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 8l3 3 5-6" />
+                                      </svg>
+                                    </span>
+                                    {extracting ? "Extracting…" : "Commit to Ledger"}
+                                  </button>
                                 )}
                                 <button
                                   onClick={() => { parkMessage(m); setMoreMenuOpenId(null); }}
