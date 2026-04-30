@@ -371,8 +371,8 @@ export function AtlasFrontDoor({
                   onClick={() => onSend(input, activeMode)}
                   disabled={!input.trim() || sending}
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                     background: input.trim() ? "var(--ember)" : "var(--surface)",
                     border: input.trim() ? "none" : "0.5px solid var(--border)",
