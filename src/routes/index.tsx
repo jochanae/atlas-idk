@@ -16,6 +16,7 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { WhisperGate, type WhisperAnswers } from "@/components/atlas/WhisperGate";
+import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { detectArtifacts } from "@/lib/artifacts";
 import {
   relativeTime,
@@ -1418,7 +1419,7 @@ function ParkingLotDrawer({
           top: 0,
           right: 0,
           bottom: 0,
-          width: "min(300px, 100vw)",
+          width: "min(360px, 100vw)",
           background: "#0C0A09",
           borderLeft: "0.5px solid #2C2926",
           transform: open ? "translateX(0)" : "translateX(100%)",
@@ -1455,44 +1456,15 @@ function ParkingLotDrawer({
                     {projectNames.get(projectId) ?? "Project"}
                   </div>
                 )}
-                {group.map((item) => {
-                  const fading = fadingIds.has(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-2 py-2 transition-opacity duration-150"
-                      style={{ opacity: fading ? 0 : 1 }}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div style={{ color: "#E7E5E4", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {item.label}
-                        </div>
-                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "#3C3530", marginTop: 2 }}>
-                          {item.source_context} · {relativeTime(item.created_at)}
-                        </div>
-                      </div>
-                      <span style={{ background: "#1C1917", color: "#57524E", fontFamily: "monospace", fontSize: 9, textTransform: "uppercase", borderRadius: 999, padding: "2px 6px" }}>
-                        {item.kind}
-                      </span>
-                      <div className="flex flex-col items-end gap-1">
-                        <button
-                          onClick={() => handleAction(item.id, "resolved")}
-                          style={{ background: "transparent", border: "none", color: "#3C3530", fontFamily: "monospace", fontSize: 9 }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = "#EA580C"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = "#3C3530"; }}
-                        >
-                          RESOLVE
-                        </button>
-                        <button
-                          onClick={() => handleAction(item.id, "dismissed")}
-                          style={{ background: "transparent", border: "none", color: "#3C3530", fontFamily: "monospace", fontSize: 9 }}
-                        >
-                          DISMISS
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {group.map((item) => (
+                  <ParkedRow
+                    key={item.id}
+                    item={item}
+                    projectName={projectNames.get(item.project_id) ?? null}
+                    fading={fadingIds.has(item.id)}
+                    onAction={handleAction}
+                  />
+                ))}
               </div>
             ))
           )}
@@ -1500,6 +1472,259 @@ function ParkingLotDrawer({
       </aside>
     </>
   );
+}
+
+/* -------- Parked Row with Glossary-in-Context (§XI Phase 2) -------- */
+function ParkedRow({
+  item,
+  projectName,
+  fading,
+  onAction,
+}: {
+  item: ParkedItem;
+  projectName: string | null;
+  fading: boolean;
+  onAction: (itemId: string, status: "resolved" | "dismissed") => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [entry, setEntry] = useState<KnowledgeEntry | null>(null);
+  const [generated, setGenerated] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasLooked, setHasLooked] = useState(false);
+
+  // First expand: cache lookup by slug
+  useEffect(() => {
+    if (!expanded || hasLooked) return;
+    setHasLooked(true);
+    (async () => {
+      setLoading(true);
+      setError(null);
+      const slug = slugifyTerm(item.label);
+      const { data, error: fetchError } = await supabase
+        .from("knowledge_entries")
+        .select("*")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (fetchError) {
+        setError(fetchError.message);
+      } else if (data) {
+        setEntry(data as KnowledgeEntry);
+      }
+      setLoading(false);
+    })();
+  }, [expanded, hasLooked, item.label]);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke("atlas-glossary", {
+        body: {
+          term: item.label,
+          projectName,
+          projectContext: item.source_context,
+        },
+      });
+      if (invokeError) throw invokeError;
+      if (data?.error) throw new Error(data.error);
+      setEntry(data.entry as KnowledgeEntry);
+      setGenerated(!!data.generated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="transition-opacity duration-150"
+      style={{
+        opacity: fading ? 0 : 1,
+        padding: "8px 0",
+        borderTop: "0.5px solid color-mix(in oklab, var(--border) 40%, transparent)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            minWidth: 0,
+            flex: 1,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            textAlign: "left",
+            padding: 0,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              color: "var(--foreground)",
+              fontSize: 13,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                color: "var(--accent-gold)",
+                opacity: 0.55,
+                fontSize: 9,
+                transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+                transition: "transform 160ms var(--ease-cinematic)",
+                display: "inline-block",
+                width: 8,
+              }}
+            >
+              ▶
+            </span>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {item.label}
+            </span>
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              color: "var(--muted-text)",
+              opacity: 0.55,
+              marginTop: 2,
+              paddingLeft: 14,
+            }}
+          >
+            {item.source_context} · {relativeTime(item.created_at)}
+          </div>
+        </button>
+        <span
+          style={{
+            background: "color-mix(in oklab, var(--surface) 80%, transparent)",
+            color: "var(--muted-text)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            borderRadius: 999,
+            padding: "2px 6px",
+            opacity: 0.7,
+          }}
+        >
+          {item.kind}
+        </span>
+      </div>
+
+      {expanded && (
+        <div style={{ paddingLeft: 14, marginTop: 4 }}>
+          {loading && (
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                color: "var(--muted-text)",
+                opacity: 0.7,
+                padding: "8px 0",
+              }}
+            >
+              {entry ? "refreshing…" : "looking up…"}
+            </div>
+          )}
+          {error && (
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                color: "var(--ember)",
+                padding: "6px 0",
+              }}
+            >
+              {error}
+            </div>
+          )}
+          {!loading && !entry && !error && (
+            <button
+              type="button"
+              onClick={generate}
+              style={{
+                marginTop: 6,
+                background: "transparent",
+                border: "0.5px dashed color-mix(in oklab, var(--accent-gold) 45%, var(--border))",
+                color: "var(--accent-gold)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                padding: "8px 12px",
+                borderRadius: 8,
+                cursor: "pointer",
+                width: "100%",
+                opacity: 0.85,
+              }}
+            >
+              ◇ Generate explanation
+            </button>
+          )}
+          {entry && <GlossaryCard entry={entry} generated={generated} />}
+
+          <div
+            style={{
+              display: "flex",
+              gap: 14,
+              justifyContent: "flex-end",
+              marginTop: 8,
+            }}
+          >
+            <button
+              onClick={() => onAction(item.id, "resolved")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--muted-text)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                letterSpacing: "0.08em",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--ember)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--muted-text)";
+              }}
+            >
+              RESOLVE
+            </button>
+            <button
+              onClick={() => onAction(item.id, "dismissed")}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--muted-text)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                letterSpacing: "0.08em",
+                cursor: "pointer",
+              }}
+            >
+              DISMISS
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function slugifyTerm(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
 }
 
 function HistoryPanel({
