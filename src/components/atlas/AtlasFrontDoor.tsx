@@ -846,12 +846,28 @@ export function AtlasFrontDoor({
         </div>
       )}
 
-      {/* Active-mode input docked at bottom — solid anchor with utility bar */}
+      {/* Active-mode input — fixed at bottom, floating above bezel */}
       {active && (
         <div
           className={`atlas-active-input-shell${sending ? " atlas-breathing" : ""}`}
           style={{
-            margin: "0 var(--shell-edge) 24px",
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 48,
+            margin: 0,
+            padding: "0 var(--shell-edge) 24px",
+            background: "linear-gradient(to top, var(--background) 70%, transparent)",
+          }}
+        >
+          <div style={{
+            background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
+            borderRadius: "var(--input-radius)",
+            border: sending
+              ? "1.5px solid rgba(212, 175, 55, 0.6)"
+              : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+            padding: "16px 18px 12px",
             background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
             borderRadius: "var(--input-radius)",
             border: sending
