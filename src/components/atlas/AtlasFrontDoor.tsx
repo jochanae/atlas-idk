@@ -623,8 +623,8 @@ function AmbientClock() {
       aria-hidden
       style={{
         position: "fixed",
-        right: 18,
-        bottom: 14,
+        right: "max(18px, env(safe-area-inset-right))",
+        bottom: "max(24px, calc(env(safe-area-inset-bottom) + 14px))",
         fontFamily: "var(--font-mono)",
         fontSize: 10,
         letterSpacing: "0.18em",
