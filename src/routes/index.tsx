@@ -18,6 +18,7 @@ import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { WhisperGate, type WhisperAnswers } from "@/components/atlas/WhisperGate";
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
+import { DesktopWorkspace, type SurfaceId as WorkspaceSurfaceId } from "@/components/atlas/DesktopWorkspace";
 import { detectArtifacts } from "@/lib/artifacts";
 import {
   relativeTime,
@@ -627,10 +628,40 @@ function WorkspacePage() {
     );
   }
 
-  return (
+  // Map current 3-mode surface state ("chat"|"workspace"|"preview") + parking drawer
+  // onto the canonical 4-surface nav for the desktop workspace.
+  const desktopActiveSurface: WorkspaceSurfaceId = parkingOpen
+    ? "parking"
+    : surface === "workspace"
+      ? "compass"
+      : surface === "preview"
+        ? "ledger"
+        : "chat";
+
+  const handleDesktopSurfaceChange = (next: WorkspaceSurfaceId) => {
+    setHistoryOpen(false);
+    setEntrySurface(false);
+    if (next === "parking") {
+      setParkingOpen(true);
+      return;
+    }
+    setParkingOpen(false);
+    if (next === "ledger") {
+      navigate({ to: "/ledger" });
+      return;
+    }
+    if (next === "compass") {
+      setSurface("workspace");
+      return;
+    }
+    setSurface("chat");
+  };
+
+  const mainShell = (
     <div className="min-h-screen bg-background text-foreground overflow-hidden">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
       <main className="relative min-h-screen overflow-hidden">
+
         <AtlasFrontDoor
           active={isActive}
           input={input}
@@ -918,7 +949,61 @@ function WorkspacePage() {
       />
     </div>
   );
+
+  return (
+    <DesktopWorkspace
+      activeSurface={desktopActiveSurface}
+      onSurfaceChange={handleDesktopSurfaceChange}
+      onOpenHistory={() => {
+        setEntrySurface(false);
+        setHistoryOpen((open) => !open);
+      }}
+      parkedCount={parkedItems.length}
+      ledgerCount={ledgerCount}
+      renderMobile={() => mainShell}
+      renderCanvas={() => mainShell}
+      renderInspectorPanes={() => ({
+        whisper: activeProject ? (
+          <div className="p-4">
+            <WhisperGate
+              projectName={activeProject.name}
+              submitting={whisperSubmitting}
+              onSubmit={submitWhisper}
+              onSkip={() => {}}
+            />
+          </div>
+        ) : (
+          <div className="p-6 text-center">
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Select a project to begin a Whisper.
+            </p>
+          </div>
+        ),
+        recs:
+          pendingRecs.length === 0 ? undefined : (
+            <div className="p-3 space-y-2">
+              {pendingRecs.map((rec) => (
+                <div
+                  key={rec.id}
+                  className="rounded border border-border/50 bg-card/40 p-3"
+                >
+                  <p className="text-[11px] font-mono text-foreground leading-relaxed">
+                    {rec.content}
+                  </p>
+                  {rec.definition && (
+                    <p className="text-[10px] font-mono text-muted-foreground mt-1.5 leading-relaxed">
+                      {rec.definition}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ),
+      })}
+    />
+  );
 }
+
 
 /* -------- Chat Panel -------- */
 function ChatPanel({
