@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -63,12 +63,7 @@ function AuthPage() {
       <FooterAuditLine />
       <header className="border-b border-border">
         <div className="max-w-[1400px] mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-baseline gap-3">
-            <span className="font-semibold tracking-tight text-base">Atlas</span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
-              Enter Atlas
-            </span>
-          </div>
+          <span className="font-semibold tracking-tight text-base">Atlas</span>
         </div>
       </header>
 
@@ -76,10 +71,12 @@ function AuthPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
             <h1 className="text-xl font-semibold tracking-tight">
-              {mode === "signin" ? "Sign in" : "Create account"}
+              {mode === "signin" ? "Welcome back." : "Create your account."}
             </h1>
             <p className="text-xs text-muted-foreground font-mono mt-2">
-              The system remembers everything.
+              {mode === "signin"
+                ? "Pick up where the record left off."
+                : "Begin the permanent record."}
             </p>
           </div>
 
@@ -137,14 +134,6 @@ function AuthPage() {
             </button>
           </div>
 
-          <div className="mt-10 text-center">
-            <Link
-              to="/ledger"
-              className="text-[10px] uppercase tracking-[0.15em] font-mono text-muted-foreground/60 hover:text-muted-foreground"
-            >
-              View ledger overview
-            </Link>
-          </div>
         </div>
       </main>
 
