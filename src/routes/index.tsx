@@ -1928,6 +1928,13 @@ function ChatPanel({
                     {showParkButton && (
                       <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
                         <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
+                        <span style={{
+                          display: "inline-flex",
+                          animation: recentRollbackMsgId === m.id ? "atlas-rollback-glow 2s ease-in-out infinite" : undefined,
+                          borderRadius: 6,
+                        }}>
+                          <MessageActionButton label="Rollback" onClick={() => onRollback(m)} />
+                        </span>
                         {showActionRow && (
                           <>
                             <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
