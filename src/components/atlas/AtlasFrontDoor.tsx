@@ -290,7 +290,9 @@ export function AtlasFrontDoor({
               {MODES.map((m) => {
                 const isActive = activeMode === m.id;
                 const isPhosphor = m.color === "phosphor";
-                const activeColor = isPhosphor ? "var(--phosphor)" : "var(--ember)";
+                const isGold = m.color === "accent-gold";
+                const activeColor = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
+                const glowColor = isGold ? "rgba(202,169,104,0.45)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)";
                 return (
                   <button
                     key={m.id}
@@ -309,11 +311,27 @@ export function AtlasFrontDoor({
                       textTransform: "uppercase",
                       cursor: "pointer",
                       boxShadow: isActive
-                        ? `0 0 14px -2px ${isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)"}`
+                        ? `0 0 14px -2px ${glowColor}`
                         : "none",
                       transition: "all 200ms var(--ease-cinematic)",
                     }}
                   >
+                    {m.id === "plan" && (
+                      <svg
+                        viewBox="0 0 16 16"
+                        width={11}
+                        height={11}
+                        stroke="currentColor"
+                        fill="none"
+                        strokeWidth={1.5}
+                        style={{ marginRight: 5, verticalAlign: "-1.5px" }}
+                      >
+                        <circle cx="8" cy="4" r="2" />
+                        <circle cx="4" cy="12" r="2" />
+                        <circle cx="12" cy="12" r="2" />
+                        <path d="M8 6v2M6.5 10.5 7.5 8M9.5 10.5 8.5 8" strokeLinecap="round" />
+                      </svg>
+                    )}
                     {m.label}
                   </button>
                 );
