@@ -694,9 +694,9 @@ function WorkspacePage() {
   };
 
   const mainShell = (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="atlas-shell-host h-full min-h-0 bg-background text-foreground overflow-hidden">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
-      <main className="relative min-h-screen overflow-hidden">
+      <main className="relative h-full min-h-0 overflow-hidden">
 
         <AtlasFrontDoor
           active={isActive}
