@@ -161,11 +161,12 @@ export function AtlasFrontDoor({
             className="atlas-pills-row"
             style={{
               display: "flex",
-              justifyContent: "center",
+              justifyContent: "flex-start",
               padding: "0 16px 22px",
               overflowX: "auto",
               overflowY: "hidden",
               scrollbarWidth: "none",
+              WebkitOverflowScrolling: "touch",
             }}
           >
             <div
