@@ -17,6 +17,8 @@ type Props = {
   onFileSelect: (file: GeneratedFile) => void;
   /** Called when a parked snippet is dropped onto a file */
   onDropSnippet?: (fileIndex: number, snippet: string) => void;
+  /** Called when user locks selected files' architecture to the Ledger */
+  onLockToLedger?: (files: GeneratedFile[]) => void;
 };
 
 type TreeNode = {
@@ -248,7 +250,7 @@ function createZipBlob(files: Array<{ filename: string; content: string }>): Blo
   return new Blob(parts, { type: "text/plain;charset=utf-8" });
 }
 
-export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
+export function FileTreeDrawer({ open, onClose, files, onFileSelect, onLockToLedger }: Props) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [checkedPaths, setCheckedPaths] = useState<Set<string>>(() => new Set());
@@ -529,31 +531,61 @@ export function FileTreeDrawer({ open, onClose, files, onFileSelect }: Props) {
           }}
         >
           {checkedFiles.length > 0 ? (
-            <button
-              onClick={handleDownloadSelected}
-              style={{
-                width: "100%",
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: "var(--accent-gold)",
-                border: "none",
-                color: "var(--background)",
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              }}
-            >
-              <svg viewBox="0 0 16 16" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={1.6}>
-                <path d="M8 2v9M5 8l3 3 3-3M3 13h10" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Download {checkedFiles.length} file{checkedFiles.length > 1 ? "s" : ""}
-            </button>
+            <div style={{ display: "flex", gap: 6, width: "100%" }}>
+              <button
+                onClick={handleDownloadSelected}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: "var(--accent-gold)",
+                  border: "none",
+                  color: "var(--background)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                }}
+              >
+                <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.6}>
+                  <path d="M8 2v9M5 8l3 3 3-3M3 13h10" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Download {checkedFiles.length}
+              </button>
+              {onLockToLedger && (
+                <button
+                  onClick={() => onLockToLedger(checkedFiles)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "color-mix(in oklab, var(--phosphor, #22c55e) 12%, var(--surface))",
+                    border: "0.5px solid color-mix(in oklab, var(--phosphor, #22c55e) 30%, var(--border))",
+                    color: "var(--phosphor, #22c55e)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5,
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.6}>
+                    <rect x="3" y="7" width="10" height="7" rx="1.5" strokeLinejoin="round" />
+                    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+                  </svg>
+                  Lock {checkedFiles.length}
+                </button>
+              )}
+            </div>
           ) : (
             <span
               style={{

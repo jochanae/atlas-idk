@@ -76,6 +76,8 @@ interface CreateFromCardArgs {
   sourceMessageId: string;
   payload: CommitCardPayload;
   status: Extract<EntryStatus, "committed" | "parked">;
+  /** Atlas mode that produced this entry (think/plan/build/explore/decide/audit). */
+  mode?: string | null;
 }
 
 /**
@@ -86,7 +88,7 @@ interface CreateFromCardArgs {
 export async function createEntryFromCard(
   args: CreateFromCardArgs,
 ): Promise<Entry> {
-  const { userId, projectId, sessionId, sourceMessageId, payload, status } =
+  const { userId, projectId, sessionId, sourceMessageId, payload, status, mode } =
     args;
   const row: Record<string, unknown> = {
     user_id: userId,
@@ -103,6 +105,7 @@ export async function createEntryFromCard(
     source_message_id: sourceMessageId,
     card_schema_version: payload.v,
     is_violation: payload.severity === "blocker",
+    mode: mode ?? null,
   };
   const { data, error } = await entriesTable()
     .insert(row)

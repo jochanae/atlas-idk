@@ -463,6 +463,7 @@ function WorkspacePage() {
           verb: "audit",
         },
         status: "committed",
+        mode: activeMode,
       });
       setLedgerCount((c) => c + 1);
     } catch (e) {
@@ -1346,6 +1347,7 @@ function WorkspacePage() {
                 setDiffLabels({ old: "Your prompt", new: "Atlas response" });
                 setDiffOpen(true);
               }}
+              activeMode={activeMode}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
@@ -1448,6 +1450,34 @@ function WorkspacePage() {
           setGeneratedFilename(file.filename);
           setSurface("preview");
           setFileTreeOpen(false);
+        }}
+        onLockToLedger={async (lockedFiles) => {
+          if (!user || !activeProjectId) return;
+          try {
+            const fileList = lockedFiles.map((f) => f.filename).join(", ");
+            await createEntryFromCard({
+              userId: user.id,
+              projectId: activeProjectId,
+              sessionId: session?.id ?? null,
+              sourceMessageId: messages[messages.length - 1]?.id ?? crypto.randomUUID(),
+              payload: {
+                v: 1,
+                title: `Architecture lock: ${lockedFiles.length} file${lockedFiles.length > 1 ? "s" : ""}`,
+                summary: `Locked file architecture as a constraint: ${fileList}`,
+                details: lockedFiles.map((f) => `### ${f.filename}\n\`\`\`${f.language}\n${f.content.slice(0, 500)}\n\`\`\``).join("\n\n"),
+                severity: "committed",
+                verb: "audit",
+                touched: lockedFiles.map((f) => f.filename),
+              },
+              status: "committed",
+              mode: activeMode,
+            });
+            setLedgerCount((c) => c + 1);
+            setFileTreeOpen(false);
+            toast.success(`${lockedFiles.length} file${lockedFiles.length > 1 ? "s" : ""} locked to Ledger`);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Failed to lock files");
+          }
         }}
       />
       {diffOpen && (
@@ -1778,6 +1808,7 @@ function ChatPanel({
   onRollback,
   recentRollbackMsgId,
   onOpenDiff,
+  activeMode,
 }: {
   newMessageIds: Set<string>;
   messages: ChatMessage[];
@@ -1800,6 +1831,7 @@ function ChatPanel({
   onRollback: (m: ChatMessage) => void;
   recentRollbackMsgId: string | null;
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
+  activeMode?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -2045,6 +2077,7 @@ function ChatPanel({
         sourceMessageId: message.id,
         payload: card,
         status: "committed",
+        mode: activeMode,
       });
 
       toast.success("Committed to ledger");
