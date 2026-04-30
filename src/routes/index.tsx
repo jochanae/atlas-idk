@@ -730,6 +730,34 @@ function WorkspacePage() {
     setQueueExecuting(false);
   }, [queueItems, executeQueueItem]);
 
+  // Promote a plan step to the queue
+  const promoteStepToQueue = useCallback((step: PlanStep) => {
+    addToQueue(step.label);
+  }, [addToQueue]);
+
+  // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const pending = queueItems.filter((i) => i.status === "pending");
+      if (e.shiftKey && e.key === "Enter" && pending.length) {
+        e.preventDefault();
+        executeAllQueue();
+        return;
+      }
+      if (e.key === "Backspace" && pending.length) {
+        e.preventDefault();
+        setQueueItems((prev) => {
+          const lastPending = [...prev].reverse().find((i) => i.status === "pending");
+          return lastPending ? prev.filter((i) => i.id !== lastPending.id) : prev;
+        });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [queueItems, executeAllQueue]);
+
   const isActive = (!!session || transitioning || messages.length > 0) && !entrySurface;
   const artifacts = useMemo(() => detectArtifacts(messages), [messages]);
   const activeProject = useMemo(
