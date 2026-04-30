@@ -384,6 +384,24 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
+      {/* Mobile surface bar — fixed below header in active mode */}
+      {active && mobileSurfaceBar && (
+        <div
+          style={{
+            position: "fixed",
+            top: "var(--header-height)",
+            left: 0,
+            right: 0,
+            zIndex: 49,
+            display: "flex",
+            justifyContent: "center",
+            padding: "6px 16px",
+          }}
+        >
+          {mobileSurfaceBar}
+        </div>
+      )}
+
       {/* Stage: scrollable content area beneath fixed header */}
       <div
         style={{
@@ -394,7 +412,9 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
-          paddingTop: "calc(var(--header-height) + 16px)",
+          paddingTop: active && mobileSurfaceBar
+            ? "calc(var(--header-height) + 52px)"
+            : "calc(var(--header-height) + 16px)",
         }}
       >
         {/* Resting hero — greeting, pills, input. Fades/translates out on activate. */}
