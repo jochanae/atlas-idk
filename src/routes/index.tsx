@@ -1167,6 +1167,11 @@ function WorkspacePage() {
             session ? (
               <MobileSurfaceBar
                 active={surface === "workspace" ? "chat" : surface === "preview" ? "preview" : "chat"}
+                buildState={
+                  codegenLoading ? "building" :
+                  sending ? "thinking" :
+                  "idle"
+                }
                 onChange={(s) => {
                   if (s === "ledger") {
                     navigate({ to: "/ledger" });
