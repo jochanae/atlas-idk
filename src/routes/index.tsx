@@ -759,6 +759,22 @@ function WorkspacePage() {
       setGeneratedFilename(data.file?.filename ?? null);
       if (data.file?.content && data.file?.filename) {
         setGeneratedFiles((prev) => [...prev, { filename: data.file.filename, language: data.file.language ?? "tsx", content: data.file.content }]);
+        // Automated ledger logging — "Applied Patch" timeline entry
+        try {
+          await entriesTable().insert({
+            user_id: user!.id,
+            project_id: activeProjectId!,
+            session_id: session?.id ?? null,
+            status: "committed",
+            severity: "neutral",
+            title: `Applied Patch — ${data.file.filename}`,
+            summary: `Generated ${data.file.language ?? "tsx"} file via /build command.`,
+            verb: "build",
+          });
+          setLedgerCount((c) => c + 1);
+        } catch {
+          // Non-critical
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Code generation failed";
@@ -1307,6 +1323,12 @@ function WorkspacePage() {
               onRefreshThinkingPrompts={regenerateThinkingPrompts}
               onRollback={handleRollback}
               recentRollbackMsgId={recentRollbackMsgId}
+              onOpenDiff={(userContent, assistantContent) => {
+                setDiffOldCode(userContent);
+                setDiffNewCode(assistantContent);
+                setDiffLabels({ old: "Your prompt", new: "Atlas response" });
+                setDiffOpen(true);
+              }}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
@@ -1681,6 +1703,7 @@ function ChatPanel({
   onRefreshThinkingPrompts,
   onRollback,
   recentRollbackMsgId,
+  onOpenDiff,
 }: {
   newMessageIds: Set<string>;
   messages: ChatMessage[];
@@ -1702,6 +1725,7 @@ function ChatPanel({
   onRefreshThinkingPrompts: () => void | Promise<void>;
   onRollback: (m: ChatMessage) => void;
   recentRollbackMsgId: string | null;
+  onOpenDiff?: (userContent: string, assistantContent: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
@@ -2207,6 +2231,12 @@ function ChatPanel({
                     {showParkButton && (
                       <div style={{ display: "flex", gap: 16, marginTop: 4, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
+                          {onOpenDiff && (
+                            <MessageActionButton label="Diff" onClick={() => {
+                              const prevUser = [...messages].slice(0, messages.indexOf(m)).reverse().find((msg) => msg.role === "user");
+                              onOpenDiff(prevUser?.content ?? "(no user message)", proseForDisplay);
+                            }} />
+                          )}
                           <span style={{
                             display: "inline-flex",
                             animation: recentRollbackMsgId === m.id ? "atlas-rollback-glow 2s ease-in-out infinite" : undefined,
