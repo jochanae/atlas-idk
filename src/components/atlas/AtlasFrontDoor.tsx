@@ -474,23 +474,80 @@ export function AtlasFrontDoor({
             </div>
           </div>
         </div>
-      )}
 
-      {/* Active session content — fades & rises in */}
-      {active && (
+        {/* Active session content — cross-fades in over the resting hero */}
         <div
-          key="active"
+          aria-hidden={!active}
           style={{
-            flex: 1,
+            position: active ? "relative" : "absolute",
+            inset: active ? "auto" : 0,
+            flex: active ? 1 : "none",
             minHeight: 0,
             display: "flex",
             flexDirection: "column",
-            animation: "atlas-rise 400ms var(--ease-cinematic)",
+            opacity: active ? 1 : 0,
+            transform: active ? "translateY(0)" : "translateY(20px)",
+            pointerEvents: active ? "auto" : "none",
+            transition:
+              "opacity 400ms cubic-bezier(0.4, 0, 0.2, 1), transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+            transitionDelay: active ? "120ms" : "0ms",
+            willChange: "opacity, transform",
           }}
         >
-          {children}
+          {/* Collapsed mode indicator — replaces the row of pills in active state */}
+          {active && (() => {
+            const m = MODES.find((x) => x.id === activeMode);
+            if (!m) return null;
+            const isPhosphor = m.color === "phosphor";
+            const accent = isPhosphor ? "var(--phosphor)" : "var(--ember)";
+            const glow = isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.4)";
+            return (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  padding: "10px 16px 6px",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "3px 10px",
+                    borderRadius: 999,
+                    border: `0.5px solid ${accent}`,
+                    background: "var(--surface)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 9.5,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: accent,
+                    boxShadow: `0 0 10px -3px ${glow}`,
+                    animation: "atlas-tag-in 400ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: accent,
+                      boxShadow: `0 0 6px ${accent}`,
+                    }}
+                  />
+                  {m.label}
+                </span>
+              </div>
+            );
+          })()}
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            {children}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Active-mode input docked at bottom */}
       {active && (
