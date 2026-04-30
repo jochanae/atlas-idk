@@ -804,6 +804,7 @@ function WorkspacePage() {
             <ChatPanel
               messages={messages}
               sending={sending}
+              onStop={stopSending}
               setInput={setInput}
               sessionId={session?.id ?? ""}
               projectId={activeProjectId}
