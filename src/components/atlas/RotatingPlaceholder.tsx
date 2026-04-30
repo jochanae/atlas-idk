@@ -9,6 +9,13 @@ const LINES: Record<ModeId, string[]> = {
     "what's the question under the question",
     "what would you say if no one was listening",
   ],
+  plan: [
+    "outline the next phase",
+    "what depends on what",
+    "draft the strategy before the build",
+    "map the sequence of moves",
+    "what's the architecture here",
+  ],
   build: [
     "what are you putting together",
     "what's the next move",
