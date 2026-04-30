@@ -991,7 +991,7 @@ function WorkspacePage() {
   };
 
   const mainShell = (
-    <div className="atlas-shell-host min-h-screen h-full bg-background text-foreground overflow-hidden flex flex-col">
+    <div className="atlas-shell-host min-h-screen h-full bg-background text-foreground flex flex-col" style={{ overflow: "visible" }}>
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
       <main className="relative flex-1 min-h-0 overflow-hidden">
 
