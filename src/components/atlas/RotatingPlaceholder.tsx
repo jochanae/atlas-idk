@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ModeId } from "./AtlasFrontDoor";
 
 const LINES: Record<ModeId, string[]> = {
@@ -39,98 +39,94 @@ const LINES: Record<ModeId, string[]> = {
   ],
 };
 
-const TYPE_MS = 55;
-const ERASE_MS = 24;
-const HOLD_MS = 3000;
-const PAUSE_MS = 320;
-
-type Phase = "typing" | "holding" | "erasing" | "pausing";
-
-type PlaceholderState = {
-  text: string;
-  lineIndex: number;
-  phase: Phase;
-};
-
-const INITIAL_STATE: PlaceholderState = {
-  text: "",
-  lineIndex: 0,
-  phase: "typing",
-};
+const TYPE_MS = 60;
+const ERASE_MS = 28;
+const HOLD_MS = 1800;
+const PAUSE_MS = 380;
 
 export function RotatingPlaceholder({ mode, paused }: { mode: ModeId; paused: boolean }) {
-  const [state, setState] = useState<PlaceholderState>(INITIAL_STATE);
+  const [text, setText] = useState("");
+
+  // Refs hold the loop state so the effect never re-subscribes mid-animation.
+  const modeRef = useRef(mode);
+  const pausedRef = useRef(paused);
+  const lineIndexRef = useRef(0);
+  const charIndexRef = useRef(0);
+  const phaseRef = useRef<"typing" | "holding" | "erasing" | "pausing">("typing");
 
   useEffect(() => {
-    setState(INITIAL_STATE);
+    pausedRef.current = paused;
+  }, [paused]);
+
+  // When mode changes, reset cleanly to the first line of the new mode.
+  useEffect(() => {
+    modeRef.current = mode;
+    lineIndexRef.current = 0;
+    charIndexRef.current = 0;
+    phaseRef.current = "typing";
+    setText("");
   }, [mode]);
 
   useEffect(() => {
-    if (paused) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const lines = LINES[mode];
-    const delay =
-      state.phase === "holding"
-        ? HOLD_MS
-        : state.phase === "erasing"
-          ? ERASE_MS
-          : state.phase === "pausing"
-            ? PAUSE_MS
-            : TYPE_MS;
+    const tick = () => {
+      if (cancelled) return;
 
-    const timeout = window.setTimeout(() => {
-      setState((current) => {
-        const target = lines[current.lineIndex % lines.length];
+      if (pausedRef.current) {
+        timer = setTimeout(tick, 200);
+        return;
+      }
 
-        if (current.phase === "typing") {
-          if (current.text.length < target.length) {
-            return {
-              ...current,
-              text: target.slice(0, current.text.length + 1),
-            };
-          }
+      const lines = LINES[modeRef.current];
+      const line = lines[lineIndexRef.current % lines.length];
+      const phase = phaseRef.current;
 
-          return {
-            ...current,
-            phase: "holding",
-          };
+      let nextDelay = TYPE_MS;
+
+      if (phase === "typing") {
+        if (charIndexRef.current < line.length) {
+          charIndexRef.current += 1;
+          setText(line.slice(0, charIndexRef.current));
+          nextDelay = TYPE_MS;
+        } else {
+          phaseRef.current = "holding";
+          nextDelay = HOLD_MS;
         }
-
-        if (current.phase === "holding") {
-          return {
-            ...current,
-            phase: "erasing",
-          };
+      } else if (phase === "holding") {
+        phaseRef.current = "erasing";
+        nextDelay = ERASE_MS;
+      } else if (phase === "erasing") {
+        if (charIndexRef.current > 0) {
+          charIndexRef.current -= 1;
+          setText(line.slice(0, charIndexRef.current));
+          nextDelay = ERASE_MS;
+        } else {
+          lineIndexRef.current = (lineIndexRef.current + 1) % lines.length;
+          phaseRef.current = "pausing";
+          nextDelay = PAUSE_MS;
         }
+      } else {
+        // pausing → start typing the next line
+        phaseRef.current = "typing";
+        nextDelay = TYPE_MS;
+      }
 
-        if (current.phase === "erasing") {
-          if (current.text.length > 0) {
-            return {
-              ...current,
-              text: current.text.slice(0, -1),
-            };
-          }
+      timer = setTimeout(tick, nextDelay);
+    };
 
-          return {
-            text: "",
-            lineIndex: (current.lineIndex + 1) % lines.length,
-            phase: "pausing",
-          };
-        }
+    timer = setTimeout(tick, TYPE_MS);
 
-        return {
-          ...current,
-          phase: "typing",
-        };
-      });
-    }, delay);
-
-    return () => window.clearTimeout(timeout);
-  }, [mode, paused, state]);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, []); // mount-once loop; reads live values via refs
 
   return (
     <span aria-hidden style={{ pointerEvents: "none" }}>
-      {state.text}
+      {text}
       <span
         style={{
           display: "inline-block",
