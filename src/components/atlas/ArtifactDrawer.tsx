@@ -97,7 +97,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
           WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
           borderLeft: "0.5px solid var(--glass-border)",
           boxShadow: "-12px 0 48px rgba(0,0,0,0.5)",
-          zIndex: 40,
+          zIndex: 70,
           display: "flex",
           flexDirection: "column",
           color: "var(--foreground)",
@@ -157,7 +157,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.5)",
-            zIndex: 39,
+            zIndex: 69,
             animation: "atlas-fade-in 240ms ease",
           }}
         />
@@ -178,7 +178,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
           borderTopRightRadius: 16,
           boxShadow:
             "0 -2px 0 color-mix(in oklab, var(--accent-gold) 10%, transparent), 0 -18px 48px rgba(0,0,0,0.55)",
-          zIndex: 40,
+          zIndex: 70,
           display: "flex",
           flexDirection: "column",
           transition: "height 320ms cubic-bezier(0.4, 0, 0.2, 1)",

@@ -1167,6 +1167,11 @@ function WorkspacePage() {
             session ? (
               <MobileSurfaceBar
                 active={surface === "workspace" ? "chat" : surface === "preview" ? "preview" : "chat"}
+                buildState={
+                  codegenLoading ? "building" :
+                  sending ? "thinking" :
+                  "idle"
+                }
                 onChange={(s) => {
                   if (s === "ledger") {
                     navigate({ to: "/ledger" });
@@ -1294,7 +1299,7 @@ function WorkspacePage() {
           }
           secondaryPanel={
             session && surface !== "chat" ? (
-              <section className="absolute inset-x-0 top-12 bottom-24 z-20 bg-background/95 backdrop-blur-sm border-y border-border">
+              <section className="absolute inset-x-0 top-12 bottom-0 z-50 bg-background/95 backdrop-blur-sm border-y border-border">
                 {surface === "workspace" ? (
                   <WorkspacePanel nodes={nodes} />
                 ) : (

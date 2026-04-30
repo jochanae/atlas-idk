@@ -4,9 +4,13 @@ import { haptic } from "@/lib/haptics";
 
 type Surface = "chat" | "ledger" | "preview";
 
+export type BuildState = "idle" | "thinking" | "building" | "verifying";
+
 type Props = {
   active: Surface;
   onChange: (s: Surface) => void;
+  /** Live build state — drives the streaming indicator */
+  buildState?: BuildState;
 };
 
 const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
@@ -41,16 +45,28 @@ const SURFACES: Array<{ id: Surface; label: string; icon: ReactNode }> = [
   },
 ];
 
-export function MobileSurfaceBar({ active, onChange }: Props) {
+const BUILD_LABELS: Record<BuildState, string> = {
+  idle: "",
+  thinking: "Thinking…",
+  building: "Building…",
+  verifying: "Verifying…",
+};
+
+const BUILD_COLORS: Record<BuildState, string> = {
+  idle: "transparent",
+  thinking: "var(--accent-gold)",
+  building: "var(--ember)",
+  verifying: "var(--phosphor)",
+};
+
+export function MobileSurfaceBar({ active, onChange, buildState = "idle" }: Props) {
   const [expanded, setExpanded] = useState(false);
-  // Track whether panel should render (stays true during exit animation)
   const [mounted, setMounted] = useState(false);
   const [animating, setAnimating] = useState<"in" | "out" | null>(null);
 
   useEffect(() => {
     if (expanded) {
       setMounted(true);
-      // Trigger enter on next frame so the initial styles apply first
       requestAnimationFrame(() => requestAnimationFrame(() => setAnimating("in")));
     } else if (mounted) {
       setAnimating("out");
@@ -58,10 +74,11 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
       return () => clearTimeout(timer);
     }
   }, [expanded]);
+
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
   const activeSurface = SURFACES.find((s) => s.id === active) ?? SURFACES[0];
+  const isWorking = buildState !== "idle";
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -101,17 +118,21 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
   }, [expanded, active]);
 
   return (
-    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      {/* Collapsed state: active tab breadcrumb + ghost toggle */}
+    <div
+      className="atlas-mobile-surface-bar"
+      style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}
+    >
+      {/* Collapsed: breadcrumb + build state + ghost toggle */}
       <button
         ref={triggerRef}
         aria-expanded={expanded}
         aria-controls="atlas-surface-panel"
-        aria-label={`Current section: ${activeSurface.label}. Toggle navigation.`}
+        aria-label={`Current section: ${activeSurface.label}${isWorking ? `, ${BUILD_LABELS[buildState]}` : ""}. Toggle navigation.`}
         onClick={() => {
           setExpanded((o) => !o);
           haptic("light");
         }}
+        className="atlas-surface-trigger"
         style={{
           display: "flex",
           alignItems: "center",
@@ -124,6 +145,22 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
           transition: "all 160ms ease",
         }}
       >
+        {/* Streaming state pulse dot */}
+        {isWorking && (
+          <span
+            aria-hidden="true"
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: BUILD_COLORS[buildState],
+              boxShadow: `0 0 8px ${BUILD_COLORS[buildState]}`,
+              animation: "atlas-state-pulse 1.8s ease-in-out infinite",
+              flexShrink: 0,
+            }}
+          />
+        )}
+
         <span
           aria-hidden="true"
           style={{
@@ -131,13 +168,14 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
             fontSize: 9,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
-            color: "var(--accent-gold)",
+            color: isWorking ? BUILD_COLORS[buildState] : "var(--accent-gold)",
             opacity: expanded ? 0.5 : 0.7,
-            transition: "opacity 160ms ease",
+            transition: "opacity 160ms ease, color 160ms ease",
           }}
         >
-          {activeSurface.label}
+          {isWorking ? BUILD_LABELS[buildState] : activeSurface.label}
         </span>
+
         <ChevronDown
           aria-hidden="true"
           size={10}
@@ -246,9 +284,11 @@ export function MobileSurfaceBar({ active, onChange }: Props) {
         </div>
       )}
 
-      {/* Live region announces section changes to screen readers */}
+      {/* Live region announces section and build state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {`${activeSurface.label} section active`}
+        {isWorking
+          ? `${BUILD_LABELS[buildState]} — ${activeSurface.label} section`
+          : `${activeSurface.label} section active`}
       </div>
     </div>
   );
