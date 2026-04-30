@@ -384,8 +384,8 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Mobile surface bar — fixed below header in active mode */}
-      {active && mobileSurfaceBar && (
+      {/* Mobile surface bar + mode pill — fixed below header in active mode */}
+      {active && (
         <div
           style={{
             position: "fixed",
@@ -394,11 +394,14 @@ export function AtlasFrontDoor({
             right: 0,
             zIndex: 49,
             display: "flex",
-            justifyContent: "center",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
             padding: "6px 16px",
           }}
         >
           {mobileSurfaceBar}
+          <ModeDropdown activeMode={activeMode} onModeChange={onModeChange} />
         </div>
       )}
 
