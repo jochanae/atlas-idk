@@ -144,7 +144,17 @@ function WorkspacePage() {
   const [surface, setSurface] = useState<"chat" | "workspace" | "preview">("chat");
   const [expandedRec, setExpandedRec] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
-  const [activeMode, setActiveMode] = useState<ModeId>("think");
+  const [activeMode, setActiveModeRaw] = useState<ModeId>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("atlas-active-mode");
+      if (stored && ["think", "plan", "build", "explore", "decide", "audit"].includes(stored)) return stored as ModeId;
+    }
+    return "think";
+  });
+  const setActiveMode = useCallback((mode: ModeId) => {
+    setActiveModeRaw(mode);
+    try { localStorage.setItem("atlas-active-mode", mode); } catch {}
+  }, []);
   const [recents, setRecents] = useState<RecentSession[]>([]);
   const [inputFocusSignal, setInputFocusSignal] = useState(0);
   const [historyOpen, setHistoryOpen] = useState(false);
