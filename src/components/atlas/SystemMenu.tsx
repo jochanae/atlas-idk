@@ -38,6 +38,38 @@ const MENU_ITEMS = [
     ),
   },
   {
+    id: "filetree",
+    label: "File Tree",
+    description: "Browse generated files",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 13V3h4l2 2h6v8z" />
+      </svg>
+    ),
+  },
+  {
+    id: "diff",
+    label: "Diff Tracker",
+    description: "Compare code versions",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 8h10M2 2h5v5H2zM9 9h5v5H9z" />
+      </svg>
+    ),
+  },
+  {
+    id: "collaborate",
+    label: "Collaborate",
+    description: "Share & comment with team",
+    icon: (
+      <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="6" r="3" />
+        <circle cx="11" cy="11" r="3" />
+        <path d="M8.5 4.5l3 3" />
+      </svg>
+    ),
+  },
+  {
     id: "connectors",
     label: "Connectors",
     description: "APIs & integrations",

@@ -21,6 +21,10 @@ import { LivePreview } from "@/components/atlas/LivePreview";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
+import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
+import { DiffViewer } from "@/components/atlas/DiffViewer";
+import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
+import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
@@ -165,6 +169,14 @@ function WorkspacePage() {
   const [designSystemOpen, setDesignSystemOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<Array<{ filename: string; language: string; content: string }>>([]);
+  // New feature state (items 7–10)
+  const [fileTreeOpen, setFileTreeOpen] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffOldCode, setDiffOldCode] = useState("");
+  const [diffNewCode, setDiffNewCode] = useState("");
+  const [diffLabels, setDiffLabels] = useState<{ old: string; new: string }>({ old: "Before", new: "After" });
+  const [collaborateOpen, setCollaborateOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
@@ -758,6 +770,23 @@ function WorkspacePage() {
             if (id === "blueprints") setBlueprintsOpen(true);
             else if (id === "design") setDesignSystemOpen(true);
             else if (id === "connectors") setExportOpen(true);
+            else if (id === "filetree") setFileTreeOpen(true);
+            else if (id === "diff") {
+              // Show diff of the last two generated files if available
+              if (generatedFiles.length >= 2) {
+                const prev = generatedFiles[generatedFiles.length - 2];
+                const curr = generatedFiles[generatedFiles.length - 1];
+                setDiffOldCode(prev.content);
+                setDiffNewCode(curr.content);
+                setDiffLabels({ old: prev.filename, new: curr.filename });
+              } else if (generatedFiles.length === 1) {
+                setDiffOldCode("");
+                setDiffNewCode(generatedFiles[0].content);
+                setDiffLabels({ old: "(empty)", new: generatedFiles[0].filename });
+              }
+              setDiffOpen(true);
+            }
+            else if (id === "collaborate") setCollaborateOpen(true);
           }}
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
@@ -993,6 +1022,85 @@ function WorkspacePage() {
         onClose={() => setExportOpen(false)}
         files={generatedFiles}
         projectName={activeProject?.name}
+      />
+      <FileTreeDrawer
+        open={fileTreeOpen}
+        onClose={() => setFileTreeOpen(false)}
+        files={generatedFiles}
+        onFileSelect={(file) => {
+          setGeneratedCode(file.content);
+          setGeneratedFilename(file.filename);
+          setSurface("preview");
+          setFileTreeOpen(false);
+        }}
+      />
+      {diffOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 80,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <div
+            onClick={() => setDiffOpen(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              margin: "40px auto",
+              width: "min(700px, 95vw)",
+              height: "calc(100vh - 80px)",
+              background: "var(--surface)",
+              borderRadius: 12,
+              border: "0.5px solid var(--glass-border)",
+              overflow: "hidden",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+            }}
+          >
+            <DiffViewer
+              oldCode={diffOldCode}
+              newCode={diffNewCode}
+              oldLabel={diffLabels.old}
+              newLabel={diffLabels.new}
+              onAccept={() => {
+                toast.success("Changes accepted");
+                setDiffOpen(false);
+              }}
+              onReject={() => {
+                toast("Changes rejected");
+                setDiffOpen(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+      <CollaborationDrawer
+        open={collaborateOpen}
+        onClose={() => setCollaborateOpen(false)}
+        projectName={activeProject?.name}
+        sessionId={session?.id}
+      />
+      <OnboardingFlow
+        show={showOnboarding && recents.length === 0 && !session}
+        userName={
+          (user.user_metadata?.display_name as string | undefined) ||
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.email ? user.email.split("@")[0] : null)
+        }
+        onComplete={() => setShowOnboarding(false)}
+        onStartSession={(mode) => {
+          setActiveMode(mode as ModeId);
+          setInputFocusSignal((v) => v + 1);
+        }}
       />
     </div>
   );
