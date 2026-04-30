@@ -222,7 +222,87 @@ function WorkspacePage() {
     })();
   }, [user, session?.id]);
 
-  // Load messages, nodes, recs for the session/project
+  // Whisper Gate: check if active project already has a Compass
+  useEffect(() => {
+    if (!user || !activeProjectId) {
+      setHasCompass(null);
+      return;
+    }
+    (async () => {
+      const { data, error } = await compassTable()
+        .select("id")
+        .eq("project_id", activeProjectId)
+        .eq("user_id", user.id)
+        .order("version", { ascending: false });
+      if (error) {
+        setHasCompass(null);
+        return;
+      }
+      const list = (data ?? []) as Array<{ id: string }>;
+      setHasCompass(list.length > 0);
+    })();
+  }, [user, activeProjectId]);
+
+  const submitWhisper = async (answers: WhisperAnswers) => {
+    if (!user || !activeProjectId) return;
+    setWhisperSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("atlas-whisper", {
+        body: {
+          projectId: activeProjectId,
+          audience: answers.audience,
+          aesthetics: answers.aesthetics,
+          seedMaterial: answers.seedMaterial,
+          hasAttachment: answers.hasAttachment,
+          attachmentHint: answers.attachmentHint,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const compassMd: string = data?.compass_md ?? "";
+
+      // Open a fresh whisper-mode session and seed the chat with the Compass
+      // so the Drawer auto-detects it as a structured doc artifact.
+      const { data: sessionRow, error: sessionError } = await supabase
+        .from("sessions")
+        .insert({
+          project_id: activeProjectId,
+          user_id: user.id,
+          title: "Project Compass",
+          mode: "whisper",
+          status: "active",
+        })
+        .select("*")
+        .single();
+      if (sessionError) throw sessionError;
+
+      const created = sessionRow as AtlasSession;
+
+      const intro = `**Project Compass drafted.** Open in the Drawer →\n\n${compassMd}`;
+      await supabase.from("chat_messages").insert({
+        session_id: created.id,
+        user_id: user.id,
+        role: "assistant",
+        content: intro,
+        intent_type: "whisper_compass",
+      });
+
+      setSession(created);
+      setEntrySurface(false);
+      setSurface("chat");
+      setHasCompass(true);
+      setWhisperOpen(false);
+      await refresh(created, activeProjectId);
+      await loadRecents();
+      toast.success("Compass drafted");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Whisper Gate failed";
+      toast.error(msg);
+    } finally {
+      setWhisperSubmitting(false);
+    }
+  };
   const refresh = async (
     targetSession = session,
     targetProjectId = activeProjectId,
