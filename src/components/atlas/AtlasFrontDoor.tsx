@@ -969,6 +969,7 @@ export function AtlasFrontDoor({
               </button>
             </div>
           </div>
+          </div>
         </div>
       )}
 
