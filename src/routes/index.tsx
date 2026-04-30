@@ -169,6 +169,14 @@ function WorkspacePage() {
   const [designSystemOpen, setDesignSystemOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [generatedFiles, setGeneratedFiles] = useState<Array<{ filename: string; language: string; content: string }>>([]);
+  // New feature state (items 7–10)
+  const [fileTreeOpen, setFileTreeOpen] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffOldCode, setDiffOldCode] = useState("");
+  const [diffNewCode, setDiffNewCode] = useState("");
+  const [diffLabels, setDiffLabels] = useState<{ old: string; new: string }>({ old: "Before", new: "After" });
+  const [collaborateOpen, setCollaborateOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
