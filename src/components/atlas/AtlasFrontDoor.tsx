@@ -519,6 +519,14 @@ export function AtlasFrontDoor({
           0%, 100% { height: 3px; }
           50%      { height: 10px; }
         }
+        .atlas-avatar:hover {
+          transform: translateY(-1px);
+          border-color: color-mix(in oklab, var(--accent-gold) 70%, var(--border)) !important;
+          box-shadow:
+            inset 0 1px 0 color-mix(in oklab, white 10%, transparent),
+            0 0 0 1px color-mix(in oklab, var(--accent-gold) 35%, transparent),
+            0 0 18px -4px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
+        }
       `}</style>
     </div>
   );
