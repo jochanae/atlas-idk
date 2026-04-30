@@ -13,8 +13,8 @@ const MENU_ITEMS = [
   },
   {
     id: "blueprints",
-    label: "Blueprints",
-    description: "UI templates & structures",
+    label: "Blueprints & Templates",
+    description: "Wireframes & pre-styled UI kits",
     icon: (
       <svg viewBox="0 0 16 16" width={16} height={16} stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="2" width="5" height="5" rx="0.5" />
