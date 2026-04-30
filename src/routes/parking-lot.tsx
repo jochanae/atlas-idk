@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -171,8 +172,8 @@ function ParkingLot() {
 
       <main className="max-w-[1100px] mx-auto px-8 py-6">
         {loading ? (
-          <div className="py-24 text-center font-mono text-xs text-muted-foreground">
-            loading parking lot…
+          <div className="py-24 flex items-center justify-center">
+            <LoadingSpinner size="lg" text="Loading parking lot…" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-24 flex flex-col items-center text-center">
