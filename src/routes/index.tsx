@@ -463,6 +463,7 @@ function WorkspacePage() {
           verb: "audit",
         },
         status: "committed",
+        mode: activeMode,
       });
       setLedgerCount((c) => c + 1);
     } catch (e) {
