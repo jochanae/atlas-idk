@@ -70,101 +70,105 @@ const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Gi
 ];
 
 export function DesktopWorkspace({
-  mobileFallback,
-  canvas,
-  chatPane,
-  inspectorPanes,
+  renderMobile,
+  renderCanvas,
+  renderChatPane,
+  renderInspectorPanes,
   activeSurface,
   onSurfaceChange,
   onOpenHistory,
   parkedCount = 0,
   ledgerCount = 0,
-  header,
-  footer,
+  renderHeader,
+  renderFooter,
 }: DesktopWorkspaceProps) {
+  const isDesktop = useIsDesktop();
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("whisper");
-  const [chatVisible, setChatVisible] = useState(Boolean(chatPane));
+  const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
+
+  // Render only the active branch — prevents double-mounting heavy components
+  // (chat, realtime subscriptions, etc.).
+  if (!isDesktop) {
+    return <>{renderMobile()}</>;
+  }
+
+  const inspectorPanes = renderInspectorPanes();
 
   return (
-    <>
-      {/* Mobile / tablet — pass through existing experience */}
-      <div className="lg:hidden">{mobileFallback}</div>
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground">
+      {renderHeader && (
+        <div className="flex-shrink-0 border-b border-border/50">{renderHeader()}</div>
+      )}
 
-      {/* Desktop — four-pane workspace */}
-      <div className="hidden lg:flex lg:flex-col lg:h-screen lg:w-full lg:overflow-hidden bg-background text-foreground">
-        {header && (
-          <div className="flex-shrink-0 border-b border-border/50">{header}</div>
-        )}
+      <div className="flex-1 min-h-0">
+        <PanelGroup orientation="horizontal" id="atlas-workspace-v1" className="h-full w-full flex">
+          {/* ── Pane 1: Nav rail ─────────────────────────────────────── */}
+          <Panel
+            defaultSize={navCollapsed ? 4 : 14}
+            minSize={4}
+            maxSize={22}
+            className="border-r border-border/50 bg-card/30"
+          >
+            <NavRail
+              collapsed={navCollapsed}
+              onToggleCollapse={() => setNavCollapsed((v) => !v)}
+              activeSurface={activeSurface}
+              onSurfaceChange={onSurfaceChange}
+              onOpenHistory={onOpenHistory}
+              parkedCount={parkedCount}
+              ledgerCount={ledgerCount}
+              chatVisible={chatVisible}
+              onToggleChat={renderChatPane ? () => setChatVisible((v) => !v) : undefined}
+            />
+          </Panel>
 
-        <div className="flex-1 min-h-0">
-          <PanelGroup orientation="horizontal" id="atlas-workspace-v1" className="h-full w-full flex">
-            {/* ── Pane 1: Nav rail ─────────────────────────────────────── */}
-            <Panel
-              defaultSize={navCollapsed ? 4 : 14}
-              minSize={4}
-              maxSize={22}
-              className="border-r border-border/50 bg-card/30"
-            >
-              <NavRail
-                collapsed={navCollapsed}
-                onToggleCollapse={() => setNavCollapsed((v) => !v)}
-                activeSurface={activeSurface}
-                onSurfaceChange={onSurfaceChange}
-                onOpenHistory={onOpenHistory}
-                parkedCount={parkedCount}
-                ledgerCount={ledgerCount}
-                chatVisible={chatVisible}
-                onToggleChat={chatPane ? () => setChatVisible((v) => !v) : undefined}
-              />
-            </Panel>
+          <ResizeHandle />
 
-            <ResizeHandle />
+          {/* ── Pane 2: Atlas chat sidecar (optional) ────────────────── */}
+          {renderChatPane && chatVisible && (
+            <>
+              <Panel defaultSize={22} minSize={16} maxSize={40} className="bg-background">
+                <div className="h-full overflow-hidden flex flex-col">
+                  <PaneHeader title="Atlas" />
+                  <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
+                </div>
+              </Panel>
+              <ResizeHandle />
+            </>
+          )}
 
-            {/* ── Pane 2: Atlas chat sidecar (optional) ────────────────── */}
-            {chatPane && chatVisible && (
-              <>
-                <Panel defaultSize={22} minSize={16} maxSize={40} className="bg-background">
-                  <div className="h-full overflow-hidden flex flex-col">
-                    <PaneHeader title="Atlas" />
-                    <div className="flex-1 min-h-0 overflow-auto">{chatPane}</div>
-                  </div>
-                </Panel>
-                <ResizeHandle />
-              </>
-            )}
+          {/* ── Pane 3: Main canvas ─────────────────────────────────── */}
+          <Panel defaultSize={inspectorCollapsed ? 60 : 44} minSize={24}>
+            <div className="h-full overflow-hidden">{renderCanvas()}</div>
+          </Panel>
 
-            {/* ── Pane 3: Main canvas ─────────────────────────────────── */}
-            <Panel defaultSize={inspectorCollapsed ? 60 : 44} minSize={24}>
-              <div className="h-full overflow-hidden">{canvas}</div>
-            </Panel>
+          <ResizeHandle />
 
-            <ResizeHandle />
-
-            {/* ── Pane 4: Right inspector ─────────────────────────────── */}
-            <Panel
-              defaultSize={inspectorCollapsed ? 4 : 24}
-              minSize={4}
-              maxSize={40}
-              className="border-l border-border/50 bg-card/30"
-            >
-              <Inspector
-                collapsed={inspectorCollapsed}
-                onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
-                activeTab={inspectorTab}
-                onTabChange={setInspectorTab}
-                panes={inspectorPanes}
-              />
-            </Panel>
-          </PanelGroup>
-        </div>
-
-        {footer && <div className="flex-shrink-0">{footer}</div>}
+          {/* ── Pane 4: Right inspector ─────────────────────────────── */}
+          <Panel
+            defaultSize={inspectorCollapsed ? 4 : 24}
+            minSize={4}
+            maxSize={40}
+            className="border-l border-border/50 bg-card/30"
+          >
+            <Inspector
+              collapsed={inspectorCollapsed}
+              onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
+              activeTab={inspectorTab}
+              onTabChange={setInspectorTab}
+              panes={inspectorPanes}
+            />
+          </Panel>
+        </PanelGroup>
       </div>
-    </>
+
+      {renderFooter && <div className="flex-shrink-0">{renderFooter()}</div>}
+    </div>
   );
 }
+
 
 // ──────────────────────────────────────────────────────────────────────
 // Nav rail
