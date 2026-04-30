@@ -55,16 +55,53 @@ export function AtlasFrontDoor({
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [pillsOverflow, setPillsOverflow] = useState(false);
+
+  const TEXTAREA_MIN_HEIGHT = 48;
+  const TEXTAREA_MAX_HEIGHT = 160;
+
+  const adjustTextareaHeight = (element: HTMLTextAreaElement | null) => {
+    if (!element) return;
+    element.style.height = "0px";
+    const nextHeight = Math.max(TEXTAREA_MIN_HEIGHT, Math.min(element.scrollHeight, TEXTAREA_MAX_HEIGHT));
+    element.style.height = `${nextHeight}px`;
+    element.style.overflowY = element.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
+  };
+
+  const handleInputChange = (value: string) => {
+    onInputChange(value);
+    requestAnimationFrame(() => adjustTextareaHeight(textareaRef.current));
+  };
 
   useEffect(() => {
     const row = pillsRef.current;
-    if (!row || row.scrollWidth <= row.clientWidth) return;
-    row.scrollLeft = (row.scrollWidth - row.clientWidth) / 2;
+    if (!row) return;
+
+    const updateOverflow = () => {
+      setPillsOverflow(row.scrollWidth > row.clientWidth + 2);
+    };
+
+    updateOverflow();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateOverflow);
+      observer.observe(row);
+      const inner = row.firstElementChild;
+      if (inner instanceof HTMLElement) observer.observe(inner);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener("resize", updateOverflow);
+    return () => window.removeEventListener("resize", updateOverflow);
   }, []);
 
   useEffect(() => {
     if (inputFocusSignal > 0) textareaRef.current?.focus();
   }, [inputFocusSignal]);
+
+  useEffect(() => {
+    adjustTextareaHeight(textareaRef.current);
+  }, [input, active]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -161,17 +198,25 @@ export function AtlasFrontDoor({
             className="atlas-pills-row"
             style={{
               display: "flex",
-              justifyContent: "flex-start",
-              padding: "0 16px 22px",
+              justifyContent: pillsOverflow ? "flex-start" : "center",
+              padding: pillsOverflow ? "0 22px 22px" : "0 24px 22px",
               overflowX: "auto",
               overflowY: "hidden",
               scrollbarWidth: "none",
               WebkitOverflowScrolling: "touch",
+              scrollPaddingInline: 22,
             }}
           >
             <div
               className="atlas-pills-inner"
-              style={{ display: "flex", gap: 6, width: "max-content", margin: "0 auto", flexWrap: "nowrap" }}
+              style={{
+                display: "flex",
+                gap: 8,
+                width: "max-content",
+                margin: 0,
+                paddingInline: pillsOverflow ? 4 : 0,
+                flexWrap: "nowrap",
+              }}
             >
               {MODES.map((m) => {
                 const isActive = activeMode === m.id;
@@ -245,7 +290,7 @@ export function AtlasFrontDoor({
               <textarea
                 ref={textareaRef}
                 value={input}
-                onChange={(e) => onInputChange(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={2}
                 style={{
@@ -260,6 +305,10 @@ export function AtlasFrontDoor({
                   fontFamily: "inherit",
                   position: "relative",
                   zIndex: 1,
+                  minHeight: TEXTAREA_MIN_HEIGHT,
+                  maxHeight: TEXTAREA_MAX_HEIGHT,
+                  overflowY: "hidden",
+                  display: "block",
                 }}
               />
             </div>
@@ -440,7 +489,7 @@ export function AtlasFrontDoor({
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => onInputChange(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="reply to atlas…"
             rows={2}
@@ -454,6 +503,10 @@ export function AtlasFrontDoor({
               lineHeight: 1.5,
               resize: "none",
               fontFamily: "inherit",
+              minHeight: TEXTAREA_MIN_HEIGHT,
+              maxHeight: TEXTAREA_MAX_HEIGHT,
+              overflowY: "hidden",
+              display: "block",
             }}
           />
           <div
@@ -501,7 +554,10 @@ export function AtlasFrontDoor({
         }
         @media (max-width: 360px) {
           .atlas-greeting { font-size: 19px; }
+          .atlas-pills-row { padding-left: 18px !important; padding-right: 18px !important; }
+          .atlas-pills-inner { gap: 6px !important; padding-inline: 2px !important; }
           .atlas-mode-pill { font-size: 10px !important; padding: 4px 10px !important; }
+          .atlas-input-shell { margin: 0 12px !important; padding: 14px 14px !important; }
         }
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
