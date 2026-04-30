@@ -386,11 +386,7 @@ export function AtlasFrontDoor({
                   projectId={projectId}
                   onFilesUploaded={onFilesUploaded}
                   onSelect={(id) => {
-                    if (id === "blueprints") {
-                      // TODO: open blueprints library
-                    } else if (id === "design") {
-                      // TODO: open design system
-                    }
+                    onSystemMenuSelect?.(id);
                   }}
                 />
               </div>
