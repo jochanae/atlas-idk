@@ -754,6 +754,11 @@ function WorkspacePage() {
           projectId={activeProjectId}
           onFilesUploaded={(files) => setAttachedFiles((prev) => [...prev, ...files])}
           onGenerateCode={generateCode}
+          onSystemMenuSelect={(id) => {
+            if (id === "blueprints") setBlueprintsOpen(true);
+            else if (id === "design") setDesignSystemOpen(true);
+            else if (id === "connectors") setExportOpen(true);
+          }}
           sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
           onWordmarkClick={() => {
             if (session) {
