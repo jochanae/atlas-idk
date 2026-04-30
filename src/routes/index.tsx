@@ -919,7 +919,7 @@ function WorkspacePage() {
         <AtlasFrontDoor
           active={isActive}
           input={input}
-          onInputChange={(v) => { setInput(v); if (v && adaptivePlaceholder) setAdaptivePlaceholder(null); }}
+          onInputChange={(v) => { setInput(v); if (adaptivePlaceholder) setAdaptivePlaceholder(null); }}
           sending={sending}
           activeMode={activeMode}
           inputFocusSignal={inputFocusSignal}
