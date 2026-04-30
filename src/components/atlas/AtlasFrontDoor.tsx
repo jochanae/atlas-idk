@@ -382,7 +382,9 @@ export function AtlasFrontDoor({
                     textOverflow: "ellipsis",
                   }}
                 >
-                  {queueActive ? (
+                  {adaptivePlaceholder ? (
+                    <span aria-hidden style={{ pointerEvents: "none" }}>{adaptivePlaceholder}</span>
+                  ) : queueActive ? (
                     <span aria-hidden style={{ pointerEvents: "none" }}>add a follow-up to the queue…</span>
                   ) : (
                     <RotatingPlaceholder mode={activeMode} paused={false} />
