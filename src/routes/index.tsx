@@ -1157,6 +1157,8 @@ function WorkspacePage() {
               onParkThinkingPrompt={parkThinkingPrompt}
               onDismissThinkingPrompt={dismissThinkingPrompt}
               onRefreshThinkingPrompts={regenerateThinkingPrompts}
+              onRollback={handleRollback}
+              recentRollbackMsgId={recentRollbackMsgId}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
