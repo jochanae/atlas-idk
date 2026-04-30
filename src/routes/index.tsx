@@ -1337,6 +1337,9 @@ function WorkspacePage() {
                     filename={generatedFilename ?? undefined}
                     loading={codegenLoading}
                     error={codegenError}
+                    onElementSelect={(selector) => {
+                      pushConsole("info", `↗ Selected: ${selector}`, "preview");
+                    }}
                   />
                 )}
               </section>
