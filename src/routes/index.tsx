@@ -1518,6 +1518,9 @@ function WorkspacePage() {
         theme={theme}
         onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
         onSignOut={signOut}
+        user={user}
+        projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
+        buildHistory={buildHistory}
       />
       <BlueprintsDrawer
         open={blueprintsOpen}
