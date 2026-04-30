@@ -147,12 +147,60 @@ interface StructuralIntegrityPanelProps {
   onClose: () => void;
 }
 
+const PRESETS_KEY = "atlas-integrity-presets";
+
+interface FilterPreset {
+  name: string;
+  search: string;
+  category: AuditItem["category"] | "all";
+  status: AuditItem["status"] | "all";
+}
+
+function loadPresets(): FilterPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function savePresets(presets: FilterPreset[]) {
+  try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch {}
+}
+
 export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityPanelProps) {
   const items = useMemo(() => buildAuditManifest(), []);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<AuditItem["category"] | "all">("all");
   const [filterStatus, setFilterStatus] = useState<AuditItem["status"] | "all">("all");
+  const [presets, setPresets] = useState<FilterPreset[]>(loadPresets);
+  const [showSavePreset, setShowSavePreset] = useState(false);
+  const [presetName, setPresetName] = useState("");
+
+  const handleSavePreset = () => {
+    if (!presetName.trim()) return;
+    const newPreset: FilterPreset = { name: presetName.trim(), search, category: filterCategory, status: filterStatus };
+    const updated = [...presets, newPreset];
+    setPresets(updated);
+    savePresets(updated);
+    setPresetName("");
+    setShowSavePreset(false);
+    haptic("medium");
+  };
+
+  const handleLoadPreset = (p: FilterPreset) => {
+    setSearch(p.search);
+    setFilterCategory(p.category);
+    setFilterStatus(p.status);
+    haptic("light");
+  };
+
+  const handleDeletePreset = (idx: number) => {
+    const updated = presets.filter((_, i) => i !== idx);
+    setPresets(updated);
+    savePresets(updated);
+    haptic("light");
+  };
 
   const filtered = useMemo(() => {
     let result = items;
@@ -354,9 +402,82 @@ export function StructuralIntegrityPanel({ open, onClose }: StructuralIntegrityP
               </button>
             ))}
           </div>
+          {/* Saved presets */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center", marginTop: 4 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted-text)", opacity: 0.6, marginRight: 2 }}>
+              Presets
+            </span>
+            {presets.map((p, idx) => (
+              <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                <button
+                  onClick={() => handleLoadPreset(p)}
+                  style={{
+                    padding: "2px 8px", borderRadius: 10, fontSize: 9,
+                    fontFamily: "var(--font-mono)", letterSpacing: "0.04em",
+                    border: "0.5px solid color-mix(in oklab, var(--accent-gold) 25%, var(--border))",
+                    background: "color-mix(in oklab, var(--accent-gold) 6%, var(--surface))",
+                    color: "var(--accent-gold)", cursor: "pointer", transition: "all 150ms ease",
+                  }}
+                >
+                  {p.name}
+                </button>
+                <button
+                  onClick={() => handleDeletePreset(idx)}
+                  style={{
+                    width: 14, height: 14, borderRadius: 4, border: "none", background: "transparent",
+                    color: "var(--muted-text)", fontSize: 10, cursor: "pointer", display: "inline-flex",
+                    alignItems: "center", justifyContent: "center", opacity: 0.4,
+                  }}
+                  title="Delete preset"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {showSavePreset ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <input
+                  autoFocus
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSavePreset(); if (e.key === "Escape") setShowSavePreset(false); }}
+                  placeholder="Preset name…"
+                  style={{
+                    padding: "2px 8px", borderRadius: 8, fontSize: 9, width: 100,
+                    fontFamily: "var(--font-mono)", border: "0.5px solid var(--accent-gold)",
+                    background: "var(--surface)", color: "var(--foreground)", outline: "none",
+                  }}
+                />
+                <button
+                  onClick={handleSavePreset}
+                  style={{
+                    padding: "2px 6px", borderRadius: 6, fontSize: 9,
+                    fontFamily: "var(--font-mono)", border: "0.5px solid var(--accent-gold)",
+                    background: "color-mix(in oklab, var(--accent-gold) 12%, var(--surface))",
+                    color: "var(--accent-gold)", cursor: "pointer",
+                  }}
+                >
+                  Save
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setShowSavePreset(true)}
+                style={{
+                  padding: "2px 8px", borderRadius: 10, fontSize: 9,
+                  fontFamily: "var(--font-mono)", letterSpacing: "0.04em",
+                  border: "0.5px dashed var(--border)",
+                  background: "transparent", color: "var(--muted-text)",
+                  cursor: "pointer", transition: "all 150ms ease",
+                }}
+              >
+                + Save current
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Audit items by category */}
+
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
           {filtered.length === 0 && (
             <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted-text)", fontFamily: "var(--font-mono)", fontSize: 12 }}>
