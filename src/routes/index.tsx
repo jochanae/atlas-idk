@@ -1414,8 +1414,24 @@ function ChatPanel({
             );
           })}
         {sending && (
-          <div className="font-mono text-[10px] text-[color:var(--phosphor)] uppercase tracking-[0.15em]">
-            atlas thinking…
+          <div className="flex items-center gap-2">
+            <div className="font-mono text-[10px] text-[color:var(--phosphor)] uppercase tracking-[0.15em]">
+              atlas thinking…
+            </div>
+            <button
+              type="button"
+              onClick={onStop}
+              className="font-mono text-[10px] uppercase tracking-[0.15em] rounded-sm px-2 py-0.5 transition-colors"
+              style={{
+                background: "transparent",
+                border: "0.5px solid var(--ember)",
+                color: "var(--ember)",
+              }}
+              aria-label="Stop Atlas"
+              title="Stop Atlas"
+            >
+              ◼ Stop
+            </button>
           </div>
         )}
       </div>
