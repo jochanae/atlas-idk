@@ -46,6 +46,8 @@ export function AtlasFrontDoor({
   headerActions,
   bottomTabs,
   secondaryPanel,
+  utilityBarLeft,
+  utilityBarRight,
   inputFocusSignal,
   sidebarToggle,
   userName,
