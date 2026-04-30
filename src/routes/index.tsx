@@ -454,6 +454,15 @@ function WorkspacePage() {
 
   const send = async (text: string) => {
     if (!text.trim() || sending) return;
+
+    // Detect /build command → route to code generation
+    const buildMatch = text.match(/^\/build\s+(.+)/is);
+    if (buildMatch) {
+      setInput("");
+      generateCode(buildMatch[1].trim());
+      return;
+    }
+
     setSending(true);
     setAuditWarning(false);
     setInput("");
