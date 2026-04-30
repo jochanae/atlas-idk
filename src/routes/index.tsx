@@ -1731,6 +1731,7 @@ function ChatPanel({
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
   const chipRef = useRef<HTMLButtonElement>(null);
   const statusTimerRef = useRef<number | null>(null);
   const fadeTimerRef = useRef<number | null>(null);
