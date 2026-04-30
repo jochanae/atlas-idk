@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { StreamingText, ChunkedBubbles } from "@/components/atlas/StreamingText";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
@@ -119,6 +120,7 @@ function WorkspacePage() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [session, setSession] = useState<AtlasSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessageIds] = useState(() => new Set<string>());
   const [nodes, setNodes] = useState<WorkspaceNode[]>([]);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [input, setInput] = useState("");
@@ -484,6 +486,8 @@ function WorkspacePage() {
       if (controller.signal.aborted) return;
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      // Mark the new assistant message for streaming animation
+      if (data?.message?.id) newMessageIds.add(data.message.id);
       const updatedTitle = text.slice(0, 60);
       setSession((current) =>
         current && current.id === target.session.id
@@ -813,6 +817,7 @@ function WorkspacePage() {
             }}
           >
             <ChatPanel
+              newMessageIds={newMessageIds}
               messages={messages}
               sending={sending}
               onStop={stopSending}
@@ -950,6 +955,7 @@ function WorkspacePage() {
 
 /* -------- Chat Panel -------- */
 function ChatPanel({
+  newMessageIds,
   messages,
   sending,
   onStop,
@@ -968,6 +974,7 @@ function ChatPanel({
   onDismissThinkingPrompt,
   onRefreshThinkingPrompts,
 }: {
+  newMessageIds: Set<string>;
   messages: ChatMessage[];
   sending: boolean;
   onStop: () => void;
@@ -1395,9 +1402,37 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
-                              {proseForDisplay}
-                            </div>
+                            newMessageIds.has(m.id) ? (
+                              <ChunkedBubbles
+                                text={proseForDisplay}
+                                isNew
+                                renderBubble={(chunk, idx, isNewChunk) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      marginBottom: 10,
+                                      animation: isNewChunk ? undefined : "atlas-bubble-in 300ms ease forwards",
+                                    }}
+                                  >
+                                    <StreamingText
+                                      text={chunk}
+                                      animate={isNewChunk}
+                                      speed={30}
+                                      onComplete={() => {
+                                        // After last chunk finishes, remove from new set
+                                        // so re-renders don't re-animate
+                                      }}
+                                      className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
+                                      style={{ textAlign: "left" }}
+                                    />
+                                  </div>
+                                )}
+                              />
+                            ) : (
+                              <div className="text-[13px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
+                                {proseForDisplay}
+                              </div>
+                            )
                           )}
                           {card && cardVersion !== null && (
                             <div className="pt-2">
