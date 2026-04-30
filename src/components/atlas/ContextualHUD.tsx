@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect, type CSSProperties } from "react";
+import { BottomSheet } from "./BottomSheet";
 
 type Suggestion = {
   id: string;
