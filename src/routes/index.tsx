@@ -707,6 +707,8 @@ function WorkspacePage() {
           inputFocusSignal={inputFocusSignal}
           onModeChange={setActiveMode}
           onSend={send}
+          recents={recents}
+          onOpenSession={openSession}
           userName={
             (user.user_metadata?.display_name as string | undefined) ||
             (user.user_metadata?.full_name as string | undefined) ||
