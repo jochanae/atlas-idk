@@ -631,6 +631,12 @@ export function AtlasFrontDoor({
             flexShrink: 0,
           }}
         >
+          {/* Contextual HUD — suggestion chips above input */}
+          {contextualHUD && (
+            <div style={{ marginBottom: 8 }}>
+              {contextualHUD}
+            </div>
+          )}
           <textarea
             ref={textareaRef}
             value={input}
