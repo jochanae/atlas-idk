@@ -486,17 +486,23 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
+          {/* Inline timestamp — anchored under the input, in flow (not floating). */}
+          <InlineTimestamp />
+
           {/* Continue where you left off — recent sessions list. Only when not active. */}
           {recents && recents.length > 0 && onOpenSession && (
             <div
               style={{
-                margin: "32px 0 0",
+                margin: "20px 0 0",
                 animation: "atlas-recents-in 480ms cubic-bezier(0.4, 0, 0.2, 1) 200ms backwards",
               }}
             >
               <div
                 style={{
                   padding: "0 22px 6px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   fontFamily: "var(--font-mono)",
                   fontSize: 9.5,
                   letterSpacing: "0.14em",
@@ -505,10 +511,30 @@ export function AtlasFrontDoor({
                   opacity: 0.7,
                 }}
               >
-                Continue where you left off
+                <span>Continue where you left off</span>
+                {recents.length > 3 && onViewAllRecents && (
+                  <button
+                    type="button"
+                    onClick={onViewAllRecents}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 9.5,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: "var(--accent-gold)",
+                      opacity: 0.85,
+                      cursor: "pointer",
+                    }}
+                  >
+                    View all →
+                  </button>
+                )}
               </div>
               <SessionHistoryList
-                sessions={recents.slice(0, 5)}
+                sessions={recents.slice(0, 3)}
                 onOpenSession={onOpenSession}
               />
             </div>
