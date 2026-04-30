@@ -14,6 +14,15 @@ export const MODES = [
 
 export type ModeId = typeof MODES[number]["id"];
 
+const MODE_PLACEHOLDERS: Record<ModeId, string> = {
+  think: "What's the core logic?",
+  plan: "Outline the next phase…",
+  build: "Define the next component…",
+  explore: "Search the architecture…",
+  decide: "What are you choosing between?",
+  audit: "What needs inspection?",
+};
+
 export interface RecentSession {
   id: string;
   title: string;
