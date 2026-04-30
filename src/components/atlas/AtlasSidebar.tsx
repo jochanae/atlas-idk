@@ -333,11 +333,7 @@ export function AtlasSidebar({
                   paddingTop: 4,
                 }}
               >
-                {projects.length === 0 ? (
-                  <div style={{ gridColumn: "1 / -1", padding: "12px 4px", textAlign: "center" }}>
-                    <EmptyState text="no projects yet — start a session to create one." />
-                  </div>
-                ) : projects.map((p) => (
+                {projects.map((p) => (
                   <div
                     key={p.id}
                     style={{
@@ -361,7 +357,7 @@ export function AtlasSidebar({
                       style={{
                         width: "100%",
                         aspectRatio: "16/10",
-                        background: "var(--background)",
+                        background: "linear-gradient(135deg, color-mix(in oklab, var(--accent-gold) 8%, var(--background)), color-mix(in oklab, var(--accent-gold) 3%, var(--surface)))",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -375,15 +371,13 @@ export function AtlasSidebar({
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
                       ) : (
-                        <span
-                          style={{
-                            fontSize: 20,
-                            color: "var(--accent-gold)",
-                            opacity: 0.25,
-                          }}
-                        >
-                          ◻
-                        </span>
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--accent-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                          <rect x="3" y="3" width="22" height="16" rx="2" />
+                          <circle cx="9" cy="10" r="2" />
+                          <path d="M25 15l-5-4-4 3-3-2-7 5" />
+                          <line x1="3" y1="22" x2="12" y2="22" />
+                          <line x1="3" y1="25" x2="8" y2="25" />
+                        </svg>
                       )}
                     </div>
                     <div
@@ -401,6 +395,47 @@ export function AtlasSidebar({
                     </div>
                   </div>
                 ))}
+                {/* + New Project card */}
+                <button
+                  onClick={onNewSession}
+                  style={{
+                    borderRadius: 8,
+                    border: "1px dashed color-mix(in oklab, var(--accent-gold) 25%, transparent)",
+                    overflow: "hidden",
+                    background: "transparent",
+                    cursor: "pointer",
+                    transition: "border-color 180ms ease, background 180ms ease",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                    minHeight: 80,
+                    padding: 8,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 50%, transparent)";
+                    e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 5%, transparent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 25%, transparent)";
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <Plus size={16} style={{ color: "var(--accent-gold)", opacity: 0.5 }} />
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 9,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--accent-gold)",
+                      opacity: 0.5,
+                    }}
+                  >
+                    New
+                  </span>
+                </button>
               </div>
             </div>
           </>
