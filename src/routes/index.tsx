@@ -841,6 +841,7 @@ function WorkspacePage() {
   // ── Task Queue handlers ──
   const addToQueue = useCallback((text: string) => {
     setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const }]);
+    haptic("light");
   }, []);
 
   const executeQueueItem = useCallback(async (id: string) => {
