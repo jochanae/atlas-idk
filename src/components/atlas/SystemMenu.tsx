@@ -70,6 +70,10 @@ function triggerHaptic(style: "pulse" | "thump") {
 
 interface SystemMenuProps {
   onSelect?: (id: string) => void;
+  userId?: string;
+  projectId?: string | null;
+  /** Called after files are uploaded with their public URLs */
+  onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
 }
 
 export function SystemMenu({ onSelect }: SystemMenuProps) {
