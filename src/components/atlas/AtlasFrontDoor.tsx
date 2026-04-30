@@ -907,12 +907,13 @@ export function AtlasFrontDoor({
           50%      { height: 10px; }
         }
         .atlas-avatar:hover {
-          transform: translateY(-1px);
-          border-color: color-mix(in oklab, var(--accent-gold) 70%, var(--border)) !important;
+          transform: translateY(-1px) scale(1.04);
+          border-color: color-mix(in oklab, var(--accent-gold) 80%, var(--border)) !important;
           box-shadow:
-            inset 0 1px 0 color-mix(in oklab, white 10%, transparent),
-            0 0 0 1px color-mix(in oklab, var(--accent-gold) 35%, transparent),
-            0 0 18px -4px color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
+            0 0 0 3px color-mix(in oklab, var(--accent-gold) 18%, transparent),
+            0 0 24px -2px color-mix(in oklab, var(--accent-gold) 55%, transparent),
+            0 0 48px -8px color-mix(in oklab, var(--accent-gold) 25%, transparent),
+            0 4px 18px -4px rgba(0,0,0,0.55) !important;
         }
       `}</style>
     </div>
