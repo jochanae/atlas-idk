@@ -11,6 +11,7 @@ import {
 } from "@/components/atlas/AtlasFrontDoor";
 import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import { UserAvatar } from "@/components/atlas/UserAvatar";
+import { UserMenu } from "@/components/atlas/UserMenu";
 import {
   relativeTime,
   type ChatMessage,
@@ -436,7 +437,12 @@ function WorkspacePage() {
                   />
                 </>
               )}
-              <UserAvatar user={user} size={36} onClick={signOut} />
+              <UserMenu
+                user={user}
+                theme={theme}
+                onThemeChange={setTheme}
+                onSignOut={signOut}
+              />
             </div>
           }
           secondaryPanel={
