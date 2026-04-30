@@ -2231,6 +2231,12 @@ function ChatPanel({
                     {showParkButton && (
                       <div style={{ display: "flex", gap: 16, marginTop: 4, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
+                          {onOpenDiff && (
+                            <MessageActionButton label="Diff" onClick={() => {
+                              const prevUser = [...messages].slice(0, messages.indexOf(m)).reverse().find((msg) => msg.role === "user");
+                              onOpenDiff(prevUser?.content ?? "(no user message)", proseForDisplay);
+                            }} />
+                          )}
                           <span style={{
                             display: "inline-flex",
                             animation: recentRollbackMsgId === m.id ? "atlas-rollback-glow 2s ease-in-out infinite" : undefined,
