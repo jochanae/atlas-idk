@@ -160,6 +160,11 @@ function WorkspacePage() {
   const [codegenLoading, setCodegenLoading] = useState(false);
   const [codegenError, setCodegenError] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<Array<{ name: string; url: string; type: string }>>([]);
+  // Feature drawer state
+  const [blueprintsOpen, setBlueprintsOpen] = useState(false);
+  const [designSystemOpen, setDesignSystemOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [generatedFiles, setGeneratedFiles] = useState<Array<{ filename: string; language: string; content: string }>>([]);
 
   // Track viewport for adaptive shell padding (drawer right-pane reserves space)
   useEffect(() => {
