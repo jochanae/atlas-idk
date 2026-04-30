@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 
 export const MODES = [
@@ -28,6 +28,7 @@ type AtlasFrontDoorProps = {
   secondaryPanel?: ReactNode;
   inputFocusSignal: number;
   sidebarToggle?: ReactNode;
+  userName?: string | null;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
@@ -45,6 +46,7 @@ export function AtlasFrontDoor({
   secondaryPanel,
   inputFocusSignal,
   sidebarToggle,
+  userName,
   onModeChange,
   onInputChange,
   onSend,
@@ -121,6 +123,7 @@ export function AtlasFrontDoor({
           {headerActions}
         </div>
       </div>
+      {!active && <AmbientClock />}
 
       {/* Front door hero — vertically centered, cinematic */}
       {!active && (
@@ -135,29 +138,17 @@ export function AtlasFrontDoor({
             animation: "atlas-rise 420ms var(--ease-cinematic)",
           }}
         >
-          <div style={{ textAlign: "center", padding: "0 24px 28px" }}>
+          <div style={{ textAlign: "center", padding: "0 24px 44px" }}>
             <div
               style={{
                 fontSize: 26,
-                fontWeight: 400,
+                fontWeight: 300,
                 color: "var(--foreground)",
                 lineHeight: 1.3,
-                letterSpacing: "-0.01em",
-                marginBottom: 10,
+                letterSpacing: "-0.005em",
               }}
             >
-              What's on your mind?
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                color: "var(--muted-text)",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
-            >
-              atlas is ready
+              {greetingFor(new Date(), userName)}
             </div>
           </div>
 
@@ -595,3 +586,48 @@ export function SessionHistoryList({
     </>
   );
 }
+
+function greetingFor(now: Date, name?: string | null): string {
+  const h = now.getHours();
+  const period = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+  const first = (name || "").trim().split(/\s+/)[0];
+  return first ? `Good ${period}, ${first}.` : `Good ${period}.`;
+}
+
+function AmbientClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const day = days[now.getDay()];
+  const mon = months[now.getMonth()];
+  const date = now.getDate();
+  let h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  const stamp = `${day} ${mon} ${date} | ${h}:${m} ${ampm}`;
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "fixed",
+        right: 18,
+        bottom: 14,
+        fontFamily: "var(--font-mono)",
+        fontSize: 10,
+        letterSpacing: "0.18em",
+        color: "color-mix(in oklab, var(--foreground) 42%, transparent)",
+        userSelect: "none",
+        pointerEvents: "none",
+        zIndex: 5,
+      }}
+    >
+      {stamp}
+    </div>
+  );
+}
+
