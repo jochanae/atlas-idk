@@ -262,6 +262,11 @@
   to { transform: translateY(0); }
 }
 
+@keyframes atlas-surface-slide {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
 /* Hide mobile surface bar on desktop (desktop uses DesktopWorkspace nav rail) */
 @media (min-width: 1024px) {
   .atlas-mobile-surface-bar { display: none !important; }
