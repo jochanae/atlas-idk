@@ -528,15 +528,17 @@ function WorkspacePage() {
       };
       setMessages((prev) => [...prev, optimistic]);
 
+      const planModeHint = activeMode === "plan"
+        ? "\n\n[SYSTEM: User is in Plan Mode. Respond with an architectural breakdown. Format steps as a numbered list. Each step should be a clear, actionable phase. If steps depend on each other, mention the dependency explicitly (e.g. 'depends on step 1'). Do NOT write code.]"
+        : "";
+
       const { data, error } = await supabase.functions.invoke("atlas-chat", {
         body: {
           sessionId: target.session.id,
           projectId: target.projectId,
-          message: text,
+          message: text + planModeHint,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
         },
-        // supabase-js v2 forwards this signal to fetch — calling
-        // controller.abort() rejects this invoke immediately.
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
