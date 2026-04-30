@@ -1990,6 +1990,15 @@ function ChatPanel({
 }
 
 const ACTION_ICONS: Record<string, { svg: React.ReactNode; title: string }> = {
+  Rollback: {
+    title: "Rollback to this point",
+    svg: (
+      <svg viewBox="0 0 16 16" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 8a6 6 0 1112 0A6 6 0 012 8z" opacity={0.3} />
+        <path d="M5 8h6M5 8l2.5-2.5M5 8l2.5 2.5" />
+      </svg>
+    ),
+  },
   Copy: {
     title: "Copy",
     svg: (
