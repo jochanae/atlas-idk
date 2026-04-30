@@ -76,6 +76,8 @@ interface CreateFromCardArgs {
   sourceMessageId: string;
   payload: CommitCardPayload;
   status: Extract<EntryStatus, "committed" | "parked">;
+  /** Atlas mode that produced this entry (think/plan/build/explore/decide/audit). */
+  mode?: string | null;
 }
 
 /**
