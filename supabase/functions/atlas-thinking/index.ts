@@ -51,7 +51,27 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    // Gather context (RLS-scoped via userClient)
+    // Gather context (RLS-scoped via userClient).
+    // Ledger and Parking Lot are now the same `entries` table; the only
+    // difference is `status`. We split into two queries here purely for
+    // the prompt template.
+    const entriesAny = userClient.from(
+      "entries" as unknown as Parameters<typeof userClient.from>[0],
+    ) as unknown as {
+      select: (cols: string) => {
+        eq: (col: string, val: unknown) => {
+          eq: (col: string, val: unknown) => {
+            order: (col: string, opts: { ascending: boolean }) => {
+              limit: (n: number) => Promise<{ data: unknown[] | null }>;
+            };
+          };
+          order: (col: string, opts: { ascending: boolean }) => {
+            limit: (n: number) => Promise<{ data: unknown[] | null }>;
+          };
+        };
+      };
+    };
+
     const [compassRes, ledgerRes, parkedRes, existingRes] = await Promise.all([
       userClient
         .from("project_compass")
@@ -60,15 +80,14 @@ Deno.serve(async (req) => {
         .order("version", { ascending: false })
         .limit(1)
         .maybeSingle(),
-      userClient
-        .from("ledger_entries")
-        .select("title, description, status, is_violation, created_at")
+      entriesAny
+        .select("title, summary, severity, verb, is_violation, created_at")
         .eq("project_id", projectId)
+        .eq("status", "committed")
         .order("created_at", { ascending: false })
         .limit(8),
-      userClient
-        .from("parked_items")
-        .select("label, source_context, kind, status")
+      entriesAny
+        .select("title, summary, verb")
         .eq("project_id", projectId)
         .eq("status", "parked")
         .order("created_at", { ascending: false })
@@ -81,8 +100,16 @@ Deno.serve(async (req) => {
     ]);
 
     const compass = compassRes.data;
-    const ledger = ledgerRes.data ?? [];
-    const parked = parkedRes.data ?? [];
+    const ledger = (ledgerRes.data ?? []) as Array<{
+      title: string;
+      summary: string | null;
+      is_violation: boolean;
+    }>;
+    const parked = (parkedRes.data ?? []) as Array<{
+      title: string;
+      summary: string | null;
+      verb: string | null;
+    }>;
     const previouslyAsked = (existingRes.data ?? [])
       .map((r: { content: string }) => r.content)
       .slice(0, 30);
@@ -119,13 +146,8 @@ ${
     ? "(empty)"
     : ledger
         .map(
-          (l: {
-            title: string;
-            description: string | null;
-            status: string;
-            is_violation: boolean;
-          }) =>
-            `- [${l.status}${l.is_violation ? " · VIOLATION" : ""}] ${l.title}${l.description ? `: ${l.description}` : ""}`,
+          (l) =>
+            `- [committed${l.is_violation ? " · VIOLATION" : ""}] ${l.title}${l.summary ? `: ${l.summary}` : ""}`,
         )
         .join("\n")
 }
@@ -137,8 +159,8 @@ ${
     ? "(none)"
     : parked
         .map(
-          (p: { label: string; source_context: string | null; kind: string }) =>
-            `- (${p.kind}) ${p.label}${p.source_context ? ` — from: ${p.source_context}` : ""}`,
+          (p) =>
+            `- (${p.verb ?? "note"}) ${p.title}${p.summary ? ` — ${p.summary}` : ""}`,
         )
         .join("\n")
 }
