@@ -868,12 +868,6 @@ export function AtlasFrontDoor({
               ? "1.5px solid rgba(212, 175, 55, 0.6)"
               : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
             padding: "16px 18px 12px",
-            background: "color-mix(in oklab, var(--surface) 88%, var(--accent-gold) 12%)",
-            borderRadius: "var(--input-radius)",
-            border: sending
-              ? "1.5px solid rgba(212, 175, 55, 0.6)"
-              : "1px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
-            padding: "16px 18px 12px",
             boxShadow: sending
               ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 20px -4px rgba(212, 175, 55, 0.35)"
               : "inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35)",
