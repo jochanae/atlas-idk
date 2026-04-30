@@ -24,6 +24,8 @@ type AtlasFrontDoorProps = {
   input: string;
   sending: boolean;
   headerActions: ReactNode;
+  /** Center element for the header (project name + dropdown). Falls back to "Atlas" wordmark. */
+  headerCenter?: ReactNode;
   bottomTabs?: ReactNode;
   secondaryPanel?: ReactNode;
   utilityBarLeft?: ReactNode;
