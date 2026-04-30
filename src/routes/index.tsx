@@ -802,8 +802,9 @@ function WorkspacePage() {
                   setInputFocusSignal((v) => v + 1);
                 }}
                 onParkMultiple={async (items) => {
+                  const entryIds: string[] = [];
                   for (const item of items) {
-                    await entriesTable().insert({
+                    const { data, error } = await entriesTable().insert({
                       user_id: user.id,
                       project_id: activeProjectId!,
                       session_id: session.id,
@@ -812,10 +813,20 @@ function WorkspacePage() {
                       title: item.text.slice(0, 120),
                       summary: `From contextual HUD (${item.source})`,
                       verb: "note",
-                    });
+                    }).select("id").single() as { data: { id: string } | null; error: Error | null };
+                    if (!error && data) entryIds.push(data.id);
                   }
                   await loadParkedItems();
-                  toast.success(`Parked ${items.length} item${items.length > 1 ? "s" : ""}`);
+                  return { entryIds };
+                }}
+                onUndoPark={async (entryIds) => {
+                  for (const id of entryIds) {
+                    await entriesTable()
+                      .delete()
+                      .eq("id", id)
+                      .eq("user_id", user.id);
+                  }
+                  await loadParkedItems();
                 }}
               />
             ) : undefined
