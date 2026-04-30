@@ -35,6 +35,7 @@ import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
 import { DependencyGraph, type PlanStep } from "@/components/atlas/DependencyGraph";
 import { BuildStateTimeline, type BuildStateEntry } from "@/components/atlas/BuildStateTimeline";
 import { LiveConsoleStream, type ConsoleEntry } from "@/components/atlas/LiveConsoleStream";
+import { SovereignScrubRail, type ScrubNotch } from "@/components/atlas/SovereignScrubRail";
 
 import { GlossaryCard, type KnowledgeEntry } from "@/components/atlas/GlossaryCard";
 import { ThinkingPromptCard, type ThinkingPrompt } from "@/components/atlas/ThinkingPromptCard";
@@ -1443,6 +1444,7 @@ function WorkspacePage() {
                 setDiffOpen(true);
               }}
               activeMode={activeMode}
+              buildHistory={buildHistory}
             />
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
@@ -1518,6 +1520,9 @@ function WorkspacePage() {
         theme={theme}
         onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
         onSignOut={signOut}
+        user={user}
+        projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
+        buildHistory={buildHistory}
       />
       <BlueprintsDrawer
         open={blueprintsOpen}
@@ -1904,6 +1909,7 @@ function ChatPanel({
   recentRollbackMsgId,
   onOpenDiff,
   activeMode,
+  buildHistory,
 }: {
   newMessageIds: Set<string>;
   messages: ChatMessage[];
@@ -1927,6 +1933,7 @@ function ChatPanel({
   recentRollbackMsgId: string | null;
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
   activeMode?: string;
+  buildHistory?: BuildStateEntry[];
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomAnchorRef = useRef<HTMLDivElement>(null);
@@ -2609,6 +2616,18 @@ function ChatPanel({
         {/* Scroll anchor — browser pins to this */}
         <div ref={bottomAnchorRef} style={{ overflowAnchor: "auto", height: 1, flexShrink: 0 }} />
       </div>
+      {/* Sovereign Scrub Rail */}
+      {messages.length > 5 && (
+        <SovereignScrubRail
+          notches={(buildHistory ?? []).map((e, i, arr) => ({
+            id: e.id,
+            label: e.label || e.state,
+            position: arr.length > 1 ? i / (arr.length - 1) : 0.5,
+            kind: e.state === "idle" ? "message" as const : e.state as ScrubNotch["kind"],
+          }))}
+          scrollContainerRef={scrollRef}
+        />
+      )}
     </>
   );
 }
