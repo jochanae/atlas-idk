@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import type { Project, LedgerStatus } from "@/lib/atlas";
+import type { Project } from "@/lib/atlas";
+import { entriesTable } from "@/lib/entries";
 import { toast } from "sonner";
+
+// Manual entry form. Always writes a `committed` Entry — manual additions
+// to the ledger are explicit acts. To park instead, use the AI flow.
+type ManualStatus = "committed";
 
 type Props = {
   open: boolean;
@@ -16,7 +21,8 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState("");
   const [newProject, setNewProject] = useState("");
-  const [status, setStatus] = useState<LedgerStatus>("Active");
+  const [status] = useState<ManualStatus>("committed");
+  const [violation, setViolation] = useState(false);
   const [cost, setCost] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -27,7 +33,7 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
     setTitle("");
     setProjectId("");
     setNewProject("");
-    setStatus("Active");
+    setViolation(false);
     setCost("");
     setDescription("");
   };
@@ -51,14 +57,16 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
         pid = data.id;
       }
 
-      const { error } = await supabase.from("ledger_entries").insert({
+      const { error } = await entriesTable().insert({
         project_id: pid,
         user_id: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
         status,
+        severity: violation ? "blocker" : "committed",
+        verb: violation ? "audit" : "note",
+        title: title.trim(),
+        summary: description.trim() || null,
         cost_of_lesson: cost ? Number(cost) : null,
-        is_violation: status === "Violated",
+        is_violation: violation,
       });
       if (error) throw error;
 
@@ -136,16 +144,18 @@ export function AddEntryDialog({ open, onClose, projects, onCreated }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Status">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as LedgerStatus)}
-                className="atlas-input"
-              >
-                <option value="Active">Active</option>
-                <option value="Superseded">Superseded</option>
-                <option value="Violated">Violated</option>
-              </select>
+            <Field label="Mark as violation?" hint="check if this records a broken constraint">
+              <label className="flex items-center gap-2 h-[36px]">
+                <input
+                  type="checkbox"
+                  checked={violation}
+                  onChange={(e) => setViolation(e.target.checked)}
+                  className="accent-[color:var(--ember)]"
+                />
+                <span className="text-[12px] text-muted-foreground">
+                  {violation ? "Logged as violation" : "Standard commit"}
+                </span>
+              </label>
             </Field>
             <Field
               label="Cost of Lesson (USD)"

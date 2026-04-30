@@ -35,6 +35,7 @@ import {
   type Session as AtlasSession,
   type WorkspaceNode,
 } from "@/lib/atlas";
+import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
 
 type CommitExtraction =
@@ -53,6 +54,9 @@ type ConflictDetails = {
   committedOn: string;
 };
 
+// Legacy ParkedItem shape used by existing UI code. We map Entry rows
+// (status='parked') into this shape so the rest of the file keeps working
+// without rewriting the consuming components.
 type ParkedItem = {
   id: string;
   user_id: string;
@@ -85,10 +89,6 @@ type UntypedTable = {
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) => Promise<TResult1 | TResult2>;
 };
-
-function parkedItemsTable() {
-  return (supabase as unknown as { from: (table: "parked_items") => UntypedTable }).from("parked_items");
-}
 
 function compassTable() {
   return (supabase as unknown as { from: (table: "project_compass") => UntypedTable }).from("project_compass");
@@ -206,7 +206,10 @@ function WorkspacePage() {
 
   const loadParkedItems = async () => {
     if (!user) return;
-    const { data, error } = await parkedItemsTable()
+    // Parking Lot = entries with status='parked'. Same object as Ledger,
+    // different state. We map Entry rows back to the legacy ParkedItem
+    // shape so existing UI components keep rendering unchanged.
+    const { data, error } = await entriesTable()
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "parked")
@@ -215,22 +218,43 @@ function WorkspacePage() {
       toast.error(error.message);
       return;
     }
-    setParkedItems((data ?? []) as ParkedItem[]);
+    const rows = ((data ?? []) as unknown as Array<{
+      id: string;
+      user_id: string;
+      project_id: string;
+      session_id: string | null;
+      title: string;
+      summary: string | null;
+      verb: string | null;
+      created_at: string;
+    }>).map<ParkedItem>((e) => ({
+      id: e.id,
+      user_id: e.user_id,
+      project_id: e.project_id,
+      session_id: e.session_id,
+      label: e.title,
+      source_context: e.summary ?? "",
+      kind: e.verb ?? "other",
+      status: "parked",
+      created_at: e.created_at,
+      resolved_at: null,
+    }));
+    setParkedItems(rows);
   };
   useEffect(() => {
     loadParkedItems();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Ledger count for sidebar badge
+  // Ledger count for sidebar badge — counts committed entries.
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { count } = await supabase
-        .from("ledger_entries")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id);
-      setLedgerCount(count ?? 0);
+      const { data } = await entriesTable()
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "committed");
+      setLedgerCount((data ?? []).length);
     })();
   }, [user, session?.id]);
 
@@ -559,13 +583,15 @@ function WorkspacePage() {
     if (error) return toast.error(error.message);
 
     if (status === "accepted" && user) {
-      // Log to Architectural Ledger
-      await supabase.from("ledger_entries").insert({
+      // Log to Architectural Ledger as a committed Entry.
+      await entriesTable().insert({
         user_id: user.id,
         project_id: rec.project_id,
+        status: "committed",
+        severity: "committed",
+        verb: "note",
         title: rec.content,
-        description: `Accepted recommendation. ${rec.definition ?? ""}`.trim(),
-        status: "Active",
+        summary: `Accepted recommendation. ${rec.definition ?? ""}`.trim(),
       });
       toast.success("Accepted — logged to ledger");
     } else if (status === "parked") {
@@ -596,14 +622,15 @@ function WorkspacePage() {
         .from("recommendations")
         .update({ status: "parked" })
         .eq("id", prompt.id),
-      parkedItemsTable().insert({
+      entriesTable().insert({
         user_id: user.id,
         project_id: activeProjectId,
         session_id: session?.id ?? null,
-        label: prompt.content,
-        source_context: "thinking prompt",
-        kind: "question",
         status: "parked",
+        title: prompt.content,
+        summary: "thinking prompt",
+        severity: "parked",
+        verb: "note",
       }),
     ]);
     await loadParkedItems();
@@ -837,11 +864,16 @@ function WorkspacePage() {
             projects={projects}
             onClose={() => setParkingOpen(false)}
             onAction={async (itemId, status) => {
-              const values =
-                status === "resolved"
-                  ? { status, resolved_at: new Date().toISOString() }
-                  : { status };
-              const { error } = await parkedItemsTable()
+              // Drawer surfaces "resolved" / "dismissed". In the unified
+              // model "resolved" means the user committed it; "dismissed"
+              // means archive. Both are status flips on the same Entry row.
+              const newStatus =
+                status === "resolved" ? "committed" : "archived";
+              const values: Record<string, unknown> =
+                newStatus === "committed"
+                  ? { status: "committed", severity: "committed" }
+                  : { status: "archived" };
+              const { error } = await entriesTable()
                 .update(values)
                 .eq("id", itemId)
                 .eq("user_id", user.id);
@@ -1134,13 +1166,15 @@ function ChatPanel({
         .filter(Boolean)
         .join("\n\n");
 
-      const { error: insertError } = await supabase.from("ledger_entries").insert({
+      const { error: insertError } = await entriesTable().insert({
         user_id: userId,
         project_id: projectId,
-        extracted_from_session_id: sessionId,
+        session_id: sessionId,
+        status: "committed",
+        severity: "committed",
+        verb: "note",
         title: extraction.title,
-        description,
-        status: "Active",
+        summary: description,
       });
       if (insertError) throw insertError;
 
@@ -1156,15 +1190,36 @@ function ChatPanel({
 
   const proceedAnyway = async (messageId: string, committedOn: string) => {
     if (!projectId) return;
-    const { error } = await supabase
-      .from("ledger_entries")
-      .update({ status: "Violated", is_violation: true })
+    // Mark the matching committed entry as a violation. Locked rows are
+    // immutable except for archiving — but is_violation is metadata on
+    // the original committed row that we tolerate updating in the trigger
+    // by not changing any of the guarded fields. To avoid the trigger,
+    // we instead create a new draft entry that supersedes the original.
+    const { data: original } = await entriesTable()
+      .select("*")
       .eq("project_id", projectId)
       .eq("user_id", userId)
-      .eq("title", committedOn);
-    if (error) {
-      toast.error(error.message);
-      return;
+      .eq("status", "committed")
+      .eq("title", committedOn)
+      .limit(1);
+    if (original && original.length > 0) {
+      const orig = original[0];
+      const { error } = await entriesTable().insert({
+        user_id: userId,
+        project_id: projectId,
+        session_id: sessionId,
+        status: "committed",
+        severity: "blocker",
+        verb: "audit",
+        is_violation: true,
+        title: `VIOLATION: ${orig.title}`,
+        summary: `Violation logged against committed decision "${orig.title}".`,
+        supersedes_id: orig.id,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
     }
     setDismissedConflicts((prev) => new Set(prev).add(messageId));
     await onRefresh();
@@ -1186,14 +1241,25 @@ function ChatPanel({
     kind: string;
   }) => {
     if (!projectId || !sessionId) return false;
-    const { error } = await parkedItemsTable().insert({
+    // Park = create an Entry with status='parked'. Same object the Ledger
+    // uses; only `status` differs. We map the legacy (label, sourceContext,
+    // kind) shape onto (title, summary, verb).
+    const verbMap: Record<string, string> = {
+      suggestion: "note",
+      term: "note",
+      question: "note",
+      commit_card: "wip",
+      other: "note",
+    };
+    const { error } = await entriesTable().insert({
       user_id: userId,
       project_id: projectId,
       session_id: sessionId,
-      label,
-      source_context: sourceContext,
-      kind,
       status: "parked",
+      severity: "parked",
+      title: label,
+      summary: sourceContext,
+      verb: verbMap[kind] ?? "note",
     });
     if (error) {
       toast.error(error.message);
@@ -1223,38 +1289,17 @@ function ChatPanel({
     if (!projectId) return;
     setCommittingCardId(message.id);
     try {
-      const status =
-        card.severity === "blocker"
-          ? "Violated"
-          : card.severity === "parked"
-            ? "Active"
-            : "Active";
-      const buildId = card.build_id ?? null;
-      const { data: entry, error } = await supabase
-        .from("ledger_entries")
-        .insert({
-          project_id: projectId,
-          user_id: userId,
-          title: card.title,
-          description: card.summary + (card.details ? `\n\n${card.details}` : ""),
-          status,
-          is_violation: card.severity === "blocker",
-          severity: card.severity,
-          verb: card.verb ?? null,
-          build_id: buildId,
-          card_schema_version: card.v,
-          extracted_from_session_id: sessionId,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-
-      // Lock the AI turn — server returns the updated row but optimistic UI
-      // is enough; subsequent refresh() will rehydrate.
-      await supabase
-        .from("chat_messages")
-        .update({ committed_card_id: entry.id })
-        .eq("id", message.id);
+      // Use the unified createEntryFromCard helper. It writes to entries
+      // (status='committed'), stamps locked_at via trigger, AND locks the
+      // originating chat turn by setting committed_card_id.
+      await createEntryFromCard({
+        userId,
+        projectId,
+        sessionId,
+        sourceMessageId: message.id,
+        payload: card,
+        status: "committed",
+      });
 
       toast.success("Committed to ledger");
       await onRefresh();

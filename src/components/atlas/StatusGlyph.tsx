@@ -12,7 +12,7 @@
 import type React from "react";
 
 export type Severity = "blocker" | "parked" | "committed" | "neutral";
-export type Verb = "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge";
+export type Verb = "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge" | "plan";
 
 const severityColor: Record<Severity, string> = {
   blocker: "var(--ember)",
@@ -36,6 +36,7 @@ export const VERB_LABEL: Record<Verb, string> = {
   wip: "WIP",
   audit: "Audit",
   merge: "Merge",
+  plan: "Plan",
 };
 
 interface VerbGlyphProps {
@@ -92,6 +93,15 @@ const VerbGlyphs: Record<Verb, (props: VerbGlyphProps) => React.ReactElement> = 
       <circle cx="11.5" cy="11.5" r="1.75" />
       <path d="M4.5 6.25 V11.5 H9.75" />
       <path d="M11.5 9.75 V4.5 H6.25" opacity="0.5" />
+    </svg>
+  ),
+  // 🗺️ three stacked horizontal steps — a roadmap glyph
+  plan: ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 4.25 H10" />
+      <path d="M3 8 H13" opacity="0.85" />
+      <path d="M3 11.75 H7.5" opacity="0.6" />
+      <circle cx="12" cy="4.25" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   ),
 };

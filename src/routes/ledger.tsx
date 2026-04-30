@@ -2,18 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import {
-  formatCost,
-  relativeTime,
-  type LedgerEntry,
-  type LedgerStatus,
-  type Project,
-} from "@/lib/atlas";
-import { StatusTag } from "@/components/atlas/StatusTag";
+import { relativeTime, formatCost, type Project } from "@/lib/atlas";
+import type { Entry } from "@/lib/atlas-status";
+import { entriesTable, reopenEntry, archiveEntry } from "@/lib/entries";
 import { StatusGlyph } from "@/components/atlas/StatusGlyph";
 import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/ledger")({
   component: ArchitecturalLedger,
@@ -32,24 +28,28 @@ export const Route = createFileRoute("/ledger")({
 function ArchitecturalLedger() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = async () => {
+    if (!user) return;
     setLoading(true);
     const [e, p] = await Promise.all([
-      supabase
-        .from("ledger_entries")
-        .select("*, projects(name)")
+      // Ledger view = entries with status='committed'. Same object as
+      // Parking Lot, different state. Single source of truth.
+      entriesTable()
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "committed")
         .order("created_at", { ascending: false }),
       supabase.from("projects").select("*").order("name"),
     ]);
-    if (e.data) setEntries(e.data as unknown as LedgerEntry[]);
+    if (e.data) setEntries(e.data as Entry[]);
     if (p.data) setProjects(p.data as Project[]);
     setLoading(false);
   };
@@ -60,27 +60,58 @@ function ArchitecturalLedger() {
 
   useEffect(() => {
     if (user) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
       if (projectFilter !== "all" && e.project_id !== projectFilter) return false;
-      if (statusFilter !== "all" && e.status !== statusFilter) return false;
       return true;
     });
-  }, [entries, projectFilter, statusFilter]);
+  }, [entries, projectFilter]);
+
+  const projectName = (id: string) =>
+    projects.find((p) => p.id === id)?.name ?? "—";
+
+  const handleReopen = async (entry: Entry) => {
+    setBusyId(entry.id);
+    try {
+      await reopenEntry(entry);
+      toast.success("Reopened — draft created in Parking Lot");
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Reopen failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleArchive = async (entry: Entry) => {
+    setBusyId(entry.id);
+    try {
+      await archiveEntry(entry.id);
+      toast.success("Archived");
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Archive failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-1">
       <FooterAuditLine />
 
-      {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-[1400px] mx-auto px-8 py-6 flex items-end justify-between gap-4">
           <div>
             <div className="flex items-baseline gap-3">
               <Link to="/" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground">
                 ← Workspace
+              </Link>
+              <Link to="/parking-lot" className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--accent-gold)] hover:brightness-125">
+                Parking Lot →
               </Link>
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--ember)]">
                 Architectural Ledger
@@ -90,7 +121,7 @@ function ArchitecturalLedger() {
               Architectural Ledger
             </h1>
             <p className="text-xs text-muted-foreground font-mono mt-1.5">
-              Permanent record · Commit Mode · {entries.length} entries
+              Locked record · {entries.length} committed
             </p>
           </div>
 
@@ -111,7 +142,6 @@ function ArchitecturalLedger() {
         </div>
       </header>
 
-      {/* Filter bar */}
       <div className="border-b border-border bg-[color:var(--surface)]/40">
         <div className="max-w-[1400px] mx-auto px-8 py-3 flex items-center gap-4">
           <FilterSelect
@@ -123,26 +153,12 @@ function ArchitecturalLedger() {
               ...projects.map((p) => ({ value: p.id, label: p.name })),
             ]}
           />
-          <FilterSelect
-            label="Status"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { value: "all", label: "All statuses" },
-              { value: "Active", label: "Active" },
-              { value: "Superseded", label: "Superseded" },
-              { value: "Violated", label: "Violated" },
-            ]}
-          />
-          {(projectFilter !== "all" || statusFilter !== "all") && (
+          {projectFilter !== "all" && (
             <button
-              onClick={() => {
-                setProjectFilter("all");
-                setStatusFilter("all");
-              }}
+              onClick={() => setProjectFilter("all")}
               className="text-[11px] font-mono text-muted-foreground hover:text-foreground"
             >
-              clear filters
+              clear filter
             </button>
           )}
           <span className="ml-auto font-mono text-[11px] text-muted-foreground">
@@ -151,7 +167,6 @@ function ArchitecturalLedger() {
         </div>
       </div>
 
-      {/* Table */}
       <main className="max-w-[1400px] mx-auto px-8 py-6">
         {loading ? (
           <div className="py-24 text-center font-mono text-xs text-muted-foreground">
@@ -167,11 +182,11 @@ function ArchitecturalLedger() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[10px] uppercase tracking-[0.12em] font-mono text-muted-foreground">
-                  <th className="text-left font-normal py-2 px-4 w-[28%]">Decision</th>
+                  <th className="text-left font-normal py-2 px-4 w-[30%]">Decision</th>
                   <th className="text-left font-normal py-2 px-4 w-[14%]">Project</th>
-                  <th className="text-left font-normal py-2 px-4 w-[10%]">Status</th>
-                  <th className="text-right font-normal py-2 px-4 w-[12%]">Cost</th>
-                  <th className="text-left font-normal py-2 px-4 w-[10%]">Logged</th>
+                  <th className="text-left font-normal py-2 px-4 w-[10%]">State</th>
+                  <th className="text-right font-normal py-2 px-4 w-[10%]">Cost</th>
+                  <th className="text-left font-normal py-2 px-4 w-[10%]">Locked</th>
                   <th className="text-left font-normal py-2 px-4 w-[26%]">Notes</th>
                 </tr>
               </thead>
@@ -185,6 +200,10 @@ function ArchitecturalLedger() {
                     onToggle={() =>
                       setExpanded(expanded === entry.id ? null : entry.id)
                     }
+                    projectName={projectName(entry.project_id)}
+                    onReopen={() => handleReopen(entry)}
+                    onArchive={() => handleArchive(entry)}
+                    busy={busyId === entry.id}
                   />
                 ))}
               </tbody>
@@ -208,54 +227,92 @@ function Row({
   even,
   expanded,
   onToggle,
+  projectName,
+  onReopen,
+  onArchive,
+  busy,
 }: {
-  entry: LedgerEntry;
+  entry: Entry;
   even: boolean;
   expanded: boolean;
   onToggle: () => void;
+  projectName: string;
+  onReopen: () => void;
+  onArchive: () => void;
+  busy: boolean;
 }) {
   const bg = even ? "bg-[color:var(--surface)]" : "bg-[color:var(--surface-alt)]";
-  const notes = entry.description ?? "";
+  const notes = entry.summary ?? "";
   const truncated = notes.length > 80 && !expanded;
 
   return (
-    <tr
-      className={`${bg} group border-l-2 border-l-transparent hover:border-l-[color:var(--ember)] hover:bg-[color:var(--surface-alt)] transition-colors cursor-pointer`}
-      onClick={onToggle}
-    >
-      <td className="py-3 px-4 align-top">
-        <div className="flex items-center gap-2">
-          <StatusGlyph
-            severity={entry.severity ?? (entry.is_violation ? "blocker" : "committed")}
-            verb={entry.verb ?? null}
-            size={14}
-          />
-          <div className="font-medium text-[13px] leading-snug">{entry.title}</div>
-          {entry.build_id && <CapsuleTag size="xs">#{entry.build_id}</CapsuleTag>}
-        </div>
-      </td>
-      <td className="py-3 px-4 align-top text-[12px] text-muted-foreground">
-        {entry.projects?.name ?? "—"}
-      </td>
-      <td className="py-3 px-4 align-top">
-        <StatusTag status={entry.status as LedgerStatus} />
-      </td>
-      <td className="py-3 px-4 align-top text-right font-mono text-[12px]">
-        {entry.cost_of_lesson === null ? "—" : formatCost(entry.cost_of_lesson)}
-      </td>
-      <td className="py-3 px-4 align-top font-mono text-[11px] text-muted-foreground">
-        {relativeTime(entry.created_at)}
-      </td>
-      <td className="py-3 px-4 align-top text-[12px] text-muted-foreground leading-relaxed">
-        {notes ? (
-          <span>
-            {truncated ? notes.slice(0, 80) + "…" : notes}
-          </span>
-        ) : (
-          <span className="font-mono">—</span>
-        )}
-      </td>
-    </tr>
+    <>
+      <tr
+        className={`${bg} group border-l-2 border-l-transparent hover:border-l-[color:var(--ember)] hover:bg-[color:var(--surface-alt)] transition-colors cursor-pointer`}
+        onClick={onToggle}
+      >
+        <td className="py-3 px-4 align-top">
+          <div className="flex items-center gap-2">
+            <StatusGlyph
+              severity={entry.severity}
+              verb={entry.verb}
+              size={14}
+            />
+            <div className="font-medium text-[13px] leading-snug">{entry.title}</div>
+            {entry.build_id && <CapsuleTag size="xs">#{entry.build_id}</CapsuleTag>}
+            {entry.supersedes_id && <CapsuleTag size="xs">REOPEN-LINK</CapsuleTag>}
+          </div>
+        </td>
+        <td className="py-3 px-4 align-top text-[12px] text-muted-foreground">
+          {projectName}
+        </td>
+        <td className="py-3 px-4 align-top">
+          <CapsuleTag severity="committed" size="xs">LOCKED</CapsuleTag>
+          {entry.is_violation && (
+            <span className="ml-1.5">
+              <CapsuleTag severity="blocker" size="xs">VIOLATION</CapsuleTag>
+            </span>
+          )}
+        </td>
+        <td className="py-3 px-4 align-top text-right font-mono text-[12px]">
+          {entry.cost_of_lesson === null ? "—" : formatCost(entry.cost_of_lesson)}
+        </td>
+        <td className="py-3 px-4 align-top font-mono text-[11px] text-muted-foreground">
+          {relativeTime(entry.locked_at ?? entry.created_at)}
+        </td>
+        <td className="py-3 px-4 align-top text-[12px] text-muted-foreground leading-relaxed">
+          {notes ? (
+            <span>
+              {truncated ? notes.slice(0, 80) + "…" : notes}
+            </span>
+          ) : (
+            <span className="font-mono">—</span>
+          )}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className={bg}>
+          <td colSpan={6} className="px-4 pb-3">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+              <button
+                onClick={onReopen}
+                disabled={busy}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] px-2.5 py-1 rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-[color:var(--accent-gold)] disabled:opacity-40"
+              >
+                Reopen
+              </button>
+              <button
+                onClick={onArchive}
+                disabled={busy}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] px-2.5 py-1 rounded-sm border border-border text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                Archive
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -303,12 +360,12 @@ function EmptyState({
         <div className="w-2 h-2 bg-[color:var(--ember)]" />
       </div>
       <h2 className="text-sm font-medium">
-        {hasEntries ? "No entries match these filters." : "The ledger is empty."}
+        {hasEntries ? "No committed entries match this filter." : "The ledger is empty."}
       </h2>
       <p className="text-xs text-muted-foreground font-mono mt-2 max-w-sm">
         {hasEntries
-          ? "Adjust the project or status filter to see existing decisions."
-          : "Phase 1 begins with the first committed decision. Log one to start the permanent record."}
+          ? "Adjust the project filter to see other committed decisions."
+          : "Phase 1 begins with the first committed decision. Park an idea, then commit it."}
       </p>
       {!hasEntries && (
         <button

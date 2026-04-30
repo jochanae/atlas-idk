@@ -103,6 +103,83 @@ export type Database = {
           },
         ]
       }
+      entries: {
+        Row: {
+          build_id: string | null
+          card_schema_version: number
+          cost_of_lesson: number | null
+          created_at: string
+          details: string | null
+          id: string
+          is_violation: boolean
+          locked_at: string | null
+          project_id: string
+          session_id: string | null
+          severity: string
+          source_message_id: string | null
+          status: string
+          summary: string | null
+          supersedes_id: string | null
+          title: string
+          touched: Json | null
+          updated_at: string
+          user_id: string
+          verb: string | null
+        }
+        Insert: {
+          build_id?: string | null
+          card_schema_version?: number
+          cost_of_lesson?: number | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          is_violation?: boolean
+          locked_at?: string | null
+          project_id: string
+          session_id?: string | null
+          severity?: string
+          source_message_id?: string | null
+          status?: string
+          summary?: string | null
+          supersedes_id?: string | null
+          title: string
+          touched?: Json | null
+          updated_at?: string
+          user_id: string
+          verb?: string | null
+        }
+        Update: {
+          build_id?: string | null
+          card_schema_version?: number
+          cost_of_lesson?: number | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          is_violation?: boolean
+          locked_at?: string | null
+          project_id?: string
+          session_id?: string | null
+          severity?: string
+          source_message_id?: string | null
+          status?: string
+          summary?: string | null
+          supersedes_id?: string | null
+          title?: string
+          touched?: Json | null
+          updated_at?: string
+          user_id?: string
+          verb?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entries_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_entries: {
         Row: {
           category: string
