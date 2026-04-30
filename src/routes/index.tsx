@@ -26,6 +26,7 @@ import { DiffViewer } from "@/components/atlas/DiffViewer";
 import { OnboardingFlow } from "@/components/atlas/OnboardingFlow";
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
+import { StructuralIntegrityPanel } from "@/components/atlas/StructuralIntegrityPanel";
 import { ContextualHUD } from "@/components/atlas/ContextualHUD";
 import { ProjectHeaderCenter } from "@/components/atlas/ProjectHeaderCenter";
 import { TaskQueue, type QueueItem } from "@/components/atlas/TaskQueue";
@@ -205,6 +206,7 @@ function WorkspacePage() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [preRollbackMessages, setPreRollbackMessages] = useState<ChatMessage[] | null>(null);
   const [snapshotBrowserOpen, setSnapshotBrowserOpen] = useState(false);
+  const [integrityOpen, setIntegrityOpen] = useState(false);
   const [rollbackNaming, setRollbackNaming] = useState(false);
   const [rollbackNameInput, setRollbackNameInput] = useState("");
 
@@ -1027,6 +1029,7 @@ function WorkspacePage() {
             else if (id === "collaborate") setCollaborateOpen(true);
             else if (id === "github") setGithubOpen(true);
             else if (id === "snapshots") setSnapshotBrowserOpen(true);
+            else if (id === "integrity") setIntegrityOpen(true);
           }}
           taskQueue={
             session ? (
@@ -1555,6 +1558,10 @@ function WorkspacePage() {
         onClose={() => setGithubOpen(false)}
         projectId={activeProjectId}
         generatedFiles={generatedFiles}
+      />
+      <StructuralIntegrityPanel
+        open={integrityOpen}
+        onClose={() => setIntegrityOpen(false)}
       />
       <OnboardingFlow
         show={showOnboarding && recents.length === 0 && !session}

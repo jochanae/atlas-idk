@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 const GITHUB_API = "https://api.github.com";
+const GITHUB_OAUTH_AUTHORIZE = "https://github.com/login/oauth/authorize";
+const GITHUB_OAUTH_TOKEN = "https://github.com/login/oauth/access_token";
 
 async function ghFetch(path: string, token: string, options?: RequestInit) {
   const res = await fetch(`${GITHUB_API}${path}`, {
@@ -177,4 +179,44 @@ export const pushMultipleFiles = createServerFn({ method: "POST" })
     );
 
     return { commitSha: newCommit.sha as string, url: newCommit.html_url as string };
+  });
+
+// ── GitHub OAuth Flow ──
+
+/** Build the OAuth authorize URL. Client redirects browser here. */
+export const getGitHubOAuthUrl = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ redirectUri: z.string().url() }).parse)
+  .handler(async ({ data }) => {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) throw new Error("GitHub OAuth not configured. Set GITHUB_CLIENT_ID.");
+    const state = crypto.randomUUID();
+    const url = `${GITHUB_OAUTH_AUTHORIZE}?client_id=${clientId}&redirect_uri=${encodeURIComponent(data.redirectUri)}&scope=repo&state=${state}`;
+    return { url, state };
+  });
+
+/** Exchange the temporary OAuth code for an access token. */
+export const exchangeGitHubCode = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ code: z.string().min(1).max(200), redirectUri: z.string().url() }).parse)
+  .handler(async ({ data }) => {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    if (!clientId || !clientSecret) throw new Error("GitHub OAuth not configured.");
+
+    const res = await fetch(GITHUB_OAUTH_TOKEN, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: data.code,
+        redirect_uri: data.redirectUri,
+      }),
+    });
+    const body = await res.json();
+    if (body.error) throw new Error(body.error_description || body.error);
+    return {
+      access_token: body.access_token as string,
+      token_type: body.token_type as string,
+      scope: body.scope as string,
+    };
   });
