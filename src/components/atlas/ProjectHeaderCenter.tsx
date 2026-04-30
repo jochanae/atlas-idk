@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Pencil, Settings, Archive, Copy } from "lucide-react";
+import { MODES, ModeIcon, type ModeId } from "./AtlasFrontDoor";
+import { haptic } from "@/lib/haptics";
 
 type Props = {
   projectName: string | null;
@@ -7,6 +9,8 @@ type Props = {
   onRename: (newName: string) => void;
   onOpenParking?: () => void;
   onNavigateLedger?: () => void;
+  activeMode?: ModeId;
+  onModeChange?: (mode: ModeId) => void;
 };
 
 export function ProjectHeaderCenter({
