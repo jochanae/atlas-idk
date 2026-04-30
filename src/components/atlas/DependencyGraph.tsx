@@ -149,7 +149,8 @@ function layoutNodesInner(steps: PlanStep[]) {
   return { positions, width: Math.max(maxX, 300), height: Math.max(maxY, 120) };
 }
 
-export function DependencyGraph({ steps, onPromoteToQueue, onStepTap, onExportJSON }: DependencyGraphProps) {
+export function DependencyGraph({ steps: rawSteps, onPromoteToQueue, onStepTap, onExportJSON }: DependencyGraphProps) {
+  const steps = sanitizeSteps(rawSteps);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
