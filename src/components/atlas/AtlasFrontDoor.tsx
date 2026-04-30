@@ -873,7 +873,7 @@ function greetingFor(now: Date, name?: string | null): string {
   return first ? `Good ${period}, ${first}.` : `Good ${period}.`;
 }
 
-function AmbientClock() {
+function InlineTimestamp() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
@@ -893,16 +893,13 @@ function AmbientClock() {
     <div
       aria-hidden
       style={{
-        position: "fixed",
-        right: "max(18px, env(safe-area-inset-right))",
-        bottom: "max(24px, calc(env(safe-area-inset-bottom) + 14px))",
+        textAlign: "center",
+        padding: "10px 22px 0",
         fontFamily: "var(--font-mono)",
         fontSize: 10,
         letterSpacing: "0.18em",
         color: "color-mix(in oklab, var(--foreground) 42%, transparent)",
         userSelect: "none",
-        pointerEvents: "none",
-        zIndex: 5,
       }}
     >
       {stamp}
