@@ -903,6 +903,19 @@ export function AtlasFrontDoor({
             0 6px 24px rgba(0,0,0,0.4),
             0 0 20px -4px color-mix(in oklab, var(--accent-gold) 50%, transparent) !important;
         }
+        @keyframes atlas-breathing-glow {
+          0%, 100% {
+            border-color: rgba(212, 175, 55, 0.35);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 12px -4px rgba(212, 175, 55, 0.2);
+          }
+          50% {
+            border-color: rgba(212, 175, 55, 0.75);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 24px rgba(0,0,0,0.35), 0 0 24px -2px rgba(212, 175, 55, 0.45);
+          }
+        }
+        .atlas-breathing {
+          animation: atlas-breathing-glow 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite !important;
+        }
         .atlas-active-input-shell textarea::-webkit-scrollbar {
           width: 3px;
         }
