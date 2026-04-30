@@ -2394,6 +2394,8 @@ function ChatPanel({
             </button>
           </div>
         )}
+        {/* Scroll anchor — browser pins to this */}
+        <div ref={bottomAnchorRef} style={{ overflowAnchor: "auto", height: 1, flexShrink: 0 }} />
       </div>
     </>
   );
