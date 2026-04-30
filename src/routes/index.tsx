@@ -2633,15 +2633,24 @@ function ChatPanel({
         {/* Scroll anchor — browser pins to this */}
         <div ref={bottomAnchorRef} style={{ overflowAnchor: "auto", height: 1, flexShrink: 0 }} />
       </div>
-      {/* Sovereign Scrub Rail */}
-      {messages.length > 5 && (
+      {/* Sovereign Scrub Rail — always visible when chat has messages */}
+      {messages.length > 0 && (
         <SovereignScrubRail
-          notches={(buildHistory ?? []).map((e, i, arr) => ({
-            id: e.id,
-            label: e.label || e.state,
-            position: arr.length > 1 ? i / (arr.length - 1) : 0.5,
-            kind: e.state === "idle" ? "message" as const : e.state as ScrubNotch["kind"],
-          }))}
+          notches={
+            (buildHistory ?? []).length > 0
+              ? (buildHistory ?? []).map((e, i, arr) => ({
+                  id: e.id,
+                  label: e.label || e.state,
+                  position: arr.length > 1 ? i / (arr.length - 1) : 0.5,
+                  kind: e.state === "idle" ? "message" as const : e.state as ScrubNotch["kind"],
+                }))
+              : messages.map((m, i, arr) => ({
+                  id: m.id,
+                  label: m.role === "user" ? "You" : "Atlas",
+                  position: arr.length > 1 ? i / (arr.length - 1) : 0.5,
+                  kind: "message" as const,
+                }))
+          }
           scrollContainerRef={scrollRef}
         />
       )}
