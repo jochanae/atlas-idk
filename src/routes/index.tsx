@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { StreamingText, ChunkedBubbles } from "@/components/atlas/StreamingText";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
