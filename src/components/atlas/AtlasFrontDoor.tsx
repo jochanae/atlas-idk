@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 
 export const MODES = [
@@ -28,6 +28,7 @@ type AtlasFrontDoorProps = {
   secondaryPanel?: ReactNode;
   inputFocusSignal: number;
   sidebarToggle?: ReactNode;
+  userName?: string | null;
   onModeChange: (mode: ModeId) => void;
   onInputChange: (value: string) => void;
   onSend: (text: string, mode: ModeId) => void;
@@ -45,6 +46,7 @@ export function AtlasFrontDoor({
   secondaryPanel,
   inputFocusSignal,
   sidebarToggle,
+  userName,
   onModeChange,
   onInputChange,
   onSend,
