@@ -317,7 +317,7 @@ export function AtlasFrontDoor({
                 return (
                   <button
                     key={m.id}
-                    onClick={() => onModeChange(m.id)}
+                    onClick={() => { onModeChange(m.id); haptic("light"); }}
                     className="atlas-mode-pill"
                     style={{
                       flexShrink: 0,
