@@ -759,6 +759,22 @@ function WorkspacePage() {
       setGeneratedFilename(data.file?.filename ?? null);
       if (data.file?.content && data.file?.filename) {
         setGeneratedFiles((prev) => [...prev, { filename: data.file.filename, language: data.file.language ?? "tsx", content: data.file.content }]);
+        // Automated ledger logging — "Applied Patch" timeline entry
+        try {
+          await entriesTable().insert({
+            user_id: user!.id,
+            project_id: activeProjectId!,
+            session_id: session?.id ?? null,
+            status: "committed",
+            severity: "neutral",
+            title: `Applied Patch — ${data.file.filename}`,
+            summary: `Generated ${data.file.language ?? "tsx"} file via /build command.`,
+            verb: "build",
+          });
+          setLedgerCount((c) => c + 1);
+        } catch {
+          // Non-critical
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Code generation failed";
