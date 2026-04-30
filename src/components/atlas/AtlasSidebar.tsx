@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -10,11 +10,21 @@ import {
   Sun,
   Moon,
   LogOut,
-  User as UserIcon,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import type { RecentSession } from "./AtlasFrontDoor";
+import type { BuildStateEntry } from "./BuildStateTimeline";
+import { BuildStateTimeline } from "./BuildStateTimeline";
+import type { User } from "@supabase/supabase-js";
 
 type Theme = "obsidian" | "parchment";
+
+type ProjectThumb = {
+  id: string;
+  name: string;
+  thumbnailUrl?: string | null;
+};
 
 export function AtlasSidebar({
   open,
@@ -29,6 +39,9 @@ export function AtlasSidebar({
   theme,
   onToggleTheme,
   onSignOut,
+  user,
+  projects,
+  buildHistory,
 }: {
   open: boolean;
   onClose: () => void;
@@ -42,7 +55,12 @@ export function AtlasSidebar({
   theme: Theme;
   onToggleTheme: () => void;
   onSignOut: () => void;
+  user?: User | null;
+  projects?: ProjectThumb[];
+  buildHistory?: BuildStateEntry[];
 }) {
+  const [projectsExpanded, setProjectsExpanded] = useState(true);
+
   // Lock body scroll while open
   useEffect(() => {
     if (!open) return;
@@ -63,6 +81,13 @@ export function AtlasSidebar({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Avatar
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ??
+    user?.user_metadata?.picture ??
+    null;
+  const avatarInitial = (email ?? "A")[0].toUpperCase();
+
   return (
     <>
       {/* Scrim */}
@@ -82,6 +107,7 @@ export function AtlasSidebar({
       {/* Drawer */}
       <aside
         aria-hidden={!open}
+        className="atlas-sidebar-scroll"
         style={{
           position: "fixed",
           top: 0,
@@ -99,9 +125,10 @@ export function AtlasSidebar({
           display: "flex",
           flexDirection: "column",
           color: "var(--foreground)",
+          overflowY: "auto",
         }}
       >
-        {/* Header — toggle + wordmark */}
+        {/* Header — toggle + wordmark + avatar */}
         <div
           style={{
             display: "flex",
@@ -109,6 +136,11 @@ export function AtlasSidebar({
             justifyContent: "space-between",
             padding: "14px 16px 12px",
             borderBottom: "0.5px solid var(--glass-border)",
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            background: "var(--glass-bg)",
+            backdropFilter: "blur(var(--glass-blur))",
           }}
         >
           <button
@@ -135,7 +167,42 @@ export function AtlasSidebar({
           >
             Atlas
           </span>
-          <span style={{ width: 18 }} />
+          {/* User avatar */}
+          <span
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              overflow: "hidden",
+              flexShrink: 0,
+              border: "1.5px solid color-mix(in oklab, var(--accent-gold) 45%, transparent)",
+              boxShadow: "0 0 6px rgba(212,175,55,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: avatarUrl
+                ? "transparent"
+                : "linear-gradient(135deg, #2A2724, #1C1917)",
+            }}
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "color-mix(in oklab, var(--accent-gold) 75%, #F5E6C7)",
+                }}
+              >
+                {avatarInitial}
+              </span>
+            )}
+          </span>
         </div>
 
         {/* Top — actions */}
@@ -146,7 +213,7 @@ export function AtlasSidebar({
 
         {/* Middle — Recents */}
         <SectionLabel>Recent sessions</SectionLabel>
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px" }}>
+        <div style={{ padding: "0 6px 8px" }}>
           {recents.length === 0 ? (
             <EmptyState text="no sessions yet — start one from the front door." />
           ) : (
@@ -215,6 +282,135 @@ export function AtlasSidebar({
           )}
         </div>
 
+        {/* Created by Me — collapsible project thumbnails */}
+        {projects && projects.length > 0 && (
+          <>
+            <button
+              onClick={() => setProjectsExpanded((v) => !v)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "10px 16px 6px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9.5,
+                  color: "var(--muted-text)",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  flex: 1,
+                }}
+              >
+                Created by me
+              </span>
+              {projectsExpanded ? (
+                <ChevronDown size={12} style={{ color: "var(--muted-text)" }} />
+              ) : (
+                <ChevronRight size={12} style={{ color: "var(--muted-text)" }} />
+              )}
+            </button>
+            <div
+              style={{
+                maxHeight: projectsExpanded ? 400 : 0,
+                overflow: "hidden",
+                transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
+                padding: projectsExpanded ? "0 10px 8px" : "0 10px 0",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: 8,
+                  paddingTop: 4,
+                }}
+              >
+                {projects.map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      borderRadius: 8,
+                      border: "0.5px solid var(--glass-border)",
+                      overflow: "hidden",
+                      background: "var(--surface-alt)",
+                      cursor: "pointer",
+                      transition: "border-color 180ms ease, box-shadow 180ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 40%, transparent)";
+                      e.currentTarget.style.boxShadow = "0 2px 12px rgba(212,175,55,0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--glass-border)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    {/* Thumbnail */}
+                    <div
+                      style={{
+                        width: "100%",
+                        aspectRatio: "16/10",
+                        background: "var(--background)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {p.thumbnailUrl ? (
+                        <img
+                          src={p.thumbnailUrl}
+                          alt={p.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: 20,
+                            color: "var(--muted-text)",
+                            opacity: 0.3,
+                          }}
+                        >
+                          ◻
+                        </span>
+                      )}
+                    </div>
+                    {/* Name */}
+                    <div
+                      style={{
+                        padding: "5px 7px",
+                        fontSize: 10.5,
+                        fontFamily: "var(--font-mono)",
+                        color: "var(--foreground)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {p.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Build State Timeline (last N steps) */}
+        {buildHistory && buildHistory.length > 0 && (
+          <div style={{ padding: "0 10px 8px" }}>
+            <BuildStateTimeline entries={buildHistory.slice(-6)} />
+          </div>
+        )}
+
         {/* Workspace links */}
         <SectionLabel>Workspace</SectionLabel>
         <div style={{ padding: "0 10px 10px" }}>
@@ -245,6 +441,7 @@ export function AtlasSidebar({
             display: "flex",
             flexDirection: "column",
             gap: 4,
+            marginTop: "auto",
           }}
         >
           <SidebarItem
@@ -265,20 +462,40 @@ export function AtlasSidebar({
               marginTop: 4,
             }}
           >
+            {/* Profile avatar */}
             <span
               style={{
                 width: 24,
                 height: 24,
                 borderRadius: "50%",
-                background: "var(--ember)",
-                color: "var(--background)",
+                overflow: "hidden",
+                flexShrink: 0,
+                border: "1px solid color-mix(in oklab, var(--accent-gold) 35%, transparent)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                flexShrink: 0,
+                background: avatarUrl
+                  ? "transparent"
+                  : "var(--ember)",
               }}
             >
-              <UserIcon size={13} />
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--background)",
+                  }}
+                >
+                  {avatarInitial}
+                </span>
+              )}
             </span>
             <span
               style={{
