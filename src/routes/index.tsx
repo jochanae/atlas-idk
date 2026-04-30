@@ -54,6 +54,7 @@ import {
 } from "@/lib/atlas";
 import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
+import { haptic } from "@/lib/haptics";
 
 type CommitExtraction =
   | {
@@ -840,6 +841,7 @@ function WorkspacePage() {
   // ── Task Queue handlers ──
   const addToQueue = useCallback((text: string) => {
     setQueueItems((prev) => [...prev, { id: crypto.randomUUID(), text, status: "pending" as const }]);
+    haptic("light");
   }, []);
 
   const executeQueueItem = useCallback(async (id: string) => {
@@ -866,8 +868,19 @@ function WorkspacePage() {
           context.dependentLabels.length ? ` [unlocks: ${context.dependentLabels.join(", ")}]` : "",
         ].join("")
       : "";
-    addToQueue(step.label + contextSuffix);
-  }, [addToQueue]);
+    // Carry full dependency metadata into the queue item
+    setQueueItems((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        text: step.label + contextSuffix,
+        status: "pending" as const,
+        planStepId: step.id,
+        dependsOn: step.dependsOn,
+      },
+    ]);
+    haptic("light");
+  }, []);
 
   // Keyboard shortcuts: Cmd+Shift+Enter = run all queue, Cmd+Backspace = remove last pending
   useEffect(() => {

@@ -4,6 +4,9 @@ export interface QueueItem {
   id: string;
   text: string;
   status: "pending" | "running" | "done" | "failed";
+  /** Dependency graph IDs carried from plan promotion */
+  planStepId?: string;
+  dependsOn?: string[];
 }
 
 interface TaskQueueProps {
