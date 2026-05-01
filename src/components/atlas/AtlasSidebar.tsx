@@ -558,7 +558,7 @@ export function AtlasSidebar({
                       flexShrink: 0,
                     }}
                   />
-                  <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "block" }}>
                     <span
                       style={{
                         display: "block",
@@ -567,6 +567,7 @@ export function AtlasSidebar({
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        maxWidth: "100%",
                       }}
                     >
                       {s.title || "Untitled"}
@@ -580,6 +581,9 @@ export function AtlasSidebar({
                         textTransform: "uppercase",
                         letterSpacing: "0.06em",
                         marginTop: 1,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
