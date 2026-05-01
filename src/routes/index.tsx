@@ -886,7 +886,7 @@ function WorkspacePage() {
           intent_type: "research",
           created_at: new Date().toISOString(),
         };
-        newMessageIds.add(assistantMsg.id);
+        markMessageStreaming(assistantMsg.id);
         setMessages((prev) => [...prev, assistantMsg]);
         setAdaptivePlaceholder("Follow up on the research, or ask something new…");
       } catch (e) {
@@ -965,7 +965,7 @@ function WorkspacePage() {
         // Non-critical — don't block chat flow
       }
       // Mark the new assistant message for streaming animation
-      if (data?.message?.id) newMessageIds.add(data.message.id);
+      if (data?.message?.id) markMessageStreaming(data.message.id);
       const updatedTitle = text.slice(0, 60);
       setSession((current) =>
         current && target && current.id === target.session.id
