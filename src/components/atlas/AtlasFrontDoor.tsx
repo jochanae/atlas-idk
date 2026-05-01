@@ -268,6 +268,7 @@ export function AtlasFrontDoor({
   mobileSurfaceBar,
   voiceListening,
   onVoiceToggle,
+  belowFold,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
