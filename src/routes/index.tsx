@@ -2262,6 +2262,21 @@ function WorkspacePage() {
                   Clear
                 </button>
               )}
+              {/* Diff toggle */}
+              {generatedCode && previousCode && (
+                <button
+                  type="button"
+                  onClick={() => setDiffPreviewActive((v) => !v)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                    diffPreviewActive
+                      ? "bg-accent/20 text-accent-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  }`}
+                  title="Toggle diff view"
+                >
+                  Diff
+                </button>
+              )}
             </div>
           </div>
           {/* Canvas content — viewport-constrained */}
