@@ -91,6 +91,8 @@ export type Database = {
           created_at: string
           id: string
           intent_type: string | null
+          output_guard_repaired: boolean | null
+          output_guard_violation: string | null
           role: string
           session_id: string
           surfaced_memories: Json | null
@@ -104,6 +106,8 @@ export type Database = {
           created_at?: string
           id?: string
           intent_type?: string | null
+          output_guard_repaired?: boolean | null
+          output_guard_violation?: string | null
           role: string
           session_id: string
           surfaced_memories?: Json | null
@@ -117,6 +121,8 @@ export type Database = {
           created_at?: string
           id?: string
           intent_type?: string | null
+          output_guard_repaired?: boolean | null
+          output_guard_violation?: string | null
           role?: string
           session_id?: string
           surfaced_memories?: Json | null
