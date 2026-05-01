@@ -97,7 +97,7 @@ export function DesktopWorkspace({
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground" style={{ minHeight: "fit-content" }}>
       {renderHeader && (
-        <div className="flex-shrink-0 border-b border-border/50">{renderHeader()}</div>
+        <div className="flex-shrink-0 border-b border-border/50 min-h-fit">{renderHeader()}</div>
       )}
 
       <div className="flex-1 min-h-0 flex">
