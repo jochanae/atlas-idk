@@ -1,7 +1,9 @@
 // Atlas commit edge function — extracts the strongest decision from a session.
+// CommitCard Guard validates and normalizes before returning.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
+import { validateCommitCard } from "../_shared/commitcard-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
