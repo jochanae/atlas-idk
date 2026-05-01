@@ -29,6 +29,7 @@ import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
+import { FileTreePanel } from "@/components/atlas/FileTreePanel";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
 // OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
@@ -2241,6 +2242,22 @@ function WorkspacePage() {
       )}
       renderFooter={() => <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />}
       renderInspectorPanes={() => ({
+        files: (
+          <FileTreePanel
+            files={generatedFiles}
+            onFileSelect={(file: { filename: string; content: string }) => {
+              setGeneratedCode(file.content);
+              setGeneratedFilename(file.filename);
+            }}
+          />
+        ),
+        console: (
+          <LiveConsoleStream
+            entries={consoleLogs}
+            visible={true}
+            onToggle={() => {}}
+          />
+        ),
         code: generatedCode ? (
           <div className="h-full flex flex-col">
             <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">

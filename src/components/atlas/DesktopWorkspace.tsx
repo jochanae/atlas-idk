@@ -15,6 +15,8 @@ import {
   Maximize2,
   Minimize2,
   FolderOpen,
+  Terminal,
+  Files,
 } from "lucide-react";
 
 /**
@@ -32,7 +34,7 @@ import {
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
-export type InspectorTabId = "github" | "code" | "recs";
+export type InspectorTabId = "github" | "code" | "recs" | "files" | "console";
 
 export interface DesktopWorkspaceProps {
   // Mobile fallback — render-prop, only mounted on <lg viewports
@@ -66,8 +68,10 @@ const SURFACES: Array<{ id: SurfaceId; label: string; Icon: typeof MessageSquare
 ];
 
 const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Github }> = [
-  { id: "github", label: "GitHub", Icon: Github },
+  { id: "files", label: "Files", Icon: Files },
+  { id: "console", label: "Console", Icon: Terminal },
   { id: "code", label: "Code", Icon: FileCode2 },
+  { id: "github", label: "GitHub", Icon: Github },
   { id: "recs", label: "Recs", Icon: ScrollText },
 ];
 
@@ -88,7 +92,7 @@ export function DesktopWorkspace({
   const isDesktop = useIsDesktop();
   const [navCollapsed, setNavCollapsed] = useState(true);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("code");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("files");
   const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
   const [canvasExpanded, setCanvasExpanded] = useState(false);
   // Render only the active branch — prevents double-mounting heavy components
@@ -367,6 +371,8 @@ function Inspector({
 
 function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
   const messages: Record<InspectorTabId, string> = {
+    files: "No files yet. Use /build to generate components.",
+    console: "Waiting for build output…",
     github: "Connect a GitHub repository to view branches, commits, and files here.",
     code: "Generated code and previews will appear here.",
     recs: "No recommendations yet. They appear as Atlas notices patterns.",
