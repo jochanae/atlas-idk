@@ -9,6 +9,9 @@ import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import {
   AtlasFrontDoor,
   SessionHistoryList,
+  MODES,
+  ModeIcon,
+  greetingFor,
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
