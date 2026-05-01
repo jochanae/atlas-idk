@@ -96,6 +96,9 @@ type AtlasFrontDoorProps = {
   adaptivePlaceholder?: string | null;
   /** Mobile surface bar rendered below header in active mode */
   mobileSurfaceBar?: ReactNode;
+  /** Voice input controls */
+  voiceListening?: boolean;
+  onVoiceToggle?: () => void;
   children?: ReactNode;
 };
 
@@ -245,6 +248,8 @@ export function AtlasFrontDoor({
   planGraph,
   adaptivePlaceholder,
   mobileSurfaceBar,
+  voiceListening,
+  onVoiceToggle,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -613,9 +618,10 @@ export function AtlasFrontDoor({
                 </span>
                 <button
                   type="button"
-                  aria-label="Voice input"
-                  title="Voice (coming soon)"
+                  aria-label={voiceListening ? "Stop listening" : "Voice input"}
+                  title={voiceListening ? "Stop listening" : "Voice input"}
                   className="atlas-icon-btn atlas-mic-btn"
+                  onClick={onVoiceToggle}
                   style={{
                     width: 56,
                     height: 56,

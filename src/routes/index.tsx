@@ -62,6 +62,7 @@ import {
 import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 type CommitExtraction =
   | {
@@ -145,6 +146,10 @@ function WorkspacePage() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const voice = useVoiceInput((transcript) => {
+    setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    setInputFocusSignal((v) => v + 1);
+  });
   // Holds the AbortController for the in-flight atlas-chat call so the user
   // can cancel mid-flight via the Stop button.
   const sendAbortRef = useRef<AbortController | null>(null);
@@ -1174,6 +1179,9 @@ function WorkspacePage() {
               setSurface("chat");
               setInputFocusSignal((s) => s + 1);
             }
+            else if (id === "databases") {
+              navigate({ to: "/ledger" });
+            }
           }}
           taskQueue={
             session ? (
@@ -1194,6 +1202,8 @@ function WorkspacePage() {
           onAddToQueue={addToQueue}
           queueActive={queueItems.some((i) => i.status === "pending")}
           adaptivePlaceholder={adaptivePlaceholder}
+          voiceListening={voice.listening}
+          onVoiceToggle={() => { voice.toggle(); haptic("light"); }}
           mobileSurfaceBar={
             session ? (
               <MobileSurfaceBar
@@ -1381,6 +1391,9 @@ function WorkspacePage() {
                       setSurface("chat");
                       setInputFocusSignal((s) => s + 1);
                     }
+                    else if (id === "databases") {
+                      navigate({ to: "/ledger" });
+                    }
                   }}
                   userId={user.id}
                   projectId={activeProjectId}
@@ -1433,9 +1446,11 @@ function WorkspacePage() {
               <>
                 <button
                   type="button"
-                  aria-label="Voice input"
-                  title="Voice input (coming soon)"
+                  aria-label={voice.listening ? "Stop listening" : "Voice input"}
+                  title={voice.listening ? "Stop listening" : "Voice input"}
                   className="atlas-utility-btn"
+                  data-active={voice.listening ? "true" : "false"}
+                  onClick={() => { voice.toggle(); haptic("light"); }}
                 >
                   <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" />
@@ -1501,6 +1516,7 @@ function WorkspacePage() {
                 setDiffLabels({ old: "Your prompt", new: "Atlas response" });
                 setDiffOpen(true);
               }}
+              onRegenerate={(userMessage) => send(userMessage)}
               activeMode={activeMode}
               buildHistory={buildHistory}
             />
@@ -1966,6 +1982,7 @@ function ChatPanel({
   onRollback,
   recentRollbackMsgId,
   onOpenDiff,
+  onRegenerate,
   activeMode,
   buildHistory,
 }: {
@@ -1990,6 +2007,7 @@ function ChatPanel({
   onRollback: (m: ChatMessage) => void;
   recentRollbackMsgId: string | null;
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
+  onRegenerate?: (userMessage: string) => void;
   activeMode?: string;
   buildHistory?: BuildStateEntry[];
 }) {
@@ -2568,10 +2586,26 @@ function ChatPanel({
                        <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
                           {/* Rollback — always visible */}
                           <MessageActionButton label="Rollback" onClick={() => { onRollback(m); }} />
-                          {/* History — always visible */}
-                          <MessageActionButton label="History" onClick={() => { toast("History coming soon"); }} />
-                          {/* Regenerate — always visible */}
-                          <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
+                          {/* History — diff view of this exchange */}
+                          <MessageActionButton label="History" onClick={() => {
+                            const idx = messages.findIndex((msg) => msg.id === m.id);
+                            const prevUser = idx > 0 ? [...messages].slice(0, idx).reverse().find((msg) => msg.role === "user") : null;
+                            if (prevUser && onOpenDiff) {
+                              onOpenDiff(prevUser.content, m.content);
+                            } else {
+                              toast("No prior exchange to compare");
+                            }
+                          }} />
+                          {/* Regenerate — re-send the user prompt */}
+                          <MessageActionButton label="Regenerate" onClick={() => {
+                            const idx = messages.findIndex((msg) => msg.id === m.id);
+                            const prevUser = idx > 0 ? [...messages].slice(0, idx).reverse().find((msg) => msg.role === "user") : null;
+                            if (prevUser && onRegenerate) {
+                              onRegenerate(prevUser.content);
+                            } else {
+                              toast("No prior prompt to regenerate from");
+                            }
+                          }} />
                           {/* Copy — always visible */}
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
                           {/* Three-dot more menu */}
