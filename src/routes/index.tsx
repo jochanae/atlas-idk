@@ -1658,6 +1658,7 @@ function WorkspacePage() {
         onNewSession={() => {
           setSession(null);
           setMessages([]);
+          setActiveProjectId(null);
           setEntrySurface(true);
           setSidebarOpen(false);
           setInputFocusSignal((v) => v + 1);
