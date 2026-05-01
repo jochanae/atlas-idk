@@ -1947,7 +1947,35 @@ function WorkspacePage() {
       ledgerCount={ledgerCount}
       renderMobile={() => mainShell}
       renderCanvas={() => mainShell}
+      renderHeader={() => (
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold tracking-wide text-foreground">Atlas</span>
+            {activeProject && (
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                {activeProject.name}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {user && <UserAvatar user={user} size="sm" />}
+          </div>
+        </div>
+      )}
+      renderFooter={() => <FooterAuditLine warning={auditWarning} />}
       renderInspectorPanes={() => ({
+        code: generatedCode ? (
+          <div className="h-full flex flex-col">
+            <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                {generatedFilename ?? "Preview"}
+              </span>
+            </div>
+            <div className="flex-1 min-h-0">
+              <LivePreview code={generatedCode} filename={generatedFilename ?? "Component.tsx"} />
+            </div>
+          </div>
+        ) : undefined,
         recs:
           pendingRecs.length === 0 ? undefined : (
             <div className="p-3 space-y-2">
