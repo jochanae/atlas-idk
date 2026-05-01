@@ -1813,6 +1813,8 @@ function WorkspacePage() {
             artifacts={artifacts}
             forceOpen={mobileArtifactDrawerOpen}
             onForceOpenChange={setMobileArtifactDrawerOpen}
+            desktopHidden={desktopArtifactHidden}
+            onDesktopHiddenChange={setDesktopArtifactHidden}
           />
         )}
         {session && (
