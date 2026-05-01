@@ -155,7 +155,10 @@ function TreeNodeView({
 }
 
 export function FileTreePanel({ files, onFileSelect }: Props) {
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("atlas-selected-file") ?? null;
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const tree = useMemo(() => buildTree(files), [files]);
 
