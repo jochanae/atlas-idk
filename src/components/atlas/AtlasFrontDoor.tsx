@@ -243,6 +243,35 @@ function ThreadReveal({ lastMessage }: { lastMessage: string | null }) {
     return () => clearTimeout(t);
   }, []);
 
+  // Three persistent pulsing dots — render inline before text once revealed,
+  // centered alone (no message yet) before reveal.
+  const Dots = (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        flexShrink: 0,
+        verticalAlign: "middle",
+      }}
+    >
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: "50%",
+            background: "var(--accent-gold)",
+            opacity: 0.5,
+            animation: `atlas-thinking-pulse 1400ms ease-in-out ${i * 180}ms infinite`,
+          }}
+        />
+      ))}
+    </span>
+  );
+
   return (
     <div
       style={{
@@ -251,38 +280,15 @@ function ThreadReveal({ lastMessage }: { lastMessage: string | null }) {
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
+        gap: 10,
         position: "relative",
+        padding: "0 4px",
       }}
     >
-      {/* Dots */}
-      <div
-        aria-hidden={revealed}
-        style={{
-          position: "absolute",
-          top: 6,
-          left: "50%",
-          transform: "translateX(-50%)",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          opacity: revealed ? 0 : 0.7,
-          transition: "opacity 400ms ease",
-          pointerEvents: "none",
-        }}
-      >
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              background: "var(--muted-text)",
-              animation: `atlas-thinking-pulse 1200ms ease-in-out ${i * 180}ms infinite`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Dots — always visible, sit inline with the text */}
+      <span style={{ paddingTop: 7, opacity: revealed || !lastMessage ? 1 : 0.7, transition: "opacity 400ms ease" }}>
+        {Dots}
+      </span>
 
       {/* Living thread */}
       {lastMessage && (
@@ -292,7 +298,7 @@ function ThreadReveal({ lastMessage }: { lastMessage: string | null }) {
             fontWeight: 300,
             lineHeight: 1.5,
             color: "var(--muted-text)",
-            opacity: revealed ? 0.6 : 0,
+            opacity: revealed ? 0.65 : 0,
             fontStyle: "italic",
             display: "-webkit-box",
             WebkitLineClamp: 2,
