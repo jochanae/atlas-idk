@@ -30,6 +30,7 @@ import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { FileTreePanel } from "@/components/atlas/FileTreePanel";
+import { ProjectSettingsPanel } from "@/components/atlas/ProjectSettingsPanel";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
 // OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
