@@ -876,19 +876,6 @@ export function AtlasFrontDoor({
             </div>
           )}
 
-          {/* Scroll indicator — vertical dots, one per discovery section.
-              Clickable: smooth-scrolls to its section. Active section dot
-              uses cognac/ember accent at full opacity; others grey. */}
-          {!active && belowFold && (
-            <ScrollDots
-              sections={[
-                { id: "discovery-moment", label: "A Moment for You" },
-                { id: "discovery-momentum", label: "Your Momentum" },
-                { id: "discovery-loops", label: "Open Loops" },
-                { id: "discovery-checkin", label: "Check In" },
-              ]}
-            />
-          )}
         </div>
 
         {/* Below-the-fold dashboard — only in resting view */}
