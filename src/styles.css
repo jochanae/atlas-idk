@@ -127,6 +127,7 @@
   --border: #E8E1D6;
   /* Accents — Cognac overrides Obsidian orange/gold across the board */
   --ember: #8B4513;            /* Deep cognac / burnt sienna */
+  --ember-glow: rgba(139, 69, 19, 0.30);
   --violated: #991B1B;
   --phosphor: #0E7490;
   --warning: #B45309;
