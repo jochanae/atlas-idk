@@ -2312,26 +2312,7 @@ function WorkspacePage() {
       )}
       renderChatPane={() => (
         <div className="h-full flex flex-col bg-card/30 border-r border-border/30">
-          {/* Mode chips */}
-          <div className="flex-shrink-0 px-2 py-2 border-b border-border/40 flex items-center gap-1 overflow-x-auto scrollbar-none">
-            {MODES.map((m) => {
-              const isOn = activeMode === m.id;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => { setActiveMode(m.id); haptic("light"); }}
-                  className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-normal uppercase tracking-wider border transition-colors ${
-                    isOn
-                      ? "border-accent text-accent-foreground bg-accent/10"
-                      : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  }`}
-                >
-                  <ModeIcon mode={m.id} size={10} />
-                  {m.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Mode pills removed — WhisperGate classifies intent automatically per turn. */}
           {/* Chat messages */}
           <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
             {messages.length === 0 ? (
