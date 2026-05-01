@@ -2414,22 +2414,22 @@ function WorkspacePage() {
         </div>
       )}
       renderHeader={() => (
-        <div className="flex items-center gap-3 h-11 px-4 bg-background/80 backdrop-blur-md border-b border-border/20">
-          {/* Left: wordmark + project */}
-          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-            <span className="text-sm font-semibold tracking-tight text-foreground select-none">Atlas</span>
+        <div className="flex items-center gap-3 h-12 px-4" style={{ background: "var(--background)" }}>
+          {/* Left: wordmark + breadcrumb */}
+          <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
+            <span className="text-[13px] font-semibold tracking-tight text-foreground select-none">Atlas</span>
             {activeProject && (
               <>
-                <span className="text-muted-foreground/30">/</span>
-                <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+                <span className="text-muted-foreground/20 text-xs">/</span>
+                <span className="text-xs text-muted-foreground/70 truncate max-w-[140px]">
                   {activeProject.name}
                 </span>
               </>
             )}
             {session && (
               <>
-                <span className="text-muted-foreground/30">/</span>
-                <span className="flex items-center gap-1 text-xs text-muted-foreground/60">
+                <span className="text-muted-foreground/20 text-xs">/</span>
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground/50">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 4px rgba(34,197,94,0.4)" }} />
                   session
                 </span>
@@ -2440,12 +2440,12 @@ function WorkspacePage() {
           <div className="flex-1" />
 
           {/* Right: actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {session && (
               <button
                 type="button"
                 onClick={() => { setSession(null); setMessages([]); setActiveProjectId(null); setEntrySurface(true); }}
-                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/40 transition-colors"
+                className="text-[11px] text-muted-foreground/60 hover:text-foreground px-2.5 py-1 rounded-lg hover:bg-muted/30 transition-colors"
               >
                 New
               </button>
@@ -2453,19 +2453,16 @@ function WorkspacePage() {
             <button
               type="button"
               onClick={() => toast.info("Publishing coming soon")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200"
               style={{
                 color: "var(--accent-gold, #c9a84c)",
-                borderColor: "color-mix(in oklab, var(--accent-gold, #c9a84c) 25%, transparent)",
-                background: "color-mix(in oklab, var(--accent-gold, #c9a84c) 5%, transparent)",
+                background: "color-mix(in oklab, var(--accent-gold, #c9a84c) 6%, transparent)",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 12%, transparent)";
-                e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold, #c9a84c) 45%, transparent)";
+                e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 14%, transparent)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 5%, transparent)";
-                e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold, #c9a84c) 25%, transparent)";
+                e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 6%, transparent)";
               }}
             >
               Publish
