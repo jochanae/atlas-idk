@@ -7,6 +7,7 @@ import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 import { classifyIntent, type IntentMode, type WhisperResult } from "../_shared/whisper-gate.ts";
 import { validateOutput } from "../_shared/output-guard.ts";
 import { validateCommitCard } from "../_shared/commitcard-guard.ts";
+import { parseAttachments, renderAttachmentContext, type Attachment, type ParsedAttachment } from "../_shared/parse-attachment.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
