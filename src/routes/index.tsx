@@ -2585,10 +2585,26 @@ function ChatPanel({
                        <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
                           {/* Rollback — always visible */}
                           <MessageActionButton label="Rollback" onClick={() => { onRollback(m); }} />
-                          {/* History — always visible */}
-                          <MessageActionButton label="History" onClick={() => { toast("History coming soon"); }} />
-                          {/* Regenerate — always visible */}
-                          <MessageActionButton label="Regenerate" onClick={() => { toast("Regenerate coming soon"); }} />
+                          {/* History — diff view of this exchange */}
+                          <MessageActionButton label="History" onClick={() => {
+                            const idx = messages.findIndex((msg) => msg.id === m.id);
+                            const prevUser = idx > 0 ? [...messages].slice(0, idx).reverse().find((msg) => msg.role === "user") : null;
+                            if (prevUser && onOpenDiff) {
+                              onOpenDiff(prevUser.content, m.content);
+                            } else {
+                              toast("No prior exchange to compare");
+                            }
+                          }} />
+                          {/* Regenerate — re-send the user prompt */}
+                          <MessageActionButton label="Regenerate" onClick={() => {
+                            const idx = messages.findIndex((msg) => msg.id === m.id);
+                            const prevUser = idx > 0 ? [...messages].slice(0, idx).reverse().find((msg) => msg.role === "user") : null;
+                            if (prevUser && onRegenerate) {
+                              onRegenerate(prevUser.content);
+                            } else {
+                              toast("No prior prompt to regenerate from");
+                            }
+                          }} />
                           {/* Copy — always visible */}
                           <MessageActionButton label="Copy" onClick={() => { navigator.clipboard.writeText(proseForDisplay); toast.success("Copied"); }} />
                           {/* Three-dot more menu */}
