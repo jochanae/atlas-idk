@@ -297,20 +297,23 @@ export function AtlasFrontDoor({
 
     const updateOverflow = () => {
       setPillsOverflow(row.scrollWidth > row.clientWidth + 2);
+      setPillsAtStart(row.scrollLeft < 4);
+      setPillsAtEnd(row.scrollLeft + row.clientWidth >= row.scrollWidth - 4);
     };
 
     updateOverflow();
+    row.addEventListener("scroll", updateOverflow, { passive: true });
 
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver(updateOverflow);
       observer.observe(row);
       const inner = row.firstElementChild;
       if (inner instanceof HTMLElement) observer.observe(inner);
-      return () => observer.disconnect();
+      return () => { observer.disconnect(); row.removeEventListener("scroll", updateOverflow); };
     }
 
     window.addEventListener("resize", updateOverflow);
-    return () => window.removeEventListener("resize", updateOverflow);
+    return () => { window.removeEventListener("resize", updateOverflow); row.removeEventListener("scroll", updateOverflow); };
   }, []);
 
   useEffect(() => {
