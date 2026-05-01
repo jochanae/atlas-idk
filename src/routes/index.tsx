@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { StreamingText, ChunkedBubbles } from "@/components/atlas/StreamingText";
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemMenu } from "@/components/atlas/SystemMenu";
 import { useAuth } from "@/lib/auth";
@@ -1772,37 +1772,39 @@ function WorkspacePage() {
               boxSizing: "content-box",
             }}
           >
-            <ChatPanel
-              newMessageIds={newMessageIds}
-              messages={messages}
-              sending={sending}
-              onStop={stopSending}
-              setInput={setInput}
-              sessionId={session?.id ?? ""}
-              projectId={activeProjectId}
-              userId={user.id}
-              onRefresh={refresh}
-              onParkedChange={loadParkedItems}
-              onContinueAfterConflict={continueAfterConflict}
-              onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
-              thinkingPrompts={thinkingPrompts}
-              thinkingLoading={thinkingLoading}
-              onAskThinkingPrompt={askThinkingPrompt}
-              onParkThinkingPrompt={parkThinkingPrompt}
-              onDismissThinkingPrompt={dismissThinkingPrompt}
-              onRefreshThinkingPrompts={regenerateThinkingPrompts}
-              onRollback={handleRollback}
-              recentRollbackMsgId={recentRollbackMsgId}
-              onOpenDiff={(userContent, assistantContent) => {
-                setDiffOldCode(userContent);
-                setDiffNewCode(assistantContent);
-                setDiffLabels({ old: "Your prompt", new: "Atlas response" });
-                setDiffOpen(true);
-              }}
-              onRegenerate={(userMessage) => send(userMessage)}
-              activeMode={activeMode}
-              buildHistory={buildHistory}
-            />
+            <div className="relative min-h-0 flex-1">
+              <ChatPanel
+                newMessageIds={newMessageIds}
+                messages={messages}
+                sending={sending}
+                onStop={stopSending}
+                setInput={setInput}
+                sessionId={session?.id ?? ""}
+                projectId={activeProjectId}
+                userId={user.id}
+                onRefresh={refresh}
+                onParkedChange={loadParkedItems}
+                onContinueAfterConflict={continueAfterConflict}
+                onRequestInputFocus={() => setInputFocusSignal((value) => value + 1)}
+                thinkingPrompts={thinkingPrompts}
+                thinkingLoading={thinkingLoading}
+                onAskThinkingPrompt={askThinkingPrompt}
+                onParkThinkingPrompt={parkThinkingPrompt}
+                onDismissThinkingPrompt={dismissThinkingPrompt}
+                onRefreshThinkingPrompts={regenerateThinkingPrompts}
+                onRollback={handleRollback}
+                recentRollbackMsgId={recentRollbackMsgId}
+                onOpenDiff={(userContent, assistantContent) => {
+                  setDiffOldCode(userContent);
+                  setDiffNewCode(assistantContent);
+                  setDiffLabels({ old: "Your prompt", new: "Atlas response" });
+                  setDiffOpen(true);
+                }}
+                onRegenerate={(userMessage) => send(userMessage)}
+                activeMode={activeMode}
+                buildHistory={buildHistory}
+              />
+            </div>
             {isActive && (
               <SessionFooter artifactCount={artifacts.length} ledgerCount={ledgerCount} />
             )}
@@ -2284,37 +2286,39 @@ function WorkspacePage() {
                 </div>
               </div>
             ) : (
-              <ChatPanel
-                newMessageIds={newMessageIds}
-                messages={messages}
-                sending={sending}
-                onStop={stopSending}
-                setInput={setInput}
-                sessionId={session?.id ?? ""}
-                projectId={activeProjectId}
-                userId={user.id}
-                onRefresh={refresh}
-                onParkedChange={loadParkedItems}
-                onContinueAfterConflict={continueAfterConflict}
-                onRequestInputFocus={() => setInputFocusSignal((v) => v + 1)}
-                thinkingPrompts={thinkingPrompts}
-                thinkingLoading={thinkingLoading}
-                onAskThinkingPrompt={askThinkingPrompt}
-                onParkThinkingPrompt={parkThinkingPrompt}
-                onDismissThinkingPrompt={dismissThinkingPrompt}
-                onRefreshThinkingPrompts={regenerateThinkingPrompts}
-                onRollback={handleRollback}
-                recentRollbackMsgId={recentRollbackMsgId}
-                onOpenDiff={(userContent, assistantContent) => {
-                  setDiffOldCode(userContent);
-                  setDiffNewCode(assistantContent);
-                  setDiffLabels({ old: "Your prompt", new: "Atlas response" });
-                  setDiffOpen(true);
-                }}
-                onRegenerate={(userMessage) => send(userMessage)}
-                activeMode={activeMode}
-                buildHistory={buildHistory}
-              />
+              <div className="relative min-h-0 flex-1">
+                <ChatPanel
+                  newMessageIds={newMessageIds}
+                  messages={messages}
+                  sending={sending}
+                  onStop={stopSending}
+                  setInput={setInput}
+                  sessionId={session?.id ?? ""}
+                  projectId={activeProjectId}
+                  userId={user.id}
+                  onRefresh={refresh}
+                  onParkedChange={loadParkedItems}
+                  onContinueAfterConflict={continueAfterConflict}
+                  onRequestInputFocus={() => setInputFocusSignal((v) => v + 1)}
+                  thinkingPrompts={thinkingPrompts}
+                  thinkingLoading={thinkingLoading}
+                  onAskThinkingPrompt={askThinkingPrompt}
+                  onParkThinkingPrompt={parkThinkingPrompt}
+                  onDismissThinkingPrompt={dismissThinkingPrompt}
+                  onRefreshThinkingPrompts={regenerateThinkingPrompts}
+                  onRollback={handleRollback}
+                  recentRollbackMsgId={recentRollbackMsgId}
+                  onOpenDiff={(userContent, assistantContent) => {
+                    setDiffOldCode(userContent);
+                    setDiffNewCode(assistantContent);
+                    setDiffLabels({ old: "Your prompt", new: "Atlas response" });
+                    setDiffOpen(true);
+                  }}
+                  onRegenerate={(userMessage) => send(userMessage)}
+                  activeMode={activeMode}
+                  buildHistory={buildHistory}
+                />
+              </div>
             )}
           </div>
           {/* Input bar */}
@@ -2708,6 +2712,83 @@ function WorkspacePage() {
 
 
 /* -------- Chat Panel -------- */
+const FILE_PILL_PATTERN = /(\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b)/gi;
+const FILE_PILL_EXACT_PATTERN = /^\b[\w-]+\.(?:tsx|ts|js|jsx|css|json|md|sql)\b$/i;
+
+function renderMarkdownChildren(children: ReactNode): ReactNode {
+  return Children.map(children, (child) => {
+    if (typeof child === "string") {
+      const parts = child.split(FILE_PILL_PATTERN);
+      return parts.map((part, index) =>
+        FILE_PILL_EXACT_PATTERN.test(part) ? (
+          <span
+            key={`${part}-${index}`}
+            className="rounded border border-border/40 bg-muted/60 px-1.5 py-0.5 font-mono text-[12px] text-muted-foreground"
+          >
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      );
+    }
+    if (isValidElement<{ children?: ReactNode }>(child)) {
+      return cloneElement(child, {
+        children: renderMarkdownChildren(child.props.children),
+      });
+    }
+    return child;
+  });
+}
+
+function MarkdownProse({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => (
+          <p className="mb-3 text-[16px] leading-[1.75] text-foreground">
+            {renderMarkdownChildren(children)}
+          </p>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold text-foreground">
+            {renderMarkdownChildren(children)}
+          </strong>
+        ),
+        code: ({ children, className }) => {
+          const isBlock = Boolean(className);
+          if (isBlock) {
+            return (
+              <code className={`${className ?? ""} block whitespace-pre-wrap font-mono text-[13px] text-foreground`}>
+                {children}
+              </code>
+            );
+          }
+          return (
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+              {children}
+            </code>
+          );
+        },
+        pre: ({ children }) => (
+          <pre className="mb-3 overflow-x-auto rounded-lg bg-card/80 p-3 font-mono text-[13px] leading-relaxed text-foreground">
+            {children}
+          </pre>
+        ),
+        ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>,
+        ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>,
+        li: ({ children }) => (
+          <li className="mb-1 text-[16px] leading-[1.7] text-foreground">
+            {renderMarkdownChildren(children)}
+          </li>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
 function ChatPanel({
   newMessageIds,
   messages,
@@ -2780,6 +2861,7 @@ function ChatPanel({
     color: string;
     visible: boolean;
   } | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [dismissedConflicts, setDismissedConflicts] = useState<Set<string>>(
     () => new Set(),
   );
@@ -2794,6 +2876,25 @@ function ChatPanel({
       behavior: "smooth",
     });
   }, [messages.length, sending]);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const updateScrollButton = () => {
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      setShowScrollToBottom(distanceFromBottom > 200);
+    };
+    updateScrollButton();
+    container.addEventListener("scroll", updateScrollButton, { passive: true });
+    return () => container.removeEventListener("scroll", updateScrollButton);
+  }, []);
+
+  const scrollToBottom = () => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  };
 
   // Auto-scroll during streaming: observe content height changes
   useEffect(() => {
@@ -3093,11 +3194,12 @@ function ChatPanel({
 
   return (
     <>
+      <div className="relative flex-1 min-h-0">
       <div
         ref={scrollRef}
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
-        className="relative flex-1 overflow-y-auto px-5 pt-6 pb-44 flex flex-col"
+        className="relative h-full overflow-y-auto px-5 pt-6 pb-44 flex flex-col"
         style={{ gap: "var(--bubble-gap, 20px)", overflowAnchor: "none" }}
       >
         {/* Spacer pushes messages to bottom when few, scrolls normally when many */}
@@ -3338,37 +3440,7 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            newMessageIds.has(m.id) ? (
-                              <ChunkedBubbles
-                                text={proseForDisplay}
-                                isNew
-                                renderBubble={(chunk, idx, isNewChunk) => (
-                                  <div
-                                    key={idx}
-                                    style={{
-                                      marginBottom: 10,
-                                      animation: isNewChunk ? undefined : "atlas-bubble-in 300ms ease forwards",
-                                    }}
-                                  >
-                                    <StreamingText
-                                      text={chunk}
-                                      animate={isNewChunk}
-                                      speed={30}
-                                      onComplete={() => {
-                                        // After last chunk finishes, remove from new set
-                                        // so re-renders don't re-animate
-                                      }}
-                                     className="text-[16px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose"
-                                      style={{ textAlign: "left" }}
-                                    />
-                                  </div>
-                                )}
-                              />
-                            ) : (
-                              <div className="text-[16px] leading-[1.75] whitespace-pre-wrap text-foreground atlas-prose" style={{ textAlign: "left" }}>
-                                {proseForDisplay}
-                              </div>
-                            )
+                            <MarkdownProse content={proseForDisplay} />
                           )}
                           {card && cardVersion !== null && (
                             <div className="pt-2">
@@ -3488,36 +3560,36 @@ function ChatPanel({
             );
           })}
         {sending && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 14px",
-              width: "fit-content",
-            }}
-          >
-            <span className="font-mono text-[10px] uppercase tracking-[0.15em]" style={{ color: "var(--accent-gold)", opacity: 0.6 }}>
-              processing
-            </span>
+          <div className="flex w-fit items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2">
+            <span className="h-2 w-2 rounded-full bg-[color:var(--ember)] animate-pulse" aria-hidden />
+            <span className="text-[12px] font-mono text-muted-foreground">Atlas thinking...</span>
             <button
               type="button"
               onClick={onStop}
-              className="font-mono text-[10px] uppercase tracking-[0.15em] rounded-sm px-2 py-0.5 transition-colors"
-              style={{
-                background: "transparent",
-                border: "0.5px solid var(--ember)",
-                color: "var(--ember)",
-              }}
+              className="ml-1 rounded-sm border border-[color:var(--ember)]/70 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-[color:var(--ember)] transition-colors"
               aria-label="Stop Atlas"
               title="Stop Atlas"
             >
-              ◼ Stop
+              Stop
             </button>
           </div>
         )}
         {/* Scroll anchor — browser pins to this */}
         <div ref={bottomAnchorRef} style={{ overflowAnchor: "auto", height: 1, flexShrink: 0 }} />
+      </div>
+      {showScrollToBottom && (
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          className="absolute bottom-24 right-5 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow-sm"
+          aria-label="Scroll to latest message"
+          title="Scroll to latest message"
+        >
+          <svg viewBox="0 0 16 16" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+      )}
       </div>
       {/* Sovereign Scrub Rail — always visible when chat has messages */}
       {messages.length > 0 && (
