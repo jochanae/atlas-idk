@@ -160,7 +160,7 @@ export function AtlasSidebar({
           top: 0,
           left: 0,
           bottom: 0,
-          width: "min(86vw, 320px)",
+          width: "min(85vw, 340px)",
           background: "var(--glass-bg)",
           backdropFilter: "blur(var(--glass-blur)) saturate(140%)",
           WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
