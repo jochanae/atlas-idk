@@ -3076,7 +3076,142 @@ function UtilityBarSurfaces({
   );
 }
 
-function ParkingLotDrawer({
+function UtilityOverflowMenu({
+  activeSurface,
+  historyOpen,
+  onSurfaceChange,
+  onHistory,
+}: {
+  activeSurface: "chat" | "workspace" | "preview";
+  historyOpen: boolean;
+  onSurfaceChange: (surface: "chat" | "workspace" | "preview") => void;
+  onHistory: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node) && btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const items: Array<{ id: "history" | "chat" | "workspace" | "preview"; label: string; icon: ReactNode }> = [
+    {
+      id: "history",
+      label: "History",
+      icon: (
+        <svg viewBox="0 0 20 20" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M5 4.5h10M5 8h10M5 11.5h7M4 15h9" />
+        </svg>
+      ),
+    },
+    {
+      id: "workspace",
+      label: "Workspace",
+      icon: (
+        <svg viewBox="0 0 20 20" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M3.5 4.5h13v11h-13z" />
+          <path d="M7.5 4.5v11M3.5 8h13" />
+        </svg>
+      ),
+    },
+    {
+      id: "preview",
+      label: "Preview",
+      icon: (
+        <svg viewBox="0 0 20 20" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path d="M2.5 10s2.5-4.5 7.5-4.5 7.5 4.5 7.5 4.5-2.5 4.5-7.5 4.5S2.5 10 2.5 10Z" />
+          <circle cx="10" cy="10" r="2" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-label="More options"
+        title="More"
+        className="atlas-utility-btn"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <svg viewBox="0 0 16 16" width={14} height={14} fill="currentColor">
+          <circle cx="3" cy="8" r="1.5" />
+          <circle cx="8" cy="8" r="1.5" />
+          <circle cx="13" cy="8" r="1.5" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          ref={ref}
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 8px)",
+            right: 0,
+            zIndex: 92,
+            minWidth: 160,
+            background: "rgba(28, 25, 23, 0.92)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            border: "1px solid color-mix(in oklab, var(--accent-gold) 25%, transparent)",
+            borderRadius: 12,
+            padding: "6px 0",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(201,162,76,0.12)",
+            animation: "atlas-sys-menu-in 180ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+            transformOrigin: "bottom right",
+          }}
+        >
+          {items.map((item) => {
+            const isHistory = item.id === "history";
+            const isActive = isHistory ? historyOpen : activeSurface === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (item.id === "history") onHistory();
+                  else onSurfaceChange(item.id as "chat" | "workspace" | "preview");
+                  setOpen(false);
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 14px",
+                  background: isActive ? "color-mix(in oklab, var(--accent-gold) 12%, transparent)" : "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: isActive ? "var(--accent-gold)" : "var(--foreground)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  transition: "background 120ms ease",
+                }}
+                onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in oklab, var(--accent-gold) 8%, transparent)"; }}
+                onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
   open,
   items,
   projects,
