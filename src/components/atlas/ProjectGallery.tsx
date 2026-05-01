@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence, useDragControls, type PanInfo } from "framer-motion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { X, Star, ExternalLink, MoreHorizontal, FolderOpen } from "lucide-react";
+import { X, Star, ExternalLink, MoreHorizontal, FolderOpen, Plus } from "lucide-react";
 import type { Project } from "@/lib/atlas";
 
 /**
