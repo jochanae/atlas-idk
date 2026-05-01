@@ -121,60 +121,47 @@ export function DesktopWorkspace({
           />
         </div>
 
-        {/* ── Resizable content area ────────────────────────────── */}
-        <div className="flex-1 min-w-0">
-          <PanelGroup orientation="horizontal" className="h-full w-full flex">
-            {/* ── Chat sidecar (optional) ────────────────── */}
-            {renderChatPane && chatVisible && !canvasExpanded && (
-              <>
-                <Panel defaultSize={25} minSize={18} maxSize={40} className="bg-background">
-                  <div className="h-full overflow-hidden flex flex-col" style={{ minWidth: 200 }}>
-                    <PaneHeader title="Atlas" />
-                    <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
-                  </div>
-                </Panel>
-                <ResizeHandle />
-              </>
-            )}
-
-            {/* ── Main canvas ─────────────────────────────── */}
-            <Panel defaultSize={canvasExpanded ? 100 : (chatVisible ? 50 : 75)} minSize={30}>
-              <div className="h-full overflow-hidden relative">
-                {/* Expand / collapse toggle */}
-                <button
-                  type="button"
-                  onClick={() => setCanvasExpanded((v) => !v)}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-                  title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
-                  aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
-                >
-                  {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                </button>
-                {renderCanvas()}
+        {/* ── Content area (flex layout) ────────────────────────────── */}
+        <div className="flex-1 min-w-0 flex h-full">
+          {/* ── Chat sidecar (optional) ────────────────── */}
+          {renderChatPane && chatVisible && !canvasExpanded && (
+            <div className="flex-shrink-0 bg-background border-r border-border/50" style={{ width: 320 }}>
+              <div className="h-full overflow-hidden flex flex-col">
+                <PaneHeader title="Atlas" />
+                <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
               </div>
-            </Panel>
+            </div>
+          )}
 
-            {!canvasExpanded && (
-              <>
-                <ResizeHandle />
-                {/* ── Right inspector ──────────────────────────── */}
-                <Panel
-                  defaultSize={inspectorCollapsed ? 5 : 25}
-                  minSize={5}
-                  maxSize={40}
-                  className="border-l border-border/50 bg-card/30"
-                >
-                  <Inspector
-                    collapsed={inspectorCollapsed}
-                    onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
-                    activeTab={inspectorTab}
-                    onTabChange={setInspectorTab}
-                    panes={inspectorPanes}
-                  />
-                </Panel>
-              </>
-            )}
-          </PanelGroup>
+          {/* ── Main canvas ─────────────────────────────── */}
+          <div className="flex-1 min-w-0 h-full overflow-hidden relative">
+            <button
+              type="button"
+              onClick={() => setCanvasExpanded((v) => !v)}
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+              title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+              aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+            >
+              {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            {renderCanvas()}
+          </div>
+
+          {/* ── Right inspector ──────────────────────────── */}
+          {!canvasExpanded && (
+            <div
+              className="flex-shrink-0 border-l border-border/50 bg-card/30 transition-[width] duration-200"
+              style={{ width: inspectorCollapsed ? 40 : 280 }}
+            >
+              <Inspector
+                collapsed={inspectorCollapsed}
+                onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
+                activeTab={inspectorTab}
+                onTabChange={setInspectorTab}
+                panes={inspectorPanes}
+              />
+            </div>
+          )}
         </div>
       </div>
 
