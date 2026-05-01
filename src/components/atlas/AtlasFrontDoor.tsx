@@ -269,6 +269,8 @@ export function AtlasFrontDoor({
   const pillsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pillsOverflow, setPillsOverflow] = useState(false);
+  const [pillsAtEnd, setPillsAtEnd] = useState(false);
+  const [pillsAtStart, setPillsAtStart] = useState(true);
 
   const TEXTAREA_MIN_HEIGHT = 48;
   const TEXTAREA_MAX_HEIGHT_RESTING = 160;
