@@ -206,12 +206,13 @@ export function DesktopWorkspace({
           <>
             <div
               className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
-              style={{ width: chatWidth, minWidth: 320, maxWidth: 800, background: "var(--surface)" }}
+              style={{ width: Math.min(chatWidth, chatMaxWidth), minWidth: 320, maxWidth: chatMaxWidth, background: "var(--surface)" }}
             >
               {renderChatPane!()}
             </div>
             <ResizeHandle
-              onResize={(dx) => setChatWidth(w => Math.max(320, Math.min(800, w + dx)))}
+              onResize={(dx) => setChatWidth(w => Math.max(320, Math.min(chatMaxWidth, w + dx)))}
+              onDoubleClick={() => setChatWidth(Math.floor(viewportWidth * 0.5))}
             />
           </>
         )}
