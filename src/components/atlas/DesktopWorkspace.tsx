@@ -371,6 +371,8 @@ function Inspector({
 
 function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
   const messages: Record<InspectorTabId, string> = {
+    files: "No files yet. Use /build to generate components.",
+    console: "Waiting for build output…",
     github: "Connect a GitHub repository to view branches, commits, and files here.",
     code: "Generated code and previews will appear here.",
     recs: "No recommendations yet. They appear as Atlas notices patterns.",
