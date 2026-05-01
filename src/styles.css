@@ -104,7 +104,10 @@
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Parchment (light) theme */
+/* Executive Light — high-contrast light theme (replaces deprecated Parchment).
+   Clean :root override: explicitly resets Obsidian's orange/gold accents to
+   teal/charcoal so no "ghost styles" leak through in light mode. */
+.theme-executive,
 .theme-parchment {
   --header-height: 64px;
   --mode-pill-top: 78px;
@@ -112,31 +115,42 @@
   --touch-target-compact: 40px;
   --shell-edge: 20px;
   --input-radius: 18px;
-  --background: #F5F1E8;
-  --surface: #ECE6D7;
-  --surface-alt: #E2DBC8;
-  --foreground: #1C1917;
-  --muted-text: #78716C;
-  --ember: #C2410C;
+  /* Core surfaces */
+  --background: #F4F7F6;       /* Cool grey */
+  --surface: #FFFFFF;          /* Pure white sidebar/cards */
+  --surface-alt: #ECF1EF;      /* Subtle cool grey for alt rows */
+  --foreground: #121212;       /* Deep charcoal text */
+  --muted-text: #5B6B68;
+  --border: #D9E1DE;
+  /* Accents — explicitly OVERRIDE Obsidian orange/gold so they
+     never bleed through. Primary becomes deep teal; gold becomes
+     a muted teal-leaning tone so any gold-bound element stays on-theme. */
+  --ember: #004D40;            /* Deep teal primary */
   --violated: #991B1B;
-  --border: #D6CFBC;
   --phosphor: #0E7490;
   --warning: #B45309;
-  --accent-gold: #A8852F;
-  --glass-bg: rgba(245, 241, 232, 0.55);
-  --glass-border: rgba(28, 25, 23, 0.10);
+  --accent-gold: #004D40;      /* Deep teal — replaces obsidian gold */
+  --gold-glow: rgba(0, 77, 64, 0.22);
+  --gold-subtle: rgba(0, 77, 64, 0.06);
+  --gold-border: rgba(0, 77, 64, 0.18);
+  /* Glass + motion */
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(18, 18, 18, 0.08);
   --glass-blur: 24px;
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Parchment overrides for header and panels */
+/* Executive Light overrides for header and panels */
+.theme-executive .atlas-sovereign-glass,
 .theme-parchment .atlas-sovereign-glass {
   background: transparent !important;
   border-bottom-color: var(--glass-border) !important;
 }
+.theme-executive .atlas-sticky-header button,
 .theme-parchment .atlas-sticky-header button {
   color: var(--foreground);
 }
+.theme-executive .atlas-sticky-header .atlas-mobile-surface-bar button,
 .theme-parchment .atlas-sticky-header .atlas-mobile-surface-bar button {
   color: var(--muted-text);
 }
