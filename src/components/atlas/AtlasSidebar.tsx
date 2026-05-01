@@ -327,9 +327,8 @@ export function AtlasSidebar({
             </button>
             <div
               style={{
-                maxHeight: projectsExpanded ? "min(56vh, 620px)" : 0,
-                overflowY: projectsExpanded ? "auto" : "hidden",
-                overflowX: "hidden",
+                maxHeight: projectsExpanded ? "none" : 0,
+                overflow: "hidden",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
                 padding: projectsExpanded ? "0 12px 14px" : "0 12px 0",
               }}
