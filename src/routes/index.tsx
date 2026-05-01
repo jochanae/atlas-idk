@@ -1025,16 +1025,8 @@ function WorkspacePage() {
         if (extracted.length > 0) setPlanSteps(extracted);
       }
 
-      // ═══ BUILD auto-codegen: when WhisperGate classifies as BUILD,
-      // automatically generate a component and show it in LivePreview ═══
-      if (data?.intent?.mode === "BUILD") {
-        generateCode(text).catch((err) => {
-          const msg = err instanceof Error ? err.message : "Build failed";
-          console.error("auto-codegen error:", msg);
-          toast.error(msg);
-          setCodegenLoading(false);
-        });
-      }
+      // Codegen is only triggered by the explicit /build slash command —
+      // BUILD intent classification only shapes Atlas's conversational reply.
 
       await refresh(target.session, target.projectId);
     } catch (e) {
