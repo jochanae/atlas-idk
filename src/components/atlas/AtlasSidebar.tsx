@@ -69,6 +69,12 @@ export function AtlasSidebar({
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [recentsExpanded, setRecentsExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeBtnRef = useRef<HTMLButtonElement>(null);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("atlas-theme-mode") as ThemeMode) || "dark";
+  });
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Filter projects & sessions by search query
