@@ -471,6 +471,7 @@ export function AtlasFrontDoor({
                 height: 36,
                 display: "inline-flex",
                 alignItems: "center",
+                gap: 8,
                 fontSize: 16,
                 fontWeight: 500,
                 color: "var(--foreground)",
@@ -479,6 +480,9 @@ export function AtlasFrontDoor({
                 cursor: onWordmarkClick ? "pointer" : "default",
               }}
             >
+              <span style={{ color: "var(--ember)", display: "inline-flex" }}>
+                <AtlasLogo size={20} strokeWidth={1.6} />
+              </span>
               Atlas
             </button>
           )}
