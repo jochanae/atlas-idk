@@ -136,9 +136,12 @@ function groupBySession(entries: Entry[]): SessionGroup[] {
   });
 }
 
-/* ─── Category filter type ───────────────────────────────────────── */
+/* ─── Filter types ───────────────────────────────────────────────── */
 
 type CategoryFilter = "all" | Category;
+type SeverityFilter = "all" | "committed" | "blocker" | "parked" | "neutral";
+type VerbFilter = "all" | "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge" | "plan";
+type DateFilter = "all" | "today" | "week" | "month";
 
 /* ─── Main component ─────────────────────────────────────────────── */
 
@@ -156,6 +159,10 @@ function ArchitecturalLedger() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [verbFilter, setVerbFilter] = useState<VerbFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -193,9 +200,19 @@ function ArchitecturalLedger() {
   }, [focus, entries]);
 
   const filtered = useMemo(() => {
+    const now = Date.now();
     return entries.filter((e) => {
       if (projectFilter !== "all" && e.project_id !== projectFilter) return false;
       if (categoryFilter !== "all" && inferCategory(e) !== categoryFilter) return false;
+      if (severityFilter !== "all" && e.severity !== severityFilter) return false;
+      if (verbFilter !== "all" && e.verb !== verbFilter) return false;
+      if (dateFilter !== "all") {
+        const age = now - new Date(e.created_at).getTime();
+        const day = 86400000;
+        if (dateFilter === "today" && age > day) return false;
+        if (dateFilter === "week" && age > 7 * day) return false;
+        if (dateFilter === "month" && age > 30 * day) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const match =
@@ -206,7 +223,7 @@ function ArchitecturalLedger() {
       }
       return true;
     });
-  }, [entries, projectFilter, categoryFilter, searchQuery]);
+  }, [entries, projectFilter, categoryFilter, severityFilter, verbFilter, dateFilter, searchQuery]);
 
   const groups = useMemo(() => groupBySession(filtered), [filtered]);
 
@@ -453,9 +470,56 @@ function ArchitecturalLedger() {
             ))}
           </select>
         )}
+        {/* Expand filters toggle */}
+        <button
+          onClick={() => setFiltersExpanded((v) => !v)}
+          style={{
+            flexShrink: 0,
+            marginLeft: projects.length <= 1 ? "auto" : 0,
+            padding: "4px 10px",
+            borderRadius: 14,
+            border: filtersExpanded ? "1px solid var(--accent-gold)" : "1px solid var(--border)",
+            background: filtersExpanded ? "color-mix(in oklab, var(--accent-gold) 10%, transparent)" : "transparent",
+            fontFamily: "var(--font-mono)",
+            fontSize: 9.5,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase" as const,
+            color: filtersExpanded ? "var(--accent-gold)" : "var(--muted-text)",
+            cursor: "pointer",
+            transition: "all 160ms ease",
+          }}
+        >
+          ⚙ {(severityFilter !== "all" || verbFilter !== "all" || dateFilter !== "all") ? "●" : ""}
+        </button>
       </div>
 
-      {/* ─── Timeline ─── */}
+      {/* ─── Advanced filters (collapsible) ─── */}
+      {filtersExpanded && (
+        <div
+          style={{
+            padding: "8px 18px 10px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <FilterSelect label="Severity" value={severityFilter} onChange={(v) => setSeverityFilter(v as SeverityFilter)} options={[{ value: "all", label: "All" }, { value: "committed", label: "Committed" }, { value: "blocker", label: "Blocker" }, { value: "parked", label: "Parked" }, { value: "neutral", label: "Neutral" }]} />
+          <FilterSelect label="Verb" value={verbFilter} onChange={(v) => setVerbFilter(v as VerbFilter)} options={[{ value: "all", label: "All" }, { value: "new", label: "New" }, { value: "bug", label: "Bug" }, { value: "perf", label: "Perf" }, { value: "note", label: "Note" }, { value: "wip", label: "WIP" }, { value: "audit", label: "Audit" }, { value: "merge", label: "Merge" }, { value: "plan", label: "Plan" }]} />
+          <FilterSelect label="Date" value={dateFilter} onChange={(v) => setDateFilter(v as DateFilter)} options={[{ value: "all", label: "All time" }, { value: "today", label: "Today" }, { value: "week", label: "This week" }, { value: "month", label: "This month" }]} />
+          {(severityFilter !== "all" || verbFilter !== "all" || dateFilter !== "all") && (
+            <button
+              onClick={() => { setSeverityFilter("all"); setVerbFilter("all"); setDateFilter("all"); }}
+              style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--ember)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
+
+
       <main style={{ padding: "0 18px" }}>
         {loading ? (
           <div style={{ padding: "80px 0", display: "flex", justifyContent: "center" }}>
@@ -991,5 +1055,56 @@ function EmptyState({
         </button>
       )}
     </div>
+  );
+}
+
+/* ─── Filter select helper ───────────────────────────────────────── */
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <span
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 9,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase" as const,
+          color: "var(--muted-text)",
+        }}
+      >
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          background: "var(--surface-alt)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          padding: "3px 8px",
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          color: value !== "all" ? "var(--accent-gold)" : "var(--muted-text)",
+          outline: "none",
+          cursor: "pointer",
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
