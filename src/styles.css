@@ -155,6 +155,104 @@
   color: var(--muted-text);
 }
 
+/* ============================================================
+   Executive Light — polish: surfaces, buttons, typography, z-index
+   Scoped to .theme-executive / .theme-parchment so Obsidian is untouched.
+   ============================================================ */
+
+/* 1. Input shells: pure white surface + 2px teal border (resting + active) */
+.theme-executive .atlas-input-shell,
+.theme-parchment .atlas-input-shell {
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 2px solid #004D40 !important;
+  box-shadow: 0 1px 2px rgba(18, 18, 18, 0.04) !important;
+}
+.theme-executive .atlas-active-input-shell > div,
+.theme-parchment .atlas-active-input-shell > div {
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 2px solid #004D40 !important;
+  box-shadow: 0 1px 2px rgba(18, 18, 18, 0.04) !important;
+}
+/* Solid grey backdrop behind the active composer so background text can't
+   peek through the gradient. */
+.theme-executive .atlas-active-input-shell,
+.theme-parchment .atlas-active-input-shell {
+  background: linear-gradient(to top, #F4F7F6 85%, rgba(244, 247, 246, 0.92)) !important;
+}
+
+/* 2. Mode pills — outline (ghost) by default, solid teal when active */
+.theme-executive .atlas-mode-pill,
+.theme-parchment .atlas-mode-pill {
+  background: #FFFFFF !important;
+  border: 1px solid #004D40 !important;
+  color: #004D40 !important;
+  box-shadow: none !important;
+  font-weight: 500;
+  transition: background 180ms var(--ease-cinematic), color 180ms var(--ease-cinematic);
+}
+.theme-executive .atlas-mode-pill:hover,
+.theme-parchment .atlas-mode-pill:hover {
+  background: rgba(0, 77, 64, 0.08) !important;
+}
+/* Active pill is detected by the inline glow box-shadow — when present,
+   swap to solid teal background + white text. */
+.theme-executive .atlas-mode-pill[style*="box-shadow: 0 0 14px"],
+.theme-parchment .atlas-mode-pill[style*="box-shadow: 0 0 14px"],
+.theme-executive .atlas-mode-pill[style*="boxShadow"],
+.theme-parchment .atlas-mode-pill[style*="boxShadow"] {
+  background: #004D40 !important;
+  color: #FFFFFF !important;
+  border-color: #004D40 !important;
+  box-shadow: 0 2px 10px -2px rgba(0, 77, 64, 0.4) !important;
+}
+.theme-executive .atlas-mode-pill[style*="box-shadow: 0 0 14px"] .atlas-mode-icon,
+.theme-parchment .atlas-mode-pill[style*="box-shadow: 0 0 14px"] .atlas-mode-icon {
+  color: #FFFFFF !important;
+}
+
+/* 3. Send button — solid teal circle in light theme */
+.theme-executive .atlas-send-btn,
+.theme-parchment .atlas-send-btn {
+  background: #004D40 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  box-shadow: 0 2px 8px -2px rgba(0, 77, 64, 0.45) !important;
+  opacity: 1 !important;
+}
+.theme-executive .atlas-send-btn:disabled,
+.theme-parchment .atlas-send-btn:disabled {
+  background: rgba(0, 77, 64, 0.25) !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+.theme-executive .atlas-send-btn svg,
+.theme-parchment .atlas-send-btn svg {
+  fill: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+/* 4. Sidebar — 1px right border + opaque white surface */
+.theme-executive aside.atlas-sidebar-scroll,
+.theme-parchment aside.atlas-sidebar-scroll {
+  border-right: 1px solid #E0E0E0 !important;
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 2px 0 12px rgba(18, 18, 18, 0.04) !important;
+}
+
+/* 5. Greeting — deep charcoal, medium weight (legible, grounded) */
+.theme-executive .atlas-greeting,
+.theme-parchment .atlas-greeting {
+  color: #121212 !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.015em;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

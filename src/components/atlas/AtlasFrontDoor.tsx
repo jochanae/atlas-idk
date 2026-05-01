@@ -706,6 +706,7 @@ export function AtlasFrontDoor({
                   </span>
                 </button>
                 <button
+                  className="atlas-send-btn"
                   onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
                   disabled={sending ? !onStop : !input.trim()}
                   aria-label={sending ? "Stop Atlas" : "Send"}
