@@ -83,7 +83,7 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
               color: "#F5F1E8",
               boxShadow:
                 "0 0 0 4px var(--background)" +
-                ", 0 0 12px rgba(180, 83, 9, 0.3)",
+                ", 0 0 12px rgba(146, 64, 14, 0.35)",
               transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms ease",
             }}
             className="atlas-footer-center"
