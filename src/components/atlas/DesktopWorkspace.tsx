@@ -123,7 +123,7 @@ export function DesktopWorkspace({
 
         {/* ── Resizable content area ────────────────────────────── */}
         <div className="flex-1 min-w-0">
-          <PanelGroup orientation="horizontal" id={canvasExpanded ? "atlas-workspace-v4-exp" : "atlas-workspace-v4"} className="h-full w-full flex">
+          <PanelGroup orientation="horizontal" id={canvasExpanded ? "atlas-workspace-v5-exp" : "atlas-workspace-v5"} className="h-full w-full flex">
             {/* ── Chat sidecar (optional) ────────────────── */}
             {renderChatPane && chatVisible && !canvasExpanded && (
               <>
