@@ -95,7 +95,7 @@ export function DesktopWorkspace({
   const inspectorPanes = renderInspectorPanes();
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground" style={{ minHeight: "fit-content" }}>
       {renderHeader && (
         <div className="flex-shrink-0 border-b border-border/50">{renderHeader()}</div>
       )}
