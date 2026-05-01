@@ -105,6 +105,15 @@ export function DesktopWorkspace({
   const [fullScreen, setFullScreen] = useState<FullScreenTarget>(null);
   const [chatWidth, setChatWidth] = useState(() => loadJson("atlas-chat-width", 480));
   const [inspectorWidth, setInspectorWidth] = useState(() => loadJson("atlas-inspector-width", 320));
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1440));
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  // Allow chat to grow up to ~70% of viewport so users can hit half-screen comfortably
+  const chatMaxWidth = Math.max(480, Math.floor(viewportWidth * 0.7));
+  const inspectorMaxWidth = Math.max(400, Math.floor(viewportWidth * 0.6));
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Persist
@@ -197,12 +206,13 @@ export function DesktopWorkspace({
           <>
             <div
               className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
-              style={{ width: chatWidth, minWidth: 320, maxWidth: 800, background: "var(--surface)" }}
+              style={{ width: Math.min(chatWidth, chatMaxWidth), minWidth: 320, maxWidth: chatMaxWidth, background: "var(--surface)" }}
             >
               {renderChatPane!()}
             </div>
             <ResizeHandle
-              onResize={(dx) => setChatWidth(w => Math.max(320, Math.min(800, w + dx)))}
+              onResize={(dx) => setChatWidth(w => Math.max(320, Math.min(chatMaxWidth, w + dx)))}
+              onDoubleClick={() => setChatWidth(Math.floor(viewportWidth * 0.5))}
             />
           </>
         )}
@@ -268,12 +278,13 @@ export function DesktopWorkspace({
           <>
             <ResizeHandle
               side="right"
-              onResize={(dx) => setInspectorWidth(w => Math.max(240, Math.min(500, w - dx)))}
+              onResize={(dx) => setInspectorWidth(w => Math.max(240, Math.min(inspectorMaxWidth, w - dx)))}
+              onDoubleClick={() => setInspectorWidth(Math.floor(viewportWidth * 0.4))}
             />
             <div
               className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
               style={{
-                width: inspectorWidth, minWidth: 240, maxWidth: 500,
+                width: Math.min(inspectorWidth, inspectorMaxWidth), minWidth: 240, maxWidth: inspectorMaxWidth,
                 background: "var(--surface-alt)",
                 border: "1px solid var(--glass-border)",
               }}
@@ -348,7 +359,7 @@ export function DesktopWorkspace({
 }
 
 // ── Resize handle — thin, fluid, Cursor-style ──
-function ResizeHandle({ onResize, side = "left" }: { onResize: (dx: number) => void; side?: "left" | "right" }) {
+function ResizeHandle({ onResize, side = "left", onDoubleClick }: { onResize: (dx: number) => void; side?: "left" | "right"; onDoubleClick?: () => void }) {
   const dragging = useRef(false);
   const lastX = useRef(0);
 
@@ -379,11 +390,13 @@ function ResizeHandle({ onResize, side = "left" }: { onResize: (dx: number) => v
   return (
     <div
       onMouseDown={onMouseDown}
-      className="flex-shrink-0 w-[3px] cursor-col-resize group relative z-10"
+      onDoubleClick={onDoubleClick}
+      title="Drag to resize · double-click for half-screen"
+      className="flex-shrink-0 w-[6px] cursor-col-resize group relative z-10"
       style={{ touchAction: "none" }}
     >
-      <div className="absolute inset-y-0 -left-[3px] -right-[3px]" />
-      <div className="absolute inset-y-0 left-[1px] w-px bg-border/20 group-hover:bg-border/60 group-active:bg-accent/60 transition-colors" />
+      <div className="absolute inset-y-0 -left-[4px] -right-[4px]" />
+      <div className="absolute inset-y-0 left-[2px] w-px bg-border/30 group-hover:bg-accent/60 group-active:bg-accent transition-colors" />
     </div>
   );
 }
