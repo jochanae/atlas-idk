@@ -892,23 +892,26 @@ export function AtlasFrontDoor({
               scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
           />
-          {/* Utility Bar: 3 icons left | 3 icons right + send */}
+          {/* Utility Bar: 2 left (Plus, Paperclip) | right (Mic, More, Send) */}
           <div
+            className="atlas-utility-bar"
             style={{
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               width: "100%",
               marginTop: 10,
               paddingTop: 10,
               borderTop: "0.5px solid color-mix(in oklab, var(--border) 70%, transparent)",
+              gap: 8,
             }}
           >
-            {/* Left group — 3 icons */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+            {/* Left group */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               {utilityBarLeft}
             </div>
-            {/* Right group — 3 icons + send */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end" }}>
+            {/* Right group + send */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               {utilityBarRight}
               <button
                 onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
