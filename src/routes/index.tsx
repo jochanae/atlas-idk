@@ -1627,6 +1627,7 @@ function WorkspacePage() {
                   onClick={() => setParkingOpen((open) => !open)}
                 />
               )}
+              <ThemeDropdown theme={theme} onThemeChange={setTheme} />
               <UserMenu
                 user={user}
                 theme={theme}
