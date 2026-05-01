@@ -512,6 +512,7 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
+          scrollBehavior: "smooth",
           paddingTop: active
             ? "calc(var(--header-height) + 16px)"
             : "calc(var(--header-height) + 16px)",
