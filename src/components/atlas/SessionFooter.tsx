@@ -67,7 +67,7 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         </span>
       )}
       {hasOutput && (
-        <span style={{ opacity: 0.4, marginLeft: 4 }}>· session producing</span>
+        <span style={{ opacity: 0.7, marginLeft: 4 }}>· session producing</span>
       )}
     </div>
   );
