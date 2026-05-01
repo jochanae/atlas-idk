@@ -93,10 +93,10 @@ export function BelowFoldDashboard({
         )}
       </section>
 
-      {/* 4. Check In ------------------------------------------------------ */}
+      {/* 4. Where were we ------------------------------------------------ */}
       <section id="discovery-checkin" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
-          <h3>Check In</h3>
+          <h3>Where were we</h3>
         </div>
         {recents.length === 0 ? (
           <p className="atlas-discovery-empty">

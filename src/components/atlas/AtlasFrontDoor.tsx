@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState, useCallback } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 import { SystemMenu } from "./SystemMenu";
@@ -230,90 +230,6 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
   );
 }
 
-function ScrollDots({ sections }: { sections: Array<{ id: string; label: string }> }) {
-  const [activeIdx, setActiveIdx] = useState(0);
-
-  useEffect(() => {
-    const els = sections
-      .map((s) => document.getElementById(s.id))
-      .filter((el): el is HTMLElement => !!el);
-    if (els.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the entry with the highest intersection ratio currently visible
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) {
-          const idx = sections.findIndex((s) => s.id === visible.target.id);
-          if (idx >= 0) setActiveIdx(idx);
-        }
-      },
-      { rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
-    );
-    els.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [sections]);
-
-  const scrollTo = useCallback((id: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    haptic("light");
-  }, []);
-
-  return (
-    <div
-      role="tablist"
-      aria-label="Jump to section"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 8,
-        marginTop: 32,
-        marginBottom: 8,
-      }}
-    >
-      {sections.map((s, i) => {
-        const isActive = i === activeIdx;
-        return (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            aria-label={`Scroll to ${s.label}`}
-            onClick={() => scrollTo(s.id)}
-            style={{
-              width: 18,
-              height: 18,
-              padding: 0,
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <span
-              style={{
-                width: isActive ? 7 : 5,
-                height: isActive ? 7 : 5,
-                borderRadius: "50%",
-                background: isActive ? "var(--accent-gold)" : "#E0E0E0",
-                opacity: isActive ? 1 : 0.7,
-                transition: "all 200ms var(--ease-cinematic, ease)",
-              }}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function AtlasFrontDoor({
   active,
@@ -763,6 +679,65 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
+          {/* Scroll hint — one-time gentle bounce arrow signalling there's more below.
+              Only shown in resting view when the dashboard exists below the fold. */}
+          {!active && belowFold && (
+            <button
+              type="button"
+              aria-label="Scroll to your workspace"
+              onClick={() => {
+                const el = document.getElementById("discovery-moment");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  haptic("light");
+                }
+              }}
+              style={{
+                marginTop: 14,
+                marginBottom: 4,
+                background: "transparent",
+                border: "none",
+                padding: "6px 12px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
+                color: "var(--muted-text)",
+                cursor: "pointer",
+                alignSelf: "center",
+                opacity: 0.55,
+                transition: "opacity 200ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.55"; }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9.5,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                }}
+              >
+                scroll for your workspace
+              </span>
+              <svg
+                className="atlas-scroll-arrow"
+                viewBox="0 0 16 16"
+                width={14}
+                height={14}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M4 6l4 4 4-4" />
+              </svg>
+            </button>
+          )}
+
           {/* Inline timestamp — anchored under the input, in flow (not floating). */}
           <InlineTimestamp />
 
@@ -817,19 +792,6 @@ export function AtlasFrontDoor({
             </div>
           )}
 
-          {/* Scroll indicator — vertical dots, one per discovery section.
-              Clickable: smooth-scrolls to its section. Active section dot
-              uses cognac/ember accent at full opacity; others grey. */}
-          {!active && belowFold && (
-            <ScrollDots
-              sections={[
-                { id: "discovery-moment", label: "A Moment for You" },
-                { id: "discovery-momentum", label: "Your Momentum" },
-                { id: "discovery-loops", label: "Open Loops" },
-                { id: "discovery-checkin", label: "Check In" },
-              ]}
-            />
-          )}
         </div>
 
         {/* Below-the-fold dashboard — only in resting view */}
@@ -1077,6 +1039,19 @@ export function AtlasFrontDoor({
         @keyframes atlas-recents-in {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes atlas-scroll-arrow-bounce {
+          0%   { transform: translateY(0); }
+          20%  { transform: translateY(0); }
+          45%  { transform: translateY(5px); }
+          70%  { transform: translateY(0); }
+          100% { transform: translateY(0); }
+        }
+        .atlas-scroll-arrow {
+          animation: atlas-scroll-arrow-bounce 1600ms cubic-bezier(0.4, 0, 0.2, 1) 600ms 1 both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .atlas-scroll-arrow { animation: none; }
         }
         .atlas-input-shell:focus-within {
           border-color: color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
