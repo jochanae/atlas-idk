@@ -68,8 +68,10 @@ const SURFACES: Array<{ id: SurfaceId; label: string; Icon: typeof MessageSquare
 ];
 
 const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Github }> = [
-  { id: "github", label: "GitHub", Icon: Github },
+  { id: "files", label: "Files", Icon: Files },
+  { id: "console", label: "Console", Icon: Terminal },
   { id: "code", label: "Code", Icon: FileCode2 },
+  { id: "github", label: "GitHub", Icon: Github },
   { id: "recs", label: "Recs", Icon: ScrollText },
 ];
 
