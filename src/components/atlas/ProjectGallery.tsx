@@ -20,6 +20,7 @@ interface Props {
   projects: Project[];
   activeProjectId: string | null;
   onSelectProject: (projectId: string) => void;
+  onNewProject: () => void;
 }
 
 export function ProjectGallery({ open, onClose, projects, activeProjectId, onSelectProject }: Props) {
