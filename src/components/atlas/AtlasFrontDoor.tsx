@@ -109,6 +109,8 @@ type AtlasFrontDoorProps = {
   /** Voice input controls */
   voiceListening?: boolean;
   onVoiceToggle?: () => void;
+  /** Below-the-fold dashboard sections — only shown in resting (non-active) view. */
+  belowFold?: ReactNode;
   children?: ReactNode;
 };
 
