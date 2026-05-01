@@ -939,6 +939,7 @@ function WorkspacePage() {
       if (data?.error) throw new Error(data.error);
       pushBuildState("verifying", "Verifying output…");
       pushConsole("info", `✓ Generated ${data.file?.filename ?? "component"}`);
+      if (generatedCode) setPreviousCode(generatedCode);
       setGeneratedCode(data.file?.content ?? null);
       setGeneratedFilename(data.file?.filename ?? null);
       if (data.file?.content && data.file?.filename) {
