@@ -549,6 +549,11 @@ Deno.serve(async (req) => {
           confidence: whisperResult.confidence,
           refinement: whisperResult.refinement ?? null,
         },
+        outputGuard: {
+          valid: validation.valid,
+          violation: validation.violation ?? null,
+          repaired: outputRepaired,
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
