@@ -15,6 +15,8 @@ import {
   Maximize2,
   Minimize2,
   FolderOpen,
+  Terminal,
+  Files,
 } from "lucide-react";
 
 /**
