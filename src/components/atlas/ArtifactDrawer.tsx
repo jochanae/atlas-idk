@@ -82,6 +82,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange, deskto
   };
 
   if (artifacts.length === 0 && !forceOpen) return null;
+  if (isWide && desktopHidden) return null;
 
   const active = artifacts.find((a) => a.id === activeArtifactId) ?? artifacts[artifacts.length - 1];
 
