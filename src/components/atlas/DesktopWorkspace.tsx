@@ -92,7 +92,7 @@ export function DesktopWorkspace({
   const isDesktop = useIsDesktop();
   const [navCollapsed, setNavCollapsed] = useState(true);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("code");
+  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("files");
   const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
   const [canvasExpanded, setCanvasExpanded] = useState(false);
   // Render only the active branch — prevents double-mounting heavy components
