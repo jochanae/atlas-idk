@@ -230,6 +230,87 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
   );
 }
 
+/**
+ * ThreadReveal — shows three pulsing "Atlas thinking" dots for 1.5s on mount,
+ * then fades them out and crossfades the living-thread line in. The dots
+ * always show (even with no recent message) to preserve the rhythm.
+ */
+function ThreadReveal({ lastMessage }: { lastMessage: string | null }) {
+  const [revealed, setRevealed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        minHeight: 38,
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        position: "relative",
+      }}
+    >
+      {/* Dots */}
+      <div
+        aria-hidden={revealed}
+        style={{
+          position: "absolute",
+          top: 6,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          opacity: revealed ? 0 : 0.7,
+          transition: "opacity 400ms ease",
+          pointerEvents: "none",
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "var(--muted-text)",
+              animation: `atlas-thinking-pulse 1200ms ease-in-out ${i * 180}ms infinite`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Living thread */}
+      {lastMessage && (
+        <div
+          style={{
+            fontSize: 12.5,
+            fontWeight: 300,
+            lineHeight: 1.5,
+            color: "var(--muted-text)",
+            opacity: revealed ? 0.6 : 0,
+            fontStyle: "italic",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "100%",
+            fontFamily: "var(--font-sans)",
+            transition: "opacity 600ms ease 100ms",
+          }}
+          title={lastMessage}
+        >
+          {lastMessage}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export function AtlasFrontDoor({
   active,
