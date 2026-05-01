@@ -563,11 +563,15 @@ export function AtlasFrontDoor({
               <div
                 style={{
                   marginTop: 8,
-                  fontSize: 13,
+                  fontSize: 12.5,
+                  fontWeight: 200,
+                  lineHeight: 1.5,
                   color: "var(--muted-text)",
-                  opacity: 0.7,
+                  opacity: 0.6,
                   fontStyle: "italic",
-                  whiteSpace: "nowrap",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   maxWidth: "100%",
