@@ -1612,19 +1612,25 @@ function WorkspacePage() {
               />
             ) : undefined
           }
+          sidebarToggle={
+            <button
+              type="button"
+              onClick={() => setProjectsDrawerOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              aria-label="Projects"
+              title="Projects"
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 36, width: 36 }}
+            >
+              {/* Layout icon — two-pane workspace glyph */}
+              <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-gold)", opacity: 0.85 }}>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M9 3v18" />
+                <path d="M3 9h6" />
+              </svg>
+            </button>
+          }
           headerActions={
             <div className="flex items-center gap-2 min-w-0" style={{ height: 44 }}>
-              <button
-                type="button"
-                onClick={() => setProjectsDrawerOpen(true)}
-                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                aria-label="Projects"
-                title="Projects"
-              >
-                <svg viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="rgba(201,162,76,0.8)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 4l3-2h4l1 1h5l1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z" />
-                </svg>
-              </button>
               {session && !entrySurface && (
                 <ParkingLotButton
                   count={parkedItems.length}
@@ -1632,7 +1638,6 @@ function WorkspacePage() {
                   onClick={() => setParkingOpen((open) => !open)}
                 />
               )}
-              <ThemeDropdown theme={theme} onThemeChange={setTheme} />
               <UserMenu
                 user={user}
                 theme={theme}
