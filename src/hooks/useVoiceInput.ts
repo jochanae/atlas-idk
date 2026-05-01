@@ -30,14 +30,14 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
 
     recognition.onstart = () => setListening(true);
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: any) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
       if (transcript.trim()) {
         onTranscript(transcript.trim());
       }
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    recognition.onerror = (event: any) => {
       if (event.error !== "aborted" && event.error !== "no-speech") {
         toast.error(`Voice error: ${event.error}`);
       }
