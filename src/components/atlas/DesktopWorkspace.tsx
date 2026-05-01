@@ -315,7 +315,7 @@ function Inspector({
         >
           <PanelRightClose size={14} />
         </button>
-        <div className="flex-1 flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+        <div className="flex-1 flex items-center gap-0.5 overflow-x-auto scrollbar-none min-w-0">
           {INSPECTOR_TABS.map(({ id, label, Icon }) => {
             const active = activeTab === id;
             return (
