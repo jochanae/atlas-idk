@@ -2543,7 +2543,36 @@ function ChatPanel({
                           </span>
                         )}
                         {m.output_guard_repaired && (
-                          <span style={{ fontSize: 8, opacity: 0.5 }} title="Output was auto-corrected by the guard">🔧</span>
+                          <span
+                            style={{
+                              fontSize: 8,
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              background: "rgba(234,179,8,0.12)",
+                              color: "#fbbf24",
+                              border: "1px solid rgba(234,179,8,0.2)",
+                              cursor: "default",
+                            }}
+                            title={m.output_guard_violation ? `Violation: ${m.output_guard_violation} — auto-repaired` : "Output was auto-corrected by the guard"}
+                          >
+                            🔧 {m.output_guard_violation ?? "repaired"}
+                          </span>
+                        )}
+                        {m.output_guard_violation && !m.output_guard_repaired && (
+                          <span
+                            style={{
+                              fontSize: 8,
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              background: "rgba(239,68,68,0.12)",
+                              color: "#f87171",
+                              border: "1px solid rgba(239,68,68,0.2)",
+                              cursor: "default",
+                            }}
+                            title={`Guard violation: ${m.output_guard_violation} — not repaired`}
+                          >
+                            ⚠ {m.output_guard_violation}
+                          </span>
                         )}
                       </div>
                       {Array.isArray(m.surfaced_memories) && m.surfaced_memories.length > 0 && (
