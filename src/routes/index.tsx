@@ -2340,18 +2340,11 @@ function WorkspacePage() {
           />
         ),
         code: generatedCode ? (
-          <div className="h-full flex flex-col">
-            <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                Source — {generatedFilename ?? "Component.tsx"}
-              </span>
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all overflow-x-auto">
-                {generatedCode}
-              </pre>
-            </div>
-          </div>
+          <CodeEditor
+            code={generatedCode}
+            filename={generatedFilename ?? "Component.tsx"}
+            onChange={(newCode) => setGeneratedCode(newCode)}
+          />
         ) : undefined,
         github: undefined,
         recs:
@@ -2380,6 +2373,20 @@ function WorkspacePage() {
             onProjectUpdate={(updated) => {
               setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
             }}
+          />
+        ),
+        secrets: (
+          <SecretsManagerPanel
+            secrets={projectSecrets}
+            onAddSecret={(name) => {
+              // In a real integration this would call the secrets tool
+              setProjectSecrets((prev) => [...prev, { name, isSet: false }]);
+            }}
+            onDeleteSecret={(name) => {
+              setProjectSecrets((prev) => prev.filter((s) => s.name !== name));
+            }}
+            onRefresh={loadProjectSecrets}
+            loading={secretsLoading}
           />
         ),
       })}
