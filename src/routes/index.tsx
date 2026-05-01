@@ -1577,7 +1577,19 @@ function WorkspacePage() {
               />
             ) : undefined
           }
-          
+          belowFold={
+            !isActive ? (
+              <BelowFoldDashboard
+                openLoopsCount={parkedItems.length}
+                ledgerCount={ledgerCount}
+                parkedCount={parkedItems.length}
+                recents={recents}
+                onOpenLedger={() => navigate({ to: "/ledger" })}
+                onOpenParking={() => setParkingOpen(true)}
+                onOpenSession={(id) => openSession(id)}
+              />
+            ) : undefined
+          }
           onWordmarkClick={() => {
             if (session) {
               setEntrySurface(true);
