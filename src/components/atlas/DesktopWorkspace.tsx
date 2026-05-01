@@ -75,6 +75,7 @@ const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Gi
   { id: "github", label: "GitHub", Icon: Github },
   { id: "recs", label: "Recs", Icon: ScrollText },
   { id: "settings", label: "Settings", Icon: Settings },
+  { id: "secrets", label: "Secrets", Icon: Settings },
 ];
 
 // ── localStorage helpers ──
