@@ -18,28 +18,30 @@ import {
   Files,
   Settings,
   KeyRound,
-  Play,
-  Hammer,
   RotateCcw,
   Keyboard,
 } from "lucide-react";
 
 /**
- * DesktopWorkspace — four-pane resizable shell for desktop (≥1024px).
+ * DesktopWorkspace — Adaptive shell for desktop (≥1024px).
  *
- * Layout (left → right):
- *   1. Nav rail        — surface switcher + history/parking shortcuts
- *   2. Atlas chat      — (mounted by parent into `chatPane`)
- *   3. Main canvas     — primary surface (Conversation/Compass/Ledger/Parking)
- *   4. Right inspector — tabbed: GitHub • Code/Preview • Recommendations
+ * DEFAULT MODE: Two-pane (Chat + Canvas) — clean, focused.
+ * EXPANDED MODE: Toggle nav rail (left) and/or inspector (right) for full IDE.
+ * FULL-SCREEN: Any individual pane can go full-screen for focused work.
  *
- * On <1024px, render `mobileFallback` (the existing single-column shell).
+ * On <1024px, render `mobileFallback`.
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
 export type InspectorTabId = "github" | "code" | "recs" | "files" | "console" | "settings" | "secrets";
-
 export type BuildStatus = "idle" | "building" | "success" | "error";
+
+// Which pane is currently full-screened
+type FullScreenTarget =
+  | { type: "chat" }
+  | { type: "canvas" }
+  | { type: "inspector"; tab: InspectorTabId }
+  | null;
 
 export interface DesktopWorkspaceProps {
   renderMobile: () => ReactNode;
@@ -54,7 +56,6 @@ export interface DesktopWorkspaceProps {
   ledgerCount?: number;
   renderHeader?: () => ReactNode;
   renderFooter?: () => ReactNode;
-  // Build status & auto-run
   buildStatus?: BuildStatus;
   autoRun?: boolean;
   onAutoRunChange?: (v: boolean) => void;
@@ -112,19 +113,31 @@ export function DesktopWorkspace({
 }: DesktopWorkspaceProps) {
   const isDesktop = useIsDesktop();
 
-  // ── Persisted layout state ──
+  // ── Persisted layout — DEFAULT: two-pane (nav & inspector hidden) ──
+  const [navVisible, setNavVisible] = useState(() => loadJson("atlas-nav-visible", false));
   const [navCollapsed, setNavCollapsed] = useState(() => loadJson("atlas-nav-collapsed", true));
+  const [inspectorVisible, setInspectorVisible] = useState(() => loadJson("atlas-inspector-visible", false));
   const [inspectorCollapsed, setInspectorCollapsed] = useState(() => loadJson("atlas-inspector-collapsed", false));
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>(() => loadJson("atlas-inspector-tab", "files"));
   const [chatVisible, setChatVisible] = useState(() => loadJson("atlas-chat-visible", Boolean(renderChatPane)));
-  const [canvasExpanded, setCanvasExpanded] = useState(false);
-  const [fullScreenTab, setFullScreenTab] = useState<InspectorTabId | null>(null);
+  const [fullScreen, setFullScreen] = useState<FullScreenTarget>(null);
 
   // Persist on change
+  useEffect(() => { saveJson("atlas-nav-visible", navVisible); }, [navVisible]);
   useEffect(() => { saveJson("atlas-nav-collapsed", navCollapsed); }, [navCollapsed]);
+  useEffect(() => { saveJson("atlas-inspector-visible", inspectorVisible); }, [inspectorVisible]);
   useEffect(() => { saveJson("atlas-inspector-collapsed", inspectorCollapsed); }, [inspectorCollapsed]);
   useEffect(() => { saveJson("atlas-inspector-tab", inspectorTab); }, [inspectorTab]);
   useEffect(() => { saveJson("atlas-chat-visible", chatVisible); }, [chatVisible]);
+
+  // ── Toggle helpers ──
+  const toggleNav = useCallback(() => setNavVisible(v => !v), []);
+  const toggleInspector = useCallback(() => setInspectorVisible(v => !v), []);
+  const openInspectorTab = useCallback((tab: InspectorTabId) => {
+    setInspectorVisible(true);
+    setInspectorCollapsed(false);
+    setInspectorTab(tab);
+  }, []);
 
   // ── Drag-and-drop panel reordering ──
   type PanelId = "chat" | "canvas" | "inspector";
@@ -135,39 +148,24 @@ export function DesktopWorkspace({
   const handlePanelDragStart = useCallback((panelId: PanelId) => {
     dragSourceRef.current = panelId;
   }, []);
-
   const handlePanelDragOver = useCallback((e: React.DragEvent, panelId: PanelId) => {
     e.preventDefault();
-    if (dragSourceRef.current && dragSourceRef.current !== panelId) {
-      setDragOverPanel(panelId);
-    }
+    if (dragSourceRef.current && dragSourceRef.current !== panelId) setDragOverPanel(panelId);
   }, []);
-
   const handlePanelDrop = useCallback((panelId: PanelId) => {
     const source = dragSourceRef.current;
-    if (!source || source === panelId) {
-      setDragOverPanel(null);
-      dragSourceRef.current = null;
-      return;
-    }
-    setPanelOrder((prev) => {
+    if (!source || source === panelId) { setDragOverPanel(null); dragSourceRef.current = null; return; }
+    setPanelOrder(prev => {
       const next = [...prev];
-      const sourceIdx = next.indexOf(source);
-      const targetIdx = next.indexOf(panelId);
-      if (sourceIdx === -1 || targetIdx === -1) return prev;
-      next.splice(sourceIdx, 1);
-      next.splice(targetIdx, 0, source);
+      const si = next.indexOf(source), ti = next.indexOf(panelId);
+      if (si === -1 || ti === -1) return prev;
+      next.splice(si, 1); next.splice(ti, 0, source);
       saveJson("atlas-panel-order", next);
       return next;
     });
-    setDragOverPanel(null);
-    dragSourceRef.current = null;
+    setDragOverPanel(null); dragSourceRef.current = null;
   }, []);
-
-  const handlePanelDragEnd = useCallback(() => {
-    setDragOverPanel(null);
-    dragSourceRef.current = null;
-  }, []);
+  const handlePanelDragEnd = useCallback(() => { setDragOverPanel(null); dragSourceRef.current = null; }, []);
 
   // ── Keyboard shortcuts ──
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -176,79 +174,101 @@ export function DesktopWorkspace({
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
-      
       switch (e.key) {
         case "b":
           if (e.shiftKey) { e.preventDefault(); onBuild?.(); }
           else { e.preventDefault(); setChatVisible(v => !v); }
           break;
+        case "i":
+          e.preventDefault(); toggleInspector();
+          break;
         case "`":
-          e.preventDefault();
-          setInspectorCollapsed(false);
-          setInspectorTab("console");
+          e.preventDefault(); openInspectorTab("console");
           break;
         case "\\":
           e.preventDefault();
-          setCanvasExpanded(v => !v);
+          if (fullScreen) setFullScreen(null);
+          else setFullScreen({ type: "canvas" });
           break;
         case "e":
-          e.preventDefault();
-          setInspectorCollapsed(false);
-          setInspectorTab("files");
+          e.preventDefault(); openInspectorTab("files");
+          break;
+        case "j":
+          e.preventDefault(); toggleNav();
           break;
         case "Enter":
           if (e.shiftKey) { e.preventDefault(); onRun?.(); }
           break;
         case "/":
-          e.preventDefault();
-          setShowShortcuts(v => !v);
+          e.preventDefault(); setShowShortcuts(v => !v);
           break;
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isDesktop, onBuild, onRun]);
+  }, [isDesktop, onBuild, onRun, toggleInspector, toggleNav, openInspectorTab, fullScreen]);
 
-  if (!isDesktop) {
-    return <>{renderMobile()}</>;
-  }
+  if (!isDesktop) return <>{renderMobile()}</>;
 
-  // ── Full-screen inspector tab ──
-  if (fullScreenTab) {
-    const panes = renderInspectorPanes();
+  // ── FULL-SCREEN MODE ──
+  if (fullScreen) {
+    let title = "";
+    let content: ReactNode = null;
+
+    if (fullScreen.type === "chat") {
+      title = "Atlas Chat";
+      content = renderChatPane ? renderChatPane() : null;
+    } else if (fullScreen.type === "canvas") {
+      title = "Canvas";
+      content = renderCanvas();
+    } else if (fullScreen.type === "inspector") {
+      const panes = renderInspectorPanes();
+      const tabInfo = INSPECTOR_TABS.find(t => t.id === fullScreen.tab);
+      title = tabInfo?.label ?? fullScreen.tab;
+      content = panes[fullScreen.tab] ?? <InspectorEmpty tab={fullScreen.tab} />;
+    }
+
     return (
       <div className="flex flex-col h-screen w-full bg-background text-foreground">
         <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-border/50">
           <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-            {INSPECTOR_TABS.find(t => t.id === fullScreenTab)?.label ?? fullScreenTab} — Full Screen
+            {title} — Full Screen
           </span>
-          <button
-            type="button"
-            onClick={() => setFullScreenTab(null)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-          >
-            <Minimize2 size={12} />
-            Exit
-          </button>
+          <div className="flex items-center gap-2">
+            <kbd className="px-1.5 py-0.5 rounded bg-muted/30 border border-border/40 text-[9px] font-mono text-muted-foreground">
+              ⌘\
+            </kbd>
+            <button
+              type="button"
+              onClick={() => setFullScreen(null)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <Minimize2 size={12} />
+              Exit
+            </button>
+          </div>
         </div>
-        <div className="flex-1 min-h-0 overflow-auto">
-          {panes[fullScreenTab] ?? <InspectorEmpty tab={fullScreenTab} />}
-        </div>
+        <div className="flex-1 min-h-0 overflow-auto">{content}</div>
       </div>
     );
   }
 
   const inspectorPanes = renderInspectorPanes();
+  const showChat = Boolean(renderChatPane && chatVisible);
+  const showInspector = inspectorVisible;
 
-  // Build panel map
+  // ── Panel map ──
   const panelContent: Record<PanelId, { visible: boolean; node: ReactNode; flex: string; width?: number }> = {
     chat: {
-      visible: Boolean(renderChatPane && chatVisible && !canvasExpanded),
+      visible: showChat,
       flex: "none",
       width: 320,
       node: renderChatPane ? (
         <div className="h-full overflow-hidden flex flex-col">
-          <PaneHeader title="Atlas" draggable />
+          <PaneHeader
+            title="Atlas"
+            onFullScreen={() => setFullScreen({ type: "chat" })}
+          />
           <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
         </div>
       ) : null,
@@ -260,29 +280,30 @@ export function DesktopWorkspace({
         <div className="h-full overflow-hidden relative">
           <button
             type="button"
-            onClick={() => setCanvasExpanded((v) => !v)}
+            onClick={() => setFullScreen({ type: "canvas" })}
             className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-            title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
-            aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+            title="Full screen canvas (⌘\\)"
+            aria-label="Full screen canvas"
           >
-            {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <Maximize2 size={14} />
           </button>
           {renderCanvas()}
         </div>
       ),
     },
     inspector: {
-      visible: !canvasExpanded,
+      visible: showInspector,
       flex: "none",
-      width: inspectorCollapsed ? 40 : 280,
+      width: inspectorCollapsed ? 40 : 300,
       node: (
         <Inspector
           collapsed={inspectorCollapsed}
-          onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
+          onToggleCollapse={() => setInspectorCollapsed(v => !v)}
           activeTab={inspectorTab}
           onTabChange={setInspectorTab}
           panes={inspectorPanes}
-          onFullScreen={(tab) => setFullScreenTab(tab)}
+          onFullScreen={(tab) => setFullScreen({ type: "inspector", tab })}
+          onClose={() => setInspectorVisible(false)}
         />
       ),
     },
@@ -301,19 +322,46 @@ export function DesktopWorkspace({
         <div className="flex-shrink-0 border-b border-border/50 min-h-fit">{renderHeader()}</div>
       )}
 
-      {/* ── Status bar with build status & auto-run ── */}
+      {/* ── Status bar ── */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 py-1 border-b border-border/30 bg-card/20">
-        {/* Build status */}
+        {/* Left: panel toggles */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleNav}
+            className={`p-1 rounded transition-colors ${navVisible ? "text-accent-foreground bg-accent/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+            title={navVisible ? "Hide nav rail (⌘J)" : "Show nav rail (⌘J)"}
+          >
+            {navVisible ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setChatVisible(v => !v)}
+            className={`p-1 rounded transition-colors ${chatVisible ? "text-accent-foreground bg-accent/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+            title={chatVisible ? "Hide chat (⌘B)" : "Show chat (⌘B)"}
+          >
+            <MessageSquare size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={toggleInspector}
+            className={`p-1 rounded transition-colors ${inspectorVisible ? "text-accent-foreground bg-accent/10" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+            title={inspectorVisible ? "Hide inspector (⌘I)" : "Show inspector (⌘I)"}
+          >
+            {inspectorVisible ? <PanelRightClose size={12} /> : <PanelRightOpen size={12} />}
+          </button>
+        </div>
+
+        {/* Center: build status */}
         <div className="flex items-center gap-1.5">
           <div className={`w-2 h-2 rounded-full ${BUILD_STATUS_COLORS[buildStatus]}`} />
           <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
             {buildStatus === "idle" ? "Ready" : buildStatus === "building" ? "Building…" : buildStatus === "success" ? "Built" : "Error"}
           </span>
         </div>
-        
-        {/* Quick actions */}
+
+        {/* Right: auto-run + shortcuts */}
         <div className="flex items-center gap-1 ml-auto">
-          {/* Auto-run toggle */}
           {onAutoRunChange && (
             <button
               type="button"
@@ -321,13 +369,12 @@ export function DesktopWorkspace({
               className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
                 autoRun ? "text-emerald-400 bg-emerald-400/10" : "text-muted-foreground hover:text-foreground"
               }`}
-              title={autoRun ? "Auto-run ON — previews refresh automatically" : "Auto-run OFF — click Run to refresh"}
+              title={autoRun ? "Auto-run ON" : "Auto-run OFF"}
             >
               <RotateCcw size={10} />
               Auto
             </button>
           )}
-          {/* Keyboard shortcuts help */}
           <button
             type="button"
             onClick={() => setShowShortcuts(v => !v)}
@@ -340,24 +387,28 @@ export function DesktopWorkspace({
       </div>
 
       <div className="flex-1 min-h-0 flex">
-        {/* ── Fixed Nav rail ── */}
-        <div
-          className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200 overflow-y-auto overflow-x-hidden"
-          style={{ width: navCollapsed ? 48 : 160, minHeight: 0 }}
-        >
-          <NavRail
-            collapsed={navCollapsed}
-            onToggleCollapse={() => setNavCollapsed((v) => !v)}
-            activeSurface={activeSurface}
-            onSurfaceChange={onSurfaceChange}
-            onOpenHistory={onOpenHistory}
-            onOpenGallery={onOpenGallery}
-            parkedCount={parkedCount}
-            ledgerCount={ledgerCount}
-            chatVisible={chatVisible}
-            onToggleChat={renderChatPane ? () => setChatVisible((v) => !v) : undefined}
-          />
-        </div>
+        {/* ── Nav rail (conditional) ── */}
+        {navVisible && (
+          <div
+            className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200 overflow-y-auto overflow-x-hidden"
+            style={{ width: navCollapsed ? 48 : 160, minHeight: 0 }}
+          >
+            <NavRail
+              collapsed={navCollapsed}
+              onToggleCollapse={() => setNavCollapsed(v => !v)}
+              activeSurface={activeSurface}
+              onSurfaceChange={onSurfaceChange}
+              onOpenHistory={onOpenHistory}
+              onOpenGallery={onOpenGallery}
+              parkedCount={parkedCount}
+              ledgerCount={ledgerCount}
+              chatVisible={chatVisible}
+              onToggleChat={renderChatPane ? () => setChatVisible(v => !v) : undefined}
+              inspectorVisible={inspectorVisible}
+              onToggleInspector={toggleInspector}
+            />
+          </div>
+        )}
 
         {/* ── Content area — drag-reorderable panels ── */}
         <div className="flex-1 min-w-0 flex h-full">
@@ -374,7 +425,7 @@ export function DesktopWorkspace({
                 onDrop={() => handlePanelDrop(panelId)}
                 onDragEnd={handlePanelDragEnd}
                 onDragLeave={() => setDragOverPanel(null)}
-                className={`h-full overflow-hidden transition-all duration-150 ${
+                className={`h-full overflow-hidden transition-all duration-200 ${
                   idx > 0 ? "border-l border-border/50" : ""
                 } ${panelId === "canvas" ? "min-w-0" : "flex-shrink-0"} ${
                   panelId === "inspector" ? "bg-card/30" : "bg-background"
@@ -398,38 +449,28 @@ export function DesktopWorkspace({
 
       {/* ── Keyboard shortcuts overlay ── */}
       {showShortcuts && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-sm font-semibold text-foreground mb-4">Keyboard Shortcuts</h3>
             <div className="space-y-2">
               {[
-                ["⌘ B", "Toggle chat sidecar"],
+                ["⌘ B", "Toggle chat"],
+                ["⌘ I", "Toggle inspector"],
+                ["⌘ J", "Toggle nav rail"],
+                ["⌘ \\", "Full screen / exit"],
                 ["⌘ ⇧ B", "Trigger build"],
                 ["⌘ ⇧ Enter", "Re-run preview"],
                 ["⌘ `", "Open console"],
                 ["⌘ E", "Open file tree"],
-                ["⌘ \\", "Toggle full canvas"],
                 ["⌘ /", "Show shortcuts"],
               ].map(([key, desc]) => (
                 <div key={key} className="flex items-center justify-between">
                   <span className="text-[11px] text-muted-foreground">{desc}</span>
-                  <kbd className="px-2 py-0.5 rounded bg-muted/50 border border-border/50 text-[10px] font-mono text-foreground">
-                    {key}
-                  </kbd>
+                  <kbd className="px-2 py-0.5 rounded bg-muted/50 border border-border/50 text-[10px] font-mono text-foreground">{key}</kbd>
                 </div>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowShortcuts(false)}
-              className="mt-4 w-full text-center text-[10px] font-mono text-muted-foreground hover:text-foreground py-1.5 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
-            >
+            <button type="button" onClick={() => setShowShortcuts(false)} className="mt-4 w-full text-center text-[10px] font-mono text-muted-foreground hover:text-foreground py-1.5 rounded bg-muted/30 hover:bg-muted/50 transition-colors">
               Close
             </button>
           </div>
@@ -445,16 +486,9 @@ export function DesktopWorkspace({
 // ──────────────────────────────────────────────────────────────────────
 
 function NavRail({
-  collapsed,
-  onToggleCollapse,
-  activeSurface,
-  onSurfaceChange,
-  onOpenHistory,
-  onOpenGallery,
-  parkedCount,
-  ledgerCount,
-  chatVisible,
-  onToggleChat,
+  collapsed, onToggleCollapse, activeSurface, onSurfaceChange,
+  onOpenHistory, onOpenGallery, parkedCount, ledgerCount,
+  chatVisible, onToggleChat, inspectorVisible, onToggleInspector,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -466,37 +500,26 @@ function NavRail({
   ledgerCount: number;
   chatVisible: boolean;
   onToggleChat?: () => void;
+  inspectorVisible: boolean;
+  onToggleInspector: () => void;
 }) {
   return (
     <nav className="h-full flex flex-col py-3 px-2 gap-1 min-h-fit overflow-y-auto overflow-x-hidden">
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        className="atlas-nav-btn self-start mb-2"
-        aria-label={collapsed ? "Expand nav" : "Collapse nav"}
-        title={collapsed ? "Expand nav" : "Collapse nav"}
-      >
+      <button type="button" onClick={onToggleCollapse} className="atlas-nav-btn self-start mb-2"
+        aria-label={collapsed ? "Expand nav" : "Collapse nav"} title={collapsed ? "Expand nav" : "Collapse nav"}>
         {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
       </button>
 
       <div className="flex flex-col gap-0.5">
         {SURFACES.map(({ id, label, Icon }) => {
           const active = activeSurface === id;
-          const badge =
-            id === "parking" ? parkedCount : id === "ledger" ? ledgerCount : 0;
+          const badge = id === "parking" ? parkedCount : id === "ledger" ? ledgerCount : 0;
           return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onSurfaceChange(id)}
-              className={`atlas-nav-btn justify-start gap-2 ${active ? "atlas-nav-btn-active" : ""}`}
-              title={label}
-            >
+            <button key={id} type="button" onClick={() => onSurfaceChange(id)}
+              className={`atlas-nav-btn justify-start gap-2 ${active ? "atlas-nav-btn-active" : ""}`} title={label}>
               <Icon size={14} className="flex-shrink-0" />
               {!collapsed && <span className="truncate">{label}</span>}
-              {!collapsed && badge > 0 && (
-                <span className="ml-auto text-[9px] font-mono opacity-60">{badge}</span>
-              )}
+              {!collapsed && badge > 0 && <span className="ml-auto text-[9px] font-mono opacity-60">{badge}</span>}
             </button>
           );
         })}
@@ -504,38 +527,31 @@ function NavRail({
 
       <div className="mt-auto flex flex-col gap-0.5 pt-3 border-t border-border/40">
         {onOpenGallery && (
-          <button
-            type="button"
-            onClick={onOpenGallery}
-            className="atlas-nav-btn justify-start gap-2"
-            title="All Projects"
-          >
+          <button type="button" onClick={onOpenGallery} className="atlas-nav-btn justify-start gap-2" title="All Projects">
             <FolderOpen size={14} className="flex-shrink-0" />
             {!collapsed && <span>All Projects</span>}
           </button>
         )}
         {onOpenHistory && (
-          <button
-            type="button"
-            onClick={onOpenHistory}
-            className="atlas-nav-btn justify-start gap-2"
-            title="Session history"
-          >
+          <button type="button" onClick={onOpenHistory} className="atlas-nav-btn justify-start gap-2" title="Session history">
             <ScrollText size={14} className="flex-shrink-0" />
             {!collapsed && <span>History</span>}
           </button>
         )}
         {onToggleChat && (
-          <button
-            type="button"
-            onClick={onToggleChat}
+          <button type="button" onClick={onToggleChat}
             className={`atlas-nav-btn justify-start gap-2 ${chatVisible ? "atlas-nav-btn-active" : ""}`}
-            title={chatVisible ? "Hide chat sidecar" : "Show chat sidecar"}
-          >
+            title={chatVisible ? "Hide chat" : "Show chat"}>
             <MessageSquare size={14} className="flex-shrink-0" />
-            {!collapsed && <span>Chat sidecar</span>}
+            {!collapsed && <span>Chat</span>}
           </button>
         )}
+        <button type="button" onClick={onToggleInspector}
+          className={`atlas-nav-btn justify-start gap-2 ${inspectorVisible ? "atlas-nav-btn-active" : ""}`}
+          title={inspectorVisible ? "Hide inspector" : "Show inspector"}>
+          <PanelRightOpen size={14} className="flex-shrink-0" />
+          {!collapsed && <span>Inspector</span>}
+        </button>
       </div>
     </nav>
   );
@@ -546,12 +562,7 @@ function NavRail({
 // ──────────────────────────────────────────────────────────────────────
 
 function Inspector({
-  collapsed,
-  onToggleCollapse,
-  activeTab,
-  onTabChange,
-  panes,
-  onFullScreen,
+  collapsed, onToggleCollapse, activeTab, onTabChange, panes, onFullScreen, onClose,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -559,31 +570,16 @@ function Inspector({
   onTabChange: (t: InspectorTabId) => void;
   panes: Partial<Record<InspectorTabId, ReactNode>>;
   onFullScreen: (tab: InspectorTabId) => void;
+  onClose: () => void;
 }) {
   if (collapsed) {
     return (
       <div className="h-full flex flex-col items-center py-3 px-2 gap-1">
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="atlas-nav-btn"
-          aria-label="Expand inspector"
-          title="Expand inspector"
-        >
+        <button type="button" onClick={onToggleCollapse} className="atlas-nav-btn" aria-label="Expand inspector" title="Expand inspector">
           <PanelRightOpen size={14} />
         </button>
         {INSPECTOR_TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              onTabChange(id);
-              onToggleCollapse();
-            }}
-            className="atlas-nav-btn"
-            title={label}
-            aria-label={label}
-          >
+          <button key={id} type="button" onClick={() => { onTabChange(id); onToggleCollapse(); }} className="atlas-nav-btn" title={label} aria-label={label}>
             <Icon size={14} />
           </button>
         ))}
@@ -594,48 +590,28 @@ function Inspector({
   return (
     <div className="h-full flex flex-col">
       <div className="flex-shrink-0 flex items-center gap-1 px-2 py-2 border-b border-border/40">
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          className="atlas-nav-btn flex-shrink-0"
-          aria-label="Collapse inspector"
-          title="Collapse inspector"
-        >
+        <button type="button" onClick={onClose} className="atlas-nav-btn flex-shrink-0" aria-label="Hide inspector" title="Hide inspector (⌘I)">
           <PanelRightClose size={14} />
         </button>
         <div className="flex-1 flex items-center gap-0.5 overflow-x-auto scrollbar-none min-w-0">
           {INSPECTOR_TABS.map(({ id, label, Icon }) => {
             const active = activeTab === id;
             return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onTabChange(id)}
+              <button key={id} type="button" onClick={() => onTabChange(id)}
                 className={`flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-colors ${
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-                title={label}
-              >
+                  active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`} title={label}>
                 <Icon size={12} />
                 <span>{label}</span>
               </button>
             );
           })}
         </div>
-        {/* Full-screen button for active tab */}
-        {(activeTab === "code" || activeTab === "console") && (
-          <button
-            type="button"
-            onClick={() => onFullScreen(activeTab)}
-            className="atlas-nav-btn flex-shrink-0"
-            title={`Full screen ${activeTab}`}
-            aria-label={`Full screen ${activeTab}`}
-          >
-            <Maximize2 size={12} />
-          </button>
-        )}
+        {/* Full-screen for ANY active tab */}
+        <button type="button" onClick={() => onFullScreen(activeTab)} className="atlas-nav-btn flex-shrink-0"
+          title={`Full screen ${activeTab}`} aria-label={`Full screen ${activeTab}`}>
+          <Maximize2 size={12} />
+        </button>
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
         {panes[activeTab] ?? <InspectorEmpty tab={activeTab} />}
@@ -656,9 +632,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
   };
   return (
     <div className="h-full flex items-center justify-center p-6 text-center">
-      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed max-w-full break-words">
-        {messages[tab]}
-      </p>
+      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed max-w-full break-words">{messages[tab]}</p>
     </div>
   );
 }
@@ -667,10 +641,16 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
 // Misc
 // ──────────────────────────────────────────────────────────────────────
 
-function PaneHeader({ title, draggable: _draggable }: { title: string; draggable?: boolean }) {
+function PaneHeader({ title, onFullScreen }: { title: string; onFullScreen?: () => void }) {
   return (
-    <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b border-border/40">
+    <div className="flex-shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-border/40">
       <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{title}</span>
+      {onFullScreen && (
+        <button type="button" onClick={onFullScreen} className="p-0.5 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/30 transition-colors"
+          title="Full screen" aria-label="Full screen">
+          <Maximize2 size={10} />
+        </button>
+      )}
     </div>
   );
 }
