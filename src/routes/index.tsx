@@ -2284,6 +2284,14 @@ function WorkspacePage() {
       projects={projects}
       activeProjectId={activeProjectId}
       onSelectProject={(id) => { setActiveProjectId(id); }}
+      onNewProject={() => {
+        setSession(null);
+        setMessages([]);
+        setActiveProjectId(null);
+        setEntrySurface(true);
+        setGalleryOpen(false);
+        setInputFocusSignal((v) => v + 1);
+      }}
     />
     </>
   );
