@@ -2170,9 +2170,30 @@ function WorkspacePage() {
         <div className="h-full flex flex-col bg-background">
           {/* Canvas header */}
           <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 flex items-center justify-between">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-              {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
+              </span>
+              {/* Responsive view switcher */}
+              <div className="flex items-center gap-0.5 border border-border/30 rounded-md p-0.5">
+                {([
+                  { id: "desktop" as const, w: 1280, label: "Desktop", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg> },
+                  { id: "tablet" as const, w: 768, label: "Tablet", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="3" y="1" width="10" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
+                  { id: "mobile" as const, w: 375, label: "Mobile", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
+                ] as const).map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setCanvasViewport(v.id)}
+                    className={`p-1 rounded transition-colors ${canvasViewport === v.id ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
+                    title={`${v.label} (${v.w}px)`}
+                    aria-label={v.label}
+                  >
+                    {v.icon}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-1.5">
               {/* Run button — refreshes current preview */}
               <button
