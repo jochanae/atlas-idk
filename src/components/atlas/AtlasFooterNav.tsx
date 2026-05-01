@@ -1,5 +1,6 @@
 import { Home, Folder, BookOpen, User } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { AtlasLogo } from "./AtlasLogo";
 
 export type FooterTab = "home" | "projects" | "ledger" | "you";
 
@@ -9,18 +10,12 @@ type Props = {
   onCenterPress: () => void;
 };
 
-const EMBER = "#EA580C";
-const BG = "#0C0A09";
-const BORDER = "#1C1917";
-const LABEL = "#3C3530";
-
 /**
  * AtlasFooterNav — persistent 5-item footer with a raised Atlas center button.
  * Layout:  [Home] [Projects] [⬢ Atlas] [Ledger] [You]
  *
- * The center button sits above the bar (52px circle, ember orange) and
- * triggers a quick-thought sheet from the parent. Tapping it from anywhere
- * in the app drops a thought into the active session without navigating away.
+ * Colors are bound to theme tokens — `--ember` resolves to Cognac (#8B4513)
+ * in light mode and Muted Amber (#B45309) in Obsidian. No volcanic orange.
  */
 export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
   return (
@@ -33,8 +28,8 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
         right: 0,
         bottom: 0,
         zIndex: 60,
-        background: BG,
-        borderTop: `0.5px solid ${BORDER}`,
+        background: "var(--background)",
+        borderTop: "0.5px solid var(--border)",
         paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)",
       }}
     >
@@ -61,7 +56,7 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
           icon={<Folder size={18} strokeWidth={1.6} />}
         />
 
-        {/* Center — raised Atlas button */}
+        {/* Center — raised Atlas button (Celestial Compass mark) */}
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <button
             type="button"
@@ -75,26 +70,23 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
               transform: "translateX(-50%)",
               width: 52,
               height: 52,
-              borderRadius: "50%",
-              background: EMBER,
+              borderRadius: 14,
+              background: "var(--ember)",
               border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
+              color: "#F5F1E8",
               boxShadow:
-                "0 0 0 4px " + BG +
-                ", 0 8px 24px -6px rgba(234,88,12,0.55)" +
-                ", 0 0 18px -2px rgba(234,88,12,0.45)",
+                "0 0 0 4px var(--background)" +
+                ", 0 8px 24px -6px var(--ember-glow)" +
+                ", 0 0 18px -2px var(--ember-glow)",
               transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms ease",
             }}
             className="atlas-footer-center"
           >
-            {/* Atlas hex glyph */}
-            <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="#0C0A09" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3 L20 7.5 V16.5 L12 21 L4 16.5 V7.5 Z" />
-              <path d="M12 8 V16 M8 10 H16" opacity="0.55" />
-            </svg>
+            <AtlasLogo size={24} strokeWidth={1.7} />
           </button>
         </div>
 
@@ -131,7 +123,6 @@ function FooterItem({
   isActive: boolean;
   onClick: () => void;
 }) {
-  const color = isActive ? EMBER : LABEL;
   return (
     <button
       type="button"
@@ -146,7 +137,7 @@ function FooterItem({
         flexDirection: "column",
         alignItems: "center",
         gap: 3,
-        color,
+        color: isActive ? "var(--ember)" : "var(--muted-text)",
         cursor: "pointer",
         width: "100%",
         transition: "color 160ms ease",
@@ -161,7 +152,6 @@ function FooterItem({
           fontSize: 9,
           letterSpacing: "0.14em",
           textTransform: "uppercase",
-          color,
           lineHeight: 1,
         }}
       >
