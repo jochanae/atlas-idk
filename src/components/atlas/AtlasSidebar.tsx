@@ -327,9 +327,8 @@ export function AtlasSidebar({
             </button>
             <div
               style={{
-                maxHeight: projectsExpanded ? "min(56vh, 620px)" : 0,
-                overflowY: projectsExpanded ? "auto" : "hidden",
-                overflowX: "hidden",
+                maxHeight: projectsExpanded ? "none" : 0,
+                overflow: "hidden",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
                 padding: projectsExpanded ? "0 12px 14px" : "0 12px 0",
               }}
@@ -559,7 +558,7 @@ export function AtlasSidebar({
                       flexShrink: 0,
                     }}
                   />
-                  <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "block" }}>
                     <span
                       style={{
                         display: "block",
@@ -568,6 +567,7 @@ export function AtlasSidebar({
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        maxWidth: "100%",
                       }}
                     >
                       {s.title || "Untitled"}
@@ -581,6 +581,9 @@ export function AtlasSidebar({
                         textTransform: "uppercase",
                         letterSpacing: "0.06em",
                         marginTop: 1,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}

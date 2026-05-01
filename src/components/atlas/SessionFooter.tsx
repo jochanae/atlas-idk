@@ -17,7 +17,7 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
       style={{
         display: "flex",
         justifyContent: "center",
-        padding: "4px 16px 6px",
+        padding: "6px 16px 8px",
         gap: 12,
         fontFamily: "var(--font-mono)",
         fontSize: 9.5,
@@ -26,6 +26,10 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         color: "color-mix(in oklab, var(--muted-text) 80%, transparent)",
         userSelect: "none",
         flexShrink: 0,
+        background: "var(--background)",
+        borderTop: "0.5px solid color-mix(in oklab, var(--glass-border) 60%, transparent)",
+        position: "relative",
+        zIndex: 2,
       }}
     >
       {artifactCount > 0 && (

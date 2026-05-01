@@ -3474,7 +3474,7 @@ function ChatPanel({
                   })() : (
                   <>
                     {/* Atlas response — no card, formatted text */}
-                    <div style={{ padding: "10px 6px" }}>
+                    <div style={{ padding: "10px 6px", position: "relative", zIndex: 2, background: "var(--background)" }}>
                       <div
                         className="font-mono text-[9px] uppercase tracking-[0.15em]"
                         style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}

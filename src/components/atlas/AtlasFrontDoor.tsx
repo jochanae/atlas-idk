@@ -1167,7 +1167,7 @@ export function SessionHistoryList({
             }}
           >
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
               <div
                 style={{
                   fontSize: 13,
@@ -1176,6 +1176,7 @@ export function SessionHistoryList({
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   marginBottom: 2,
+                  maxWidth: "100%",
                 }}
               >
                 {session.title || "Untitled session"}
