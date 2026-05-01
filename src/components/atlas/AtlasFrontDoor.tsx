@@ -1160,7 +1160,7 @@ export function SessionHistoryList({
   );
 }
 
-function greetingFor(now: Date, name?: string | null): string {
+export function greetingFor(now: Date, name?: string | null): string {
   const h = now.getHours();
   const period = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
   const first = (name || "").trim().split(/\s+/)[0];
