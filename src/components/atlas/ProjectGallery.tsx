@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence, useDragControls, type PanInfo } from "framer-motion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { X, Star, ExternalLink, MoreHorizontal, FolderOpen } from "lucide-react";
+import { X, Star, ExternalLink, MoreHorizontal, FolderOpen, Plus } from "lucide-react";
 import type { Project } from "@/lib/atlas";
 
 /**
@@ -20,9 +20,10 @@ interface Props {
   projects: Project[];
   activeProjectId: string | null;
   onSelectProject: (projectId: string) => void;
+  onNewProject: () => void;
 }
 
-export function ProjectGallery({ open, onClose, projects, activeProjectId, onSelectProject }: Props) {
+export function ProjectGallery({ open, onClose, projects, activeProjectId, onSelectProject, onNewProject }: Props) {
   const isDesktopOrTablet = useMediaQuery("(min-width: 768px)");
   const isZFoldUnfolded = useMediaQuery("(min-width: 660px) and (max-width: 1023px)");
 
@@ -33,8 +34,8 @@ export function ProjectGallery({ open, onClose, projects, activeProjectId, onSel
     <AnimatePresence>
       {open && (
         useSheet
-          ? <GalleryBottomSheet onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} />
-          : <GalleryModal onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} />
+          ? <GalleryBottomSheet onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} onNewProject={onNewProject} />
+          : <GalleryModal onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} onNewProject={onNewProject} />
       )}
     </AnimatePresence>
   );
@@ -44,7 +45,7 @@ export function ProjectGallery({ open, onClose, projects, activeProjectId, onSel
 /*  Bottom Sheet (mobile / Z Fold outer)                       */
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProject }: Omit<Props, "open">) {
+function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProject, onNewProject }: Omit<Props, "open">) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   const handleDragEnd = useCallback(
@@ -97,6 +98,7 @@ function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProjec
         {/* Grid */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-8">
           <div className="grid grid-cols-2 gap-3">
+            <NewProjectCard onClick={() => { onNewProject(); onClose(); }} />
             {projects.map((p) => (
               <ProjectCard
                 key={p.id}
@@ -117,7 +119,7 @@ function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProjec
 /*  Modal (desktop / tablet / Z Fold unfolded)                  */
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-function GalleryModal({ onClose, projects, activeProjectId, onSelectProject }: Omit<Props, "open">) {
+function GalleryModal({ onClose, projects, activeProjectId, onSelectProject, onNewProject }: Omit<Props, "open">) {
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -162,6 +164,7 @@ function GalleryModal({ onClose, projects, activeProjectId, onSelectProject }: O
 
           <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <NewProjectCard onClick={() => { onNewProject(); onClose(); }} />
               {projects.map((p) => (
                 <ProjectCard
                   key={p.id}
@@ -225,6 +228,39 @@ function SheetHeader({ onClose, count }: { onClose: () => void; count: number })
     </div>
   );
 }
+
+function NewProjectCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group text-left rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(201,162,76,0.7)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+      style={{
+        background: "rgba(201,162,76,0.04)",
+        border: "1px dashed rgba(201,162,76,0.3)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        className="relative w-full flex items-center justify-center"
+        style={{ paddingTop: "62.5%" }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <Plus size={24} style={{ color: "rgba(201,162,76,0.5)" }} className="group-hover:scale-110 transition-transform" />
+          <span style={{ fontFamily: "'Geist Sans', system-ui, sans-serif", fontSize: 11, fontWeight: 500, color: "rgba(201,162,76,0.6)" }}>
+            New Project
+          </span>
+        </div>
+      </div>
+      <div className="px-3 py-2.5">
+        <span style={{ fontFamily: "'Geist Sans', system-ui, sans-serif", fontSize: 12, color: "rgba(232,228,221,0.4)" }}>
+          Start fresh
+        </span>
+      </div>
+    </button>
+  );
+}
+
 
 function ProjectCard({ project, active, onSelect }: { project: Project; active: boolean; onSelect: () => void }) {
   const [starred, setStarred] = useState(false);
