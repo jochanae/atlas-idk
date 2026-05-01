@@ -438,7 +438,9 @@ export function AtlasFrontDoor({
           style={{
             position: active ? "absolute" : "relative",
             inset: active ? 0 : "auto",
-            flex: active ? "none" : 1,
+            flex: active ? "none" : undefined,
+            minHeight: active ? undefined : "calc(100dvh - var(--header-height))",
+            flexShrink: 0,
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
