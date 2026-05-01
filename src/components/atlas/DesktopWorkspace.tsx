@@ -390,11 +390,13 @@ function ResizeHandle({ onResize, side = "left" }: { onResize: (dx: number) => v
   return (
     <div
       onMouseDown={onMouseDown}
-      className="flex-shrink-0 w-[3px] cursor-col-resize group relative z-10"
+      onDoubleClick={onDoubleClick}
+      title="Drag to resize · double-click for half-screen"
+      className="flex-shrink-0 w-[6px] cursor-col-resize group relative z-10"
       style={{ touchAction: "none" }}
     >
-      <div className="absolute inset-y-0 -left-[3px] -right-[3px]" />
-      <div className="absolute inset-y-0 left-[1px] w-px bg-border/20 group-hover:bg-border/60 group-active:bg-accent/60 transition-colors" />
+      <div className="absolute inset-y-0 -left-[4px] -right-[4px]" />
+      <div className="absolute inset-y-0 left-[2px] w-px bg-border/30 group-hover:bg-accent/60 group-active:bg-accent transition-colors" />
     </div>
   );
 }
