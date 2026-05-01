@@ -462,6 +462,8 @@ export function DesktopWorkspace({
                 ["⌘ ⇧ Enter", "Re-run preview"],
                 ["⌘ `", "Open console"],
                 ["⌘ E", "Open file tree"],
+                ["⌘ Y", "Accept diff"],
+                ["⌘ U", "Reject diff"],
                 ["⌘ /", "Show shortcuts"],
               ].map(([key, desc]) => (
                 <div key={key} className="flex items-center justify-between">

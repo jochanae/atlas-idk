@@ -150,7 +150,7 @@ export function DiffPreview({
               onClick={onReject}
               className="px-3 py-1 rounded text-[9px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/30 border border-border/40 transition-colors"
             >
-              Reject
+              Reject <kbd className="ml-1 text-[8px] opacity-40">⌘U</kbd>
             </button>
           )}
           {onAccept && (
@@ -159,7 +159,7 @@ export function DiffPreview({
               onClick={onAccept}
               className="px-3 py-1 rounded text-[9px] font-mono uppercase tracking-wider bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/20 transition-colors"
             >
-              Accept
+              Accept <kbd className="ml-1 text-[8px] opacity-60">⌘Y</kbd>
             </button>
           )}
         </div>
