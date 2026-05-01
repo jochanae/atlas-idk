@@ -74,7 +74,7 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
               width: 58,
               height: 58,
               borderRadius: 16,
-              background: "#B45309",
+              background: "#92400E",
               border: "none",
               display: "flex",
               alignItems: "center",
