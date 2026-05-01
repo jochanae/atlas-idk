@@ -94,6 +94,14 @@ type AtlasFrontDoorProps = {
   onAddToQueue?: (text: string) => void;
   /** Plan mode dependency graph (rendered above queue when Plan is active) */
   planGraph?: ReactNode;
+  /** Plan steps for PlanPanel */
+  planSteps?: PlanStep[];
+  /** One-tap queue a single plan step */
+  onQueuePlanStep?: (step: PlanStep) => void;
+  /** Queue all plan steps at once */
+  onQueueAllPlanSteps?: () => void;
+  /** Expand/drill into a plan step */
+  onExpandPlanStep?: (step: PlanStep) => void;
   /** Adaptive placeholder set from external tap events */
   adaptivePlaceholder?: string | null;
   /** Mobile surface bar rendered below header in active mode */
