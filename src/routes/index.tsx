@@ -2413,64 +2413,115 @@ function WorkspacePage() {
           </div>
         </div>
       )}
-      renderHeader={() => (
-        <div className="flex items-center gap-3 h-12 px-4" style={{ background: "var(--background)" }}>
-          {/* Left: wordmark + breadcrumb */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-shrink-0">
-            <span className="text-[13px] font-semibold tracking-tight text-foreground select-none">Atlas</span>
-            {activeProject && (
-              <>
-                <span className="text-muted-foreground/20 text-xs">/</span>
-                <span className="text-xs text-muted-foreground/70 truncate max-w-[140px]">
-                  {activeProject.name}
-                </span>
-              </>
-            )}
-            {session && (
-              <>
-                <span className="text-muted-foreground/20 text-xs">/</span>
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground/50">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: "0 0 4px rgba(34,197,94,0.4)" }} />
-                  session
-                </span>
-              </>
-            )}
+      renderHeader={() => {
+        const hdrIconBtn = "p-1.5 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors";
+        const hdrIconActive = "p-1.5 rounded-lg text-foreground bg-muted/40 transition-colors";
+        return (
+        <div className="flex items-center gap-2 h-12 px-3" style={{ background: "var(--background)" }}>
+          {/* ── Left: wordmark + project dropdown ── */}
+          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-foreground select-none hover:bg-muted/30 px-2 py-1 rounded-lg transition-colors"
+              onClick={() => { setSession(null); setMessages([]); setActiveProjectId(null); setEntrySurface(true); }}
+            >
+              Atlas
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="opacity-40"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
           </div>
 
-          <div className="flex-1" />
+          {/* ── Center-left: view mode icons ── */}
+          <div className="flex items-center gap-0.5 ml-1">
+            <button type="button" className={hdrIconBtn} title="History" onClick={() => { setEntrySurface(false); setHistoryOpen(o => !o); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </button>
+            <button type="button" className={hdrIconBtn} title="Split view">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+            </button>
+          </div>
 
-          {/* Right: actions */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {session && (
-              <button
-                type="button"
-                onClick={() => { setSession(null); setMessages([]); setActiveProjectId(null); setEntrySurface(true); }}
-                className="text-[11px] text-muted-foreground/60 hover:text-foreground px-2.5 py-1 rounded-lg hover:bg-muted/30 transition-colors"
-              >
-                New
+          {/* ── Preview pill ── */}
+          <button
+            type="button"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-all"
+            style={{
+              color: "var(--phosphor)",
+              border: "1px solid color-mix(in oklab, var(--phosphor) 30%, transparent)",
+              background: "color-mix(in oklab, var(--phosphor) 8%, transparent)",
+            }}
+            onClick={() => {
+              /* toggle preview surface */
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Preview
+          </button>
+
+          {/* ── Tool icons ── */}
+          <div className="flex items-center gap-0.5">
+            <button type="button" className={hdrIconBtn} title="Files" onClick={() => setFileTreeOpen(o => !o)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </button>
+            <button type="button" className={hdrIconBtn} title="Code" onClick={() => { /* toggle code view */ }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </button>
+            <button type="button" className={hdrIconBtn} title="Ledger" onClick={() => navigate({ to: "/ledger" })}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+            </button>
+            <button type="button" className={hdrIconBtn} title="More">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+
+          {/* ── Center: URL / path bar ── */}
+          <div className="flex-1 flex justify-center">
+            <div
+              className="flex items-center gap-2 px-3 py-1 rounded-lg min-w-[180px] max-w-[320px] w-full"
+              style={{ background: "var(--surface)", border: "1px solid var(--glass-border)" }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-muted-foreground/40"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <span className="text-[11px] text-muted-foreground/50 font-mono truncate">
+                /{activeProject ? activeProject.name.toLowerCase().replace(/\s+/g, "-") : ""}
+              </span>
+              <div className="flex-1" />
+              <button type="button" className="text-muted-foreground/30 hover:text-muted-foreground transition-colors">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               </button>
-            )}
+              <button type="button" className="text-muted-foreground/30 hover:text-muted-foreground transition-colors">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+            </div>
+          </div>
+
+          {/* ── Right: share / github / publish / avatar ── */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button type="button" className={hdrIconBtn} title="Chat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button type="button" className={hdrIconBtn} title="Share" onClick={() => toast.info("Share coming soon")}>
+              <span className="text-[11px] font-medium text-muted-foreground/60">Share</span>
+            </button>
+            <button type="button" className={hdrIconBtn} title="GitHub">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+            </button>
             <button
               type="button"
               onClick={() => toast.info("Publishing coming soon")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200"
               style={{
-                color: "var(--accent-gold, #c9a84c)",
-                background: "color-mix(in oklab, var(--accent-gold, #c9a84c) 6%, transparent)",
+                color: "#fff",
+                background: "var(--phosphor)",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 14%, transparent)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 6%, transparent)";
-              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
             >
               Publish
             </button>
             <UserMenu user={user} theme={theme} onThemeChange={setTheme} onSignOut={signOut} />
           </div>
         </div>
-      )}
+        );
+      }}
       renderFooter={() => <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />}
       renderInspectorPanes={() => ({
         files: (
