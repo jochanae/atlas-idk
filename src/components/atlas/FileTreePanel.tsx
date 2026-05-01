@@ -2,7 +2,7 @@
  * FileTreePanel — inline file tree for embedding in the desktop layout.
  * Extracted from FileTreeDrawer to work as a persistent panel (no modal).
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 type GeneratedFile = {
   id?: string;
