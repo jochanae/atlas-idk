@@ -2296,6 +2296,22 @@ function WorkspacePage() {
                   Generating component…
                 </span>
               </div>
+            ) : diffPreviewActive && generatedCode && previousCode ? (
+              <DiffPreview
+                oldCode={previousCode}
+                newCode={generatedCode}
+                filename={generatedFilename ?? "Component.tsx"}
+                oldLabel="Previous"
+                newLabel="Current"
+                onAccept={() => {
+                  setPreviousCode(generatedCode);
+                  setDiffPreviewActive(false);
+                }}
+                onReject={() => {
+                  setGeneratedCode(previousCode);
+                  setDiffPreviewActive(false);
+                }}
+              />
             ) : generatedCode ? (
               <LivePreview
                 code={generatedCode}
