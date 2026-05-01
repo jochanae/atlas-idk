@@ -808,6 +808,13 @@ export function AtlasFrontDoor({
           )}
         </div>
 
+        {/* Below-the-fold dashboard — only in resting view */}
+        {!active && belowFold && (
+          <div style={{ flexShrink: 0, paddingBottom: "calc(var(--footer-nav-height, 62px) + 24px)" }}>
+            {belowFold}
+          </div>
+        )}
+
         {/* Active session content — cross-fades in over the resting hero */}
         <div
           aria-hidden={!active}
