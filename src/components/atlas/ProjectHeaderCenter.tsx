@@ -233,32 +233,8 @@ export function ProjectHeaderCenter({
           >
             {displayName}
           </span>
-          {activeMode && (() => {
-            const modeInfo = MODES.find((x) => x.id === activeMode)!;
-            const isPhosphor = modeInfo.color === "phosphor";
-            const isGold = modeInfo.color === "accent-gold";
-            const accent = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
-            return (
-              <>
-                <span style={{ color: "var(--muted-text)", opacity: 0.3, fontSize: 10, margin: "0 2px" }}>·</span>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 10,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: accent,
-                  }}
-                >
-                  <ModeIcon mode={activeMode} size={10} />
-                  {modeInfo.label}
-                </span>
-              </>
-            );
-          })()}
+          {/* Mode badge removed — Atlas senses mode silently via WhisperGate.
+              Mode picker still available inside the dropdown for power users. */}
           {isUntitled && (
             <Pencil
               size={11}
