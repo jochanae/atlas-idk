@@ -20,6 +20,7 @@ import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
 import { ThemeDropdown } from "@/components/atlas/ThemeDropdown";
 import { ProjectsDrawer } from "@/components/atlas/ProjectsDrawer";
+import { BelowFoldDashboard } from "@/components/atlas/BelowFoldDashboard";
 import { AtlasFooterNav, type FooterTab } from "@/components/atlas/AtlasFooterNav";
 import { QuickThoughtSheet } from "@/components/atlas/QuickThoughtSheet";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
@@ -1576,7 +1577,19 @@ function WorkspacePage() {
               />
             ) : undefined
           }
-          sidebarToggle={undefined}
+          belowFold={
+            !isActive ? (
+              <BelowFoldDashboard
+                openLoopsCount={parkedItems.length}
+                ledgerCount={ledgerCount}
+                parkedCount={parkedItems.length}
+                recents={recents}
+                onOpenLedger={() => navigate({ to: "/ledger" })}
+                onOpenParking={() => setParkingOpen(true)}
+                onOpenSession={(id) => openSession(id)}
+              />
+            ) : undefined
+          }
           onWordmarkClick={() => {
             if (session) {
               setEntrySurface(true);
@@ -1612,19 +1625,25 @@ function WorkspacePage() {
               />
             ) : undefined
           }
+          sidebarToggle={
+            <button
+              type="button"
+              onClick={() => setProjectsDrawerOpen(true)}
+              className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              aria-label="Projects"
+              title="Projects"
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 36, width: 36 }}
+            >
+              {/* Layout icon — two-pane workspace glyph */}
+              <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent-gold)", opacity: 0.85 }}>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M9 3v18" />
+                <path d="M3 9h6" />
+              </svg>
+            </button>
+          }
           headerActions={
             <div className="flex items-center gap-2 min-w-0" style={{ height: 44 }}>
-              <button
-                type="button"
-                onClick={() => setProjectsDrawerOpen(true)}
-                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                aria-label="Projects"
-                title="Projects"
-              >
-                <svg viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="rgba(201,162,76,0.8)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 4l3-2h4l1 1h5l1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z" />
-                </svg>
-              </button>
               {session && !entrySurface && (
                 <ParkingLotButton
                   count={parkedItems.length}
@@ -1632,7 +1651,6 @@ function WorkspacePage() {
                   onClick={() => setParkingOpen((open) => !open)}
                 />
               )}
-              <ThemeDropdown theme={theme} onThemeChange={setTheme} />
               <UserMenu
                 user={user}
                 theme={theme}
@@ -3408,6 +3426,7 @@ function ChatPanel({
                         {/* User message card — collapsible */}
                         <div
                           onClick={isLongMessage ? toggleExpand : undefined}
+                          className="atlas-msg-user"
                           style={{
                             background: "rgba(28, 28, 32, 0.85)",
                             borderRadius: "16px 4px 16px 16px",
@@ -3421,7 +3440,7 @@ function ChatPanel({
                           }}
                         >
                           {/* Gold accent bar */}
-                          <div style={{
+                          <div aria-hidden="true" style={{
                             position: "absolute",
                             left: 0,
                             top: 8,
@@ -3432,13 +3451,13 @@ function ChatPanel({
                             opacity: 0.6,
                           }} />
                           <div
-                            className="font-mono text-[9px] uppercase tracking-[0.15em]"
+                            className="font-mono text-[9px] uppercase tracking-[0.15em] atlas-msg-user-meta"
                             style={{ color: "var(--muted-text)", opacity: 0.5, marginBottom: 8, textAlign: "right" }}
                           >
                             YOU · {relativeTime(m.created_at)}
                           </div>
                           <div
-                            className="text-[15px] leading-[1.7] whitespace-pre-wrap"
+                            className="text-[15px] leading-[1.7] whitespace-pre-wrap atlas-msg-user-body"
                             style={{
                               textAlign: "left",
                               fontFamily: "var(--font-mono)",

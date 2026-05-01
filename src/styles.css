@@ -492,3 +492,91 @@
   75%  { opacity: 0.55; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-2px); }
 }
+
+/* ============================================================
+   Footer nav height var + active-input clearance
+   ============================================================ */
+:root {
+  --footer-nav-height: 62px;
+}
+
+/* Obsidian: glassmorphism active-input card */
+.theme-obsidian .atlas-active-input-card,
+:root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-active-input-card {
+  background: color-mix(in oklab, var(--surface) 88%, transparent);
+}
+
+/* Parchment / Executive Light: solid ivory active-input card */
+.theme-parchment .atlas-active-input-card,
+.theme-executive .atlas-active-input-card,
+.theme-cognac .atlas-active-input-card {
+  background: #FAF9F6 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ============================================================
+   Light-mode user message bubble — cognac body, ivory text
+   Targets the user message card inside ChatPanel (parchment only)
+   ============================================================ */
+.theme-parchment .atlas-msg-user,
+.theme-executive .atlas-msg-user,
+.theme-cognac .atlas-msg-user {
+  background: #8B4513 !important;
+  border-left-color: #FAF9F6 !important;
+}
+.theme-parchment .atlas-msg-user .atlas-msg-user-meta,
+.theme-executive .atlas-msg-user .atlas-msg-user-meta,
+.theme-cognac .atlas-msg-user .atlas-msg-user-meta {
+  color: rgba(250, 249, 246, 0.65) !important;
+}
+.theme-parchment .atlas-msg-user .atlas-msg-user-body,
+.theme-executive .atlas-msg-user .atlas-msg-user-body,
+.theme-cognac .atlas-msg-user .atlas-msg-user-body {
+  color: #FAF9F6 !important;
+}
+.theme-parchment .atlas-msg-user [aria-hidden="true"],
+.theme-executive .atlas-msg-user [aria-hidden="true"],
+.theme-cognac .atlas-msg-user [aria-hidden="true"] {
+  background: #FAF9F6 !important;
+}
+
+/* ============================================================
+   Below-fold dashboard sections (resting hero scroll)
+   ============================================================ */
+.atlas-belowfold-section {
+  padding: 32px var(--shell-edge);
+  border-top: 0.5px solid var(--glass-border);
+}
+.atlas-belowfold-section h3 {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+  margin-bottom: 14px;
+  opacity: 0.75;
+}
+.atlas-belowfold-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 0.5px dashed color-mix(in oklab, var(--border) 80%, transparent);
+}
+.atlas-belowfold-stat:last-child { border-bottom: none; }
+.atlas-belowfold-stat-num {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--accent-gold);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.atlas-belowfold-stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+}

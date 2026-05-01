@@ -109,6 +109,8 @@ type AtlasFrontDoorProps = {
   /** Voice input controls */
   voiceListening?: boolean;
   onVoiceToggle?: () => void;
+  /** Below-the-fold dashboard sections — only shown in resting (non-active) view. */
+  belowFold?: ReactNode;
   children?: ReactNode;
 };
 
@@ -266,6 +268,7 @@ export function AtlasFrontDoor({
   mobileSurfaceBar,
   voiceListening,
   onVoiceToggle,
+  belowFold,
   children,
 }: AtlasFrontDoorProps) {
   const pillsRef = useRef<HTMLDivElement>(null);
@@ -435,7 +438,9 @@ export function AtlasFrontDoor({
           style={{
             position: active ? "absolute" : "relative",
             inset: active ? 0 : "auto",
-            flex: active ? "none" : 1,
+            flex: active ? "none" : undefined,
+            minHeight: active ? undefined : "calc(100dvh - var(--header-height))",
+            flexShrink: 0,
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
@@ -803,6 +808,13 @@ export function AtlasFrontDoor({
           )}
         </div>
 
+        {/* Below-the-fold dashboard — only in resting view */}
+        {!active && belowFold && (
+          <div style={{ flexShrink: 0, paddingBottom: "calc(var(--footer-nav-height, 62px) + 24px)" }}>
+            {belowFold}
+          </div>
+        )}
+
         {/* Active session content — cross-fades in over the resting hero */}
         <div
           aria-hidden={!active}
@@ -880,31 +892,32 @@ export function AtlasFrontDoor({
           className={`atlas-active-input-shell${sending ? " atlas-breathing" : ""}`}
           style={{
             position: "fixed",
-            bottom: 0,
+            bottom: "calc(var(--footer-nav-height, 62px) + 24px)",
             left: 0,
             right: 0,
             zIndex: 48,
             margin: 0,
-            padding: "0 var(--shell-edge) 24px",
-            background: "linear-gradient(to top, var(--background) 70%, transparent)",
+            padding: "0 var(--shell-edge) 0",
+            background: "transparent",
           }}
         >
-          <div style={{
-            background: "color-mix(in oklab, var(--surface) 88%, transparent)",
-            backdropFilter: "blur(24px) saturate(140%)",
-            WebkitBackdropFilter: "blur(24px) saturate(140%)",
-            borderRadius: "var(--input-radius)",
-            border: sending
-              ? "1px solid color-mix(in oklab, var(--accent-gold) 70%, transparent)"
-              : "1px solid var(--accent-gold)",
-            padding: "16px 18px 12px",
-            boxShadow: sending
-              ? "inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent), 0 0 20px -4px color-mix(in oklab, var(--accent-gold) 25%, transparent)"
-              : "inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent)",
-            transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
-            flexShrink: 0,
-          }}
-        >
+          <div
+            className="atlas-active-input-card"
+            style={{
+              backdropFilter: "blur(24px) saturate(140%)",
+              WebkitBackdropFilter: "blur(24px) saturate(140%)",
+              borderRadius: "var(--input-radius)",
+              border: sending
+                ? "1px solid color-mix(in oklab, var(--accent-gold) 70%, transparent)"
+                : "1px solid var(--accent-gold)",
+              padding: "16px 18px 12px",
+              boxShadow: sending
+                ? "inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent), 0 0 20px -4px color-mix(in oklab, var(--accent-gold) 25%, transparent)"
+                : "inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent), 0 8px 28px -10px rgba(0,0,0,0.45)",
+              transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
+              flexShrink: 0,
+            }}
+          >
           <textarea
             ref={textareaRef}
             value={input}
