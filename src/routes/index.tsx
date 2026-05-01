@@ -2322,6 +2322,14 @@ function WorkspacePage() {
               ))}
             </div>
           ),
+        settings: (
+          <ProjectSettingsPanel
+            project={activeProject ?? null}
+            onProjectUpdate={(updated) => {
+              setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+            }}
+          />
+        ),
       })}
     />
     <ProjectGallery
