@@ -155,8 +155,7 @@ function MobilePeel({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full overflow-hidden ${className}`}
-      style={{ background: "#050505" }}
+      className={`relative h-full w-full overflow-hidden bg-background ${className}`}
     >
       {/* ── Base Layer: The Stage ── */}
       <motion.div
