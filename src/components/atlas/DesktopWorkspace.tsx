@@ -36,7 +36,7 @@ import {
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
-export type InspectorTabId = "github" | "code" | "recs" | "files" | "console" | "settings";
+export type InspectorTabId = "github" | "code" | "recs" | "files" | "console" | "settings" | "secrets";
 
 export type BuildStatus = "idle" | "building" | "success" | "error";
 
