@@ -76,7 +76,7 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-type="module">
+  <script type="text/babel" data-type="module" data-presets="typescript,react">
     try {
       ${componentCode}
 
