@@ -105,6 +105,15 @@ export function DesktopWorkspace({
   const [fullScreen, setFullScreen] = useState<FullScreenTarget>(null);
   const [chatWidth, setChatWidth] = useState(() => loadJson("atlas-chat-width", 480));
   const [inspectorWidth, setInspectorWidth] = useState(() => loadJson("atlas-inspector-width", 320));
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1440));
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  // Allow chat to grow up to ~70% of viewport so users can hit half-screen comfortably
+  const chatMaxWidth = Math.max(480, Math.floor(viewportWidth * 0.7));
+  const inspectorMaxWidth = Math.max(400, Math.floor(viewportWidth * 0.6));
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Persist
