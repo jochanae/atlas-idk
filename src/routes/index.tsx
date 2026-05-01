@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import { ChunkedBubbles } from "@/components/atlas/StreamingText";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemMenu } from "@/components/atlas/SystemMenu";
 import { useAuth } from "@/lib/auth";
@@ -2743,49 +2744,141 @@ function renderMarkdownChildren(children: ReactNode): ReactNode {
 
 function MarkdownProse({ content }: { content: string }) {
   return (
-    <ReactMarkdown
-      components={{
-        p: ({ children }) => (
-          <p className="mb-3 text-[16px] leading-[1.75] text-foreground">
-            {renderMarkdownChildren(children)}
-          </p>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-foreground">
-            {renderMarkdownChildren(children)}
-          </strong>
-        ),
-        code: ({ children, className }) => {
-          const isBlock = Boolean(className);
-          if (isBlock) {
+    <div className="atlas-prose" style={{ color: "var(--foreground)" }}>
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => (
+            <p
+              className="mb-3 text-[16px] leading-[1.75]"
+              style={{ color: "var(--foreground)" }}
+            >
+              {renderMarkdownChildren(children)}
+            </p>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold" style={{ color: "var(--foreground)" }}>
+              {renderMarkdownChildren(children)}
+            </strong>
+          ),
+          code: ({ children, className }) => {
+            const isBlock = Boolean(className);
+            if (isBlock) {
+              return (
+                <code
+                  className={`${className ?? ""} block whitespace-pre-wrap font-mono text-[13px]`}
+                  style={{ color: "var(--foreground)" }}
+                >
+                  {children}
+                </code>
+              );
+            }
             return (
-              <code className={`${className ?? ""} block whitespace-pre-wrap font-mono text-[13px] text-foreground`}>
+              <code
+                className="rounded px-1.5 py-0.5 font-mono text-[13px]"
+                style={{
+                  background: "var(--surface-alt)",
+                  color: "var(--foreground)",
+                  border: "0.5px solid var(--border)",
+                }}
+              >
                 {children}
               </code>
             );
-          }
-          return (
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground">
+          },
+          pre: ({ children }) => (
+            <pre
+              className="mb-3 overflow-x-auto rounded-lg p-3 font-mono text-[13px] leading-relaxed"
+              style={{
+                background: "var(--surface-alt)",
+                color: "var(--foreground)",
+                border: "0.5px solid var(--border)",
+              }}
+            >
               {children}
-            </code>
-          );
-        },
-        pre: ({ children }) => (
-          <pre className="mb-3 overflow-x-auto rounded-lg bg-card/80 p-3 font-mono text-[13px] leading-relaxed text-foreground">
-            {children}
-          </pre>
-        ),
-        ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>,
-        ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>,
-        li: ({ children }) => (
-          <li className="mb-1 text-[16px] leading-[1.7] text-foreground">
-            {renderMarkdownChildren(children)}
-          </li>
-        ),
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+            </pre>
+          ),
+          ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>,
+          li: ({ children }) => (
+            <li
+              className="mb-1 text-[16px] leading-[1.7]"
+              style={{ color: "var(--foreground)" }}
+            >
+              {renderMarkdownChildren(children)}
+            </li>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+/**
+ * StreamingMarkdown — progressively reveals markdown text word-by-word,
+ * re-rendering the parsed markdown at each step. Once complete, renders
+ * the full content statically.
+ */
+function StreamingMarkdown({
+  content,
+  speed = 30,
+  onComplete,
+}: {
+  content: string;
+  speed?: number;
+  onComplete?: () => void;
+}) {
+  const words = useMemo(() => content.match(/\S+\s*/g) ?? [], [content]);
+  const [visibleCount, setVisibleCount] = useState(0);
+  const completeCalled = useRef(false);
+
+  useEffect(() => {
+    setVisibleCount(0);
+    completeCalled.current = false;
+  }, [content]);
+
+  useEffect(() => {
+    const total = words.length;
+    if (visibleCount >= total) {
+      if (!completeCalled.current) {
+        completeCalled.current = true;
+        onComplete?.();
+      }
+      return;
+    }
+    const lastWord = words[visibleCount - 1] ?? "";
+    const jitter = speed * (0.6 + Math.random() * 0.8);
+    const pause = /[.!?]\s*$/.test(lastWord) ? speed * 4 : jitter;
+    const burst = Math.random() > 0.7 ? 2 : 1;
+    const timer = setTimeout(() => {
+      setVisibleCount((c) => Math.min(c + burst, total));
+    }, pause);
+    return () => clearTimeout(timer);
+  }, [visibleCount, words, speed, onComplete]);
+
+  const visibleText = words.slice(0, visibleCount).join("");
+  const isDone = visibleCount >= words.length;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <MarkdownProse content={visibleText} />
+      {!isDone && (
+        <span
+          style={{
+            display: "inline-block",
+            width: 6,
+            height: 14,
+            marginLeft: 2,
+            background: "var(--accent-gold)",
+            borderRadius: 1,
+            opacity: 0.7,
+            animation: "atlas-cursor-blink 800ms steps(2) infinite",
+            verticalAlign: "text-bottom",
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -3440,7 +3533,29 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            <MarkdownProse content={proseForDisplay} />
+                            newMessageIds.has(m.id) ? (
+                              <ChunkedBubbles
+                                text={proseForDisplay}
+                                isNew
+                                renderBubble={(chunk, idx, isNewChunk) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      marginBottom: 10,
+                                      animation: isNewChunk ? undefined : "atlas-bubble-in 300ms ease forwards",
+                                    }}
+                                  >
+                                    {isNewChunk ? (
+                                      <StreamingMarkdown content={chunk} speed={30} />
+                                    ) : (
+                                      <MarkdownProse content={chunk} />
+                                    )}
+                                  </div>
+                                )}
+                              />
+                            ) : (
+                              <MarkdownProse content={proseForDisplay} />
+                            )
                           )}
                           {card && cardVersion !== null && (
                             <div className="pt-2">
