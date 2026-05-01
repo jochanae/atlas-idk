@@ -923,7 +923,7 @@ export function AtlasFrontDoor({
               lineHeight: 1.6,
               letterSpacing: "-0.01em",
               resize: "none",
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-sans)",
               padding: "6px 8px",
               minHeight: 60,
               maxHeight: TEXTAREA_MAX_HEIGHT_ACTIVE,
