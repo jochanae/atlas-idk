@@ -16,7 +16,10 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
     <div
       style={{
         display: "flex",
+        flexWrap: "nowrap",
+        whiteSpace: "nowrap",
         justifyContent: "center",
+        alignItems: "center",
         padding: "6px 16px 8px",
         gap: 12,
         fontFamily: "var(--font-mono)",
@@ -31,10 +34,12 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         borderTop: "0.5px solid color-mix(in oklab, var(--glass-border) 60%, transparent)",
         position: "relative",
         zIndex: 2,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
       }}
     >
       {artifactCount > 0 && (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
           <span
             aria-hidden
             style={{
@@ -49,10 +54,10 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         </span>
       )}
       {artifactCount > 0 && ledgerCount > 0 && (
-        <span style={{ opacity: 0.4 }}>·</span>
+        <span style={{ opacity: 0.4, flexShrink: 0 }}>·</span>
       )}
       {ledgerCount > 0 && (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
           <span
             aria-hidden
             style={{
@@ -67,7 +72,7 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         </span>
       )}
       {hasOutput && (
-        <span style={{ opacity: 0.7, marginLeft: 4 }}>· session producing</span>
+        <span style={{ opacity: 0.7, marginLeft: 4, flexShrink: 0 }}>· session producing</span>
       )}
     </div>
   );
