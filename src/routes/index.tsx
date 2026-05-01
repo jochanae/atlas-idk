@@ -1025,8 +1025,27 @@ function WorkspacePage() {
         if (extracted.length > 0) setPlanSteps(extracted);
       }
 
-      // Codegen is only triggered by the explicit /build slash command —
-      // BUILD intent classification only shapes Atlas's conversational reply.
+      // ═══ BUILD auto-codegen: when WhisperGate classifies as BUILD,
+      // automatically generate a component and show it in LivePreview.
+      // GUARD: skip when the message is phrased as a question — those are
+      // conversational queries that should stay in THINK mode even if the
+      // classifier returns BUILD. The /build slash command bypasses this
+      // guard entirely (it has its own dedicated path).
+      const looksLikeQuestion = (() => {
+        const trimmed = text.trim().toLowerCase();
+        if (trimmed.endsWith("?")) return true;
+        const questionStarters = ["what", "how", "why", "can you", "tell me", "show me", "do you"];
+        return questionStarters.some((q) => trimmed.startsWith(q));
+      })();
+
+      if (data?.intent?.mode === "BUILD" && !looksLikeQuestion) {
+        generateCode(text).catch((err) => {
+          const msg = err instanceof Error ? err.message : "Build failed";
+          console.error("auto-codegen error:", msg);
+          toast.error(msg);
+          setCodegenLoading(false);
+        });
+      }
 
       await refresh(target.session, target.projectId);
     } catch (e) {
