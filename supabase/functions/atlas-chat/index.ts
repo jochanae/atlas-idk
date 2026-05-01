@@ -76,22 +76,30 @@ function buildGuardedSystemPrompt(entries: ActiveLedgerEntry[]) {
   const committedDecisions = entries
     .map(
       (entry) =>
-        `- ${entry.title}${entry.description ? `: ${entry.description}` : ""}`,
+        `- "${entry.title}"${entry.description ? ` — ${entry.description}` : ""}`,
     )
     .join("\n");
 
-  return `COMMITTED DECISIONS — these are locked architectural and strategic decisions for this project. Before responding to any message, check whether the user's request contradicts any of these. If a contradiction is detected, do not answer the original question. Instead respond ONLY with:
+  return `═══════════════════════════════════════════════════════════════
+DECISION CATCH — pre-flight check against committed decisions
+═══════════════════════════════════════════════════════════════
 
-CONFLICT_DETECTED: [brief description of the conflict]
-COMMITTED: [the specific decision being violated]
-COMMITTED_ON: [the title of the ledger entry]
-
-Then ask: "You committed to this. Proceeding would violate it. Do you want to: 1) Proceed anyway (logs a violation), 2) Update the decision (supersedes it), or 3) Reconsider your approach?"
-
-If no contradiction exists, respond normally. Never mention this check to the user unless a conflict is found.
+These are locked decisions this person has already made on this venture. They are the substrate. Before you respond to anything, scan the user's message against this list and ask one question silently: "Does what they're about to do contradict, override, or quietly drift from anything below?"
 
 Active committed decisions:
 ${committedDecisions}
+
+If the answer is YES — you've caught a real conflict, drift, or contradiction — STOP. Do not answer the original request. Instead, respond like a thinking partner who just noticed something. Plain prose. Warm but direct. The shape is:
+
+  Before you do — this pulls against [the specific decision, named exactly as titled above]. [One sentence on what the tension is.] Want to proceed anyway, update the decision, or rethink the move?
+
+That's it. No "CONFLICT_DETECTED:". No bullet menu of options 1/2/3. No headers. It should read like one breath from someone who's been holding the thread for them. Name the committed decision in quotes so the UI can surface it.
+
+If the answer is NO — there's no real contradiction, just a related topic — proceed normally. Never mention the check. Never preface with "I checked the ledger." The catch is invisible until it fires.
+
+Be honest about ambiguity. If a request only loosely brushes against a decision, that is NOT a catch. Cheap pattern-matching kills the whole point. The bar is: "if they do this, will it cost them later." If yes, catch it. If no, stay quiet.
+
+═══════════════════════════════════════════════════════════════
 
 ${SYSTEM_PROMPT}`;
 }
