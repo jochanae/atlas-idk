@@ -17,6 +17,7 @@ import {
   Terminal,
   Files,
   Settings,
+  KeyRound,
   Play,
   Hammer,
   RotateCcw,
