@@ -214,42 +214,112 @@ export function AtlasSidebar({
           >
             Atlas
           </span>
-          {/* User avatar */}
-          <span
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: "50%",
-              overflow: "hidden",
-              flexShrink: 0,
-              border: "1.5px solid color-mix(in oklab, var(--accent-gold) 45%, transparent)",
-              boxShadow: "0 0 6px rgba(212,175,55,0.25)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: avatarUrl
-                ? "transparent"
-                : "linear-gradient(135deg, #2A2724, #1C1917)",
-            }}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <span
+          {/* Right cluster: theme dropdown + avatar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+            <button
+              ref={themeBtnRef}
+              onClick={() => setThemeMenuOpen((v) => !v)}
+              aria-label="Theme"
+              aria-haspopup="menu"
+              aria-expanded={themeMenuOpen}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--muted-text)",
+                cursor: "pointer",
+                padding: 4,
+                display: "flex",
+                borderRadius: 6,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-text)")}
+            >
+              {themeMode === "light" ? <Sun size={15} /> : themeMode === "dark" ? <Moon size={15} /> : <Monitor size={15} />}
+            </button>
+            {themeMenuOpen && (
+              <div
+                role="menu"
                 style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "color-mix(in oklab, var(--accent-gold) 75%, #F5E6C7)",
+                  position: "absolute",
+                  top: "100%",
+                  right: 36,
+                  marginTop: 8,
+                  background: "var(--surface)",
+                  border: "0.5px solid var(--glass-border)",
+                  borderRadius: 8,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                  padding: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  minWidth: 140,
+                  zIndex: 80,
                 }}
               >
-                {avatarInitial}
-              </span>
+                {([
+                  { mode: "light" as ThemeMode, label: "Light", Icon: Sun },
+                  { mode: "dark" as ThemeMode, label: "Dark", Icon: Moon },
+                  { mode: "system" as ThemeMode, label: "System", Icon: Monitor },
+                ]).map(({ mode, label, Icon }) => (
+                  <button
+                    key={mode}
+                    role="menuitem"
+                    onClick={() => { setThemeMode(mode); setThemeMenuOpen(false); }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 10px",
+                      background: themeMode === mode ? "var(--surface-alt)" : "transparent",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      color: "var(--foreground)",
+                      fontSize: 12.5,
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-alt)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = themeMode === mode ? "var(--surface-alt)" : "transparent")}
+                  >
+                    <Icon size={14} style={{ color: "var(--muted-text)" }} />
+                    <span style={{ flex: 1 }}>{label}</span>
+                    {themeMode === mode && (
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-gold)" }} />
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
-          </span>
+            {/* User avatar */}
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                overflow: "hidden",
+                flexShrink: 0,
+                border: "1.5px solid color-mix(in oklab, var(--accent-gold) 45%, transparent)",
+                boxShadow: "0 0 6px var(--gold-glow)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: avatarUrl ? "transparent" : "var(--surface-alt)",
+              }}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--accent-gold)",
+                  }}
+                >
+                  {avatarInitial}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
 
         {/* Search bar — top of sidebar */}
