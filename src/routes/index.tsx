@@ -1638,6 +1638,7 @@ function WorkspacePage() {
                 theme={theme}
                 onThemeChange={setTheme}
                 onSignOut={signOut}
+                openSignal={userMenuOpenSignal}
               />
             </div>
           }
