@@ -73,6 +73,7 @@ import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useIsDesktop } from "@/hooks/useMediaQuery";
 
 type CommitExtraction =
   | {
@@ -146,6 +147,7 @@ export const Route = createFileRoute("/")({
 function WorkspacePage() {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const isDesktopWorkspaceViewport = useIsDesktop();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -2116,8 +2118,15 @@ function WorkspacePage() {
     </div>
   );
 
-  return (
-    <>
+  const mobileWorkspaceLayout = (
+    <div className="h-screen w-full overflow-hidden">
+      <div className="h-full w-full flex flex-col bg-background">
+        {mainShell}
+      </div>
+    </div>
+  );
+
+  const workspaceLayout = isDesktopWorkspaceViewport && isActive ? (
     <DesktopWorkspace
       activeSurface={desktopActiveSurface}
       onSurfaceChange={handleDesktopSurfaceChange}
@@ -2518,6 +2527,13 @@ function WorkspacePage() {
         ),
       })}
     />
+  ) : (
+    mobileWorkspaceLayout
+  );
+
+  return (
+    <>
+    {workspaceLayout}
     <ProjectGallery
       open={galleryOpen}
       onClose={() => setGalleryOpen(false)}
