@@ -2523,9 +2523,28 @@ function ChatPanel({
                     <div style={{ padding: "10px 6px" }}>
                       <div
                         className="font-mono text-[9px] uppercase tracking-[0.15em]"
-                        style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 10 }}
+                        style={{ color: "var(--muted-text)", opacity: 0.6, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}
                       >
-                        ATLAS · {relativeTime(m.created_at)}
+                        <span>ATLAS · {relativeTime(m.created_at)}</span>
+                        {m.intent_type && (
+                          <span
+                            title={m.output_guard_violation ? `Guard: ${m.output_guard_violation}${m.output_guard_repaired ? " (repaired)" : ""}` : undefined}
+                            style={{
+                              fontSize: 8,
+                              letterSpacing: "0.1em",
+                              padding: "1px 6px",
+                              borderRadius: 4,
+                              background: m.intent_type === "BUILD" ? "rgba(59,130,246,0.15)" : m.intent_type === "DECIDE" ? "rgba(245,158,11,0.15)" : "rgba(139,92,246,0.15)",
+                              color: m.intent_type === "BUILD" ? "#60a5fa" : m.intent_type === "DECIDE" ? "#fbbf24" : "#a78bfa",
+                              border: `1px solid ${m.intent_type === "BUILD" ? "rgba(59,130,246,0.25)" : m.intent_type === "DECIDE" ? "rgba(245,158,11,0.25)" : "rgba(139,92,246,0.25)"}`,
+                            }}
+                          >
+                            {m.intent_type}
+                          </span>
+                        )}
+                        {m.output_guard_repaired && (
+                          <span style={{ fontSize: 8, opacity: 0.5 }} title="Output was auto-corrected by the guard">🔧</span>
+                        )}
                       </div>
                       {Array.isArray(m.surfaced_memories) && m.surfaced_memories.length > 0 && (
                         <div style={{ marginBottom: 8 }}>
