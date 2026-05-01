@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1500,
-          system: guardedSystemPrompt,
+          system: finalSystemPrompt,
           tools,
           messages: workingMessages,
         }),
