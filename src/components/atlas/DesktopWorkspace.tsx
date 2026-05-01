@@ -138,7 +138,7 @@ export function DesktopWorkspace({
             )}
 
             {/* ── Main canvas ─────────────────────────────── */}
-            <Panel defaultSize={canvasExpanded ? 100 : (inspectorCollapsed ? 75 : 55)} minSize={30}>
+            <Panel defaultSize={canvasExpanded ? 100 : (chatVisible ? 50 : 75)} minSize={30}>
               <div className="h-full overflow-hidden relative">
                 {/* Expand / collapse toggle */}
                 <button
