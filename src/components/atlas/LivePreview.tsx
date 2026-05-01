@@ -92,16 +92,11 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
         var demoProps = {
           title: 'Pro Plan', name: 'Atlas', label: 'Featured',
           price: 49, description: 'Everything you need to build at scale.',
-          features: [
-            { name: 'Unlimited projects', included: true },
-            { name: 'Priority support', included: true },
-            { name: 'Custom domains', included: true },
-            { name: 'Advanced analytics', included: false },
-          ],
+          features: ['Unlimited projects', 'Priority support', 'Custom domains', 'Advanced analytics'],
           items: ['Item 1', 'Item 2', 'Item 3'],
           children: 'Hello World',
           onClick: function(){}, onSelect: function(){}, onSubmit: function(){},
-          buttonText: 'Get Started', popular: true,
+          buttonText: 'Get Started', popular: true, isPopular: true,
         };
         var container = document.getElementById('root');
         // React 18 UMD: try createRoot first, fall back to legacy render
