@@ -1869,43 +1869,7 @@ function WorkspacePage() {
         )}
 
       </main>
-      <AtlasSidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        recents={recents}
-        parkedCount={parkedItems.length}
-        ledgerCount={ledgerCount}
-        onNewSession={() => {
-          setSession(null);
-          setMessages([]);
-          setActiveProjectId(null);
-          setEntrySurface(true);
-          setSidebarOpen(false);
-          setInputFocusSignal((v) => v + 1);
-        }}
-        onOpenSession={(id) => {
-          setSidebarOpen(false);
-          openSession(id);
-        }}
-        onOpenParking={() => {
-          setSidebarOpen(false);
-          setParkingOpen(true);
-        }}
-        email={user?.email ?? null}
-        theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
-        onSignOut={signOut}
-        user={user}
-        projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
-        onOpenProjects={() => {
-          setSidebarOpen(false);
-          setGalleryOpen(true);
-        }}
-        onNewProject={async () => {
-          await createNamedProject();
-        }}
-        buildHistory={buildHistory}
-      />
+      {/* AtlasSidebar removed — pending clean rebuild */}
       <BlueprintsDrawer
         open={blueprintsOpen}
         onClose={() => setBlueprintsOpen(false)}
