@@ -885,17 +885,17 @@ export function AtlasFrontDoor({
           }}
         >
           <div style={{
-            background: "rgba(18, 18, 22, 0.65)",
+            background: "color-mix(in oklab, var(--surface) 88%, transparent)",
             backdropFilter: "blur(24px) saturate(140%)",
             WebkitBackdropFilter: "blur(24px) saturate(140%)",
             borderRadius: "var(--input-radius)",
             border: sending
-              ? "1px solid rgba(212, 175, 55, 0.7)"
+              ? "1px solid color-mix(in oklab, var(--accent-gold) 70%, transparent)"
               : "1px solid var(--accent-gold)",
             padding: "16px 18px 12px",
             boxShadow: sending
-              ? "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 20px -4px rgba(212, 175, 55, 0.25)"
-              : "inset 0 1px 0 rgba(255,255,255,0.03)",
+              ? "inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent), 0 0 20px -4px color-mix(in oklab, var(--accent-gold) 25%, transparent)"
+              : "inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent)",
             transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             flexShrink: 0,
           }}
