@@ -72,10 +72,12 @@ export function UserAvatar({ user, size = 36, onClick, showStatusPulse = false }
           padding: 0,
           cursor: onClick ? "pointer" : "default",
           background: showImage
-            ? "transparent"
-            : "linear-gradient(135deg, #2A2724 0%, #1C1917 55%, color-mix(in oklab, var(--accent-gold) 65%, #1C1917) 100%)",
-          border: "1.5px solid rgba(212, 175, 55, 0.45)",
-          boxShadow: "0 0 8px rgba(212, 175, 55, 0.3), 0 4px 18px -4px rgba(0,0,0,0.55)",
+            ? "rgba(255, 255, 255, 0.06)"
+            : "linear-gradient(135deg, rgba(42,39,36,0.55) 0%, rgba(28,25,23,0.45) 55%, color-mix(in oklab, var(--accent-gold) 38%, rgba(28,25,23,0.45)) 100%)",
+          backdropFilter: "blur(12px) saturate(140%)",
+          WebkitBackdropFilter: "blur(12px) saturate(140%)",
+          border: "1px solid rgba(212, 175, 55, 0.30)",
+          boxShadow: "0 0 6px rgba(212, 175, 55, 0.18), 0 4px 14px -6px rgba(0,0,0,0.45)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

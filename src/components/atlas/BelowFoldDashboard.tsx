@@ -136,7 +136,7 @@ export function BelowFoldDashboard({
       {/* 3. Open Loops ---------------------------------------------------- */}
       <RevealOnScroll delayMs={200} id="discovery-loops" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
-          <h3>Open Loops</h3>
+          <h3>Unfinished Thoughts</h3>
           <button type="button" onClick={onOpenParking} className="atlas-discovery-link">
             Open parking →
           </button>
@@ -154,7 +154,7 @@ export function BelowFoldDashboard({
       {/* 4. Where were we ------------------------------------------------ */}
       <RevealOnScroll delayMs={300} id="discovery-checkin" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
-          <h3>Where were we</h3>
+          <h3>Previous Momentum</h3>
         </div>
         {recents.length === 0 ? (
           <p className="atlas-discovery-empty">
