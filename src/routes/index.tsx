@@ -2275,6 +2275,7 @@ function WorkspacePage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
