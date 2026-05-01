@@ -3533,7 +3533,29 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            <MarkdownProse content={proseForDisplay} />
+                            newMessageIds.has(m.id) ? (
+                              <ChunkedBubbles
+                                text={proseForDisplay}
+                                isNew
+                                renderBubble={(chunk, idx, isNewChunk) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      marginBottom: 10,
+                                      animation: isNewChunk ? undefined : "atlas-bubble-in 300ms ease forwards",
+                                    }}
+                                  >
+                                    {isNewChunk ? (
+                                      <StreamingMarkdown content={chunk} speed={30} />
+                                    ) : (
+                                      <MarkdownProse content={chunk} />
+                                    )}
+                                  </div>
+                                )}
+                              />
+                            ) : (
+                              <MarkdownProse content={proseForDisplay} />
+                            )
                           )}
                           {card && cardVersion !== null && (
                             <div className="pt-2">
