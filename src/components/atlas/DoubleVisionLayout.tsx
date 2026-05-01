@@ -168,12 +168,9 @@ function MobilePeel({
 
       {/* ── Top Layer: Command Center ── */}
       <motion.div
-        className="absolute inset-0 flex flex-col"
+        className="absolute inset-0 flex flex-col bg-background"
         style={{
           x: commandCenterX,
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          background: "rgba(5,5,5,0.88)",
           borderLeft: "1px solid rgba(201,162,76,0.25)",
           willChange: "transform",
         }}
