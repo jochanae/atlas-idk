@@ -2433,41 +2433,190 @@ function WorkspacePage() {
         </div>
       )}
       renderHeader={() => (
-        <div className="flex items-center justify-between px-4 py-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold tracking-wide text-foreground">Atlas</span>
-            {activeProject && (
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                {activeProject.name}
-              </span>
-            )}
-            {session && (
-              <span className="text-[9px] font-mono text-accent/60 uppercase tracking-wider">
-                Session active
-              </span>
-            )}
+        <div className="flex flex-col bg-card/40">
+          {/* ── Primary toolbar ── */}
+          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/40">
+            {/* Left: wordmark + project */}
+            <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+              <span className="text-[13px] font-semibold tracking-wide text-foreground select-none">Atlas</span>
+              {activeProject && (
+                <span className="text-[10px] font-mono text-muted-foreground/60">
+                  /
+                </span>
+              )}
+              {activeProject && (
+                <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
+                  {activeProject.name}
+                </span>
+              )}
+            </div>
+
+            {/* Center: path bar / breadcrumbs */}
+            <div className="flex-1 flex items-center justify-center min-w-0">
+              <div className="flex items-center gap-1 px-3 py-1 rounded-md bg-background/60 border border-border/30 max-w-md w-full">
+                <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3} className="text-muted-foreground/40 flex-shrink-0">
+                  <path d="M2 5l6-3 6 3v6l-6 3-6-3z"/>
+                  <path d="M2 5l6 3 6-3M8 8v6"/>
+                </svg>
+                <div className="flex items-center gap-1 overflow-hidden flex-1 min-w-0">
+                  <span className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-wider flex-shrink-0">
+                    workspace
+                  </span>
+                  {activeProject && (
+                    <>
+                      <span className="text-[9px] text-muted-foreground/30 flex-shrink-0">/</span>
+                      <span className="text-[9px] font-mono text-muted-foreground/70 truncate">
+                        {activeProject.name}
+                      </span>
+                    </>
+                  )}
+                  {session && (
+                    <>
+                      <span className="text-[9px] text-muted-foreground/30 flex-shrink-0">/</span>
+                      <span className="text-[9px] font-mono text-accent-foreground/60 truncate flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" style={{ boxShadow: "0 0 4px rgba(34,197,94,0.5)" }} />
+                        session
+                      </span>
+                    </>
+                  )}
+                  {generatedFilename && (
+                    <>
+                      <span className="text-[9px] text-muted-foreground/30 flex-shrink-0">/</span>
+                      <span className="text-[9px] font-mono text-foreground/70 truncate">
+                        {generatedFilename}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: publish + user */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {session && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSession(null);
+                    setMessages([]);
+                    setActiveProjectId(null);
+                    setEntrySurface(true);
+                  }}
+                  className="text-[9px] font-mono text-muted-foreground hover:text-foreground uppercase tracking-wider px-2 py-1 rounded hover:bg-muted/30 transition-colors"
+                >
+                  New
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => toast.info("Publishing coming soon")}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-mono font-semibold uppercase tracking-wider transition-all duration-200 border"
+                style={{
+                  color: "var(--accent-gold, #c9a84c)",
+                  borderColor: "color-mix(in oklab, var(--accent-gold, #c9a84c) 30%, transparent)",
+                  background: "color-mix(in oklab, var(--accent-gold, #c9a84c) 6%, transparent)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 14%, transparent)";
+                  e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold, #c9a84c) 50%, transparent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold, #c9a84c) 6%, transparent)";
+                  e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold, #c9a84c) 30%, transparent)";
+                }}
+              >
+                <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.5}>
+                  <path d="M8 2v8M4 6l4-4 4 4" strokeLinejoin="round" strokeLinecap="round"/>
+                  <path d="M2 10v3a1 1 0 001 1h10a1 1 0 001-1v-3"/>
+                </svg>
+                Publish
+              </button>
+              <UserMenu
+                user={user}
+                theme={theme}
+                onThemeChange={setTheme}
+                onSignOut={signOut}
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            {session && (
+
+          {/* ── Secondary utility toolbar ── */}
+          <div className="flex items-center gap-1 px-3 py-0.5 border-b border-border/20 bg-card/20">
+            {/* Left utility actions */}
+            <div className="flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={() => {
-                  setSession(null);
-                  setMessages([]);
-                  setActiveProjectId(null);
-                  setEntrySurface(true);
+                  if (generatedCode) {
+                    const code = generatedCode;
+                    setGeneratedCode(null);
+                    requestAnimationFrame(() => setGeneratedCode(code));
+                  }
                 }}
-                className="text-[9px] font-mono text-muted-foreground hover:text-foreground uppercase tracking-wider px-2 py-1 rounded hover:bg-muted/30 transition-colors"
+                disabled={!generatedCode || codegenLoading}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 disabled:opacity-25 transition-colors uppercase tracking-wider"
+                title="Re-run preview (⌘⇧Enter)"
               >
-                New Project
+                <svg viewBox="0 0 12 12" width={9} height={9} fill="currentColor"><path d="M2 1l8 5-8 5z"/></svg>
+                Run
               </button>
-            )}
-            <UserMenu
-              user={user}
-              theme={theme}
-              onThemeChange={setTheme}
-              onSignOut={signOut}
-            />
+              <button
+                type="button"
+                onClick={() => {
+                  if (generatedCode) {
+                    const code = generatedCode;
+                    setGeneratedCode(null);
+                    requestAnimationFrame(() => setGeneratedCode(code));
+                  }
+                }}
+                disabled={!generatedCode}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 disabled:opacity-25 transition-colors uppercase tracking-wider"
+                title="Refresh preview"
+              >
+                <svg viewBox="0 0 12 12" width={9} height={9} fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M1.5 6a4.5 4.5 0 018.3-2.4M10.5 6a4.5 4.5 0 01-8.3 2.4"/><path d="M9.8 1v2.6h-2.6M2.2 11V8.4h2.6"/></svg>
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!sending) send("/build"); }}
+                disabled={sending || !session}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 disabled:opacity-25 transition-colors uppercase tracking-wider"
+                title="Trigger build (⌘⇧B)"
+              >
+                <svg viewBox="0 0 12 12" width={9} height={9} fill="none" stroke="currentColor" strokeWidth={1.4}><path d="M1.5 10.5V4.5l4.5-3 4.5 3v6" strokeLinejoin="round"/><path d="M4.5 10.5v-3h3v3"/></svg>
+                Build
+              </button>
+              <div className="w-px h-3 bg-border/30 mx-1" />
+              <button
+                type="button"
+                onClick={() => toast.info("Syncing project state…")}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors uppercase tracking-wider"
+                title="Sync project state"
+              >
+                <svg viewBox="0 0 12 12" width={9} height={9} fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg>
+                Sync
+              </button>
+            </div>
+
+            {/* Right: env profile indicator */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-[8px] font-mono text-muted-foreground/40 uppercase tracking-widest">env:</span>
+              {ENV_PROFILES.map(ep => (
+                <button
+                  key={ep.id}
+                  type="button"
+                  onClick={() => setActiveEnvProfile(ep.id)}
+                  className={`px-1.5 py-0.5 rounded text-[8px] font-mono uppercase tracking-wider transition-colors ${
+                    activeEnvProfile === ep.id
+                      ? `${ep.color} bg-current/10`
+                      : "text-muted-foreground/30 hover:text-muted-foreground"
+                  }`}
+                  style={activeEnvProfile === ep.id ? { backgroundColor: "color-mix(in oklab, currentColor 8%, transparent)" } : undefined}
+                >
+                  {ep.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
