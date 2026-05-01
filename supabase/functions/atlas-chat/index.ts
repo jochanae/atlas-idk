@@ -6,6 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 import { classifyIntent, type IntentMode, type WhisperResult } from "../_shared/whisper-gate.ts";
 import { validateOutput } from "../_shared/output-guard.ts";
+import { validateCommitCard } from "../_shared/commitcard-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -501,17 +502,22 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Extract optional CommitCard JSON block from the assistant text.
-    // Renderer will branch on card_schema_version for backward compatibility.
+    // Extract optional CommitCard JSON block and validate via CommitCard Guard.
     let cardPayload: Record<string, unknown> | null = null;
     let cardSchemaVersion: number | null = null;
     const fenceMatch = finalText.match(/```atlas-card\s*([\s\S]*?)```/);
     if (fenceMatch) {
       try {
-        const parsed = JSON.parse(fenceMatch[1]) as { v?: number } & Record<string, unknown>;
-        if (typeof parsed.v === "number" && parsed.title && parsed.summary && parsed.severity) {
-          cardPayload = parsed;
-          cardSchemaVersion = parsed.v;
+        const parsed = JSON.parse(fenceMatch[1]) as Record<string, unknown>;
+        const cardValidation = validateCommitCard(parsed as any);
+        if (cardValidation.valid) {
+          cardPayload = cardValidation.card as Record<string, unknown>;
+          cardSchemaVersion = (cardValidation.card.v as number) ?? 1;
+          if (cardValidation.autoFilled.length > 0) {
+            console.log(`commitcard-guard (inline): auto-filled ${cardValidation.autoFilled.join(", ")}`);
+          }
+        } else {
+          console.warn(`commitcard-guard (inline): rejected card — ${cardValidation.issues.join(", ")}`);
         }
       } catch (err) {
         console.warn("atlas-chat: failed to parse atlas-card block", err);
@@ -537,6 +543,37 @@ Deno.serve(async (req) => {
       .select("*")
       .single();
     if (insertError) throw insertError;
+
+    // ═══ Phase 4: Observability — auto-log notable state transitions ═══
+    const hasNotableEvent = !validation.valid || outputRepaired || whisperResult.confidence === "low";
+    if (hasNotableEvent) {
+      const parts: string[] = [];
+      parts.push(`Intent: ${whisperResult.mode} (${whisperResult.confidence})`);
+      if (!validation.valid) parts.push(`Guard violation: ${validation.violation}`);
+      if (outputRepaired) parts.push("Auto-repaired via retry");
+      if (whisperResult.refinement) parts.push(`Refinement: ${whisperResult.refinement}`);
+
+      try {
+        await userClient.from("entries").insert({
+          user_id: user.id,
+          project_id: projectId,
+          session_id: sessionId,
+          status: "committed",
+          severity: "neutral",
+          verb: "audit",
+          title: outputRepaired
+            ? `Self-healed: ${validation.violation ?? "output issue"}`
+            : !validation.valid
+              ? `Guard flagged: ${validation.violation}`
+              : `Low-confidence intent: ${whisperResult.mode}`,
+          summary: parts.join(" · "),
+          source_message_id: insertedMessage.id,
+        });
+      } catch (obsErr) {
+        // Non-critical — don't break the response
+        console.warn("observability log failed:", obsErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({

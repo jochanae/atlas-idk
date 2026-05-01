@@ -1,7 +1,9 @@
 // Atlas commit edge function — extracts the strongest decision from a session.
+// CommitCard Guard validates and normalizes before returning.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
+import { validateCommitCard } from "../_shared/commitcard-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,7 +139,82 @@ Deno.serve(async (req) => {
       .trim();
     if (!text) throw new Error("Claude returned an empty response");
 
-    return jsonResponse(parseDecisionJson(text));
+    const rawDecision = parseDecisionJson(text);
+
+    // ═══ CommitCard Guard — validate before returning ═══
+    const validation = validateCommitCard(rawDecision, {
+      conversationSnippet: transcript.slice(0, 500),
+    });
+
+    if (!validation.valid) {
+      console.warn(`commitcard-guard: rejected — ${validation.issues.join(", ")}`);
+
+      // Single retry: ask Claude to fix the specific issues
+      if (validation.issues.length > 0 && rawDecision.decision_found !== false) {
+        console.log("commitcard-guard: attempting retry with correction prompt");
+        const retryRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 700,
+            system: SYSTEM_PROMPT,
+            messages: [
+              { role: "user", content: transcript || "No chat messages." },
+              { role: "assistant", content: text },
+              {
+                role: "user",
+                content: `[SYSTEM — CARD VALIDATION FAILED]\nIssues: ${validation.issues.join("; ")}\n\nFix these issues and return the corrected JSON. The title must be a clear, specific decision statement — not "test", "untitled", or "decision". Include a meaningful description.`,
+              },
+            ],
+          }),
+        });
+
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          const retryText = (retryData.content as Array<{ type: string; text?: string }>)
+            .filter((b) => b.type === "text" && b.text)
+            .map((b) => b.text)
+            .join("")
+            .trim();
+          if (retryText) {
+            try {
+              const retryDecision = parseDecisionJson(retryText);
+              const retryValidation = validateCommitCard(retryDecision);
+              if (retryValidation.valid) {
+                console.log("commitcard-guard: retry succeeded");
+                return jsonResponse({
+                  ...retryValidation.card,
+                  _guard: { valid: true, autoFilled: retryValidation.autoFilled, retried: true },
+                });
+              }
+            } catch {
+              console.warn("commitcard-guard: retry produced invalid JSON");
+            }
+          }
+        }
+      }
+
+      return jsonResponse({
+        ...rawDecision,
+        decision_found: false,
+        _guard: { valid: false, issues: validation.issues },
+      });
+    }
+
+    // Valid card — return with any auto-fill metadata
+    return jsonResponse({
+      ...validation.card,
+      _guard: {
+        valid: true,
+        autoFilled: validation.autoFilled.length > 0 ? validation.autoFilled : undefined,
+        retried: false,
+      },
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("atlas-commit error:", msg);
