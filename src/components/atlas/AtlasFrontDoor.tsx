@@ -892,25 +892,29 @@ export function AtlasFrontDoor({
               scrollbarColor: "color-mix(in oklab, var(--accent-gold) 30%, transparent) transparent",
             }}
           />
-          {/* Utility Bar: 3 icons left | 3 icons right + send */}
+          {/* Utility Bar: 2 left (Plus, Paperclip) | right (Mic, More, Send) */}
           <div
+            className="atlas-utility-bar"
             style={{
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               width: "100%",
               marginTop: 10,
               paddingTop: 10,
               borderTop: "0.5px solid color-mix(in oklab, var(--border) 70%, transparent)",
+              gap: 8,
             }}
           >
-            {/* Left group — 3 icons */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+            {/* Left group */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               {utilityBarLeft}
             </div>
-            {/* Right group — 3 icons + send */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end" }}>
+            {/* Right group + send */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               {utilityBarRight}
               <button
+                className="atlas-send-btn"
                 onClick={() => (sending ? onStop?.() : onSend(input, activeMode))}
                 disabled={sending ? !onStop : !input.trim()}
                 aria-label={sending ? "Stop Atlas" : "Send"}
@@ -971,6 +975,8 @@ export function AtlasFrontDoor({
           .atlas-greeting { font-size: 19px; }
           .atlas-mode-pill { font-size: 9px !important; padding: 3px 7px !important; }
           .atlas-input-shell, .atlas-active-input-shell { margin: 0 12px 20px !important; padding: 14px 14px !important; }
+          .atlas-utility-btn { width: 34px !important; height: 34px !important; }
+          .atlas-utility-bar { gap: 4px !important; }
         }
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
