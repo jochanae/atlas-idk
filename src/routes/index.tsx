@@ -32,6 +32,9 @@ import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { FileTreePanel } from "@/components/atlas/FileTreePanel";
 import { ProjectSettingsPanel } from "@/components/atlas/ProjectSettingsPanel";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
+import { CodeEditor } from "@/components/atlas/CodeEditor";
+import { SecretsManagerPanel } from "@/components/atlas/SecretsManagerPanel";
+import { DiffPreview } from "@/components/atlas/DiffPreview";
 // OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
