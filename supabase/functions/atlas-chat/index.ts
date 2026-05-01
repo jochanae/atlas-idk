@@ -1,8 +1,10 @@
 // Atlas chat edge function — proxies to Anthropic Claude with tool calling
 // Creates workspace_nodes and recommendations on the user's behalf via service role.
+// WhisperGate classifies every input as THINK/BUILD/DECIDE before execution.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
+import { classifyIntent, type IntentMode, type WhisperResult } from "../_shared/whisper-gate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -266,6 +268,24 @@ Deno.serve(async (req) => {
       if (titleErr) throw titleErr;
     }
 
+    // ═══ WhisperGate — classify intent before execution ═══
+    const whisperResult: WhisperResult = await classifyIntent(message, history);
+    console.log(`whisper-gate: mode=${whisperResult.mode} confidence=${whisperResult.confidence}`);
+
+    const MODE_DIRECTIVES: Record<IntentMode, string> = {
+      THINK: `MODE: THINK — The user is exploring or brainstorming. Respond conversationally. Do NOT generate code or structured plans unless explicitly asked. Focus on ideas, trade-offs, and clarifying questions. No CommitCards unless the conversation naturally arrives at a decision.`,
+      BUILD: `MODE: BUILD — The user wants something implemented. Prioritize actionable output: code, schemas, configurations, wiring. Be concrete and specific. Use tool calls (create_node) when producing artifacts. Minimize preamble — get to the deliverable.`,
+      DECIDE: `MODE: DECIDE — The user is evaluating options or making a commitment. Present clear trade-offs with pros/cons. End with a concrete recommendation. If the decision is significant, emit a CommitCard with the recommendation so it can be locked into the Ledger.`,
+    };
+
+    const modeDirective = MODE_DIRECTIVES[whisperResult.mode];
+    const whisperPrefix = whisperResult.confidence === "low" && whisperResult.refinement
+      ? `${modeDirective}\n\nNOTE: Intent classification was low-confidence. The user's input may be ambiguous. If unsure what they want, ask one clarifying question before proceeding.`
+      : modeDirective;
+
+    // Compose final system prompt: guarded decisions + mode directive
+    const finalSystemPrompt = `${guardedSystemPrompt}\n\n${whisperPrefix}`;
+
     const messages = [
       ...(history ?? []).map((m: { role: string; content: string }) => ({
         role: m.role,
@@ -294,7 +314,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1500,
-          system: guardedSystemPrompt,
+          system: finalSystemPrompt,
           tools,
           messages: workingMessages,
         }),
@@ -465,6 +485,11 @@ Deno.serve(async (req) => {
         card: cardPayload,
         cardSchemaVersion,
         surfacedMemories,
+        intent: {
+          mode: whisperResult.mode,
+          confidence: whisperResult.confidence,
+          refinement: whisperResult.refinement ?? null,
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
