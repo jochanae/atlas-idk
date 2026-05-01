@@ -238,6 +238,17 @@ function NavRail({
       </div>
 
       <div className="mt-auto flex flex-col gap-0.5 pt-3 border-t border-border/40">
+        {onOpenGallery && (
+          <button
+            type="button"
+            onClick={onOpenGallery}
+            className="atlas-nav-btn justify-start gap-2"
+            title="All Projects"
+          >
+            <FolderOpen size={14} className="flex-shrink-0" />
+            {!collapsed && <span>All Projects</span>}
+          </button>
+        )}
         {onOpenHistory && (
           <button
             type="button"
