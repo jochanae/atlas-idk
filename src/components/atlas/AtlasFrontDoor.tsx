@@ -430,11 +430,15 @@ export function AtlasFrontDoor({
       style={{
         background: "var(--background)",
         height: "100dvh",
-          minHeight: "100dvh",
+        minHeight: "100dvh",
+        width: "100%",
+        maxWidth: "100%",
         display: "flex",
         flexDirection: "column",
         position: "relative",
-          overflow: "hidden",
+        overflow: "hidden",
+        overflowX: "clip",
+        boxSizing: "border-box",
       }}
     >
       {/* Sovereign Glass header — see-through, frosted glassmorphism */}
@@ -445,6 +449,8 @@ export function AtlasFrontDoor({
           top: 0,
           left: 0,
           right: 0,
+          width: "100%",
+          maxWidth: "100%",
           zIndex: 50,
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
@@ -457,6 +463,7 @@ export function AtlasFrontDoor({
           WebkitBackdropFilter: "blur(24px) saturate(150%)",
           borderBottom: "0.5px solid var(--glass-border)",
           flexShrink: 0,
+          boxSizing: "border-box",
         }}
       >
         {/* Left: sidebar toggle + Atlas wordmark */}
@@ -513,12 +520,16 @@ export function AtlasFrontDoor({
         style={{
           flex: 1,
           minHeight: 0,
+          minWidth: 0,
+          width: "100%",
+          maxWidth: "100%",
           position: "relative",
           display: "flex",
           flexDirection: "column",
           overflowY: "auto",
-          overflowX: "hidden",
+          overflowX: "clip",
           scrollBehavior: "smooth",
+          boxSizing: "border-box",
           paddingTop: active
             ? "calc(var(--header-height) + 16px)"
             : "calc(var(--header-height) + 16px)",
@@ -948,11 +959,15 @@ export function AtlasFrontDoor({
             bottom: "calc(var(--footer-nav-height, 62px) + 24px)",
             left: 0,
             right: 0,
+            width: "100%",
+            maxWidth: "100%",
             zIndex: 48,
             margin: 0,
             padding: "0 var(--shell-edge) 0",
             paddingBottom: "24px",
             background: "transparent",
+            overflowX: "clip",
+            boxSizing: "border-box",
           }}
         >
           <div
