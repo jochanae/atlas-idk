@@ -199,7 +199,7 @@ function WorkspacePage() {
   const [entrySurface, setEntrySurface] = useState(false);
   const [parkingOpen, setParkingOpen] = useState(false);
   const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
-  // sidebarOpen state removed — sidebar pending rebuild
+  const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
   const [commitPulse, setCommitPulse] = useState(false);
