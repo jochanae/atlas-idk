@@ -9,11 +9,18 @@ type Props = {
   onThemeChange: (t: "obsidian" | "parchment") => void;
   onSignOut: () => void;
   onOpenShortcuts?: () => void;
+  /** Bumping this number opens the menu programmatically (e.g. from footer "You"). */
+  openSignal?: number;
 };
 
-export function UserMenu({ user, theme, onThemeChange, onSignOut, onOpenShortcuts }: Props) {
+export function UserMenu({ user, theme, onThemeChange, onSignOut, onOpenShortcuts, openSignal }: Props) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Open the menu when openSignal increments
+  useEffect(() => {
+    if (openSignal && openSignal > 0) setOpen(true);
+  }, [openSignal]);
 
   // Close on outside click / Escape
   useEffect(() => {

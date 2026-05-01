@@ -20,6 +20,8 @@ import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
 import { ThemeDropdown } from "@/components/atlas/ThemeDropdown";
 import { ProjectsDrawer } from "@/components/atlas/ProjectsDrawer";
+import { AtlasFooterNav, type FooterTab } from "@/components/atlas/AtlasFooterNav";
+import { QuickThoughtSheet } from "@/components/atlas/QuickThoughtSheet";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
@@ -200,6 +202,8 @@ function WorkspacePage() {
   const [parkingOpen, setParkingOpen] = useState(false);
   const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
   const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
+  const [quickSheetOpen, setQuickSheetOpen] = useState(false);
+  const [userMenuOpenSignal, setUserMenuOpenSignal] = useState(0);
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
   const [commitPulse, setCommitPulse] = useState(false);
@@ -1634,6 +1638,7 @@ function WorkspacePage() {
                 theme={theme}
                 onThemeChange={setTheme}
                 onSignOut={signOut}
+                openSignal={userMenuOpenSignal}
               />
             </div>
           }
@@ -1870,6 +1875,43 @@ function WorkspacePage() {
         )}
 
       </main>
+
+      {/* Persistent footer nav — Home / Projects / Atlas / Ledger / You */}
+      <AtlasFooterNav
+        active={entrySurface || !session ? "home" : "home"}
+        onNavigate={(tab: FooterTab) => {
+          if (tab === "home") {
+            setEntrySurface(true);
+            setSurface("chat");
+            setHistoryOpen(false);
+          } else if (tab === "projects") {
+            setProjectsDrawerOpen(true);
+          } else if (tab === "ledger") {
+            navigate({ to: "/ledger" });
+          } else if (tab === "you") {
+            setUserMenuOpenSignal((n) => n + 1);
+          }
+        }}
+        onCenterPress={() => setQuickSheetOpen(true)}
+      />
+
+      <QuickThoughtSheet
+        open={quickSheetOpen}
+        onClose={() => setQuickSheetOpen(false)}
+        contextLabel={session?.title ?? activeProject?.name ?? null}
+        sending={sending}
+        onSubmit={(text) => {
+          // Posts to the active session via existing send flow.
+          // ensureSession() inside send() auto-creates a session if none exists.
+          send(text);
+        }}
+      />
+
+      {/* Lift the fixed active-mode input above the persistent footer */}
+      <style>{`
+        .atlas-active-input-shell { bottom: 60px !important; }
+      `}</style>
+
       <ProjectsDrawer
         open={projectsDrawerOpen}
         onClose={() => setProjectsDrawerOpen(false)}
