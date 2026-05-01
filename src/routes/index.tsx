@@ -1958,7 +1958,7 @@ function WorkspacePage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {user && <UserAvatar user={user} size="sm" />}
+            {user && <UserAvatar user={user} size={28} />}
           </div>
         </div>
       )}
