@@ -2385,7 +2385,7 @@ function WorkspacePage() {
                     if (input.trim()) send(input);
                   }
                 }}
-                placeholder={`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)} mode — type here…`}
+                placeholder="Type here…"
                 className="flex-1 min-h-[48px] max-h-[200px] resize-none bg-transparent border-0 px-1 py-1.5 text-[14px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none leading-relaxed"
                 style={{ fontFamily: "var(--font-sans)" }}
                 rows={2}
