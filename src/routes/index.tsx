@@ -16,9 +16,9 @@ import {
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
-import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
+import { ThemeDropdown } from "@/components/atlas/ThemeDropdown";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
@@ -198,7 +198,7 @@ function WorkspacePage() {
   const [entrySurface, setEntrySurface] = useState(false);
   const [parkingOpen, setParkingOpen] = useState(false);
   const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // sidebarOpen state removed — sidebar pending rebuild
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
   const [commitPulse, setCommitPulse] = useState(false);
@@ -1571,7 +1571,7 @@ function WorkspacePage() {
               />
             ) : undefined
           }
-          sidebarToggle={<SidebarToggle onClick={() => setSidebarOpen(true)} />}
+          sidebarToggle={undefined}
           onWordmarkClick={() => {
             if (session) {
               setEntrySurface(true);
@@ -1627,6 +1627,7 @@ function WorkspacePage() {
                   onClick={() => setParkingOpen((open) => !open)}
                 />
               )}
+              <ThemeDropdown theme={theme} onThemeChange={setTheme} />
               <UserMenu
                 user={user}
                 theme={theme}
@@ -1868,43 +1869,7 @@ function WorkspacePage() {
         )}
 
       </main>
-      <AtlasSidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        recents={recents}
-        parkedCount={parkedItems.length}
-        ledgerCount={ledgerCount}
-        onNewSession={() => {
-          setSession(null);
-          setMessages([]);
-          setActiveProjectId(null);
-          setEntrySurface(true);
-          setSidebarOpen(false);
-          setInputFocusSignal((v) => v + 1);
-        }}
-        onOpenSession={(id) => {
-          setSidebarOpen(false);
-          openSession(id);
-        }}
-        onOpenParking={() => {
-          setSidebarOpen(false);
-          setParkingOpen(true);
-        }}
-        email={user?.email ?? null}
-        theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === "obsidian" ? "parchment" : "obsidian"))}
-        onSignOut={signOut}
-        user={user}
-        projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
-        onOpenProjects={() => {
-          setSidebarOpen(false);
-          setGalleryOpen(true);
-        }}
-        onNewProject={async () => {
-          await createNamedProject();
-        }}
-        buildHistory={buildHistory}
-      />
+      {/* AtlasSidebar removed — pending clean rebuild */}
       <BlueprintsDrawer
         open={blueprintsOpen}
         onClose={() => setBlueprintsOpen(false)}
