@@ -956,13 +956,13 @@ function WorkspacePage() {
       if (data?.message?.id) newMessageIds.add(data.message.id);
       const updatedTitle = text.slice(0, 60);
       setSession((current) =>
-        current && current.id === target.session.id
+        current && target && current.id === target.session.id
           ? { ...current, title: updatedTitle }
           : current,
       );
       setRecents((prev) =>
         prev.map((recent) =>
-          recent.id === target.session.id
+          target && recent.id === target.session.id
             ? { ...recent, title: updatedTitle }
             : recent,
         ),
