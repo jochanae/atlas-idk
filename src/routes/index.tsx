@@ -2241,6 +2241,22 @@ function WorkspacePage() {
       )}
       renderFooter={() => <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />}
       renderInspectorPanes={() => ({
+        files: (
+          <FileTreePanel
+            files={generatedFiles}
+            onFileSelect={(file) => {
+              setGeneratedCode(file.content);
+              setGeneratedFilename(file.filename);
+            }}
+          />
+        ),
+        console: (
+          <LiveConsoleStream
+            entries={consoleLogs}
+            visible={true}
+            onToggle={() => {}}
+          />
+        ),
         code: generatedCode ? (
           <div className="h-full flex flex-col">
             <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
