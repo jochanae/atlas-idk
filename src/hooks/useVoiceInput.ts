@@ -14,7 +14,7 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
+    if (!SR) {
       toast.error("Voice input not supported in this browser");
       return;
     }
@@ -23,7 +23,7 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
       recognitionRef.current.abort();
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SR();
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
