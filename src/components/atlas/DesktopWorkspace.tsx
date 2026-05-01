@@ -117,6 +117,7 @@ export function DesktopWorkspace({
             activeSurface={activeSurface}
             onSurfaceChange={onSurfaceChange}
             onOpenHistory={onOpenHistory}
+            onOpenGallery={onOpenGallery}
             parkedCount={parkedCount}
             ledgerCount={ledgerCount}
             chatVisible={chatVisible}
