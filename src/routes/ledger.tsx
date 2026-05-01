@@ -136,9 +136,12 @@ function groupBySession(entries: Entry[]): SessionGroup[] {
   });
 }
 
-/* ─── Category filter type ───────────────────────────────────────── */
+/* ─── Filter types ───────────────────────────────────────────────── */
 
 type CategoryFilter = "all" | Category;
+type SeverityFilter = "all" | "committed" | "blocker" | "parked" | "neutral";
+type VerbFilter = "all" | "new" | "bug" | "perf" | "note" | "wip" | "audit" | "merge" | "plan";
+type DateFilter = "all" | "today" | "week" | "month";
 
 /* ─── Main component ─────────────────────────────────────────────── */
 
