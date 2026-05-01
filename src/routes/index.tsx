@@ -2242,6 +2242,14 @@ function WorkspacePage() {
           ),
       })}
     />
+    <ProjectGallery
+      open={galleryOpen}
+      onClose={() => setGalleryOpen(false)}
+      projects={projects}
+      activeProjectId={activeProjectId}
+      onSelectProject={(id) => { setActiveProjectId(id); }}
+    />
+    </>
   );
 }
 
