@@ -497,10 +497,10 @@ export function AtlasSidebar({
             padding: recentsExpanded ? "0 6px 8px" : "0 6px 0",
           }}
         >
-          {recents.length === 0 ? (
-            <EmptyState text="no sessions yet — start one from the front door." />
+          {filteredRecents.length === 0 ? (
+            <EmptyState text={q ? "No matching sessions" : "no sessions yet — start one from the front door."} />
           ) : (
-            recents.map((s) => {
+            filteredRecents.map((s) => {
               const isPhosphor = s.mode === "explore";
               const dot = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
               return (
