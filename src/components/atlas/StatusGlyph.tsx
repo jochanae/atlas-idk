@@ -155,10 +155,23 @@ export function StatusGlyph({
   }
 
   const Glyph = VerbGlyphs[verb];
+  if (!Glyph) {
+    // Unknown verb — fall back to severity dot
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <SeverityDot severity={severity} size={Math.round(size * 0.62)} />
+        {withLabel && (
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: severityColor[severity] }}>
+            {SEVERITY_LABEL[severity]}
+          </span>
+        )}
+      </span>
+    );
+  }
   return (
     <span
       role="img"
-      aria-label={`${SEVERITY_LABEL[severity]} · ${VERB_LABEL[verb]}`}
+      aria-label={`${SEVERITY_LABEL[severity]} · ${VERB_LABEL[verb] ?? verb}`}
       style={{
         display: "inline-flex",
         alignItems: "center",
