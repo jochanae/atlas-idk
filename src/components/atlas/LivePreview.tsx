@@ -44,7 +44,7 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #1a1814;
+      background: #050505;
       color: #e8e4dd;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
