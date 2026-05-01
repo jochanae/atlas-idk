@@ -127,7 +127,7 @@ export function DesktopWorkspace({
             {/* ── Chat sidecar (optional) ────────────────── */}
             {renderChatPane && chatVisible && !canvasExpanded && (
               <>
-                <Panel defaultSize={28} minSize={18} maxSize={45} className="bg-background">
+                <Panel defaultSize={25} minSize={18} maxSize={40} className="bg-background">
                   <div className="h-full overflow-hidden flex flex-col">
                     <PaneHeader title="Atlas" />
                     <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
