@@ -158,8 +158,12 @@
     text-rendering: optimizeLegibility;
   }
 
-  .font-mono, code, pre, input, textarea {
+  .font-mono, code, pre {
     font-family: var(--font-mono);
+  }
+
+  input, textarea {
+    font-family: var(--font-sans);
   }
 
   input, textarea {
