@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
+  X,
 } from "lucide-react";
 import type { RecentSession } from "./AtlasFrontDoor";
 import type { BuildStateEntry } from "./BuildStateTimeline";
