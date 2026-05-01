@@ -535,6 +535,30 @@ function WorkspacePage() {
   const [canvasViewport, setCanvasViewport] = useState<CanvasViewport>("desktop");
   const CANVAS_WIDTHS: Record<CanvasViewport, number | null> = { desktop: null, tablet: 768, mobile: 375 };
 
+  // Secrets manager state
+  type SecretEntry = { name: string; isSet: boolean };
+  const [projectSecrets, setProjectSecrets] = useState<SecretEntry[]>([]);
+  const [secretsLoading, setSecretsLoading] = useState(false);
+  const loadProjectSecrets = useCallback(async () => {
+    setSecretsLoading(true);
+    // Known secrets from project config — in a real integration this would query the backend
+    const knownSecrets: SecretEntry[] = [
+      { name: "ANTHROPIC_API_KEY", isSet: true },
+      { name: "SUPABASE_SERVICE_ROLE_KEY", isSet: true },
+      { name: "SUPABASE_URL", isSet: true },
+      { name: "SUPABASE_ANON_KEY", isSet: true },
+      { name: "SUPABASE_DB_URL", isSet: true },
+      { name: "LOVABLE_API_KEY", isSet: true },
+    ];
+    setProjectSecrets(knownSecrets);
+    setSecretsLoading(false);
+  }, []);
+  useEffect(() => { loadProjectSecrets(); }, [loadProjectSecrets]);
+
+  // Diff preview state for canvas
+  const [diffPreviewActive, setDiffPreviewActive] = useState(false);
+  const [previousCode, setPreviousCode] = useState<string | null>(null);
+
 
   // Track whether the active project already has a Compass (used by thinking prompts)
   useEffect(() => {
