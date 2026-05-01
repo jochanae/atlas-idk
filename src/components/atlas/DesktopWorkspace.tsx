@@ -378,6 +378,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
     github: "Connect a GitHub repository to view branches, commits, and files here.",
     code: "Generated code and previews will appear here.",
     recs: "No recommendations yet. They appear as Atlas notices patterns.",
+    settings: "Select a project to view its settings.",
   };
   return (
     <div className="h-full flex items-center justify-center p-6 text-center">
