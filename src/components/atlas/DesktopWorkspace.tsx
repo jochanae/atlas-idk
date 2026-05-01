@@ -14,6 +14,7 @@ import {
   PanelRightOpen,
   Maximize2,
   Minimize2,
+  FolderOpen,
 } from "lucide-react";
 
 /**
