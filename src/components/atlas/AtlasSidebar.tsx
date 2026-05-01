@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -9,6 +9,7 @@ import {
   ParkingCircle,
   Sun,
   Moon,
+  Monitor,
   LogOut,
   ChevronDown,
   ChevronRight,
@@ -20,6 +21,7 @@ import { BuildStateTimeline } from "./BuildStateTimeline";
 import type { User } from "@supabase/supabase-js";
 
 type Theme = "obsidian" | "parchment";
+type ThemeMode = "light" | "dark" | "system";
 
 type ProjectThumb = {
   id: string;
