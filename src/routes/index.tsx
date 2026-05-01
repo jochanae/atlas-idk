@@ -22,6 +22,8 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
+import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
+import { StageLivingData } from "@/components/atlas/StageLivingData";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
@@ -1961,7 +1963,28 @@ function WorkspacePage() {
       }}
       parkedCount={parkedItems.length}
       ledgerCount={ledgerCount}
-      renderMobile={() => mainShell}
+      renderMobile={() => (
+        <DoubleVisionLayout
+          stage={
+            generatedCode ? (
+              <LivePreview
+                code={generatedCode}
+                filename={generatedFilename ?? "Component.tsx"}
+                loading={codegenLoading}
+                error={codegenError}
+              />
+            ) : (
+              <StageLivingData
+                filesCreated={generatedFiles.length}
+                deployStatus={codegenLoading ? "building" : generatedCode ? "deployed" : "idle"}
+                healthScore={100}
+                recentFiles={generatedFiles.slice(-3).reverse().map((f) => ({ name: f.filename, updatedAt: "just now" }))}
+              />
+            )
+          }
+          commandCenter={mainShell}
+        />
+      )}
       renderChatPane={() => (
         <div className="h-full flex flex-col bg-background">
           {/* Mode chips */}
