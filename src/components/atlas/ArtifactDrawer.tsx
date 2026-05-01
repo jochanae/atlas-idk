@@ -7,6 +7,10 @@ type Props = {
   /** Forces drawer fully open (e.g. user clicked an inline artifact reference) */
   forceOpen?: boolean;
   onForceOpenChange?: (open: boolean) => void;
+  /** Whether the desktop pane is hidden */
+  desktopHidden?: boolean;
+  /** Called when the user closes the desktop pane */
+  onDesktopHiddenChange?: (hidden: boolean) => void;
 };
 
 type SheetState = "closed" | "peek" | "full";
