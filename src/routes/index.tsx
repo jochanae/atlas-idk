@@ -1962,7 +1962,7 @@ function WorkspacePage() {
           </div>
         </div>
       )}
-      renderFooter={() => <FooterAuditLine warning={auditWarning} />}
+      renderFooter={() => <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />}
       renderInspectorPanes={() => ({
         code: generatedCode ? (
           <div className="h-full flex flex-col">
