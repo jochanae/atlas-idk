@@ -24,6 +24,7 @@ import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
 import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
 import { StageLivingData } from "@/components/atlas/StageLivingData";
+import { ProjectGallery } from "@/components/atlas/ProjectGallery";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
@@ -214,6 +215,7 @@ function WorkspacePage() {
   const [collaborateOpen, setCollaborateOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   // showOnboarding removed — no welcome card
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [queueExecuting, setQueueExecuting] = useState(false);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
@@ -1358,6 +1360,17 @@ function WorkspacePage() {
           }
           headerActions={
             <div className="flex items-center gap-2 min-w-0" style={{ height: 44 }}>
+              <button
+                type="button"
+                onClick={() => setGalleryOpen(true)}
+                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                aria-label="All Projects"
+                title="All Projects"
+              >
+                <svg viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="rgba(201,162,76,0.6)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4l3-2h4l1 1h5l1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z" />
+                </svg>
+              </button>
               {session && !entrySurface && (
                 <ParkingLotButton
                   count={parkedItems.length}
@@ -1954,6 +1967,7 @@ function WorkspacePage() {
   );
 
   return (
+    <>
     <DesktopWorkspace
       activeSurface={desktopActiveSurface}
       onSurfaceChange={handleDesktopSurfaceChange}
@@ -1961,6 +1975,7 @@ function WorkspacePage() {
         setEntrySurface(false);
         setHistoryOpen((open) => !open);
       }}
+      onOpenGallery={() => setGalleryOpen(true)}
       parkedCount={parkedItems.length}
       ledgerCount={ledgerCount}
       renderMobile={() => (
@@ -2227,6 +2242,14 @@ function WorkspacePage() {
           ),
       })}
     />
+    <ProjectGallery
+      open={galleryOpen}
+      onClose={() => setGalleryOpen(false)}
+      projects={projects}
+      activeProjectId={activeProjectId}
+      onSelectProject={(id) => { setActiveProjectId(id); }}
+    />
+    </>
   );
 }
 
