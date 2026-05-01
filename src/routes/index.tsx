@@ -2276,120 +2276,21 @@ function WorkspacePage() {
         </div>
       )}
       renderCanvas={() => (
-        <div className="h-full flex flex-col bg-background">
-          {/* Canvas header */}
-          <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
-              </span>
-              {/* Multi-viewport preset dropdown */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setViewportDropdownOpen(v => !v)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/30 text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-                  title="Change viewport"
-                >
-                  {activeViewport.icon}
-                  <span>{activeViewport.label}</span>
-                  {activeViewport.w && <span className="opacity-40">{activeViewport.w}px</span>}
-                  <svg viewBox="0 0 10 6" width={8} height={5} fill="currentColor" className="opacity-40"><path d="M0 0l5 5 5-5z"/></svg>
-                </button>
-                {viewportDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setViewportDropdownOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[180px]">
-                      {VIEWPORT_PRESETS.map(vp => (
-                        <button
-                          key={vp.id}
-                          type="button"
-                          onClick={() => { setCanvasViewportId(vp.id); setViewportDropdownOpen(false); }}
-                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono transition-colors ${
-                            canvasViewportId === vp.id ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                          }`}
-                        >
-                          {vp.icon}
-                          <span className="flex-1 text-left">{vp.label}</span>
-                          {vp.w && <span className="opacity-40">{vp.w}px</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {/* Run button — refreshes current preview */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (generatedCode) {
-                    const code = generatedCode;
-                    setGeneratedCode(null);
-                    requestAnimationFrame(() => setGeneratedCode(code));
-                  }
-                }}
-                disabled={!generatedCode || codegenLoading}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider bg-accent/10 text-accent-foreground hover:bg-accent/20 disabled:opacity-30 transition-colors"
-                title="Re-run preview"
-              >
-                <svg viewBox="0 0 16 16" width={10} height={10} fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>
-                Run
-              </button>
-              {/* Build button — sends /build to chat */}
-              <button
-                type="button"
-                onClick={() => { if (!sending) send("/build"); }}
-                disabled={sending || !session}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider bg-accent/15 text-accent-foreground hover:bg-accent/25 disabled:opacity-30 transition-colors border border-accent/20"
-                title="Trigger build"
-              >
-                <svg viewBox="0 0 16 16" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={1.6}><path d="M2 14V6l6-4 6 4v8" strokeLinejoin="round"/><path d="M6 14v-4h4v4"/></svg>
-                Build
-              </button>
-              {generatedCode && (
-                <button
-                  type="button"
-                  onClick={() => { setGeneratedCode(null); setGeneratedFilename(null); }}
-                  className="text-[9px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 rounded"
-                >
-                  Clear
-                </button>
-              )}
-              {/* Diff toggle */}
-              {generatedCode && previousCode && (
-                <button
-                  type="button"
-                  onClick={() => setDiffPreviewActive((v) => !v)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
-                    diffPreviewActive
-                      ? "bg-accent/20 text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                  }`}
-                  title="Toggle diff view"
-                >
-                  Diff
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="h-full flex flex-col">
           {/* Canvas content — viewport-constrained */}
-          <div className="flex-1 min-h-0 flex items-start justify-center overflow-auto bg-muted/10">
+          <div className="flex-1 min-h-0 flex items-start justify-center overflow-auto bg-background">
             <div
               className="h-full transition-all duration-300"
               style={{
                 width: activeViewport.w ? `${activeViewport.w}px` : "100%",
                 maxWidth: "100%",
-                boxShadow: activeViewport.w ? "0 0 0 1px var(--border)" : undefined,
+                boxShadow: activeViewport.w ? "0 0 0 1px color-mix(in oklab, var(--border) 40%, transparent)" : undefined,
               }}
             >
             {codegenLoading ? (
               <div className="h-full flex flex-col items-center justify-center gap-3">
                 <LoadingSpinner size="lg" />
-                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider animate-pulse">
-                  Generating component…
-                </span>
+                <span className="text-xs text-muted-foreground animate-pulse">Generating…</span>
               </div>
             ) : diffPreviewActive && generatedCode && previousCode ? (
               <DiffPreview
@@ -2398,14 +2299,8 @@ function WorkspacePage() {
                 filename={generatedFilename ?? "Component.tsx"}
                 oldLabel="Previous"
                 newLabel="Current"
-                onAccept={() => {
-                  setPreviousCode(generatedCode);
-                  setDiffPreviewActive(false);
-                }}
-                onReject={() => {
-                  setGeneratedCode(previousCode);
-                  setDiffPreviewActive(false);
-                }}
+                onAccept={() => { setPreviousCode(generatedCode); setDiffPreviewActive(false); }}
+                onReject={() => { setGeneratedCode(previousCode); setDiffPreviewActive(false); }}
               />
             ) : generatedCode ? (
               <LivePreview
@@ -2414,16 +2309,16 @@ function WorkspacePage() {
               />
             ) : (
               <div className="h-full flex items-center justify-center text-center px-8">
-                <div className="max-w-sm">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-card/50 border border-border/30 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1} className="text-muted-foreground/40">
+                <div className="max-w-xs">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-muted/30 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" width={24} height={24} fill="none" stroke="currentColor" strokeWidth={1} className="text-muted-foreground/30">
                       <rect x="2" y="3" width="20" height="14" rx="2" />
                       <path d="M8 21h8M12 17v4" />
                     </svg>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-1">No preview yet</p>
-                  <p className="text-[10px] font-mono text-muted-foreground/50 leading-relaxed">
-                    Send a BUILD request in the chat to generate a component. It will render here live.
+                  <p className="text-sm text-muted-foreground/60 mb-1">No preview yet</p>
+                  <p className="text-xs text-muted-foreground/40">
+                    Type /build in the chat to generate a component.
                   </p>
                 </div>
               </div>
