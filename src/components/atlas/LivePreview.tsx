@@ -195,7 +195,7 @@ function prepareForSandbox(code: string): string {
         Sparkles = _iconFallback, BadgeCheck = _iconFallback, Circle = _iconFallback;
   `;
 
-  return iconStub + "\n" + prepared;
+  return runtimeStub + "\n" + prepared;
 }
 
 export function LivePreview({ code, filename, loading, error, onElementSelect }: Props) {
