@@ -103,11 +103,16 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
           onClick: function(){}, onSelect: function(){}, onSubmit: function(){},
           buttonText: 'Get Started', popular: true,
         };
-        var root = ReactDOM.createRoot(document.getElementById('root'));
-        // Try with props first; if the component ignores them, no harm done
-        root.render(React.createElement('div', {
+        var container = document.getElementById('root');
+        // React 18 UMD: try createRoot first, fall back to legacy render
+        var appEl = React.createElement('div', {
           style: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
-        }, React.createElement(Component, demoProps)));
+        }, React.createElement(Component, demoProps));
+        if (ReactDOM.createRoot) {
+          ReactDOM.createRoot(container).render(appEl);
+        } else {
+          ReactDOM.render(appEl, container);
+        }
       } else {
         document.getElementById('root').innerHTML =
           '<div class="preview-error">No default export found in component.</div>';
