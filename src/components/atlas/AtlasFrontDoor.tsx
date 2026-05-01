@@ -269,6 +269,8 @@ export function AtlasFrontDoor({
   const pillsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pillsOverflow, setPillsOverflow] = useState(false);
+  const [pillsAtEnd, setPillsAtEnd] = useState(false);
+  const [pillsAtStart, setPillsAtStart] = useState(true);
 
   const TEXTAREA_MIN_HEIGHT = 48;
   const TEXTAREA_MAX_HEIGHT_RESTING = 160;
@@ -295,20 +297,23 @@ export function AtlasFrontDoor({
 
     const updateOverflow = () => {
       setPillsOverflow(row.scrollWidth > row.clientWidth + 2);
+      setPillsAtStart(row.scrollLeft < 4);
+      setPillsAtEnd(row.scrollLeft + row.clientWidth >= row.scrollWidth - 4);
     };
 
     updateOverflow();
+    row.addEventListener("scroll", updateOverflow, { passive: true });
 
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver(updateOverflow);
       observer.observe(row);
       const inner = row.firstElementChild;
       if (inner instanceof HTMLElement) observer.observe(inner);
-      return () => observer.disconnect();
+      return () => { observer.disconnect(); row.removeEventListener("scroll", updateOverflow); };
     }
 
     window.addEventListener("resize", updateOverflow);
-    return () => window.removeEventListener("resize", updateOverflow);
+    return () => { window.removeEventListener("resize", updateOverflow); row.removeEventListener("scroll", updateOverflow); };
   }, []);
 
   useEffect(() => {
@@ -459,69 +464,105 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
-          {/* Mode pills */}
-          <div
-            ref={pillsRef}
-            className="atlas-pills-row"
-            style={{
-              display: "flex",
-              justifyContent: pillsOverflow ? "flex-start" : "center",
-              padding: pillsOverflow ? "0 22px 22px" : "0 24px 22px",
-              overflowX: "auto",
-              overflowY: "hidden",
-              scrollbarWidth: "none",
-              WebkitOverflowScrolling: "touch",
-              scrollPaddingInline: 22,
-            }}
-          >
+          {/* Mode pills with edge-fade scroll affordance */}
+          <div style={{ position: "relative" }}>
+            {/* Left edge gradient */}
+            {pillsOverflow && !pillsAtStart && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 48,
+                  background: "linear-gradient(to right, var(--background) 0%, transparent 100%)",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                  borderRadius: "22px 0 0 22px",
+                }}
+              />
+            )}
+            {/* Right edge gradient */}
+            {pillsOverflow && !pillsAtEnd && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 48,
+                  background: "linear-gradient(to left, var(--background) 0%, transparent 100%)",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                  borderRadius: "0 22px 22px 0",
+                }}
+              />
+            )}
             <div
-              className="atlas-pills-inner"
+              ref={pillsRef}
+              className="atlas-pills-row"
               style={{
                 display: "flex",
-                gap: 8,
-                width: "max-content",
-                margin: 0,
-                paddingInline: pillsOverflow ? 4 : 0,
-                flexWrap: "nowrap",
+                justifyContent: pillsOverflow ? "flex-start" : "center",
+                padding: pillsOverflow ? "0 16px 22px" : "0 24px 22px",
+                overflowX: "auto",
+                overflowY: "hidden",
+                scrollbarWidth: "none",
+                WebkitOverflowScrolling: "touch",
+                scrollPaddingInline: 22,
               }}
             >
-              {MODES.map((m) => {
-                const isActive = activeMode === m.id;
-                const isPhosphor = m.color === "phosphor";
-                const isGold = m.color === "accent-gold";
-                const activeColor = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
-                const glowColor = isGold ? "rgba(202,169,104,0.45)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)";
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => { onModeChange(m.id); haptic("light"); }}
-                    className="atlas-mode-pill"
-                    style={{
-                      flexShrink: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "7px 16px",
-                      borderRadius: 22,
-                      border: `0.5px solid ${isActive ? activeColor : "var(--border)"}`,
-                      background: isActive ? "var(--surface)" : "var(--surface)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 13,
-                      color: isActive ? activeColor : "var(--muted-text)",
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                      boxShadow: isActive
-                        ? `0 0 14px -2px ${glowColor}`
-                        : "none",
-                      transition: "all 200ms var(--ease-cinematic)",
-                    }}
-                  >
-                    <span className="atlas-mode-icon"><ModeIcon mode={m.id} size={13} /></span>
-                    {m.label}
-                  </button>
-                );
-              })}
+              <div
+                className="atlas-pills-inner"
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  width: "max-content",
+                  margin: 0,
+                  paddingInline: pillsOverflow ? 4 : 0,
+                  paddingRight: pillsOverflow ? 32 : 0,
+                  flexWrap: "nowrap",
+                  animation: pillsOverflow ? "atlas-pills-peek 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both" : "none",
+                }}
+              >
+                {MODES.map((m) => {
+                  const isActive = activeMode === m.id;
+                  const isPhosphor = m.color === "phosphor";
+                  const isGold = m.color === "accent-gold";
+                  const activeColor = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
+                  const glowColor = isGold ? "rgba(202,169,104,0.45)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)";
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => { onModeChange(m.id); haptic("light"); }}
+                      className="atlas-mode-pill"
+                      style={{
+                        flexShrink: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "7px 16px",
+                        borderRadius: 22,
+                        border: `0.5px solid ${isActive ? activeColor : "var(--border)"}`,
+                        background: isActive ? "var(--surface)" : "var(--surface)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        color: isActive ? activeColor : "var(--muted-text)",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        cursor: "pointer",
+                        boxShadow: isActive
+                          ? `0 0 14px -2px ${glowColor}`
+                          : "none",
+                        transition: "all 200ms var(--ease-cinematic)",
+                      }}
+                    >
+                      <span className="atlas-mode-icon"><ModeIcon mode={m.id} size={13} /></span>
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -981,6 +1022,11 @@ export function AtlasFrontDoor({
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes atlas-pills-peek {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(-24px); }
+          100% { transform: translateX(0); }
         }
         @keyframes atlas-tag-in {
           from { opacity: 0; transform: translateY(-4px) scale(0.92); }
