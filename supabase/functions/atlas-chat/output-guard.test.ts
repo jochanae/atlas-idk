@@ -125,7 +125,7 @@ Deno.test("DECIDE: catches capability denial", () => {
 
 Deno.test("DECIDE: catches missing trade-offs in long response", () => {
   // A long DECIDE response that doesn't mention any trade-offs or recommendations
-  const filler = Array(30).fill("This is an interesting area to explore and there are many things to consider.").join(" ");
+  const filler = Array(20).fill("There are many factors at play here and we need to look at the full picture carefully before moving forward.").join(" ");
   const result = validateOutput(filler, "DECIDE");
   assertEquals(result.valid, false);
   assertEquals(result.violation, "decide_no_tradeoffs");
