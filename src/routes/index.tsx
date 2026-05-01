@@ -2227,7 +2227,7 @@ function WorkspacePage() {
                 }}
                 className="text-[9px] font-mono text-muted-foreground hover:text-foreground uppercase tracking-wider px-2 py-1 rounded hover:bg-muted/30 transition-colors"
               >
-                New Session
+                New Project
               </button>
             )}
             <UserMenu
