@@ -470,9 +470,56 @@ function ArchitecturalLedger() {
             ))}
           </select>
         )}
+        {/* Expand filters toggle */}
+        <button
+          onClick={() => setFiltersExpanded((v) => !v)}
+          style={{
+            flexShrink: 0,
+            marginLeft: projects.length <= 1 ? "auto" : 0,
+            padding: "4px 10px",
+            borderRadius: 14,
+            border: filtersExpanded ? "1px solid var(--accent-gold)" : "1px solid var(--border)",
+            background: filtersExpanded ? "color-mix(in oklab, var(--accent-gold) 10%, transparent)" : "transparent",
+            fontFamily: "var(--font-mono)",
+            fontSize: 9.5,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase" as const,
+            color: filtersExpanded ? "var(--accent-gold)" : "var(--muted-text)",
+            cursor: "pointer",
+            transition: "all 160ms ease",
+          }}
+        >
+          ⚙ {(severityFilter !== "all" || verbFilter !== "all" || dateFilter !== "all") ? "●" : ""}
+        </button>
       </div>
 
-      {/* ─── Timeline ─── */}
+      {/* ─── Advanced filters (collapsible) ─── */}
+      {filtersExpanded && (
+        <div
+          style={{
+            padding: "8px 18px 10px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <FilterSelect label="Severity" value={severityFilter} onChange={(v) => setSeverityFilter(v as SeverityFilter)} options={[{ value: "all", label: "All" }, { value: "committed", label: "Committed" }, { value: "blocker", label: "Blocker" }, { value: "parked", label: "Parked" }, { value: "neutral", label: "Neutral" }]} />
+          <FilterSelect label="Verb" value={verbFilter} onChange={(v) => setVerbFilter(v as VerbFilter)} options={[{ value: "all", label: "All" }, { value: "new", label: "New" }, { value: "bug", label: "Bug" }, { value: "perf", label: "Perf" }, { value: "note", label: "Note" }, { value: "wip", label: "WIP" }, { value: "audit", label: "Audit" }, { value: "merge", label: "Merge" }, { value: "plan", label: "Plan" }]} />
+          <FilterSelect label="Date" value={dateFilter} onChange={(v) => setDateFilter(v as DateFilter)} options={[{ value: "all", label: "All time" }, { value: "today", label: "Today" }, { value: "week", label: "This week" }, { value: "month", label: "This month" }]} />
+          {(severityFilter !== "all" || verbFilter !== "all" || dateFilter !== "all") && (
+            <button
+              onClick={() => { setSeverityFilter("all"); setVerbFilter("all"); setDateFilter("all"); }}
+              style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "var(--ember)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
+
+
       <main style={{ padding: "0 18px" }}>
         {loading ? (
           <div style={{ padding: "80px 0", display: "flex", justifyContent: "center" }}>
