@@ -475,29 +475,8 @@ export function AtlasFrontDoor({
             >
               Where were we.
             </div>
-            {recents && recents[0]?.last_message && (
-              <div
-                style={{
-                  marginTop: 8,
-                  fontSize: 12.5,
-                  fontWeight: 200,
-                  lineHeight: 1.5,
-                  color: "var(--muted-text)",
-                  opacity: 0.6,
-                  fontStyle: "italic",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  maxWidth: "100%",
-                  fontFamily: "var(--font-sans)",
-                }}
-                title={recents[0].last_message}
-              >
-                {recents[0].last_message}
-              </div>
-            )}
+            <ThreadReveal lastMessage={recents?.[0]?.last_message ?? null} />
+
           </div>
 
           {/* Input — centered, etched glass with focus glow */}
