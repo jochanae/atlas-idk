@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Atlas IDE",
+  "version": "1.0.0",
+  "description": "Quick-launch Atlas IDE and capture page context for your projects.",
+  "permissions": ["activeTab", "storage", "tabs"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
