@@ -778,6 +778,14 @@ function WorkspacePage() {
         }
         if (extracted.length > 0) setPlanSteps(extracted);
       }
+
+      // ═══ BUILD auto-codegen: when WhisperGate classifies as BUILD,
+      // automatically generate a component and show it in LivePreview ═══
+      if (data?.intent?.mode === "BUILD") {
+        // Fire-and-forget — don't block the chat flow
+        generateCode(text).catch(() => {});
+      }
+
       await refresh(target.session, target.projectId);
     } catch (e) {
       // User-initiated abort — clean up quietly, don't show an error toast.
