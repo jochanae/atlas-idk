@@ -308,7 +308,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange, deskto
 
 /* ─────────────────────────────────────────────────────────────── */
 
-function DrawerHeader({ count }: { count: number }) {
+function DrawerHeader({ count, onClose }: { count: number; onClose?: () => void }) {
   return (
     <div
       style={{
@@ -331,29 +331,53 @@ function DrawerHeader({ count }: { count: number }) {
       >
         Artifacts
       </span>
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 10,
-          color: "var(--accent-gold)",
-          letterSpacing: "0.1em",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
-          aria-hidden
           style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: "var(--accent-gold)",
-            boxShadow: "0 0 5px var(--accent-gold)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--accent-gold)",
+            letterSpacing: "0.1em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
-        />
-        {count}
-      </span>
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "var(--accent-gold)",
+              boxShadow: "0 0 5px var(--accent-gold)",
+            }}
+          />
+          {count}
+        </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close artifacts panel"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              background: "transparent",
+              border: "0.5px solid var(--border)",
+              color: "var(--muted-text)",
+              cursor: "pointer",
+              transition: "all 160ms ease",
+            }}
+          >
+            <X size={13} strokeWidth={1.8} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
