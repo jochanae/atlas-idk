@@ -104,11 +104,12 @@
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Executive Light — high-contrast light theme (replaces deprecated Parchment).
-   Clean :root override: explicitly resets Obsidian's orange/gold accents to
-   teal/charcoal so no "ghost styles" leak through in light mode. */
+/* Cognac & Cream — bespoke luxury light theme.
+   Replaces "Executive Light" / "Parchment". All Obsidian orange/gold tokens
+   are explicitly remapped to cognac so no "ghost styles" leak through. */
 .theme-executive,
-.theme-parchment {
+.theme-parchment,
+.theme-cognac {
   --header-height: 64px;
   --mode-pill-top: 78px;
   --touch-target: 56px;
@@ -116,26 +117,24 @@
   --shell-edge: 20px;
   --input-radius: 18px;
   /* Core surfaces */
-  --background: #F4F7F6;       /* Cool grey */
+  --background: #FAF9F6;       /* Rich cream / ivory */
   --surface: #FFFFFF;          /* Pure white sidebar/cards */
-  --surface-alt: #ECF1EF;      /* Subtle cool grey for alt rows */
-  --foreground: #121212;       /* Deep charcoal text */
-  --muted-text: #5B6B68;
-  --border: #D9E1DE;
-  /* Accents — explicitly OVERRIDE Obsidian orange/gold so they
-     never bleed through. Primary becomes deep teal; gold becomes
-     a muted teal-leaning tone so any gold-bound element stays on-theme. */
-  --ember: #004D40;            /* Deep teal primary */
+  --surface-alt: #F2EFE9;      /* Warm cream for alt rows */
+  --foreground: #1A1A1A;       /* Near-black text */
+  --muted-text: #6B5E54;       /* Warm muted brown-grey */
+  --border: #E8E1D6;
+  /* Accents — Cognac overrides Obsidian orange/gold across the board */
+  --ember: #8B4513;            /* Deep cognac / burnt sienna */
   --violated: #991B1B;
   --phosphor: #0E7490;
   --warning: #B45309;
-  --accent-gold: #004D40;      /* Deep teal — replaces obsidian gold */
-  --gold-glow: rgba(0, 77, 64, 0.22);
-  --gold-subtle: rgba(0, 77, 64, 0.06);
-  --gold-border: rgba(0, 77, 64, 0.18);
+  --accent-gold: #8B4513;      /* Cognac replaces obsidian gold */
+  --gold-glow: rgba(139, 69, 19, 0.22);
+  --gold-subtle: rgba(139, 69, 19, 0.10);
+  --gold-border: rgba(139, 69, 19, 0.30);
   /* Glass + motion */
-  --glass-bg: rgba(255, 255, 255, 0.78);
-  --glass-border: rgba(18, 18, 18, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(26, 26, 26, 0.08);
   --glass-blur: 24px;
   --ease-cinematic: cubic-bezier(0.4, 0, 0.2, 1);
 }
