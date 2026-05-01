@@ -115,7 +115,7 @@ function MobilePeel({
 
   // Transform: command center slides right, revealing stage underneath
   const commandCenterX = useTransform(x, (v) => v);
-  const stageOpacity = useTransform(x, [0, containerW * 0.4], [0.3, 1]);
+  const stageOpacity = useTransform(x, [0, containerW * 0.4], [0.6, 1]);
   const stageScale = useTransform(x, [0, containerW * 0.5], [0.92, 1]);
 
   const snapTo = useCallback(
