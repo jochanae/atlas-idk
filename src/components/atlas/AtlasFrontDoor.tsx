@@ -388,7 +388,7 @@ export function AtlasFrontDoor({
         </div>
 
         {/* Right: actions + avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, height: 36, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 36, justifyContent: "flex-end", flexShrink: 0 }}>
           {headerActions}
         </div>
       </div>
