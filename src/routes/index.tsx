@@ -1360,6 +1360,17 @@ function WorkspacePage() {
           }
           headerActions={
             <div className="flex items-center gap-2 min-w-0" style={{ height: 44 }}>
+              <button
+                type="button"
+                onClick={() => setGalleryOpen(true)}
+                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                aria-label="All Projects"
+                title="All Projects"
+              >
+                <svg viewBox="0 0 16 16" width={16} height={16} fill="none" stroke="rgba(201,162,76,0.6)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4l3-2h4l1 1h5l1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z" />
+                </svg>
+              </button>
               {session && !entrySurface && (
                 <ParkingLotButton
                   count={parkedItems.length}
