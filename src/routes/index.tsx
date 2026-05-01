@@ -1199,6 +1199,8 @@ function WorkspacePage() {
           onAddToQueue={addToQueue}
           queueActive={queueItems.some((i) => i.status === "pending")}
           adaptivePlaceholder={adaptivePlaceholder}
+          voiceListening={voice.listening}
+          onVoiceToggle={() => { voice.toggle(); haptic("light"); }}
           mobileSurfaceBar={
             session ? (
               <MobileSurfaceBar
