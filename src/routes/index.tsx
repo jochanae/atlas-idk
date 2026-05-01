@@ -197,6 +197,7 @@ function WorkspacePage() {
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
   const [mobileArtifactDrawerOpen, setMobileArtifactDrawerOpen] = useState(false);
+  const [desktopArtifactHidden, setDesktopArtifactHidden] = useState(false);
   // Code generation / preview state
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [generatedFilename, setGeneratedFilename] = useState<string | null>(null);
