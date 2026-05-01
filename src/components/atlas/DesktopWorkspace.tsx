@@ -104,9 +104,9 @@ export function DesktopWorkspace({
         <PanelGroup orientation="horizontal" id="atlas-workspace-v1" className="h-full w-full flex">
           {/* ── Pane 1: Nav rail ─────────────────────────────────────── */}
           <Panel
-            defaultSize={navCollapsed ? 4 : 14}
-            minSize={4}
-            maxSize={22}
+            defaultSize={navCollapsed ? 5 : 12}
+            minSize={5}
+            maxSize={18}
             className="border-r border-border/50 bg-card/30"
           >
             <NavRail
