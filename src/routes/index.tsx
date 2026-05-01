@@ -1256,6 +1256,19 @@ function WorkspacePage() {
               }}
             />
           }
+          planSteps={planSteps}
+          onQueuePlanStep={(step) => promoteStepToQueue(step)}
+          onQueueAllPlanSteps={planSteps.length > 0 ? () => {
+            for (const step of planSteps) promoteStepToQueue(step);
+            haptic("medium");
+            toast.success(`${planSteps.length} steps queued`);
+          } : undefined}
+          onExpandPlanStep={(step) => {
+            setAdaptivePlaceholder(`expand on "${step.label}"…`);
+            setInput(`Expand on the plan step: ${step.label}`);
+            setInputFocusSignal((v) => v + 1);
+            setTimeout(() => setAdaptivePlaceholder(null), 5000);
+          }}
           contextualHUD={
             session && messages.length > 0 ? (
               <ContextualHUD
