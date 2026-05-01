@@ -146,9 +146,9 @@ export function DesktopWorkspace({
 
           {/* ── Pane 4: Right inspector ─────────────────────────────── */}
           <Panel
-            defaultSize={inspectorCollapsed ? 4 : 24}
-            minSize={4}
-            maxSize={40}
+            defaultSize={inspectorCollapsed ? 5 : 22}
+            minSize={5}
+            maxSize={35}
             className="border-l border-border/50 bg-card/30"
           >
             <Inspector
