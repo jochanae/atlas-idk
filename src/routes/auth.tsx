@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
+
 import { Code2, Layers, Zap, GitBranch, Shield, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -29,11 +29,13 @@ function AuthPage() {
   }, [user, loading, navigate]);
 
   return (
-    <div className="h-screen w-full overflow-hidden bg-background text-foreground">
-      <DoubleVisionLayout
-        stage={<LandingMockup />}
-        commandCenter={<AuthPanel />}
-      />
+    <div className="h-screen w-full overflow-hidden bg-background text-foreground flex">
+      <div className="hidden md:block md:w-1/2 h-full overflow-y-auto">
+        <LandingMockup />
+      </div>
+      <div className="w-full md:w-1/2 h-full overflow-y-auto">
+        <AuthPanel />
+      </div>
     </div>
   );
 }
