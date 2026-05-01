@@ -1981,6 +1981,7 @@ function ChatPanel({
   onRollback,
   recentRollbackMsgId,
   onOpenDiff,
+  onRegenerate,
   activeMode,
   buildHistory,
 }: {
