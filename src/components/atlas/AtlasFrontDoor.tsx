@@ -228,6 +228,91 @@ function ModeDropdown({ activeMode, onModeChange }: { activeMode: ModeId; onMode
   );
 }
 
+function ScrollDots({ sections }: { sections: Array<{ id: string; label: string }> }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    const els = sections
+      .map((s) => document.getElementById(s.id))
+      .filter((el): el is HTMLElement => !!el);
+    if (els.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Pick the entry with the highest intersection ratio currently visible
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) {
+          const idx = sections.findIndex((s) => s.id === visible.target.id);
+          if (idx >= 0) setActiveIdx(idx);
+        }
+      },
+      { rootMargin: "-30% 0px -50% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [sections]);
+
+  const scrollTo = useCallback((id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    haptic("light");
+  }, []);
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Jump to section"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 8,
+        marginTop: 32,
+        marginBottom: 8,
+      }}
+    >
+      {sections.map((s, i) => {
+        const isActive = i === activeIdx;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            aria-label={`Scroll to ${s.label}`}
+            onClick={() => scrollTo(s.id)}
+            style={{
+              width: 18,
+              height: 18,
+              padding: 0,
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                width: isActive ? 7 : 5,
+                height: isActive ? 7 : 5,
+                borderRadius: "50%",
+                background: isActive ? "var(--accent-gold)" : "#E0E0E0",
+                opacity: isActive ? 1 : 0.7,
+                transition: "all 200ms var(--ease-cinematic, ease)",
+              }}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AtlasFrontDoor({
   active,
   activeMode,
@@ -427,6 +512,7 @@ export function AtlasFrontDoor({
           flexDirection: "column",
           overflowY: "auto",
           overflowX: "hidden",
+          scrollBehavior: "smooth",
           paddingTop: active
             ? "calc(var(--header-height) + 16px)"
             : "calc(var(--header-height) + 16px)",
@@ -807,25 +893,18 @@ export function AtlasFrontDoor({
             </div>
           )}
 
-          {/* Scroll indicator — three vertical dots between input zone and fold.
-              Top dot cognac/ember at 50% opacity, bottom two grey #E0E0E0. */}
+          {/* Scroll indicator — vertical dots, one per discovery section.
+              Clickable: smooth-scrolls to its section. Active section dot
+              uses cognac/ember accent at full opacity; others grey. */}
           {!active && belowFold && (
-            <div
-              aria-hidden
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6,
-                marginTop: 32,
-                marginBottom: 8,
-                opacity: 0.95,
-              }}
-            >
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent-gold)", opacity: 0.5 }} />
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E0E0E0" }} />
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E0E0E0" }} />
-            </div>
+            <ScrollDots
+              sections={[
+                { id: "discovery-moment", label: "A Moment for You" },
+                { id: "discovery-momentum", label: "Your Momentum" },
+                { id: "discovery-loops", label: "Open Loops" },
+                { id: "discovery-checkin", label: "Check In" },
+              ]}
+            />
           )}
         </div>
 

@@ -45,7 +45,7 @@ export function BelowFoldDashboard({
       }}
     >
       {/* 1. A Moment for You ---------------------------------------------- */}
-      <section className="atlas-discovery-card atlas-discovery-moment">
+      <section id="discovery-moment" className="atlas-discovery-card atlas-discovery-moment">
         <div className="atlas-discovery-tag" style={{ color: "#004D40" }}>
           atlas noticed
         </div>
@@ -56,7 +56,7 @@ export function BelowFoldDashboard({
       </section>
 
       {/* 2. Your Momentum ------------------------------------------------- */}
-      <section className="atlas-discovery-card">
+      <section id="discovery-momentum" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Your Momentum</h3>
           <button type="button" onClick={onOpenLedger} className="atlas-discovery-link">
@@ -76,7 +76,7 @@ export function BelowFoldDashboard({
       </section>
 
       {/* 3. Open Loops ---------------------------------------------------- */}
-      <section className="atlas-discovery-card">
+      <section id="discovery-loops" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Open Loops</h3>
           <button type="button" onClick={onOpenParking} className="atlas-discovery-link">
@@ -94,7 +94,7 @@ export function BelowFoldDashboard({
       </section>
 
       {/* 4. Check In ------------------------------------------------------ */}
-      <section className="atlas-discovery-card">
+      <section id="discovery-checkin" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Check In</h3>
         </div>
