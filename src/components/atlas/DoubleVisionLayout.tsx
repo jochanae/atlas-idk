@@ -115,7 +115,7 @@ function MobilePeel({
 
   // Transform: command center slides right, revealing stage underneath
   const commandCenterX = useTransform(x, (v) => v);
-  const stageOpacity = useTransform(x, [0, containerW * 0.4], [0.3, 1]);
+  const stageOpacity = useTransform(x, [0, containerW * 0.4], [0.6, 1]);
   const stageScale = useTransform(x, [0, containerW * 0.5], [0.92, 1]);
 
   const snapTo = useCallback(
@@ -155,8 +155,7 @@ function MobilePeel({
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full overflow-hidden ${className}`}
-      style={{ background: "#050505" }}
+      className={`relative h-full w-full overflow-hidden bg-background ${className}`}
     >
       {/* ── Base Layer: The Stage ── */}
       <motion.div
@@ -168,12 +167,9 @@ function MobilePeel({
 
       {/* ── Top Layer: Command Center ── */}
       <motion.div
-        className="absolute inset-0 flex flex-col"
+        className="absolute inset-0 flex flex-col bg-background"
         style={{
           x: commandCenterX,
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          background: "rgba(5,5,5,0.88)",
           borderLeft: "1px solid rgba(201,162,76,0.25)",
           willChange: "transform",
         }}

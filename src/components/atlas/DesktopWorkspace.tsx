@@ -148,7 +148,7 @@ export function DesktopWorkspace({
     return () => window.removeEventListener("keydown", handler);
   }, [isDesktop, onBuild, onRun, toggleInspector, openInspectorTab, fullScreen]);
 
-  if (!isDesktop) return <>{renderMobile()}</>;
+  if (!isDesktop) return <div className="h-screen w-full overflow-hidden">{renderMobile()}</div>;
 
   // ── Full-screen ──
   if (fullScreen) {

@@ -1292,9 +1292,9 @@ function WorkspacePage() {
   };
 
   const mainShell = (
-    <div className="atlas-shell-host min-h-screen h-full bg-background text-foreground flex flex-col" style={{ overflow: "visible" }}>
+    <div className="atlas-shell-host h-full bg-background text-foreground flex flex-col overflow-hidden">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
-      <main className="relative flex-1 min-h-0" style={{ overflow: "visible" }}>
+      <main className="relative flex-1 min-h-0 overflow-hidden">
 
         <AtlasFrontDoor
           active={isActive}
@@ -2169,7 +2169,7 @@ function WorkspacePage() {
         />
       )}
       renderChatPane={() => (
-        <div className="h-full flex flex-col bg-background">
+        <div className="h-full flex flex-col bg-card/30 border-r border-border/30">
           {/* Mode chips */}
           <div className="flex-shrink-0 px-2 py-2 border-b border-border/40 flex items-center gap-1 overflow-x-auto scrollbar-none">
             {MODES.map((m) => {
