@@ -2006,6 +2006,7 @@ function ChatPanel({
   onRollback: (m: ChatMessage) => void;
   recentRollbackMsgId: string | null;
   onOpenDiff?: (userContent: string, assistantContent: string) => void;
+  onRegenerate?: (userMessage: string) => void;
   activeMode?: string;
   buildHistory?: BuildStateEntry[];
 }) {
