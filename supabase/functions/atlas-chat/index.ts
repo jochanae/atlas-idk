@@ -527,9 +527,12 @@ Deno.serve(async (req) => {
         user_id: user.id,
         role: "assistant",
         content: finalText,
+        intent_type: whisperResult.mode,
         card_payload: cardPayload,
         card_schema_version: cardSchemaVersion,
         surfaced_memories: memoriesForMessage,
+        output_guard_violation: validation.valid ? null : (validation.violation ?? null),
+        output_guard_repaired: outputRepaired,
       })
       .select("*")
       .single();
