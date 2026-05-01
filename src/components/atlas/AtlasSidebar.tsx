@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronDown,
   ChevronRight,
+  X,
 } from "lucide-react";
 import type { RecentSession } from "./AtlasFrontDoor";
 import type { BuildStateEntry } from "./BuildStateTimeline";
@@ -61,6 +62,19 @@ export function AtlasSidebar({
 }) {
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [recentsExpanded, setRecentsExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Filter projects & sessions by search query
+  const q = searchQuery.toLowerCase().trim();
+  const filteredProjects = useMemo(
+    () => (projects ?? []).filter((p) => !q || p.name.toLowerCase().includes(q)),
+    [projects, q],
+  );
+  const filteredRecents = useMemo(
+    () => recents.filter((s) => !q || (s.title || "").toLowerCase().includes(q)),
+    [recents, q],
+  );
 
   // Lock body scroll while open
   useEffect(() => {
@@ -206,7 +220,72 @@ export function AtlasSidebar({
           </span>
         </div>
 
-        {/* Created by Me — collapsible project thumbnails (top position) */}
+        {/* Search bar — top of sidebar */}
+        <div style={{ padding: "10px 12px 4px" }}>
+          {searchOpen ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "var(--surface-alt)",
+                borderRadius: 8,
+                border: "0.5px solid var(--glass-border)",
+                padding: "0 8px",
+                height: 34,
+              }}
+            >
+              <Search size={13} style={{ color: "var(--muted-text)", flexShrink: 0 }} />
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search projects & sessions…"
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "var(--foreground)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.02em",
+                }}
+              />
+              <button
+                onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: 2, display: "flex", color: "var(--muted-text)" }}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setSearchOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "6px 4px",
+                borderRadius: 6,
+                color: "var(--muted-text)",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-alt)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <Search size={14} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.04em" }}>
+                Search projects & sessions
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* My Projects — collapsible project thumbnails */}
         {projects && (
           <>
             <button
@@ -215,7 +294,7 @@ export function AtlasSidebar({
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "12px 16px 6px",
+                padding: "10px 16px 6px",
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -233,7 +312,7 @@ export function AtlasSidebar({
                   flex: 1,
                 }}
               >
-                Created by me
+                My Projects
               </span>
               {projectsExpanded ? (
                 <ChevronDown size={12} style={{ color: "var(--muted-text)" }} />
@@ -246,7 +325,7 @@ export function AtlasSidebar({
                 maxHeight: projectsExpanded ? 400 : 0,
                 overflow: "hidden",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-                padding: projectsExpanded ? "0 10px 8px" : "0 10px 0",
+                padding: projectsExpanded ? "0 12px 10px" : "0 12px 0",
               }}
             >
               <div
@@ -255,11 +334,9 @@ export function AtlasSidebar({
                   gridTemplateColumns: "repeat(2, 1fr)",
                   gap: 6,
                   paddingTop: 4,
-                  maxWidth: "100%",
-                  overflow: "hidden",
                 }}
               >
-                {projects.map((p) => (
+                {filteredProjects.map((p) => (
                   <div
                     key={p.id}
                     style={{
@@ -297,7 +374,7 @@ export function AtlasSidebar({
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         />
                       ) : (
-                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--accent-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                        <svg width="24" height="24" viewBox="0 0 28 28" fill="none" stroke="var(--accent-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
                           <rect x="3" y="3" width="22" height="16" rx="2" />
                           <circle cx="9" cy="10" r="2" />
                           <path d="M25 15l-5-4-4 3-3-2-7 5" />
@@ -308,8 +385,8 @@ export function AtlasSidebar({
                     </div>
                     <div
                       style={{
-                        padding: "5px 7px",
-                        fontSize: 10.5,
+                        padding: "4px 6px",
+                        fontSize: 10,
                         fontFamily: "var(--font-mono)",
                         color: "var(--foreground)",
                         whiteSpace: "nowrap",
@@ -322,55 +399,61 @@ export function AtlasSidebar({
                   </div>
                 ))}
                 {/* + New Project card */}
-                <button
-                  onClick={onNewSession}
-                  style={{
-                    borderRadius: 8,
-                    border: "1px dashed color-mix(in oklab, var(--accent-gold) 25%, transparent)",
-                    overflow: "hidden",
-                    background: "transparent",
-                    cursor: "pointer",
-                    transition: "border-color 180ms ease, background 180ms ease",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                    minHeight: 80,
-                    padding: 8,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 50%, transparent)";
-                    e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 5%, transparent)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 25%, transparent)";
-                    e.currentTarget.style.background = "transparent";
-                  }}
-                >
-                  <Plus size={16} style={{ color: "var(--accent-gold)", opacity: 0.5 }} />
-                  <span
+                {!q && (
+                  <button
+                    onClick={onNewSession}
                     style={{
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 9,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: "var(--accent-gold)",
-                      opacity: 0.5,
+                      borderRadius: 8,
+                      border: "1px dashed color-mix(in oklab, var(--accent-gold) 25%, transparent)",
+                      overflow: "hidden",
+                      background: "transparent",
+                      cursor: "pointer",
+                      transition: "border-color 180ms ease, background 180ms ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                      minHeight: 70,
+                      padding: 6,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 50%, transparent)";
+                      e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 5%, transparent)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 25%, transparent)";
+                      e.currentTarget.style.background = "transparent";
                     }}
                   >
-                    New
-                  </span>
-                </button>
+                    <Plus size={14} style={{ color: "var(--accent-gold)", opacity: 0.5 }} />
+                    <span
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 8,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "var(--accent-gold)",
+                        opacity: 0.5,
+                      }}
+                    >
+                      New
+                    </span>
+                  </button>
+                )}
               </div>
+              {q && filteredProjects.length === 0 && (
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--muted-text)", padding: "8px 4px", textAlign: "center" }}>
+                  No matching projects
+                </div>
+              )}
             </div>
           </>
         )}
 
-        {/* Top — actions */}
-        <div style={{ padding: "8px 10px 8px" }}>
+        {/* New session action */}
+        <div style={{ padding: "4px 10px 2px" }}>
           <SidebarItem icon={<Plus size={15} />} label="New session" onClick={onNewSession} />
-          <SidebarItem icon={<Search size={15} />} label="Search" disabled hint="soon" />
         </div>
 
         {/* Recent Sessions — collapsible */}
@@ -414,10 +497,10 @@ export function AtlasSidebar({
             padding: recentsExpanded ? "0 6px 8px" : "0 6px 0",
           }}
         >
-          {recents.length === 0 ? (
-            <EmptyState text="no sessions yet — start one from the front door." />
+          {filteredRecents.length === 0 ? (
+            <EmptyState text={q ? "No matching sessions" : "no sessions yet — start one from the front door."} />
           ) : (
-            recents.map((s) => {
+            filteredRecents.map((s) => {
               const isPhosphor = s.mode === "explore";
               const dot = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
               return (
