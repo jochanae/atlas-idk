@@ -618,9 +618,10 @@ export function AtlasFrontDoor({
                 </span>
                 <button
                   type="button"
-                  aria-label="Voice input"
-                  title="Voice (coming soon)"
+                  aria-label={voiceListening ? "Stop listening" : "Voice input"}
+                  title={voiceListening ? "Stop listening" : "Voice input"}
                   className="atlas-icon-btn atlas-mic-btn"
+                  onClick={onVoiceToggle}
                   style={{
                     width: 56,
                     height: 56,
