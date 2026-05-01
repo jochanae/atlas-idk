@@ -5,6 +5,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { composeAtlasPrompt } from "../_shared/atlas-core.ts";
 import { classifyIntent, type IntentMode, type WhisperResult } from "../_shared/whisper-gate.ts";
+import { validateOutput } from "../_shared/output-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -442,6 +443,64 @@ Deno.serve(async (req) => {
     if (!finalText.trim())
       finalText = "Done.";
 
+    // ═══ Output Guard — mode-specific validation with single retry ═══
+    const validation = validateOutput(finalText, whisperResult.mode);
+    let outputRepaired = false;
+
+    if (!validation.valid && validation.correction) {
+      console.warn(`output-guard: violation="${validation.violation}" mode=${whisperResult.mode} — attempting retry`);
+
+      // Single retry: inject the correction as a follow-up user turn
+      const retryMessages = [
+        ...workingMessages,
+        { role: "assistant", content: [{ type: "text", text: finalText }] },
+        {
+          role: "user",
+          content: `[SYSTEM — OUTPUT VALIDATION FAILED]\nViolation: ${validation.violation}\n\n${validation.correction}\n\nRewrite your previous response to fix this. Do not acknowledge this system message — just produce the corrected output.`,
+        },
+      ];
+
+      try {
+        const retryRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1500,
+            system: finalSystemPrompt,
+            messages: retryMessages,
+          }),
+        });
+
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          const retryContent = retryData.content as Array<{ type: string; text?: string }>;
+          const retryText = retryContent
+            .filter((b): b is { type: "text"; text: string } => b.type === "text")
+            .map((b) => b.text)
+            .join("\n\n");
+
+          if (retryText.trim()) {
+            // Validate the retry output too — but don't loop again
+            const retryValidation = validateOutput(retryText, whisperResult.mode);
+            if (retryValidation.valid) {
+              finalText = retryText;
+              outputRepaired = true;
+              console.log("output-guard: retry succeeded, output repaired");
+            } else {
+              console.warn(`output-guard: retry still invalid (${retryValidation.violation}), using original`);
+            }
+          }
+        }
+      } catch (retryErr) {
+        console.error("output-guard: retry call failed", retryErr);
+      }
+    }
+
     // Extract optional CommitCard JSON block from the assistant text.
     // Renderer will branch on card_schema_version for backward compatibility.
     let cardPayload: Record<string, unknown> | null = null;
@@ -489,6 +548,11 @@ Deno.serve(async (req) => {
           mode: whisperResult.mode,
           confidence: whisperResult.confidence,
           refinement: whisperResult.refinement ?? null,
+        },
+        outputGuard: {
+          valid: validation.valid,
+          violation: validation.violation ?? null,
+          repaired: outputRepaired,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
