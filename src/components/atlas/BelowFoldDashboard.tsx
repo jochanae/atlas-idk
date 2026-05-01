@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { RecentSession } from "./AtlasFrontDoor";
 
 type Props = {
@@ -11,15 +12,72 @@ type Props = {
 };
 
 /**
+ * RevealOnScroll — wraps a child and fades + slides it in when it enters
+ * the viewport. Once revealed, stays revealed (one-shot). A staggered
+ * delay is applied per index for a cascading effect.
+ */
+function RevealOnScroll({
+  children,
+  delayMs = 0,
+  id,
+  className,
+}: {
+  children: ReactNode;
+  delayMs?: number;
+  id?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setRevealed(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setRevealed(true);
+            obs.disconnect();
+            break;
+          }
+        }
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      id={id}
+      className={className}
+      style={{
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? "translateY(0)" : "translateY(16px)",
+        transition: `opacity 600ms cubic-bezier(0.4, 0, 0.2, 1) ${delayMs}ms, transform 600ms cubic-bezier(0.4, 0, 0.2, 1) ${delayMs}ms`,
+        willChange: "opacity, transform",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
  * Below-the-fold discovery sections:
  *   1. A Moment for You — Atlas-noticed reflection prompt
  *   2. Your Momentum   — two-column metric card (decisions / parked)
  *   3. Open Loops      — parked items waiting on the user
- *   4. Check In        — soft daily prompt
+ *   4. Where were we   — recent sessions
  *
- * Spec: Cognac (#8B4513) numbers, Deep Teal (#004D40) "atlas noticed" tag,
- * white surfaces with 10px radius. Labels at 70% opacity to avoid the
- * "muted/invisible" look.
+ * Each card scroll-reveals with a 100ms stagger as it enters the viewport.
  */
 export function BelowFoldDashboard({
   openLoopsCount,
@@ -45,7 +103,7 @@ export function BelowFoldDashboard({
       }}
     >
       {/* 1. A Moment for You ---------------------------------------------- */}
-      <section id="discovery-moment" className="atlas-discovery-card atlas-discovery-moment">
+      <RevealOnScroll delayMs={0} id="discovery-moment" className="atlas-discovery-card atlas-discovery-moment">
         <div className="atlas-discovery-tag" style={{ color: "#004D40" }}>
           atlas noticed
         </div>
@@ -53,10 +111,10 @@ export function BelowFoldDashboard({
           You've returned to "{lastTitle}" three times this week.
           Maybe today is the day to commit it.
         </p>
-      </section>
+      </RevealOnScroll>
 
       {/* 2. Your Momentum ------------------------------------------------- */}
-      <section id="discovery-momentum" className="atlas-discovery-card">
+      <RevealOnScroll delayMs={100} id="discovery-momentum" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Your Momentum</h3>
           <button type="button" onClick={onOpenLedger} className="atlas-discovery-link">
@@ -73,10 +131,10 @@ export function BelowFoldDashboard({
             <span className="atlas-momentum-label">items parked</span>
           </div>
         </div>
-      </section>
+      </RevealOnScroll>
 
       {/* 3. Open Loops ---------------------------------------------------- */}
-      <section id="discovery-loops" className="atlas-discovery-card">
+      <RevealOnScroll delayMs={200} id="discovery-loops" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Open Loops</h3>
           <button type="button" onClick={onOpenParking} className="atlas-discovery-link">
@@ -91,10 +149,10 @@ export function BelowFoldDashboard({
             <span className="atlas-momentum-label">waiting on you</span>
           </div>
         )}
-      </section>
+      </RevealOnScroll>
 
       {/* 4. Where were we ------------------------------------------------ */}
-      <section id="discovery-checkin" className="atlas-discovery-card">
+      <RevealOnScroll delayMs={300} id="discovery-checkin" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Where were we</h3>
         </div>
@@ -126,7 +184,7 @@ export function BelowFoldDashboard({
             })}
           </div>
         )}
-      </section>
+      </RevealOnScroll>
     </div>
   );
 }
