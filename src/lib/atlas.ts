@@ -86,6 +86,10 @@ export type ChatMessage = {
   committed_card_id?: string | null;
   /** Ledger entries pulled into context for this reply (rendered as MemoryChips). */
   surfaced_memories?: Array<{ id: string; title: string; created_at: string }> | null;
+  /** Output guard violation type (null = passed validation) */
+  output_guard_violation?: string | null;
+  /** Whether the output was auto-repaired by the retry loop */
+  output_guard_repaired?: boolean;
 };
 
 export function relativeTime(iso: string): string {

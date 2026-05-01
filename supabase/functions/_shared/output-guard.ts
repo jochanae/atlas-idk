@@ -26,7 +26,7 @@ const PLACEHOLDER_PATTERNS = [
 
 const FILLER_PATTERNS = [
   /as (?:a|an) (?:large )?language model/i,
-  /I (?:cannot|can't|am not able to) (?:write|generate|create|produce) code/i,
+  /I (?:cannot|can't|am not able to) (?:write|generate|create|produce|build|implement)(?:\s+\w+){0,4}\b/i,
   /I'm just an AI/i,
   /here(?:'s| is) (?:a |an )?(?:general |basic )?(?:outline|overview|summary) (?:of )?(?:what|how)/i,
 ];
