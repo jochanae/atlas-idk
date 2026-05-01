@@ -7,6 +7,10 @@ type Props = {
   /** Forces drawer fully open (e.g. user clicked an inline artifact reference) */
   forceOpen?: boolean;
   onForceOpenChange?: (open: boolean) => void;
+  /** Whether the desktop pane is hidden */
+  desktopHidden?: boolean;
+  /** Called when the user closes the desktop pane */
+  onDesktopHiddenChange?: (hidden: boolean) => void;
 };
 
 type SheetState = "closed" | "peek" | "full";
@@ -26,7 +30,7 @@ const FULL_HEIGHT_VH = 90;
  *   - 420px wide, slides in from right when artifacts exist
  *   - never overlays chat input
  */
-export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Props) {
+export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange, desktopHidden, onDesktopHiddenChange }: Props) {
   const [isWide, setIsWide] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
@@ -78,6 +82,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
   };
 
   if (artifacts.length === 0 && !forceOpen) return null;
+  if (isWide && desktopHidden) return null;
 
   const active = artifacts.find((a) => a.id === activeArtifactId) ?? artifacts[artifacts.length - 1];
 
@@ -104,7 +109,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
           animation: "atlas-pane-in 360ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
-        <DrawerHeader count={artifacts.length} />
+        <DrawerHeader count={artifacts.length} onClose={() => onDesktopHiddenChange?.(true)} />
         <ArtifactList
           artifacts={artifacts}
           activeId={active?.id ?? null}
@@ -303,7 +308,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Prop
 
 /* ─────────────────────────────────────────────────────────────── */
 
-function DrawerHeader({ count }: { count: number }) {
+function DrawerHeader({ count, onClose }: { count: number; onClose?: () => void }) {
   return (
     <div
       style={{
@@ -326,29 +331,53 @@ function DrawerHeader({ count }: { count: number }) {
       >
         Artifacts
       </span>
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 10,
-          color: "var(--accent-gold)",
-          letterSpacing: "0.1em",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span
-          aria-hidden
           style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: "var(--accent-gold)",
-            boxShadow: "0 0 5px var(--accent-gold)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--accent-gold)",
+            letterSpacing: "0.1em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
-        />
-        {count}
-      </span>
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "var(--accent-gold)",
+              boxShadow: "0 0 5px var(--accent-gold)",
+            }}
+          />
+          {count}
+        </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close artifacts panel"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              background: "transparent",
+              border: "0.5px solid var(--border)",
+              color: "var(--muted-text)",
+              cursor: "pointer",
+              transition: "all 160ms ease",
+            }}
+          >
+            <X size={13} strokeWidth={1.8} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
