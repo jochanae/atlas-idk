@@ -1124,6 +1124,19 @@ export function AtlasFrontDoor({
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes atlas-scroll-arrow-bounce {
+          0%   { transform: translateY(0); }
+          20%  { transform: translateY(0); }
+          45%  { transform: translateY(5px); }
+          70%  { transform: translateY(0); }
+          100% { transform: translateY(0); }
+        }
+        .atlas-scroll-arrow {
+          animation: atlas-scroll-arrow-bounce 1600ms cubic-bezier(0.4, 0, 0.2, 1) 600ms 1 both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .atlas-scroll-arrow { animation: none; }
+        }
         .atlas-input-shell:focus-within {
           border-color: color-mix(in oklab, var(--accent-gold) 55%, transparent) !important;
           box-shadow:
