@@ -18,12 +18,12 @@ export const MODES = [
 export type ModeId = typeof MODES[number]["id"];
 
 const MODE_PLACEHOLDERS: Record<ModeId, string> = {
-  think: "What's the core logic?",
-  plan: "Outline the next phase…",
-  build: "Define the next component…",
-  explore: "Search the architecture…",
+  think: "What are you turning over?",
+  plan: "Map the next move…",
+  build: "What are you putting together?",
+  explore: "What are you curious about?",
   decide: "What are you choosing between?",
-  audit: "What needs inspection?",
+  audit: "What's worth a second look?",
 };
 
 /** Minimalist SVG icons for each mode — 16×16 viewBox, stroke-based */
