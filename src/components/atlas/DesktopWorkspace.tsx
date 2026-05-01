@@ -138,7 +138,7 @@ export function DesktopWorkspace({
           )}
 
           {/* ── Pane 3: Main canvas ─────────────────────────────────── */}
-          <Panel defaultSize={inspectorCollapsed ? 60 : 44} minSize={24}>
+          <Panel defaultSize={inspectorCollapsed ? 62 : 50} minSize={30}>
             <div className="h-full overflow-hidden">{renderCanvas()}</div>
           </Panel>
 
