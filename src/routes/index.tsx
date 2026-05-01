@@ -1952,6 +1952,13 @@ function WorkspacePage() {
         }}
       />
       {/* OnboardingFlow removed — context refinement happens conversationally */}
+      <ProjectGallery
+        open={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={(id) => { setActiveProjectId(id); }}
+      />
     </div>
   );
 
