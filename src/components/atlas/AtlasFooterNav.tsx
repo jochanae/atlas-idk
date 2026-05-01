@@ -28,9 +28,12 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
         right: 0,
         bottom: 0,
         zIndex: 60,
-        background: "var(--background)",
+        background: "rgba(0, 0, 0, 0.6)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         borderTop: "0.5px solid var(--border)",
         paddingBottom: "max(env(safe-area-inset-bottom, 0px), 6px)",
+        transition: "all 0.3s ease-in-out",
       }}
     >
       <div
@@ -66,12 +69,12 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
             style={{
               position: "absolute",
               left: "50%",
-              bottom: 14,
+              bottom: 12,
               transform: "translateX(-50%)",
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              background: "var(--ember)",
+              width: 58,
+              height: 58,
+              borderRadius: 16,
+              background: "#B45309",
               border: "none",
               display: "flex",
               alignItems: "center",
@@ -80,8 +83,7 @@ export function AtlasFooterNav({ active, onNavigate, onCenterPress }: Props) {
               color: "#F5F1E8",
               boxShadow:
                 "0 0 0 4px var(--background)" +
-                ", 0 8px 24px -6px var(--ember-glow)" +
-                ", 0 0 18px -2px var(--ember-glow)",
+                ", 0 0 12px rgba(180, 83, 9, 0.3)",
               transition: "transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms ease",
             }}
             className="atlas-footer-center"
