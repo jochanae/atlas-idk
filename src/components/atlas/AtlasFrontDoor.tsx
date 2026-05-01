@@ -50,6 +50,8 @@ export interface RecentSession {
   title: string;
   mode: string | null;
   created_at: string;
+  /** Last actual chat message in this session — used for the living-thread line. */
+  last_message?: string | null;
 }
 
 type AtlasFrontDoorProps = {
