@@ -229,7 +229,39 @@ function SheetHeader({ onClose, count }: { onClose: () => void; count: number })
   );
 }
 
-function ProjectCard({ project, active, onSelect }: { project: Project; active: boolean; onSelect: () => void }) {
+function NewProjectCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group text-left rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(201,162,76,0.7)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+      style={{
+        background: "rgba(201,162,76,0.04)",
+        border: "1px dashed rgba(201,162,76,0.3)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        className="relative w-full flex items-center justify-center"
+        style={{ paddingTop: "62.5%" }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <Plus size={24} style={{ color: "rgba(201,162,76,0.5)" }} className="group-hover:scale-110 transition-transform" />
+          <span style={{ fontFamily: "'Geist Sans', system-ui, sans-serif", fontSize: 11, fontWeight: 500, color: "rgba(201,162,76,0.6)" }}>
+            New Project
+          </span>
+        </div>
+      </div>
+      <div className="px-3 py-2.5">
+        <span style={{ fontFamily: "'Geist Sans', system-ui, sans-serif", fontSize: 12, color: "rgba(232,228,221,0.4)" }}>
+          Start fresh
+        </span>
+      </div>
+    </button>
+  );
+}
+
+
   const [starred, setStarred] = useState(false);
   const statusColor = project.status === "published"
     ? "rgba(74,222,128,0.8)"
