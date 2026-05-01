@@ -185,6 +185,7 @@ function NavRail({
   activeSurface,
   onSurfaceChange,
   onOpenHistory,
+  onOpenGallery,
   parkedCount,
   ledgerCount,
   chatVisible,
@@ -195,6 +196,7 @@ function NavRail({
   activeSurface: SurfaceId;
   onSurfaceChange: (s: SurfaceId) => void;
   onOpenHistory?: () => void;
+  onOpenGallery?: () => void;
   parkedCount: number;
   ledgerCount: number;
   chatVisible: boolean;
