@@ -23,7 +23,7 @@ import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
 import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
-import { StageLivingData } from "@/components/atlas/StageLivingData";
+// StageLivingData removed — replaced with minimal empty state
 import { ProjectGallery } from "@/components/atlas/ProjectGallery";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
