@@ -807,25 +807,18 @@ export function AtlasFrontDoor({
             </div>
           )}
 
-          {/* Scroll indicator — three vertical dots between input zone and fold.
-              Top dot cognac/ember at 50% opacity, bottom two grey #E0E0E0. */}
+          {/* Scroll indicator — vertical dots, one per discovery section.
+              Clickable: smooth-scrolls to its section. Active section dot
+              uses cognac/ember accent at full opacity; others grey. */}
           {!active && belowFold && (
-            <div
-              aria-hidden
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6,
-                marginTop: 32,
-                marginBottom: 8,
-                opacity: 0.95,
-              }}
-            >
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent-gold)", opacity: 0.5 }} />
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E0E0E0" }} />
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E0E0E0" }} />
-            </div>
+            <ScrollDots
+              sections={[
+                { id: "discovery-moment", label: "A Moment for You" },
+                { id: "discovery-momentum", label: "Your Momentum" },
+                { id: "discovery-loops", label: "Open Loops" },
+                { id: "discovery-checkin", label: "Check In" },
+              ]}
+            />
           )}
         </div>
 
