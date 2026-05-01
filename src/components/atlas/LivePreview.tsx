@@ -341,9 +341,11 @@ export function LivePreview({ code, filename, loading, error, onElementSelect }:
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "var(--background)",
-      }}
-    >
+      background: "#050505",
+      border: "1px solid rgba(201,162,76,0.4)",
+      borderRadius: 8,
+    }}
+  >
       {/* Filename bar + bidirectional link indicator */}
       <div
         style={{
@@ -394,8 +396,8 @@ export function LivePreview({ code, filename, loading, error, onElementSelect }:
           flex: 1,
           border: "none",
           width: "100%",
-          background: "#1a1814",
-          borderRadius: "0 0 8px 8px",
+          background: "#050505",
+          borderRadius: "0 0 7px 7px",
         }}
         title="Component Preview"
       />
