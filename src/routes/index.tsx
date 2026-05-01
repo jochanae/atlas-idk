@@ -23,7 +23,7 @@ import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
 import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
-import { StageLivingData } from "@/components/atlas/StageLivingData";
+// StageLivingData removed — replaced with minimal empty state
 import { ProjectGallery } from "@/components/atlas/ProjectGallery";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
@@ -2151,12 +2151,18 @@ function WorkspacePage() {
                 error={codegenError}
               />
             ) : (
-              <StageLivingData
-                filesCreated={generatedFiles.length}
-                deployStatus={codegenLoading ? "building" : generatedCode ? "deployed" : "idle"}
-                healthScore={100}
-                recentFiles={generatedFiles.slice(-3).reverse().map((f) => ({ name: f.filename, updatedAt: "just now" }))}
-              />
+              <div className="h-full flex items-center justify-center text-center px-6">
+                <div>
+                  <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-muted/30 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1} className="text-muted-foreground/30">
+                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                      <path d="M8 21h8M12 17v4" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-muted-foreground/50">No preview yet</p>
+                  <p className="text-xs text-muted-foreground/30 mt-1">Type /build to generate</p>
+                </div>
+              </div>
             )
           }
           commandCenter={mainShell}
