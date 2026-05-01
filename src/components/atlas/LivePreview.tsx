@@ -147,18 +147,33 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
  */
 function prepareForSandbox(code: string): string {
   let prepared = code
+    // Strip all imports
     .replace(/^import\s+.*?(?:from\s+['"].*?['"]|['"].*?['"])\s*;?\s*$/gm, "")
+    // Strip multi-line interfaces and types (including nested braces)
+    .replace(/^(?:export\s+)?(?:interface|type)\s+\w+[^{]*\{[^}]*\}\s*;?\s*$/gm, "")
+    // Rename default export function
     .replace(
       /export\s+default\s+function\s+(\w+)/g,
       "function DefaultComponent",
     )
     .replace(/export\s+default\s+/g, "var DefaultComponent = ")
     .replace(/export\s+(const|let|var|function|type|interface)\s/g, "$1 ")
+    // Strip remaining type annotations that would fail at runtime
     .replace(/:\s*React\.FC(?:<[^>]*>)?/g, "")
-    .replace(/:\s*JSX\.Element/g, "")
-    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, "");
+    .replace(/:\s*JSX\.Element/g, "");
 
-  return prepared;
+  // Provide stub for lucide-react icons (common in generated code)
+  const iconStub = `
+    var _iconFallback = function(props) {
+      return React.createElement('span', {style:{display:'inline-block',width:16,height:16}}, '●');
+    };
+    var Check = _iconFallback, X = _iconFallback, Star = _iconFallback,
+        ChevronRight = _iconFallback, ArrowRight = _iconFallback, Heart = _iconFallback,
+        Shield = _iconFallback, Zap = _iconFallback, Crown = _iconFallback,
+        Sparkles = _iconFallback, BadgeCheck = _iconFallback, Circle = _iconFallback;
+  `;
+
+  return iconStub + "\n" + prepared;
 }
 
 export function LivePreview({ code, filename, loading, error, onElementSelect }: Props) {
