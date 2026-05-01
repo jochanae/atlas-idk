@@ -159,6 +159,10 @@ function ArchitecturalLedger() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [verbFilter, setVerbFilter] = useState<VerbFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   const load = async () => {
     if (!user) return;
