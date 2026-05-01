@@ -2272,7 +2272,7 @@ function WorkspacePage() {
                 <button
                   key={m.id}
                   onClick={() => { setActiveMode(m.id); haptic("light"); }}
-                  className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-wider border transition-colors ${
+                  className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-normal uppercase tracking-wider border transition-colors ${
                     isOn
                       ? "border-accent text-accent-foreground bg-accent/10"
                       : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/30"
@@ -3688,7 +3688,7 @@ function ChatPanel({
         {sending && (
           <div className="flex w-fit items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2">
             <span className="h-2 w-2 rounded-full bg-[color:var(--ember)] animate-pulse" aria-hidden />
-            <span className="text-[12px] font-mono text-muted-foreground">Atlas thinking...</span>
+            <span className="text-[12px] font-normal text-muted-foreground">Atlas thinking...</span>
             <button
               type="button"
               onClick={onStop}
