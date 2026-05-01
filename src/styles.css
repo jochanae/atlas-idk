@@ -785,20 +785,21 @@
 .theme-cognac nav[aria-label="Primary"] button span {
   color: inherit !important;
 }
-/* Raised center button — glassmorphism squircle (light themes) */
+/* Raised center button — soft ember under glass (light themes).
+   Glow opacities reduced ~20% so it reads as a quiet ember, not neon. */
 .theme-parchment .atlas-footer-center,
 .theme-executive .atlas-footer-center,
 .theme-cognac .atlas-footer-center {
-  background: rgba(139, 69, 19, 0.18) !important;
+  background: rgba(139, 69, 19, 0.14) !important;
   backdrop-filter: blur(14px) saturate(140%) !important;
   -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
-  border: 1px solid rgba(139, 69, 19, 0.28) !important;
+  border: 1px solid rgba(139, 69, 19, 0.22) !important;
   border-radius: 14px !important;
   box-shadow:
     0 0 0 4px #FFFFFF,
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 8px 24px -6px rgba(139, 69, 19, 0.30),
-    0 0 18px -2px rgba(139, 69, 19, 0.18) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 6px 20px -8px rgba(139, 69, 19, 0.22),
+    0 0 14px -4px rgba(139, 69, 19, 0.12) !important;
 }
 .theme-parchment .atlas-footer-center svg,
 .theme-executive .atlas-footer-center svg,
@@ -806,18 +807,18 @@
   stroke: #8B4513 !important;
 }
 
-/* Obsidian (dark) — glassmorphism amber-tinted squircle */
+/* Obsidian (dark) — ember under glass, glow softened ~20% */
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center,
 .theme-obsidian .atlas-footer-center {
-  background: rgba(146, 64, 14, 0.22) !important;
+  background: rgba(146, 64, 14, 0.17) !important;
   backdrop-filter: blur(14px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
-  border: 1px solid rgba(245, 241, 232, 0.10) !important;
+  border: 1px solid rgba(245, 241, 232, 0.08) !important;
   border-radius: 14px !important;
   box-shadow:
     0 0 0 4px #0C0A09,
-    inset 0 1px 0 rgba(245, 241, 232, 0.08),
-    0 0 14px rgba(146, 64, 14, 0.30) !important;
+    inset 0 1px 0 rgba(245, 241, 232, 0.06),
+    0 0 11px rgba(146, 64, 14, 0.22) !important;
 }
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center svg,
 .theme-obsidian .atlas-footer-center svg {
