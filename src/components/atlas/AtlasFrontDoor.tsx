@@ -96,6 +96,9 @@ type AtlasFrontDoorProps = {
   adaptivePlaceholder?: string | null;
   /** Mobile surface bar rendered below header in active mode */
   mobileSurfaceBar?: ReactNode;
+  /** Voice input controls */
+  voiceListening?: boolean;
+  onVoiceToggle?: () => void;
   children?: ReactNode;
 };
 
