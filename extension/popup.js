@@ -1,4 +1,4 @@
-// Atlas IDE Chrome Extension — Popup Logic v1.1
+// Atlas IDE Chrome Extension — Popup Logic v1.2
 
 const ATLAS_URL_KEY = "atlas-ide-url";
 const CAPTURES_KEY = "atlas-captures";
@@ -200,6 +200,38 @@ function esc(str) {
   d.textContent = str || "";
   return d.innerHTML;
 }
+
+// ── Diff tab ──
+document.getElementById("run-diff").addEventListener("click", async () => {
+  const oldCode = document.getElementById("diff-old").value;
+  const newCode = document.getElementById("diff-new").value;
+  if (!oldCode && !newCode) { showToast("Paste code in both panes"); return; }
+
+  // Simple inline diff
+  const oldLines = oldCode.split("\n");
+  const newLines = newCode.split("\n");
+  const result = document.getElementById("diff-result");
+  let html = "";
+  const max = Math.max(oldLines.length, newLines.length);
+  for (let i = 0; i < max; i++) {
+    const ol = oldLines[i] ?? "";
+    const nl = newLines[i] ?? "";
+    if (ol === nl) {
+      html += `<div style="opacity:0.4;padding:0 4px;">&nbsp;${esc(ol)}</div>`;
+    } else {
+      if (ol) html += `<div style="color:rgba(248,113,113,0.8);background:rgba(248,113,113,0.06);padding:0 4px;">-${esc(ol)}</div>`;
+      if (nl) html += `<div style="color:rgba(74,222,128,0.8);background:rgba(74,222,128,0.06);padding:0 4px;">+${esc(nl)}</div>`;
+    }
+  }
+  result.innerHTML = html || '<div style="opacity:0.3;">No differences</div>';
+
+  // Also open in Atlas with diff params
+  const url = await getAtlasUrl();
+  const params = new URLSearchParams({ diffOld: oldCode.slice(0, 5000), diffNew: newCode.slice(0, 5000) });
+  // Store for later retrieval
+  chrome.storage.local.set({ "atlas-pending-diff": { old: oldCode, new: newCode, timestamp: Date.now() } });
+  showToast("Diff computed — click to open in Atlas");
+});
 
 // Load projects on init
 loadProjects();
