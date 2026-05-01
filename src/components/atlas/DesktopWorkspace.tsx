@@ -97,13 +97,112 @@ export function DesktopWorkspace({
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("files");
   const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
   const [canvasExpanded, setCanvasExpanded] = useState(false);
-  // Render only the active branch — prevents double-mounting heavy components
-  // (chat, realtime subscriptions, etc.).
+
+  // ── Drag-and-drop panel reordering ──
+  type PanelId = "chat" | "canvas" | "inspector";
+  const [panelOrder, setPanelOrder] = useState<PanelId[]>(() => {
+    if (typeof window === "undefined") return ["chat", "canvas", "inspector"];
+    try {
+      const saved = localStorage.getItem("atlas-panel-order");
+      if (saved) {
+        const parsed = JSON.parse(saved) as PanelId[];
+        if (Array.isArray(parsed) && parsed.length === 3) return parsed;
+      }
+    } catch {}
+    return ["chat", "canvas", "inspector"];
+  });
+  const dragSourceRef = useRef<PanelId | null>(null);
+  const [dragOverPanel, setDragOverPanel] = useState<PanelId | null>(null);
+
+  const handlePanelDragStart = useCallback((panelId: PanelId) => {
+    dragSourceRef.current = panelId;
+  }, []);
+
+  const handlePanelDragOver = useCallback((e: React.DragEvent, panelId: PanelId) => {
+    e.preventDefault();
+    if (dragSourceRef.current && dragSourceRef.current !== panelId) {
+      setDragOverPanel(panelId);
+    }
+  }, []);
+
+  const handlePanelDrop = useCallback((panelId: PanelId) => {
+    const source = dragSourceRef.current;
+    if (!source || source === panelId) {
+      setDragOverPanel(null);
+      dragSourceRef.current = null;
+      return;
+    }
+    setPanelOrder((prev) => {
+      const next = [...prev];
+      const sourceIdx = next.indexOf(source);
+      const targetIdx = next.indexOf(panelId);
+      if (sourceIdx === -1 || targetIdx === -1) return prev;
+      next.splice(sourceIdx, 1);
+      next.splice(targetIdx, 0, source);
+      try { localStorage.setItem("atlas-panel-order", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setDragOverPanel(null);
+    dragSourceRef.current = null;
+  }, []);
+
+  const handlePanelDragEnd = useCallback(() => {
+    setDragOverPanel(null);
+    dragSourceRef.current = null;
+  }, []);
+
   if (!isDesktop) {
     return <>{renderMobile()}</>;
   }
 
   const inspectorPanes = renderInspectorPanes();
+
+  // Build panel map
+  const panelContent: Record<PanelId, { visible: boolean; node: ReactNode; flex: string; width?: number }> = {
+    chat: {
+      visible: Boolean(renderChatPane && chatVisible && !canvasExpanded),
+      flex: "none",
+      width: 320,
+      node: renderChatPane ? (
+        <div className="h-full overflow-hidden flex flex-col">
+          <PaneHeader title="Atlas" draggable />
+          <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
+        </div>
+      ) : null,
+    },
+    canvas: {
+      visible: true,
+      flex: "1 1 0%",
+      node: (
+        <div className="h-full overflow-hidden relative">
+          <button
+            type="button"
+            onClick={() => setCanvasExpanded((v) => !v)}
+            className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+            title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+            aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+          >
+            {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
+          {renderCanvas()}
+        </div>
+      ),
+    },
+    inspector: {
+      visible: !canvasExpanded,
+      flex: "none",
+      width: inspectorCollapsed ? 40 : 280,
+      node: (
+        <Inspector
+          collapsed={inspectorCollapsed}
+          onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
+          activeTab={inspectorTab}
+          onTabChange={setInspectorTab}
+          panes={inspectorPanes}
+        />
+      ),
+    },
+  };
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground" style={{ minHeight: "fit-content" }}>
@@ -131,47 +230,38 @@ export function DesktopWorkspace({
           />
         </div>
 
-        {/* ── Content area (flex layout) ────────────────────────────── */}
+        {/* ── Content area — drag-reorderable panels ────────────── */}
         <div className="flex-1 min-w-0 flex h-full">
-          {/* ── Chat sidecar (optional) ────────────────── */}
-          {renderChatPane && chatVisible && !canvasExpanded && (
-            <div className="flex-shrink-0 bg-background border-r border-border/50" style={{ width: 320 }}>
-              <div className="h-full overflow-hidden flex flex-col">
-                <PaneHeader title="Atlas" />
-                <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
+          {panelOrder.map((panelId, idx) => {
+            const panel = panelContent[panelId];
+            if (!panel.visible) return null;
+            const isDropTarget = dragOverPanel === panelId;
+            return (
+              <div
+                key={panelId}
+                draggable
+                onDragStart={() => handlePanelDragStart(panelId)}
+                onDragOver={(e) => handlePanelDragOver(e, panelId)}
+                onDrop={() => handlePanelDrop(panelId)}
+                onDragEnd={handlePanelDragEnd}
+                onDragLeave={() => setDragOverPanel(null)}
+                className={`h-full overflow-hidden transition-all duration-150 ${
+                  idx > 0 ? "border-l border-border/50" : ""
+                } ${panelId === "canvas" ? "min-w-0" : "flex-shrink-0"} ${
+                  panelId === "inspector" ? "bg-card/30" : "bg-background"
+                }`}
+                style={{
+                  flex: panel.flex,
+                  width: panel.width,
+                  outline: isDropTarget ? "2px solid var(--accent-gold)" : undefined,
+                  outlineOffset: -2,
+                  opacity: dragSourceRef.current === panelId ? 0.5 : 1,
+                }}
+              >
+                {panel.node}
               </div>
-            </div>
-          )}
-
-          {/* ── Main canvas ─────────────────────────────── */}
-          <div className="flex-1 min-w-0 h-full overflow-hidden relative">
-            <button
-              type="button"
-              onClick={() => setCanvasExpanded((v) => !v)}
-              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-              title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
-              aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
-            >
-              {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            </button>
-            {renderCanvas()}
-          </div>
-
-          {/* ── Right inspector ──────────────────────────── */}
-          {!canvasExpanded && (
-            <div
-              className="flex-shrink-0 border-l border-border/50 bg-card/30 transition-[width] duration-200"
-              style={{ width: inspectorCollapsed ? 40 : 280 }}
-            >
-              <Inspector
-                collapsed={inspectorCollapsed}
-                onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
-                activeTab={inspectorTab}
-                onTabChange={setInspectorTab}
-                panes={inspectorPanes}
-              />
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
 
