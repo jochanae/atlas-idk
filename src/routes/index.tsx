@@ -531,9 +531,21 @@ function WorkspacePage() {
     try { return localStorage.getItem("atlas-auto-run") === "true"; } catch { return false; }
   });
   useEffect(() => { try { localStorage.setItem("atlas-auto-run", String(autoRunEnabled)); } catch {} }, [autoRunEnabled]);
-  type CanvasViewport = "desktop" | "tablet" | "mobile";
-  const [canvasViewport, setCanvasViewport] = useState<CanvasViewport>("desktop");
-  const CANVAS_WIDTHS: Record<CanvasViewport, number | null> = { desktop: null, tablet: 768, mobile: 375 };
+  // ── Multi-viewport presets ──
+  type ViewportPreset = { id: string; label: string; w: number | null; h?: number | null; icon: ReactNode };
+  const VIEWPORT_PRESETS: ViewportPreset[] = [
+    { id: "desktop", label: "Desktop", w: null, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg> },
+    { id: "laptop", label: "Laptop 1440", w: 1440, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M1 13h14"/></svg> },
+    { id: "ipad-pro", label: "iPad Pro", w: 1024, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="2.5" y="1" width="11" height="14" rx="1.5"/><path d="M7 13.5h2"/></svg> },
+    { id: "ipad", label: "iPad", w: 768, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="3" y="1" width="10" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
+    { id: "iphone-15", label: "iPhone 15 Pro", w: 393, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
+    { id: "iphone-se", label: "iPhone SE", w: 375, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M6.5 13h3"/></svg> },
+    { id: "galaxy", label: "Galaxy S24", w: 360, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="0.5" width="8" height="15" rx="2"/><path d="M7 13.5h2"/></svg> },
+    { id: "pixel", label: "Pixel 8", w: 412, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><circle cx="8" cy="13" r="0.8"/></svg> },
+  ];
+  const [canvasViewportId, setCanvasViewportId] = useState("desktop");
+  const activeViewport = VIEWPORT_PRESETS.find(v => v.id === canvasViewportId) ?? VIEWPORT_PRESETS[0];
+  const [viewportDropdownOpen, setViewportDropdownOpen] = useState(false);
 
   // Secrets manager state
   type SecretEntry = { name: string; isSet: boolean };
@@ -571,12 +583,39 @@ function WorkspacePage() {
   useEffect(() => { try { localStorage.setItem("atlas-editor-tabs", JSON.stringify(editorOpenTabs)); } catch {} }, [editorOpenTabs]);
   useEffect(() => { try { localStorage.setItem("atlas-editor-active-file", editorActiveFile ?? ""); } catch {} }, [editorActiveFile]);
 
-  // Build secrets sync state
-  const [buildSecrets, setBuildSecrets] = useState<Array<{ name: string; value: string }>>(() => {
-    if (typeof window === "undefined") return [];
-    try { const v = localStorage.getItem("atlas-build-secrets"); return v ? JSON.parse(v) : []; } catch { return []; }
+  // ── Build secrets with environment profiles ──
+  type EnvProfile = "development" | "staging" | "production";
+  const ENV_PROFILES: { id: EnvProfile; label: string; color: string }[] = [
+    { id: "development", label: "Dev", color: "text-emerald-400" },
+    { id: "staging", label: "Staging", color: "text-amber-400" },
+    { id: "production", label: "Prod", color: "text-red-400" },
+  ];
+  const [activeEnvProfile, setActiveEnvProfile] = useState<EnvProfile>(() => {
+    if (typeof window === "undefined") return "development";
+    return (localStorage.getItem("atlas-env-profile") as EnvProfile) || "development";
   });
-  useEffect(() => { try { localStorage.setItem("atlas-build-secrets", JSON.stringify(buildSecrets)); } catch {} }, [buildSecrets]);
+  useEffect(() => { try { localStorage.setItem("atlas-env-profile", activeEnvProfile); } catch {} }, [activeEnvProfile]);
+
+  // Each profile has its own secrets array
+  const [buildSecretsMap, setBuildSecretsMap] = useState<Record<EnvProfile, Array<{ name: string; value: string }>>>(() => {
+    if (typeof window === "undefined") return { development: [], staging: [], production: [] };
+    try {
+      const v = localStorage.getItem("atlas-build-secrets-map");
+      if (v) return JSON.parse(v);
+      // Migrate old flat buildSecrets
+      const old = localStorage.getItem("atlas-build-secrets");
+      if (old) {
+        const parsed = JSON.parse(old);
+        return { development: parsed, staging: [...parsed], production: [...parsed] };
+      }
+    } catch {}
+    return { development: [], staging: [], production: [] };
+  });
+  useEffect(() => { try { localStorage.setItem("atlas-build-secrets-map", JSON.stringify(buildSecretsMap)); } catch {} }, [buildSecretsMap]);
+  const buildSecrets = buildSecretsMap[activeEnvProfile];
+  const setBuildSecrets = useCallback((updater: (prev: Array<{ name: string; value: string }>) => Array<{ name: string; value: string }>) => {
+    setBuildSecretsMap(prev => ({ ...prev, [activeEnvProfile]: updater(prev[activeEnvProfile]) }));
+  }, [activeEnvProfile]);
 
   // Diff accept/reject via keyboard when diff is active
   useEffect(() => {
@@ -2244,24 +2283,40 @@ function WorkspacePage() {
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                 {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
               </span>
-              {/* Responsive view switcher */}
-              <div className="flex items-center gap-0.5 border border-border/30 rounded-md p-0.5">
-                {([
-                  { id: "desktop" as const, w: 1280, label: "Desktop", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg> },
-                  { id: "tablet" as const, w: 768, label: "Tablet", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="3" y="1" width="10" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
-                  { id: "mobile" as const, w: 375, label: "Mobile", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
-                ] as const).map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setCanvasViewport(v.id)}
-                    className={`p-1 rounded transition-colors ${canvasViewport === v.id ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
-                    title={`${v.label} (${v.w}px)`}
-                    aria-label={v.label}
-                  >
-                    {v.icon}
-                  </button>
-                ))}
+              {/* Multi-viewport preset dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setViewportDropdownOpen(v => !v)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/30 text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                  title="Change viewport"
+                >
+                  {activeViewport.icon}
+                  <span>{activeViewport.label}</span>
+                  {activeViewport.w && <span className="opacity-40">{activeViewport.w}px</span>}
+                  <svg viewBox="0 0 10 6" width={8} height={5} fill="currentColor" className="opacity-40"><path d="M0 0l5 5 5-5z"/></svg>
+                </button>
+                {viewportDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setViewportDropdownOpen(false)} />
+                    <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[180px]">
+                      {VIEWPORT_PRESETS.map(vp => (
+                        <button
+                          key={vp.id}
+                          type="button"
+                          onClick={() => { setCanvasViewportId(vp.id); setViewportDropdownOpen(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono transition-colors ${
+                            canvasViewportId === vp.id ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                          }`}
+                        >
+                          {vp.icon}
+                          <span className="flex-1 text-left">{vp.label}</span>
+                          {vp.w && <span className="opacity-40">{vp.w}px</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -2324,9 +2379,9 @@ function WorkspacePage() {
             <div
               className="h-full transition-all duration-300"
               style={{
-                width: CANVAS_WIDTHS[canvasViewport] ? `${CANVAS_WIDTHS[canvasViewport]}px` : "100%",
+                width: activeViewport.w ? `${activeViewport.w}px` : "100%",
                 maxWidth: "100%",
-                boxShadow: canvasViewport !== "desktop" ? "0 0 0 1px var(--border)" : undefined,
+                boxShadow: activeViewport.w ? "0 0 0 1px var(--border)" : undefined,
               }}
             >
             {codegenLoading ? (
@@ -2510,11 +2565,30 @@ function WorkspacePage() {
                 setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
               }}
             />
-            {/* Build Secrets Sync */}
+            {/* Build Secrets with Environment Profiles */}
             <div className="border-t border-border/40 px-3 py-2">
               <p className="text-[8px] font-mono text-muted-foreground/40 uppercase tracking-widest mb-1.5">Build Secrets</p>
+              {/* Environment profile switcher */}
+              <div className="flex items-center gap-1 mb-2">
+                {ENV_PROFILES.map(ep => (
+                  <button
+                    key={ep.id}
+                    type="button"
+                    onClick={() => setActiveEnvProfile(ep.id)}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                      activeEnvProfile === ep.id
+                        ? `${ep.color} bg-current/10 border border-current/20`
+                        : "text-muted-foreground hover:text-foreground border border-transparent"
+                    }`}
+                    style={activeEnvProfile === ep.id ? { backgroundColor: "color-mix(in oklab, currentColor 10%, transparent)" } : undefined}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${ep.color} ${activeEnvProfile === ep.id ? "opacity-100" : "opacity-30"}`} style={{ backgroundColor: "currentColor" }} />
+                    {ep.label}
+                  </button>
+                ))}
+              </div>
               <p className="text-[9px] font-mono text-muted-foreground/50 mb-2 leading-relaxed">
-                Build secrets are injected as env vars during install. Configure in Workspace Settings → Build Secrets.
+                Secrets for <strong className="text-foreground/60">{activeEnvProfile}</strong> — injected as env vars during build.
               </p>
               {buildSecrets.map((s, i) => (
                 <div key={i} className="flex items-center gap-1.5 mb-1">

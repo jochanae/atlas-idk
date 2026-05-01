@@ -197,7 +197,7 @@
 
   <!-- Diff Tab -->
   <div class="tab-content" id="tab-diff">
-    <p style="font-size:10px;opacity:0.4;margin-bottom:8px;">Compare two code snippets side by side.</p>
+    <p style="font-size:10px;opacity:0.4;margin-bottom:8px;">Compare two code snippets. Accept or reject changes.</p>
     <div style="display:flex;gap:6px;margin-bottom:8px;">
       <div style="flex:1;">
         <label style="font-size:9px;text-transform:uppercase;letter-spacing:1px;opacity:0.3;">Before</label>
@@ -208,11 +208,28 @@
         <textarea id="diff-new" rows="6" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#e4e4e7;font-family:monospace;font-size:10px;padding:6px;resize:vertical;margin-top:4px;" placeholder="Paste new code…"></textarea>
       </div>
     </div>
-    <button class="btn" id="run-diff">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M8 3v10"/></svg>
-      <span class="label">View Diff in Atlas</span>
-    </button>
-    <div id="diff-result" style="margin-top:8px;font-family:monospace;font-size:10px;max-height:200px;overflow:auto;"></div>
+    <div style="display:flex;gap:4px;margin-bottom:8px;">
+      <button class="btn" id="run-diff" style="flex:1;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M8 3v10"/></svg>
+        <span class="label">Compare</span>
+      </button>
+      <button class="btn" id="send-diff-atlas" style="flex:1;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="11" rx="2"/><path d="M5 15h6"/></svg>
+        <span class="label">Open in Atlas</span>
+      </button>
+    </div>
+    <div id="diff-result" style="margin-top:4px;font-family:monospace;font-size:10px;max-height:200px;overflow:auto;"></div>
+    <!-- Accept / Reject buttons — shown after diff runs -->
+    <div id="diff-actions" style="display:none;margin-top:8px;gap:6px;">
+      <button class="btn" id="diff-accept" style="flex:1;border-color:rgba(74,222,128,0.2);color:rgba(74,222,128,0.8);">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l4 4 6-8"/></svg>
+        <span class="label">Accept (⌘Y)</span>
+      </button>
+      <button class="btn" id="diff-reject" style="flex:1;border-color:rgba(248,113,113,0.2);color:rgba(248,113,113,0.8);">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        <span class="label">Reject (⌘U)</span>
+      </button>
+    </div>
   </div>
 
   <!-- Projects Tab -->
