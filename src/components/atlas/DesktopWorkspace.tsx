@@ -123,9 +123,9 @@ export function DesktopWorkspace({
 
         {/* ── Resizable content area ────────────────────────────── */}
         <div className="flex-1 min-w-0">
-          <PanelGroup orientation="horizontal" id="atlas-workspace-v4" className="h-full w-full flex">
+          <PanelGroup orientation="horizontal" id={canvasExpanded ? "atlas-workspace-v4-exp" : "atlas-workspace-v4"} className="h-full w-full flex">
             {/* ── Chat sidecar (optional) ────────────────── */}
-            {renderChatPane && chatVisible && (
+            {renderChatPane && chatVisible && !canvasExpanded && (
               <>
                 <Panel defaultSize={28} minSize={18} maxSize={45} className="bg-background">
                   <div className="h-full overflow-hidden flex flex-col">
@@ -138,27 +138,42 @@ export function DesktopWorkspace({
             )}
 
             {/* ── Main canvas ─────────────────────────────── */}
-            <Panel defaultSize={inspectorCollapsed ? 75 : 55} minSize={30}>
-              <div className="h-full overflow-hidden">{renderCanvas()}</div>
+            <Panel defaultSize={canvasExpanded ? 100 : (inspectorCollapsed ? 75 : 55)} minSize={30}>
+              <div className="h-full overflow-hidden relative">
+                {/* Expand / collapse toggle */}
+                <button
+                  type="button"
+                  onClick={() => setCanvasExpanded((v) => !v)}
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+                  title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+                  aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+                >
+                  {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+                {renderCanvas()}
+              </div>
             </Panel>
 
-            <ResizeHandle />
-
-            {/* ── Right inspector ──────────────────────────── */}
-            <Panel
-              defaultSize={inspectorCollapsed ? 5 : 25}
-              minSize={5}
-              maxSize={40}
-              className="border-l border-border/50 bg-card/30"
-            >
-              <Inspector
-                collapsed={inspectorCollapsed}
-                onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
-                activeTab={inspectorTab}
-                onTabChange={setInspectorTab}
-                panes={inspectorPanes}
-              />
-            </Panel>
+            {!canvasExpanded && (
+              <>
+                <ResizeHandle />
+                {/* ── Right inspector ──────────────────────────── */}
+                <Panel
+                  defaultSize={inspectorCollapsed ? 5 : 25}
+                  minSize={5}
+                  maxSize={40}
+                  className="border-l border-border/50 bg-card/30"
+                >
+                  <Inspector
+                    collapsed={inspectorCollapsed}
+                    onToggleCollapse={() => setInspectorCollapsed((v) => !v)}
+                    activeTab={inspectorTab}
+                    onTabChange={setInspectorTab}
+                    panes={inspectorPanes}
+                  />
+                </Panel>
+              </>
+            )}
           </PanelGroup>
         </div>
       </div>
