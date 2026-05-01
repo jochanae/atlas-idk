@@ -162,6 +162,15 @@ export function FileTreePanel({ files, onFileSelect }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const tree = useMemo(() => buildTree(files), [files]);
 
+  // Auto-restore persisted selection when files load
+  useEffect(() => {
+    if (selectedPath && files.length > 0) {
+      const match = files.find((f) => f.filename === selectedPath);
+      if (match) onFileSelect(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files.length > 0]);
+
   const matchingPaths = useMemo(() => {
     if (!searchQuery.trim()) return null;
     const q = searchQuery.toLowerCase();
