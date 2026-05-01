@@ -800,14 +800,14 @@
   stroke: #F5F1E8 !important;
 }
 
-/* Obsidian (dark) — muted amber/gold ember squircle, low-light feel */
+/* Obsidian (dark) — deep bronze amber squircle, muted low-light feel */
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center,
 .theme-obsidian .atlas-footer-center {
-  background: #B45309 !important;
+  background: #92400E !important;
   border-radius: 14px !important;
   box-shadow:
     0 0 0 4px #0C0A09,
-    0 0 15px rgba(180, 83, 9, 0.4) !important;
+    0 0 12px rgba(146, 64, 14, 0.35) !important;
 }
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center svg,
 .theme-obsidian .atlas-footer-center svg {
