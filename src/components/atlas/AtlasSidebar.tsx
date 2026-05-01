@@ -385,7 +385,7 @@ export function AtlasSidebar({
                     </div>
                     <div
                       style={{
-                        padding: "4px 6px",
+                        padding: "6px 8px",
                         fontSize: 10,
                         fontFamily: "var(--font-mono)",
                         color: "var(--foreground)",
