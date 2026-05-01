@@ -62,6 +62,19 @@ export function AtlasSidebar({
 }) {
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [recentsExpanded, setRecentsExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Filter projects & sessions by search query
+  const q = searchQuery.toLowerCase().trim();
+  const filteredProjects = useMemo(
+    () => (projects ?? []).filter((p) => !q || p.name.toLowerCase().includes(q)),
+    [projects, q],
+  );
+  const filteredRecents = useMemo(
+    () => recents.filter((s) => !q || (s.title || "").toLowerCase().includes(q)),
+    [recents, q],
+  );
 
   // Lock body scroll while open
   useEffect(() => {
