@@ -318,12 +318,32 @@ Deno.serve(async (req) => {
     // Compose final system prompt: guarded decisions + mode directive
     const finalSystemPrompt = `${guardedSystemPrompt}\n\n${whisperPrefix}`;
 
+    // Build the user turn — append parsed text from attachments and add image
+    // blocks for any uploaded images so Claude can actually see them.
+    const userTextContent = attachmentContext
+      ? `${message}${attachmentContext}`
+      : message;
+
+    type ContentBlock =
+      | { type: "text"; text: string }
+      | { type: "image"; source: { type: "url"; url: string } };
+
+    const userContent: ContentBlock[] = [{ type: "text", text: userTextContent }];
+    for (const img of imageAttachments) {
+      if (img.imageUrl) {
+        userContent.push({ type: "image", source: { type: "url", url: img.imageUrl } });
+      }
+    }
+
     const messages = [
       ...(history ?? []).map((m: { role: string; content: string }) => ({
         role: m.role,
         content: m.content,
       })),
-      { role: "user", content: message },
+      {
+        role: "user",
+        content: imageAttachments.length > 0 ? userContent : userTextContent,
+      },
     ];
 
     // Loop on tool use until Claude stops.
