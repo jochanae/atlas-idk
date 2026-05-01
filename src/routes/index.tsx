@@ -523,6 +523,11 @@ function WorkspacePage() {
     setAdaptivePlaceholder(`Restored "${snapshot.name}". What's next?`);
     toast.success(`Restored: ${snapshot.name}`);
   }, [messages]);
+  const [autoRunEnabled, setAutoRunEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return localStorage.getItem("atlas-auto-run") === "true"; } catch { return false; }
+  });
+  useEffect(() => { try { localStorage.setItem("atlas-auto-run", String(autoRunEnabled)); } catch {} }, [autoRunEnabled]);
 
 
   // Track whether the active project already has a Compass (used by thinking prompts)
@@ -2015,6 +2020,17 @@ function WorkspacePage() {
       onOpenGallery={() => setGalleryOpen(true)}
       parkedCount={parkedItems.length}
       ledgerCount={ledgerCount}
+      buildStatus={codegenLoading ? "building" : codegenError ? "error" : generatedCode ? "success" : "idle"}
+      autoRun={autoRunEnabled}
+      onAutoRunChange={setAutoRunEnabled}
+      onRun={() => {
+        if (generatedCode) {
+          const code = generatedCode;
+          setGeneratedCode(null);
+          requestAnimationFrame(() => setGeneratedCode(code));
+        }
+      }}
+      onBuild={() => { if (!sending && session) send("/build"); }}
       renderMobile={() => (
         <DoubleVisionLayout
           stage={

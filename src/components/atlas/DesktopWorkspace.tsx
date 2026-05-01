@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, type ReactNode } from "react";
-import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from "react-resizable-panels";
+import { useState, useCallback, useRef, useEffect, type ReactNode } from "react";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import {
   MessageSquare,
@@ -18,6 +17,10 @@ import {
   Terminal,
   Files,
   Settings,
+  Play,
+  Hammer,
+  RotateCcw,
+  Keyboard,
 } from "lucide-react";
 
 /**
@@ -30,35 +33,32 @@ import {
  *   4. Right inspector — tabbed: GitHub • Code/Preview • Recommendations
  *
  * On <1024px, render `mobileFallback` (the existing single-column shell).
- *
- * Pane sizes persist to localStorage via `autoSaveId`.
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
 export type InspectorTabId = "github" | "code" | "recs" | "files" | "console" | "settings";
 
-export interface DesktopWorkspaceProps {
-  // Mobile fallback — render-prop, only mounted on <lg viewports
-  renderMobile: () => ReactNode;
+export type BuildStatus = "idle" | "building" | "success" | "error";
 
-  // Desktop pane contents — render-props, only mounted on lg+ viewports
+export interface DesktopWorkspaceProps {
+  renderMobile: () => ReactNode;
   renderCanvas: () => ReactNode;
   renderChatPane?: () => ReactNode;
   renderInspectorPanes: () => Partial<Record<InspectorTabId, ReactNode>>;
-
-  // Nav rail state
   activeSurface: SurfaceId;
   onSurfaceChange: (surface: SurfaceId) => void;
   onOpenHistory?: () => void;
   onOpenGallery?: () => void;
   parkedCount?: number;
   ledgerCount?: number;
-
-  // Top header (project breadcrumb, user menu) — rendered above all panes (desktop only)
   renderHeader?: () => ReactNode;
-
-  // Footer audit line (desktop only)
   renderFooter?: () => ReactNode;
+  // Build status & auto-run
+  buildStatus?: BuildStatus;
+  autoRun?: boolean;
+  onAutoRunChange?: (v: boolean) => void;
+  onRun?: () => void;
+  onBuild?: () => void;
 }
 
 const SURFACES: Array<{ id: SurfaceId; label: string; Icon: typeof MessageSquare }> = [
@@ -77,6 +77,18 @@ const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Gi
   { id: "settings", label: "Settings", Icon: Settings },
 ];
 
+// ── localStorage helpers ──
+function loadJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const s = localStorage.getItem(key);
+    return s ? JSON.parse(s) : fallback;
+  } catch { return fallback; }
+}
+function saveJson(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
 export function DesktopWorkspace({
   renderMobile,
   renderCanvas,
@@ -90,27 +102,31 @@ export function DesktopWorkspace({
   ledgerCount = 0,
   renderHeader,
   renderFooter,
+  buildStatus = "idle",
+  autoRun = false,
+  onAutoRunChange,
+  onRun,
+  onBuild,
 }: DesktopWorkspaceProps) {
   const isDesktop = useIsDesktop();
-  const [navCollapsed, setNavCollapsed] = useState(true);
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("files");
-  const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
+
+  // ── Persisted layout state ──
+  const [navCollapsed, setNavCollapsed] = useState(() => loadJson("atlas-nav-collapsed", true));
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(() => loadJson("atlas-inspector-collapsed", false));
+  const [inspectorTab, setInspectorTab] = useState<InspectorTabId>(() => loadJson("atlas-inspector-tab", "files"));
+  const [chatVisible, setChatVisible] = useState(() => loadJson("atlas-chat-visible", Boolean(renderChatPane)));
   const [canvasExpanded, setCanvasExpanded] = useState(false);
+  const [fullScreenTab, setFullScreenTab] = useState<InspectorTabId | null>(null);
+
+  // Persist on change
+  useEffect(() => { saveJson("atlas-nav-collapsed", navCollapsed); }, [navCollapsed]);
+  useEffect(() => { saveJson("atlas-inspector-collapsed", inspectorCollapsed); }, [inspectorCollapsed]);
+  useEffect(() => { saveJson("atlas-inspector-tab", inspectorTab); }, [inspectorTab]);
+  useEffect(() => { saveJson("atlas-chat-visible", chatVisible); }, [chatVisible]);
 
   // ── Drag-and-drop panel reordering ──
   type PanelId = "chat" | "canvas" | "inspector";
-  const [panelOrder, setPanelOrder] = useState<PanelId[]>(() => {
-    if (typeof window === "undefined") return ["chat", "canvas", "inspector"];
-    try {
-      const saved = localStorage.getItem("atlas-panel-order");
-      if (saved) {
-        const parsed = JSON.parse(saved) as PanelId[];
-        if (Array.isArray(parsed) && parsed.length === 3) return parsed;
-      }
-    } catch {}
-    return ["chat", "canvas", "inspector"];
-  });
+  const [panelOrder, setPanelOrder] = useState<PanelId[]>(() => loadJson("atlas-panel-order", ["chat", "canvas", "inspector"]));
   const dragSourceRef = useRef<PanelId | null>(null);
   const [dragOverPanel, setDragOverPanel] = useState<PanelId | null>(null);
 
@@ -139,7 +155,7 @@ export function DesktopWorkspace({
       if (sourceIdx === -1 || targetIdx === -1) return prev;
       next.splice(sourceIdx, 1);
       next.splice(targetIdx, 0, source);
-      try { localStorage.setItem("atlas-panel-order", JSON.stringify(next)); } catch {}
+      saveJson("atlas-panel-order", next);
       return next;
     });
     setDragOverPanel(null);
@@ -151,8 +167,73 @@ export function DesktopWorkspace({
     dragSourceRef.current = null;
   }, []);
 
+  // ── Keyboard shortcuts ──
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  useEffect(() => {
+    if (!isDesktop) return;
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      
+      switch (e.key) {
+        case "b":
+          if (e.shiftKey) { e.preventDefault(); onBuild?.(); }
+          else { e.preventDefault(); setChatVisible(v => !v); }
+          break;
+        case "`":
+          e.preventDefault();
+          setInspectorCollapsed(false);
+          setInspectorTab("console");
+          break;
+        case "\\":
+          e.preventDefault();
+          setCanvasExpanded(v => !v);
+          break;
+        case "e":
+          e.preventDefault();
+          setInspectorCollapsed(false);
+          setInspectorTab("files");
+          break;
+        case "Enter":
+          if (e.shiftKey) { e.preventDefault(); onRun?.(); }
+          break;
+        case "/":
+          e.preventDefault();
+          setShowShortcuts(v => !v);
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isDesktop, onBuild, onRun]);
+
   if (!isDesktop) {
     return <>{renderMobile()}</>;
+  }
+
+  // ── Full-screen inspector tab ──
+  if (fullScreenTab) {
+    const panes = renderInspectorPanes();
+    return (
+      <div className="flex flex-col h-screen w-full bg-background text-foreground">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-border/50">
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+            {INSPECTOR_TABS.find(t => t.id === fullScreenTab)?.label ?? fullScreenTab} — Full Screen
+          </span>
+          <button
+            type="button"
+            onClick={() => setFullScreenTab(null)}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+          >
+            <Minimize2 size={12} />
+            Exit
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-auto">
+          {panes[fullScreenTab] ?? <InspectorEmpty tab={fullScreenTab} />}
+        </div>
+      </div>
+    );
   }
 
   const inspectorPanes = renderInspectorPanes();
@@ -199,9 +280,17 @@ export function DesktopWorkspace({
           activeTab={inspectorTab}
           onTabChange={setInspectorTab}
           panes={inspectorPanes}
+          onFullScreen={(tab) => setFullScreenTab(tab)}
         />
       ),
     },
+  };
+
+  const BUILD_STATUS_COLORS: Record<BuildStatus, string> = {
+    idle: "bg-muted-foreground/30",
+    building: "bg-amber-400 animate-pulse",
+    success: "bg-emerald-400",
+    error: "bg-red-400",
   };
 
   return (
@@ -210,8 +299,46 @@ export function DesktopWorkspace({
         <div className="flex-shrink-0 border-b border-border/50 min-h-fit">{renderHeader()}</div>
       )}
 
+      {/* ── Status bar with build status & auto-run ── */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 py-1 border-b border-border/30 bg-card/20">
+        {/* Build status */}
+        <div className="flex items-center gap-1.5">
+          <div className={`w-2 h-2 rounded-full ${BUILD_STATUS_COLORS[buildStatus]}`} />
+          <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
+            {buildStatus === "idle" ? "Ready" : buildStatus === "building" ? "Building…" : buildStatus === "success" ? "Built" : "Error"}
+          </span>
+        </div>
+        
+        {/* Quick actions */}
+        <div className="flex items-center gap-1 ml-auto">
+          {/* Auto-run toggle */}
+          {onAutoRunChange && (
+            <button
+              type="button"
+              onClick={() => onAutoRunChange(!autoRun)}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                autoRun ? "text-emerald-400 bg-emerald-400/10" : "text-muted-foreground hover:text-foreground"
+              }`}
+              title={autoRun ? "Auto-run ON — previews refresh automatically" : "Auto-run OFF — click Run to refresh"}
+            >
+              <RotateCcw size={10} />
+              Auto
+            </button>
+          )}
+          {/* Keyboard shortcuts help */}
+          <button
+            type="button"
+            onClick={() => setShowShortcuts(v => !v)}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            title="Keyboard shortcuts (⌘/)"
+          >
+            <Keyboard size={12} />
+          </button>
+        </div>
+      </div>
+
       <div className="flex-1 min-h-0 flex">
-        {/* ── Fixed Nav rail ─────────────────────────────────────── */}
+        {/* ── Fixed Nav rail ── */}
         <div
           className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200 overflow-y-auto overflow-x-hidden"
           style={{ width: navCollapsed ? 48 : 160, minHeight: 0 }}
@@ -230,7 +357,7 @@ export function DesktopWorkspace({
           />
         </div>
 
-        {/* ── Content area — drag-reorderable panels ────────────── */}
+        {/* ── Content area — drag-reorderable panels ── */}
         <div className="flex-1 min-w-0 flex h-full">
           {panelOrder.map((panelId, idx) => {
             const panel = panelContent[panelId];
@@ -266,6 +393,46 @@ export function DesktopWorkspace({
       </div>
 
       {renderFooter && <div className="flex-shrink-0">{renderFooter()}</div>}
+
+      {/* ── Keyboard shortcuts overlay ── */}
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-foreground mb-4">Keyboard Shortcuts</h3>
+            <div className="space-y-2">
+              {[
+                ["⌘ B", "Toggle chat sidecar"],
+                ["⌘ ⇧ B", "Trigger build"],
+                ["⌘ ⇧ Enter", "Re-run preview"],
+                ["⌘ `", "Open console"],
+                ["⌘ E", "Open file tree"],
+                ["⌘ \\", "Toggle full canvas"],
+                ["⌘ /", "Show shortcuts"],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">{desc}</span>
+                  <kbd className="px-2 py-0.5 rounded bg-muted/50 border border-border/50 text-[10px] font-mono text-foreground">
+                    {key}
+                  </kbd>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="mt-4 w-full text-center text-[10px] font-mono text-muted-foreground hover:text-foreground py-1.5 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -382,12 +549,14 @@ function Inspector({
   activeTab,
   onTabChange,
   panes,
+  onFullScreen,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
   activeTab: InspectorTabId;
   onTabChange: (t: InspectorTabId) => void;
   panes: Partial<Record<InspectorTabId, ReactNode>>;
+  onFullScreen: (tab: InspectorTabId) => void;
 }) {
   if (collapsed) {
     return (
@@ -426,7 +595,7 @@ function Inspector({
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="atlas-nav-btn"
+          className="atlas-nav-btn flex-shrink-0"
           aria-label="Collapse inspector"
           title="Collapse inspector"
         >
@@ -440,7 +609,7 @@ function Inspector({
                 key={id}
                 type="button"
                 onClick={() => onTabChange(id)}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-colors ${
+                className={`flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-colors ${
                   active
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -453,6 +622,18 @@ function Inspector({
             );
           })}
         </div>
+        {/* Full-screen button for active tab */}
+        {(activeTab === "code" || activeTab === "console") && (
+          <button
+            type="button"
+            onClick={() => onFullScreen(activeTab)}
+            className="atlas-nav-btn flex-shrink-0"
+            title={`Full screen ${activeTab}`}
+            aria-label={`Full screen ${activeTab}`}
+          >
+            <Maximize2 size={12} />
+          </button>
+        )}
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
         {panes[activeTab] ?? <InspectorEmpty tab={activeTab} />}
@@ -485,18 +666,8 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
 
 function PaneHeader({ title, draggable: _draggable }: { title: string; draggable?: boolean }) {
   return (
-    <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
-      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-        {title}
-      </span>
+    <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b border-border/40">
+      <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{title}</span>
     </div>
-  );
-}
-
-function ResizeHandle() {
-  return (
-    <PanelResizeHandle className="w-px bg-border/50 hover:bg-accent-gold/60 data-[resize-handle-state=drag]:bg-accent-gold transition-colors relative group">
-      <div className="absolute inset-y-0 -left-1 -right-1" />
-    </PanelResizeHandle>
   );
 }
