@@ -88,8 +88,26 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
           : null;
 
       if (Component) {
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(Component));
+        // Provide demo props so components with required props still render
+        var demoProps = {
+          title: 'Pro Plan', name: 'Atlas', label: 'Featured',
+          price: 49, description: 'Everything you need to build at scale.',
+          features: [
+            { name: 'Unlimited projects', included: true },
+            { name: 'Priority support', included: true },
+            { name: 'Custom domains', included: true },
+            { name: 'Advanced analytics', included: false },
+          ],
+          items: ['Item 1', 'Item 2', 'Item 3'],
+          children: 'Hello World',
+          onClick: function(){}, onSelect: function(){}, onSubmit: function(){},
+          buttonText: 'Get Started', popular: true,
+        };
+        var root = ReactDOM.createRoot(document.getElementById('root'));
+        // Try with props first; if the component ignores them, no harm done
+        root.render(React.createElement('div', {
+          style: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
+        }, React.createElement(Component, demoProps)));
       } else {
         document.getElementById('root').innerHTML =
           '<div class="preview-error">No default export found in component.</div>';
