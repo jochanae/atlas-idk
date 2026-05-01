@@ -314,7 +314,20 @@ function WorkspacePage() {
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(8);
-    setRecents((data ?? []) as RecentSession[]);
+    const sessions = (data ?? []) as RecentSession[];
+    // Fetch the last actual message from the most recent session for the
+    // living-thread line shown under "Where were we." on the front door.
+    if (sessions[0]) {
+      const { data: msg } = await supabase
+        .from("chat_messages")
+        .select("content")
+        .eq("session_id", sessions[0].id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      sessions[0] = { ...sessions[0], last_message: (msg?.content as string | undefined) ?? null };
+    }
+    setRecents(sessions);
   };
   useEffect(() => {
     loadRecents();
