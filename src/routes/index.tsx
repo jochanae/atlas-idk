@@ -2318,11 +2318,22 @@ function WorkspacePage() {
             )}
           </div>
           {/* Input bar */}
-          <div className="flex-shrink-0 border-t border-border/40 px-3 py-2">
-            <div className="flex items-end gap-2">
+          <div className="flex-shrink-0 px-3 py-3" style={{ borderTop: "1px solid var(--glass-border)" }}>
+            <div className="flex items-end gap-2 rounded-xl px-3 py-2" style={{ background: "var(--surface)", border: "1px solid var(--glass-border)" }}>
               <textarea
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = "auto";
+                    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                  }
+                }}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  const el = e.target;
+                  el.style.height = "auto";
+                  el.style.height = Math.min(el.scrollHeight, 200) + "px";
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -2330,14 +2341,20 @@ function WorkspacePage() {
                   }
                 }}
                 placeholder={`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)} mode — type here…`}
-                className="flex-1 min-h-[40px] max-h-[120px] resize-none bg-card/50 border border-border/40 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50"
-                rows={1}
+                className="flex-1 min-h-[48px] max-h-[200px] resize-none bg-transparent border-0 px-1 py-1.5 text-[14px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none leading-relaxed"
+                style={{ fontFamily: "var(--font-sans)" }}
+                rows={2}
               />
               <button
                 type="button"
                 onClick={() => { if (input.trim()) send(input); }}
                 disabled={!input.trim() || sending}
-                className="flex-shrink-0 p-2 rounded-lg bg-accent/10 text-accent-foreground hover:bg-accent/20 disabled:opacity-30 transition-colors"
+                className="flex-shrink-0 p-2.5 rounded-lg transition-colors"
+                style={{
+                  background: input.trim() ? "var(--accent-gold)" : "var(--surface-alt)",
+                  color: input.trim() ? "var(--background)" : "var(--muted-text)",
+                  opacity: sending ? 0.4 : 1,
+                }}
                 aria-label="Send"
               >
                 <svg viewBox="0 0 16 16" width={16} height={16} fill="currentColor">
@@ -2346,13 +2363,13 @@ function WorkspacePage() {
               </button>
             </div>
             {sending && (
-              <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex items-center gap-2 mt-2">
                 <LoadingSpinner size="sm" />
-                <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">Atlas is thinking…</span>
+                <span className="text-[10px] text-muted-foreground">Atlas is thinking…</span>
                 <button
                   type="button"
                   onClick={stopSending}
-                  className="ml-auto text-[9px] font-mono text-destructive/70 hover:text-destructive uppercase tracking-wider"
+                  className="ml-auto text-[10px] text-destructive/70 hover:text-destructive"
                 >
                   Stop
                 </button>
