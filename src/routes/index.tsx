@@ -591,35 +591,69 @@ function WorkspacePage() {
     await send(`Proceed anyway. Continue with the original request: ${previousUserMessage.content}`);
   };
 
-  const ensureSession = async (text: string) => {
-    if (session && activeProjectId) return { session, projectId: activeProjectId };
-    if (!user || !activeProjectId) return null;
+  /** Derive a short project name from the user's first message */
+  const deriveProjectName = (text: string): string => {
+    // Strip commands
+    const cleaned = text.replace(/^\/(build|research|plan)\s+/i, "").trim();
+    // Take first sentence or first 50 chars
+    const firstSentence = cleaned.split(/[.!?\n]/)[0]?.trim() ?? cleaned;
+    const name = firstSentence.slice(0, 50).trim();
+    return name || "Untitled Project";
+  };
 
-    const { data, error } = await supabase
+  /** Create a brand-new project + session from the user's first message */
+  const createProjectFromMessage = async (text: string): Promise<{ session: AtlasSession; projectId: string }> => {
+    if (!user) throw new Error("Not authenticated");
+    const projectName = deriveProjectName(text);
+
+    // 1. Create project
+    const { data: projData, error: projErr } = await supabase
+      .from("projects")
+      .insert({ user_id: user.id, name: projectName, status: "Active" })
+      .select("*")
+      .single();
+    if (projErr) throw projErr;
+    const newProject = projData as Project;
+
+    // 2. Update local state
+    setProjects((prev) => [...prev, newProject]);
+    setActiveProjectId(newProject.id);
+
+    // 3. Create session under the new project
+    const { data: sessData, error: sessErr } = await supabase
       .from("sessions")
       .insert({
-        project_id: activeProjectId,
+        project_id: newProject.id,
         user_id: user.id,
-        title: "Session",
+        title: projectName,
         mode: activeMode,
         status: "active",
       })
       .select("*")
       .single();
-    if (error) throw error;
+    if (sessErr) throw sessErr;
 
-    const created = data as AtlasSession;
-    setSession(created);
+    const newSession = sessData as AtlasSession;
+    setSession(newSession);
     setRecents((prev) => [
       {
-        id: created.id,
-        title: "Session",
+        id: newSession.id,
+        title: projectName,
         mode: activeMode,
-        created_at: created.created_at,
+        created_at: newSession.created_at,
       },
-      ...prev.filter((recent) => recent.id !== created.id),
+      ...prev.filter((r) => r.id !== newSession.id),
     ].slice(0, 8));
-    return { session: created, projectId: activeProjectId };
+
+    return { session: newSession, projectId: newProject.id };
+  };
+
+  const ensureSession = async (text: string) => {
+    if (session && activeProjectId) return { session, projectId: activeProjectId };
+    if (!user) return null;
+
+    // No active session → auto-create a new project + session
+    return createProjectFromMessage(text);
   };
 
   const send = async (text: string) => {
