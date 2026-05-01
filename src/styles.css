@@ -516,30 +516,37 @@
 }
 
 /* ============================================================
-   Light-mode user message bubble — cognac body, ivory text
-   Targets the user message card inside ChatPanel (parchment only)
+   Light-mode user message bubble — Executive Polish
+   Frosted white card, deep charcoal text, hairline cognac border.
+   Replaces the heavy brown bubble that was breaking editorial calm.
    ============================================================ */
 .theme-parchment .atlas-msg-user,
 .theme-executive .atlas-msg-user,
 .theme-cognac .atlas-msg-user {
-  background: #8B4513 !important;
-  border-left-color: #FAF9F6 !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(10px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+  border: 1px solid color-mix(in srgb, #8B4513 15%, transparent) !important;
+  border-left-color: color-mix(in srgb, #8B4513 15%, transparent) !important;
+  box-shadow: 0 1px 2px rgba(26, 26, 26, 0.04) !important;
 }
 .theme-parchment .atlas-msg-user .atlas-msg-user-meta,
 .theme-executive .atlas-msg-user .atlas-msg-user-meta,
 .theme-cognac .atlas-msg-user .atlas-msg-user-meta {
-  color: rgba(250, 249, 246, 0.65) !important;
+  color: rgba(26, 26, 26, 0.45) !important;
 }
 .theme-parchment .atlas-msg-user .atlas-msg-user-body,
 .theme-executive .atlas-msg-user .atlas-msg-user-body,
 .theme-cognac .atlas-msg-user .atlas-msg-user-body {
-  color: #FAF9F6 !important;
+  color: #1A1A1A !important;
 }
 .theme-parchment .atlas-msg-user [aria-hidden="true"],
 .theme-executive .atlas-msg-user [aria-hidden="true"],
 .theme-cognac .atlas-msg-user [aria-hidden="true"] {
-  background: #FAF9F6 !important;
+  background: #8B4513 !important;
+  opacity: 0.4 !important;
 }
+
 
 /* ============================================================
    Below-fold dashboard sections (resting hero scroll)
