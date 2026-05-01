@@ -66,8 +66,8 @@
   --surface-alt: #211E1B;
   --foreground: #E7E5E4;
   --muted-text: #78716C;
-  --ember: #B45309;            /* Muted Amber — replaces volcanic orange */
-  --ember-glow: rgba(180, 83, 9, 0.45);
+  --ember: #92400E;            /* Deep bronze amber — muted, no orange cast */
+  --ember-glow: rgba(146, 64, 14, 0.35);
   --violated: #7F1D1D;
   --border: #292524;
   --phosphor: #06B6D4;
