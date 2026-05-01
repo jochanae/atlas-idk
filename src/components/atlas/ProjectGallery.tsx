@@ -98,6 +98,7 @@ function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProjec
         {/* Grid */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-8">
           <div className="grid grid-cols-2 gap-3">
+            <NewProjectCard onClick={() => { onNewProject(); onClose(); }} />
             {projects.map((p) => (
               <ProjectCard
                 key={p.id}
