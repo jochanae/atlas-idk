@@ -1963,6 +1963,7 @@ function WorkspacePage() {
         setEntrySurface(false);
         setHistoryOpen((open) => !open);
       }}
+      onOpenGallery={() => setGalleryOpen(true)}
       parkedCount={parkedItems.length}
       ledgerCount={ledgerCount}
       renderMobile={() => (
