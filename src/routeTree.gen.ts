@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
 import { Route as ParkingLotRouteImport } from './routes/parking-lot'
 import { Route as LedgerRouteImport } from './routes/ledger'
+import { Route as GuardReportRouteImport } from './routes/guard-report'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const LedgerRoute = LedgerRouteImport.update({
   path: '/ledger',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuardReportRoute = GuardReportRouteImport.update({
+  id: '/guard-report',
+  path: '/guard-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guard-report': typeof GuardReportRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
   '/think-freely': typeof ThinkFreelyRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guard-report': typeof GuardReportRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
   '/think-freely': typeof ThinkFreelyRoute
@@ -59,21 +67,42 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/guard-report': typeof GuardReportRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
   '/think-freely': typeof ThinkFreelyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/ledger' | '/parking-lot' | '/think-freely'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/guard-report'
+    | '/ledger'
+    | '/parking-lot'
+    | '/think-freely'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/ledger' | '/parking-lot' | '/think-freely'
-  id: '__root__' | '/' | '/auth' | '/ledger' | '/parking-lot' | '/think-freely'
+  to:
+    | '/'
+    | '/auth'
+    | '/guard-report'
+    | '/ledger'
+    | '/parking-lot'
+    | '/think-freely'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/guard-report'
+    | '/ledger'
+    | '/parking-lot'
+    | '/think-freely'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  GuardReportRoute: typeof GuardReportRoute
   LedgerRoute: typeof LedgerRoute
   ParkingLotRoute: typeof ParkingLotRoute
   ThinkFreelyRoute: typeof ThinkFreelyRoute
@@ -102,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LedgerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guard-report': {
+      id: '/guard-report'
+      path: '/guard-report'
+      fullPath: '/guard-report'
+      preLoaderRoute: typeof GuardReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -122,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  GuardReportRoute: GuardReportRoute,
   LedgerRoute: LedgerRoute,
   ParkingLotRoute: ParkingLotRoute,
   ThinkFreelyRoute: ThinkFreelyRoute,
