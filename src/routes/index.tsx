@@ -959,9 +959,12 @@ function WorkspacePage() {
           projectId: target.projectId,
           message: text + planModeHint,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
+          attachments: attachedFiles.length > 0 ? attachedFiles : undefined,
         },
         signal: controller.signal,
       });
+      // Clear attachments — they've been folded into the turn's context.
+      if (attachedFiles.length > 0) setAttachedFiles([]);
       const thinkSeconds = Math.round((Date.now() - thinkStart) / 1000);
       if (controller.signal.aborted) return;
       if (error) throw error;
