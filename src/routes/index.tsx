@@ -559,6 +559,45 @@ function WorkspacePage() {
   const [diffPreviewActive, setDiffPreviewActive] = useState(false);
   const [previousCode, setPreviousCode] = useState<string | null>(null);
 
+  // Persistent editor state — selected file, editor content, open tabs
+  const [editorOpenTabs, setEditorOpenTabs] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { const v = localStorage.getItem("atlas-editor-tabs"); return v ? JSON.parse(v) : []; } catch { return []; }
+  });
+  const [editorActiveFile, setEditorActiveFile] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { return localStorage.getItem("atlas-editor-active-file") || null; } catch { return null; }
+  });
+  useEffect(() => { try { localStorage.setItem("atlas-editor-tabs", JSON.stringify(editorOpenTabs)); } catch {} }, [editorOpenTabs]);
+  useEffect(() => { try { localStorage.setItem("atlas-editor-active-file", editorActiveFile ?? ""); } catch {} }, [editorActiveFile]);
+
+  // Build secrets sync state
+  const [buildSecrets, setBuildSecrets] = useState<Array<{ name: string; value: string }>>(() => {
+    if (typeof window === "undefined") return [];
+    try { const v = localStorage.getItem("atlas-build-secrets"); return v ? JSON.parse(v) : []; } catch { return []; }
+  });
+  useEffect(() => { try { localStorage.setItem("atlas-build-secrets", JSON.stringify(buildSecrets)); } catch {} }, [buildSecrets]);
+
+  // Diff accept/reject via keyboard when diff is active
+  useEffect(() => {
+    if (!diffPreviewActive || !previousCode || !generatedCode) return;
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key === "y" || e.key === "Y") {
+        e.preventDefault();
+        setPreviousCode(generatedCode);
+        setDiffPreviewActive(false);
+      } else if (e.key === "u" || e.key === "U") {
+        e.preventDefault();
+        setGeneratedCode(previousCode);
+        setDiffPreviewActive(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [diffPreviewActive, previousCode, generatedCode]);
+
 
   // Track whether the active project already has a Compass (used by thinking prompts)
   useEffect(() => {
@@ -2385,6 +2424,10 @@ function WorkspacePage() {
             onFileSelect={(file: { filename: string; content: string }) => {
               setGeneratedCode(file.content);
               setGeneratedFilename(file.filename);
+              setEditorActiveFile(file.filename);
+              if (!editorOpenTabs.includes(file.filename)) {
+                setEditorOpenTabs(prev => [...prev, file.filename]);
+              }
             }}
           />
         ),
@@ -2395,13 +2438,49 @@ function WorkspacePage() {
             onToggle={() => {}}
           />
         ),
-        code: generatedCode ? (
-          <CodeEditor
-            code={generatedCode}
-            filename={generatedFilename ?? "Component.tsx"}
-            onChange={(newCode) => setGeneratedCode(newCode)}
-          />
-        ) : undefined,
+        code: (
+          <div className="h-full flex flex-col">
+            {/* Open tabs bar */}
+            {editorOpenTabs.length > 0 && (
+              <div className="flex-shrink-0 flex items-center gap-0.5 px-2 py-1 border-b border-border/30 overflow-x-auto scrollbar-none">
+                {editorOpenTabs.map(tab => (
+                  <div key={tab} className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono transition-colors cursor-pointer ${
+                    editorActiveFile === tab ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  }`}>
+                    <span onClick={() => {
+                      setEditorActiveFile(tab);
+                      const f = generatedFiles.find(f => f.filename === tab);
+                      if (f) { setGeneratedCode(f.content); setGeneratedFilename(f.filename); }
+                    }}>{tab.split("/").pop()}</span>
+                    <button type="button" onClick={(e) => {
+                      e.stopPropagation();
+                      setEditorOpenTabs(prev => prev.filter(t => t !== tab));
+                      if (editorActiveFile === tab) {
+                        const remaining = editorOpenTabs.filter(t => t !== tab);
+                        if (remaining.length > 0) {
+                          setEditorActiveFile(remaining[remaining.length - 1]);
+                          const f = generatedFiles.find(f => f.filename === remaining[remaining.length - 1]);
+                          if (f) { setGeneratedCode(f.content); setGeneratedFilename(f.filename); }
+                        } else { setEditorActiveFile(null); }
+                      }
+                    }} className="opacity-40 hover:opacity-100 text-[8px]">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex-1 min-h-0">
+              {generatedCode ? (
+                <CodeEditor
+                  code={generatedCode}
+                  filename={generatedFilename ?? "Component.tsx"}
+                  onChange={(newCode) => setGeneratedCode(newCode)}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-[10px] font-mono text-muted-foreground/50">Select a file to edit</div>
+              )}
+            </div>
+          </div>
+        ),
         github: undefined,
         recs:
           pendingRecs.length === 0 ? undefined : (
@@ -2424,18 +2503,37 @@ function WorkspacePage() {
             </div>
           ),
         settings: (
-          <ProjectSettingsPanel
-            project={activeProject ?? null}
-            onProjectUpdate={(updated) => {
-              setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
-            }}
-          />
+          <div className="h-full flex flex-col">
+            <ProjectSettingsPanel
+              project={activeProject ?? null}
+              onProjectUpdate={(updated) => {
+                setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+              }}
+            />
+            {/* Build Secrets Sync */}
+            <div className="border-t border-border/40 px-3 py-2">
+              <p className="text-[8px] font-mono text-muted-foreground/40 uppercase tracking-widest mb-1.5">Build Secrets</p>
+              <p className="text-[9px] font-mono text-muted-foreground/50 mb-2 leading-relaxed">
+                Build secrets are injected as env vars during install. Configure in Workspace Settings → Build Secrets.
+              </p>
+              {buildSecrets.map((s, i) => (
+                <div key={i} className="flex items-center gap-1.5 mb-1">
+                  <span className="flex-1 text-[10px] font-mono text-foreground/70 truncate">{s.name}</span>
+                  <button type="button" onClick={() => setBuildSecrets(prev => prev.filter((_, j) => j !== i))}
+                    className="text-[8px] text-muted-foreground hover:text-destructive">×</button>
+                </div>
+              ))}
+              <button type="button" onClick={() => {
+                const name = prompt("Build secret name (e.g. NPM_TOKEN):");
+                if (name) setBuildSecrets(prev => [...prev, { name: name.toUpperCase().replace(/[^A-Z0-9_]/g, "_"), value: "" }]);
+              }} className="text-[9px] font-mono text-accent-foreground/60 hover:text-accent-foreground mt-1">+ Add build secret</button>
+            </div>
+          </div>
         ),
         secrets: (
           <SecretsManagerPanel
             secrets={projectSecrets}
             onAddSecret={(name) => {
-              // In a real integration this would call the secrets tool
               setProjectSecrets((prev) => [...prev, { name, isSet: false }]);
             }}
             onDeleteSecret={(name) => {
