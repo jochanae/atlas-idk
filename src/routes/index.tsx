@@ -2169,7 +2169,7 @@ function WorkspacePage() {
         />
       )}
       renderChatPane={() => (
-        <div className="h-full flex flex-col bg-background">
+        <div className="h-full flex flex-col bg-card/30 border-r border-border/30">
           {/* Mode chips */}
           <div className="flex-shrink-0 px-2 py-2 border-b border-border/40 flex items-center gap-1 overflow-x-auto scrollbar-none">
             {MODES.map((m) => {
