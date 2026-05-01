@@ -94,7 +94,7 @@ export function BelowFoldDashboard({
       </section>
 
       {/* 4. Check In ------------------------------------------------------ */}
-      <section className="atlas-discovery-card">
+      <section id="discovery-checkin" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Check In</h3>
         </div>
