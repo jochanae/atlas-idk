@@ -262,7 +262,8 @@ function NewProjectCard({ onClick }: { onClick: () => void }) {
 }
 
 
-  function ProjectCard({ project, active, onSelect }: { project: Project; active: boolean; onSelect: () => void }) {
+function ProjectCard({ project, active, onSelect }: { project: Project; active: boolean; onSelect: () => void }) {
+  const [starred, setStarred] = useState(false);
   const statusColor = project.status === "published"
     ? "rgba(74,222,128,0.8)"
     : project.status === "building"
