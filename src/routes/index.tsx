@@ -16,9 +16,9 @@ import {
   type ModeId,
   type RecentSession,
 } from "@/components/atlas/AtlasFrontDoor";
-import { AtlasSidebar, SidebarToggle } from "@/components/atlas/AtlasSidebar";
 import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
+import { ThemeDropdown } from "@/components/atlas/ThemeDropdown";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
