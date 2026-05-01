@@ -76,19 +76,29 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    // (3) Surface ANY uncaught error (including Babel parse failures) into the visible error pane.
+    window.addEventListener('error', function(e) {
+      var root = document.getElementById('root');
+      if (root && !root.firstChild) {
+        root.innerHTML = '<div class="preview-error">Preview error:\\n' +
+          (e.message || 'Unknown error') +
+          (e.filename ? '\\n  at line ' + e.lineno : '') +
+          '</div>';
+      }
+    });
+  <\/script>
   <script type="text/babel" data-type="module" data-presets="typescript,react">
     try {
       ${componentCode}
 
-      // Find the default export
-      const Component = typeof exports !== 'undefined' && exports.default
-        ? exports.default
-        : typeof DefaultComponent !== 'undefined'
-          ? DefaultComponent
-          : null;
+      // (2) Find the rendered component — handles ESM default-export rewrites,
+      // CommonJS exports.default, and the legacy DefaultComponent var.
+      var Component = (typeof DefaultComponent !== 'undefined' && DefaultComponent) ||
+        (typeof exports !== 'undefined' && exports && exports.default) ||
+        null;
 
       if (Component) {
-        // Provide demo props so components with required props still render
         var demoProps = {
           title: 'Pro Plan', name: 'Atlas', label: 'Featured',
           price: 49, description: 'Everything you need to build at scale.',
@@ -99,7 +109,6 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
           buttonText: 'Get Started', popular: true, isPopular: true,
         };
         var container = document.getElementById('root');
-        // React 18 UMD: try createRoot first, fall back to legacy render
         var appEl = React.createElement('div', {
           style: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
         }, React.createElement(Component, demoProps));
@@ -110,11 +119,11 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
         }
       } else {
         document.getElementById('root').innerHTML =
-          '<div class="preview-error">No default export found in component.</div>';
+          '<div class="preview-error">No default export found.\\nMake sure the file ends with: export default ComponentName</div>';
       }
     } catch (err) {
       document.getElementById('root').innerHTML =
-        '<div class="preview-error">Render error:\\n' + err.message + '</div>';
+        '<div class="preview-error">Render error:\\n' + (err && err.message ? err.message : String(err)) + '</div>';
     }
   <\/script>
   <script>
