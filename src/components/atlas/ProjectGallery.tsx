@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
-import { motion, AnimatePresence, useDragControls, type PanInfo } from "framer-motion";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { X, Star, ExternalLink, MoreHorizontal, FolderOpen, Plus } from "lucide-react";
 import type { Project } from "@/lib/atlas";
@@ -20,7 +20,7 @@ interface Props {
   projects: Project[];
   activeProjectId: string | null;
   onSelectProject: (projectId: string) => void;
-  onNewProject: () => void;
+  onNewProject: (name: string) => boolean | Promise<boolean>;
 }
 
 export function ProjectGallery({ open, onClose, projects, activeProjectId, onSelectProject, onNewProject }: Props) {
@@ -96,9 +96,9 @@ function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProjec
         <SheetHeader onClose={onClose} count={projects.length} />
 
         {/* Grid */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-8">
-          <div className="grid grid-cols-2 gap-3">
-            <NewProjectCard onClick={() => { onNewProject(); onClose(); }} />
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-4 pb-8">
+          <div className="grid grid-cols-2 gap-3 overflow-visible">
+            <NewProjectCard onCreate={onNewProject} />
             {projects.map((p) => (
               <ProjectCard
                 key={p.id}
@@ -162,9 +162,9 @@ function GalleryModal({ onClose, projects, activeProjectId, onSelectProject, onN
         >
           <SheetHeader onClose={onClose} count={projects.length} />
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <NewProjectCard onClick={() => { onNewProject(); onClose(); }} />
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-visible px-6 pb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-visible">
+              <NewProjectCard onCreate={onNewProject} />
               {projects.map((p) => (
                 <ProjectCard
                   key={p.id}
@@ -229,16 +229,33 @@ function SheetHeader({ onClose, count }: { onClose: () => void; count: number })
   );
 }
 
-function NewProjectCard({ onClick }: { onClick: () => void }) {
+function NewProjectCard({ onCreate }: { onCreate: (name: string) => boolean | Promise<boolean> }) {
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const create = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || creating) return;
+    setCreating(true);
+    try {
+      const created = await onCreate(trimmed);
+      if (created) setName("");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group text-left rounded-xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(201,162,76,0.7)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050505]"
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        create();
+      }}
+      className="group text-left rounded-xl transition-all duration-200 focus-within:ring-2 focus-within:ring-[rgba(201,162,76,0.7)] focus-within:ring-offset-2 focus-within:ring-offset-[#050505]"
       style={{
         background: "rgba(201,162,76,0.04)",
         border: "1px dashed rgba(201,162,76,0.3)",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       <div
@@ -252,12 +269,31 @@ function NewProjectCard({ onClick }: { onClick: () => void }) {
           </span>
         </div>
       </div>
-      <div className="px-3 py-2.5">
-        <span style={{ fontFamily: "'Geist Sans', system-ui, sans-serif", fontSize: 12, color: "rgba(232,228,221,0.4)" }}>
-          Start fresh
-        </span>
+      <div className="px-3 py-2.5 space-y-2">
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Project name"
+          className="w-full rounded-md border bg-transparent px-2 py-1.5 text-xs outline-none"
+          style={{
+            borderColor: "rgba(201,162,76,0.18)",
+            color: "rgba(232,228,221,0.85)",
+          }}
+          aria-label="New project name"
+        />
+        <button
+          type="submit"
+          disabled={!name.trim() || creating}
+          className="w-full rounded-md px-2 py-1.5 text-[10px] font-medium uppercase tracking-[0.08em] transition-opacity disabled:opacity-40"
+          style={{
+            background: "rgba(201,162,76,0.12)",
+            color: "rgba(201,162,76,0.8)",
+          }}
+        >
+          {creating ? "Creating..." : "Create"}
+        </button>
       </div>
-    </button>
+    </form>
   );
 }
 
@@ -280,7 +316,8 @@ function ProjectCard({ project, active, onSelect }: { project: Project; active: 
       style={{
         background: active ? "rgba(201,162,76,0.06)" : "rgba(255,255,255,0.02)",
         border: `1px solid ${active ? "rgba(201,162,76,0.5)" : "rgba(201,162,76,0.15)"}`,
-        overflow: "hidden",
+        overflow: "visible",
+        minWidth: 0,
       }}
     >
       {/* Thumbnail area — 16:10 aspect ratio */}
@@ -289,6 +326,9 @@ function ProjectCard({ project, active, onSelect }: { project: Project; active: 
         style={{
           paddingTop: "62.5%", /* 10/16 = 62.5% */
           background: "linear-gradient(135deg, rgba(201,162,76,0.04), rgba(5,5,5,0.95))",
+          overflow: "hidden",
+          borderTopLeftRadius: 12,
+          borderTopRightRadius: 12,
         }}
       >
         {/* Placeholder grid pattern */}

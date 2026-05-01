@@ -277,6 +277,7 @@ function WorkspacePage() {
       const { data } = await supabase
         .from("projects")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at");
       const list = (data ?? []) as Project[];
       setProjects(list);
@@ -717,6 +718,67 @@ function WorkspacePage() {
     return name || "Untitled Project";
   };
 
+  const createSessionForProject = async (
+    projectId: string,
+    title: string,
+  ): Promise<AtlasSession> => {
+    if (!user) throw new Error("Not authenticated");
+
+    const { data: sessData, error: sessErr } = await supabase
+      .from("sessions")
+      .insert({
+        project_id: projectId,
+        user_id: user.id,
+        title,
+        mode: activeMode,
+        status: "active",
+      })
+      .select("*")
+      .single();
+    if (sessErr) throw sessErr;
+
+    const newSession = sessData as AtlasSession;
+    setSession(newSession);
+    setRecents((prev) => [
+      {
+        id: newSession.id,
+        title,
+        mode: activeMode,
+        created_at: newSession.created_at,
+      },
+      ...prev.filter((r) => r.id !== newSession.id),
+    ].slice(0, 8));
+
+    return newSession;
+  };
+
+  const createNamedProject = async (providedName?: string): Promise<boolean> => {
+    if (!user) return false;
+    const rawName = providedName ?? window.prompt("Project name");
+    const name = rawName?.trim();
+    if (!name) return false;
+
+    const { data, error } = await supabase
+      .from("projects")
+      .insert({ user_id: user.id, name, status: "Active" })
+      .select("*")
+      .single();
+
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+
+    const newProject = data as Project;
+    setProjects((prev) => [newProject, ...prev.filter((project) => project.id !== newProject.id)]);
+    setActiveProjectId(newProject.id);
+    setSession(null);
+    setMessages([]);
+    setEntrySurface(true);
+    toast.success(`Project created: ${newProject.name}`);
+    return true;
+  };
+
   /** Create a brand-new project + session from the user's first message */
   const createProjectFromMessage = async (text: string): Promise<{ session: AtlasSession; projectId: string }> => {
     if (!user) throw new Error("Not authenticated");
@@ -736,30 +798,7 @@ function WorkspacePage() {
     setActiveProjectId(newProject.id);
 
     // 3. Create session under the new project
-    const { data: sessData, error: sessErr } = await supabase
-      .from("sessions")
-      .insert({
-        project_id: newProject.id,
-        user_id: user.id,
-        title: projectName,
-        mode: activeMode,
-        status: "active",
-      })
-      .select("*")
-      .single();
-    if (sessErr) throw sessErr;
-
-    const newSession = sessData as AtlasSession;
-    setSession(newSession);
-    setRecents((prev) => [
-      {
-        id: newSession.id,
-        title: projectName,
-        mode: activeMode,
-        created_at: newSession.created_at,
-      },
-      ...prev.filter((r) => r.id !== newSession.id),
-    ].slice(0, 8));
+    const newSession = await createSessionForProject(newProject.id, projectName);
 
     return { session: newSession, projectId: newProject.id };
   };
@@ -767,6 +806,10 @@ function WorkspacePage() {
   const ensureSession = async (text: string) => {
     if (session && activeProjectId) return { session, projectId: activeProjectId };
     if (!user) return null;
+    if (activeProjectId) {
+      const newSession = await createSessionForProject(activeProjectId, deriveProjectName(text));
+      return { session: newSession, projectId: activeProjectId };
+    }
 
     // No active session → auto-create a new project + session
     return createProjectFromMessage(text);
@@ -1794,6 +1837,13 @@ function WorkspacePage() {
         onSignOut={signOut}
         user={user}
         projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
+        onOpenProjects={() => {
+          setSidebarOpen(false);
+          setGalleryOpen(true);
+        }}
+        onNewProject={async () => {
+          await createNamedProject();
+        }}
         buildHistory={buildHistory}
       />
       <BlueprintsDrawer
@@ -2539,15 +2589,13 @@ function WorkspacePage() {
       onClose={() => setGalleryOpen(false)}
       projects={projects}
       activeProjectId={activeProjectId}
-      onSelectProject={(id) => { setActiveProjectId(id); }}
-      onNewProject={() => {
+      onSelectProject={(id) => {
+        setActiveProjectId(id);
         setSession(null);
         setMessages([]);
-        setActiveProjectId(null);
         setEntrySurface(true);
-        setGalleryOpen(false);
-        setInputFocusSignal((v) => v + 1);
       }}
+      onNewProject={createNamedProject}
     />
     </>
   );

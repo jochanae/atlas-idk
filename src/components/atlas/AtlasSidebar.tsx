@@ -34,8 +34,10 @@ export function AtlasSidebar({
   parkedCount,
   ledgerCount,
   onNewSession,
+  onNewProject,
   onOpenSession,
   onOpenParking,
+  onOpenProjects,
   email,
   theme,
   onToggleTheme,
@@ -50,8 +52,10 @@ export function AtlasSidebar({
   parkedCount: number;
   ledgerCount: number;
   onNewSession: () => void;
+  onNewProject?: () => void;
   onOpenSession: (id: string) => void;
   onOpenParking: () => void;
+  onOpenProjects?: () => void;
   email: string | null;
   theme: Theme;
   onToggleTheme: () => void;
@@ -289,7 +293,10 @@ export function AtlasSidebar({
         {projects && (
           <>
             <button
-              onClick={() => setProjectsExpanded((v) => !v)}
+              onClick={() => {
+                if (onOpenProjects) onOpenProjects();
+                else setProjectsExpanded((v) => !v);
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -323,7 +330,8 @@ export function AtlasSidebar({
             <div
               style={{
                 maxHeight: projectsExpanded ? 400 : 0,
-                overflow: "hidden",
+                overflowY: projectsExpanded ? "auto" : "hidden",
+                overflowX: "visible",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
                 padding: projectsExpanded ? "0 clamp(8px, 3vw, 12px) 10px" : "0 clamp(8px, 3vw, 12px) 0",
               }}
@@ -334,6 +342,7 @@ export function AtlasSidebar({
                   gridTemplateColumns: "repeat(2, 1fr)",
                   gap: 6,
                   paddingTop: 4,
+                  overflow: "visible",
                 }}
               >
                 {filteredProjects.map((p) => (
@@ -342,10 +351,11 @@ export function AtlasSidebar({
                     style={{
                       borderRadius: 8,
                       border: "0.5px solid var(--glass-border)",
-                      overflow: "hidden",
+                      overflow: "visible",
                       background: "var(--surface-alt)",
                       cursor: "pointer",
                       transition: "border-color 180ms ease, box-shadow 180ms ease",
+                      minWidth: 0,
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 40%, transparent)";
@@ -365,13 +375,14 @@ export function AtlasSidebar({
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
+                        borderRadius: "8px 8px 0 0",
                       }}
                     >
                       {p.thumbnailUrl ? (
                         <img
                           src={p.thumbnailUrl}
                           alt={p.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
                         />
                       ) : (
                         <svg width="24" height="24" viewBox="0 0 28 28" fill="none" stroke="var(--accent-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
@@ -401,7 +412,7 @@ export function AtlasSidebar({
                 {/* + New Project card */}
                 {!q && (
                   <button
-                    onClick={onNewSession}
+                    onClick={onNewProject ?? onNewSession}
                     style={{
                       borderRadius: 8,
                       border: "1px dashed color-mix(in oklab, var(--accent-gold) 25%, transparent)",
