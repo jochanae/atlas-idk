@@ -2162,7 +2162,7 @@ function WorkspacePage() {
               </span>
             </div>
             <div className="flex-1 min-h-0 overflow-auto">
-              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all">
+              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all overflow-x-auto">
                 {generatedCode}
               </pre>
             </div>
