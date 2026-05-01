@@ -1023,6 +1023,11 @@ export function AtlasFrontDoor({
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes atlas-pills-peek {
+          0%   { transform: translateX(0); }
+          40%  { transform: translateX(-24px); }
+          100% { transform: translateX(0); }
+        }
         @keyframes atlas-tag-in {
           from { opacity: 0; transform: translateY(-4px) scale(0.92); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
