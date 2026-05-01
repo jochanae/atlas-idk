@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import { ChunkedBubbles } from "@/components/atlas/StreamingText";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemMenu } from "@/components/atlas/SystemMenu";
 import { useAuth } from "@/lib/auth";
