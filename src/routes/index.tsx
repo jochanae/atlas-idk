@@ -2379,9 +2379,9 @@ function WorkspacePage() {
             <div
               className="h-full transition-all duration-300"
               style={{
-                width: CANVAS_WIDTHS[canvasViewport] ? `${CANVAS_WIDTHS[canvasViewport]}px` : "100%",
+                width: activeViewport.w ? `${activeViewport.w}px` : "100%",
                 maxWidth: "100%",
-                boxShadow: canvasViewport !== "desktop" ? "0 0 0 1px var(--border)" : undefined,
+                boxShadow: activeViewport.w ? "0 0 0 1px var(--border)" : undefined,
               }}
             >
             {codegenLoading ? (
