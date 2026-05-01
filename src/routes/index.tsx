@@ -3413,6 +3413,7 @@ function ChatPanel({
                         {/* User message card — collapsible */}
                         <div
                           onClick={isLongMessage ? toggleExpand : undefined}
+                          className="atlas-msg-user"
                           style={{
                             background: "rgba(28, 28, 32, 0.85)",
                             borderRadius: "16px 4px 16px 16px",
@@ -3426,7 +3427,7 @@ function ChatPanel({
                           }}
                         >
                           {/* Gold accent bar */}
-                          <div style={{
+                          <div aria-hidden="true" style={{
                             position: "absolute",
                             left: 0,
                             top: 8,
@@ -3437,13 +3438,13 @@ function ChatPanel({
                             opacity: 0.6,
                           }} />
                           <div
-                            className="font-mono text-[9px] uppercase tracking-[0.15em]"
+                            className="font-mono text-[9px] uppercase tracking-[0.15em] atlas-msg-user-meta"
                             style={{ color: "var(--muted-text)", opacity: 0.5, marginBottom: 8, textAlign: "right" }}
                           >
                             YOU · {relativeTime(m.created_at)}
                           </div>
                           <div
-                            className="text-[15px] leading-[1.7] whitespace-pre-wrap"
+                            className="text-[15px] leading-[1.7] whitespace-pre-wrap atlas-msg-user-body"
                             style={{
                               textAlign: "left",
                               fontFamily: "var(--font-mono)",
