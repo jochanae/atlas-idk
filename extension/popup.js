@@ -202,12 +202,13 @@ function esc(str) {
 }
 
 // ── Diff tab ──
-document.getElementById("run-diff").addEventListener("click", async () => {
+let diffHasResult = false;
+
+function runDiff() {
   const oldCode = document.getElementById("diff-old").value;
   const newCode = document.getElementById("diff-new").value;
   if (!oldCode && !newCode) { showToast("Paste code in both panes"); return; }
 
-  // Simple inline diff
   const oldLines = oldCode.split("\n");
   const newLines = newCode.split("\n");
   const result = document.getElementById("diff-result");
@@ -224,13 +225,52 @@ document.getElementById("run-diff").addEventListener("click", async () => {
     }
   }
   result.innerHTML = html || '<div style="opacity:0.3;">No differences</div>';
+  diffHasResult = true;
 
-  // Also open in Atlas with diff params
-  const url = await getAtlasUrl();
-  const params = new URLSearchParams({ diffOld: oldCode.slice(0, 5000), diffNew: newCode.slice(0, 5000) });
+  // Show accept/reject actions
+  document.getElementById("diff-actions").style.display = "flex";
+
   // Store for later retrieval
   chrome.storage.local.set({ "atlas-pending-diff": { old: oldCode, new: newCode, timestamp: Date.now() } });
-  showToast("Diff computed — click to open in Atlas");
+  showToast("Diff computed");
+}
+
+document.getElementById("run-diff").addEventListener("click", runDiff);
+
+// Send diff to Atlas IDE
+document.getElementById("send-diff-atlas").addEventListener("click", async () => {
+  const oldCode = document.getElementById("diff-old").value;
+  const newCode = document.getElementById("diff-new").value;
+  if (!oldCode && !newCode) { showToast("Paste code first"); return; }
+  chrome.storage.local.set({ "atlas-pending-diff": { old: oldCode, new: newCode, timestamp: Date.now() } });
+  const url = await getAtlasUrl();
+  const params = new URLSearchParams({ diffOld: oldCode.slice(0, 5000), diffNew: newCode.slice(0, 5000) });
+  chrome.tabs.create({ url: url + "?" + params.toString() });
+  window.close();
+});
+
+// Accept diff — keep "After" code, clear "Before"
+document.getElementById("diff-accept").addEventListener("click", () => {
+  const newCode = document.getElementById("diff-new").value;
+  document.getElementById("diff-old").value = newCode;
+  document.getElementById("diff-result").innerHTML = '<div style="opacity:0.3;color:rgba(74,222,128,0.6);">✓ Changes accepted</div>';
+  document.getElementById("diff-actions").style.display = "none";
+  chrome.storage.local.set({
+    "atlas-diff-decision": { action: "accept", code: newCode, timestamp: Date.now() }
+  });
+  showToast("Changes accepted");
+});
+
+// Reject diff — keep "Before" code, revert "After"
+document.getElementById("diff-reject").addEventListener("click", () => {
+  const oldCode = document.getElementById("diff-old").value;
+  document.getElementById("diff-new").value = oldCode;
+  document.getElementById("diff-result").innerHTML = '<div style="opacity:0.3;color:rgba(248,113,113,0.6);">✗ Changes rejected</div>';
+  document.getElementById("diff-actions").style.display = "none";
+  chrome.storage.local.set({
+    "atlas-diff-decision": { action: "reject", code: oldCode, timestamp: Date.now() }
+  });
+  showToast("Changes rejected — reverted to original");
 });
 
 // Load projects on init
