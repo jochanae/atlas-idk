@@ -60,6 +60,7 @@ export function AtlasSidebar({
   buildHistory?: BuildStateEntry[];
 }) {
   const [projectsExpanded, setProjectsExpanded] = useState(true);
+  const [recentsExpanded, setRecentsExpanded] = useState(true);
 
   // Lock body scroll while open
   useEffect(() => {
