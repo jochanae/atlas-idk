@@ -1967,6 +1967,7 @@ function WorkspacePage() {
   );
 
   return (
+    <>
     <DesktopWorkspace
       activeSurface={desktopActiveSurface}
       onSurfaceChange={handleDesktopSurfaceChange}
