@@ -2,7 +2,7 @@
  * FileTreePanel — inline file tree for embedding in the desktop layout.
  * Extracted from FileTreeDrawer to work as a persistent panel (no modal).
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 type GeneratedFile = {
   id?: string;
@@ -155,9 +155,21 @@ function TreeNodeView({
 }
 
 export function FileTreePanel({ files, onFileSelect }: Props) {
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("atlas-selected-file") ?? null;
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const tree = useMemo(() => buildTree(files), [files]);
+
+  // Auto-restore persisted selection when files load
+  useEffect(() => {
+    if (selectedPath && files.length > 0) {
+      const match = files.find((f) => f.filename === selectedPath);
+      if (match) onFileSelect(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files.length > 0]);
 
   const matchingPaths = useMemo(() => {
     if (!searchQuery.trim()) return null;
@@ -221,7 +233,7 @@ export function FileTreePanel({ files, onFileSelect }: Props) {
               key={node.path}
               node={node}
               depth={0}
-              onFileSelect={(file) => { setSelectedPath(file.filename); onFileSelect(file); }}
+              onFileSelect={(file) => { setSelectedPath(file.filename); try { localStorage.setItem("atlas-selected-file", file.filename); } catch {} onFileSelect(file); }}
               selectedPath={selectedPath}
               matchesSearch={nodeMatchesSearch(node)}
             />

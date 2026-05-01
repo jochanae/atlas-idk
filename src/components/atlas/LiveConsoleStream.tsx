@@ -30,11 +30,15 @@ const LEVEL_PREFIX: Record<ConsoleEntry["level"], string> = {
   system: "⬡",
 };
 
+const ALL_LEVELS: ConsoleEntry["level"][] = ["info", "warn", "error", "debug", "system"];
+
 export function LiveConsoleStream({ entries, visible, onToggle }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<Set<ConsoleEntry["level"]>>(
+    () => new Set(ALL_LEVELS),
+  );
 
-  // Auto-scroll to bottom when new entries arrive
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -47,8 +51,24 @@ export function LiveConsoleStream({ entries, visible, onToggle }: Props) {
     setAutoScroll(scrollHeight - scrollTop - clientHeight < 40);
   };
 
+  const toggleFilter = (level: ConsoleEntry["level"]) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) {
+        if (next.size > 1) next.delete(level);
+      } else {
+        next.add(level);
+      }
+      return next;
+    });
+  };
+
+  const filtered = entries.filter((e) => activeFilters.has(e.level));
+
+  const errorCount = entries.filter((e) => e.level === "error").length;
+  const warnCount = entries.filter((e) => e.level === "warn").length;
+
   if (!visible) {
-    // Collapsed: thin bar with entry count
     return (
       <button
         onClick={onToggle}
@@ -98,60 +118,53 @@ export function LiveConsoleStream({ entries, visible, onToggle }: Props) {
 
   return (
     <div
+      className="flex flex-col h-full"
       style={{
-        display: "flex",
-        flexDirection: "column",
         background: "color-mix(in oklab, var(--background) 92%, transparent)",
-        backdropFilter: "blur(20px) saturate(140%)",
-        WebkitBackdropFilter: "blur(20px) saturate(140%)",
-        borderTop: "0.5px solid var(--glass-border)",
-        maxHeight: 200,
-        minHeight: 80,
       }}
     >
-      {/* Header bar */}
-      <button
-        onClick={onToggle}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "5px 12px",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontFamily: "var(--font-mono)",
-          fontSize: 10,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "var(--muted-text)",
-          borderBottom: "0.5px solid var(--glass-border)",
-          width: "100%",
-        }}
-      >
-        <span style={{ color: "var(--phosphor)", fontSize: 11 }}>⬡</span>
-        Console
-        <span style={{ marginLeft: "auto", opacity: 0.5, fontSize: 9 }}>
-          {entries.length} entries
+      {/* Header bar with filters */}
+      <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 border-b border-border/40">
+        <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider mr-1">Filter:</span>
+        {ALL_LEVELS.map((level) => {
+          const active = activeFilters.has(level);
+          const count = level === "error" ? errorCount : level === "warn" ? warnCount : undefined;
+          return (
+            <button
+              key={level}
+              type="button"
+              onClick={() => toggleFilter(level)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors"
+              style={{
+                background: active ? "color-mix(in oklab, var(--accent) 10%, transparent)" : "transparent",
+                color: active ? LEVEL_COLORS[level] : "var(--muted-text)",
+                opacity: active ? 1 : 0.4,
+                border: `0.5px solid ${active ? "var(--border)" : "transparent"}`,
+              }}
+            >
+              <span style={{ fontSize: 8 }}>{LEVEL_PREFIX[level]}</span>
+              {level}
+              {count !== undefined && count > 0 && (
+                <span className="text-[8px]" style={{ color: LEVEL_COLORS[level] }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <span className="ml-auto text-[9px] font-mono text-muted-foreground/50">
+          {filtered.length}/{entries.length}
         </span>
-        <svg aria-hidden="true" viewBox="0 0 16 16" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+      </div>
 
       {/* Log stream */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          overflowX: "hidden",
-          padding: "4px 0",
-          scrollbarWidth: "none",
-        }}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
+        style={{ padding: "4px 0", scrollbarWidth: "none" }}
       >
-        {entries.length === 0 ? (
+        {filtered.length === 0 ? (
           <div
             style={{
               padding: "16px 12px",
@@ -162,10 +175,10 @@ export function LiveConsoleStream({ entries, visible, onToggle }: Props) {
               opacity: 0.4,
             }}
           >
-            Waiting for build output…
+            {entries.length === 0 ? "Waiting for build output…" : "No matching logs"}
           </div>
         ) : (
-          entries.map((entry) => (
+          filtered.map((entry) => (
             <div
               key={entry.id}
               style={{
@@ -180,24 +193,12 @@ export function LiveConsoleStream({ entries, visible, onToggle }: Props) {
                 animation: "atlas-console-line-in 180ms ease-out",
               }}
             >
-              <span
-                style={{
-                  flexShrink: 0,
-                  width: 12,
-                  textAlign: "center",
-                  opacity: 0.6,
-                  fontSize: 10,
-                }}
-              >
+              <span style={{ flexShrink: 0, width: 12, textAlign: "center", opacity: 0.6, fontSize: 10 }}>
                 {LEVEL_PREFIX[entry.level]}
               </span>
-              <span style={{ flex: 1, wordBreak: "break-word" }}>
-                {entry.message}
-              </span>
+              <span style={{ flex: 1, wordBreak: "break-word" }}>{entry.message}</span>
               {entry.source && (
-                <span style={{ flexShrink: 0, opacity: 0.3, fontSize: 9 }}>
-                  {entry.source}
-                </span>
+                <span style={{ flexShrink: 0, opacity: 0.3, fontSize: 9 }}>{entry.source}</span>
               )}
             </div>
           ))

@@ -30,6 +30,7 @@ import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
 import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { FileTreePanel } from "@/components/atlas/FileTreePanel";
+import { ProjectSettingsPanel } from "@/components/atlas/ProjectSettingsPanel";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
 // OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
@@ -2156,8 +2157,36 @@ function WorkspacePage() {
             <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
               {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
             </span>
-            {generatedCode && (
-              <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              {/* Run button — refreshes current preview */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (generatedCode) {
+                    const code = generatedCode;
+                    setGeneratedCode(null);
+                    requestAnimationFrame(() => setGeneratedCode(code));
+                  }
+                }}
+                disabled={!generatedCode || codegenLoading}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider bg-accent/10 text-accent-foreground hover:bg-accent/20 disabled:opacity-30 transition-colors"
+                title="Re-run preview"
+              >
+                <svg viewBox="0 0 16 16" width={10} height={10} fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>
+                Run
+              </button>
+              {/* Build button — sends /build to chat */}
+              <button
+                type="button"
+                onClick={() => { if (!sending) send("/build"); }}
+                disabled={sending || !session}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider bg-accent/15 text-accent-foreground hover:bg-accent/25 disabled:opacity-30 transition-colors border border-accent/20"
+                title="Trigger build"
+              >
+                <svg viewBox="0 0 16 16" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={1.6}><path d="M2 14V6l6-4 6 4v8" strokeLinejoin="round"/><path d="M6 14v-4h4v4"/></svg>
+                Build
+              </button>
+              {generatedCode && (
                 <button
                   type="button"
                   onClick={() => { setGeneratedCode(null); setGeneratedFilename(null); }}
@@ -2165,8 +2194,8 @@ function WorkspacePage() {
                 >
                   Clear
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           {/* Canvas content */}
           <div className="flex-1 min-h-0">
@@ -2293,6 +2322,14 @@ function WorkspacePage() {
               ))}
             </div>
           ),
+        settings: (
+          <ProjectSettingsPanel
+            project={activeProject ?? null}
+            onProjectUpdate={(updated) => {
+              setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+            }}
+          />
+        ),
       })}
     />
     <ProjectGallery
