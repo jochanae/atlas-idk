@@ -173,9 +173,30 @@ Deno.serve(async (req) => {
     } = await userClient.auth.getUser();
     if (userErr || !user) throw new Error("Not authenticated");
 
-    const { sessionId, projectId, message, history } = await req.json();
+    const { sessionId, projectId, message, history, attachments } = await req.json() as {
+      sessionId?: string;
+      projectId?: string;
+      message?: string;
+      history?: Array<{ role: string; content: string }>;
+      attachments?: Attachment[];
+    };
     if (!sessionId || !projectId || !message)
       throw new Error("sessionId, projectId, message required");
+
+    // ═══ Parse attachments — turn uploaded files into model context ═══
+    let parsedAttachments: ParsedAttachment[] = [];
+    let attachmentContext: string | null = null;
+    let imageAttachments: ParsedAttachment[] = [];
+    if (attachments && attachments.length > 0) {
+      try {
+        parsedAttachments = await parseAttachments(attachments);
+        attachmentContext = renderAttachmentContext(parsedAttachments);
+        imageAttachments = parsedAttachments.filter((p) => p.imageUrl);
+        console.log(`atlas-chat: parsed ${parsedAttachments.length} attachments, ${imageAttachments.length} images`);
+      } catch (err) {
+        console.error("atlas-chat: attachment parsing failed", err);
+      }
+    }
 
     // Conflict guard: pull committed entries (Ledger view) from the
     // unified `entries` table. Same object as Parking Lot, filtered by
