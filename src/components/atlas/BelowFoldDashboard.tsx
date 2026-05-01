@@ -45,7 +45,7 @@ export function BelowFoldDashboard({
       }}
     >
       {/* 1. A Moment for You ---------------------------------------------- */}
-      <section className="atlas-discovery-card atlas-discovery-moment">
+      <section id="discovery-moment" className="atlas-discovery-card atlas-discovery-moment">
         <div className="atlas-discovery-tag" style={{ color: "#004D40" }}>
           atlas noticed
         </div>
