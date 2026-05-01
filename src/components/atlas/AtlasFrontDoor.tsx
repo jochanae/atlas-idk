@@ -944,6 +944,7 @@ export function AtlasFrontDoor({
             zIndex: 48,
             margin: 0,
             padding: "0 var(--shell-edge) 0",
+            paddingBottom: "24px",
             background: "transparent",
           }}
         >
