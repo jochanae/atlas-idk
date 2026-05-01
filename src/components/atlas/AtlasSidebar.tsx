@@ -634,7 +634,7 @@ export function AtlasSidebar({
         >
           <SidebarItem
             icon={theme === "obsidian" ? <Sun size={15} /> : <Moon size={15} />}
-            label={theme === "obsidian" ? "Parchment theme" : "Obsidian theme"}
+            label={theme === "obsidian" ? "Executive Light theme" : "Obsidian theme"}
             onClick={onToggleTheme}
             hint="preview"
           />
