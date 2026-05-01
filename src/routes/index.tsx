@@ -531,9 +531,21 @@ function WorkspacePage() {
     try { return localStorage.getItem("atlas-auto-run") === "true"; } catch { return false; }
   });
   useEffect(() => { try { localStorage.setItem("atlas-auto-run", String(autoRunEnabled)); } catch {} }, [autoRunEnabled]);
-  type CanvasViewport = "desktop" | "tablet" | "mobile";
-  const [canvasViewport, setCanvasViewport] = useState<CanvasViewport>("desktop");
-  const CANVAS_WIDTHS: Record<CanvasViewport, number | null> = { desktop: null, tablet: 768, mobile: 375 };
+  // ── Multi-viewport presets ──
+  type ViewportPreset = { id: string; label: string; w: number | null; h?: number | null; icon: ReactNode };
+  const VIEWPORT_PRESETS: ViewportPreset[] = [
+    { id: "desktop", label: "Desktop", w: null, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg> },
+    { id: "laptop", label: "Laptop 1440", w: 1440, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="2" y="3" width="12" height="8" rx="1"/><path d="M1 13h14"/></svg> },
+    { id: "ipad-pro", label: "iPad Pro", w: 1024, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="2.5" y="1" width="11" height="14" rx="1.5"/><path d="M7 13.5h2"/></svg> },
+    { id: "ipad", label: "iPad", w: 768, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="3" y="1" width="10" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
+    { id: "iphone-15", label: "iPhone 15 Pro", w: 393, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
+    { id: "iphone-se", label: "iPhone SE", w: 375, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M6.5 13h3"/></svg> },
+    { id: "galaxy", label: "Galaxy S24", w: 360, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="0.5" width="8" height="15" rx="2"/><path d="M7 13.5h2"/></svg> },
+    { id: "pixel", label: "Pixel 8", w: 412, icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><circle cx="8" cy="13" r="0.8"/></svg> },
+  ];
+  const [canvasViewportId, setCanvasViewportId] = useState("desktop");
+  const activeViewport = VIEWPORT_PRESETS.find(v => v.id === canvasViewportId) ?? VIEWPORT_PRESETS[0];
+  const [viewportDropdownOpen, setViewportDropdownOpen] = useState(false);
 
   // Secrets manager state
   type SecretEntry = { name: string; isSet: boolean };
@@ -571,12 +583,39 @@ function WorkspacePage() {
   useEffect(() => { try { localStorage.setItem("atlas-editor-tabs", JSON.stringify(editorOpenTabs)); } catch {} }, [editorOpenTabs]);
   useEffect(() => { try { localStorage.setItem("atlas-editor-active-file", editorActiveFile ?? ""); } catch {} }, [editorActiveFile]);
 
-  // Build secrets sync state
-  const [buildSecrets, setBuildSecrets] = useState<Array<{ name: string; value: string }>>(() => {
-    if (typeof window === "undefined") return [];
-    try { const v = localStorage.getItem("atlas-build-secrets"); return v ? JSON.parse(v) : []; } catch { return []; }
+  // ── Build secrets with environment profiles ──
+  type EnvProfile = "development" | "staging" | "production";
+  const ENV_PROFILES: { id: EnvProfile; label: string; color: string }[] = [
+    { id: "development", label: "Dev", color: "text-emerald-400" },
+    { id: "staging", label: "Staging", color: "text-amber-400" },
+    { id: "production", label: "Prod", color: "text-red-400" },
+  ];
+  const [activeEnvProfile, setActiveEnvProfile] = useState<EnvProfile>(() => {
+    if (typeof window === "undefined") return "development";
+    return (localStorage.getItem("atlas-env-profile") as EnvProfile) || "development";
   });
-  useEffect(() => { try { localStorage.setItem("atlas-build-secrets", JSON.stringify(buildSecrets)); } catch {} }, [buildSecrets]);
+  useEffect(() => { try { localStorage.setItem("atlas-env-profile", activeEnvProfile); } catch {} }, [activeEnvProfile]);
+
+  // Each profile has its own secrets array
+  const [buildSecretsMap, setBuildSecretsMap] = useState<Record<EnvProfile, Array<{ name: string; value: string }>>>(() => {
+    if (typeof window === "undefined") return { development: [], staging: [], production: [] };
+    try {
+      const v = localStorage.getItem("atlas-build-secrets-map");
+      if (v) return JSON.parse(v);
+      // Migrate old flat buildSecrets
+      const old = localStorage.getItem("atlas-build-secrets");
+      if (old) {
+        const parsed = JSON.parse(old);
+        return { development: parsed, staging: [...parsed], production: [...parsed] };
+      }
+    } catch {}
+    return { development: [], staging: [], production: [] };
+  });
+  useEffect(() => { try { localStorage.setItem("atlas-build-secrets-map", JSON.stringify(buildSecretsMap)); } catch {} }, [buildSecretsMap]);
+  const buildSecrets = buildSecretsMap[activeEnvProfile];
+  const setBuildSecrets = useCallback((updater: (prev: Array<{ name: string; value: string }>) => Array<{ name: string; value: string }>) => {
+    setBuildSecretsMap(prev => ({ ...prev, [activeEnvProfile]: updater(prev[activeEnvProfile]) }));
+  }, [activeEnvProfile]);
 
   // Diff accept/reject via keyboard when diff is active
   useEffect(() => {
