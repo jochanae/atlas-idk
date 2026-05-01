@@ -32,7 +32,7 @@ import {
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
-export type InspectorTabId = "github" | "code" | "recs";
+export type InspectorTabId = "github" | "code" | "recs" | "files" | "console";
 
 export interface DesktopWorkspaceProps {
   // Mobile fallback — render-prop, only mounted on <lg viewports
