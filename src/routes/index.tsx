@@ -1410,7 +1410,7 @@ function WorkspacePage() {
   };
 
   const mainShell = (
-    <div className="atlas-shell-host h-full bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="atlas-shell-host h-full w-full max-w-full min-w-0 bg-background text-foreground flex flex-col overflow-hidden overflow-x-hidden relative">
       <FooterAuditLine state={auditWarning ? "warning" : "healthy"} />
       <main className="relative flex-1 min-h-0 overflow-hidden">
 
@@ -2276,8 +2276,8 @@ function WorkspacePage() {
   );
 
   const mobileWorkspaceLayout = (
-    <div className="h-screen w-full overflow-hidden">
-      <div className="h-full w-full flex flex-col bg-background">
+    <div className="h-screen w-full max-w-full overflow-hidden overflow-x-hidden relative">
+      <div className="h-full w-full max-w-full min-w-0 flex flex-col bg-background overflow-x-hidden relative">
         {mainShell}
       </div>
     </div>
