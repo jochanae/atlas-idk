@@ -76,7 +76,7 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-type="module">
+  <script type="text/babel" data-type="module" data-presets="typescript,react">
     try {
       ${componentCode}
 
@@ -88,8 +88,26 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
           : null;
 
       if (Component) {
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(Component));
+        // Provide demo props so components with required props still render
+        var demoProps = {
+          title: 'Pro Plan', name: 'Atlas', label: 'Featured',
+          price: 49, description: 'Everything you need to build at scale.',
+          features: ['Unlimited projects', 'Priority support', 'Custom domains', 'Advanced analytics'],
+          items: ['Item 1', 'Item 2', 'Item 3'],
+          children: 'Hello World',
+          onClick: function(){}, onSelect: function(){}, onSubmit: function(){},
+          buttonText: 'Get Started', popular: true, isPopular: true,
+        };
+        var container = document.getElementById('root');
+        // React 18 UMD: try createRoot first, fall back to legacy render
+        var appEl = React.createElement('div', {
+          style: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
+        }, React.createElement(Component, demoProps));
+        if (ReactDOM.createRoot) {
+          ReactDOM.createRoot(container).render(appEl);
+        } else {
+          ReactDOM.render(appEl, container);
+        }
       } else {
         document.getElementById('root').innerHTML =
           '<div class="preview-error">No default export found in component.</div>';
@@ -147,18 +165,37 @@ const PREVIEW_SHELL = (componentCode: string) => `<!DOCTYPE html>
  */
 function prepareForSandbox(code: string): string {
   let prepared = code
+    // Strip all imports
     .replace(/^import\s+.*?(?:from\s+['"].*?['"]|['"].*?['"])\s*;?\s*$/gm, "")
+    // Strip multi-line interfaces and types (including nested braces)
+    .replace(/^(?:export\s+)?(?:interface|type)\s+\w+[^{]*\{[^}]*\}\s*;?\s*$/gm, "")
+    // Rename default export function
     .replace(
       /export\s+default\s+function\s+(\w+)/g,
       "function DefaultComponent",
     )
     .replace(/export\s+default\s+/g, "var DefaultComponent = ")
     .replace(/export\s+(const|let|var|function|type|interface)\s/g, "$1 ")
+    // Strip remaining type annotations that would fail at runtime
     .replace(/:\s*React\.FC(?:<[^>]*>)?/g, "")
-    .replace(/:\s*JSX\.Element/g, "")
-    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, "");
+    .replace(/:\s*JSX\.Element/g, "");
 
-  return prepared;
+  // Provide React hooks as globals (imports get stripped)
+  const runtimeStub = `
+    var useState = React.useState, useEffect = React.useEffect,
+        useCallback = React.useCallback, useMemo = React.useMemo,
+        useRef = React.useRef, useContext = React.useContext,
+        Fragment = React.Fragment, createElement = React.createElement;
+    var _iconFallback = function(props) {
+      return React.createElement('span', {style:{display:'inline-block',width:16,height:16}}, '●');
+    };
+    var Check = _iconFallback, X = _iconFallback, Star = _iconFallback,
+        ChevronRight = _iconFallback, ArrowRight = _iconFallback, Heart = _iconFallback,
+        Shield = _iconFallback, Zap = _iconFallback, Crown = _iconFallback,
+        Sparkles = _iconFallback, BadgeCheck = _iconFallback, Circle = _iconFallback;
+  `;
+
+  return runtimeStub + "\n" + prepared;
 }
 
 export function LivePreview({ code, filename, loading, error, onElementSelect }: Props) {
