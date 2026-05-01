@@ -485,6 +485,11 @@ Deno.serve(async (req) => {
         card: cardPayload,
         cardSchemaVersion,
         surfacedMemories,
+        intent: {
+          mode: whisperResult.mode,
+          confidence: whisperResult.confidence,
+          refinement: whisperResult.refinement ?? null,
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
