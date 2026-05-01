@@ -782,8 +782,12 @@ function WorkspacePage() {
       // ═══ BUILD auto-codegen: when WhisperGate classifies as BUILD,
       // automatically generate a component and show it in LivePreview ═══
       if (data?.intent?.mode === "BUILD") {
-        // Fire-and-forget — don't block the chat flow
-        generateCode(text).catch(() => {});
+        generateCode(text).catch((err) => {
+          const msg = err instanceof Error ? err.message : "Build failed";
+          console.error("auto-codegen error:", msg);
+          toast.error(msg);
+          setCodegenLoading(false);
+        });
       }
 
       await refresh(target.session, target.projectId);
@@ -833,7 +837,10 @@ function WorkspacePage() {
 
   /** Generate a React component via atlas-codegen */
   const generateCode = useCallback(async (prompt: string) => {
-    if (!user || !activeProjectId) return;
+    if (!user || !activeProjectId) {
+      toast.error("No active project — cannot generate code.");
+      return;
+    }
     setCodegenLoading(true);
     setCodegenError(null);
     setSurface("preview");
