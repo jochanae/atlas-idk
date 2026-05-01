@@ -30,7 +30,7 @@ const FULL_HEIGHT_VH = 90;
  *   - 420px wide, slides in from right when artifacts exist
  *   - never overlays chat input
  */
-export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange }: Props) {
+export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange, desktopHidden, onDesktopHiddenChange }: Props) {
   const [isWide, setIsWide] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 768 : false,
   );
