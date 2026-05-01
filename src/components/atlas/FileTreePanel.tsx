@@ -233,7 +233,7 @@ export function FileTreePanel({ files, onFileSelect }: Props) {
               key={node.path}
               node={node}
               depth={0}
-              onFileSelect={(file) => { setSelectedPath(file.filename); onFileSelect(file); }}
+              onFileSelect={(file) => { setSelectedPath(file.filename); try { localStorage.setItem("atlas-selected-file", file.filename); } catch {} onFileSelect(file); }}
               selectedPath={selectedPath}
               matchesSearch={nodeMatchesSearch(node)}
             />
