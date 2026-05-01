@@ -778,7 +778,7 @@ export function AtlasFrontDoor({
                   opacity: 0.7,
                 }}
               >
-                <span>Continue where you left off</span>
+                <span>Where were we</span>
                 {recents.length > 3 && onViewAllRecents && (
                   <button
                     type="button"
