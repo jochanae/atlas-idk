@@ -2245,7 +2245,7 @@ function WorkspacePage() {
         files: (
           <FileTreePanel
             files={generatedFiles}
-            onFileSelect={(file) => {
+            onFileSelect={(file: { filename: string; content: string }) => {
               setGeneratedCode(file.content);
               setGeneratedFilename(file.filename);
             }}
