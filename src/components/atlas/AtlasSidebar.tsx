@@ -253,8 +253,10 @@ export function AtlasSidebar({
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: 8,
+                  gap: 6,
                   paddingTop: 4,
+                  maxWidth: "100%",
+                  overflow: "hidden",
                 }}
               >
                 {projects.map((p) => (
