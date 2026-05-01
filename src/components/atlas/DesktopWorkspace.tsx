@@ -183,20 +183,21 @@ export function DesktopWorkspace({
   const inspectorPanes = renderInspectorPanes();
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-screen w-full text-foreground overflow-hidden"
+      style={{ background: "var(--background)" }}>
       {/* ── Header — single, thin bar ── */}
       {renderHeader && (
         <div className="flex-shrink-0 z-20">{renderHeader()}</div>
       )}
 
-      {/* ── Main content area ── */}
-      <div className="flex-1 min-h-0 flex relative">
-        {/* Chat pane */}
+      {/* ── Main content area — unified shell ── */}
+      <div className="flex-1 min-h-0 flex relative p-2 gap-0">
+        {/* Chat pane — seamless with shell */}
         {showChat && (
           <>
             <div
-              className="flex-shrink-0 h-full flex flex-col bg-background overflow-hidden"
-              style={{ width: chatWidth, minWidth: 280, maxWidth: 600 }}
+              className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
+              style={{ width: chatWidth, minWidth: 280, maxWidth: 600, background: "var(--surface)" }}
             >
               {renderChatPane!()}
             </div>
@@ -206,10 +207,15 @@ export function DesktopWorkspace({
           </>
         )}
 
-        {/* Canvas — fills remaining space */}
-        <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
-          {/* Thin canvas toolbar — integrated, not a separate bar */}
-          <div className="flex-shrink-0 flex items-center justify-between h-9 px-3 border-b border-border/20 bg-background/60 backdrop-blur-sm">
+        {/* Canvas — inset panel with rounded corners and elevated surface */}
+        <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative rounded-xl"
+          style={{
+            background: "var(--surface-alt)",
+            border: "1px solid var(--glass-border)",
+          }}>
+          {/* Thin canvas toolbar */}
+          <div className="flex-shrink-0 flex items-center justify-between h-9 px-3"
+            style={{ borderBottom: "1px solid var(--glass-border)" }}>
             <div className="flex items-center gap-2">
               {!showChat && renderChatPane && (
                 <button onClick={() => setChatVisible(true)}
@@ -257,7 +263,7 @@ export function DesktopWorkspace({
           </div>
         </div>
 
-        {/* Inspector pane */}
+        {/* Inspector pane — also inset */}
         {showInspector && (
           <>
             <ResizeHandle
@@ -265,11 +271,16 @@ export function DesktopWorkspace({
               onResize={(dx) => setInspectorWidth(w => Math.max(240, Math.min(500, w - dx)))}
             />
             <div
-              className="flex-shrink-0 h-full flex flex-col bg-background overflow-hidden border-l border-border/20"
-              style={{ width: inspectorWidth, minWidth: 240, maxWidth: 500 }}
+              className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
+              style={{
+                width: inspectorWidth, minWidth: 240, maxWidth: 500,
+                background: "var(--surface-alt)",
+                border: "1px solid var(--glass-border)",
+              }}
             >
               {/* Inspector tab bar */}
-              <div className="flex-shrink-0 flex items-center gap-0.5 h-9 px-2 border-b border-border/20 overflow-x-auto scrollbar-none">
+              <div className="flex-shrink-0 flex items-center gap-0.5 h-9 px-2 overflow-x-auto scrollbar-none"
+                style={{ borderBottom: "1px solid var(--glass-border)" }}>
                 {INSPECTOR_TABS.map(({ id, label, Icon }) => (
                   <button key={id} onClick={() => setInspectorTab(id)}
                     className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
