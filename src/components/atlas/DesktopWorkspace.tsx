@@ -74,6 +74,7 @@ const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Gi
   { id: "code", label: "Code", Icon: FileCode2 },
   { id: "github", label: "GitHub", Icon: Github },
   { id: "recs", label: "Recs", Icon: ScrollText },
+  { id: "settings", label: "Settings", Icon: Settings },
 ];
 
 export function DesktopWorkspace({
