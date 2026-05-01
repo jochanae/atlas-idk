@@ -2027,7 +2027,7 @@ function WorkspacePage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (input.trim()) send(input, activeMode);
+                    if (input.trim()) send(input);
                   }
                 }}
                 placeholder={`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)} mode — type here…`}
@@ -2036,7 +2036,7 @@ function WorkspacePage() {
               />
               <button
                 type="button"
-                onClick={() => { if (input.trim()) send(input, activeMode); }}
+                onClick={() => { if (input.trim()) send(input); }}
                 disabled={!input.trim() || sending}
                 className="flex-shrink-0 p-2 rounded-lg bg-accent/10 text-accent-foreground hover:bg-accent/20 disabled:opacity-30 transition-colors"
                 aria-label="Send"
