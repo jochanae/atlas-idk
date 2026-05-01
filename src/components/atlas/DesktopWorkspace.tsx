@@ -483,7 +483,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
 // Misc
 // ──────────────────────────────────────────────────────────────────────
 
-function PaneHeader({ title }: { title: string }) {
+function PaneHeader({ title, draggable: _draggable }: { title: string; draggable?: boolean }) {
   return (
     <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
       <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
