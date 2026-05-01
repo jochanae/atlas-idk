@@ -544,6 +544,37 @@ Deno.serve(async (req) => {
       .single();
     if (insertError) throw insertError;
 
+    // ═══ Phase 4: Observability — auto-log notable state transitions ═══
+    const hasNotableEvent = !validation.valid || outputRepaired || whisperResult.confidence === "low";
+    if (hasNotableEvent) {
+      const parts: string[] = [];
+      parts.push(`Intent: ${whisperResult.mode} (${whisperResult.confidence})`);
+      if (!validation.valid) parts.push(`Guard violation: ${validation.violation}`);
+      if (outputRepaired) parts.push("Auto-repaired via retry");
+      if (whisperResult.refinement) parts.push(`Refinement: ${whisperResult.refinement}`);
+
+      try {
+        await userClient.from("entries").insert({
+          user_id: user.id,
+          project_id: projectId,
+          session_id: sessionId,
+          status: "committed",
+          severity: "neutral",
+          verb: "audit",
+          title: outputRepaired
+            ? `Self-healed: ${validation.violation ?? "output issue"}`
+            : !validation.valid
+              ? `Guard flagged: ${validation.violation}`
+              : `Low-confidence intent: ${whisperResult.mode}`,
+          summary: parts.join(" · "),
+          source_message_id: insertedMessage.id,
+        });
+      } catch (obsErr) {
+        // Non-critical — don't break the response
+        console.warn("observability log failed:", obsErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         reply: finalText,
