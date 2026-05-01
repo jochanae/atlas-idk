@@ -580,3 +580,204 @@
   text-transform: uppercase;
   color: var(--muted-text);
 }
+
+/* ============================================================
+   Discovery cards — below-fold sections (Moment / Momentum / Loops / Check In)
+   ============================================================ */
+.atlas-discovery-card {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 18px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.theme-parchment .atlas-discovery-card,
+.theme-executive .atlas-discovery-card,
+.theme-cognac .atlas-discovery-card {
+  background: #FFFFFF;
+  border-color: #E8E1D6;
+}
+
+.atlas-discovery-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  opacity: 0.95;
+}
+
+.atlas-discovery-moment-text {
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #8B4513;
+  margin: 0;
+  opacity: 0.95;
+}
+.theme-obsidian .atlas-discovery-moment-text {
+  color: var(--accent-gold);
+}
+
+.atlas-discovery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.atlas-discovery-card h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Contrast bump: 70% opacity, theme accent color */
+  color: var(--accent-gold);
+  opacity: 0.7;
+}
+.atlas-discovery-link {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  opacity: 0.85;
+  cursor: pointer;
+  padding: 0;
+}
+
+.atlas-momentum-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.atlas-momentum-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0;
+}
+.atlas-momentum-num {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #8B4513;
+}
+.theme-obsidian .atlas-momentum-num {
+  color: var(--accent-gold);
+}
+.atlas-momentum-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5E5E5E;
+  opacity: 0.9;
+}
+.theme-obsidian .atlas-momentum-label {
+  color: var(--muted-text);
+  opacity: 0.85;
+}
+
+.atlas-discovery-empty {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--muted-text);
+  opacity: 0.75;
+  margin: 0;
+}
+
+.atlas-discovery-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px dashed color-mix(in oklab, var(--border) 80%, transparent);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.atlas-discovery-row:last-child { border-bottom: none; }
+.atlas-discovery-row-title {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--foreground);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+.atlas-discovery-row-mode {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Below-fold dashboard label contrast bump (legacy section)
+   ============================================================ */
+.atlas-belowfold-section h3 {
+  color: var(--accent-gold) !important;
+  opacity: 0.7 !important;
+}
+.atlas-belowfold-stat-label {
+  color: var(--accent-gold) !important;
+  opacity: 0.7 !important;
+}
+
+/* ============================================================
+   Footer nav — Executive Light theme overrides
+   Spec: white surface + 12px backdrop-blur, charcoal icons/labels,
+   raised cognac center button with white icon.
+   ============================================================ */
+.theme-parchment nav[aria-label="Primary"],
+.theme-executive nav[aria-label="Primary"],
+.theme-cognac nav[aria-label="Primary"] {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border-top: 0.5px solid #E8E1D6 !important;
+}
+.theme-parchment nav[aria-label="Primary"] button,
+.theme-executive nav[aria-label="Primary"] button,
+.theme-cognac nav[aria-label="Primary"] button {
+  color: #1A1A1A !important;
+}
+.theme-parchment nav[aria-label="Primary"] button[aria-current="page"],
+.theme-executive nav[aria-label="Primary"] button[aria-current="page"],
+.theme-cognac nav[aria-label="Primary"] button[aria-current="page"] {
+  color: #8B4513 !important;
+}
+.theme-parchment nav[aria-label="Primary"] button span,
+.theme-executive nav[aria-label="Primary"] button span,
+.theme-cognac nav[aria-label="Primary"] button span {
+  color: inherit !important;
+}
+/* Raised center button — cognac squircle with white icon */
+.theme-parchment .atlas-footer-center,
+.theme-executive .atlas-footer-center,
+.theme-cognac .atlas-footer-center {
+  background: #8B4513 !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 0 0 4px #FFFFFF,
+    0 8px 24px -6px rgba(139, 69, 19, 0.45),
+    0 0 18px -2px rgba(139, 69, 19, 0.3) !important;
+}
+.theme-parchment .atlas-footer-center svg,
+.theme-executive .atlas-footer-center svg,
+.theme-cognac .atlas-footer-center svg {
+  stroke: #FFFFFF !important;
+}
