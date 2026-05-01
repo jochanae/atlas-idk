@@ -778,7 +778,7 @@ export function AtlasFrontDoor({
                   opacity: 0.7,
                 }}
               >
-                <span>Continue where you left off</span>
+                <span>Where were we</span>
                 {recents.length > 3 && onViewAllRecents && (
                   <button
                     type="button"
@@ -806,11 +806,32 @@ export function AtlasFrontDoor({
               />
             </div>
           )}
+
+          {/* Scroll indicator — three vertical dots between input zone and fold.
+              Top dot cognac/ember at 50% opacity, bottom two grey #E0E0E0. */}
+          {!active && belowFold && (
+            <div
+              aria-hidden
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 32,
+                marginBottom: 8,
+                opacity: 0.95,
+              }}
+            >
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent-gold)", opacity: 0.5 }} />
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E0E0E0" }} />
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E0E0E0" }} />
+            </div>
+          )}
         </div>
 
         {/* Below-the-fold dashboard — only in resting view */}
         {!active && belowFold && (
-          <div style={{ flexShrink: 0, paddingBottom: "calc(var(--footer-nav-height, 62px) + 24px)" }}>
+          <div style={{ flexShrink: 0, paddingBottom: "calc(var(--footer-nav-height, 62px) + 32px)" }}>
             {belowFold}
           </div>
         )}
