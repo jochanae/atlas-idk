@@ -32,6 +32,9 @@ import { FileTreeDrawer } from "@/components/atlas/FileTreeDrawer";
 import { FileTreePanel } from "@/components/atlas/FileTreePanel";
 import { ProjectSettingsPanel } from "@/components/atlas/ProjectSettingsPanel";
 import { DiffViewer } from "@/components/atlas/DiffViewer";
+import { CodeEditor } from "@/components/atlas/CodeEditor";
+import { SecretsManagerPanel } from "@/components/atlas/SecretsManagerPanel";
+import { DiffPreview } from "@/components/atlas/DiffPreview";
 // OnboardingFlow removed
 import { CollaborationDrawer } from "@/components/atlas/CollaborationDrawer";
 import { GitHubDrawer } from "@/components/atlas/GitHubDrawer";
@@ -532,6 +535,30 @@ function WorkspacePage() {
   const [canvasViewport, setCanvasViewport] = useState<CanvasViewport>("desktop");
   const CANVAS_WIDTHS: Record<CanvasViewport, number | null> = { desktop: null, tablet: 768, mobile: 375 };
 
+  // Secrets manager state
+  type SecretEntry = { name: string; isSet: boolean };
+  const [projectSecrets, setProjectSecrets] = useState<SecretEntry[]>([]);
+  const [secretsLoading, setSecretsLoading] = useState(false);
+  const loadProjectSecrets = useCallback(async () => {
+    setSecretsLoading(true);
+    // Known secrets from project config — in a real integration this would query the backend
+    const knownSecrets: SecretEntry[] = [
+      { name: "ANTHROPIC_API_KEY", isSet: true },
+      { name: "SUPABASE_SERVICE_ROLE_KEY", isSet: true },
+      { name: "SUPABASE_URL", isSet: true },
+      { name: "SUPABASE_ANON_KEY", isSet: true },
+      { name: "SUPABASE_DB_URL", isSet: true },
+      { name: "LOVABLE_API_KEY", isSet: true },
+    ];
+    setProjectSecrets(knownSecrets);
+    setSecretsLoading(false);
+  }, []);
+  useEffect(() => { loadProjectSecrets(); }, [loadProjectSecrets]);
+
+  // Diff preview state for canvas
+  const [diffPreviewActive, setDiffPreviewActive] = useState(false);
+  const [previousCode, setPreviousCode] = useState<string | null>(null);
+
 
   // Track whether the active project already has a Compass (used by thinking prompts)
   useEffect(() => {
@@ -912,6 +939,7 @@ function WorkspacePage() {
       if (data?.error) throw new Error(data.error);
       pushBuildState("verifying", "Verifying output…");
       pushConsole("info", `✓ Generated ${data.file?.filename ?? "component"}`);
+      if (generatedCode) setPreviousCode(generatedCode);
       setGeneratedCode(data.file?.content ?? null);
       setGeneratedFilename(data.file?.filename ?? null);
       if (data.file?.content && data.file?.filename) {
@@ -2235,6 +2263,21 @@ function WorkspacePage() {
                   Clear
                 </button>
               )}
+              {/* Diff toggle */}
+              {generatedCode && previousCode && (
+                <button
+                  type="button"
+                  onClick={() => setDiffPreviewActive((v) => !v)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                    diffPreviewActive
+                      ? "bg-accent/20 text-accent-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  }`}
+                  title="Toggle diff view"
+                >
+                  Diff
+                </button>
+              )}
             </div>
           </div>
           {/* Canvas content — viewport-constrained */}
@@ -2254,6 +2297,22 @@ function WorkspacePage() {
                   Generating component…
                 </span>
               </div>
+            ) : diffPreviewActive && generatedCode && previousCode ? (
+              <DiffPreview
+                oldCode={previousCode}
+                newCode={generatedCode}
+                filename={generatedFilename ?? "Component.tsx"}
+                oldLabel="Previous"
+                newLabel="Current"
+                onAccept={() => {
+                  setPreviousCode(generatedCode);
+                  setDiffPreviewActive(false);
+                }}
+                onReject={() => {
+                  setGeneratedCode(previousCode);
+                  setDiffPreviewActive(false);
+                }}
+              />
             ) : generatedCode ? (
               <LivePreview
                 code={generatedCode}
@@ -2337,18 +2396,11 @@ function WorkspacePage() {
           />
         ),
         code: generatedCode ? (
-          <div className="h-full flex flex-col">
-            <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                Source — {generatedFilename ?? "Component.tsx"}
-              </span>
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all overflow-x-auto">
-                {generatedCode}
-              </pre>
-            </div>
-          </div>
+          <CodeEditor
+            code={generatedCode}
+            filename={generatedFilename ?? "Component.tsx"}
+            onChange={(newCode) => setGeneratedCode(newCode)}
+          />
         ) : undefined,
         github: undefined,
         recs:
@@ -2377,6 +2429,20 @@ function WorkspacePage() {
             onProjectUpdate={(updated) => {
               setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
             }}
+          />
+        ),
+        secrets: (
+          <SecretsManagerPanel
+            secrets={projectSecrets}
+            onAddSecret={(name) => {
+              // In a real integration this would call the secrets tool
+              setProjectSecrets((prev) => [...prev, { name, isSet: false }]);
+            }}
+            onDeleteSecret={(name) => {
+              setProjectSecrets((prev) => prev.filter((s) => s.name !== name));
+            }}
+            onRefresh={loadProjectSecrets}
+            loading={secretsLoading}
           />
         ),
       })}

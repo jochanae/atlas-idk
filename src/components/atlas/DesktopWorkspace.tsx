@@ -17,6 +17,7 @@ import {
   Terminal,
   Files,
   Settings,
+  KeyRound,
   Play,
   Hammer,
   RotateCcw,
@@ -36,7 +37,7 @@ import {
  */
 
 export type SurfaceId = "chat" | "compass" | "ledger" | "parking";
-export type InspectorTabId = "github" | "code" | "recs" | "files" | "console" | "settings";
+export type InspectorTabId = "github" | "code" | "recs" | "files" | "console" | "settings" | "secrets";
 
 export type BuildStatus = "idle" | "building" | "success" | "error";
 
@@ -75,6 +76,7 @@ const INSPECTOR_TABS: Array<{ id: InspectorTabId; label: string; Icon: typeof Gi
   { id: "github", label: "GitHub", Icon: Github },
   { id: "recs", label: "Recs", Icon: ScrollText },
   { id: "settings", label: "Settings", Icon: Settings },
+  { id: "secrets", label: "Secrets", Icon: KeyRound },
 ];
 
 // ── localStorage helpers ──
@@ -650,6 +652,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
     code: "Generated code and previews will appear here.",
     recs: "No recommendations yet. They appear as Atlas notices patterns.",
     settings: "Select a project to view its settings.",
+    secrets: "Manage API keys and secrets for your backend functions.",
   };
   return (
     <div className="h-full flex items-center justify-center p-6 text-center">
