@@ -2283,24 +2283,40 @@ function WorkspacePage() {
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                 {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
               </span>
-              {/* Responsive view switcher */}
-              <div className="flex items-center gap-0.5 border border-border/30 rounded-md p-0.5">
-                {([
-                  { id: "desktop" as const, w: 1280, label: "Desktop", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="1" y="2" width="14" height="10" rx="1.5"/><path d="M5 14h6M8 12v2"/></svg> },
-                  { id: "tablet" as const, w: 768, label: "Tablet", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="3" y="1" width="10" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
-                  { id: "mobile" as const, w: 375, label: "Mobile", icon: <svg viewBox="0 0 16 16" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={1.3}><rect x="4" y="1" width="8" height="14" rx="1.5"/><path d="M7 13h2"/></svg> },
-                ] as const).map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setCanvasViewport(v.id)}
-                    className={`p-1 rounded transition-colors ${canvasViewport === v.id ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"}`}
-                    title={`${v.label} (${v.w}px)`}
-                    aria-label={v.label}
-                  >
-                    {v.icon}
-                  </button>
-                ))}
+              {/* Multi-viewport preset dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setViewportDropdownOpen(v => !v)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/30 text-[9px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                  title="Change viewport"
+                >
+                  {activeViewport.icon}
+                  <span>{activeViewport.label}</span>
+                  {activeViewport.w && <span className="opacity-40">{activeViewport.w}px</span>}
+                  <svg viewBox="0 0 10 6" width={8} height={5} fill="currentColor" className="opacity-40"><path d="M0 0l5 5 5-5z"/></svg>
+                </button>
+                {viewportDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setViewportDropdownOpen(false)} />
+                    <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[180px]">
+                      {VIEWPORT_PRESETS.map(vp => (
+                        <button
+                          key={vp.id}
+                          type="button"
+                          onClick={() => { setCanvasViewportId(vp.id); setViewportDropdownOpen(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono transition-colors ${
+                            canvasViewportId === vp.id ? "bg-accent/20 text-accent-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                          }`}
+                        >
+                          {vp.icon}
+                          <span className="flex-1 text-left">{vp.label}</span>
+                          {vp.w && <span className="opacity-40">{vp.w}px</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
