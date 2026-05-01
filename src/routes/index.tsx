@@ -3716,17 +3716,21 @@ function ChatPanel({
             );
           })}
         {sending && (
-          <div className="flex w-fit items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-3 py-2">
-            <span className="h-2 w-2 rounded-full bg-[color:var(--ember)] animate-pulse" aria-hidden />
-            <span className="text-[12px] font-normal text-muted-foreground">Atlas thinking...</span>
+          <div className="flex w-fit items-center gap-3 px-1 py-2">
+            <span className="atlas-think-dots" aria-hidden>
+              <span /><span /><span />
+            </span>
+            <span className="text-[12px] italic text-muted-foreground/80" style={{ fontFamily: "var(--font-serif, var(--font-sans))" }}>
+              Atlas is thinking
+            </span>
             <button
               type="button"
               onClick={onStop}
-              className="ml-1 rounded-sm border border-[color:var(--ember)]/70 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-[color:var(--ember)] transition-colors"
+              className="ml-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/60 hover:text-[color:var(--ember)] transition-colors"
               aria-label="Stop Atlas"
               title="Stop Atlas"
             >
-              Stop
+              stop
             </button>
           </div>
         )}
