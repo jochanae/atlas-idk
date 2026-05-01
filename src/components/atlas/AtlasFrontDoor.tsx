@@ -481,10 +481,12 @@ export function AtlasFrontDoor({
                 cursor: onWordmarkClick ? "pointer" : "default",
               }}
             >
-              <span style={{ color: "var(--ember)", display: "inline-flex" }}>
-                <AtlasLogo size={20} strokeWidth={1.6} />
+              <span
+                aria-label="Atlas"
+                style={{ color: "var(--foreground)", display: "inline-flex" }}
+              >
+                <AtlasLogo size={22} strokeWidth={1.6} />
               </span>
-              Atlas
             </button>
           )}
         </div>
