@@ -783,31 +783,43 @@
 .theme-cognac nav[aria-label="Primary"] button span {
   color: inherit !important;
 }
-/* Raised center button — cognac squircle with light ivory icon (light themes) */
+/* Raised center button — glassmorphism squircle (light themes) */
 .theme-parchment .atlas-footer-center,
 .theme-executive .atlas-footer-center,
 .theme-cognac .atlas-footer-center {
-  background: #8B4513 !important;
+  background: rgba(139, 69, 19, 0.18) !important;
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+  border: 1px solid rgba(139, 69, 19, 0.28) !important;
   border-radius: 14px !important;
   box-shadow:
     0 0 0 4px #FFFFFF,
-    0 8px 24px -6px rgba(139, 69, 19, 0.45),
-    0 0 18px -2px rgba(139, 69, 19, 0.3) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 8px 24px -6px rgba(139, 69, 19, 0.30),
+    0 0 18px -2px rgba(139, 69, 19, 0.18) !important;
 }
 .theme-parchment .atlas-footer-center svg,
 .theme-executive .atlas-footer-center svg,
 .theme-cognac .atlas-footer-center svg {
-  stroke: #F5F1E8 !important;
+  stroke: #8B4513 !important;
 }
 
-/* Obsidian (dark) — deep bronze amber squircle, muted low-light feel */
+/* Obsidian (dark) — glassmorphism amber-tinted squircle */
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center,
 .theme-obsidian .atlas-footer-center {
-  background: #92400E !important;
+  background: rgba(146, 64, 14, 0.22) !important;
+  backdrop-filter: blur(14px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+  border: 1px solid rgba(245, 241, 232, 0.10) !important;
   border-radius: 14px !important;
   box-shadow:
     0 0 0 4px #0C0A09,
-    0 0 12px rgba(146, 64, 14, 0.35) !important;
+    inset 0 1px 0 rgba(245, 241, 232, 0.08),
+    0 0 14px rgba(146, 64, 14, 0.30) !important;
+}
+:root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center svg,
+.theme-obsidian .atlas-footer-center svg {
+  stroke: #F5F1E8 !important;
 }
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center svg,
 .theme-obsidian .atlas-footer-center svg {
