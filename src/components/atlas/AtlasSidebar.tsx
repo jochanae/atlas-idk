@@ -329,19 +329,19 @@ export function AtlasSidebar({
             </button>
             <div
               style={{
-                maxHeight: projectsExpanded ? 400 : 0,
+                maxHeight: projectsExpanded ? "min(56vh, 620px)" : 0,
                 overflowY: projectsExpanded ? "auto" : "hidden",
                 overflowX: "visible",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-                padding: projectsExpanded ? "0 clamp(8px, 3vw, 12px) 10px" : "0 clamp(8px, 3vw, 12px) 0",
+                padding: projectsExpanded ? "0 clamp(10px, 3vw, 14px) 14px" : "0 clamp(10px, 3vw, 14px) 0",
               }}
             >
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: 6,
-                  paddingTop: 4,
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 10,
+                  paddingTop: 6,
                   overflow: "visible",
                 }}
               >
@@ -349,13 +349,14 @@ export function AtlasSidebar({
                   <div
                     key={p.id}
                     style={{
-                      borderRadius: 8,
+                      borderRadius: 10,
                       border: "0.5px solid var(--glass-border)",
                       overflow: "visible",
                       background: "var(--surface-alt)",
                       cursor: "pointer",
                       transition: "border-color 180ms ease, box-shadow 180ms ease",
                       minWidth: 0,
+                      minHeight: 124,
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 40%, transparent)";
@@ -369,13 +370,13 @@ export function AtlasSidebar({
                     <div
                       style={{
                         width: "100%",
-                        aspectRatio: "16/10",
+                        height: 84,
                         background: "linear-gradient(135deg, color-mix(in oklab, var(--accent-gold) 8%, var(--background)), color-mix(in oklab, var(--accent-gold) 3%, var(--surface)))",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
-                        borderRadius: "8px 8px 0 0",
+                        borderRadius: "10px 10px 0 0",
                       }}
                     >
                       {p.thumbnailUrl ? (
@@ -425,7 +426,7 @@ export function AtlasSidebar({
                       alignItems: "center",
                       justifyContent: "center",
                       gap: 4,
-                      minHeight: 70,
+                      minHeight: 124,
                       padding: 6,
                     }}
                     onMouseEnter={(e) => {

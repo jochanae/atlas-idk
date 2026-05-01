@@ -712,9 +712,7 @@ function WorkspacePage() {
   const deriveProjectName = (text: string): string => {
     // Strip commands
     const cleaned = text.replace(/^\/(build|research|plan)\s+/i, "").trim();
-    // Take first sentence or first 50 chars
-    const firstSentence = cleaned.split(/[.!?\n]/)[0]?.trim() ?? cleaned;
-    const name = firstSentence.slice(0, 50).trim();
+    const name = cleaned.slice(0, 50).trim();
     return name || "Untitled Project";
   };
 
@@ -739,6 +737,10 @@ function WorkspacePage() {
 
     const newSession = sessData as AtlasSession;
     setSession(newSession);
+    setActiveProjectId(projectId);
+    setSurface("chat");
+    setEntrySurface(false);
+    setHistoryOpen(false);
     setRecents((prev) => [
       {
         id: newSession.id,
@@ -799,6 +801,8 @@ function WorkspacePage() {
 
     // 3. Create session under the new project
     const newSession = await createSessionForProject(newProject.id, projectName);
+    setEntrySurface(false);
+    setTransitioning(false);
 
     return { session: newSession, projectId: newProject.id };
   };
@@ -806,6 +810,9 @@ function WorkspacePage() {
   const ensureSession = async (text: string) => {
     if (session && activeProjectId) return { session, projectId: activeProjectId };
     if (!user) return null;
+    if (!entrySurface && messages.length === 0) {
+      return createProjectFromMessage(text);
+    }
     if (activeProjectId) {
       const newSession = await createSessionForProject(activeProjectId, deriveProjectName(text));
       return { session: newSession, projectId: activeProjectId };
@@ -890,9 +897,13 @@ function WorkspacePage() {
     sendAbortRef.current = controller;
     const optimisticId = crypto.randomUUID();
 
+    let target: Awaited<ReturnType<typeof ensureSession>> = null;
+
     try {
-      const target = await ensureSession(text);
+      target = await ensureSession(text);
       if (!target) throw new Error("No project available");
+      setEntrySurface(false);
+      setSurface("chat");
 
       const optimistic: ChatMessage = {
         id: optimisticId,
@@ -1000,13 +1011,13 @@ function WorkspacePage() {
         // Restore the text so they can edit and resend.
         setInput(text);
         toast("Atlas stopped.", { description: "Your message was not sent." });
-        if (!session && messages.length === 0) setTransitioning(false);
+        if (!target?.session && messages.length === 0) setTransitioning(false);
         return;
       }
       const msg = e instanceof Error ? e.message : "Atlas failed to respond";
       toast.error(msg);
       setAuditWarning(true);
-      if (!session && messages.length === 0) setTransitioning(false);
+      if (!target?.session && messages.length === 0) setTransitioning(false);
     } finally {
       sendAbortRef.current = null;
       setSending(false);
@@ -1111,6 +1122,37 @@ function WorkspacePage() {
     setEntrySurface(false);
     setHistoryOpen(false);
     await refresh(selected, selected.project_id);
+  };
+
+  const openProjectWorkspace = async (projectId: string) => {
+    if (!user) return;
+    setGalleryOpen(false);
+    setActiveProjectId(projectId);
+    setMessages([]);
+    setSurface("chat");
+    setEntrySurface(false);
+    setHistoryOpen(false);
+    setParkingOpen(false);
+
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("project_id", projectId)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    const workspaceSession = data
+      ? data as AtlasSession
+      : await createSessionForProject(projectId, "New session");
+    setSession(workspaceSession);
+    await refresh(workspaceSession, projectId);
   };
 
   const updateRec = async (id: string, status: Recommendation["status"]) => {
@@ -2589,12 +2631,7 @@ function WorkspacePage() {
       onClose={() => setGalleryOpen(false)}
       projects={projects}
       activeProjectId={activeProjectId}
-      onSelectProject={(id) => {
-        setActiveProjectId(id);
-        setSession(null);
-        setMessages([]);
-        setEntrySurface(true);
-      }}
+      onSelectProject={openProjectWorkspace}
       onNewProject={createNamedProject}
     />
     </>
