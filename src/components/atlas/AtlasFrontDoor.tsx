@@ -50,6 +50,8 @@ export interface RecentSession {
   title: string;
   mode: string | null;
   created_at: string;
+  /** Last actual chat message in this session — used for the living-thread line. */
+  last_message?: string | null;
 }
 
 type AtlasFrontDoorProps = {
@@ -540,124 +542,42 @@ export function AtlasFrontDoor({
             willChange: "opacity, transform",
           }}
         >
-          <div style={{ textAlign: "center", padding: "0 24px 44px" }}>
+          <div style={{ textAlign: "center", padding: "0 24px 28px" }}>
             <div
               className="atlas-greeting"
               style={{
                 fontWeight: 300,
+                fontSize: 22,
                 color: "var(--foreground)",
                 lineHeight: 1.3,
                 letterSpacing: "-0.005em",
+                opacity: 0.85,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
               }}
             >
-              {greetingFor(new Date(), userName)}
+              Where were we.
             </div>
-          </div>
-
-          {/* Mode pills with edge-fade scroll affordance */}
-          <div style={{ position: "relative" }}>
-            {/* Left edge gradient */}
-            {pillsOverflow && !pillsAtStart && (
+            {recents && recents[0]?.last_message && (
               <div
                 style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 48,
-                  background: "linear-gradient(to right, var(--background) 0%, transparent 100%)",
-                  zIndex: 2,
-                  pointerEvents: "none",
-                  borderRadius: "22px 0 0 22px",
+                  marginTop: 8,
+                  fontSize: 13,
+                  color: "var(--muted-text)",
+                  opacity: 0.7,
+                  fontStyle: "italic",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "100%",
+                  fontFamily: "var(--font-sans)",
                 }}
-              />
-            )}
-            {/* Right edge gradient */}
-            {pillsOverflow && !pillsAtEnd && (
-              <div
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 48,
-                  background: "linear-gradient(to left, var(--background) 0%, transparent 100%)",
-                  zIndex: 2,
-                  pointerEvents: "none",
-                  borderRadius: "0 22px 22px 0",
-                }}
-              />
-            )}
-            <div
-              ref={pillsRef}
-              className="atlas-pills-row"
-              style={{
-                display: "flex",
-                justifyContent: pillsOverflow ? "flex-start" : "center",
-                padding: pillsOverflow ? "0 16px 22px" : "0 24px 22px",
-                overflowX: "auto",
-                overflowY: "hidden",
-                scrollbarWidth: "none",
-                WebkitOverflowScrolling: "touch",
-                scrollPaddingInline: 22,
-              }}
-            >
-              <div
-                className="atlas-pills-inner"
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  width: "max-content",
-                  margin: 0,
-                  paddingInline: pillsOverflow ? 4 : 0,
-                  paddingRight: pillsOverflow ? 32 : 0,
-                  flexWrap: "nowrap",
-                  animation: pillsOverflow ? "atlas-pills-peek 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both" : "none",
-                }}
+                title={recents[0].last_message}
               >
-                {MODES.map((m) => {
-                  const isActive = activeMode === m.id;
-                  const isPhosphor = m.color === "phosphor";
-                  const isGold = m.color === "accent-gold";
-                  const activeColor = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
-                  const glowColor = isGold ? "rgba(202,169,104,0.45)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)";
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => { onModeChange(m.id); haptic("light"); }}
-                      className="atlas-mode-pill"
-                      style={{
-                        flexShrink: 0,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "7px 16px",
-                        borderRadius: 22,
-                        border: `0.5px solid ${isActive ? activeColor : "var(--border)"}`,
-                        background: isActive ? "var(--surface)" : "var(--surface)",
-                        fontFamily: "var(--font-sans)",
-                        fontWeight: 400,
-                        fontSize: 13,
-                        color: isActive ? activeColor : "var(--muted-text)",
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                        boxShadow: isActive
-                          ? `0 0 14px -2px ${glowColor}`
-                          : "none",
-                        transition: "all 200ms var(--ease-cinematic)",
-                      }}
-                    >
-                      <span className="atlas-mode-icon"><ModeIcon mode={m.id} size={13} /></span>
-                      {m.label}
-                    </button>
-                  );
-                })}
+                {recents[0].last_message}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Input — centered, etched glass with focus glow */}
