@@ -22,7 +22,7 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
-// DoubleVisionLayout moved to auth page — not used in workspace
+
 import { ProjectGallery } from "@/components/atlas/ProjectGallery";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
