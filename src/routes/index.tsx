@@ -837,7 +837,10 @@ function WorkspacePage() {
 
   /** Generate a React component via atlas-codegen */
   const generateCode = useCallback(async (prompt: string) => {
-    if (!user || !activeProjectId) return;
+    if (!user || !activeProjectId) {
+      toast.error("No active project — cannot generate code.");
+      return;
+    }
     setCodegenLoading(true);
     setCodegenError(null);
     setSurface("preview");
