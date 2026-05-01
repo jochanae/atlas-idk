@@ -1952,7 +1952,7 @@ function WorkspacePage() {
       renderChatPane={() => (
         <div className="h-full flex flex-col bg-background">
           {/* Mode chips */}
-          <div className="flex-shrink-0 px-3 py-2 border-b border-border/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <div className="flex-shrink-0 px-2 py-2 border-b border-border/40 flex items-center gap-1 overflow-x-auto scrollbar-none">
             {MODES.map((m) => {
               const isOn = activeMode === m.id;
               return (
