@@ -40,14 +40,14 @@ const THEME_PRESETS: ThemePreset[] = [
   },
   {
     id: "parchment",
-    name: "Parchment",
-    description: "Warm light theme inspired by aged paper and ink.",
+    name: "Executive Light",
+    description: "High-contrast light mode. Cool grey base, deep teal accents, charcoal text.",
     colors: {
-      background: "#f5f0e8",
-      surface: "#ebe5da",
-      foreground: "#2d2a26",
-      accent: "#8b6914",
-      muted: "#9a9590",
+      background: "#F4F7F6",
+      surface: "#FFFFFF",
+      foreground: "#121212",
+      accent: "#004D40",
+      muted: "#5B6B68",
     },
   },
   {
