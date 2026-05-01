@@ -193,7 +193,7 @@ function NavRail({
   onToggleChat?: () => void;
 }) {
   return (
-    <nav className="h-full flex flex-col py-3 px-2 gap-1">
+    <nav className="h-full flex flex-col py-3 px-2 gap-1 min-h-fit overflow-y-auto overflow-x-hidden">
       <button
         type="button"
         onClick={onToggleCollapse}
