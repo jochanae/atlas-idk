@@ -2237,8 +2237,16 @@ function WorkspacePage() {
               )}
             </div>
           </div>
-          {/* Canvas content */}
-          <div className="flex-1 min-h-0">
+          {/* Canvas content — viewport-constrained */}
+          <div className="flex-1 min-h-0 flex items-start justify-center overflow-auto bg-muted/10">
+            <div
+              className="h-full transition-all duration-300"
+              style={{
+                width: CANVAS_WIDTHS[canvasViewport] ? `${CANVAS_WIDTHS[canvasViewport]}px` : "100%",
+                maxWidth: "100%",
+                boxShadow: canvasViewport !== "desktop" ? "0 0 0 1px var(--border)" : undefined,
+              }}
+            >
             {codegenLoading ? (
               <div className="h-full flex flex-col items-center justify-center gap-3">
                 <LoadingSpinner size="lg" />
