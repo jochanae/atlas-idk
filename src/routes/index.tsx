@@ -146,6 +146,10 @@ function WorkspacePage() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const voice = useVoiceInput((transcript) => {
+    setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    setInputFocusSignal((v) => v + 1);
+  });
   // Holds the AbortController for the in-flight atlas-chat call so the user
   // can cancel mid-flight via the Stop button.
   const sendAbortRef = useRef<AbortController | null>(null);
