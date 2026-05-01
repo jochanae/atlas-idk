@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
+import { AtlasLogo } from "./AtlasLogo";
 import { SystemMenu } from "./SystemMenu";
 import { PlanPanel } from "./PlanPanel";
 import type { PlanStep } from "./DependencyGraph";
