@@ -763,6 +763,65 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
+          {/* Scroll hint — one-time gentle bounce arrow signalling there's more below.
+              Only shown in resting view when the dashboard exists below the fold. */}
+          {!active && belowFold && (
+            <button
+              type="button"
+              aria-label="Scroll to your workspace"
+              onClick={() => {
+                const el = document.getElementById("discovery-moment");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  haptic("light");
+                }
+              }}
+              style={{
+                marginTop: 14,
+                marginBottom: 4,
+                background: "transparent",
+                border: "none",
+                padding: "6px 12px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
+                color: "var(--muted-text)",
+                cursor: "pointer",
+                alignSelf: "center",
+                opacity: 0.55,
+                transition: "opacity 200ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.55"; }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9.5,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                }}
+              >
+                scroll for your workspace
+              </span>
+              <svg
+                className="atlas-scroll-arrow"
+                viewBox="0 0 16 16"
+                width={14}
+                height={14}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M4 6l4 4 4-4" />
+              </svg>
+            </button>
+          )}
+
           {/* Inline timestamp — anchored under the input, in flow (not floating). */}
           <InlineTimestamp />
 
