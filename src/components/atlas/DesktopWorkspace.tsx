@@ -79,6 +79,7 @@ export function DesktopWorkspace({
   activeSurface,
   onSurfaceChange,
   onOpenHistory,
+  onOpenGallery,
   parkedCount = 0,
   ledgerCount = 0,
   renderHeader,
