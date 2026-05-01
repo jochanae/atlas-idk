@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
+import { AtlasLogo } from "./AtlasLogo";
 import { SystemMenu } from "./SystemMenu";
 import { PlanPanel } from "./PlanPanel";
 import type { PlanStep } from "./DependencyGraph";
@@ -471,6 +472,7 @@ export function AtlasFrontDoor({
                 height: 36,
                 display: "inline-flex",
                 alignItems: "center",
+                gap: 8,
                 fontSize: 16,
                 fontWeight: 500,
                 color: "var(--foreground)",
@@ -479,6 +481,9 @@ export function AtlasFrontDoor({
                 cursor: onWordmarkClick ? "pointer" : "default",
               }}
             >
+              <span style={{ color: "var(--ember)", display: "inline-flex" }}>
+                <AtlasLogo size={20} strokeWidth={1.6} />
+              </span>
               Atlas
             </button>
           )}
