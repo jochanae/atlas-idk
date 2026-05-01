@@ -464,69 +464,105 @@ export function AtlasFrontDoor({
             </div>
           </div>
 
-          {/* Mode pills */}
-          <div
-            ref={pillsRef}
-            className="atlas-pills-row"
-            style={{
-              display: "flex",
-              justifyContent: pillsOverflow ? "flex-start" : "center",
-              padding: pillsOverflow ? "0 22px 22px" : "0 24px 22px",
-              overflowX: "auto",
-              overflowY: "hidden",
-              scrollbarWidth: "none",
-              WebkitOverflowScrolling: "touch",
-              scrollPaddingInline: 22,
-            }}
-          >
+          {/* Mode pills with edge-fade scroll affordance */}
+          <div style={{ position: "relative" }}>
+            {/* Left edge gradient */}
+            {pillsOverflow && !pillsAtStart && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 48,
+                  background: "linear-gradient(to right, var(--background) 0%, transparent 100%)",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                  borderRadius: "22px 0 0 22px",
+                }}
+              />
+            )}
+            {/* Right edge gradient */}
+            {pillsOverflow && !pillsAtEnd && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 48,
+                  background: "linear-gradient(to left, var(--background) 0%, transparent 100%)",
+                  zIndex: 2,
+                  pointerEvents: "none",
+                  borderRadius: "0 22px 22px 0",
+                }}
+              />
+            )}
             <div
-              className="atlas-pills-inner"
+              ref={pillsRef}
+              className="atlas-pills-row"
               style={{
                 display: "flex",
-                gap: 8,
-                width: "max-content",
-                margin: 0,
-                paddingInline: pillsOverflow ? 4 : 0,
-                flexWrap: "nowrap",
+                justifyContent: pillsOverflow ? "flex-start" : "center",
+                padding: pillsOverflow ? "0 16px 22px" : "0 24px 22px",
+                overflowX: "auto",
+                overflowY: "hidden",
+                scrollbarWidth: "none",
+                WebkitOverflowScrolling: "touch",
+                scrollPaddingInline: 22,
               }}
             >
-              {MODES.map((m) => {
-                const isActive = activeMode === m.id;
-                const isPhosphor = m.color === "phosphor";
-                const isGold = m.color === "accent-gold";
-                const activeColor = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
-                const glowColor = isGold ? "rgba(202,169,104,0.45)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)";
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => { onModeChange(m.id); haptic("light"); }}
-                    className="atlas-mode-pill"
-                    style={{
-                      flexShrink: 0,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "7px 16px",
-                      borderRadius: 22,
-                      border: `0.5px solid ${isActive ? activeColor : "var(--border)"}`,
-                      background: isActive ? "var(--surface)" : "var(--surface)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 13,
-                      color: isActive ? activeColor : "var(--muted-text)",
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                      boxShadow: isActive
-                        ? `0 0 14px -2px ${glowColor}`
-                        : "none",
-                      transition: "all 200ms var(--ease-cinematic)",
-                    }}
-                  >
-                    <span className="atlas-mode-icon"><ModeIcon mode={m.id} size={13} /></span>
-                    {m.label}
-                  </button>
-                );
-              })}
+              <div
+                className="atlas-pills-inner"
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  width: "max-content",
+                  margin: 0,
+                  paddingInline: pillsOverflow ? 4 : 0,
+                  paddingRight: pillsOverflow ? 32 : 0,
+                  flexWrap: "nowrap",
+                  animation: pillsOverflow ? "atlas-pills-peek 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both" : "none",
+                }}
+              >
+                {MODES.map((m) => {
+                  const isActive = activeMode === m.id;
+                  const isPhosphor = m.color === "phosphor";
+                  const isGold = m.color === "accent-gold";
+                  const activeColor = isGold ? "var(--accent-gold)" : isPhosphor ? "var(--phosphor)" : "var(--ember)";
+                  const glowColor = isGold ? "rgba(202,169,104,0.45)" : isPhosphor ? "rgba(6,182,212,0.35)" : "rgba(234,88,12,0.45)";
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => { onModeChange(m.id); haptic("light"); }}
+                      className="atlas-mode-pill"
+                      style={{
+                        flexShrink: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "7px 16px",
+                        borderRadius: 22,
+                        border: `0.5px solid ${isActive ? activeColor : "var(--border)"}`,
+                        background: isActive ? "var(--surface)" : "var(--surface)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        color: isActive ? activeColor : "var(--muted-text)",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        cursor: "pointer",
+                        boxShadow: isActive
+                          ? `0 0 14px -2px ${glowColor}`
+                          : "none",
+                        transition: "all 200ms var(--ease-cinematic)",
+                      }}
+                    >
+                      <span className="atlas-mode-icon"><ModeIcon mode={m.id} size={13} /></span>
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
