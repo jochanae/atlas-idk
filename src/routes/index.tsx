@@ -154,7 +154,18 @@ function WorkspacePage() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [session, setSession] = useState<AtlasSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessageIds] = useState(() => new Set<string>());
+  // Track message IDs that should animate with the typewriter stream.
+  // Stored as state (not a mutable Set) so additions trigger a re-render
+  // and the message renders through StreamingMarkdown on its first paint.
+  const [newMessageIds, setNewMessageIds] = useState<Set<string>>(() => new Set());
+  const markMessageStreaming = useCallback((id: string) => {
+    setNewMessageIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
   const [nodes, setNodes] = useState<WorkspaceNode[]>([]);
   const [recs, setRecs] = useState<Recommendation[]>([]);
   const [input, setInput] = useState("");
@@ -875,7 +886,7 @@ function WorkspacePage() {
           intent_type: "research",
           created_at: new Date().toISOString(),
         };
-        newMessageIds.add(assistantMsg.id);
+        markMessageStreaming(assistantMsg.id);
         setMessages((prev) => [...prev, assistantMsg]);
         setAdaptivePlaceholder("Follow up on the research, or ask something new…");
       } catch (e) {
@@ -954,7 +965,7 @@ function WorkspacePage() {
         // Non-critical — don't block chat flow
       }
       // Mark the new assistant message for streaming animation
-      if (data?.message?.id) newMessageIds.add(data.message.id);
+      if (data?.message?.id) markMessageStreaming(data.message.id);
       const updatedTitle = text.slice(0, 60);
       setSession((current) =>
         current && target && current.id === target.session.id
