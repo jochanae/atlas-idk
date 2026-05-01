@@ -494,7 +494,7 @@ export function AtlasSidebar({
             maxHeight: recentsExpanded ? 2000 : 0,
             overflow: "hidden",
             transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-            padding: recentsExpanded ? "0 6px 8px" : "0 6px 0",
+            padding: recentsExpanded ? "0 clamp(4px, 2vw, 6px) 8px" : "0 clamp(4px, 2vw, 6px) 0",
           }}
         >
           {filteredRecents.length === 0 ? (
