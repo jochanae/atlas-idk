@@ -1438,9 +1438,11 @@ function WorkspacePage() {
               <>
                 <button
                   type="button"
-                  aria-label="Voice input"
-                  title="Voice input (coming soon)"
+                  aria-label={voice.listening ? "Stop listening" : "Voice input"}
+                  title={voice.listening ? "Stop listening" : "Voice input"}
                   className="atlas-utility-btn"
+                  data-active={voice.listening ? "true" : "false"}
+                  onClick={() => { voice.toggle(); haptic("light"); }}
                 >
                   <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="5.5" y="1.5" width="5" height="8" rx="2.5" />
