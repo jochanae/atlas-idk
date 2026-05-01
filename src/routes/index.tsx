@@ -1870,7 +1870,16 @@ function WorkspacePage() {
         )}
 
       </main>
-      {/* AtlasSidebar removed — pending clean rebuild */}
+      <ProjectsDrawer
+        open={projectsDrawerOpen}
+        onClose={() => setProjectsDrawerOpen(false)}
+        projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
+        activeProjectId={activeProjectId}
+        onOpenProject={(id) => setActiveProjectId(id)}
+        onNewProject={() => {
+          createNamedProject();
+        }}
+      />
       <BlueprintsDrawer
         open={blueprintsOpen}
         onClose={() => setBlueprintsOpen(false)}
