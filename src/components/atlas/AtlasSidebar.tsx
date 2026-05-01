@@ -108,6 +108,26 @@ export function AtlasSidebar({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Theme mode → resolved theme. Sync with parent when out of step.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("atlas-theme-mode", themeMode);
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const resolved: Theme =
+      themeMode === "light" ? "parchment" : themeMode === "dark" ? "obsidian" : prefersDark ? "obsidian" : "parchment";
+    if (resolved !== theme) onToggleTheme();
+  }, [themeMode, theme, onToggleTheme]);
+
+  // Close theme menu on outside click
+  useEffect(() => {
+    if (!themeMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!themeBtnRef.current?.contains(e.target as Node)) setThemeMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [themeMenuOpen]);
+
   // Avatar
   const avatarUrl =
     user?.user_metadata?.avatar_url ??
