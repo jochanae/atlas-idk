@@ -103,7 +103,7 @@ export function DesktopWorkspace({
   const [inspectorVisible, setInspectorVisible] = useState(() => loadJson("atlas-inspector-visible", false));
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>(() => loadJson("atlas-inspector-tab", "files"));
   const [fullScreen, setFullScreen] = useState<FullScreenTarget>(null);
-  const [chatWidth, setChatWidth] = useState(() => loadJson("atlas-chat-width", 380));
+  const [chatWidth, setChatWidth] = useState(() => loadJson("atlas-chat-width", 480));
   const [inspectorWidth, setInspectorWidth] = useState(() => loadJson("atlas-inspector-width", 320));
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -197,12 +197,12 @@ export function DesktopWorkspace({
           <>
             <div
               className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
-              style={{ width: chatWidth, minWidth: 280, maxWidth: 600, background: "var(--surface)" }}
+              style={{ width: chatWidth, minWidth: 320, maxWidth: 800, background: "var(--surface)" }}
             >
               {renderChatPane!()}
             </div>
             <ResizeHandle
-              onResize={(dx) => setChatWidth(w => Math.max(280, Math.min(600, w + dx)))}
+              onResize={(dx) => setChatWidth(w => Math.max(320, Math.min(800, w + dx)))}
             />
           </>
         )}
