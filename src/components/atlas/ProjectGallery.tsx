@@ -164,6 +164,7 @@ function GalleryModal({ onClose, projects, activeProjectId, onSelectProject, onN
 
           <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <NewProjectCard onClick={() => { onNewProject(); onClose(); }} />
               {projects.map((p) => (
                 <ProjectCard
                   key={p.id}
