@@ -17,6 +17,7 @@ import {
   FolderOpen,
   Terminal,
   Files,
+  Settings,
 } from "lucide-react";
 
 /**
