@@ -66,8 +66,8 @@
   --surface-alt: #211E1B;
   --foreground: #E7E5E4;
   --muted-text: #78716C;
-  --ember: #B45309;            /* Muted Amber — replaces volcanic orange */
-  --ember-glow: rgba(180, 83, 9, 0.45);
+  --ember: #92400E;            /* Deep bronze amber — muted, no orange cast */
+  --ember-glow: rgba(146, 64, 14, 0.35);
   --violated: #7F1D1D;
   --border: #292524;
   --phosphor: #06B6D4;
@@ -93,8 +93,8 @@
   --surface-alt: #211E1B;
   --foreground: #E7E5E4;
   --muted-text: #78716C;
-  --ember: #B45309;
-  --ember-glow: rgba(180, 83, 9, 0.45);
+  --ember: #92400E;
+  --ember-glow: rgba(146, 64, 14, 0.35);
   --violated: #7F1D1D;
   --border: #292524;
   --phosphor: #06B6D4;
@@ -800,14 +800,14 @@
   stroke: #F5F1E8 !important;
 }
 
-/* Obsidian (dark) — muted amber/gold ember squircle, low-light feel */
+/* Obsidian (dark) — deep bronze amber squircle, muted low-light feel */
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center,
 .theme-obsidian .atlas-footer-center {
-  background: #B45309 !important;
+  background: #92400E !important;
   border-radius: 14px !important;
   box-shadow:
     0 0 0 4px #0C0A09,
-    0 0 15px rgba(180, 83, 9, 0.4) !important;
+    0 0 12px rgba(146, 64, 14, 0.35) !important;
 }
 :root:not(.theme-parchment):not(.theme-executive):not(.theme-cognac) .atlas-footer-center svg,
 .theme-obsidian .atlas-footer-center svg {
