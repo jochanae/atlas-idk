@@ -180,8 +180,12 @@ function prepareForSandbox(code: string): string {
     .replace(/:\s*React\.FC(?:<[^>]*>)?/g, "")
     .replace(/:\s*JSX\.Element/g, "");
 
-  // Provide stub for lucide-react icons (common in generated code)
-  const iconStub = `
+  // Provide React hooks as globals (imports get stripped)
+  const runtimeStub = `
+    var useState = React.useState, useEffect = React.useEffect,
+        useCallback = React.useCallback, useMemo = React.useMemo,
+        useRef = React.useRef, useContext = React.useContext,
+        Fragment = React.Fragment, createElement = React.createElement;
     var _iconFallback = function(props) {
       return React.createElement('span', {style:{display:'inline-block',width:16,height:16}}, '●');
     };
