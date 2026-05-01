@@ -22,6 +22,8 @@ import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
 import { SessionFooter } from "@/components/atlas/SessionFooter";
 import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
+import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
+import { StageLivingData } from "@/components/atlas/StageLivingData";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
