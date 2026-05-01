@@ -1963,7 +1963,28 @@ function WorkspacePage() {
       }}
       parkedCount={parkedItems.length}
       ledgerCount={ledgerCount}
-      renderMobile={() => mainShell}
+      renderMobile={() => (
+        <DoubleVisionLayout
+          stage={
+            generatedCode ? (
+              <LivePreview
+                code={generatedCode}
+                filename={generatedFilename ?? "Component.tsx"}
+                loading={codegenLoading}
+                error={codegenError}
+              />
+            ) : (
+              <StageLivingData
+                filesCreated={generatedFiles.length}
+                deployStatus={codegenLoading ? "building" : generatedCode ? "deployed" : "idle"}
+                healthScore={100}
+                recentFiles={generatedFiles.slice(-3).reverse().map((f) => ({ name: f.filename, updatedAt: "just now" }))}
+              />
+            )
+          }
+          commandCenter={mainShell}
+        />
+      )}
       renderChatPane={() => (
         <div className="h-full flex flex-col bg-background">
           {/* Mode chips */}
