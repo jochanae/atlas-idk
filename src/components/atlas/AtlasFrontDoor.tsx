@@ -1100,6 +1100,10 @@ export function AtlasFrontDoor({
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes atlas-thinking-pulse {
+          0%, 100% { opacity: 0.25; transform: scale(0.85); }
+          50%      { opacity: 1;    transform: scale(1); }
+        }
         @keyframes atlas-scroll-arrow-bounce {
           0%   { transform: translateY(0); }
           20%  { transform: translateY(0); }
