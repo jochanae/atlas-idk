@@ -528,6 +528,9 @@ function WorkspacePage() {
     try { return localStorage.getItem("atlas-auto-run") === "true"; } catch { return false; }
   });
   useEffect(() => { try { localStorage.setItem("atlas-auto-run", String(autoRunEnabled)); } catch {} }, [autoRunEnabled]);
+  type CanvasViewport = "desktop" | "tablet" | "mobile";
+  const [canvasViewport, setCanvasViewport] = useState<CanvasViewport>("desktop");
+  const CANVAS_WIDTHS: Record<CanvasViewport, number | null> = { desktop: null, tablet: 768, mobile: 375 };
 
 
   // Track whether the active project already has a Compass (used by thinking prompts)
