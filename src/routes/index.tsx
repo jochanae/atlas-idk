@@ -1946,7 +1946,171 @@ function WorkspacePage() {
       parkedCount={parkedItems.length}
       ledgerCount={ledgerCount}
       renderMobile={() => mainShell}
-      renderCanvas={() => mainShell}
+      renderChatPane={() => (
+        <div className="h-full flex flex-col bg-background">
+          {/* Mode chips */}
+          <div className="flex-shrink-0 px-3 py-2 border-b border-border/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+            {MODES.map((m) => {
+              const isOn = activeMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => { setActiveMode(m.id); haptic("light"); }}
+                  className={`flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-wider border transition-colors ${
+                    isOn
+                      ? "border-accent text-accent-foreground bg-accent/10"
+                      : "border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  }`}
+                >
+                  <ModeIcon mode={m.id} size={10} />
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Chat messages */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
+            {messages.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-center px-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {greetingFor(new Date(), user?.user_metadata?.display_name as string | undefined || user?.user_metadata?.full_name as string | undefined || user?.email?.split("@")[0] || null)}
+                  </p>
+                  <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
+                    Type below to start a session
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ChatPanel
+                newMessageIds={newMessageIds}
+                messages={messages}
+                sending={sending}
+                onStop={stopSending}
+                setInput={setInput}
+                sessionId={session?.id ?? ""}
+                projectId={activeProjectId}
+                userId={user.id}
+                onRefresh={refresh}
+                onParkedChange={loadParkedItems}
+                onContinueAfterConflict={continueAfterConflict}
+                onRequestInputFocus={() => setInputFocusSignal((v) => v + 1)}
+                thinkingPrompts={thinkingPrompts}
+                thinkingLoading={thinkingLoading}
+                onAskThinkingPrompt={askThinkingPrompt}
+                onParkThinkingPrompt={parkThinkingPrompt}
+                onDismissThinkingPrompt={dismissThinkingPrompt}
+                onRefreshThinkingPrompts={regenerateThinkingPrompts}
+                onRollback={handleRollback}
+                recentRollbackMsgId={recentRollbackMsgId}
+                onOpenDiff={(userContent, assistantContent) => {
+                  setDiffOldCode(userContent);
+                  setDiffNewCode(assistantContent);
+                  setDiffLabels({ old: "Your prompt", new: "Atlas response" });
+                  setDiffOpen(true);
+                }}
+                onRegenerate={(userMessage) => send(userMessage)}
+                activeMode={activeMode}
+                buildHistory={buildHistory}
+              />
+            )}
+          </div>
+          {/* Input bar */}
+          <div className="flex-shrink-0 border-t border-border/40 px-3 py-2">
+            <div className="flex items-end gap-2">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (input.trim()) send(input, activeMode);
+                  }
+                }}
+                placeholder={`${activeMode.charAt(0).toUpperCase() + activeMode.slice(1)} mode — type here…`}
+                className="flex-1 min-h-[40px] max-h-[120px] resize-none bg-card/50 border border-border/40 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent/50"
+                rows={1}
+              />
+              <button
+                type="button"
+                onClick={() => { if (input.trim()) send(input, activeMode); }}
+                disabled={!input.trim() || sending}
+                className="flex-shrink-0 p-2 rounded-lg bg-accent/10 text-accent-foreground hover:bg-accent/20 disabled:opacity-30 transition-colors"
+                aria-label="Send"
+              >
+                <svg viewBox="0 0 16 16" width={16} height={16} fill="currentColor">
+                  <path d="M1.7 1.4a.5.5 0 0 1 .6-.1l12 6a.5.5 0 0 1 0 .9l-12 6a.5.5 0 0 1-.7-.5V8.5L9 8 1.6 7.5V1.9a.5.5 0 0 1 .1-.5z" />
+                </svg>
+              </button>
+            </div>
+            {sending && (
+              <div className="flex items-center gap-2 mt-1.5">
+                <LoadingSpinner size="sm" />
+                <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">Atlas is thinking…</span>
+                <button
+                  type="button"
+                  onClick={stopSending}
+                  className="ml-auto text-[9px] font-mono text-destructive/70 hover:text-destructive uppercase tracking-wider"
+                >
+                  Stop
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      renderCanvas={() => (
+        <div className="h-full flex flex-col bg-background">
+          {/* Canvas header */}
+          <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 flex items-center justify-between">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+              {codegenLoading ? "Building…" : generatedCode ? (generatedFilename ?? "Preview") : "Canvas"}
+            </span>
+            {generatedCode && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setGeneratedCode(null); setGeneratedFilename(null); }}
+                  className="text-[9px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 rounded"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
+          {/* Canvas content */}
+          <div className="flex-1 min-h-0">
+            {codegenLoading ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3">
+                <LoadingSpinner size="lg" />
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider animate-pulse">
+                  Generating component…
+                </span>
+              </div>
+            ) : generatedCode ? (
+              <LivePreview
+                code={generatedCode}
+                filename={generatedFilename ?? "Component.tsx"}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center text-center px-8">
+                <div className="max-w-sm">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-card/50 border border-border/30 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1} className="text-muted-foreground/40">
+                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                      <path d="M8 21h8M12 17v4" />
+                    </svg>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">No preview yet</p>
+                  <p className="text-[10px] font-mono text-muted-foreground/50 leading-relaxed">
+                    Send a BUILD request in the chat to generate a component. It will render here live.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       renderHeader={() => (
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-3">
@@ -1956,9 +2120,32 @@ function WorkspacePage() {
                 {activeProject.name}
               </span>
             )}
+            {session && (
+              <span className="text-[9px] font-mono text-accent/60 uppercase tracking-wider">
+                Session active
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            {user && <UserAvatar user={user} size={28} />}
+          <div className="flex items-center gap-3">
+            {session && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSession(null);
+                  setMessages([]);
+                  setEntrySurface(true);
+                }}
+                className="text-[9px] font-mono text-muted-foreground hover:text-foreground uppercase tracking-wider px-2 py-1 rounded hover:bg-muted/30 transition-colors"
+              >
+                New Session
+              </button>
+            )}
+            <UserMenu
+              user={user}
+              theme={theme}
+              onThemeChange={setTheme}
+              onSignOut={signOut}
+            />
           </div>
         </div>
       )}
@@ -1968,14 +2155,17 @@ function WorkspacePage() {
           <div className="h-full flex flex-col">
             <div className="flex-shrink-0 px-3 py-2 border-b border-border/40">
               <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                {generatedFilename ?? "Preview"}
+                Source — {generatedFilename ?? "Component.tsx"}
               </span>
             </div>
-            <div className="flex-1 min-h-0">
-              <LivePreview code={generatedCode} filename={generatedFilename ?? "Component.tsx"} />
+            <div className="flex-1 min-h-0 overflow-auto">
+              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all">
+                {generatedCode}
+              </pre>
             </div>
           </div>
         ) : undefined,
+        github: undefined,
         recs:
           pendingRecs.length === 0 ? undefined : (
             <div className="p-3 space-y-2">
