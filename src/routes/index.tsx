@@ -2141,32 +2141,9 @@ function WorkspacePage() {
       }}
       onBuild={() => { if (!sending && session) send("/build"); }}
       renderMobile={() => (
-        <DoubleVisionLayout
-          stage={
-            generatedCode ? (
-              <LivePreview
-                code={generatedCode}
-                filename={generatedFilename ?? "Component.tsx"}
-                loading={codegenLoading}
-                error={codegenError}
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-center px-6">
-                <div>
-                  <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-muted/30 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={1} className="text-muted-foreground/30">
-                      <rect x="2" y="3" width="20" height="14" rx="2" />
-                      <path d="M8 21h8M12 17v4" />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-muted-foreground/50">No preview yet</p>
-                  <p className="text-xs text-muted-foreground/30 mt-1">Type /build to generate</p>
-                </div>
-              </div>
-            )
-          }
-          commandCenter={mainShell}
-        />
+        <div className="h-full w-full flex flex-col bg-background">
+          {mainShell}
+        </div>
       )}
       renderChatPane={() => (
         <div className="h-full flex flex-col bg-card/30 border-r border-border/30">
