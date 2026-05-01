@@ -56,7 +56,7 @@ export function BelowFoldDashboard({
       </section>
 
       {/* 2. Your Momentum ------------------------------------------------- */}
-      <section className="atlas-discovery-card">
+      <section id="discovery-momentum" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Your Momentum</h3>
           <button type="button" onClick={onOpenLedger} className="atlas-discovery-link">
