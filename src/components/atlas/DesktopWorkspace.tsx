@@ -47,6 +47,7 @@ export interface DesktopWorkspaceProps {
   activeSurface: SurfaceId;
   onSurfaceChange: (surface: SurfaceId) => void;
   onOpenHistory?: () => void;
+  onOpenGallery?: () => void;
   parkedCount?: number;
   ledgerCount?: number;
 
