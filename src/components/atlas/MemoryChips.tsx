@@ -41,34 +41,28 @@ export function MemoryChips({ memories }: { memories: SurfacedMemory[] }) {
           key={m.id}
           to="/ledger"
           search={{ focus: m.id } as never}
-          className="group inline-flex items-center gap-1.5 rounded-md border px-2 py-1 transition-colors"
+          className="atlas-status-pill group inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors"
           style={{
-            background: "#0C0A09",
-            borderColor: "#2C2926",
-            color: "#78716C",
-            fontFamily: "monospace",
+            fontFamily: "var(--font-mono)",
             fontSize: 9,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
-            borderWidth: 0.5,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#EA580C";
-            e.currentTarget.style.color = "#EA580C";
+            e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 18%, transparent)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#2C2926";
-            e.currentTarget.style.color = "#78716C";
+            e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 10%, transparent)";
           }}
           title={`Open ledger entry: ${m.title}`}
         >
           <Sparkles className="h-2.5 w-2.5" />
-          <span className="opacity-70">Remembered</span>
-          <span className="opacity-50">·</span>
+          <span className="opacity-80">Remembered</span>
+          <span className="opacity-60">·</span>
           <span className="max-w-[180px] truncate normal-case tracking-normal">
             {m.title}
           </span>
-          <span className="opacity-50">·</span>
+          <span className="opacity-60">·</span>
           <span>{relativeMemoryAge(m.created_at)}</span>
         </Link>
       ))}

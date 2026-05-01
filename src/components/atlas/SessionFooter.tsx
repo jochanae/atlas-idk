@@ -20,10 +20,11 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         padding: "6px 16px 8px",
         gap: 12,
         fontFamily: "var(--font-mono)",
-        fontSize: 9.5,
+        fontSize: 10,
+        fontWeight: 500,
         letterSpacing: "0.1em",
         textTransform: "uppercase",
-        color: "color-mix(in oklab, var(--muted-text) 80%, transparent)",
+        color: "color-mix(in oklab, var(--foreground) 65%, transparent)",
         userSelect: "none",
         flexShrink: 0,
         background: "var(--background)",
@@ -66,7 +67,7 @@ export function SessionFooter({ artifactCount, ledgerCount }: Props) {
         </span>
       )}
       {hasOutput && (
-        <span style={{ opacity: 0.4, marginLeft: 4 }}>· session producing</span>
+        <span style={{ opacity: 0.7, marginLeft: 4 }}>· session producing</span>
       )}
     </div>
   );
