@@ -23,7 +23,7 @@ interface Props {
   onNewProject: () => void;
 }
 
-export function ProjectGallery({ open, onClose, projects, activeProjectId, onSelectProject }: Props) {
+export function ProjectGallery({ open, onClose, projects, activeProjectId, onSelectProject, onNewProject }: Props) {
   const isDesktopOrTablet = useMediaQuery("(min-width: 768px)");
   const isZFoldUnfolded = useMediaQuery("(min-width: 660px) and (max-width: 1023px)");
 
@@ -34,8 +34,8 @@ export function ProjectGallery({ open, onClose, projects, activeProjectId, onSel
     <AnimatePresence>
       {open && (
         useSheet
-          ? <GalleryBottomSheet onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} />
-          : <GalleryModal onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} />
+          ? <GalleryBottomSheet onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} onNewProject={onNewProject} />
+          : <GalleryModal onClose={onClose} projects={projects} activeProjectId={activeProjectId} onSelectProject={onSelectProject} onNewProject={onNewProject} />
       )}
     </AnimatePresence>
   );
