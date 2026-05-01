@@ -20,6 +20,7 @@ import { UserAvatar } from "@/components/atlas/UserAvatar";
 import { UserMenu } from "@/components/atlas/UserMenu";
 import { ThemeDropdown } from "@/components/atlas/ThemeDropdown";
 import { ProjectsDrawer } from "@/components/atlas/ProjectsDrawer";
+import { BelowFoldDashboard } from "@/components/atlas/BelowFoldDashboard";
 import { AtlasFooterNav, type FooterTab } from "@/components/atlas/AtlasFooterNav";
 import { QuickThoughtSheet } from "@/components/atlas/QuickThoughtSheet";
 import { SessionBreadcrumb } from "@/components/atlas/SessionBreadcrumb";
