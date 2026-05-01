@@ -215,6 +215,7 @@ function WorkspacePage() {
   const [collaborateOpen, setCollaborateOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   // showOnboarding removed — no welcome card
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [queueExecuting, setQueueExecuting] = useState(false);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
