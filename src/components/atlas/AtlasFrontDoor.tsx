@@ -2,6 +2,8 @@ import { type ReactNode, useEffect, useRef, useState, useCallback } from "react"
 import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 import { SystemMenu } from "./SystemMenu";
+import { PlanPanel } from "./PlanPanel";
+import type { PlanStep } from "./DependencyGraph";
 
 export const MODES = [
   { id: "think", label: "Think", color: "ember" },
