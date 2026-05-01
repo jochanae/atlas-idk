@@ -342,9 +342,15 @@ export function LivePreview({ code, filename, loading, error, onElementSelect }:
         flexDirection: "column",
         height: "100%",
       background: "#050505",
-      border: "1px solid rgba(201,162,76,0.4)",
+      border: "1px solid rgba(201,162,76,0.6)",
       borderRadius: 8,
+      transition: "box-shadow 200ms ease",
     }}
+    onFocus={(e) => { e.currentTarget.style.boxShadow = "0 0 16px 2px rgba(201,162,76,0.25), 0 0 4px 1px rgba(201,162,76,0.15)"; }}
+    onBlur={(e) => { e.currentTarget.style.boxShadow = "none"; }}
+    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 0 16px 2px rgba(201,162,76,0.25), 0 0 4px 1px rgba(201,162,76,0.15)"; }}
+    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
+    tabIndex={0}
   >
       {/* Filename bar + bidirectional link indicator */}
       <div
