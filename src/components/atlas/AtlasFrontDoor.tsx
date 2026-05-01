@@ -351,7 +351,7 @@ export function AtlasFrontDoor({
         }}
       >
         {/* Left: sidebar toggle + Atlas wordmark */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, height: 36 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, minHeight: 36, flexShrink: 0 }}>
           {sidebarToggle}
           {(
             <button
