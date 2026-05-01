@@ -76,7 +76,7 @@ export function BelowFoldDashboard({
       </section>
 
       {/* 3. Open Loops ---------------------------------------------------- */}
-      <section className="atlas-discovery-card">
+      <section id="discovery-loops" className="atlas-discovery-card">
         <div className="atlas-discovery-header">
           <h3>Open Loops</h3>
           <button type="button" onClick={onOpenParking} className="atlas-discovery-link">
