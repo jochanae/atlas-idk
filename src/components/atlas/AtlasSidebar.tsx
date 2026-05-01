@@ -289,14 +289,12 @@ export function AtlasSidebar({
           )}
         </div>
 
-        {/* My Projects — collapsible project thumbnails */}
+        {/* My Projects — collapsible (chevron toggles local state only) */}
         {projects && (
           <>
             <button
-              onClick={() => {
-                if (onOpenProjects) onOpenProjects();
-                else setProjectsExpanded((v) => !v);
-              }}
+              onClick={() => setProjectsExpanded((v) => !v)}
+              aria-expanded={projectsExpanded}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -331,125 +329,142 @@ export function AtlasSidebar({
               style={{
                 maxHeight: projectsExpanded ? "min(56vh, 620px)" : 0,
                 overflowY: projectsExpanded ? "auto" : "hidden",
-                overflowX: "visible",
+                overflowX: "hidden",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-                padding: projectsExpanded ? "0 clamp(10px, 3vw, 14px) 14px" : "0 clamp(10px, 3vw, 14px) 0",
+                padding: projectsExpanded ? "0 12px 14px" : "0 12px 0",
               }}
             >
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
                   paddingTop: 6,
-                  overflow: "visible",
                 }}
               >
                 {filteredProjects.map((p) => (
-                  <div
+                  <button
                     key={p.id}
+                    onClick={() => onOpenProjects?.()}
                     style={{
-                      borderRadius: 10,
-                      border: "0.5px solid var(--glass-border)",
-                      overflow: "visible",
-                      background: "var(--surface-alt)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 8px",
+                      borderRadius: 8,
+                      border: "0.5px solid transparent",
+                      background: "transparent",
                       cursor: "pointer",
-                      transition: "border-color 180ms ease, box-shadow 180ms ease",
-                      minWidth: 0,
-                      minHeight: 124,
+                      width: "100%",
+                      textAlign: "left",
+                      transition: "background 160ms ease, border-color 160ms ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 40%, transparent)";
-                      e.currentTarget.style.boxShadow = "0 2px 12px rgba(212,175,55,0.12)";
+                      e.currentTarget.style.background = "var(--surface-alt)";
+                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 25%, transparent)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "var(--glass-border)";
-                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.borderColor = "transparent";
                     }}
                   >
+                    {/* 44x44 PWA-standard thumbnail */}
                     <div
                       style={{
-                        width: "100%",
-                        height: 84,
+                        width: 44,
+                        height: 44,
+                        flexShrink: 0,
+                        borderRadius: 10,
+                        border: "0.5px solid var(--glass-border)",
                         background: "linear-gradient(135deg, color-mix(in oklab, var(--accent-gold) 8%, var(--background)), color-mix(in oklab, var(--accent-gold) 3%, var(--surface)))",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
-                        borderRadius: "10px 10px 0 0",
                       }}
                     >
                       {p.thumbnailUrl ? (
                         <img
                           src={p.thumbnailUrl}
                           alt={p.name}
-                          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                         />
                       ) : (
-                        <svg width="24" height="24" viewBox="0 0 28 28" fill="none" stroke="var(--accent-gold)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                        <svg width="20" height="20" viewBox="0 0 28 28" fill="none" stroke="var(--accent-gold)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.55 }}>
                           <rect x="3" y="3" width="22" height="16" rx="2" />
                           <circle cx="9" cy="10" r="2" />
                           <path d="M25 15l-5-4-4 3-3-2-7 5" />
-                          <line x1="3" y1="22" x2="12" y2="22" />
-                          <line x1="3" y1="25" x2="8" y2="25" />
                         </svg>
                       )}
                     </div>
-                    <div
+                    {/* Project name to the right */}
+                    <span
                       style={{
-                        padding: "6px 8px",
-                        fontSize: 10,
-                        fontFamily: "var(--font-mono)",
+                        flex: 1,
+                        minWidth: 0,
+                        fontFamily: "var(--font-sans)",
+                        fontSize: 13,
                         color: "var(--foreground)",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        letterSpacing: "-0.005em",
                       }}
                     >
                       {p.name}
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                 ))}
-                {/* + New Project card */}
+                {/* + New Project row */}
                 {!q && (
                   <button
                     onClick={onNewProject ?? onNewSession}
                     style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 8px",
                       borderRadius: 8,
                       border: "1px dashed color-mix(in oklab, var(--accent-gold) 25%, transparent)",
-                      overflow: "hidden",
                       background: "transparent",
                       cursor: "pointer",
-                      transition: "border-color 180ms ease, background 180ms ease",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                      minHeight: 124,
-                      padding: 6,
+                      width: "100%",
+                      textAlign: "left",
+                      transition: "background 160ms ease, border-color 160ms ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 50%, transparent)";
                       e.currentTarget.style.background = "color-mix(in oklab, var(--accent-gold) 5%, transparent)";
+                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 50%, transparent)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 25%, transparent)";
                       e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 25%, transparent)";
                     }}
                   >
-                    <Plus size={14} style={{ color: "var(--accent-gold)", opacity: 0.5 }} />
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        flexShrink: 0,
+                        borderRadius: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Plus size={18} style={{ color: "var(--accent-gold)", opacity: 0.7 }} />
+                    </div>
                     <span
                       style={{
                         fontFamily: "var(--font-mono)",
-                        fontSize: 8,
-                        letterSpacing: "0.08em",
+                        fontSize: 11,
+                        letterSpacing: "0.06em",
                         textTransform: "uppercase",
                         color: "var(--accent-gold)",
-                        opacity: 0.5,
+                        opacity: 0.75,
                       }}
                     >
-                      New
+                      New project
                     </span>
                   </button>
                 )}
