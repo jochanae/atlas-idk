@@ -278,12 +278,13 @@ export function DesktopWorkspace({
           <>
             <ResizeHandle
               side="right"
-              onResize={(dx) => setInspectorWidth(w => Math.max(240, Math.min(500, w - dx)))}
+              onResize={(dx) => setInspectorWidth(w => Math.max(240, Math.min(inspectorMaxWidth, w - dx)))}
+              onDoubleClick={() => setInspectorWidth(Math.floor(viewportWidth * 0.4))}
             />
             <div
               className="flex-shrink-0 h-full flex flex-col overflow-hidden rounded-xl"
               style={{
-                width: inspectorWidth, minWidth: 240, maxWidth: 500,
+                width: Math.min(inspectorWidth, inspectorMaxWidth), minWidth: 240, maxWidth: inspectorMaxWidth,
                 background: "var(--surface-alt)",
                 border: "1px solid var(--glass-border)",
               }}
