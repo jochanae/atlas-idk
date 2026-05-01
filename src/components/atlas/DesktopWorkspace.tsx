@@ -123,7 +123,7 @@ export function DesktopWorkspace({
 
         {/* ── Resizable content area ────────────────────────────── */}
         <div className="flex-1 min-w-0">
-          <PanelGroup orientation="horizontal" defaultLayout={canvasExpanded ? [100] : (renderChatPane && chatVisible ? [25, 50, 25] : [75, 25])} className="h-full w-full flex">
+          <PanelGroup orientation="horizontal" className="h-full w-full flex">
             {/* ── Chat sidecar (optional) ────────────────── */}
             {renderChatPane && chatVisible && !canvasExpanded && (
               <>
