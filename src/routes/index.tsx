@@ -62,6 +62,7 @@ import {
 import { entriesTable, createEntryFromCard } from "@/lib/entries";
 import { toast } from "sonner";
 import { haptic } from "@/lib/haptics";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 type CommitExtraction =
   | {
