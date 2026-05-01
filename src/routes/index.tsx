@@ -202,6 +202,8 @@ function WorkspacePage() {
   const [parkingOpen, setParkingOpen] = useState(false);
   const [parkedItems, setParkedItems] = useState<ParkedItem[]>([]);
   const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
+  const [quickSheetOpen, setQuickSheetOpen] = useState(false);
+  const [userMenuOpenSignal, setUserMenuOpenSignal] = useState(0);
   const [theme, setTheme] = useState<"obsidian" | "parchment">("obsidian");
   const [ledgerCount, setLedgerCount] = useState(0);
   const [commitPulse, setCommitPulse] = useState(false);
