@@ -1057,3 +1057,54 @@ function EmptyState({
     </div>
   );
 }
+
+/* ─── Filter select helper ───────────────────────────────────────── */
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <span
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 9,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase" as const,
+          color: "var(--muted-text)",
+        }}
+      >
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          background: "var(--surface-alt)",
+          border: "1px solid var(--border)",
+          borderRadius: 6,
+          padding: "3px 8px",
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          color: value !== "all" ? "var(--accent-gold)" : "var(--muted-text)",
+          outline: "none",
+          cursor: "pointer",
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
