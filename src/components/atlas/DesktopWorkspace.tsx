@@ -651,6 +651,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
     code: "Generated code and previews will appear here.",
     recs: "No recommendations yet. They appear as Atlas notices patterns.",
     settings: "Select a project to view its settings.",
+    secrets: "Manage API keys and secrets for your backend functions.",
   };
   return (
     <div className="h-full flex items-center justify-center p-6 text-center">
