@@ -2565,11 +2565,30 @@ function WorkspacePage() {
                 setProjects((prev) => prev.map((p) => p.id === updated.id ? updated : p));
               }}
             />
-            {/* Build Secrets Sync */}
+            {/* Build Secrets with Environment Profiles */}
             <div className="border-t border-border/40 px-3 py-2">
               <p className="text-[8px] font-mono text-muted-foreground/40 uppercase tracking-widest mb-1.5">Build Secrets</p>
+              {/* Environment profile switcher */}
+              <div className="flex items-center gap-1 mb-2">
+                {ENV_PROFILES.map(ep => (
+                  <button
+                    key={ep.id}
+                    type="button"
+                    onClick={() => setActiveEnvProfile(ep.id)}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                      activeEnvProfile === ep.id
+                        ? `${ep.color} bg-current/10 border border-current/20`
+                        : "text-muted-foreground hover:text-foreground border border-transparent"
+                    }`}
+                    style={activeEnvProfile === ep.id ? { backgroundColor: "color-mix(in oklab, currentColor 10%, transparent)" } : undefined}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${ep.color} ${activeEnvProfile === ep.id ? "opacity-100" : "opacity-30"}`} style={{ backgroundColor: "currentColor" }} />
+                    {ep.label}
+                  </button>
+                ))}
+              </div>
               <p className="text-[9px] font-mono text-muted-foreground/50 mb-2 leading-relaxed">
-                Build secrets are injected as env vars during install. Configure in Workspace Settings → Build Secrets.
+                Secrets for <strong className="text-foreground/60">{activeEnvProfile}</strong> — injected as env vars during build.
               </p>
               {buildSecrets.map((s, i) => (
                 <div key={i} className="flex items-center gap-1.5 mb-1">
