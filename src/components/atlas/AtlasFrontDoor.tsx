@@ -974,6 +974,8 @@ export function AtlasFrontDoor({
           .atlas-greeting { font-size: 19px; }
           .atlas-mode-pill { font-size: 9px !important; padding: 3px 7px !important; }
           .atlas-input-shell, .atlas-active-input-shell { margin: 0 12px 20px !important; padding: 14px 14px !important; }
+          .atlas-utility-btn { width: 34px !important; height: 34px !important; }
+          .atlas-utility-bar { gap: 4px !important; }
         }
         @keyframes atlas-rise {
           from { opacity: 0; transform: translateY(8px); }
