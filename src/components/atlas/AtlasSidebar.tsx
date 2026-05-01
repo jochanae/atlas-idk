@@ -206,84 +206,7 @@ export function AtlasSidebar({
           </span>
         </div>
 
-        {/* Top — actions */}
-        <div style={{ padding: "12px 10px 8px" }}>
-          <SidebarItem icon={<Plus size={15} />} label="New session" onClick={onNewSession} />
-          <SidebarItem icon={<Search size={15} />} label="Search" disabled hint="soon" />
-        </div>
-
-        {/* Middle — Recents */}
-        <SectionLabel>Recent sessions</SectionLabel>
-        <div style={{ padding: "0 6px 8px" }}>
-          {recents.length === 0 ? (
-            <EmptyState text="no sessions yet — start one from the front door." />
-          ) : (
-            recents.map((s) => {
-              const isPhosphor = s.mode === "explore";
-              const dot = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => onOpenSession(s.id)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
-                    background: "transparent",
-                    border: "none",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    color: "var(--foreground)",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-alt)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: dot,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: 12.5,
-                        color: "var(--foreground)",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {s.title || "Untitled"}
-                    </span>
-                    <span
-                      style={{
-                        display: "block",
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 9.5,
-                        color: "var(--muted-text)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        marginTop: 1,
-                      }}
-                    >
-                      {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
-                    </span>
-                  </span>
-                </button>
-              );
-            })
-          )}
-        </div>
-
-        {/* Created by Me — collapsible project thumbnails */}
+        {/* Created by Me — collapsible project thumbnails (top position) */}
         {projects && (
           <>
             <button
@@ -292,7 +215,7 @@ export function AtlasSidebar({
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "10px 16px 6px",
+                padding: "12px 16px 6px",
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -441,6 +364,121 @@ export function AtlasSidebar({
             </div>
           </>
         )}
+
+        {/* Top — actions */}
+        <div style={{ padding: "8px 10px 8px" }}>
+          <SidebarItem icon={<Plus size={15} />} label="New session" onClick={onNewSession} />
+          <SidebarItem icon={<Search size={15} />} label="Search" disabled hint="soon" />
+        </div>
+
+        {/* Recent Sessions — collapsible */}
+        <button
+          onClick={() => setRecentsExpanded((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 16px 4px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            width: "100%",
+            textAlign: "left",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 9.5,
+              color: "var(--muted-text)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              flex: 1,
+            }}
+          >
+            Recent sessions
+          </span>
+          {recentsExpanded ? (
+            <ChevronDown size={12} style={{ color: "var(--muted-text)" }} />
+          ) : (
+            <ChevronRight size={12} style={{ color: "var(--muted-text)" }} />
+          )}
+        </button>
+        <div
+          style={{
+            maxHeight: recentsExpanded ? 2000 : 0,
+            overflow: "hidden",
+            transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
+            padding: recentsExpanded ? "0 6px 8px" : "0 6px 0",
+          }}
+        >
+          {recents.length === 0 ? (
+            <EmptyState text="no sessions yet — start one from the front door." />
+          ) : (
+            recents.map((s) => {
+              const isPhosphor = s.mode === "explore";
+              const dot = isPhosphor ? "#06B6D4" : s.mode ? "#EA580C" : "#2C2926";
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => onOpenSession(s.id)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 10px",
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    color: "var(--foreground)",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-alt)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: dot,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 12.5,
+                        color: "var(--foreground)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {s.title || "Untitled"}
+                    </span>
+                    <span
+                      style={{
+                        display: "block",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 9.5,
+                        color: "var(--muted-text)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginTop: 1,
+                      }}
+                    >
+                      {s.mode || "think"} · {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
+                    </span>
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
 
         {/* Build State Timeline (last N steps) */}
         {buildHistory && buildHistory.length > 0 && (
