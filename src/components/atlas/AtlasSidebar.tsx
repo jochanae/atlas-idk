@@ -325,7 +325,7 @@ export function AtlasSidebar({
                 maxHeight: projectsExpanded ? 400 : 0,
                 overflow: "hidden",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-                padding: projectsExpanded ? "0 12px 10px" : "0 12px 0",
+                padding: projectsExpanded ? "0 clamp(8px, 3vw, 12px) 10px" : "0 clamp(8px, 3vw, 12px) 0",
               }}
             >
               <div
