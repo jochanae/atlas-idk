@@ -45,7 +45,7 @@ export function ProjectGallery({ open, onClose, projects, activeProjectId, onSel
 /*  Bottom Sheet (mobile / Z Fold outer)                       */
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProject }: Omit<Props, "open">) {
+function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProject, onNewProject }: Omit<Props, "open">) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   const handleDragEnd = useCallback(
