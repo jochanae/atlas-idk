@@ -783,7 +783,7 @@ export function AtlasFrontDoor({
         </div>
       </div>
 
-      {/* Plan Mode Dependency Graph + Help */}
+      {/* Plan Mode — dedicated Plan/Blueprint panel */}
       {active && activeMode === "plan" && (
         <div
           style={{
@@ -792,33 +792,13 @@ export function AtlasFrontDoor({
             animation: "atlas-bubble-in 200ms ease forwards",
           }}
         >
-          {planGraph || (
-            <div
-              style={{
-                padding: "12px 16px",
-                borderRadius: 12,
-                background: "color-mix(in oklab, var(--accent-gold, #c9a84c) 8%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--accent-gold, #c9a84c) 18%, transparent)",
-                fontFamily: "var(--font-mono, 'Geist Mono', monospace)",
-                fontSize: 12,
-                lineHeight: 1.7,
-                color: "color-mix(in oklab, var(--foreground) 70%, transparent)",
-              }}
-            >
-              <span style={{ color: "var(--foreground)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Plan Mode Format
-              </span>
-              <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", background: "none", padding: 0, border: "none", font: "inherit", color: "inherit" }}>
-{`1. Design the database schema
-2. Create API endpoints (depends on step 1)
-3. Build the frontend UI (depends on step 2)
-4. Write integration tests (depends on step 2)`}
-              </pre>
-              <span style={{ fontSize: 11, opacity: 0.6, display: "block", marginTop: 6 }}>
-                Atlas will format steps this way. Dependencies create the graph edges.
-              </span>
-            </div>
-          )}
+          <PlanPanel
+            steps={planSteps ?? []}
+            graph={planGraph ?? <></>}
+            onQueueStep={onQueuePlanStep}
+            onQueueAll={onQueueAllPlanSteps}
+            onExpandStep={onExpandPlanStep}
+          />
         </div>
       )}
 
