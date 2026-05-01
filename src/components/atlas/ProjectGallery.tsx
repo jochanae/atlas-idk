@@ -119,7 +119,7 @@ function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProjec
 /*  Modal (desktop / tablet / Z Fold unfolded)                  */
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-function GalleryModal({ onClose, projects, activeProjectId, onSelectProject }: Omit<Props, "open">) {
+function GalleryModal({ onClose, projects, activeProjectId, onSelectProject, onNewProject }: Omit<Props, "open">) {
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
