@@ -109,7 +109,7 @@ export function ArtifactDrawer({ artifacts, forceOpen, onForceOpenChange, deskto
           animation: "atlas-pane-in 360ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
-        <DrawerHeader count={artifacts.length} />
+        <DrawerHeader count={artifacts.length} onClose={() => onDesktopHiddenChange?.(true)} />
         <ArtifactList
           artifacts={artifacts}
           activeId={active?.id ?? null}
