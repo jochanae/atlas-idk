@@ -1875,6 +1875,43 @@ function WorkspacePage() {
         )}
 
       </main>
+
+      {/* Persistent footer nav — Home / Projects / Atlas / Ledger / You */}
+      <AtlasFooterNav
+        active={entrySurface || !session ? "home" : "home"}
+        onNavigate={(tab: FooterTab) => {
+          if (tab === "home") {
+            setEntrySurface(true);
+            setSurface("chat");
+            setHistoryOpen(false);
+          } else if (tab === "projects") {
+            setProjectsDrawerOpen(true);
+          } else if (tab === "ledger") {
+            navigate({ to: "/ledger" });
+          } else if (tab === "you") {
+            setUserMenuOpenSignal((n) => n + 1);
+          }
+        }}
+        onCenterPress={() => setQuickSheetOpen(true)}
+      />
+
+      <QuickThoughtSheet
+        open={quickSheetOpen}
+        onClose={() => setQuickSheetOpen(false)}
+        contextLabel={session?.title ?? activeProject?.name ?? null}
+        sending={sending}
+        onSubmit={(text) => {
+          // Posts to the active session via existing send flow.
+          // ensureSession() inside send() auto-creates a session if none exists.
+          send(text);
+        }}
+      />
+
+      {/* Lift the fixed active-mode input above the persistent footer */}
+      <style>{`
+        .atlas-active-input-shell { bottom: 60px !important; }
+      `}</style>
+
       <ProjectsDrawer
         open={projectsDrawerOpen}
         onClose={() => setProjectsDrawerOpen(false)}
