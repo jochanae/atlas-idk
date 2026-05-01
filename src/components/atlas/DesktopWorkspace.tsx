@@ -103,8 +103,8 @@ export function DesktopWorkspace({
       <div className="flex-1 min-h-0 flex">
         {/* ── Fixed Nav rail ─────────────────────────────────────── */}
         <div
-          className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200"
-          style={{ width: navCollapsed ? 48 : 160 }}
+          className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200 overflow-y-auto overflow-x-hidden"
+          style={{ width: navCollapsed ? 48 : 160, minHeight: 0 }}
         >
           <NavRail
             collapsed={navCollapsed}
