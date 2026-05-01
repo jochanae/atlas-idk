@@ -340,8 +340,8 @@ export function AtlasFrontDoor({
           display: "grid",
           gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
-          padding: "10px 16px 8px",
-          minHeight: "var(--header-height)",
+          padding: "10px clamp(10px, 3vw, 16px) 8px",
+          minHeight: "fit-content",
           gap: 8,
           background: "transparent",
           backdropFilter: "blur(24px) saturate(150%)",
@@ -351,7 +351,7 @@ export function AtlasFrontDoor({
         }}
       >
         {/* Left: sidebar toggle + Atlas wordmark */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, height: 36 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, minHeight: 36, flexShrink: 0 }}>
           {sidebarToggle}
           {(
             <button
@@ -388,7 +388,7 @@ export function AtlasFrontDoor({
         </div>
 
         {/* Right: actions + avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, height: 36, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 36, justifyContent: "flex-end", flexShrink: 0 }}>
           {headerActions}
         </div>
       </div>

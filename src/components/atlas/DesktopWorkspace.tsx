@@ -95,16 +95,16 @@ export function DesktopWorkspace({
   const inspectorPanes = renderInspectorPanes();
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground" style={{ minHeight: "fit-content" }}>
       {renderHeader && (
-        <div className="flex-shrink-0 border-b border-border/50">{renderHeader()}</div>
+        <div className="flex-shrink-0 border-b border-border/50 min-h-fit">{renderHeader()}</div>
       )}
 
       <div className="flex-1 min-h-0 flex">
         {/* ── Fixed Nav rail ─────────────────────────────────────── */}
         <div
-          className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200"
-          style={{ width: navCollapsed ? 48 : 160 }}
+          className="flex-shrink-0 border-r border-border/50 bg-card/30 transition-[width] duration-200 overflow-y-auto overflow-x-hidden"
+          style={{ width: navCollapsed ? 48 : 160, minHeight: 0 }}
         >
           <NavRail
             collapsed={navCollapsed}
@@ -193,7 +193,7 @@ function NavRail({
   onToggleChat?: () => void;
 }) {
   return (
-    <nav className="h-full flex flex-col py-3 px-2 gap-1">
+    <nav className="h-full flex flex-col py-3 px-2 gap-1 min-h-fit overflow-y-auto overflow-x-hidden">
       <button
         type="button"
         onClick={onToggleCollapse}

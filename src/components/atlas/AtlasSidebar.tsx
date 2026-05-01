@@ -325,7 +325,7 @@ export function AtlasSidebar({
                 maxHeight: projectsExpanded ? 400 : 0,
                 overflow: "hidden",
                 transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-                padding: projectsExpanded ? "0 12px 10px" : "0 12px 0",
+                padding: projectsExpanded ? "0 clamp(8px, 3vw, 12px) 10px" : "0 clamp(8px, 3vw, 12px) 0",
               }}
             >
               <div
@@ -385,7 +385,7 @@ export function AtlasSidebar({
                     </div>
                     <div
                       style={{
-                        padding: "4px 6px",
+                        padding: "6px 8px",
                         fontSize: 10,
                         fontFamily: "var(--font-mono)",
                         color: "var(--foreground)",
@@ -494,7 +494,7 @@ export function AtlasSidebar({
             maxHeight: recentsExpanded ? 2000 : 0,
             overflow: "hidden",
             transition: "max-height 300ms cubic-bezier(.2,.8,.2,1)",
-            padding: recentsExpanded ? "0 6px 8px" : "0 6px 0",
+            padding: recentsExpanded ? "0 clamp(4px, 2vw, 6px) 8px" : "0 clamp(4px, 2vw, 6px) 0",
           }}
         >
           {filteredRecents.length === 0 ? (
