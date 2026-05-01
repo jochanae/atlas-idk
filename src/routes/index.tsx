@@ -1516,6 +1516,7 @@ function WorkspacePage() {
                 setDiffLabels({ old: "Your prompt", new: "Atlas response" });
                 setDiffOpen(true);
               }}
+              onRegenerate={(userMessage) => send(userMessage)}
               activeMode={activeMode}
               buildHistory={buildHistory}
             />
