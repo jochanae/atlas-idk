@@ -352,7 +352,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
   };
   return (
     <div className="h-full flex items-center justify-center p-6 text-center">
-      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed max-w-[28ch]">
+      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed max-w-full break-words">
         {messages[tab]}
       </p>
     </div>
