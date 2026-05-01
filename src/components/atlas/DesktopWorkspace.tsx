@@ -12,6 +12,8 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 
 /**
@@ -85,7 +87,7 @@ export function DesktopWorkspace({
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [inspectorTab, setInspectorTab] = useState<InspectorTabId>("code");
   const [chatVisible, setChatVisible] = useState(Boolean(renderChatPane));
-
+  const [canvasExpanded, setCanvasExpanded] = useState(false);
   // Render only the active branch — prevents double-mounting heavy components
   // (chat, realtime subscriptions, etc.).
   if (!isDesktop) {
@@ -119,35 +121,37 @@ export function DesktopWorkspace({
           />
         </div>
 
-        {/* ── Resizable content area ────────────────────────────── */}
-        <div className="flex-1 min-w-0">
-          <PanelGroup orientation="horizontal" id="atlas-workspace-v4" className="h-full w-full flex">
-            {/* ── Chat sidecar (optional) ────────────────── */}
-            {renderChatPane && chatVisible && (
-              <>
-                <Panel defaultSize={28} minSize={18} maxSize={45} className="bg-background">
-                  <div className="h-full overflow-hidden flex flex-col">
-                    <PaneHeader title="Atlas" />
-                    <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
-                  </div>
-                </Panel>
-                <ResizeHandle />
-              </>
-            )}
+        {/* ── Content area (flex layout) ────────────────────────────── */}
+        <div className="flex-1 min-w-0 flex h-full">
+          {/* ── Chat sidecar (optional) ────────────────── */}
+          {renderChatPane && chatVisible && !canvasExpanded && (
+            <div className="flex-shrink-0 bg-background border-r border-border/50" style={{ width: 320 }}>
+              <div className="h-full overflow-hidden flex flex-col">
+                <PaneHeader title="Atlas" />
+                <div className="flex-1 min-h-0 overflow-auto">{renderChatPane()}</div>
+              </div>
+            </div>
+          )}
 
-            {/* ── Main canvas ─────────────────────────────── */}
-            <Panel defaultSize={inspectorCollapsed ? 75 : 55} minSize={30}>
-              <div className="h-full overflow-hidden">{renderCanvas()}</div>
-            </Panel>
+          {/* ── Main canvas ─────────────────────────────── */}
+          <div className="flex-1 min-w-0 h-full overflow-hidden relative">
+            <button
+              type="button"
+              onClick={() => setCanvasExpanded((v) => !v)}
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+              title={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+              aria-label={canvasExpanded ? "Exit full canvas" : "Expand canvas"}
+            >
+              {canvasExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+            {renderCanvas()}
+          </div>
 
-            <ResizeHandle />
-
-            {/* ── Right inspector ──────────────────────────── */}
-            <Panel
-              defaultSize={inspectorCollapsed ? 5 : 25}
-              minSize={5}
-              maxSize={40}
-              className="border-l border-border/50 bg-card/30"
+          {/* ── Right inspector ──────────────────────────── */}
+          {!canvasExpanded && (
+            <div
+              className="flex-shrink-0 border-l border-border/50 bg-card/30 transition-[width] duration-200"
+              style={{ width: inspectorCollapsed ? 40 : 280 }}
             >
               <Inspector
                 collapsed={inspectorCollapsed}
@@ -156,8 +160,8 @@ export function DesktopWorkspace({
                 onTabChange={setInspectorTab}
                 panes={inspectorPanes}
               />
-            </Panel>
-          </PanelGroup>
+            </div>
+          )}
         </div>
       </div>
 
@@ -315,7 +319,7 @@ function Inspector({
         >
           <PanelRightClose size={14} />
         </button>
-        <div className="flex-1 flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+        <div className="flex-1 flex items-center gap-0.5 overflow-x-auto scrollbar-none min-w-0">
           {INSPECTOR_TABS.map(({ id, label, Icon }) => {
             const active = activeTab === id;
             return (
@@ -352,7 +356,7 @@ function InspectorEmpty({ tab }: { tab: InspectorTabId }) {
   };
   return (
     <div className="h-full flex items-center justify-center p-6 text-center">
-      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed max-w-[28ch]">
+      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed max-w-full break-words">
         {messages[tab]}
       </p>
     </div>

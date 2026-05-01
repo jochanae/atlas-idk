@@ -1952,7 +1952,7 @@ function WorkspacePage() {
       renderChatPane={() => (
         <div className="h-full flex flex-col bg-background">
           {/* Mode chips */}
-          <div className="flex-shrink-0 px-3 py-2 border-b border-border/40 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <div className="flex-shrink-0 px-2 py-2 border-b border-border/40 flex items-center gap-1 overflow-x-auto scrollbar-none">
             {MODES.map((m) => {
               const isOn = activeMode === m.id;
               return (
@@ -1974,12 +1974,12 @@ function WorkspacePage() {
           {/* Chat messages */}
           <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
             {messages.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-center px-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">
+              <div className="h-full flex items-center justify-center text-center px-3">
+                <div className="max-w-full overflow-hidden">
+                  <p className="text-sm text-muted-foreground mb-2 break-words whitespace-normal leading-snug">
                     {greetingFor(new Date(), user?.user_metadata?.display_name as string | undefined || user?.user_metadata?.full_name as string | undefined || user?.email?.split("@")[0] || null)}
                   </p>
-                  <p className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
+                  <p className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-widest">
                     Type below to start a session
                   </p>
                 </div>
@@ -2162,7 +2162,7 @@ function WorkspacePage() {
               </span>
             </div>
             <div className="flex-1 min-h-0 overflow-auto">
-              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all">
+              <pre className="p-3 text-[10px] font-mono text-foreground/80 leading-relaxed whitespace-pre-wrap break-all overflow-x-auto">
                 {generatedCode}
               </pre>
             </div>
