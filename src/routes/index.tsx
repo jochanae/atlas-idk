@@ -24,6 +24,7 @@ import { ArtifactDrawer } from "@/components/atlas/ArtifactDrawer";
 import { LivePreview } from "@/components/atlas/LivePreview";
 import { DoubleVisionLayout } from "@/components/atlas/DoubleVisionLayout";
 import { StageLivingData } from "@/components/atlas/StageLivingData";
+import { ProjectGallery } from "@/components/atlas/ProjectGallery";
 import { BlueprintsDrawer } from "@/components/atlas/BlueprintsDrawer";
 import { DesignSystemDrawer } from "@/components/atlas/DesignSystemDrawer";
 import { ExportDrawer } from "@/components/atlas/ExportDrawer";
