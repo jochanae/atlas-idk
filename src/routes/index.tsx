@@ -1179,6 +1179,9 @@ function WorkspacePage() {
               setSurface("chat");
               setInputFocusSignal((s) => s + 1);
             }
+            else if (id === "databases") {
+              navigate({ to: "/ledger" });
+            }
           }}
           taskQueue={
             session ? (
