@@ -1576,7 +1576,7 @@ function WorkspacePage() {
               />
             ) : undefined
           }
-          sidebarToggle={undefined}
+          
           onWordmarkClick={() => {
             if (session) {
               setEntrySurface(true);
