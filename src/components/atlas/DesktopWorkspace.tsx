@@ -359,7 +359,7 @@ export function DesktopWorkspace({
 }
 
 // ── Resize handle — thin, fluid, Cursor-style ──
-function ResizeHandle({ onResize, side = "left" }: { onResize: (dx: number) => void; side?: "left" | "right" }) {
+function ResizeHandle({ onResize, side = "left", onDoubleClick }: { onResize: (dx: number) => void; side?: "left" | "right"; onDoubleClick?: () => void }) {
   const dragging = useRef(false);
   const lastX = useRef(0);
 
