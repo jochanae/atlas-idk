@@ -200,9 +200,19 @@ function ArchitecturalLedger() {
   }, [focus, entries]);
 
   const filtered = useMemo(() => {
+    const now = Date.now();
     return entries.filter((e) => {
       if (projectFilter !== "all" && e.project_id !== projectFilter) return false;
       if (categoryFilter !== "all" && inferCategory(e) !== categoryFilter) return false;
+      if (severityFilter !== "all" && e.severity !== severityFilter) return false;
+      if (verbFilter !== "all" && e.verb !== verbFilter) return false;
+      if (dateFilter !== "all") {
+        const age = now - new Date(e.created_at).getTime();
+        const day = 86400000;
+        if (dateFilter === "today" && age > day) return false;
+        if (dateFilter === "week" && age > 7 * day) return false;
+        if (dateFilter === "month" && age > 30 * day) return false;
+      }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const match =
@@ -213,7 +223,7 @@ function ArchitecturalLedger() {
       }
       return true;
     });
-  }, [entries, projectFilter, categoryFilter, searchQuery]);
+  }, [entries, projectFilter, categoryFilter, severityFilter, verbFilter, dateFilter, searchQuery]);
 
   const groups = useMemo(() => groupBySession(filtered), [filtered]);
 
