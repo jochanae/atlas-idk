@@ -496,9 +496,21 @@ export function AtlasFrontDoor({
             >
               <span
                 aria-label="Atlas"
-                style={{ color: "var(--foreground)", display: "inline-flex" }}
+                style={{ color: "var(--foreground)", display: "inline-flex", alignItems: "center", gap: 8 }}
               >
                 <AtlasLogo size={22} strokeWidth={1.6} />
+                <span
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    fontSize: 15,
+                    fontWeight: 500,
+                    letterSpacing: "0.06em",
+                    color: "var(--foreground)",
+                    lineHeight: 1,
+                  }}
+                >
+                  Atlas
+                </span>
               </span>
             </button>
           )}
