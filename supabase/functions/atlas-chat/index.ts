@@ -188,12 +188,16 @@ Deno.serve(async (req) => {
     let parsedAttachments: ParsedAttachment[] = [];
     let attachmentContext: string | null = null;
     let imageAttachments: ParsedAttachment[] = [];
+    let archiveNames: string[] = [];
     if (attachments && attachments.length > 0) {
       try {
         parsedAttachments = await parseAttachments(attachments);
         attachmentContext = renderAttachmentContext(parsedAttachments);
         imageAttachments = parsedAttachments.filter((p) => p.imageUrl);
-        console.log(`atlas-chat: parsed ${parsedAttachments.length} attachments, ${imageAttachments.length} images`);
+        archiveNames = (attachments ?? [])
+          .filter((a) => /\.(zip|tar|tgz|gz|rar|7z)$/i.test(a.name) || /zip|x-tar|gzip|x-rar|x-7z/i.test(a.type ?? ""))
+          .map((a) => a.name);
+        console.log(`atlas-chat: parsed ${parsedAttachments.length} attachments, ${imageAttachments.length} images, ${archiveNames.length} archives`);
       } catch (err) {
         console.error("atlas-chat: attachment parsing failed", err);
       }
