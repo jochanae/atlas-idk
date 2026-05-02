@@ -206,6 +206,7 @@ function ArchitecturalLedger() {
   const filtered = useMemo(() => {
     const now = Date.now();
     return entries.filter((e) => {
+      if (e.status !== "committed") return false;
       if (projectFilter !== "all" && e.project_id !== projectFilter) return false;
       if (categoryFilter !== "all" && inferCategory(e) !== categoryFilter) return false;
       if (severityFilter !== "all" && e.severity !== severityFilter) return false;
