@@ -355,6 +355,8 @@ export function AtlasFrontDoor({
   userId,
   projectId,
   onFilesUploaded,
+  attachedFiles,
+  onRemoveAttachedFile,
   onGenerateCode,
   onSystemMenuSelect,
   contextualHUD,
