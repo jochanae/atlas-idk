@@ -1923,7 +1923,7 @@ function WorkspacePage() {
             setSurface("chat");
             setHistoryOpen(false);
           } else if (tab === "projects") {
-            setProjectsDrawerOpen(true);
+            setGalleryOpen(true);
           } else if (tab === "ledger") {
             navigate({ to: "/ledger" });
           } else if (tab === "you") {
@@ -1955,10 +1955,20 @@ function WorkspacePage() {
         onClose={() => setProjectsDrawerOpen(false)}
         projects={projects.map((p) => ({ id: p.id, name: p.name, thumbnailUrl: null }))}
         activeProjectId={activeProjectId}
-        onOpenProject={(id) => setActiveProjectId(id)}
-        onNewProject={() => {
-          createNamedProject();
-        }}
+        onOpenProject={openProjectWorkspace}
+        onNewProject={() => { createNamedProject(); }}
+        sessions={recents.map((r) => ({ id: r.id, title: r.title }))}
+        activeSessionId={session?.id ?? null}
+        onOpenSession={openSession}
+        onOpenGallery={() => setGalleryOpen(true)}
+        onOpenLedger={() => navigate({ to: "/ledger" })}
+        onOpenParkingLot={() => navigate({ to: "/parking-lot" })}
+        onOpenThinkFreely={() => navigate({ to: "/think-freely" })}
+        onOpenWorkshop={() => setSurface("preview")}
+        onOpenCompass={() => setUserMenuOpenSignal((n) => n + 1)}
+        onOpenGuardReport={() => navigate({ to: "/guard-report" })}
+        userLabel={user?.email ?? null}
+        onSignOut={signOut}
       />
       <BlueprintsDrawer
         open={blueprintsOpen}
