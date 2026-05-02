@@ -61,6 +61,8 @@ import { SeverityDot } from "@/components/atlas/StatusGlyph";
 import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { CommitCard } from "@/components/atlas/CommitCard";
 import { MemoryChips, type SurfacedMemory } from "@/components/atlas/MemoryChips";
+import { DecisionCatchCard } from "@/components/atlas/DecisionCatchCard";
+import { isDecisionCatch } from "@/lib/decision-catch";
 import {
   parseAtlasMessage,
   type CommitCardPayload,
@@ -3578,6 +3580,20 @@ function ChatPanel({
                           <MemoryChips memories={m.surfaced_memories as SurfacedMemory[]} />
                         </div>
                       )}
+                      {(() => {
+                        const dc = (m as unknown as { decision_catch?: unknown }).decision_catch;
+                        if (!isDecisionCatch(dc)) return null;
+                        return (
+                          <DecisionCatchCard
+                            payload={dc}
+                            messageId={m.id}
+                            projectId={activeProjectId ?? ""}
+                            sessionId={session?.id ?? null}
+                            resolved={Boolean((m as unknown as { committed_card_id?: string | null }).committed_card_id)}
+                            onAdjust={() => setInput(`Let's reframe — how does this fit alongside "${dc.against.title}"?`)}
+                          />
+                        );
+                      })()}
                       {conflict ? (
                         <ConflictWarningCard
                           conflict={conflict}
