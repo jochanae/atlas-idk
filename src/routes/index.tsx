@@ -4181,22 +4181,12 @@ function UtilityOverflowMenu({
       ),
     },
     {
-      id: "workspace",
-      label: "Workspace",
+      id: "preview",
+      label: "Workshop",
       icon: (
         <svg viewBox="0 0 20 20" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path d="M3.5 4.5h13v11h-13z" />
           <path d="M7.5 4.5v11M3.5 8h13" />
-        </svg>
-      ),
-    },
-    {
-      id: "preview",
-      label: "Preview",
-      icon: (
-        <svg viewBox="0 0 20 20" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.5}>
-          <path d="M2.5 10s2.5-4.5 7.5-4.5 7.5 4.5 7.5 4.5-2.5 4.5-7.5 4.5S2.5 10 2.5 10Z" />
-          <circle cx="10" cy="10" r="2" />
         </svg>
       ),
     },
