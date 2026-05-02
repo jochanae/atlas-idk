@@ -10,6 +10,8 @@ import { StatusGlyph } from "@/components/atlas/StatusGlyph";
 import { CapsuleTag } from "@/components/atlas/CapsuleTag";
 import { AddEntryDialog } from "@/components/atlas/AddEntryDialog";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
+import { ThreadAnchor } from "@/components/atlas/ThreadAnchor";
+import { DecisionLedgerGrouped } from "@/components/atlas/DecisionLedgerGrouped";
 import { toast } from "sonner";
 
 type LedgerSearch = { focus?: string };
@@ -524,6 +526,37 @@ function ArchitecturalLedger() {
         </div>
       )}
 
+      {/* ─── ThreadAnchor: where were we ─── */}
+      {!loading && entries.length > 0 && (() => {
+        const mostRecent = entries.find((e) => e.status === "committed");
+        if (!mostRecent) return null;
+        return (
+          <ThreadAnchor
+            text={mostRecent.title}
+            meta={`last commit · ${relativeTime(mostRecent.created_at)}`}
+            onClick={() => {
+              setExpanded(mostRecent.id);
+              requestAnimationFrame(() => {
+                const el = document.querySelector(`[data-entry-id="${mostRecent.id}"]`);
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+              });
+            }}
+          />
+        );
+      })()}
+
+      {/* ─── Grouped Decision Ledger (Committed / In Tension / Overridden) ─── */}
+      {!loading && entries.length > 0 && (
+        <section
+          style={{
+            padding: "16px 18px",
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface)",
+          }}
+        >
+          <DecisionLedgerGrouped entries={entries} focusId={focus} />
+        </section>
+      )}
 
       <main style={{ padding: "0 18px" }}>
         {loading ? (
