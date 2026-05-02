@@ -2384,7 +2384,51 @@ function WorkspacePage() {
           </div>
           {/* Input bar */}
           <div className="flex-shrink-0 px-3 py-3" style={{ borderTop: "1px solid var(--glass-border)" }}>
-            <div className="flex items-end gap-2 rounded-xl px-3 py-2" style={{ background: "var(--surface)", border: "1px solid var(--glass-border)" }}>
+            <div className="flex flex-col rounded-xl px-3 py-2" style={{ background: "var(--surface)", border: "1px solid var(--glass-border)" }}>
+              <AttachedFilesChips
+                files={attachedFiles}
+                onRemove={(idx) => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
+              />
+              <div className="flex items-end gap-2">
+              <button
+                type="button"
+                aria-label="Attach file"
+                title="Attach file"
+                className="flex-shrink-0 p-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                onClick={() => {
+                  const fileInput = document.createElement("input");
+                  fileInput.type = "file";
+                  fileInput.multiple = true;
+                  fileInput.accept = "image/*,application/pdf,.doc,.docx,.txt,.csv,.json,.zip";
+                  fileInput.onchange = async () => {
+                    if (!fileInput.files?.length) return;
+                    const uploaded: Array<{ name: string; url: string; type: string }> = [];
+                    for (const file of Array.from(fileInput.files)) {
+                      const path = `${user.id}/${activeProjectId ?? "general"}/${Date.now()}-${file.name}`;
+                      const { error } = await supabase.storage
+                        .from("project-assets")
+                        .upload(path, file, { upsert: false });
+                      if (error) {
+                        toast.error(`Upload failed: ${file.name}`);
+                        continue;
+                      }
+                      const { data: urlData } = supabase.storage
+                        .from("project-assets")
+                        .getPublicUrl(path);
+                      uploaded.push({ name: file.name, url: urlData.publicUrl, type: file.type });
+                    }
+                    if (uploaded.length > 0) {
+                      toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} attached`);
+                      setAttachedFiles((prev) => [...prev, ...uploaded]);
+                    }
+                  };
+                  fileInput.click();
+                }}
+              >
+                <svg viewBox="0 0 16 16" width={14} height={14} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
+                </svg>
+              </button>
               <textarea
                 ref={(el) => {
                   if (el) {
@@ -2426,6 +2470,7 @@ function WorkspacePage() {
                   <path d="M1.7 1.4a.5.5 0 0 1 .6-.1l12 6a.5.5 0 0 1 0 .9l-12 6a.5.5 0 0 1-.7-.5V8.5L9 8 1.6 7.5V1.9a.5.5 0 0 1 .1-.5z" />
                 </svg>
               </button>
+              </div>
             </div>
             {sending && (
               <div className="flex items-center gap-2 mt-2">
