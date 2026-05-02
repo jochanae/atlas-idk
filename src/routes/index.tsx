@@ -3615,8 +3615,9 @@ function ChatPanel({
                 className={`${isUser ? "ml-auto max-w-[85%]" : "max-w-[92%]"}`}
               >
                 {isUser ? (() => {
+                    const displayContent = m.content.replace(/^\[ARCHIVE ATTACHED:[^\]]+\]\n?/i, "");
                     const isExpanded = expandedMessages.has(m.id);
-                    const isLongMessage = m.content.length > 140 || m.content.split("\n").length > 3;
+                    const isLongMessage = displayContent.length > 140 || displayContent.split("\n").length > 3;
                     const toggleExpand = () => {
                       setExpandedMessages((prev) => {
                         const next = new Set(prev);
