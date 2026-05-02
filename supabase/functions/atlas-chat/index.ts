@@ -630,8 +630,10 @@ Deno.serve(async (req) => {
     if (insertError) throw insertError;
 
     // ═══ Phase 4: Observability — auto-log notable state transitions ═══
+    // Decision Catch gate: when a tension is caught, do NOT write the audit
+    // entry either. The Ledger stays untouched until the user resolves.
     const hasNotableEvent = !validation.valid || outputRepaired || whisperResult.confidence === "low";
-    if (hasNotableEvent) {
+    if (hasNotableEvent && !decisionCatch) {
       const parts: string[] = [];
       parts.push(`Intent: ${whisperResult.mode} (${whisperResult.confidence})`);
       if (!validation.valid) parts.push(`Guard violation: ${validation.violation}`);
