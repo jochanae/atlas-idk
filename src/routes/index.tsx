@@ -2809,8 +2809,17 @@ function extractText(node: ReactNode): string {
 
 function CodeBlockCard({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
-  const lineCount = code ? code.split("\n").length : 0;
+  const [expanded, setExpanded] = useState(false);
+  const PREVIEW_LINES = 8;
+  const lines = code ? code.split("\n") : [];
+  const lineCount = lines.length;
+  const isOverflow = lineCount > PREVIEW_LINES;
+  const visibleCode = !isOverflow || expanded
+    ? code
+    : lines.slice(0, PREVIEW_LINES).join("\n");
+  const hiddenCount = isOverflow && !expanded ? lineCount - PREVIEW_LINES : 0;
   const label = language ? language.toUpperCase() : "CODE";
+
   const onCopy = async () => {
     try {
       await navigator.clipboard.writeText(code);
@@ -2821,6 +2830,7 @@ function CodeBlockCard({ language, code }: { language: string; code: string }) {
       toast.error("Copy failed");
     }
   };
+
   return (
     <div
       className="mb-3 overflow-hidden rounded-lg"
@@ -2864,15 +2874,57 @@ function CodeBlockCard({ language, code }: { language: string; code: string }) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre
-        className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed"
-        style={{ margin: 0, color: "var(--foreground)", background: "transparent" }}
-      >
-        <code>{code}</code>
-      </pre>
+      <div style={{ position: "relative" }}>
+        <pre
+          className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed"
+          style={{ margin: 0, color: "var(--foreground)", background: "transparent" }}
+        >
+          <code>{visibleCode}</code>
+        </pre>
+        {isOverflow && !expanded && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 36,
+              pointerEvents: "none",
+              background: "linear-gradient(to bottom, transparent, var(--surface-alt))",
+            }}
+          />
+        )}
+      </div>
+      {isOverflow && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full font-mono"
+          style={{
+            padding: "8px 12px",
+            background: "transparent",
+            border: "none",
+            borderTop: "0.5px solid var(--border)",
+            color: "var(--accent-gold)",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+          }}
+        >
+          {expanded ? "Collapse" : `Expand · +${hiddenCount} more line${hiddenCount === 1 ? "" : "s"}`}
+        </button>
+      )}
     </div>
   );
 }
+
+
 
 function MarkdownProse({ content }: { content: string }) {
   return (
