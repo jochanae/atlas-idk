@@ -972,22 +972,11 @@ function WorkspacePage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Automated ledger logging — "Thought for Xs" timeline entry
-      try {
-        await entriesTable().insert({
-          user_id: user!.id,
-          project_id: target.projectId,
-          session_id: target.session.id,
-          status: "committed",
-          severity: "neutral",
-          title: `Thought for ${thinkSeconds}s`,
-          summary: `Atlas processed: "${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"`,
-          verb: "note",
-        });
-        setLedgerCount((c) => c + 1);
-      } catch {
-        // Non-critical — don't block chat flow
-      }
+      // NOTE: Per POSITIONING.md the Ledger updates ONLY on Commit or
+      // Proceed Anyway. We do NOT auto-write a "Thought for Ns" row here —
+      // that was process noise polluting the Decision Catch substrate.
+      // The thinking duration still surfaces in the build-state timeline.
+      void thinkSeconds;
       // Mark the new assistant message for streaming animation
       if (data?.message?.id) markMessageStreaming(data.message.id);
       const updatedTitle = text.slice(0, 60);
@@ -1125,21 +1114,10 @@ function WorkspacePage() {
       setGeneratedFilename(data.file?.filename ?? null);
       if (data.file?.content && data.file?.filename) {
         setGeneratedFiles((prev) => [...prev, { filename: data.file.filename, language: data.file.language ?? "tsx", content: data.file.content }]);
-        try {
-          await entriesTable().insert({
-            user_id: user!.id,
-            project_id: activeProjectId!,
-            session_id: session?.id ?? null,
-            status: "committed",
-            severity: "neutral",
-            title: `Applied Patch — ${data.file.filename}`,
-            summary: `Generated ${data.file.language ?? "tsx"} file via /build command.`,
-            verb: "build",
-          });
-          setLedgerCount((c) => c + 1);
-        } catch {
-          // Non-critical
-        }
+        // NOTE: Per POSITIONING.md the Ledger is for committed DECISIONS,
+        // not build artifacts. Generated files live in `generated_files`
+        // and surface via the Workshop tab — they don't belong in the
+        // Decision Ledger and were poisoning the Decision Catch substrate.
       }
       pushBuildState("idle", "Build complete");
     } catch (e) {
