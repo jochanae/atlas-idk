@@ -206,6 +206,13 @@ export async function parseAttachment(att: Attachment): Promise<ParsedAttachment
       return { ...base, text: truncate(text) };
     }
 
+    if (isArchiveName(att.name, att.type)) {
+      const buf = await res.arrayBuffer();
+      const result = readZipCentralDirectory(buf);
+      const summary = summarizeZipForModel(att.name, result);
+      return { ...base, text: summary };
+    }
+
     if (att.type === "application/pdf" || att.name.toLowerCase().endsWith(".pdf")) {
       const buf = await res.arrayBuffer();
       const text = await parsePdf(buf);
