@@ -190,19 +190,23 @@ export function EntryCard({
             0 12px 32px -18px rgba(0, 0, 0, 0.55);
         }
         .entry-card[data-posture="active"] {
-          background: color-mix(in oklab, var(--border) 60%, transparent);
+          background: linear-gradient(
+            135deg,
+            color-mix(in oklab, var(--accent-gold) 22%, transparent) 0%,
+            color-mix(in oklab, var(--border) 70%, transparent) 60%,
+            transparent 100%
+          );
           box-shadow: 0 6px 20px -14px rgba(0, 0, 0, 0.4);
-          opacity: 0.95;
         }
         .entry-card-inner {
-          background: color-mix(in oklab, var(--background) 88%, transparent);
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
+          background: var(--surface);
           border-radius: 5.5px;
           overflow: hidden;
         }
-        .entry-card[data-posture="active"] .entry-card-inner {
-          background: color-mix(in oklab, var(--surface) 92%, transparent);
+        .entry-card[data-posture="locked"] .entry-card-inner {
+          background: color-mix(in oklab, var(--background) 92%, var(--surface));
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
         }
       `}</style>
     </article>
