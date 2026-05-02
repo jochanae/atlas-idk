@@ -3587,8 +3587,8 @@ function ChatPanel({
                           <DecisionCatchCard
                             payload={dc}
                             messageId={m.id}
-                            projectId={activeProjectId ?? ""}
-                            sessionId={session?.id ?? null}
+                            projectId={projectId ?? ""}
+                            sessionId={sessionId ?? null}
                             resolved={Boolean((m as unknown as { committed_card_id?: string | null }).committed_card_id)}
                             onAdjust={() => setInput(`Let's reframe — how does this fit alongside "${dc.against.title}"?`)}
                           />
