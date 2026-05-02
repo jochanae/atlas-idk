@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { ChunkedBubbles } from "@/components/atlas/StreamingText";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemMenu } from "@/components/atlas/SystemMenu";
+import { AttachedFilesChips } from "@/components/atlas/AttachedFilesChips";
 import { useAuth } from "@/lib/auth";
 import { FooterAuditLine } from "@/components/atlas/FooterAuditLine";
 import {
