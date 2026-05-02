@@ -85,6 +85,10 @@ type AtlasFrontDoorProps = {
   userId?: string;
   projectId?: string | null;
   onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
+  /** Files currently attached to the next outgoing message — rendered as chips above the textarea. */
+  attachedFiles?: Array<{ name: string; url: string; type: string }>;
+  /** Remove a single attached file by index. */
+  onRemoveAttachedFile?: (index: number) => void;
   /** Called when user selects "Build" from system menu or uses /build command */
   onGenerateCode?: (prompt: string) => void;
   /** Called when user opens a system menu feature drawer */
