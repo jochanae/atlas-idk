@@ -1440,6 +1440,8 @@ function WorkspacePage() {
           userId={user.id}
           projectId={activeProjectId}
           onFilesUploaded={(files) => setAttachedFiles((prev) => [...prev, ...files])}
+          attachedFiles={attachedFiles}
+          onRemoveAttachedFile={(idx) => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
           onGenerateCode={generateCode}
           onSystemMenuSelect={(id) => {
             if (id === "blueprints") setBlueprintsOpen(true);
