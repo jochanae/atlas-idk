@@ -188,12 +188,16 @@ Deno.serve(async (req) => {
     let parsedAttachments: ParsedAttachment[] = [];
     let attachmentContext: string | null = null;
     let imageAttachments: ParsedAttachment[] = [];
+    let archiveNames: string[] = [];
     if (attachments && attachments.length > 0) {
       try {
         parsedAttachments = await parseAttachments(attachments);
         attachmentContext = renderAttachmentContext(parsedAttachments);
         imageAttachments = parsedAttachments.filter((p) => p.imageUrl);
-        console.log(`atlas-chat: parsed ${parsedAttachments.length} attachments, ${imageAttachments.length} images`);
+        archiveNames = (attachments ?? [])
+          .filter((a) => /\.(zip|tar|tgz|gz|rar|7z)$/i.test(a.name) || /zip|x-tar|gzip|x-rar|x-7z/i.test(a.type ?? ""))
+          .map((a) => a.name);
+        console.log(`atlas-chat: parsed ${parsedAttachments.length} attachments, ${imageAttachments.length} images, ${archiveNames.length} archives`);
       } catch (err) {
         console.error("atlas-chat: attachment parsing failed", err);
       }
@@ -276,12 +280,16 @@ Deno.serve(async (req) => {
       }));
 
 
-    // Persist the user message
+    // Persist the user message — prepend an archive marker when applicable
+    // so the client can render the assistant's reply as a decision-first card.
+    const archiveMarker = archiveNames.length > 0
+      ? `[ARCHIVE ATTACHED: ${archiveNames.join(", ")}]\n`
+      : "";
     await userClient.from("chat_messages").insert({
       session_id: sessionId,
       user_id: user.id,
       role: "user",
-      content: message,
+      content: `${archiveMarker}${message}`,
     });
 
     const { data: currentSession, error: sessionErr } = await userClient
@@ -317,7 +325,10 @@ Deno.serve(async (req) => {
       : modeDirective;
 
     // Compose final system prompt: guarded decisions + mode directive
-    const finalSystemPrompt = `${guardedSystemPrompt}\n\n${whisperPrefix}`;
+    const archiveDirective = archiveNames.length > 0
+      ? `\n\nARCHIVE INGESTION MODE — the operator uploaded an archive (${archiveNames.join(", ")}). This is Context Ingestion, NOT a build request. Respond as a decision-first summary using EXACTLY these four sections, in this order, as level-3 markdown headings:\n\n### Uploaded\nWhat's in the archive — top-level structure, key files, scope.\n\n### Touches\nWhich committed Ledger entries this archive intersects with (cite by title). If none, say so.\n\n### Drift\nDetected conflicts, drift, or alignment issues against the committed direction. Be specific.\n\n### Question\nOne closing question that moves toward "what are we committing to?"\n\nDo NOT echo file contents as code blocks. Do NOT generate replacement code. The deliverable is clarity about decisions, not pages-to-drop-in.`
+      : "";
+    const finalSystemPrompt = `${guardedSystemPrompt}\n\n${whisperPrefix}${archiveDirective}`;
 
     // Build the user turn — append parsed text from attachments and add image
     // blocks for any uploaded images so Claude can actually see them.

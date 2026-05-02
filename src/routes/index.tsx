@@ -2799,6 +2799,81 @@ function renderMarkdownChildren(children: ReactNode): ReactNode {
   });
 }
 
+function extractText(node: ReactNode): string {
+  if (node === null || node === undefined || node === false) return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (isValidElement<{ children?: ReactNode }>(node)) return extractText(node.props.children);
+  return "";
+}
+
+function CodeBlockCard({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+  const lineCount = code ? code.split("\n").length : 0;
+  const label = language ? language.toUpperCase() : "CODE";
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast.success("Copied");
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+  return (
+    <div
+      className="mb-3 overflow-hidden rounded-lg"
+      style={{
+        background: "var(--surface-alt)",
+        border: "0.5px solid var(--border)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-3 py-2"
+        style={{
+          borderBottom: "0.5px solid var(--border)",
+          background: "color-mix(in oklab, var(--accent-gold) 4%, transparent)",
+        }}
+      >
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            color: "var(--accent-gold)",
+          }}
+        >
+          {label} · {lineCount} {lineCount === 1 ? "line" : "lines"}
+        </span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            background: "transparent",
+            border: "0.5px solid var(--border)",
+            color: copied ? "var(--accent-gold)" : "var(--muted-text)",
+            cursor: "pointer",
+            transition: "all 160ms ease",
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre
+        className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed"
+        style={{ margin: 0, color: "var(--foreground)", background: "transparent" }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 function MarkdownProse({ content }: { content: string }) {
   return (
     <div className="atlas-prose" style={{ color: "var(--foreground)" }}>
@@ -2842,18 +2917,24 @@ function MarkdownProse({ content }: { content: string }) {
               </code>
             );
           },
-          pre: ({ children }) => (
-            <pre
-              className="mb-3 overflow-x-auto rounded-lg p-3 font-mono text-[13px] leading-relaxed"
-              style={{
-                background: "var(--surface-alt)",
-                color: "var(--foreground)",
-                border: "0.5px solid var(--border)",
-              }}
-            >
-              {children}
-            </pre>
-          ),
+          pre: ({ children }) => {
+            // Extract language + raw code from the inner <code> element so
+            // we can render an inline CodeBlockCard with header bar + Copy.
+            let lang = "code";
+            let raw = "";
+            const childArray = Children.toArray(children);
+            for (const c of childArray) {
+              if (isValidElement<{ className?: string; children?: ReactNode }>(c)) {
+                const cls = c.props.className ?? "";
+                const m = /language-([\w+-]+)/.exec(cls);
+                if (m) lang = m[1];
+                raw += extractText(c.props.children);
+              } else if (typeof c === "string") {
+                raw += c;
+              }
+            }
+            return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
+          },
           ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>,
           li: ({ children }) => (
@@ -2877,6 +2958,105 @@ function MarkdownProse({ content }: { content: string }) {
  * re-rendering the parsed markdown at each step. Once complete, renders
  * the full content statically.
  */
+/**
+ * ArchiveSummaryCard — decision-first response renderer for messages whose
+ * preceding user turn carried [ARCHIVE ATTACHED:]. Parses the four canonical
+ * sections (Uploaded / Touches / Drift / Question) out of the assistant
+ * markdown and renders them as a single card instead of a code-heavy reply.
+ */
+function ArchiveSummaryCard({ archives, content }: { archives: string[]; content: string }) {
+  const sections = useMemo(() => {
+    const out: Record<string, string> = { Uploaded: "", Touches: "", Drift: "", Question: "" };
+    const re = /^###\s+(Uploaded|Touches|Drift|Question)\s*$/gim;
+    const matches: Array<{ key: string; start: number; end: number }> = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) {
+      matches.push({ key: m[1], start: m.index + m[0].length, end: content.length });
+    }
+    for (let i = 0; i < matches.length; i++) {
+      if (i + 1 < matches.length) matches[i].end = matches[i + 1].start - matches[i + 1].key.length - 4;
+      out[matches[i].key] = content.slice(matches[i].start, matches[i].end).trim();
+    }
+    return out;
+  }, [content]);
+
+  const hasAnySection = Object.values(sections).some((v) => v.trim().length > 0);
+  // Fallback: if model didn't follow the format, render the raw prose so we
+  // never lose the response — but still inside the archive card frame.
+  return (
+    <div
+      className="mb-3 overflow-hidden rounded-2xl"
+      style={{
+        background: "color-mix(in oklab, var(--accent-gold) 3%, var(--surface))",
+        border: "0.5px solid color-mix(in oklab, var(--accent-gold) 28%, var(--border))",
+        boxShadow: "0 8px 32px -16px rgba(0,0,0,0.4)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-2.5"
+        style={{
+          borderBottom: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+          background: "color-mix(in oklab, var(--accent-gold) 6%, transparent)",
+        }}
+      >
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--accent-gold)",
+          }}
+        >
+          Context Ingestion
+        </span>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            color: "var(--muted-text)",
+            letterSpacing: "0.06em",
+            maxWidth: "60%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {archives.join(", ")}
+        </span>
+      </div>
+      <div className="px-4 py-4">
+        {hasAnySection ? (
+          <div className="space-y-4">
+            {(["Uploaded", "Touches", "Drift", "Question"] as const).map((key) =>
+              sections[key].trim() ? (
+                <div key={key}>
+                  <div
+                    className="font-mono mb-1.5"
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: key === "Drift"
+                        ? "color-mix(in oklab, var(--accent-gold) 80%, #d97757)"
+                        : "var(--accent-gold)",
+                    }}
+                  >
+                    {key}
+                  </div>
+                  <MarkdownProse content={sections[key]} />
+                </div>
+              ) : null,
+            )}
+          </div>
+        ) : (
+          <MarkdownProse content={content} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StreamingMarkdown({
   content,
   speed = 30,
@@ -3395,7 +3575,7 @@ function ChatPanel({
             onRefresh={onRefreshThinkingPrompts}
           />
         )}
-        {messages.map((m) => {
+        {messages.map((m, mIdx) => {
             const parsedConflict =
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
             if (parsedConflict && dismissedConflicts.has(m.id)) return null;
@@ -3412,6 +3592,19 @@ function ChatPanel({
             const proseForDisplay = parsed ? parsed.prose : m.content;
             const isLocked = Boolean(m.committed_card_id);
 
+            // Archive ingestion: when the *previous* user turn carries the
+            // [ARCHIVE ATTACHED: ...] marker, render this assistant reply as
+            // a decision-first summary card instead of normal prose/code.
+            const prevMsg = mIdx > 0 ? messages[mIdx - 1] : null;
+            const archiveMatch =
+              m.role === "assistant" && !conflict && !card && prevMsg?.role === "user"
+                ? /\[ARCHIVE ATTACHED:\s*([^\]]+)\]/i.exec(prevMsg.content)
+                : null;
+            const archiveNames = archiveMatch
+              ? archiveMatch[1].split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
+            const isArchiveResponse = archiveNames.length > 0;
+
             const showActionRow =
               !card && m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
             const showParkButton = !card && m.role === "assistant" && !conflict;
@@ -3422,8 +3615,9 @@ function ChatPanel({
                 className={`${isUser ? "ml-auto max-w-[85%]" : "max-w-[92%]"}`}
               >
                 {isUser ? (() => {
+                    const displayContent = m.content.replace(/^\[ARCHIVE ATTACHED:[^\]]+\]\n?/i, "");
                     const isExpanded = expandedMessages.has(m.id);
-                    const isLongMessage = m.content.length > 140 || m.content.split("\n").length > 3;
+                    const isLongMessage = displayContent.length > 140 || displayContent.split("\n").length > 3;
                     const toggleExpand = () => {
                       setExpandedMessages((prev) => {
                         const next = new Set(prev);
@@ -3486,7 +3680,7 @@ function ChatPanel({
                               transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1)",
                             }}
                           >
-                            {m.content}
+                            {displayContent}
                           </div>
                           {isLongMessage && (
                             <div
@@ -3605,7 +3799,9 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            newMessageIds.has(m.id) ? (
+                            isArchiveResponse ? (
+                              <ArchiveSummaryCard archives={archiveNames} content={proseForDisplay} />
+                            ) : newMessageIds.has(m.id) ? (
                               <ChunkedBubbles
                                 text={proseForDisplay}
                                 isNew
