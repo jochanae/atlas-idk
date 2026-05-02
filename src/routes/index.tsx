@@ -3799,7 +3799,9 @@ function ChatPanel({
                       ) : (
                         <>
                           {proseForDisplay.trim() && (
-                            newMessageIds.has(m.id) ? (
+                            isArchiveResponse ? (
+                              <ArchiveSummaryCard archives={archiveNames} content={proseForDisplay} />
+                            ) : newMessageIds.has(m.id) ? (
                               <ChunkedBubbles
                                 text={proseForDisplay}
                                 isNew
