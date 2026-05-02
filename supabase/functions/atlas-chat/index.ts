@@ -414,6 +414,16 @@ Deno.serve(async (req) => {
 
       if (toolUses.length === 0 || data.stop_reason !== "tool_use") break;
 
+      // Decision Catch gate — if Atlas opened with "Before you do —" and the
+      // quoted decision resolves to a committed entry, suppress ALL tool
+      // calls in this response. No workspace nodes, no recommendations.
+      // The chat handler will also skip card extraction below.
+      earlyCatch = detectDecisionCatch(finalText, ledgerRefs);
+      if (earlyCatch) {
+        console.log(`decision-catch: gate engaged — suppressing ${toolUses.length} tool call(s) against entry ${earlyCatch.against.id}`);
+        break;
+      }
+
       // Execute tools, collect tool_results
       const toolResults: Array<{
         type: "tool_result";
