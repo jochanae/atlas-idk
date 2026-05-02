@@ -48,6 +48,12 @@ export interface Entry {
   updated_at: string;
   /** Atlas mode that produced this entry (think/plan/build/explore/decide/audit). */
   mode: string | null;
+  /** Decision Catch: true when this entry was created via "Proceed anyway". */
+  deviation?: boolean;
+  /** Why the user proceeded against the prior decision. */
+  deviation_reason?: string | null;
+  /** The committed entry this deviation pushed against. */
+  catch_against_id?: string | null;
 }
 
 /**
