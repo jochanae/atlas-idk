@@ -1923,7 +1923,7 @@ function WorkspacePage() {
             setSurface("chat");
             setHistoryOpen(false);
           } else if (tab === "projects") {
-            setProjectsDrawerOpen(true);
+            setGalleryOpen(true);
           } else if (tab === "ledger") {
             navigate({ to: "/ledger" });
           } else if (tab === "you") {
