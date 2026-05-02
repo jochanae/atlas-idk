@@ -1086,6 +1086,7 @@ export function AtlasFrontDoor({
               flexShrink: 0,
             }}
           >
+          <AttachedFilesChips files={attachedFiles ?? []} onRemove={onRemoveAttachedFile} />
           <textarea
             ref={textareaRef}
             value={input}
