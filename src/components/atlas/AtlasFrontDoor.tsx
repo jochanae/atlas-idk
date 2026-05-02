@@ -3,6 +3,9 @@ import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 import { AtlasLogo } from "./AtlasLogo";
 import { SystemMenu } from "./SystemMenu";
+import { AttachedFilesChips } from "./AttachedFilesChips";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { PlanPanel } from "./PlanPanel";
 import type { PlanStep } from "./DependencyGraph";
 
@@ -85,6 +88,10 @@ type AtlasFrontDoorProps = {
   userId?: string;
   projectId?: string | null;
   onFilesUploaded?: (files: Array<{ name: string; url: string; type: string }>) => void;
+  /** Files currently attached to the next outgoing message — rendered as chips above the textarea. */
+  attachedFiles?: Array<{ name: string; url: string; type: string }>;
+  /** Remove a single attached file by index. */
+  onRemoveAttachedFile?: (index: number) => void;
   /** Called when user selects "Build" from system menu or uses /build command */
   onGenerateCode?: (prompt: string) => void;
   /** Called when user opens a system menu feature drawer */
@@ -351,6 +358,8 @@ export function AtlasFrontDoor({
   userId,
   projectId,
   onFilesUploaded,
+  attachedFiles,
+  onRemoveAttachedFile,
   onGenerateCode,
   onSystemMenuSelect,
   contextualHUD,
@@ -619,6 +628,7 @@ export function AtlasFrontDoor({
               transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             }}
           >
+            <AttachedFilesChips files={attachedFiles ?? []} onRemove={onRemoveAttachedFile} />
             <div style={{ position: "relative" }}>
               {showPlaceholder && (
                 <div
@@ -691,6 +701,70 @@ export function AtlasFrontDoor({
                     onSystemMenuSelect?.(id);
                   }}
                 />
+                <button
+                  type="button"
+                  aria-label="Attach file"
+                  title="Attach file"
+                  className="atlas-utility-btn"
+                  onClick={async () => {
+                    if (!userId) {
+                      toast.error("Sign in to attach files");
+                      return;
+                    }
+                    const fileInput = document.createElement("input");
+                    fileInput.type = "file";
+                    fileInput.multiple = true;
+                    fileInput.accept = "image/*,application/pdf,.doc,.docx,.txt,.csv,.json,.zip";
+                    fileInput.onchange = async () => {
+                      if (!fileInput.files?.length) return;
+                      const uploaded: Array<{ name: string; url: string; type: string }> = [];
+                      for (const file of Array.from(fileInput.files)) {
+                        const path = `${userId}/${projectId ?? "general"}/${Date.now()}-${file.name}`;
+                        const { error } = await supabase.storage
+                          .from("project-assets")
+                          .upload(path, file, { upsert: false });
+                        if (error) {
+                          toast.error(`Upload failed: ${file.name}`);
+                          continue;
+                        }
+                        const { data: urlData } = supabase.storage
+                          .from("project-assets")
+                          .getPublicUrl(path);
+                        uploaded.push({ name: file.name, url: urlData.publicUrl, type: file.type });
+                      }
+                      if (uploaded.length > 0) {
+                        toast.success(`${uploaded.length} file${uploaded.length > 1 ? "s" : ""} attached`);
+                        onFilesUploaded?.(uploaded);
+                      }
+                    };
+                    fileInput.click();
+                  }}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: "transparent",
+                    border: "0.5px solid color-mix(in oklab, var(--border) 70%, transparent)",
+                    color: "var(--muted-text)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    transition: "color 160ms ease, border-color 160ms ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--accent-gold)";
+                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent-gold) 50%, transparent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--muted-text)";
+                    e.currentTarget.style.borderColor = "color-mix(in oklab, var(--border) 70%, transparent)";
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" width={13} height={13} stroke="currentColor" fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13.2 7.3 8 12.5a3 3 0 1 1-4.2-4.2l5.6-5.6a2 2 0 1 1 2.8 2.8L6.6 11.1a1 1 0 1 1-1.4-1.4l4.9-4.9" />
+                  </svg>
+                </button>
               </div>
 
               {/* Right: hint + mic + send */}
@@ -1012,6 +1086,7 @@ export function AtlasFrontDoor({
               flexShrink: 0,
             }}
           >
+          <AttachedFilesChips files={attachedFiles ?? []} onRemove={onRemoveAttachedFile} />
           <textarea
             ref={textareaRef}
             value={input}
