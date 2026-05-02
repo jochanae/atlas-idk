@@ -628,6 +628,7 @@ export function AtlasFrontDoor({
               transition: "border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic)",
             }}
           >
+            <AttachedFilesChips files={attachedFiles ?? []} onRemove={onRemoveAttachedFile} />
             <div style={{ position: "relative" }}>
               {showPlaceholder && (
                 <div
