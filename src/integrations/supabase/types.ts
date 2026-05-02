@@ -89,6 +89,7 @@ export type Database = {
           committed_card_id: string | null
           content: string
           created_at: string
+          decision_catch: Json | null
           id: string
           intent_type: string | null
           output_guard_repaired: boolean | null
@@ -104,6 +105,7 @@ export type Database = {
           committed_card_id?: string | null
           content: string
           created_at?: string
+          decision_catch?: Json | null
           id?: string
           intent_type?: string | null
           output_guard_repaired?: boolean | null
@@ -119,6 +121,7 @@ export type Database = {
           committed_card_id?: string | null
           content?: string
           created_at?: string
+          decision_catch?: Json | null
           id?: string
           intent_type?: string | null
           output_guard_repaired?: boolean | null
@@ -149,9 +152,12 @@ export type Database = {
         Row: {
           build_id: string | null
           card_schema_version: number
+          catch_against_id: string | null
           cost_of_lesson: number | null
           created_at: string
           details: string | null
+          deviation: boolean
+          deviation_reason: string | null
           id: string
           is_violation: boolean
           locked_at: string | null
@@ -172,9 +178,12 @@ export type Database = {
         Insert: {
           build_id?: string | null
           card_schema_version?: number
+          catch_against_id?: string | null
           cost_of_lesson?: number | null
           created_at?: string
           details?: string | null
+          deviation?: boolean
+          deviation_reason?: string | null
           id?: string
           is_violation?: boolean
           locked_at?: string | null
@@ -195,9 +204,12 @@ export type Database = {
         Update: {
           build_id?: string | null
           card_schema_version?: number
+          catch_against_id?: string | null
           cost_of_lesson?: number | null
           created_at?: string
           details?: string | null
+          deviation?: boolean
+          deviation_reason?: string | null
           id?: string
           is_violation?: boolean
           locked_at?: string | null
