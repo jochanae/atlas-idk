@@ -3592,6 +3592,19 @@ function ChatPanel({
             const proseForDisplay = parsed ? parsed.prose : m.content;
             const isLocked = Boolean(m.committed_card_id);
 
+            // Archive ingestion: when the *previous* user turn carries the
+            // [ARCHIVE ATTACHED: ...] marker, render this assistant reply as
+            // a decision-first summary card instead of normal prose/code.
+            const prevMsg = mIdx > 0 ? messages[mIdx - 1] : null;
+            const archiveMatch =
+              m.role === "assistant" && !conflict && !card && prevMsg?.role === "user"
+                ? /\[ARCHIVE ATTACHED:\s*([^\]]+)\]/i.exec(prevMsg.content)
+                : null;
+            const archiveNames = archiveMatch
+              ? archiveMatch[1].split(",").map((s) => s.trim()).filter(Boolean)
+              : [];
+            const isArchiveResponse = archiveNames.length > 0;
+
             const showActionRow =
               !card && m.role === "assistant" && m.id === latestAtlasResponseId && !conflict;
             const showParkButton = !card && m.role === "assistant" && !conflict;
