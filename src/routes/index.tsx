@@ -3575,7 +3575,7 @@ function ChatPanel({
             onRefresh={onRefreshThinkingPrompts}
           />
         )}
-        {messages.map((m) => {
+        {messages.map((m, mIdx) => {
             const parsedConflict =
               m.role === "assistant" ? parseConflictResponse(m.content) : null;
             if (parsedConflict && dismissedConflicts.has(m.id)) return null;
