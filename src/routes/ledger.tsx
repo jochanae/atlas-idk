@@ -322,7 +322,7 @@ function ArchitecturalLedger() {
                 letterSpacing: "0.06em",
               }}
             >
-              {entries.length} committed · Locked record
+              {entries.filter((e) => e.status === "committed").length} committed · Locked record
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
