@@ -2958,6 +2958,105 @@ function MarkdownProse({ content }: { content: string }) {
  * re-rendering the parsed markdown at each step. Once complete, renders
  * the full content statically.
  */
+/**
+ * ArchiveSummaryCard — decision-first response renderer for messages whose
+ * preceding user turn carried [ARCHIVE ATTACHED:]. Parses the four canonical
+ * sections (Uploaded / Touches / Drift / Question) out of the assistant
+ * markdown and renders them as a single card instead of a code-heavy reply.
+ */
+function ArchiveSummaryCard({ archives, content }: { archives: string[]; content: string }) {
+  const sections = useMemo(() => {
+    const out: Record<string, string> = { Uploaded: "", Touches: "", Drift: "", Question: "" };
+    const re = /^###\s+(Uploaded|Touches|Drift|Question)\s*$/gim;
+    const matches: Array<{ key: string; start: number; end: number }> = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) {
+      matches.push({ key: m[1], start: m.index + m[0].length, end: content.length });
+    }
+    for (let i = 0; i < matches.length; i++) {
+      if (i + 1 < matches.length) matches[i].end = matches[i + 1].start - matches[i + 1].key.length - 4;
+      out[matches[i].key] = content.slice(matches[i].start, matches[i].end).trim();
+    }
+    return out;
+  }, [content]);
+
+  const hasAnySection = Object.values(sections).some((v) => v.trim().length > 0);
+  // Fallback: if model didn't follow the format, render the raw prose so we
+  // never lose the response — but still inside the archive card frame.
+  return (
+    <div
+      className="mb-3 overflow-hidden rounded-2xl"
+      style={{
+        background: "color-mix(in oklab, var(--accent-gold) 3%, var(--surface))",
+        border: "0.5px solid color-mix(in oklab, var(--accent-gold) 28%, var(--border))",
+        boxShadow: "0 8px 32px -16px rgba(0,0,0,0.4)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-2.5"
+        style={{
+          borderBottom: "0.5px solid color-mix(in oklab, var(--accent-gold) 18%, var(--border))",
+          background: "color-mix(in oklab, var(--accent-gold) 6%, transparent)",
+        }}
+      >
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "var(--accent-gold)",
+          }}
+        >
+          Context Ingestion
+        </span>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            color: "var(--muted-text)",
+            letterSpacing: "0.06em",
+            maxWidth: "60%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {archives.join(", ")}
+        </span>
+      </div>
+      <div className="px-4 py-4">
+        {hasAnySection ? (
+          <div className="space-y-4">
+            {(["Uploaded", "Touches", "Drift", "Question"] as const).map((key) =>
+              sections[key].trim() ? (
+                <div key={key}>
+                  <div
+                    className="font-mono mb-1.5"
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: key === "Drift"
+                        ? "color-mix(in oklab, var(--accent-gold) 80%, #d97757)"
+                        : "var(--accent-gold)",
+                    }}
+                  >
+                    {key}
+                  </div>
+                  <MarkdownProse content={sections[key]} />
+                </div>
+              ) : null,
+            )}
+          </div>
+        ) : (
+          <MarkdownProse content={content} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StreamingMarkdown({
   content,
   speed = 30,
