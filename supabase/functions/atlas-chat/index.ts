@@ -569,41 +569,46 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Extract optional CommitCard JSON block and validate via CommitCard Guard.
-    let cardPayload: Record<string, unknown> | null = null;
-    let cardSchemaVersion: number | null = null;
-    const fenceMatch = finalText.match(/```atlas-card\s*([\s\S]*?)```/);
-    if (fenceMatch) {
-      try {
-        const parsed = JSON.parse(fenceMatch[1]) as Record<string, unknown>;
-        const cardValidation = validateCommitCard(parsed as any);
-        if (cardValidation.valid) {
-          cardPayload = cardValidation.card as Record<string, unknown>;
-          cardSchemaVersion = (cardValidation.card.v as number) ?? 1;
-          if (cardValidation.autoFilled.length > 0) {
-            console.log(`commitcard-guard (inline): auto-filled ${cardValidation.autoFilled.join(", ")}`);
-          }
-        } else {
-          console.warn(`commitcard-guard (inline): rejected card — ${cardValidation.issues.join(", ")}`);
-        }
-      } catch (err) {
-        console.warn("atlas-chat: failed to parse atlas-card block", err);
-      }
-    }
-
-    const memoriesForMessage = surfacedMemories.length > 0 ? surfacedMemories : null;
-
     // ═══ Decision Catch — extract structured catch from prose, if any ═══
     // The system prompt requires "Before you do — …" + quoted decision title
     // when Atlas catches a real conflict. We parse that and resolve the
     // quoted title to a committed entry so the UI can render DecisionCatchCard.
-    const decisionCatch: DecisionCatchPayload | null = detectDecisionCatch(
-      finalText,
-      ledgerRows.map((e) => ({ id: e.id, title: e.title })),
-    );
+    // Reuse earlyCatch if the in-loop gate already fired so we don't re-parse.
+    const decisionCatch: DecisionCatchPayload | null =
+      earlyCatch ?? detectDecisionCatch(finalText, ledgerRefs);
     if (decisionCatch) {
       console.log(`decision-catch: fired against entry ${decisionCatch.against.id} ("${decisionCatch.against.title}")`);
     }
+
+    // Decision Catch gate (post-loop): when a tension is caught, suppress
+    // CommitCard extraction. Nothing lands in the Ledger until the user
+    // explicitly chooses Proceed (logs a deviation) or Adjust (reframes).
+    let cardPayload: Record<string, unknown> | null = null;
+    let cardSchemaVersion: number | null = null;
+    if (!decisionCatch) {
+      const fenceMatch = finalText.match(/```atlas-card\s*([\s\S]*?)```/);
+      if (fenceMatch) {
+        try {
+          const parsed = JSON.parse(fenceMatch[1]) as Record<string, unknown>;
+          const cardValidation = validateCommitCard(parsed as any);
+          if (cardValidation.valid) {
+            cardPayload = cardValidation.card as Record<string, unknown>;
+            cardSchemaVersion = (cardValidation.card.v as number) ?? 1;
+            if (cardValidation.autoFilled.length > 0) {
+              console.log(`commitcard-guard (inline): auto-filled ${cardValidation.autoFilled.join(", ")}`);
+            }
+          } else {
+            console.warn(`commitcard-guard (inline): rejected card — ${cardValidation.issues.join(", ")}`);
+          }
+        } catch (err) {
+          console.warn("atlas-chat: failed to parse atlas-card block", err);
+        }
+      }
+    } else {
+      console.log("decision-catch: gate engaged — skipping CommitCard extraction");
+    }
+
+    const memoriesForMessage = surfacedMemories.length > 0 ? surfacedMemories : null;
 
     const { data: insertedMessage, error: insertError } = await userClient
       .from("chat_messages")
