@@ -1029,7 +1029,13 @@ function WorkspacePage() {
         return questionStarters.some((q) => trimmed.startsWith(q));
       })();
 
-      if (data?.intent?.mode === "BUILD" && !looksLikeQuestion) {
+      // Decision Catch gate: if Atlas flagged a tension against a committed
+      // decision, the build action MUST pause for the user's choice
+      // (Proceed anyway / Adjust). Building in parallel would undermine the
+      // entire Decision Partner positioning. See POSITIONING.md §3.
+      const caughtByDecision = Boolean(data?.decisionCatch);
+
+      if (data?.intent?.mode === "BUILD" && !looksLikeQuestion && !caughtByDecision) {
         generateCode(text).catch((err) => {
           const msg = err instanceof Error ? err.message : "Build failed";
           console.error("auto-codegen error:", msg);
