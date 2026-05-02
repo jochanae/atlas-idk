@@ -325,7 +325,10 @@ Deno.serve(async (req) => {
       : modeDirective;
 
     // Compose final system prompt: guarded decisions + mode directive
-    const finalSystemPrompt = `${guardedSystemPrompt}\n\n${whisperPrefix}`;
+    const archiveDirective = archiveNames.length > 0
+      ? `\n\nARCHIVE INGESTION MODE — the operator uploaded an archive (${archiveNames.join(", ")}). This is Context Ingestion, NOT a build request. Respond as a decision-first summary using EXACTLY these four sections, in this order, as level-3 markdown headings:\n\n### Uploaded\nWhat's in the archive — top-level structure, key files, scope.\n\n### Touches\nWhich committed Ledger entries this archive intersects with (cite by title). If none, say so.\n\n### Drift\nDetected conflicts, drift, or alignment issues against the committed direction. Be specific.\n\n### Question\nOne closing question that moves toward "what are we committing to?"\n\nDo NOT echo file contents as code blocks. Do NOT generate replacement code. The deliverable is clarity about decisions, not pages-to-drop-in.`
+      : "";
+    const finalSystemPrompt = `${guardedSystemPrompt}\n\n${whisperPrefix}${archiveDirective}`;
 
     // Build the user turn — append parsed text from attachments and add image
     // blocks for any uploaded images so Claude can actually see them.
