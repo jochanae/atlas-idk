@@ -235,10 +235,10 @@ function GhostButton({
         fontSize: 10,
         padding: "4px 9px",
         background: active
-          ? `color-mix(in oklab, ${color} 12%, transparent)`
+          ? `color-mix(in oklab, ${color} 14%, transparent)`
           : "transparent",
-        border: `0.5px solid color-mix(in oklab, ${color} ${active ? 70 : 38}%, transparent)`,
-        color: active ? color : `color-mix(in oklab, ${color} 75%, var(--foreground))`,
+        border: `0.5px solid color-mix(in oklab, ${color} ${active ? 80 : 55}%, transparent)`,
+        color: active ? color : `color-mix(in oklab, ${color} 90%, var(--foreground))`,
       }}
     >
       {children}
