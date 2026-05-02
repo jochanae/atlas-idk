@@ -278,15 +278,22 @@ function ThreadReveal({ lastMessage }: { lastMessage: string | null }) {
         marginTop: 8,
         minHeight: 38,
         display: "flex",
-        alignItems: "flex-start",
+        alignItems: lastMessage ? "flex-start" : "center",
         justifyContent: "center",
         gap: 10,
         position: "relative",
         padding: "0 4px",
       }}
     >
-      {/* Dots — always visible, sit inline with the text */}
-      <span style={{ paddingTop: 7, opacity: revealed || !lastMessage ? 1 : 0.7, transition: "opacity 400ms ease" }}>
+      {/* Dots — always visible. When alone, centered under the greeting.
+          When paired with text, sit inline at the text baseline. */}
+      <span
+        style={{
+          paddingTop: lastMessage ? 7 : 0,
+          opacity: revealed || !lastMessage ? 1 : 0.7,
+          transition: "opacity 400ms ease",
+        }}
+      >
         {Dots}
       </span>
 

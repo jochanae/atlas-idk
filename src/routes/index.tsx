@@ -3349,8 +3349,8 @@ function ChatPanel({
         ref={scrollRef}
         onMouseUp={captureSelection}
         onKeyUp={captureSelection}
-        className="relative h-full overflow-y-auto px-5 pt-6 pb-44 flex flex-col"
-        style={{ gap: "var(--bubble-gap, 20px)", overflowAnchor: "none" }}
+        className="relative h-full overflow-y-auto px-5 pt-6 flex flex-col"
+        style={{ gap: "var(--bubble-gap, 20px)", overflowAnchor: "none", paddingBottom: "calc(var(--footer-nav-height, 62px) + 220px + env(safe-area-inset-bottom, 0px))" }}
       >
         {/* Spacer pushes messages to bottom when few, scrolls normally when many */}
         <div style={{ flex: 1, minHeight: 0 }} />

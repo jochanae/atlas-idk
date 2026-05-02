@@ -120,7 +120,7 @@ export function MobileSurfaceBar({ active, onChange, buildState = "idle" }: Prop
   return (
     <div
       className="atlas-mobile-surface-bar"
-      style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}
+      style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 70 }}
     >
       {/* Collapsed: breadcrumb + build state + ghost toggle */}
       <button
@@ -211,7 +211,7 @@ export function MobileSurfaceBar({ active, onChange, buildState = "idle" }: Prop
             WebkitBackdropFilter: "blur(var(--glass-blur)) saturate(140%)",
             border: "0.5px solid var(--glass-border)",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(212,175,55,0.06)",
-            zIndex: 60,
+            zIndex: 200,
             transformOrigin: "top center",
             transform: animating === "in"
               ? "translateX(-50%) translateY(0) scale(1)"
