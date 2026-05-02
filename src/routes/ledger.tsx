@@ -167,11 +167,15 @@ function ArchitecturalLedger() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
+    // Pull committed entries AND any draft/parked successors so the grouped
+    // view can detect "In Tension" (committed entry has an unresolved child)
+    // and "Overridden" (committed entry has a deviation successor). The flat
+    // list below still only renders status='committed'.
     const [e, p] = await Promise.all([
       entriesTable()
         .select("*")
         .eq("user_id", user.id)
-        .eq("status", "committed")
+        .in("status", ["committed", "draft", "parked"])
         .order("created_at", { ascending: false }),
       supabase.from("projects").select("*").order("name"),
     ]);
