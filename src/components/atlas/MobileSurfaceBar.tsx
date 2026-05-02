@@ -120,7 +120,7 @@ export function MobileSurfaceBar({ active, onChange, buildState = "idle" }: Prop
   return (
     <div
       className="atlas-mobile-surface-bar"
-      style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}
+      style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", zIndex: 70 }}
     >
       {/* Collapsed: breadcrumb + build state + ghost toggle */}
       <button
