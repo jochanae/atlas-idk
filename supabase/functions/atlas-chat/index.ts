@@ -280,12 +280,16 @@ Deno.serve(async (req) => {
       }));
 
 
-    // Persist the user message
+    // Persist the user message — prepend an archive marker when applicable
+    // so the client can render the assistant's reply as a decision-first card.
+    const archiveMarker = archiveNames.length > 0
+      ? `[ARCHIVE ATTACHED: ${archiveNames.join(", ")}]\n`
+      : "";
     await userClient.from("chat_messages").insert({
       session_id: sessionId,
       user_id: user.id,
       role: "user",
-      content: message,
+      content: `${archiveMarker}${message}`,
     });
 
     const { data: currentSession, error: sessionErr } = await userClient
