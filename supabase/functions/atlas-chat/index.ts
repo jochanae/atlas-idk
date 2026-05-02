@@ -8,6 +8,7 @@ import { classifyIntent, type IntentMode, type WhisperResult } from "../_shared/
 import { validateOutput } from "../_shared/output-guard.ts";
 import { validateCommitCard } from "../_shared/commitcard-guard.ts";
 import { parseAttachments, renderAttachmentContext, type Attachment, type ParsedAttachment } from "../_shared/parse-attachment.ts";
+import { detectDecisionCatch, type DecisionCatchPayload } from "../_shared/decision-catch.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -576,6 +577,18 @@ Deno.serve(async (req) => {
 
     const memoriesForMessage = surfacedMemories.length > 0 ? surfacedMemories : null;
 
+    // ═══ Decision Catch — extract structured catch from prose, if any ═══
+    // The system prompt requires "Before you do — …" + quoted decision title
+    // when Atlas catches a real conflict. We parse that and resolve the
+    // quoted title to a committed entry so the UI can render DecisionCatchCard.
+    const decisionCatch: DecisionCatchPayload | null = detectDecisionCatch(
+      finalText,
+      ledgerRows.map((e) => ({ id: e.id, title: e.title })),
+    );
+    if (decisionCatch) {
+      console.log(`decision-catch: fired against entry ${decisionCatch.against.id} ("${decisionCatch.against.title}")`);
+    }
+
     const { data: insertedMessage, error: insertError } = await userClient
       .from("chat_messages")
       .insert({
@@ -587,6 +600,7 @@ Deno.serve(async (req) => {
         card_payload: cardPayload,
         card_schema_version: cardSchemaVersion,
         surfaced_memories: memoriesForMessage,
+        decision_catch: decisionCatch,
         output_guard_violation: validation.valid ? null : (validation.violation ?? null),
         output_guard_repaired: outputRepaired,
       })
@@ -634,6 +648,7 @@ Deno.serve(async (req) => {
         card: cardPayload,
         cardSchemaVersion,
         surfacedMemories,
+        decisionCatch,
         intent: {
           mode: whisperResult.mode,
           confidence: whisperResult.confidence,
