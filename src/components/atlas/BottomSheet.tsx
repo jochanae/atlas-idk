@@ -57,7 +57,9 @@ export function BottomSheet({ open, onClose, children }: Props) {
           borderRadius: "24px 24px 0 0",
           border: "1px solid rgba(212, 175, 55, 0.15)",
           borderBottom: "none",
-          padding: "12px 16px 34px",
+          padding: "12px 16px calc(var(--footer-nav-height, 62px) + env(safe-area-inset-bottom, 0px) + 16px)",
+          maxHeight: "calc(100dvh - 80px)",
+          overflowY: "auto",
           boxShadow: "0 -12px 48px rgba(0,0,0,0.5)",
           animation: "atlas-bs-slide-up 260ms cubic-bezier(0.22, 1, 0.36, 1) forwards",
         }}

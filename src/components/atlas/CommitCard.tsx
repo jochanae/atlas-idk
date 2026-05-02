@@ -218,10 +218,10 @@ function GhostButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="font-mono uppercase tracking-[0.12em] rounded-sm transition-colors disabled:opacity-40"
+      className="font-mono uppercase tracking-[0.12em] rounded-full transition-colors disabled:opacity-40"
       style={{
         fontSize: 10,
-        padding: "4px 9px",
+        padding: "4px 12px",
         background: active
           ? `color-mix(in oklab, ${color} 12%, transparent)`
           : "transparent",
@@ -260,10 +260,10 @@ function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="font-mono uppercase tracking-[0.12em] rounded-sm transition-all disabled:opacity-40"
+      className="font-mono uppercase tracking-[0.12em] rounded-full transition-all disabled:opacity-40"
       style={{
         fontSize: 10,
-        padding: "5px 12px",
+        padding: "5px 14px",
         color: "var(--background)",
         background:
           "linear-gradient(180deg, var(--accent-gold) 0%, color-mix(in oklab, var(--accent-gold) 78%, #6a4a18) 100%)",
