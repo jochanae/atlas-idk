@@ -96,7 +96,7 @@ Structured artifacts are permanent. They must read well to someone who joins the
  *                      restate voice or discipline.
  */
 export function composeAtlasPrompt(roleSpecific: string): string {
-  return [ATLAS_VOICE, ATLAS_DISCIPLINE, ATLAS_CARD_NORMALIZATION, roleSpecific.trim()]
+  return [ATLAS_VOICE, ATLAS_DISCIPLINE, ATLAS_DECISION_CATCH, ATLAS_CARD_NORMALIZATION, roleSpecific.trim()]
     .filter(Boolean)
     .join("\n\n");
 }
