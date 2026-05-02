@@ -1097,7 +1097,8 @@ function WorkspacePage() {
     }
     setCodegenLoading(true);
     setCodegenError(null);
-    setSurface("preview");
+    // Workshop demotion: do not auto-switch surface. The build runs in the
+    // background; the user opens Workshop intentionally to view it.
     pushBuildState("building", `Building: ${prompt.slice(0, 60)}…`);
     pushConsole("info", `▶ /build ${prompt.slice(0, 80)}`);
     try {
