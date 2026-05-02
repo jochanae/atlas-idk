@@ -354,6 +354,12 @@ Deno.serve(async (req) => {
 
     let workingMessages = [...messages];
     let safety = 0;
+    // Decision Catch gate — once a tension is detected in any Claude turn,
+    // we stop tool execution entirely. Per POSITIONING.md §3.4, a caught
+    // tension means EVERYTHING pauses (codegen, card extraction, workspace
+    // node creation) until the user explicitly chooses Proceed or Adjust.
+    const ledgerRefs = ledgerRows.map((e) => ({ id: e.id, title: e.title }));
+    let earlyCatch: DecisionCatchPayload | null = null;
 
     while (safety < 5) {
       safety++;
