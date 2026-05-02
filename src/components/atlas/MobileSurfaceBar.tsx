@@ -161,22 +161,23 @@ export function MobileSurfaceBar({ active, onChange, buildState = "idle" }: Prop
           />
         )}
 
-        {/* Always show the active surface label so Workshop is discoverable */}
-        <span
-          aria-hidden="true"
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 9,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: isWorking ? BUILD_COLORS[buildState] : "var(--accent-gold)",
-            opacity: isWorking ? 0.85 : 0.7,
-            transition: "opacity 160ms ease, color 160ms ease",
-          }}
-        >
-          {isWorking ? BUILD_LABELS[buildState] : activeSurface.label}
-        </span>
-
+        {/* Show working state label only; surface label is implicit (chevron-only) */}
+        {isWorking && (
+          <span
+            aria-hidden="true"
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: BUILD_COLORS[buildState],
+              opacity: 0.85,
+              transition: "opacity 160ms ease, color 160ms ease",
+            }}
+          >
+            {BUILD_LABELS[buildState]}
+          </span>
+        )}
         <ChevronDown
           aria-hidden="true"
           size={10}

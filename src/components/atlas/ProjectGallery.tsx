@@ -70,9 +70,10 @@ function GalleryBottomSheet({ onClose, projects, activeProjectId, onSelectProjec
       {/* Sheet */}
       <motion.div
         ref={sheetRef}
-        className="fixed left-0 right-0 bottom-0 z-50 flex flex-col"
+        className="fixed left-0 right-0 z-50 flex flex-col"
         style={{
-          height: "90vh",
+          bottom: "calc(var(--footer-nav-height, 62px) + env(safe-area-inset-bottom, 0px))",
+          height: "calc(90dvh - var(--footer-nav-height, 62px) - env(safe-area-inset-bottom, 0px))",
           background: "rgba(5,5,5,0.92)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
