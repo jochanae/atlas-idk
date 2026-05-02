@@ -2799,6 +2799,81 @@ function renderMarkdownChildren(children: ReactNode): ReactNode {
   });
 }
 
+function extractText(node: ReactNode): string {
+  if (node === null || node === undefined || node === false) return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (isValidElement<{ children?: ReactNode }>(node)) return extractText(node.props.children);
+  return "";
+}
+
+function CodeBlockCard({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+  const lineCount = code ? code.split("\n").length : 0;
+  const label = language ? language.toUpperCase() : "CODE";
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast.success("Copied");
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+  return (
+    <div
+      className="mb-3 overflow-hidden rounded-lg"
+      style={{
+        background: "var(--surface-alt)",
+        border: "0.5px solid var(--border)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-3 py-2"
+        style={{
+          borderBottom: "0.5px solid var(--border)",
+          background: "color-mix(in oklab, var(--accent-gold) 4%, transparent)",
+        }}
+      >
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            color: "var(--accent-gold)",
+          }}
+        >
+          {label} · {lineCount} {lineCount === 1 ? "line" : "lines"}
+        </span>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1 rounded px-2 py-0.5 font-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            background: "transparent",
+            border: "0.5px solid var(--border)",
+            color: copied ? "var(--accent-gold)" : "var(--muted-text)",
+            cursor: "pointer",
+            transition: "all 160ms ease",
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre
+        className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed"
+        style={{ margin: 0, color: "var(--foreground)", background: "transparent" }}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 function MarkdownProse({ content }: { content: string }) {
   return (
     <div className="atlas-prose" style={{ color: "var(--foreground)" }}>
