@@ -2842,18 +2842,24 @@ function MarkdownProse({ content }: { content: string }) {
               </code>
             );
           },
-          pre: ({ children }) => (
-            <pre
-              className="mb-3 overflow-x-auto rounded-lg p-3 font-mono text-[13px] leading-relaxed"
-              style={{
-                background: "var(--surface-alt)",
-                color: "var(--foreground)",
-                border: "0.5px solid var(--border)",
-              }}
-            >
-              {children}
-            </pre>
-          ),
+          pre: ({ children }) => {
+            // Extract language + raw code from the inner <code> element so
+            // we can render an inline CodeBlockCard with header bar + Copy.
+            let lang = "code";
+            let raw = "";
+            const childArray = Children.toArray(children);
+            for (const c of childArray) {
+              if (isValidElement<{ className?: string; children?: ReactNode }>(c)) {
+                const cls = c.props.className ?? "";
+                const m = /language-([\w+-]+)/.exec(cls);
+                if (m) lang = m[1];
+                raw += extractText(c.props.children);
+              } else if (typeof c === "string") {
+                raw += c;
+              }
+            }
+            return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
+          },
           ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>,
           li: ({ children }) => (
