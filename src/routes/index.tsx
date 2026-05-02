@@ -1676,7 +1676,13 @@ function WorkspacePage() {
           }
           secondaryPanel={
             session && surface !== "chat" ? (
-              <section className="absolute inset-x-0 top-12 bottom-0 z-50 bg-background/95 backdrop-blur-sm border-y border-border">
+              <section
+                className="absolute inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-y border-border overflow-hidden"
+                style={{
+                  top: "calc(var(--app-header-height, 56px) + env(safe-area-inset-top, 0px))",
+                  bottom: "calc(var(--footer-nav-height, 62px) + env(safe-area-inset-bottom, 0px))",
+                }}
+              >
                 {surface === "workspace" ? (
                   <WorkspacePanel nodes={nodes} />
                 ) : (
