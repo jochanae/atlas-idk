@@ -3,6 +3,9 @@ import { haptic } from "@/lib/haptics";
 import { RotatingPlaceholder } from "./RotatingPlaceholder";
 import { AtlasLogo } from "./AtlasLogo";
 import { SystemMenu } from "./SystemMenu";
+import { AttachedFilesChips } from "./AttachedFilesChips";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { PlanPanel } from "./PlanPanel";
 import type { PlanStep } from "./DependencyGraph";
 
