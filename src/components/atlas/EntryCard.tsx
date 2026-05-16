@@ -13,11 +13,36 @@
  *   "Do NOT create separate LedgerEntry and ParkedItem components."
  */
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { StatusGlyph, SEVERITY_LABEL } from "./StatusGlyph";
 import { CapsuleTag } from "./CapsuleTag";
 import type { Entry } from "@/lib/atlas-status";
 import { relativeTime, formatCost } from "@/lib/atlas";
+
+export interface ReopenChainItem {
+  id: string;
+  title: string;
+  project_id: string;
+}
+
+/** Walk supersedes_id chain from an entry through a map of all entries. */
+export function buildReopenChain(
+  entry: Entry,
+  entriesById: Map<string, Entry>,
+): ReopenChainItem[] {
+  const chain: ReopenChainItem[] = [];
+  let current: Entry = entry;
+  let safety = 0;
+  while (current.supersedes_id != null && safety < 20) {
+    const parent = entriesById.get(current.supersedes_id);
+    if (!parent) break;
+    chain.push({ id: parent.id, title: parent.title, project_id: parent.project_id });
+    current = parent;
+    safety++;
+  }
+  return chain;
+}
 
 export interface EntryCardProps {
   entry: Entry;
@@ -27,6 +52,8 @@ export interface EntryCardProps {
   onReopen?: (entry: Entry) => void | Promise<void>;
   onArchive?: (entry: Entry) => void | Promise<void>;
   busy?: boolean;
+  /** Full ancestor chain, nearest first. Empty/absent → no provenance shown. */
+  reopenChain?: ReopenChainItem[];
 }
 
 export function EntryCard({
@@ -37,8 +64,10 @@ export function EntryCard({
   onReopen,
   onArchive,
   busy = false,
+  reopenChain = [],
 }: EntryCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [chainOpen, setChainOpen] = useState(false);
   const locked = entry.status === "committed";
   const posture = locked ? "locked" : "active";
 
@@ -95,6 +124,62 @@ export function EntryCard({
             </div>
           )}
         </header>
+
+        {/* Reopen provenance — visible when supersedes_id is set and chain provided */}
+        {entry.supersedes_id != null && reopenChain.length > 0 && (
+          <div className="px-4 pb-2 flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Link
+                to="/ledger"
+                search={{ focus: reopenChain[0].id }}
+                onClick={(e: MouseEvent) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] rounded-sm px-2 py-0.5 no-underline"
+                style={{
+                  color: "var(--accent-gold)",
+                  background: "color-mix(in oklab, var(--accent-gold) 8%, transparent)",
+                  border: "0.5px solid color-mix(in oklab, var(--accent-gold) 25%, transparent)",
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M10 3H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8" />
+                  <path d="M15 1l-7 7" /><path d="M10 1h5v5" />
+                </svg>
+                Reopened from: {reopenChain[0].title}
+              </Link>
+              {reopenChain.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setChainOpen((v) => !v); }}
+                  className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground bg-transparent border-none cursor-pointer"
+                >
+                  {chainOpen ? "Hide history" : `View history (${reopenChain.length} versions)`}
+                </button>
+              )}
+            </div>
+            {chainOpen && reopenChain.length > 1 && (
+              <div
+                className="ml-1 pl-2.5 flex flex-col gap-1"
+                style={{ borderLeft: "1px solid color-mix(in oklab, var(--accent-gold) 20%, transparent)" }}
+              >
+                {reopenChain.slice(1).map((ancestor, i) => (
+                  <Link
+                    key={ancestor.id}
+                    to="/ledger"
+                    search={{ focus: ancestor.id }}
+                    onClick={(e: MouseEvent) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1.5 font-mono text-[9.5px] no-underline"
+                    style={{
+                      color: `color-mix(in oklab, var(--accent-gold) ${Math.max(40, 70 - i * 15)}%, var(--muted-text))`,
+                    }}
+                  >
+                    <span style={{ opacity: 0.5 }}>↑</span>
+                    {ancestor.title}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {entry.summary && (
           <div className="px-4 pb-3">
