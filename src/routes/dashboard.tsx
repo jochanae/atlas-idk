@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { getDashboardStats } from "@/lib/railway-api";
+import { useServerFn } from "@tanstack/react-start";
+import { getDashboardStats } from "@/lib/railway.functions";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
 function DashboardPage() {
+  const fetchStats = useServerFn(getDashboardStats);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,20 +15,14 @@ function DashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
-        if (!userId) {
-          if (!cancelled) { setError("Not signed in"); setLoading(false); }
-          return;
-        }
-        const data = await getDashboardStats(userId);
+        const data = await fetchStats();
         if (!cancelled) { setStats(data); setLoading(false); }
       } catch (e: any) {
         if (!cancelled) { setError(e?.message ?? "Failed to load"); setLoading(false); }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [fetchStats]);
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6">
