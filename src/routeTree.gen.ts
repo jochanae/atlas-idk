@@ -18,6 +18,7 @@ import { Route as ProjectCompassRouteImport } from './routes/project-compass'
 import { Route as ParkingLotRouteImport } from './routes/parking-lot'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotFoundRouteImport } from './routes/not-found'
+import { Route as NexusRouteImport } from './routes/nexus'
 import { Route as MasterMapRouteImport } from './routes/master-map'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as LandingRouteImport } from './routes/landing'
@@ -71,6 +72,11 @@ const NotFoundRoute = NotFoundRouteImport.update({
   path: '/not-found',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NexusRoute = NexusRouteImport.update({
+  id: '/nexus',
+  path: '/nexus',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MasterMapRoute = MasterMapRouteImport.update({
   id: '/master-map',
   path: '/master-map',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
   '/master-map': typeof MasterMapRoute
+  '/nexus': typeof NexusRoute
   '/not-found': typeof NotFoundRoute
   '/onboarding': typeof OnboardingRoute
   '/parking-lot': typeof ParkingLotRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
   '/master-map': typeof MasterMapRoute
+  '/nexus': typeof NexusRoute
   '/not-found': typeof NotFoundRoute
   '/onboarding': typeof OnboardingRoute
   '/parking-lot': typeof ParkingLotRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
   '/master-map': typeof MasterMapRoute
+  '/nexus': typeof NexusRoute
   '/not-found': typeof NotFoundRoute
   '/onboarding': typeof OnboardingRoute
   '/parking-lot': typeof ParkingLotRoute
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/ledger'
     | '/master-map'
+    | '/nexus'
     | '/not-found'
     | '/onboarding'
     | '/parking-lot'
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/ledger'
     | '/master-map'
+    | '/nexus'
     | '/not-found'
     | '/onboarding'
     | '/parking-lot'
@@ -208,6 +219,7 @@ export interface FileRouteTypes {
     | '/landing'
     | '/ledger'
     | '/master-map'
+    | '/nexus'
     | '/not-found'
     | '/onboarding'
     | '/parking-lot'
@@ -227,6 +239,7 @@ export interface RootRouteChildren {
   LandingRoute: typeof LandingRoute
   LedgerRoute: typeof LedgerRoute
   MasterMapRoute: typeof MasterMapRoute
+  NexusRoute: typeof NexusRoute
   NotFoundRoute: typeof NotFoundRoute
   OnboardingRoute: typeof OnboardingRoute
   ParkingLotRoute: typeof ParkingLotRoute
@@ -303,6 +316,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/nexus': {
+      id: '/nexus'
+      path: '/nexus'
+      fullPath: '/nexus'
+      preLoaderRoute: typeof NexusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/master-map': {
       id: '/master-map'
       path: '/master-map'
@@ -363,6 +383,7 @@ const rootRouteChildren: RootRouteChildren = {
   LandingRoute: LandingRoute,
   LedgerRoute: LedgerRoute,
   MasterMapRoute: MasterMapRoute,
+  NexusRoute: NexusRoute,
   NotFoundRoute: NotFoundRoute,
   OnboardingRoute: OnboardingRoute,
   ParkingLotRoute: ParkingLotRoute,
