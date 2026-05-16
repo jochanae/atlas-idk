@@ -14,6 +14,7 @@ import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
 import { Route as ProjectCompassRouteImport } from './routes/project-compass'
 import { Route as ParkingLotRouteImport } from './routes/parking-lot'
 import { Route as LedgerRouteImport } from './routes/ledger'
+import { Route as LandingRouteImport } from './routes/landing'
 import { Route as GuardReportRouteImport } from './routes/guard-report'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -44,6 +45,11 @@ const LedgerRoute = LedgerRouteImport.update({
   path: '/ledger',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LandingRoute = LandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GuardReportRoute = GuardReportRouteImport.update({
   id: '/guard-report',
   path: '/guard-report',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/guard-report': typeof GuardReportRoute
+  '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/guard-report': typeof GuardReportRoute
+  '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/guard-report': typeof GuardReportRoute
+  '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/guard-report'
+    | '/landing'
     | '/ledger'
     | '/parking-lot'
     | '/project-compass'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/guard-report'
+    | '/landing'
     | '/ledger'
     | '/parking-lot'
     | '/project-compass'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/guard-report'
+    | '/landing'
     | '/ledger'
     | '/parking-lot'
     | '/project-compass'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   GuardReportRoute: typeof GuardReportRoute
+  LandingRoute: typeof LandingRoute
   LedgerRoute: typeof LedgerRoute
   ParkingLotRoute: typeof ParkingLotRoute
   ProjectCompassRoute: typeof ProjectCompassRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LedgerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/landing': {
+      id: '/landing'
+      path: '/landing'
+      fullPath: '/landing'
+      preLoaderRoute: typeof LandingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/guard-report': {
       id: '/guard-report'
       path: '/guard-report'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   GuardReportRoute: GuardReportRoute,
+  LandingRoute: LandingRoute,
   LedgerRoute: LedgerRoute,
   ParkingLotRoute: ParkingLotRoute,
   ProjectCompassRoute: ProjectCompassRoute,
