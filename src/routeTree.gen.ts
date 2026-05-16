@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkshopRouteImport } from './routes/workshop'
 import { Route as VaultRouteImport } from './routes/vault'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
+import { Route as SecretsRouteImport } from './routes/secrets'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectCompassRouteImport } from './routes/project-compass'
@@ -40,6 +41,11 @@ const VaultRoute = VaultRouteImport.update({
 const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
   id: '/think-freely',
   path: '/think-freely',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecretsRoute = SecretsRouteImport.update({
+  id: '/secrets',
+  path: '/secrets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/secrets': typeof SecretsRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/secrets': typeof SecretsRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/secrets': typeof SecretsRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/project-compass'
     | '/projects'
     | '/reset-password'
+    | '/secrets'
     | '/think-freely'
     | '/vault'
     | '/workshop'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/project-compass'
     | '/projects'
     | '/reset-password'
+    | '/secrets'
     | '/think-freely'
     | '/vault'
     | '/workshop'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/project-compass'
     | '/projects'
     | '/reset-password'
+    | '/secrets'
     | '/think-freely'
     | '/vault'
     | '/workshop'
@@ -246,6 +258,7 @@ export interface RootRouteChildren {
   ProjectCompassRoute: typeof ProjectCompassRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SecretsRoute: typeof SecretsRoute
   ThinkFreelyRoute: typeof ThinkFreelyRoute
   VaultRoute: typeof VaultRoute
   WorkshopRoute: typeof WorkshopRoute
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/think-freely'
       fullPath: '/think-freely'
       preLoaderRoute: typeof ThinkFreelyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/secrets': {
+      id: '/secrets'
+      path: '/secrets'
+      fullPath: '/secrets'
+      preLoaderRoute: typeof SecretsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -390,6 +410,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectCompassRoute: ProjectCompassRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SecretsRoute: SecretsRoute,
   ThinkFreelyRoute: ThinkFreelyRoute,
   VaultRoute: VaultRoute,
   WorkshopRoute: WorkshopRoute,
