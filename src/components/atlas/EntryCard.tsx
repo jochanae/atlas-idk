@@ -131,8 +131,8 @@ export function EntryCard({
             <div className="flex items-center gap-1.5 flex-wrap">
               <Link
                 to="/ledger"
-                search={{ expand: reopenChain[0].id }}
-                onClick={(e) => e.stopPropagation()}
+                search={{ focus: reopenChain[0].id }}
+                onClick={(e: MouseEvent) => e.stopPropagation()}
                 className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] rounded-sm px-2 py-0.5 no-underline"
                 style={{
                   color: "var(--accent-gold)",
@@ -165,8 +165,8 @@ export function EntryCard({
                   <Link
                     key={ancestor.id}
                     to="/ledger"
-                    search={{ expand: ancestor.id }}
-                    onClick={(e) => e.stopPropagation()}
+                    search={{ focus: ancestor.id }}
+                    onClick={(e: MouseEvent) => e.stopPropagation()}
                     className="inline-flex items-center gap-1.5 font-mono text-[9.5px] no-underline"
                     style={{
                       color: `color-mix(in oklab, var(--accent-gold) ${Math.max(40, 70 - i * 15)}%, var(--muted-text))`,
