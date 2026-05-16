@@ -19,6 +19,30 @@ import { CapsuleTag } from "./CapsuleTag";
 import type { Entry } from "@/lib/atlas-status";
 import { relativeTime, formatCost } from "@/lib/atlas";
 
+export interface ReopenChainItem {
+  id: string;
+  title: string;
+  project_id: string;
+}
+
+/** Walk supersedes_id chain from an entry through a map of all entries. */
+export function buildReopenChain(
+  entry: Entry,
+  entriesById: Map<string, Entry>,
+): ReopenChainItem[] {
+  const chain: ReopenChainItem[] = [];
+  let current: Entry = entry;
+  let safety = 0;
+  while (current.supersedes_id != null && safety < 20) {
+    const parent = entriesById.get(current.supersedes_id);
+    if (!parent) break;
+    chain.push({ id: parent.id, title: parent.title, project_id: parent.project_id });
+    current = parent;
+    safety++;
+  }
+  return chain;
+}
+
 export interface EntryCardProps {
   entry: Entry;
   onCommit?: (entry: Entry) => void | Promise<void>;
@@ -27,6 +51,8 @@ export interface EntryCardProps {
   onReopen?: (entry: Entry) => void | Promise<void>;
   onArchive?: (entry: Entry) => void | Promise<void>;
   busy?: boolean;
+  /** Full ancestor chain, nearest first. Empty/absent → no provenance shown. */
+  reopenChain?: ReopenChainItem[];
 }
 
 export function EntryCard({
@@ -37,8 +63,10 @@ export function EntryCard({
   onReopen,
   onArchive,
   busy = false,
+  reopenChain = [],
 }: EntryCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [chainOpen, setChainOpen] = useState(false);
   const locked = entry.status === "committed";
   const posture = locked ? "locked" : "active";
 
