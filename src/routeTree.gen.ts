@@ -14,6 +14,7 @@ import { Route as ProjectCompassRouteImport } from './routes/project-compass'
 import { Route as ParkingLotRouteImport } from './routes/parking-lot'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as GuardReportRouteImport } from './routes/guard-report'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -42,6 +43,11 @@ const GuardReportRoute = GuardReportRouteImport.update({
   path: '/guard-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -56,6 +62,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
   '/guard-report': typeof GuardReportRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
   '/guard-report': typeof GuardReportRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
   '/guard-report': typeof GuardReportRoute
   '/ledger': typeof LedgerRoute
   '/parking-lot': typeof ParkingLotRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/dashboard'
     | '/guard-report'
     | '/ledger'
     | '/parking-lot'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/dashboard'
     | '/guard-report'
     | '/ledger'
     | '/parking-lot'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/dashboard'
     | '/guard-report'
     | '/ledger'
     | '/parking-lot'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  DashboardRoute: typeof DashboardRoute
   GuardReportRoute: typeof GuardReportRoute
   LedgerRoute: typeof LedgerRoute
   ParkingLotRoute: typeof ParkingLotRoute
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuardReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  DashboardRoute: DashboardRoute,
   GuardReportRoute: GuardReportRoute,
   LedgerRoute: LedgerRoute,
   ParkingLotRoute: ParkingLotRoute,
