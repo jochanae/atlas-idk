@@ -21,6 +21,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotFoundRouteImport } from './routes/not-found'
 import { Route as NexusRouteImport } from './routes/nexus'
 import { Route as MasterMapRouteImport } from './routes/master-map'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as GuardReportRouteImport } from './routes/guard-report'
@@ -88,6 +89,11 @@ const MasterMapRoute = MasterMapRouteImport.update({
   path: '/master-map',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LedgerRoute = LedgerRouteImport.update({
   id: '/ledger',
   path: '/ledger',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/guard-report': typeof GuardReportRoute
   '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
+  '/login': typeof LoginRoute
   '/master-map': typeof MasterMapRoute
   '/nexus': typeof NexusRoute
   '/not-found': typeof NotFoundRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/guard-report': typeof GuardReportRoute
   '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
+  '/login': typeof LoginRoute
   '/master-map': typeof MasterMapRoute
   '/nexus': typeof NexusRoute
   '/not-found': typeof NotFoundRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/guard-report': typeof GuardReportRoute
   '/landing': typeof LandingRoute
   '/ledger': typeof LedgerRoute
+  '/login': typeof LoginRoute
   '/master-map': typeof MasterMapRoute
   '/nexus': typeof NexusRoute
   '/not-found': typeof NotFoundRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/guard-report'
     | '/landing'
     | '/ledger'
+    | '/login'
     | '/master-map'
     | '/nexus'
     | '/not-found'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/guard-report'
     | '/landing'
     | '/ledger'
+    | '/login'
     | '/master-map'
     | '/nexus'
     | '/not-found'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/guard-report'
     | '/landing'
     | '/ledger'
+    | '/login'
     | '/master-map'
     | '/nexus'
     | '/not-found'
@@ -250,6 +262,7 @@ export interface RootRouteChildren {
   GuardReportRoute: typeof GuardReportRoute
   LandingRoute: typeof LandingRoute
   LedgerRoute: typeof LedgerRoute
+  LoginRoute: typeof LoginRoute
   MasterMapRoute: typeof MasterMapRoute
   NexusRoute: typeof NexusRoute
   NotFoundRoute: typeof NotFoundRoute
@@ -350,6 +363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterMapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ledger': {
       id: '/ledger'
       path: '/ledger'
@@ -402,6 +422,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuardReportRoute: GuardReportRoute,
   LandingRoute: LandingRoute,
   LedgerRoute: LedgerRoute,
+  LoginRoute: LoginRoute,
   MasterMapRoute: MasterMapRoute,
   NexusRoute: NexusRoute,
   NotFoundRoute: NotFoundRoute,
