@@ -1,3 +1,50 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { StubPage } from "@/components/atlas/StubPage";
-export const Route = createFileRoute("/dashboard")({ component: () => <StubPage name="Dashboard" path="/dashboard" /> });
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getDashboardStats } from "@/lib/railway-api";
+
+export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
+
+function DashboardPage() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
+        if (!userId) {
+          if (!cancelled) { setError("Not signed in"); setLoading(false); }
+          return;
+        }
+        const data = await getDashboardStats(userId);
+        if (!cancelled) { setStats(data); setLoading(false); }
+      } catch (e: any) {
+        if (!cancelled) { setError(e?.message ?? "Failed to load"); setLoading(false); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background text-foreground p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Home</Link>
+        </div>
+
+        {loading && <div className="text-muted-foreground text-sm">Loading stats…</div>}
+        {error && <div className="text-destructive text-sm">Error: {error}</div>}
+        {stats && (
+          <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto">
+            {JSON.stringify(stats, null, 2)}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
