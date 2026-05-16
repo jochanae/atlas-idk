@@ -13,7 +13,8 @@
  *   "Do NOT create separate LedgerEntry and ParkedItem components."
  */
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { StatusGlyph, SEVERITY_LABEL } from "./StatusGlyph";
 import { CapsuleTag } from "./CapsuleTag";
 import type { Entry } from "@/lib/atlas-status";
