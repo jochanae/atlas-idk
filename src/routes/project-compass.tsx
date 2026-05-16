@@ -101,7 +101,7 @@ function ProjectCompass() {
 
       {loading ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <LoadingSpinner size="lg" color="atlas" />
+          <LoadingSpinner size="lg" />
         </div>
       ) : projects.length === 0 ? (
         <div style={{
