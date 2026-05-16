@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as WorkshopRouteImport } from './routes/workshop'
 import { Route as VaultRouteImport } from './routes/vault'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
@@ -29,6 +30,11 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WorkspaceRoute = WorkspaceRouteImport.update({
+  id: '/workspace',
+  path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WorkshopRoute = WorkshopRouteImport.update({
   id: '/workshop',
   path: '/workshop',
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
+  '/workspace': typeof WorkspaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
+  '/workspace': typeof WorkspaceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
+  '/workspace': typeof WorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/think-freely'
     | '/vault'
     | '/workshop'
+    | '/workspace'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/think-freely'
     | '/vault'
     | '/workshop'
+    | '/workspace'
   id:
     | '__root__'
     | '/'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/think-freely'
     | '/vault'
     | '/workshop'
+    | '/workspace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,10 +287,18 @@ export interface RootRouteChildren {
   ThinkFreelyRoute: typeof ThinkFreelyRoute
   VaultRoute: typeof VaultRoute
   WorkshopRoute: typeof WorkshopRoute
+  WorkspaceRoute: typeof WorkspaceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workspace': {
+      id: '/workspace'
+      path: '/workspace'
+      fullPath: '/workspace'
+      preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/workshop': {
       id: '/workshop'
       path: '/workshop'
@@ -435,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   ThinkFreelyRoute: ThinkFreelyRoute,
   VaultRoute: VaultRoute,
   WorkshopRoute: WorkshopRoute,
+  WorkspaceRoute: WorkspaceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
