@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkshopRouteImport } from './routes/workshop'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectCompassRouteImport } from './routes/project-compass'
 import { Route as ParkingLotRouteImport } from './routes/parking-lot'
 import { Route as MasterMapRouteImport } from './routes/master-map'
@@ -29,6 +30,11 @@ const WorkshopRoute = WorkshopRouteImport.update({
 const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
   id: '/think-freely',
   path: '/think-freely',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectCompassRoute = ProjectCompassRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/master-map': typeof MasterMapRoute
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
+  '/projects': typeof ProjectsRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/workshop': typeof WorkshopRoute
 }
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/master-map': typeof MasterMapRoute
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
+  '/projects': typeof ProjectsRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/workshop': typeof WorkshopRoute
 }
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/master-map': typeof MasterMapRoute
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
+  '/projects': typeof ProjectsRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/workshop': typeof WorkshopRoute
 }
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/master-map'
     | '/parking-lot'
     | '/project-compass'
+    | '/projects'
     | '/think-freely'
     | '/workshop'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/master-map'
     | '/parking-lot'
     | '/project-compass'
+    | '/projects'
     | '/think-freely'
     | '/workshop'
   id:
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/master-map'
     | '/parking-lot'
     | '/project-compass'
+    | '/projects'
     | '/think-freely'
     | '/workshop'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   MasterMapRoute: typeof MasterMapRoute
   ParkingLotRoute: typeof ParkingLotRoute
   ProjectCompassRoute: typeof ProjectCompassRoute
+  ProjectsRoute: typeof ProjectsRoute
   ThinkFreelyRoute: typeof ThinkFreelyRoute
   WorkshopRoute: typeof WorkshopRoute
 }
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/think-freely'
       fullPath: '/think-freely'
       preLoaderRoute: typeof ThinkFreelyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/project-compass': {
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   MasterMapRoute: MasterMapRoute,
   ParkingLotRoute: ParkingLotRoute,
   ProjectCompassRoute: ProjectCompassRoute,
+  ProjectsRoute: ProjectsRoute,
   ThinkFreelyRoute: ThinkFreelyRoute,
   WorkshopRoute: WorkshopRoute,
 }
