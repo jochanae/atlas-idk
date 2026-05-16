@@ -211,11 +211,6 @@ function ProjectHealthCard({
           <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {project.name}
           </div>
-          {project.description && (
-            <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", marginTop: 2, opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {project.description}
-            </div>
-          )}
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 600, color: hColor, fontFamily: "var(--app-font-mono)", lineHeight: 1 }}>
