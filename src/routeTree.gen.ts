@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkshopRouteImport } from './routes/workshop'
+import { Route as VaultRouteImport } from './routes/vault'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectCompassRouteImport } from './routes/project-compass'
@@ -25,6 +26,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const WorkshopRoute = WorkshopRouteImport.update({
   id: '/workshop',
   path: '/workshop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VaultRoute = VaultRouteImport.update({
+  id: '/vault',
+  path: '/vault',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
   '/think-freely': typeof ThinkFreelyRoute
+  '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
   '/think-freely': typeof ThinkFreelyRoute
+  '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
   '/think-freely': typeof ThinkFreelyRoute
+  '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/project-compass'
     | '/projects'
     | '/think-freely'
+    | '/vault'
     | '/workshop'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/project-compass'
     | '/projects'
     | '/think-freely'
+    | '/vault'
     | '/workshop'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/project-compass'
     | '/projects'
     | '/think-freely'
+    | '/vault'
     | '/workshop'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   ProjectCompassRoute: typeof ProjectCompassRoute
   ProjectsRoute: typeof ProjectsRoute
   ThinkFreelyRoute: typeof ThinkFreelyRoute
+  VaultRoute: typeof VaultRoute
   WorkshopRoute: typeof WorkshopRoute
 }
 
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/workshop'
       fullPath: '/workshop'
       preLoaderRoute: typeof WorkshopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vault': {
+      id: '/vault'
+      path: '/vault'
+      fullPath: '/vault'
+      preLoaderRoute: typeof VaultRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/think-freely': {
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectCompassRoute: ProjectCompassRoute,
   ProjectsRoute: ProjectsRoute,
   ThinkFreelyRoute: ThinkFreelyRoute,
+  VaultRoute: VaultRoute,
   WorkshopRoute: WorkshopRoute,
 }
 export const routeTree = rootRouteImport
