@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkshopRouteImport } from './routes/workshop'
 import { Route as VaultRouteImport } from './routes/vault'
 import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProjectCompassRouteImport } from './routes/project-compass'
 import { Route as ParkingLotRouteImport } from './routes/parking-lot'
@@ -36,6 +37,11 @@ const VaultRoute = VaultRouteImport.update({
 const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
   id: '/think-freely',
   path: '/think-freely',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/parking-lot': typeof ParkingLotRoute
   '/project-compass': typeof ProjectCompassRoute
   '/projects': typeof ProjectsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/think-freely': typeof ThinkFreelyRoute
   '/vault': typeof VaultRoute
   '/workshop': typeof WorkshopRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/parking-lot'
     | '/project-compass'
     | '/projects'
+    | '/reset-password'
     | '/think-freely'
     | '/vault'
     | '/workshop'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/parking-lot'
     | '/project-compass'
     | '/projects'
+    | '/reset-password'
     | '/think-freely'
     | '/vault'
     | '/workshop'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/parking-lot'
     | '/project-compass'
     | '/projects'
+    | '/reset-password'
     | '/think-freely'
     | '/vault'
     | '/workshop'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   ParkingLotRoute: typeof ParkingLotRoute
   ProjectCompassRoute: typeof ProjectCompassRoute
   ProjectsRoute: typeof ProjectsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ThinkFreelyRoute: typeof ThinkFreelyRoute
   VaultRoute: typeof VaultRoute
   WorkshopRoute: typeof WorkshopRoute
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/think-freely'
       fullPath: '/think-freely'
       preLoaderRoute: typeof ThinkFreelyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -306,6 +326,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParkingLotRoute: ParkingLotRoute,
   ProjectCompassRoute: ProjectCompassRoute,
   ProjectsRoute: ProjectsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ThinkFreelyRoute: ThinkFreelyRoute,
   VaultRoute: VaultRoute,
   WorkshopRoute: WorkshopRoute,
