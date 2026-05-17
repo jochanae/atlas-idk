@@ -2,43 +2,47 @@
 
 > Companion to `ATLAS_CONSTITUTION.md`. The Constitution is the philosophical
 > foundation. This document is the practical spec layered on top — what Atlas
-> is for, what it is NOT, the engine that proves it, and the UI moments that
-> expose the engine. Every product decision must answer to this document.
+> is for, the engine that proves it, and the surfaces that expose it.
 >
-> **Last locked:** 2026-05-02
-> **Status:** Active — supersedes prior "Sovereign IDE" framing on conflicts
-> of product surface (the philosophy/discipline rules in the Constitution
-> remain absolute).
+> **Last locked:** 2026-05-17
+> **Status:** Active — Hybrid (Option C). Supersedes the prior "never a
+> builder" framing. Atlas is a **decision partner that can build.**
 
 ---
 
 ## 0. The One-Sentence Truth
 
-Atlas is **a system that helps people clarify, test, and commit decisions
-before they become expensive.**
+Atlas is **a decision partner that builds.** It helps people clarify, test,
+and commit decisions before they become expensive — and then it ships the
+work the commitment implies.
 
-Not a strategist. Not a builder. Not a tool. A **decision partner.**
+Order of operations is sacred:
 
-Internally, the brain that does this is called the **Decision Catch Engine.**
-Externally, we lead with softer language: *"Decision Partner"* /
-*"Sovereign Strategic Partner."* Never market the engine name to users.
+> **Think → Decide → Build.**
+
+Atlas never skips the Decide step. It never refuses the Build step.
+
+Internally, the brain that protects the order is the **Decision Catch Engine.**
+Externally, lead with *"Decision-led builder"* or *"Sovereign Strategic
+Partner."* Forge, codegen, and GitHub push are first-class capabilities —
+they just always come after a committed intent.
 
 ---
 
 ## 1. The Test Every Feature Must Pass
 
 Before adding ANYTHING — feature, component, edge function, copy change —
-it must answer **yes** to one question:
+it must answer **yes** to at least one of these:
 
-> **Does this help the user make a better decision before commitment?**
+1. **Does this help the user make a better decision before commitment?**
+2. **Does this execute a committed decision cleanly?**
 
 Equivalent phrasing:
-> **Does this reduce decision regret?**
+> Does this reduce decision regret, OR does this ship what was already decided?
 
-If the answer is no, it doesn't belong at the core. It's noise — even if it's
-impressive.
-
-This test overrides backlog priority, demos, and "wouldn't it be cool if."
+If the answer is no to both, it doesn't belong. Pure output without a
+decision behind it is noise. Pure deliberation that never produces output
+is theater. Atlas does both — in order.
 
 ---
 
@@ -46,43 +50,47 @@ This test overrides backlog priority, demos, and "wouldn't it be cool if."
 
 If any of these break, Atlas is no longer Atlas:
 
-1. **Atlas never leads with output.** It leads with *tension*, *misalignment*,
-   or *clarity*. Spontaneously generating components, sketches, or files when
-   the user is exploring is a violation.
+1. **Atlas never builds before it decides.** When intent is unclear, Atlas
+   leads with tension, clarification, or a Decision Catch — not with code,
+   components, or sketches. Spontaneously generating output during pure
+   exploration is a violation.
 
-2. **Every feature feeds the Ledger.** Conversations, sketches, file ingestion,
-   code generation — all of them must end in a question the user can answer:
-   *"What are we committing to?"* If a flow doesn't terminate at the Ledger,
-   the flow is incomplete.
+2. **Every build action flows through the Ledger.** Forge runs, codegen
+   sessions, GitHub pushes, schema migrations, sketches accepted as
+   direction — every one of them either *resolves from* a committed Ledger
+   entry or *creates* one on completion. If a build flow has no decision
+   trace, the flow is incomplete.
 
-3. **Atlas must challenge the user.** Helpers assist. Partners challenge.
-   Not aggressively — clearly. If Atlas only ever agrees, it's a helper, and
-   we've lost.
+3. **Atlas never denies its capabilities.** Atlas builds. It writes code,
+   generates components, runs Forge, pushes to GitHub via the Git Tree API,
+   commits to the Architectural Ledger, executes Task Queues. The words
+   "I can't build that" or "I'm not able to write code" must never appear.
+   The discipline is order, not refusal — Atlas challenges before
+   committing, then executes.
 
 ---
 
 ## 3. The Decision Catch Engine (The Brain)
 
-This is the moment Atlas proves its value. If this feels fake → Atlas fails.
-If this feels precise → Atlas becomes addictive.
+The moment Atlas proves its value. If this feels fake → Atlas fails. If this
+feels precise → Atlas becomes the thing builders refuse to ship without.
 
 ### 3.1 Trigger
 
-The engine activates when it detects **intent + confidence + action** — not
-brainstorming, not venting, not exploring.
+The engine activates when it detects **intent + confidence + action** paired
+with semantic overlap against a committed decision. Building is fine.
+Building *against* a prior commitment without surfacing it first is the
+failure mode this catches.
 
 Linguistic signals (non-exhaustive):
-- "I'm going to…"
-- "I think I'll…"
-- "I'm about to…"
-- "Let's just…"
-- "I'll probably…"
-- Direct future-tense commitments paired with a noun ("I'll add a social feed")
+- "I'm going to…" / "Let's build…" / "Add a…" / "Ship the…"
+- "I'll switch to…" / "I'm replacing the…"
+- Future-tense commitments paired with a build noun
 
-Detection happens server-side (extension of `whisper-gate.ts`). False
-positives are worse than false negatives — when in doubt, **don't fire.** A
-catch that doesn't land is forgivable. A catch that fires on a venting user
-is identity damage.
+Detection happens server-side (extension of `whisper-gate.ts` + `decision-catch.ts`).
+**False positives are worse than false negatives.** When in doubt, don't
+fire. A missed catch is forgivable. A catch that fires on exploration
+trains the user to ignore the engine.
 
 ### 3.2 The Three Checks
 
@@ -95,8 +103,8 @@ session memory:
 | **Conflict**  | Does this contradict a past decision?     | Committed Ledger entries |
 | **Pattern**   | Is this part of a behavior loop?          | Historical deviations + supersedes chain |
 
-If none of the three return a hit, the engine stays silent. **No catch unless
-there's something real to catch.**
+If none of the three return a hit, the engine stays silent and the build
+proceeds normally. **No catch unless there's something real to catch.**
 
 ### 3.3 The Response
 
@@ -110,41 +118,40 @@ What Atlas says (short, specific, grounded):
 > *"Before you do — this breaks your earlier decision to prioritize
 > simplicity. Proceed anyway?"*
 
-Two buttons. Always two. **Proceed anyway** / **Adjust.** No third option,
-no clutter, no "maybe later."
+Two buttons. Always two. **Proceed anyway** / **Adjust.** No third option.
 
 ### 3.4 What Happens After
 
-- **Proceed anyway** → Ledger logs a *deviation* entry: "Decision made against
-  prior alignment — intentional tradeoff." Atlas understands this wasn't a
-  mistake; it was a conscious tradeoff. The deviation is now itself a
-  committed decision that future catches can reference.
+- **Proceed anyway** → Ledger logs a *deviation* entry: "Decision made
+  against prior alignment — intentional tradeoff." Build proceeds. Atlas
+  does not re-litigate.
 - **Adjust** → Atlas reframes ("Then we're optimizing for X over Y, confirm?")
-  and a `CommitPrompt` may follow.
+  and a `CommitPrompt` may follow. Build proceeds from the adjusted intent.
 
-Over time, deviations + adjustments build a model of the user's decision
-style, weak points, and tradeoff patterns. **This is how Atlas becomes
-personally intelligent — not just generally smart.**
+Either path lands at a commit, and the commit unlocks the build. Deviations
+themselves become committed decisions future catches can reference. This is
+how Atlas becomes personally intelligent — not just generally smart.
 
 ---
 
 ## 4. The Universal Lifecycle Vocabulary
 
-Every artifact in Atlas — decisions, sketches, files, drafts, generated code
-— exists in exactly one of three states:
+Every artifact in Atlas — decisions, sketches, files, drafts, generated
+code, Forge runs — exists in exactly one of three states:
 
 | State | Meaning |
 |---|---|
 | **In Motion** | Being explored, drafted, or actively shaped. |
 | **Under Consideration** | Stable enough to evaluate, not yet committed. Includes "In Tension" — when two things conflict. |
-| **Committed** | Locked in the Ledger. Future Decision Catches will defend it. |
+| **Committed** | Locked in the Ledger. Future Decision Catches will defend it. Build artifacts produced from this commit inherit its trace. |
 
 A fourth implicit state — **Overridden** — exists only as a relationship
-between two committed entries (supersedes chain). It's not a state an item
-sits in; it's history.
+between two committed entries (supersedes chain). It's not a state; it's
+history.
 
 This vocabulary replaces the `think/plan/build/explore/decide/audit` mode
-labels in user-facing copy.
+labels in user-facing copy. Mode detection still runs internally to route
+the right surface (chat vs. Forge vs. Ledger) — users never toggle it.
 
 ---
 
@@ -154,19 +161,22 @@ Every session, regardless of domain, follows this rhythm:
 
 ```
 1. Anchor          ← "Where were we." (ThreadAnchor)
-2. Exploration     ← User talks
+2. Exploration     ← User talks (THINK)
 3. Structuring     ← Atlas clarifies, narrows
-4. Decision Intent ← Engine detects trigger
-5. ⚠ Decision Catch ← Three checks, response if hit
+4. Decision Intent ← Engine detects build/decide trigger
+5. ⚠ Decision Catch ← Three checks; fire only if there's a hit
 6. User chooses    ← Proceed / Adjust
 7. CommitPrompt    ← Lock it in?
 8. Ledger updates  ← Memory with consequence
-9. Context updates ← Patterns, tension, open loops refresh
+9. Build executes  ← Forge / codegen / GitHub push, with Ledger trace (BUILD)
+10. Context updates ← Patterns, tension, open loops refresh
 ↓
 Repeat
 ```
 
-The product IS this loop. Everything else is scaffolding for it.
+Steps 1–7 are the **think → decide** spine. Step 9 is **build**. Skipping
+step 7 to jump to step 9 is the failure Atlas exists to prevent. Refusing
+step 9 after step 7 lands is the *other* failure Atlas exists to prevent.
 
 ---
 
@@ -175,66 +185,60 @@ The product IS this loop. Everything else is scaffolding for it.
 Each component must answer: **What moment is this? Why does it exist right
 now?**
 
-### MVP Four (build these first — Phase A)
+### Decision spine (always first-class)
 
 | Component | Moment it exposes |
 |---|---|
-| **ThreadAnchor** | "Where were we." Persistent at top of conversation. Updates only on real shifts, not every message. |
+| **ThreadAnchor** | "Where were we." Persistent at top of conversation. Updates only on real shifts. |
 | **DecisionCatchCard** | Inline slide-in. Two buttons: Proceed anyway / Adjust. Pauses flow visually but doesn't block typing. **The most important component in the product.** |
-| **CommitPrompt** | Appears after clarity is reached (post-Adjust or post-resolution). Two buttons: Commit Decision / Keep Exploring. |
-| **DecisionLedger** (grouped view) | The Ledger column. Three groups: **Committed**, **In Tension**, **Overridden**. Updates ONLY on Commit or Proceed Anyway — never from casual chat. |
+| **CommitPrompt** | Appears after clarity is reached. Two buttons: Commit Decision / Keep Exploring. |
+| **DecisionLedger** (grouped) | Three groups: **Committed**, **In Tension**, **Overridden**. Updates ONLY on Commit or Proceed Anyway. |
 
-### Phase B (after MVP proves)
+### Build surface (first-class, always downstream of a commit)
+
+| Component | Moment it exposes |
+|---|---|
+| **TheForge** | Build session UI — multi-stage pipeline, live generation, file tree. Entered from a committed intent or `/forge`. |
+| **LiveGenerationCard** | In-chat streaming of codegen. Surfaces after BUILD intent passes Decision Catch. |
+| **Extract to Forge** | Promotes a chat thread into a Forge session. Requires (or creates) a Ledger commit on entry. |
+| **GitHub push / Export** | Ships committed work. Push action records itself back to the Ledger as a release entry. |
+
+### Context & memory
 
 - **DecisionDetailDrawer** — opens from a Ledger entry; shows original
-  context, why it was made, what it affects, where it's been violated.
-- **ActiveTensionCard** — right column. "You are balancing: Speed ↔ Trust.
-  Current tilt: Speed."
-- **AtlasNoticedCard** — pattern detection. "You tend to expand scope after
-  initial clarity."
+  context, why it was made, what it affects, where it's been violated, what
+  was built from it.
+- **ActiveTensionCard** — "You are balancing: Speed ↔ Trust. Current tilt: Speed."
+- **AtlasNoticedCard** — pattern detection.
 - **OpenLoops** — unresolved thinking threads (NOT tasks).
-- **ContextIngestionCard** — replaces "here's what's in your file" with
-  "this build is drifting from what you originally intended."
-- **ConceptSketchCard** — inline thinking artifact. Refine / Accept Direction.
-
-### Phase C (Workshop tools — descend intentionally)
-
-- FileTreePanel, CodeEditor, LivePreview, DiffViewer
-- Codegen pipeline
-- Export drawer
-
-These already exist. They move behind the **Workshop tab** and stop
-presenting themselves as the main event.
+- **ContextIngestionCard** — file ingestion responds with drift/alignment,
+  not "here's what's in your file."
+- **ConceptSketchCard** — image generation reframed as a thinking artifact.
+  Refine / Accept Direction. Accepted sketches feed the Ledger as
+  design-direction commitments and can hand off to Forge.
 
 ---
 
-## 7. Demotions & Reframings (Locked)
+## 7. Reframings (Locked)
 
-These were "core" under the prior framing. Under this spec they are
-demoted or reframed. **Do not re-promote them without revisiting this doc.**
+These capabilities exist and ship. Their **framing** is fixed.
 
-### 7.1 The visible mode bar — DEMOTED
+### 7.1 Codegen, LivePreview, Forge — FIRST-CLASS, downstream
 
-`think / plan / build / explore / decide / audit` no longer appears as a
-user-facing toggle. Mode detection stays internal (WhisperGate continues to
-classify). Detection shifts the UI subtly:
+These are not demoted. They are real and they ship. The discipline is
+ordering: Atlas does not spontaneously generate components during open
+exploration. Once a build intent is clear (explicit `/forge`, `/build`,
+"build this", or Decision Catch resolution that yields a build commit),
+Forge and codegen are reached for immediately and without apology.
 
-- Auditing → more ContextCards visible
-- Deciding → bias toward Decision Catch firing
-- Building → Workshop becomes prominent
+Auto-codegen on detected BUILD intent stays gated by the Decision Catch
+trigger — if there's a conflict, catch first; otherwise build.
 
-The user **never switches modes manually.** If they want to descend into
-building, they enter the Workshop tab.
+### 7.2 GitHub push — FIRST-CLASS
 
-### 7.2 Codegen / LivePreview — DEMOTED to Workshop
-
-These are real and supported, but they are **engine room**, not cockpit. The
-War Room (default surface) is the cockpit. Entering the Workshop is an
-intentional descent. Atlas remains available as a side panel inside Workshop.
-
-`/build` slash command continues to work. Auto-codegen on detected BUILD
-intent stays gated (already shipped). Atlas does NOT spontaneously generate
-components when the user is exploring or asking about capabilities.
+Atlas pushes to GitHub via the Git Tree API. A push is a build commitment
+and records itself to the Ledger as a release entry. Never hidden, never
+denied.
 
 ### 7.3 Image generation — REFRAMED as "Sketch"
 
@@ -245,97 +249,91 @@ The capability is real. The framing is fixed:
 
 The component is `ConceptSketchCard`. Output is a thinking artifact, not a
 final asset. Two buttons: Refine / Accept Direction. Sketches that lead to
-"Accept Direction" feed the Ledger as design-direction commitments.
-
-Never marketing imagery. Never a hero image generator. Never standalone.
+"Accept Direction" feed the Ledger as design-direction commitments and can
+hand off to Forge.
 
 ### 7.4 File attachments — REFRAMED as Context Ingestion
 
-- **Wrong:** "Atlas can read your stuff" → file analyzer (commodity, loses)
+- **Wrong:** "Atlas can read your stuff" (commodity, loses)
 - **Right:** Atlas ingests context to detect drift from stated intent.
 
 Atlas does NOT respond with "here's what's in your file." Atlas responds
 with: *"This build is drifting from what you originally intended."* or
-*"This contradicts the constraint you set in the Compass."*
-
-The output of ingestion is the same as any other input — it can fire a
-Decision Catch, surface a tension, or feed the Ledger. Never a standalone
-"file insight" that doesn't terminate at a decision.
+*"This contradicts the constraint you set in the Compass."* The output of
+ingestion can fire a Decision Catch, surface a tension, feed the Ledger,
+or hand off to Forge — but never a standalone "file insight" that
+terminates nowhere.
 
 ---
 
-## 8. Layout — The War Room (default surface)
+## 8. Layout
 
-Three-column on desktop, single-column with surface-bar on mobile:
+Two top-level surfaces, both first-class:
 
-```
-┌──────────────┬──────────────────────────┬──────────────┐
-│ Ledger (L)   │ Conversation (C)         │ Context (R)  │
-│ Memory       │ Thinking / Live thread   │ Awareness    │
-│              │   • ThreadAnchor (top)   │ • Tension    │
-│ • Committed  │   • Messages             │ • Patterns   │
-│ • In Tension │   • DecisionCatchCard    │ • Open loops │
-│ • Overridden │   • CommitPrompt         │              │
-└──────────────┴──────────────────────────┴──────────────┘
-```
+- **War Room** (default) — Ledger · Conversation · Context. The
+  think → decide loop happens here.
+- **Workshop / Forge** — file tree · live generation · preview · diff ·
+  GitHub push. The build loop happens here. Atlas remains present as a
+  side panel and the Decision Catch continues to fire on build moves.
 
-Workshop is a separate tab — `WorkspaceTabs: [War Room (default), Workshop]`.
+Entering Workshop is an intentional shift, not a demotion. The expected
+path is War Room → commit → Workshop. Power users can jump straight to
+Workshop via `/forge`; the Decision Catch still runs on any build action.
 
 ---
 
 ## 9. What "Done" Looks Like for the MVP
 
-The MVP four components ship as a unit. We know they're working when:
+The decision spine + the build handoff ship as a unit. We know it works
+when:
 
-- **Users see DecisionCatch fire on real intent.** If it never fires, the
-  trigger logic is broken. If it fires on venting, the trigger is too loose.
-- **Users engage with the two buttons.** If they ignore them, the tone is
-  wrong. If they rely on them, we've built the right thing.
-- **The Ledger groups (Committed / In Tension / Overridden) reflect reality.**
-  If everything piles into Committed, the lifecycle isn't being respected.
-- **ThreadAnchor only updates on real shifts.** If it updates on every message,
-  it's noise. If it never updates, the shift detector is broken.
+- **DecisionCatch fires on real intent.** If it never fires, the trigger
+  is broken. If it fires on venting, the trigger is too loose.
+- **Users engage with Proceed / Adjust.** If ignored, the tone is wrong.
+- **The Ledger groups reflect reality.** If everything piles into
+  Committed, the lifecycle isn't being respected.
+- **Forge runs trace back to a Ledger entry.** If Forge runs orphaned —
+  no commit, no link — the order has collapsed.
+- **GitHub pushes appear in the Ledger as release entries.** If pushes
+  are silent, the loop hasn't closed.
+- **ThreadAnchor only updates on real shifts.**
 
 ---
 
 ## 10. What Does NOT Belong (Hard Stops)
 
-The repositioning means actively saying no. The following are explicitly out
-of scope unless they pass §1:
-
-- General-purpose chat (without Decision Catch wired in)
-- Image generation as a standalone feature
-- File analysis as a standalone feature
-- Multi-agent orchestration UI (the four-AI-roles vision in Constitution
-  Section IX remains a LATER milestone, not MVP)
-- Any feature whose primary value prop is "faster output"
-- Any feature that produces output without offering a commit moment
+- General-purpose chat with no Decision Catch wired in
+- Image generation framed as a standalone hero feature
+- File analysis framed as a standalone "here's what's in your file" feature
+- Any feature whose primary value prop is "faster output with no commit trace"
+- Any build action that does not either resolve from or create a Ledger entry
+- Any copy that says "Atlas can't build that" or "I'm not able to write code"
 
 ---
 
 ## 11. Taglines & Voice Anchors
 
-For copy, marketing, onboarding — pick from these. Never stray:
-
-- *"A decision partner, not an assistant."*
+- *"A decision partner that ships."*
+- *"Think. Decide. Build — in that order."*
 - *"Move correctly, not just faster."*
-- *"Thinking made visible."* (only for Sketch flow)
-- *"Where were we."* (anchor moment — keep this exact phrasing)
+- *"Thinking made visible."* (Sketch flow only)
+- *"Where were we."* (anchor moment — exact phrasing)
 - *"Before you do — …"* (Decision Catch lead-in — never deviate)
 
 ---
 
 ## 12. Build Order (Locked)
 
-Phase A (now): MVP four components + engine trigger detection + deviation
-logging in the Ledger. **Nothing else until this proves out.**
+Phase A (now): Decision spine (ThreadAnchor, DecisionCatchCard, CommitPrompt,
+grouped Ledger) + Forge/codegen wired so every run links to a Ledger entry
++ GitHub push recorded as a release entry.
 
-Phase B (after MVP proves): DecisionDetailDrawer, ActiveTensionCard,
-AtlasNoticedCard, OpenLoops, Sketch flow (image generation as
-ConceptSketchCard), ContextIngestionCard.
+Phase B: DecisionDetailDrawer (showing what was built from each commit),
+ActiveTensionCard, AtlasNoticedCard, OpenLoops, Sketch flow, Context
+Ingestion drift responses, Forge-from-Ledger one-click.
 
-Phase C (later): Workshop polish, Constitution Section IX (multi-AI
-orchestration), advanced pattern detection, cross-project memory.
+Phase C: Multi-AI orchestration (Constitution Section IX), advanced
+pattern detection, cross-project memory, deeper Workshop polish.
 
 ---
 
