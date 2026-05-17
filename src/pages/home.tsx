@@ -243,13 +243,14 @@ function HomeHandoffCard({
 }
 
 // ── Typewriter hook ──────────────────────────────────────────────────────────
-function useTypewriter(phrases: string[]) {
+function useTypewriter(phrases: string[], paused = false) {
   const [display, setDisplay] = useState("");
   const state = useRef({ phraseIdx: 0, charIdx: 0, phase: "typing" as "typing" | "erasing" });
   const phrasesRef = useRef(phrases);
   phrasesRef.current = phrases;
 
   useEffect(() => {
+    if (paused) return;
     let timer: ReturnType<typeof setTimeout>;
 
     function tick() {
@@ -262,20 +263,17 @@ function useTypewriter(phrases: string[]) {
           setDisplay(phrase.slice(0, s.charIdx));
           timer = setTimeout(tick, 38);
         } else {
-          // fully typed — hold 2 s then erase
           timer = setTimeout(() => {
             s.phase = "erasing";
             tick();
           }, 2000);
         }
       } else {
-        // erasing
         if (s.charIdx > 0) {
           s.charIdx--;
           setDisplay(phrase.slice(0, s.charIdx));
           timer = setTimeout(tick, 22);
         } else {
-          // fully erased — pause then type next
           s.phraseIdx = (s.phraseIdx + 1) % phrasesRef.current.length;
           s.phase = "typing";
           timer = setTimeout(tick, 200);
@@ -283,9 +281,9 @@ function useTypewriter(phrases: string[]) {
       }
     }
 
-    timer = setTimeout(tick, 900); // initial delay before first char
+    timer = setTimeout(tick, 900);
     return () => clearTimeout(timer);
-  }, []);
+  }, [paused]);
 
   return display;
 }
@@ -1116,7 +1114,8 @@ export default function Home() {
     document.body.dataset.voiceActive = "true";
   }, [isListening]);
 
-  const placeholder = useTypewriter(PLACEHOLDERS);
+  const [typewriterPaused, setTypewriterPaused] = useState(false);
+  const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
   const { data: projects, isLoading } = useListProjects();
   const createProject = useCreateProject();
@@ -2069,7 +2068,10 @@ export default function Home() {
             <div style={{ position: "relative" }}>
               {!hasInput && (
                 <div
-                  aria-hidden
+                  onClick={() => {
+                    setTypewriterPaused(true);
+                    textareaRef.current?.focus();
+                  }}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -2079,16 +2081,17 @@ export default function Home() {
                     color: "var(--atlas-muted)",
                     fontSize: 15,
                     lineHeight: 1.55,
-                    opacity: 0.65,
-                    pointerEvents: "none",
+                    opacity: typewriterPaused ? 0.4 : 0.65,
+                    cursor: "text",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     fontFamily: "var(--app-font-sans)",
+                    transition: "opacity 160ms ease",
                   }}
                 >
                   {placeholder}
-                  <span className="atlas-cursor" />
+                  {!typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
