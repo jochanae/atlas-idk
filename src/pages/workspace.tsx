@@ -10526,15 +10526,15 @@ export default function Workspace() {
           </div>
           )} {/* end chat/diff ternary */}
 
-          {/* Ledger status bar */}
-          <div className="atlas-ledger-bar">
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", boxShadow: entryCount > 0 ? "0 0 6px rgba(201,162,76,0.45)" : "none", transition: "all 400ms ease" }} />
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: entryCount > 0 ? "rgba(var(--atlas-gold-rgb),0.82)" : "rgba(200,190,185,0.6)", transition: "color 400ms ease" }}>
-              [{entryCount}] Ledger Entries
+          {/* Ledger status bar — whispered */}
+          <div className="atlas-ledger-bar" style={{ opacity: 0.4 }}>
+            <span style={{ width: 4, height: 4, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", transition: "all 400ms ease" }} />
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: "var(--atlas-muted)", transition: "color 400ms ease" }}>
+              {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
             </span>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(200,190,185,0.5)" }}>·</span>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", transition: "color 300ms ease" }}>
-              {chatPending ? "Generating" : "Session Active"}
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, color: "var(--atlas-muted)" }}>·</span>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: chatPending ? "rgba(74,222,128,0.75)" : "var(--atlas-muted)", transition: "color 300ms ease" }}>
+              {chatPending ? "generating" : "session active"}
             </span>
           </div>
 
