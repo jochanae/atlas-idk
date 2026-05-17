@@ -735,20 +735,17 @@ html, body {
   cursor: default;
 }
 
-/* ── Ledger status bar above input ───────────────────────────────────────────── */
+/* ── Ledger status bar above input — whispered ──────────────────────────────── */
 .atlas-ledger-bar {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 16px;
-  border-top: 1px solid rgba(201,162,76,0.07);
-  background: rgba(12,10,9,0.55);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  gap: 6px;
+  padding: 1px 16px;
+  background: transparent;
   flex-shrink: 0;
 }
 [data-theme="parchment"] .atlas-ledger-bar {
-  background: rgba(245,241,232,0.75);
+  background: transparent;
 }
 
 /* ── Landing page: allow scrolling (overrides global overflow:hidden) ──────── */
