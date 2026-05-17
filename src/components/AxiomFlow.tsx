@@ -1362,7 +1362,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
         : `0 0 14px rgba(${G},0.22)`,
       opacity: 1,
       pulse: !resolved,
-      labelSize: 11,
+      labelSize: 10,
       labelWeight: 700,
     };
   }
@@ -1380,7 +1380,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       shadow: resolved ? `0 0 12px rgba(${G},0.22)` : "none",
       opacity: 1,
       pulse: !resolved,
-      labelSize: 9.5,
+      labelSize: 8.5,
       labelWeight: 500,
     };
   }
@@ -1400,7 +1400,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       shadow: `0 0 10px rgba(${E},0.20)`,
       opacity: 1,
       pulse: false,
-      labelSize: 9.5,
+      labelSize: 8.5,
       labelWeight: 500,
     };
   }
@@ -1418,7 +1418,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       shadow: "none",
       opacity: 0.58,
       pulse: false,
-      labelSize: 9.5,
+      labelSize: 8.5,
       labelWeight: 500,
     };
   }
@@ -1437,7 +1437,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
         shadow: "none",
         opacity: 0.35,
         pulse: false,
-        labelSize: 9.5,
+        labelSize: 8.5,
         labelWeight: 400,
       };
     }
@@ -1454,7 +1454,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
         shadow: "none",
         opacity: resolved ? 0.85 : 0.70,
         pulse: !resolved,
-        labelSize: 9.5,
+        labelSize: 8.5,
         labelWeight: 400,
       };
     }
@@ -1471,7 +1471,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
         shadow: "none",
         opacity: 0.65,
         pulse: !resolved,
-        labelSize: 9.5,
+        labelSize: 8.5,
         labelWeight: 500,
       };
     }
@@ -1488,7 +1488,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       shadow: resolved ? `0 0 14px rgba(${G},0.28)` : "none",
       opacity: 1,
       pulse: !resolved,
-      labelSize: 9.5,
+      labelSize: 8.5,
       labelWeight: 600,
     };
   }
@@ -1506,7 +1506,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       shadow: resolved ? "none" : `0 0 10px rgba(${D},0.18)`,
       opacity: 1,
       pulse: !resolved,
-      labelSize: 9.5,
+      labelSize: 8.5,
       labelWeight: 500,
     };
   }
@@ -1524,7 +1524,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       shadow: "none",
       opacity: resolved ? 1 : 0.75,
       pulse: !resolved,
-      labelSize: 9,
+      labelSize: 8,
       labelWeight: 500,
     };
   }
@@ -1534,7 +1534,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
     borderStyle: "solid", borderColor: `rgba(${G},0.45)`,
     bgColor: `rgba(${G},0.06)`,
     textColor: palette.fgText, textDecoration: "none",
-    shadow: "none", opacity: 1, pulse: false, labelSize: 9.5, labelWeight: 500,
+    shadow: "none", opacity: 1, pulse: false, labelSize: 8.5, labelWeight: 500,
   };
 }
 
