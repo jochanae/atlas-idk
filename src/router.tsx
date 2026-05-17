@@ -4,6 +4,22 @@ import { routeTree } from "./routeTree.gen";
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
+  // Auto-reload on stale chunk errors (common after rebuilds)
+  if (
+    typeof window !== "undefined" &&
+    /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(
+      error?.message ?? ""
+    )
+  ) {
+    const key = "__atlas_chunk_reload__";
+    const last = Number(sessionStorage.getItem(key) ?? 0);
+    if (Date.now() - last > 10000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.reload();
+      return null;
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
