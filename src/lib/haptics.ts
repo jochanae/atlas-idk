@@ -1,23 +1,11 @@
-/**
- * Global haptic feedback utility.
- * Uses the Vibration API on supported devices (mobile); no-ops silently elsewhere.
- */
-
-type Intensity = "light" | "medium" | "heavy";
-
-const patterns: Record<Intensity, number | number[]> = {
-  light: 10,
-  medium: 25,
-  heavy: [30, 10, 30],
+const vibrate = (pattern: number | number[]) => {
+  try {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  } catch {}
 };
 
-/** Trigger haptic feedback. Silent no-op on devices without vibration support. */
-export function haptic(intensity: Intensity = "light") {
-  try {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate(patterns[intensity]);
-    }
-  } catch {
-    // Silently swallow — haptics are a progressive enhancement.
-  }
-}
+export const haptics = {
+  tap: () => vibrate(8),
+  cardConfirmed: () => vibrate([12, 50, 12]),
+  nodeResolved: () => vibrate([10, 30, 20]),
+};
