@@ -1821,16 +1821,28 @@ export default function Home() {
             }} />
 
             {/* Greeting */}
-            {homeMessages.length === 0 && (
-              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
-                  Where were we.
-                </h1>
-                <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
-                  I'm here. What's on your mind?
-                </p>
-              </div>
-            )}
+            {homeMessages.length === 0 && (() => {
+              const hour = new Date().getHours();
+              const phrases =
+                hour >= 5 && hour < 11
+                  ? ["Good morning.", "Morning.", "Starting fresh?", "Back at it.", "Ready when you are."]
+                  : hour >= 11 && hour < 17
+                    ? ["Good afternoon.", "What's on your mind?", "Picking something back up?", "Where should we begin?"]
+                    : hour >= 17 && hour < 21
+                      ? ["Good evening.", "Still thinking about it?", "Back for another pass?", "Working late tonight?"]
+                      : ["Burning the midnight oil?", "Late one tonight.", "Night owl mode.", "Still untangling it?"];
+              const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+              const firstName = (authUser?.name ?? "").trim().split(/\s+/)[0];
+              const useName = firstName && Math.random() < 0.3;
+              const greeting = useName ? `${firstName}. ${phrase}` : phrase;
+              return (
+                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
+                  <p style={{ fontSize: 15, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.7, margin: 0, letterSpacing: "-0.01em" }}>
+                    {greeting}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Chat thread */}
             <div style={{ margin: homeMessages.length > 0 ? "6px 0 26px" : "18px 0 26px", minHeight: homeMessages.length > 0 ? 60 : 0 }}>
