@@ -64,6 +64,22 @@ type HomeMessage = {
   plan?: Plan;
 };
 
+function normalizeLoadedHomeMessages(
+  msgs: Array<{ role: string; content: string }>,
+  mapMessage?: (message: { role: "user" | "assistant"; content: string }, index: number) => HomeMessage,
+): HomeMessage[] {
+  const thread = msgs.filter(
+    (message): message is { role: "user" | "assistant"; content: string } =>
+      (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
+  );
+
+  const firstUserIndex = thread.findIndex((message) => message.role === "user");
+  if (firstUserIndex === -1) return [];
+
+  const trimmed = thread.slice(firstUserIndex);
+  return mapMessage ? trimmed.map(mapMessage) : trimmed.map((message) => ({ ...message }));
+}
+
 function renderMarkdown(text: string): string {
   return text
     .replace(/```(\w*)\n?([\s\S]*?)```/g, (_: string, _lang: string, code: string) =>
@@ -1183,8 +1199,9 @@ export default function Home() {
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(async (msgs: Array<{ role: string; content: string }>) => {
-        if (msgs.length > 0) {
-          setHomeMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+        const normalizedMessages = normalizeLoadedHomeMessages(msgs);
+        if (normalizedMessages.length > 0) {
+          setHomeMessages(normalizedMessages);
           return;
         }
       })
@@ -1518,17 +1535,26 @@ export default function Home() {
     try {
       const res = await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, { credentials: "include" });
       const msgs = await res.json() as Array<{ role: string; content: string }>;
-      if (Array.isArray(msgs) && msgs.length > 0) {
-        setHomeMessages(msgs.map((m, index) => {
-          const role = m.role as "user" | "assistant";
-          const plan = role === "assistant" ? detectPlanFromText(m.content) : null;
-          return {
-            role,
-            content: m.content,
-            id: `${id}-history-${index}`,
-            ...(plan ? { plan } : {}),
-          };
-        }));
+      const normalizedMessages = Array.isArray(msgs)
+        ? normalizeLoadedHomeMessages(msgs, (message, index) => {
+            const plan = message.role === "assistant" ? detectPlanFromText(message.content) : null;
+            return {
+              role: message.role,
+              content: message.content,
+              id: `${id}-history-${index}`,
+              ...(plan ? { plan } : {}),
+            };
+          })
+        : [];
+
+      if (normalizedMessages.length > 0) {
+        setHomeMessages(normalizedMessages);
+        setActiveConversationId(id);
+        setReviewingPlanIds(new Set());
+        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
+        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      } else {
+        setHomeMessages([]);
         setActiveConversationId(id);
         setReviewingPlanIds(new Set());
         try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
