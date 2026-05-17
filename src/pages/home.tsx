@@ -970,6 +970,7 @@ function FirstRunOverlay({
 // ── Home ─────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [input, setInput] = useState("");
+  const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
@@ -2321,6 +2322,101 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Intent row — soft orientation under the input. Permission, not features. */}
+          {homeMessages.length === 0 && (() => {
+            const intents: Array<{ label: string; starter: string }> = [
+              { label: "Think out loud", starter: "I've been turning something over and want to think it through out loud — " },
+              { label: "Untangle something", starter: "Something's tangled and I can't quite see the shape of it. Here's what I know: " },
+              { label: "Weigh a decision", starter: "I'm trying to decide between " },
+              { label: "Where were we", starter: "Where did we leave things last?" },
+            ];
+            const pickStarter = (s: string) => {
+              setInput(s);
+              setTimeout(() => {
+                textareaRef.current?.focus();
+                const el = textareaRef.current;
+                if (el) el.setSelectionRange(s.length, s.length);
+                autoResize();
+              }, 0);
+            };
+            const rotate = () => {
+              const next = (starterIdx + 1) % PLACEHOLDERS.length;
+              setStarterIdx(next);
+              pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
+            };
+            return (
+              <div style={{
+                marginTop: 14,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+              }}>
+                <div style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  rowGap: 6,
+                  columnGap: 0,
+                  fontFamily: "var(--app-font-sans)",
+                  fontSize: 12.5,
+                  letterSpacing: "0.01em",
+                  color: "var(--atlas-muted)",
+                }}>
+                  {intents.map((it, i) => (
+                    <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => pickStarter(it.starter)}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          padding: "4px 10px",
+                          color: "var(--atlas-muted)",
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                          fontSize: "inherit",
+                          letterSpacing: "inherit",
+                          transition: "color 160ms ease",
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-fg)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-muted)"; }}
+                      >
+                        {it.label}
+                      </button>
+                      {i < intents.length - 1 && (
+                        <span aria-hidden style={{ opacity: 0.4, userSelect: "none" }}>·</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={rotate}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 6px",
+                    color: "var(--atlas-muted)",
+                    opacity: 0.55,
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-sans)",
+                    fontSize: 11.5,
+                    letterSpacing: "0.01em",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    transition: "opacity 160ms ease",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.9"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
+                >
+                  need a starting point? <span style={{ fontSize: 12 }}>↻</span>
+                </button>
+              </div>
+            );
+          })()}
+
 
           {/* Inline create error */}
           {createError && (
@@ -2343,11 +2439,26 @@ export default function Home() {
             background: "linear-gradient(to bottom, transparent, var(--atlas-bg))",
           }} />
 
-          {/* Portfolio pulse strip — only when no messages, pinned near bottom of hero */}
+          {/* Continuity strip — only when no messages, pinned near bottom of hero */}
           {homeMessages.length === 0 && projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
-            const focusedProject = homeFocus ? (projects as Project[]).find((p: Project) => p.id === homeFocus) : null;
-            const spotlightName = focusedProject?.name ?? activeProjects[0]?.name ?? null;
+            const mostRecent = [...activeProjects].sort((a, b) => {
+              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+              return bt - at;
+            })[0];
+            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
+            const formatAgo = (ts: number) => {
+              const diff = Math.max(0, Date.now() - ts);
+              const m = Math.floor(diff / 60000);
+              if (m < 1) return "just now";
+              if (m < 60) return `${m}m ago`;
+              const h = Math.floor(m / 60);
+              if (h < 24) return `${h}h ago`;
+              const d = Math.floor(h / 24);
+              return `${d}d ago`;
+            };
+            const lastTouched = lastTs ? formatAgo(lastTs) : null;
             return (
               <div aria-hidden style={{ position: "absolute", bottom: 20, left: 0, right: 0, display: "flex", justifyContent: "center", pointerEvents: "none", zIndex: 2 }}>
                 <div style={{
@@ -2362,11 +2473,9 @@ export default function Home() {
                     <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "var(--atlas-ember)" : "var(--atlas-gold)", opacity: 0.9 }} />
                   </span>
                   <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
-                    {activeProjects.length} active
-                    {spotlightName && (
-                      <> &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>{spotlightName}</span></>
-                    )}
-                    &nbsp;·&nbsp; overview below
+                    {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                    &nbsp;·&nbsp; {activeProjects.length} open
+                    &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
                   </span>
                 </div>
               </div>
