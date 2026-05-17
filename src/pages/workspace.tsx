@@ -10548,25 +10548,25 @@ export default function Workspace() {
             }}
           />
 
-          {/* Forge shortcut — visible on Chat tab only */}
+          {/* Forge shortcut — visible on Chat tab only; floating pill above composer */}
           {leftTab === "chat" && forgeState && !forgeState.dismissed && (
-            <div style={{ padding: "0 14px 8px", flexShrink: 0 }}>
+            <div style={{ padding: "0 14px 6px", flexShrink: 0, display: "flex", justifyContent: "center" }}>
               {forgeState.forged ? (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <button
                     aria-label="Open The Forge"
                     title="The Forge — re-run or review strategic map"
                     onClick={() => { setForgeActiveProjectName(project?.name); setForgeActiveProjectId(id); setShowForgeExternal(true); }}
                     style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 28, height: 28, borderRadius: 8,
-                      background: "rgba(var(--atlas-gold-rgb),0.07)",
+                      height: 24, padding: "0 8px", borderRadius: 999,
+                      background: "transparent",
                       border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
-                      color: "rgba(var(--atlas-gold-rgb),0.85)",
+                      color: "rgba(var(--atlas-gold-rgb),0.75)",
                       cursor: "pointer",
                     }}
                   >
-                    <svg width={12} height={12} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width={11} height={11} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
                       <path d="M5.5 11L2 14.5" />
                       <path d="M11 3.5L13 5.5" />
@@ -10578,11 +10578,10 @@ export default function Workspace() {
                     onClick={() => void updateForgeState("dismissed")}
                     style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 22, height: 22, borderRadius: 999,
-                      border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
-                      background: "rgba(var(--atlas-gold-rgb),0.04)",
-                      color: "rgba(var(--atlas-gold-rgb),0.65)",
-                      cursor: "pointer", fontSize: 13, lineHeight: 1,
+                      width: 18, height: 18, borderRadius: 999,
+                      border: "none", background: "transparent",
+                      color: "rgba(var(--atlas-gold-rgb),0.5)",
+                      cursor: "pointer", fontSize: 12, lineHeight: 1,
                     }}
                   >
                     ×
@@ -10592,23 +10591,23 @@ export default function Workspace() {
                 <button
                   onClick={() => { setForgeActiveProjectName(project?.name); setForgeActiveProjectId(id); setShowForgeExternal(true); }}
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 7,
-                    padding: "6px 10px 6px 12px", borderRadius: 8,
-                    background: "rgba(var(--atlas-gold-rgb),0.07)",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    height: 26, padding: "0 11px", borderRadius: 999,
+                    background: "transparent",
                     border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
-                    color: "rgba(var(--atlas-gold-rgb),0.85)",
+                    color: "rgba(var(--atlas-gold-rgb),0.75)",
                     cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+                    fontFamily: "var(--app-font-mono)", fontSize: 9,
                     letterSpacing: "0.1em", textTransform: "uppercase" as const,
                     transition: "all 160ms ease",
                   }}
                 >
-                  <svg width={11} height={11} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={10} height={10} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
                     <path d="M5.5 11L2 14.5" />
                     <path d="M11 3.5L13 5.5" />
                   </svg>
-                  Forge — Extract strategy from a doc or transcript
+                  Forge
                 </button>
               )}
             </div>
