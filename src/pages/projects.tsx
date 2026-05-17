@@ -713,6 +713,7 @@ function ProjectRow({
   onCancelDelete,
   onConfirmDelete,
   onArchive,
+  onLinkRepo,
   isArchived = false,
 }: {
   project: ProjectItem;
@@ -726,6 +727,7 @@ function ProjectRow({
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onArchive: () => void;
+  onLinkRepo?: () => void;
   isArchived?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
