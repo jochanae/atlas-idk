@@ -695,36 +695,35 @@ html, body {
   z-index: 0;
 }
 
-/* ── Icon-only action button ─────────────────────────────────────────────────── */
+/* ── Icon-only action button — utility phantoms, no chrome ───────────────────── */
 .atlas-icon-action {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
-  border: 1px solid rgba(120,113,108,0.26);
+  border: none;
   color: var(--atlas-muted);
+  opacity: 0.55;
   cursor: pointer;
-  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+  transition: color 140ms ease, opacity 140ms ease, background 140ms ease;
   flex-shrink: 0;
 }
 .atlas-icon-action:hover {
-  border-color: rgba(201,162,76,0.45);
-  color: rgba(201,162,76,0.9);
-  background: rgba(201,162,76,0.06);
+  color: rgba(201,162,76,0.95);
+  opacity: 1;
+  background: rgba(201,162,76,0.04);
 }
 .atlas-icon-action.done {
-  border-color: rgba(201,162,76,0.35);
   color: var(--atlas-gold);
-  background: rgba(201,162,76,0.08);
+  opacity: 0.9;
   cursor: default;
 }
 .atlas-icon-action.copy-done {
-  border-color: rgba(74,222,128,0.4);
   color: #4ade80;
-  background: rgba(74,222,128,0.06);
+  opacity: 0.95;
   cursor: default;
 }
 
