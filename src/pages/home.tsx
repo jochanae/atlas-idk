@@ -1048,6 +1048,7 @@ export default function Home() {
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const greetingPhraseRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
 
   // ── Home context: repo / branch / model ────────────────────────────────────
