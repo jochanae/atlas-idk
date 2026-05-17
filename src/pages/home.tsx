@@ -1740,6 +1740,7 @@ export default function Home() {
                     </svg>
                   </button>
                 </div>
+                {showChatMenu && (
                   <>
                     <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
                     <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 178, boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
