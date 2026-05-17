@@ -1864,30 +1864,16 @@ export default function Home() {
             }} />
 
             {/* Greeting */}
-            {homeMessages.length === 0 && (() => {
-              const hasHistory = conversations.length > 0;
-              const hour = new Date().getHours();
-              const pool = hasHistory
-                ? ["Where were we?", "Picking something back up?", "Still untangling it?"]
-                : hour >= 5 && hour < 11
-                  ? ["Good morning.", "Morning."]
-                  : hour >= 11 && hour < 17
-                    ? ["Good afternoon.", "What's on your mind?"]
-                    : hour >= 17 && hour < 21
-                      ? ["Good evening.", "Still thinking about it?"]
-                      : ["Still at it.", "Night owl mode."];
-              const phrase = pool[Math.floor(Math.random() * pool.length)];
-              return (
-                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
-                  <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
-                    {phrase}
-                  </h1>
-                  <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
-                    I'm here. What's on your mind?
-                  </p>
-                </div>
-              );
-            })()}
+            {homeMessages.length === 0 && (
+              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
+                <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
+                  {greetingPhraseRef.current}
+                </h1>
+                <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
+                  I'm here. What's on your mind?
+                </p>
+              </div>
+            )}
 
             {/* Chat thread */}
             <div style={{ margin: homeMessages.length > 0 ? "6px 0 26px" : "18px 0 26px", minHeight: homeMessages.length > 0 ? 60 : 0 }}>
