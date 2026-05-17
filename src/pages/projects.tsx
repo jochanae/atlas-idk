@@ -20,12 +20,25 @@ type GithubRepo = {
   url: string;
 };
 
-function getStoredToken(projects?: Array<{ githubToken?: string | null }>): string | null {
+function getStoredToken(projects?: Array<{ githubToken?: string | null }>, secretToken?: string | null): string | null {
+  if (secretToken) return secretToken;
   try {
     const local = localStorage.getItem("atlas-github-token");
     if (local) return local;
   } catch {}
   return projects?.find(p => p.githubToken)?.githubToken ?? null;
+}
+
+async function fetchGithubSecret(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/secrets", { credentials: "include" });
+    if (!res.ok) return null;
+    const list = await res.json() as Array<{ label?: string; value?: string; decryptedValue?: string }>;
+    const hit = list.find(s => (s.label ?? "").toUpperCase() === "GITHUB_TOKEN");
+    return hit?.decryptedValue ?? hit?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function resolveLinkedFullName(linkedRepo?: string | null): string | null {
