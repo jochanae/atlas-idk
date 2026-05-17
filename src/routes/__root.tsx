@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 
 import "../styles.css";
+import NotFound from "@/pages/not-found";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -22,7 +23,7 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootShell,
   component: () => <Outlet />,
-  notFoundComponent: () => null,
+  notFoundComponent: NotFound,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
