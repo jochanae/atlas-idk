@@ -509,6 +509,29 @@ export default function Projects() {
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <LoadingSpinner size="md" color="atlas" />
                 </div>
+              ) : !getStoredToken(projects, secretToken) ? (
+                <div style={{ padding: "32px 24px", textAlign: "center" }}>
+                  <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "var(--atlas-fg)", marginBottom: 6 }}>
+                    No GitHub token connected.
+                  </p>
+                  <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.04em", marginBottom: 16 }}>
+                    Add your GitHub token in Secrets to browse your repositories.
+                  </p>
+                  <Link
+                    href="/secrets"
+                    style={{
+                      ...sMono, fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, textTransform: "uppercase",
+                      padding: "8px 16px", borderRadius: 6,
+                      border: "1px solid rgba(201,162,76,0.4)",
+                      background: "rgba(201,162,76,0.08)",
+                      color: "var(--atlas-gold)",
+                      textDecoration: "none",
+                      display: "inline-block",
+                    }}
+                  >
+                    Open Secrets →
+                  </Link>
+                </div>
               ) : githubError ? (
                 <div style={{ padding: "24px 20px", textAlign: "center" }}>
                   <p style={{ ...sMono, fontSize: 11, color: "rgba(252,165,165,0.8)", letterSpacing: "0.06em" }}>{githubError}</p>
@@ -517,38 +540,49 @@ export default function Projects() {
                 <div style={{ padding: "24px 20px", textAlign: "center" }}>
                   <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)" }}>No repositories found.</p>
                 </div>
-              ) : (
-                <>
-                  {/* Already linked repos */}
-                  {githubRepos.filter(r => linkedFullNames.has(r.fullName)).length > 0 && (
-                    <div style={{ padding: "6px 20px 4px" }}>
-                      <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                        Already in Axiom
-                      </span>
+              ) : (() => {
+                const q = repoSearch.trim().toLowerCase();
+                const filtered = q ? githubRepos.filter(r => r.name.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q)) : githubRepos;
+                const linkedList = targetProjectId ? [] : filtered.filter(r => linkedFullNames.has(r.fullName));
+                const unlinkedList = filtered.filter(r => !linkedFullNames.has(r.fullName));
+                if (filtered.length === 0) {
+                  return (
+                    <div style={{ padding: "24px 20px", textAlign: "center" }}>
+                      <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)" }}>No repos match "{repoSearch}".</p>
                     </div>
-                  )}
-                  {githubRepos.filter(r => linkedFullNames.has(r.fullName)).map(repo => (
-                    <RepoRow key={repo.id} repo={repo} linked />
-                  ))}
-
-                  {/* Importable repos */}
-                  {githubRepos.filter(r => !linkedFullNames.has(r.fullName)).length > 0 && (
-                    <div style={{ padding: "10px 20px 4px" }}>
-                      <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                        Import to Axiom
-                      </span>
-                    </div>
-                  )}
-                  {githubRepos.filter(r => !linkedFullNames.has(r.fullName)).map(repo => (
-                    <RepoRow
-                      key={repo.id}
-                      repo={repo}
-                      importing={importingRepo === repo.fullName}
-                      onImport={() => handleImportRepo(repo)}
-                    />
-                  ))}
-                </>
-              )}
+                  );
+                }
+                return (
+                  <>
+                    {unlinkedList.length > 0 && (
+                      <div style={{ padding: "6px 20px 4px" }}>
+                        <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
+                          Available
+                        </span>
+                      </div>
+                    )}
+                    {unlinkedList.map(repo => (
+                      <RepoRow
+                        key={repo.id}
+                        repo={repo}
+                        importing={importingRepo === repo.fullName}
+                        success={recentlyLinked === repo.fullName}
+                        onImport={() => handleImportRepo(repo)}
+                      />
+                    ))}
+                    {linkedList.length > 0 && (
+                      <div style={{ padding: "14px 20px 4px" }}>
+                        <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
+                          Already linked
+                        </span>
+                      </div>
+                    )}
+                    {linkedList.map(repo => (
+                      <RepoRow key={repo.id} repo={repo} linked />
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
