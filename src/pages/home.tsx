@@ -1115,6 +1115,7 @@ export default function Home() {
   }, [isListening]);
 
   const [typewriterPaused, setTypewriterPaused] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
   const { data: projects, isLoading } = useListProjects();
