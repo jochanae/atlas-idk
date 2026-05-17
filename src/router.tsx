@@ -7,7 +7,7 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   // Auto-reload on stale chunk errors (common after rebuilds)
   if (
     typeof window !== "undefined" &&
-    /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(
+    /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \d+ failed|Loading CSS chunk/i.test(
       error?.message ?? ""
     )
   ) {
