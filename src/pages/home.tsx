@@ -1809,12 +1809,9 @@ export default function Home() {
             {/* Greeting */}
             {homeMessages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
+                <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: 0 }}>
                   Where were we.
                 </h1>
-                <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
-                  I'm here. What's on your mind?
-                </p>
               </div>
             )}
 
