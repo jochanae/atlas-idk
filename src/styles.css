@@ -348,29 +348,22 @@ html, body {
   to { opacity: 0; }
 }
 
-/* ── Atlas glass input shell ── */
+/* ── Atlas composer shell — stripped, single-surface ── */
 .atlas-input-shell {
-  background: var(--atlas-glass-bg);
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid var(--atlas-gold-border);
-  border-radius: 20px;
-  animation: atlas-breathing-glow 3s cubic-bezier(0.37, 0, 0.63, 1) infinite;
-  transition: border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  transition: none;
 }
 [data-theme="parchment"] .atlas-input-shell {
-  background: rgba(255, 252, 245, 0.95);
-  border: 1px solid rgba(180, 83, 9, 0.45);
-  box-shadow: 0 2px 14px rgba(146, 64, 14, 0.10);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .atlas-input-shell:focus-within {
   animation: none;
-  border-color: var(--atlas-gold-glow);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.03),
-    0 0 0 1px var(--atlas-gold-dim),
-    0 8px 32px var(--atlas-shadow-lg),
-    0 0 28px -4px var(--atlas-gold-glow);
+  border: none;
+  box-shadow: none;
 }
 
 @keyframes atlas-breathing-glow {
