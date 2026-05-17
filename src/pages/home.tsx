@@ -2530,6 +2530,57 @@ export default function Home() {
         />
       </div>
 
+      {showBriefingPanel && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", justifyContent: "flex-end" }}
+          onClick={() => setShowBriefingPanel(false)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "var(--atlas-bg)", opacity: 0.4 }} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: "relative",
+              width: "min(420px, 92vw)",
+              maxHeight: "100vh",
+              background: "var(--atlas-surface)",
+              borderLeft: "1px solid var(--atlas-border)",
+              padding: "20px 18px",
+              overflowY: "auto",
+              animation: "fadeIn 200ms ease forwards",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Briefcase size={13} strokeWidth={1.75} color="var(--atlas-gold)" />
+                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase", opacity: 0.8 }}>
+                  Briefing
+                </span>
+              </div>
+              <button
+                onClick={() => setShowBriefingPanel(false)}
+                style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 4 }}
+                aria-label="Close briefing"
+              >
+                ×
+              </button>
+            </div>
+            {briefingLoading ? (
+              <div style={{ fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.6 }}>
+                Atlas is preparing your briefing…
+              </div>
+            ) : briefing ? (
+              <p style={{ margin: 0, fontSize: 13, color: "var(--atlas-fg)", lineHeight: 1.6, fontFamily: "var(--app-font-sans)", opacity: 0.9, whiteSpace: "pre-wrap" }}>
+                {briefing}
+              </p>
+            ) : (
+              <p style={{ margin: 0, fontSize: 12, color: "var(--atlas-muted)", fontStyle: "italic", opacity: 0.6 }}>
+                No briefing available yet.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {showHistory && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 500,
