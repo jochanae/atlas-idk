@@ -1848,30 +1848,25 @@ export default function Home() {
 
             {/* Greeting */}
             {homeMessages.length === 0 && (() => {
-              // eslint-disable-next-line react-hooks/rules-of-hooks
-              const greeting = useMemo(() => {
-                const hasHistory = conversations.length > 0;
-                const returningPhrases = ["Where were we?", "Picking something back up?", "Still untangling it?", "Back for another pass?"];
-                const hour = new Date().getHours();
-                const newPhrases =
-                  hour >= 5 && hour < 11
-                    ? ["Good morning.", "Morning.", "Starting fresh?"]
-                    : hour >= 11 && hour < 17
-                      ? ["Good afternoon.", "What's on your mind?"]
-                      : hour >= 17 && hour < 21
-                        ? ["Good evening.", "Still thinking about it?", "Back tonight?", "Quiet hours."]
-                        : ["Still at it.", "Night owl mode.", "Late one tonight."];
-                const pool = hasHistory ? returningPhrases : newPhrases;
-                const phrase = pool[Math.floor(Math.random() * pool.length)];
-                const firstName = (authUser?.name ?? "").trim().split(/\s+/)[0];
-                const useName = hasHistory && firstName && Math.random() < 0.3;
-                return { phrase, name: useName ? firstName : null };
-              }, [conversations.length, authUser?.name]);
+              const hasHistory = conversations.length > 0;
+              const hour = new Date().getHours();
+              const pool = hasHistory
+                ? ["Where were we?", "Picking something back up?", "Still untangling it?"]
+                : hour >= 5 && hour < 11
+                  ? ["Good morning.", "Morning."]
+                  : hour >= 11 && hour < 17
+                    ? ["Good afternoon.", "What's on your mind?"]
+                    : hour >= 17 && hour < 21
+                      ? ["Good evening.", "Still thinking about it?"]
+                      : ["Still at it.", "Night owl mode."];
+              const phrase = pool[Math.floor(Math.random() * pool.length)];
               return (
-                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1, animation: "fadeIn 600ms ease forwards" }}>
-                  <p style={{ fontSize: 22, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.85, margin: 0, letterSpacing: "-0.01em", lineHeight: 1.35 }}>
-                    {greeting.name && (<>{greeting.name}.<br /></>)}
-                    {greeting.phrase}
+                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
+                  <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
+                    {phrase}
+                  </h1>
+                  <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
+                    I'm here. What's on your mind?
                   </p>
                 </div>
               );
@@ -1884,7 +1879,15 @@ export default function Home() {
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {homeMessages.length === 0 ? null : (
+            {homeMessages.length === 0 && !isAtlasStreaming && !threadLoading ? (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
+                <LoadingSpinner size="sm" color="atlas" />
+              </div>
+            ) : homeMessages.length === 0 && !isAtlasStreaming ? (
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <LoadingSpinner size="sm" color="atlas" />
+              </div>
+            ) : (
               <div>
                 {/* Messages */}
                 <div
@@ -2118,6 +2121,31 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
+              {!hasInput && !inputFocused && homeMessages.length === 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 44,
+                    zIndex: 2,
+                    color: "var(--atlas-muted)",
+                    fontSize: 15,
+                    lineHeight: 1.55,
+                    opacity: typewriterPaused ? 0.4 : 0.65,
+                    cursor: "text",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    fontFamily: "var(--app-font-sans)",
+                    transition: "opacity 160ms ease",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {placeholder}
+                  {!typewriterPaused && <span className="atlas-cursor" />}
+                </div>
+              )}
               <textarea
                 ref={textareaRef}
                 value={input}
