@@ -39,7 +39,7 @@ let _401redirectPending = false;
 // calls are automatically rewritten to hit that origin. This makes the frontend
 // work correctly when deployed to a different domain (Vercel, Netlify, etc.)
 // without touching any individual fetch call in the codebase.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "https://workspaceapi-server-production-7e0d.up.railway.app").replace(/\/$/, "");
 
 function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
   if (!API_BASE) return input;
