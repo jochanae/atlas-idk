@@ -375,6 +375,7 @@ export default function Projects() {
                   onCancelDelete={() => setConfirmDeleteId(null)}
                   onConfirmDelete={() => handleDelete(p.id)}
                   onArchive={() => handleArchive(p.id, true)}
+                  onLinkRepo={hasGithubToken ? () => openGithubSheet(p.id) : undefined}
                 />
               ))}
             </div>
