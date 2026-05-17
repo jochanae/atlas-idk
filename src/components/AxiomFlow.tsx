@@ -1638,17 +1638,26 @@ function FlowNodeComponent({
         {icon}
       </div>
       {moscow && <MoscowBadge value={moscow} palette={palette} />}
-      <span style={{
-        fontSize: v.labelSize,
-        fontWeight: v.labelWeight,
-        color: v.textColor,
-        whiteSpace: "nowrap",
-        textDecoration: v.textDecoration,
-        maxWidth: 88,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        letterSpacing: node.type === "goal" ? "0.04em" : 0,
-      }}>
+      <span
+        title={node.label}
+        style={{
+          fontSize: v.labelSize,
+          fontWeight: v.labelWeight,
+          color: v.textColor,
+          whiteSpace: "normal",
+          textDecoration: v.textDecoration,
+          maxWidth: 140,
+          maxHeight: "2.4em",
+          lineHeight: 1.2,
+          textAlign: "center",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          letterSpacing: node.type === "goal" ? "0.04em" : 0,
+        }}
+      >
         {node.label}
       </span>
       {defined && (
