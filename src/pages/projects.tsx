@@ -80,15 +80,34 @@ export default function Projects() {
   const [githubLoading, setGithubLoading] = useState(false);
   const [githubError, setGithubError] = useState<string | null>(null);
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
+  const [recentlyLinked, setRecentlyLinked] = useState<string | null>(null);
+  const [secretToken, setSecretToken] = useState<string | null>(null);
+  const [hasGithubToken, setHasGithubToken] = useState<boolean>(false);
+  const [repoSearch, setRepoSearch] = useState("");
+  // When set, sheet links directly to that project (bypasses name-match logic)
+  const [targetProjectId, setTargetProjectId] = useState<number | null>(null);
 
-  const openGithubSheet = useCallback(async () => {
+  // Check for GITHUB_TOKEN in /api/secrets on mount
+  useEffect(() => {
+    let cancelled = false;
+    fetchGithubSecret().then(tok => {
+      if (cancelled) return;
+      setSecretToken(tok);
+      setHasGithubToken(!!tok || !!getStoredToken(projects));
+    });
+    return () => { cancelled = true; };
+  }, [projects]);
+
+  const openGithubSheet = useCallback(async (forProjectId?: number) => {
     setShowGithubSheet(true);
+    setTargetProjectId(forProjectId ?? null);
     setGithubError(null);
+    setRepoSearch("");
     if (githubRepos.length > 0) return; // already loaded
     setGithubLoading(true);
     try {
-      const token = getStoredToken(projects);
-      if (!token) { setGithubError("No GitHub token found. Open any project workspace and connect your token first."); setGithubLoading(false); return; }
+      const token = getStoredToken(projects, secretToken);
+      if (!token) { setGithubLoading(false); return; }
       const res = await fetch("/api/github/repos", { credentials: "include", headers: { "x-github-token": token } });
       if (!res.ok) throw new Error(`GitHub error ${res.status}`);
       const data = await res.json() as GithubRepo[];
@@ -98,36 +117,55 @@ export default function Projects() {
     } finally {
       setGithubLoading(false);
     }
-  }, [projects, githubRepos.length]);
+  }, [projects, githubRepos.length, secretToken]);
 
   const handleImportRepo = useCallback(async (repo: GithubRepo) => {
     setImportingRepo(repo.fullName);
     try {
-      const token = getStoredToken(projects);
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: repo.name, description: repo.description ?? undefined }),
-      });
-      if (!res.ok) throw new Error("Failed to create project");
-      const created = await res.json() as { id: number };
-      // Link the repo + store token
-      await fetch(`/api/projects/${created.id}`, {
+      const token = getStoredToken(projects, secretToken);
+      const linkedRepoPayload = JSON.stringify(repo);
+
+      // 1. Explicit target project (from per-card chain-link button)
+      let projectId: number | null = targetProjectId;
+
+      // 2. Otherwise, look for a matching project by name (case-insensitive)
+      if (!projectId) {
+        const match = (projects ?? []).find(p => p.name.toLowerCase() === repo.name.toLowerCase());
+        if (match) projectId = match.id;
+      }
+
+      // 3. Otherwise, create a new project
+      if (!projectId) {
+        const res = await fetch("/api/projects", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: repo.name, description: repo.description ?? undefined }),
+        });
+        if (!res.ok) throw new Error("Failed to create project");
+        const created = await res.json() as { id: number };
+        projectId = created.id;
+      }
+
+      // Link the repo (+ store token if available)
+      await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkedRepo: repo.fullName, ...(token ? { githubToken: token } : {}) }),
+        body: JSON.stringify({ linkedRepo: linkedRepoPayload, ...(token ? { githubToken: token } : {}) }),
       });
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      setShowGithubSheet(false);
-      setLocation(`/project/${created.id}`);
+      setRecentlyLinked(repo.fullName);
+      setTimeout(() => setRecentlyLinked(null), 1800);
+      if (targetProjectId) {
+        setTimeout(() => setShowGithubSheet(false), 600);
+      }
     } catch (e: any) {
-      setGithubError(e?.message ?? "Import failed");
+      setGithubError(e?.message ?? "Link failed");
     } finally {
       setImportingRepo(null);
     }
-  }, [projects, queryClient, setLocation]);
+  }, [projects, queryClient, secretToken, targetProjectId]);
 
   const handleNew = () => {
     setCreateError(null);
