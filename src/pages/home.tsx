@@ -1884,15 +1884,7 @@ export default function Home() {
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {homeMessages.length === 0 && !isAtlasStreaming && !threadLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
-                <LoadingSpinner size="sm" color="atlas" />
-              </div>
-            ) : homeMessages.length === 0 && !isAtlasStreaming ? (
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <LoadingSpinner size="sm" color="atlas" />
-              </div>
-            ) : (
+            {homeMessages.length === 0 ? null : (
               <div>
                 {/* Messages */}
                 <div
