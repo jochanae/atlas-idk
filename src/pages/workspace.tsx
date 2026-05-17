@@ -10746,11 +10746,8 @@ export default function Workspace() {
             <div
               className="atlas-input-shell"
               style={{
-                padding: "13px 15px",
-                borderColor: LENS_CONFIG[detectedLens ?? wsLens].borderColor,
-                boxShadow: `0 4px 24px rgba(0,0,0,0.28), 0 0 14px -8px ${LENS_CONFIG[detectedLens ?? wsLens].glowColor}`,
-                transition: "border-color 220ms ease, box-shadow 220ms ease",
-                ...(wsLens === "scenario" ? { background: "rgba(120,113,108,0.04)" } : {}),
+                padding: "4px 4px",
+                transition: "none",
               }}
             >
               <div style={{ position: "relative" }}>
@@ -10758,9 +10755,9 @@ export default function Workspace() {
                   <div
                     aria-hidden
                     style={{
-                      position: "absolute", top: 0, left: 0,
+                      position: "absolute", top: 0, left: 2,
                       color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1.6,
-                      opacity: 0.82, pointerEvents: "none",
+                      opacity: 0.6, pointerEvents: "none",
                       fontFamily: "var(--app-font-sans)",
                     }}
                   >
@@ -10773,13 +10770,14 @@ export default function Workspace() {
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(); }}
                   onKeyDown={handleKeyDown}
-                  rows={2}
+                  rows={1}
                   style={{
                     width: "100%", background: "transparent", border: "none", outline: "none",
                     color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
                     resize: "none", fontFamily: "var(--app-font-sans)",
                     position: "relative", zIndex: 1,
-                    minHeight: 46, maxHeight: 180, overflowY: "hidden", display: "block",
+                    minHeight: 24, maxHeight: 180, overflowY: "hidden", display: "block",
+                    padding: "2px 2px",
                   }}
                 />
               </div>
