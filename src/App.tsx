@@ -54,6 +54,18 @@ function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
 const _originalFetch = window.fetch.bind(window);
 window.fetch = async (...args) => {
   args[0] = resolveApiUrl(args[0]);
+  // Ensure cookies are sent on every /api/* call so the session cookie set
+  // at login is included on subsequent authenticated requests. Without this,
+  // backends that use cookie sessions return 401 for every call.
+  const url = typeof args[0] === "string" ? args[0] : (args[0] as Request | URL).toString();
+  if (url.includes("/api/")) {
+    if (args[0] instanceof Request) {
+      // Request objects bake in credentials; rebuild with include
+      args[0] = new Request(args[0], { credentials: "include" });
+    } else {
+      args[1] = { ...(args[1] ?? {}), credentials: (args[1] as RequestInit | undefined)?.credentials ?? "include" };
+    }
+  }
   const res = await _originalFetch(...args);
   if (res.status === 401) {
     const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
