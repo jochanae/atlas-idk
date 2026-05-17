@@ -235,7 +235,7 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
 }
 
 export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, onOpenQuickPrompt, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
-  const [showBriefing, setShowBriefing] = useState(false);
+  
   if (projects.length === 0) return null;
 
   const recent = projects.slice(0, 5);
