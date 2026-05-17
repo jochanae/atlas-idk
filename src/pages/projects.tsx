@@ -20,12 +20,25 @@ type GithubRepo = {
   url: string;
 };
 
-function getStoredToken(projects?: Array<{ githubToken?: string | null }>): string | null {
+function getStoredToken(projects?: Array<{ githubToken?: string | null }>, secretToken?: string | null): string | null {
+  if (secretToken) return secretToken;
   try {
     const local = localStorage.getItem("atlas-github-token");
     if (local) return local;
   } catch {}
   return projects?.find(p => p.githubToken)?.githubToken ?? null;
+}
+
+async function fetchGithubSecret(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/secrets", { credentials: "include" });
+    if (!res.ok) return null;
+    const list = await res.json() as Array<{ label?: string; value?: string; decryptedValue?: string }>;
+    const hit = list.find(s => (s.label ?? "").toUpperCase() === "GITHUB_TOKEN");
+    return hit?.decryptedValue ?? hit?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function resolveLinkedFullName(linkedRepo?: string | null): string | null {
@@ -67,15 +80,34 @@ export default function Projects() {
   const [githubLoading, setGithubLoading] = useState(false);
   const [githubError, setGithubError] = useState<string | null>(null);
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
+  const [recentlyLinked, setRecentlyLinked] = useState<string | null>(null);
+  const [secretToken, setSecretToken] = useState<string | null>(null);
+  const [hasGithubToken, setHasGithubToken] = useState<boolean>(false);
+  const [repoSearch, setRepoSearch] = useState("");
+  // When set, sheet links directly to that project (bypasses name-match logic)
+  const [targetProjectId, setTargetProjectId] = useState<number | null>(null);
 
-  const openGithubSheet = useCallback(async () => {
+  // Check for GITHUB_TOKEN in /api/secrets on mount
+  useEffect(() => {
+    let cancelled = false;
+    fetchGithubSecret().then(tok => {
+      if (cancelled) return;
+      setSecretToken(tok);
+      setHasGithubToken(!!tok || !!getStoredToken(projects));
+    });
+    return () => { cancelled = true; };
+  }, [projects]);
+
+  const openGithubSheet = useCallback(async (forProjectId?: number) => {
     setShowGithubSheet(true);
+    setTargetProjectId(forProjectId ?? null);
     setGithubError(null);
+    setRepoSearch("");
     if (githubRepos.length > 0) return; // already loaded
     setGithubLoading(true);
     try {
-      const token = getStoredToken(projects);
-      if (!token) { setGithubError("No GitHub token found. Open any project workspace and connect your token first."); setGithubLoading(false); return; }
+      const token = getStoredToken(projects, secretToken);
+      if (!token) { setGithubLoading(false); return; }
       const res = await fetch("/api/github/repos", { credentials: "include", headers: { "x-github-token": token } });
       if (!res.ok) throw new Error(`GitHub error ${res.status}`);
       const data = await res.json() as GithubRepo[];
@@ -85,36 +117,55 @@ export default function Projects() {
     } finally {
       setGithubLoading(false);
     }
-  }, [projects, githubRepos.length]);
+  }, [projects, githubRepos.length, secretToken]);
 
   const handleImportRepo = useCallback(async (repo: GithubRepo) => {
     setImportingRepo(repo.fullName);
     try {
-      const token = getStoredToken(projects);
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: repo.name, description: repo.description ?? undefined }),
-      });
-      if (!res.ok) throw new Error("Failed to create project");
-      const created = await res.json() as { id: number };
-      // Link the repo + store token
-      await fetch(`/api/projects/${created.id}`, {
+      const token = getStoredToken(projects, secretToken);
+      const linkedRepoPayload = JSON.stringify(repo);
+
+      // 1. Explicit target project (from per-card chain-link button)
+      let projectId: number | null = targetProjectId;
+
+      // 2. Otherwise, look for a matching project by name (case-insensitive)
+      if (!projectId) {
+        const match = (projects ?? []).find(p => p.name.toLowerCase() === repo.name.toLowerCase());
+        if (match) projectId = match.id;
+      }
+
+      // 3. Otherwise, create a new project
+      if (!projectId) {
+        const res = await fetch("/api/projects", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: repo.name, description: repo.description ?? undefined }),
+        });
+        if (!res.ok) throw new Error("Failed to create project");
+        const created = await res.json() as { id: number };
+        projectId = created.id;
+      }
+
+      // Link the repo (+ store token if available)
+      await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkedRepo: repo.fullName, ...(token ? { githubToken: token } : {}) }),
+        body: JSON.stringify({ linkedRepo: linkedRepoPayload, ...(token ? { githubToken: token } : {}) }),
       });
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      setShowGithubSheet(false);
-      setLocation(`/project/${created.id}`);
+      setRecentlyLinked(repo.fullName);
+      setTimeout(() => setRecentlyLinked(null), 1800);
+      if (targetProjectId) {
+        setTimeout(() => setShowGithubSheet(false), 600);
+      }
     } catch (e: any) {
-      setGithubError(e?.message ?? "Import failed");
+      setGithubError(e?.message ?? "Link failed");
     } finally {
       setImportingRepo(null);
     }
-  }, [projects, queryClient, setLocation]);
+  }, [projects, queryClient, secretToken, targetProjectId]);
 
   const handleNew = () => {
     setCreateError(null);
@@ -204,34 +255,36 @@ export default function Projects() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* From GitHub */}
-          <button
-            onClick={openGithubSheet}
-            style={{
-              ...sMono,
-              fontSize: 10,
-              letterSpacing: "0.12em",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              padding: "7px 12px",
-              borderRadius: 6,
-              border: "1px solid rgba(74,222,128,0.25)",
-              background: "rgba(74,222,128,0.06)",
-              color: "rgba(74,222,128,0.75)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              transition: "all 160ms ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(74,222,128,0.12)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.45)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(74,222,128,0.06)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.25)"; }}
-          >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="rgba(74,222,128,0.75)">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-            </svg>
-            GitHub
-          </button>
+          {/* Link Repos */}
+          {hasGithubToken && (
+            <button
+              onClick={() => openGithubSheet()}
+              style={{
+                ...sMono,
+                fontSize: 10,
+                letterSpacing: "0.12em",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                padding: "7px 12px",
+                borderRadius: 6,
+                border: "1px solid rgba(74,222,128,0.25)",
+                background: "rgba(74,222,128,0.06)",
+                color: "rgba(74,222,128,0.75)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "all 160ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(74,222,128,0.12)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.45)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(74,222,128,0.06)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.25)"; }}
+            >
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="rgba(74,222,128,0.75)">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+              </svg>
+              Link Repos
+            </button>
+          )}
 
           {/* + New */}
           <button
@@ -322,6 +375,7 @@ export default function Projects() {
                   onCancelDelete={() => setConfirmDeleteId(null)}
                   onConfirmDelete={() => handleDelete(p.id)}
                   onArchive={() => handleArchive(p.id, true)}
+                  onLinkRepo={hasGithubToken ? () => openGithubSheet(p.id) : undefined}
                 />
               ))}
             </div>
@@ -402,26 +456,52 @@ export default function Projects() {
             }}
           >
             {/* Sheet header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="rgba(74,222,128,0.8)">
-                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-                </svg>
-                <span style={{ ...sMono, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "var(--atlas-fg)", textTransform: "uppercase" }}>
-                  Your Repositories
-                </span>
-                {githubRepos.length > 0 && (
-                  <span style={{ ...sMono, fontSize: 9, color: "var(--atlas-muted)", opacity: 0.5 }}>
-                    {githubRepos.length} repos
+            <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="rgba(74,222,128,0.8)" aria-hidden="true">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                  </svg>
+                  <span style={{ ...sMono, fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "var(--atlas-fg)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    Your GitHub Repositories
                   </span>
-                )}
+                </div>
+                <button
+                  onClick={() => setShowGithubSheet(false)}
+                  aria-label="Close"
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 22, lineHeight: 1, padding: "2px 6px", flexShrink: 0 }}
+                >
+                  ×
+                </button>
               </div>
-              <button
-                onClick={() => setShowGithubSheet(false)}
-                style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 18, lineHeight: 1, padding: "2px 4px" }}
-              >
-                ×
-              </button>
+              {targetProjectId && (
+                <div style={{ ...sMono, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em", marginTop: 6 }}>
+                  Linking to: <span style={{ color: "var(--atlas-gold)" }}>{(projects ?? []).find(p => p.id === targetProjectId)?.name}</span>
+                </div>
+              )}
+              {githubRepos.length > 0 && (
+                <input
+                  type="text"
+                  placeholder="Search repos…"
+                  value={repoSearch}
+                  onChange={e => setRepoSearch(e.target.value)}
+                  style={{
+                    marginTop: 10,
+                    width: "100%",
+                    boxSizing: "border-box",
+                    background: "var(--atlas-bg)",
+                    border: "1px solid var(--atlas-border)",
+                    borderRadius: 6,
+                    padding: "7px 10px",
+                    color: "var(--atlas-fg)",
+                    fontSize: 12,
+                    fontFamily: "var(--app-font-sans)",
+                    outline: "none",
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)"; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = "var(--atlas-border)"; }}
+                />
+              )}
             </div>
 
             {/* Sheet body */}
@@ -429,6 +509,29 @@ export default function Projects() {
               {githubLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <LoadingSpinner size="md" color="atlas" />
+                </div>
+              ) : !getStoredToken(projects, secretToken) ? (
+                <div style={{ padding: "32px 24px", textAlign: "center" }}>
+                  <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "var(--atlas-fg)", marginBottom: 6 }}>
+                    No GitHub token connected.
+                  </p>
+                  <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.04em", marginBottom: 16 }}>
+                    Add your GitHub token in Secrets to browse your repositories.
+                  </p>
+                  <Link
+                    href="/secrets"
+                    style={{
+                      ...sMono, fontSize: 10, letterSpacing: "0.12em", fontWeight: 600, textTransform: "uppercase",
+                      padding: "8px 16px", borderRadius: 6,
+                      border: "1px solid rgba(201,162,76,0.4)",
+                      background: "rgba(201,162,76,0.08)",
+                      color: "var(--atlas-gold)",
+                      textDecoration: "none",
+                      display: "inline-block",
+                    }}
+                  >
+                    Open Secrets →
+                  </Link>
                 </div>
               ) : githubError ? (
                 <div style={{ padding: "24px 20px", textAlign: "center" }}>
@@ -438,38 +541,49 @@ export default function Projects() {
                 <div style={{ padding: "24px 20px", textAlign: "center" }}>
                   <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)" }}>No repositories found.</p>
                 </div>
-              ) : (
-                <>
-                  {/* Already linked repos */}
-                  {githubRepos.filter(r => linkedFullNames.has(r.fullName)).length > 0 && (
-                    <div style={{ padding: "6px 20px 4px" }}>
-                      <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                        Already in Axiom
-                      </span>
+              ) : (() => {
+                const q = repoSearch.trim().toLowerCase();
+                const filtered = q ? githubRepos.filter(r => r.name.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q)) : githubRepos;
+                const linkedList = targetProjectId ? [] : filtered.filter(r => linkedFullNames.has(r.fullName));
+                const unlinkedList = filtered.filter(r => !linkedFullNames.has(r.fullName));
+                if (filtered.length === 0) {
+                  return (
+                    <div style={{ padding: "24px 20px", textAlign: "center" }}>
+                      <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)" }}>No repos match "{repoSearch}".</p>
                     </div>
-                  )}
-                  {githubRepos.filter(r => linkedFullNames.has(r.fullName)).map(repo => (
-                    <RepoRow key={repo.id} repo={repo} linked />
-                  ))}
-
-                  {/* Importable repos */}
-                  {githubRepos.filter(r => !linkedFullNames.has(r.fullName)).length > 0 && (
-                    <div style={{ padding: "10px 20px 4px" }}>
-                      <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                        Import to Axiom
-                      </span>
-                    </div>
-                  )}
-                  {githubRepos.filter(r => !linkedFullNames.has(r.fullName)).map(repo => (
-                    <RepoRow
-                      key={repo.id}
-                      repo={repo}
-                      importing={importingRepo === repo.fullName}
-                      onImport={() => handleImportRepo(repo)}
-                    />
-                  ))}
-                </>
-              )}
+                  );
+                }
+                return (
+                  <>
+                    {unlinkedList.length > 0 && (
+                      <div style={{ padding: "6px 20px 4px" }}>
+                        <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
+                          Available
+                        </span>
+                      </div>
+                    )}
+                    {unlinkedList.map(repo => (
+                      <RepoRow
+                        key={repo.id}
+                        repo={repo}
+                        importing={importingRepo === repo.fullName}
+                        success={recentlyLinked === repo.fullName}
+                        onImport={() => handleImportRepo(repo)}
+                      />
+                    ))}
+                    {linkedList.length > 0 && (
+                      <div style={{ padding: "14px 20px 4px" }}>
+                        <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
+                          Already linked
+                        </span>
+                      </div>
+                    )}
+                    {linkedList.map(repo => (
+                      <RepoRow key={repo.id} repo={repo} linked />
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -478,10 +592,11 @@ export default function Projects() {
   );
 }
 
-function RepoRow({ repo, linked, importing, onImport }: {
+function RepoRow({ repo, linked, importing, success, onImport }: {
   repo: GithubRepo;
   linked?: boolean;
   importing?: boolean;
+  success?: boolean;
   onImport?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -533,7 +648,27 @@ function RepoRow({ repo, linked, importing, onImport }: {
 
       {/* Action */}
       {linked ? (
-        <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.1em", color: "rgba(74,222,128,0.55)", flexShrink: 0, textTransform: "uppercase" }}>
+        <span style={{
+          ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
+          color: "rgb(251,191,36)",
+          background: "rgba(251,191,36,0.1)",
+          border: "1px solid rgba(251,191,36,0.3)",
+          borderRadius: 4, padding: "3px 7px",
+        }}>
+          Already linked
+        </span>
+      ) : success ? (
+        <span style={{
+          ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
+          color: "rgb(74,222,128)",
+          background: "rgba(74,222,128,0.12)",
+          border: "1px solid rgba(74,222,128,0.4)",
+          borderRadius: 4, padding: "3px 9px",
+          display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2.5 6.5l2.5 2.5 4.5-5" />
+          </svg>
           Linked
         </span>
       ) : (
@@ -550,7 +685,7 @@ function RepoRow({ repo, linked, importing, onImport }: {
             transition: "all 140ms ease",
           }}
         >
-          {importing ? "…" : "Import"}
+          {importing ? "…" : "Link →"}
         </button>
       )}
     </div>
@@ -578,6 +713,7 @@ function ProjectRow({
   onCancelDelete,
   onConfirmDelete,
   onArchive,
+  onLinkRepo,
   isArchived = false,
 }: {
   project: ProjectItem;
@@ -591,6 +727,7 @@ function ProjectRow({
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onArchive: () => void;
+  onLinkRepo?: () => void;
   isArchived?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -759,6 +896,26 @@ function ProjectRow({
         </div>
       ) : showActions ? (
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+          {/* Link Repo */}
+          {onLinkRepo && !p.linkedRepo && (
+            <button
+              title="Link a GitHub repo"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onLinkRepo(); setMenuOpen(false); }}
+              style={{
+                background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 4,
+                padding: "4px 7px", cursor: "pointer", lineHeight: 1,
+                color: "var(--atlas-muted)", transition: "all 140ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(74,222,128,0.4)"; e.currentTarget.style.color = "rgba(74,222,128,0.85)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--atlas-border)"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6.5 8.5l3-3" />
+                <path d="M7.5 4.5l1.5-1.5a2.83 2.83 0 014 4L11.5 8.5" />
+                <path d="M8.5 11.5L7 13a2.83 2.83 0 01-4-4l1.5-1.5" />
+              </svg>
+            </button>
+          )}
           {/* Archive / Restore */}
           <button
             title={isArchived ? "Restore project" : "Archive project"}
