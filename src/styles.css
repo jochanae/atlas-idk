@@ -354,7 +354,7 @@ html, body {
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
   border: 1px solid var(--atlas-gold-border);
-  border-radius: 14px;
+  border-radius: 20px;
   animation: atlas-breathing-glow 3s cubic-bezier(0.37, 0, 0.63, 1) infinite;
   transition: border-color 220ms var(--ease-cinematic), box-shadow 220ms var(--ease-cinematic);
 }
