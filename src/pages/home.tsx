@@ -1114,7 +1114,8 @@ export default function Home() {
     document.body.dataset.voiceActive = "true";
   }, [isListening]);
 
-  const placeholder = useTypewriter(PLACEHOLDERS);
+  const [typewriterPaused, setTypewriterPaused] = useState(false);
+  const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
   const { data: projects, isLoading } = useListProjects();
   const createProject = useCreateProject();
