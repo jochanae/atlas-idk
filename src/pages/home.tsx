@@ -1717,18 +1717,29 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <button
-                  onClick={() => setShowChatMenu(v => !v)}
-                  title="More options"
-                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-muted)", opacity: 0.65, lineHeight: 1, transition: "opacity 140ms" }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.65")}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-                  </svg>
-                </button>
-                {showChatMenu && (
+                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <button
+                    onClick={() => setShowBriefingPanel(true)}
+                    title="Show briefing"
+                    aria-label="Show briefing"
+                    style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.7, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.7")}
+                  >
+                    <Briefcase size={13} strokeWidth={1.75} />
+                  </button>
+                  <button
+                    onClick={() => setShowChatMenu(v => !v)}
+                    title="More options"
+                    style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-muted)", opacity: 0.65, lineHeight: 1, transition: "opacity 140ms" }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.65")}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                    </svg>
+                  </button>
+                </div>
                   <>
                     <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
                     <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 178, boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
