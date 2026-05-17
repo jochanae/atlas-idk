@@ -6,6 +6,26 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   const router = useRouter();
   const [copied, setCopied] = useState(false);
 
+  const clearRuntimeCaches = () => {
+    if (typeof window === "undefined") return;
+
+    try {
+      if ("caches" in window) {
+        void caches.keys().then((keys) =>
+          Promise.all(keys.map((key) => caches.delete(key)))
+        );
+      }
+
+      if ("serviceWorker" in navigator) {
+        void navigator.serviceWorker
+          .getRegistrations()
+          .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())));
+      }
+    } catch {
+      // noop
+    }
+  };
+
   // Auto-reload on stale chunk errors (common after rebuilds)
   if (
     typeof window !== "undefined" &&
@@ -17,6 +37,7 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
     const last = Number(sessionStorage.getItem(key) ?? 0);
     if (Date.now() - last > 10000) {
       sessionStorage.setItem(key, String(Date.now()));
+      clearRuntimeCaches();
       window.location.reload();
       return null;
     }
@@ -98,6 +119,7 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={() => {
+              clearRuntimeCaches();
               router.invalidate();
               reset();
             }}

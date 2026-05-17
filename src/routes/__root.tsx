@@ -36,12 +36,27 @@ function RootShell({ children }: { children: React.ReactNode }) {
             __html: `(function(){
   var KEY='__atlas_chunk_reload__';
   var RX=/Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \\\\d+ failed|Loading CSS chunk/i;
+  function clearRuntimeCaches(){
+    try{
+      if('caches' in window){
+        caches.keys().then(function(keys){
+          return Promise.all(keys.map(function(key){ return caches.delete(key); }));
+        }).catch(function(){});
+      }
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.getRegistrations().then(function(regs){
+          return Promise.all(regs.map(function(reg){ return reg.unregister(); }));
+        }).catch(function(){});
+      }
+    }catch(_){ }
+  }
   function reload(msg){
     try{
       if(!msg||!RX.test(String(msg)))return false;
       var last=Number(sessionStorage.getItem(KEY)||0);
       if(Date.now()-last<10000)return false;
       sessionStorage.setItem(KEY,String(Date.now()));
+      clearRuntimeCaches();
       location.reload();
       return true;
     }catch(_){return false;}
