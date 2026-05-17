@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -1848,23 +1848,30 @@ export default function Home() {
 
             {/* Greeting */}
             {homeMessages.length === 0 && (() => {
-              const hour = new Date().getHours();
-              const phrases =
-                hour >= 5 && hour < 11
-                  ? ["Good morning.", "Morning.", "Starting fresh?", "Back at it.", "Ready when you are."]
-                  : hour >= 11 && hour < 17
-                    ? ["Good afternoon.", "What's on your mind?", "Picking something back up?", "Where should we begin?"]
-                    : hour >= 17 && hour < 21
-                      ? ["Good evening.", "Still thinking about it?", "Back for another pass?", "Working late tonight?"]
-                      : ["Burning the midnight oil?", "Late one tonight.", "Night owl mode.", "Still untangling it?"];
-              const phrase = phrases[Math.floor(Math.random() * phrases.length)];
-              const firstName = (authUser?.name ?? "").trim().split(/\s+/)[0];
-              const useName = firstName && Math.random() < 0.3;
-              const greeting = useName ? `${firstName}. ${phrase}` : phrase;
+              // eslint-disable-next-line react-hooks/rules-of-hooks
+              const greeting = useMemo(() => {
+                const hasHistory = conversations.length > 0;
+                const returningPhrases = ["Where were we?", "Picking something back up?", "Still untangling it?", "Back for another pass?"];
+                const hour = new Date().getHours();
+                const newPhrases =
+                  hour >= 5 && hour < 11
+                    ? ["Good morning.", "Morning.", "Starting fresh?"]
+                    : hour >= 11 && hour < 17
+                      ? ["Good afternoon.", "What's on your mind?"]
+                      : hour >= 17 && hour < 21
+                        ? ["Good evening.", "Still thinking about it?", "Back tonight?", "Quiet hours."]
+                        : ["Still at it.", "Night owl mode.", "Late one tonight."];
+                const pool = hasHistory ? returningPhrases : newPhrases;
+                const phrase = pool[Math.floor(Math.random() * pool.length)];
+                const firstName = (authUser?.name ?? "").trim().split(/\s+/)[0];
+                const useName = hasHistory && firstName && Math.random() < 0.3;
+                return { phrase, name: useName ? firstName : null };
+              }, [conversations.length, authUser?.name]);
               return (
-                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
-                  <p style={{ fontSize: 15, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.7, margin: 0, letterSpacing: "-0.01em" }}>
-                    {greeting}
+                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1, animation: "fadeIn 600ms ease forwards" }}>
+                  <p style={{ fontSize: 22, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.85, margin: 0, letterSpacing: "-0.01em", lineHeight: 1.35 }}>
+                    {greeting.name && (<>{greeting.name}.<br /></>)}
+                    {greeting.phrase}
                   </p>
                 </div>
               );
@@ -1877,15 +1884,7 @@ export default function Home() {
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {homeMessages.length === 0 && !isAtlasStreaming && !threadLoading ? (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
-                <LoadingSpinner size="sm" color="atlas" />
-              </div>
-            ) : homeMessages.length === 0 && !isAtlasStreaming ? (
-              <div style={{ display: "flex", justifyContent: "center" }}>
-                <LoadingSpinner size="sm" color="atlas" />
-              </div>
-            ) : (
+            {homeMessages.length === 0 ? null : (
               <div>
                 {/* Messages */}
                 <div
@@ -2119,31 +2118,6 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
-              {!hasInput && !inputFocused && homeMessages.length === 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 44,
-                    zIndex: 2,
-                    color: "var(--atlas-muted)",
-                    fontSize: 15,
-                    lineHeight: 1.55,
-                    opacity: typewriterPaused ? 0.4 : 0.65,
-                    cursor: "text",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    fontFamily: "var(--app-font-sans)",
-                    transition: "opacity 160ms ease",
-                    pointerEvents: "none",
-                  }}
-                >
-                  {placeholder}
-                  {!typewriterPaused && <span className="atlas-cursor" />}
-                </div>
-              )}
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -2376,102 +2350,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-
-          {/* Intent row — soft orientation under the input. Permission, not features. */}
-          {homeMessages.length === 0 && (() => {
-            const pickStarter = (starter: string) => {
-              setInput(starter);
-              setTimeout(() => {
-                textareaRef.current?.focus();
-                const el = textareaRef.current;
-                if (el) el.setSelectionRange(starter.length, starter.length);
-                autoResize();
-              }, 0);
-            };
-            const intents: Array<{ label: string; action: () => void }> = [
-              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
-              { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
-              { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
-              { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
-              { label: "Briefing", action: () => setShowBriefingPanel(true) },
-            ];
-            const rotate = () => {
-              const next = (starterIdx + 1) % PLACEHOLDERS.length;
-              setStarterIdx(next);
-              pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
-            };
-            return (
-              <div style={{
-                marginTop: 14,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 10,
-              }}>
-                <div style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  justifyContent: "center",
-                  rowGap: 6,
-                  columnGap: 0,
-                  fontFamily: "var(--app-font-sans)",
-                  fontSize: 12.5,
-                  letterSpacing: "0.01em",
-                  color: "var(--atlas-muted)",
-                }}>
-                  {intents.map((it, i) => (
-                    <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
-                      <button
-                        type="button"
-                        onClick={it.action}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          padding: "4px 10px",
-                          color: "var(--atlas-muted)",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                          fontSize: "inherit",
-                          letterSpacing: "inherit",
-                          transition: "color 160ms ease",
-                        }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-fg)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-muted)"; }}
-                      >
-                        {it.label}
-                      </button>
-                      {i < intents.length - 1 && (
-                        <span aria-hidden style={{ opacity: 0.4, userSelect: "none" }}>·</span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={rotate}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: "2px 6px",
-                    color: "var(--atlas-muted)",
-                    opacity: 0.55,
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-sans)",
-                    fontSize: 11.5,
-                    letterSpacing: "0.01em",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    transition: "opacity 160ms ease",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.9"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
-                >
-                  need a starting point? <span style={{ fontSize: 12 }}>↻</span>
-                </button>
-              </div>
-            );
-          })()}
 
 
           {/* Inline create error */}
