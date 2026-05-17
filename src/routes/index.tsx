@@ -1,11 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ClientOnly } from "@tanstack/react-router";
-import App from "@/App";
+import { createFileRoute, ClientOnly } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+
+const App = lazy(() => import("@/App"));
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   component: () => (
     <ClientOnly fallback={null}>
-      <App />
+      <Suspense fallback={null}>
+        <App />
+      </Suspense>
     </ClientOnly>
   ),
 });
