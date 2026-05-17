@@ -2067,7 +2067,7 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
-              {!hasInput && !inputFocused && homeMessages.length === 0 && (
+              {!hasInput && !inputFocused && (
                 <div
                   style={{
                     position: "absolute",
