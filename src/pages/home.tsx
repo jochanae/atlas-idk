@@ -1051,6 +1051,22 @@ export default function Home() {
   const greetingPhraseRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
 
+  // Compute greeting phrase once on mount and never change it
+  if (greetingPhraseRef.current === null) {
+    const hasHistory = conversations.length > 0;
+    const hour = new Date().getHours();
+    const pool = hasHistory
+      ? ["Where were we?", "Picking something back up?", "Still untangling it?"]
+      : hour >= 5 && hour < 11
+        ? ["Good morning.", "Morning."]
+        : hour >= 11 && hour < 17
+          ? ["Good afternoon.", "What's on your mind?"]
+          : hour >= 17 && hour < 21
+            ? ["Good evening.", "Still thinking about it?"]
+            : ["Still at it.", "Night owl mode."];
+    greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
+  }
+
   // ── Home context: repo / branch / model ────────────────────────────────────
   const [homeFocus] = useState<number | null>(null);
   const [homeModel] = useState<string>("claude");
