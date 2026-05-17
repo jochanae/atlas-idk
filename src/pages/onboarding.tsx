@@ -103,6 +103,7 @@ export default function OnboardingPage() {
   const chooseIntent = (id: string) => {
     setSelectedIntent(id);
     try { localStorage.setItem("axiom_user_intent", id); } catch {}
+    setStep(3);
   };
 
   const createProject = async (event: FormEvent<HTMLFormElement>) => {
