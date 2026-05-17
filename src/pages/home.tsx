@@ -64,6 +64,22 @@ type HomeMessage = {
   plan?: Plan;
 };
 
+function normalizeLoadedHomeMessages(
+  msgs: Array<{ role: string; content: string }>,
+  mapMessage?: (message: { role: "user" | "assistant"; content: string }, index: number) => HomeMessage,
+): HomeMessage[] {
+  const thread = msgs.filter(
+    (message): message is { role: "user" | "assistant"; content: string } =>
+      (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
+  );
+
+  const firstUserIndex = thread.findIndex((message) => message.role === "user");
+  if (firstUserIndex === -1) return [];
+
+  const trimmed = thread.slice(firstUserIndex);
+  return mapMessage ? trimmed.map(mapMessage) : trimmed.map((message) => ({ ...message }));
+}
+
 function renderMarkdown(text: string): string {
   return text
     .replace(/```(\w*)\n?([\s\S]*?)```/g, (_: string, _lang: string, code: string) =>
@@ -1183,8 +1199,9 @@ export default function Home() {
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(async (msgs: Array<{ role: string; content: string }>) => {
-        if (msgs.length > 0) {
-          setHomeMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+        const normalizedMessages = normalizeLoadedHomeMessages(msgs);
+        if (normalizedMessages.length > 0) {
+          setHomeMessages(normalizedMessages);
           return;
         }
       })
@@ -1518,17 +1535,26 @@ export default function Home() {
     try {
       const res = await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, { credentials: "include" });
       const msgs = await res.json() as Array<{ role: string; content: string }>;
-      if (Array.isArray(msgs) && msgs.length > 0) {
-        setHomeMessages(msgs.map((m, index) => {
-          const role = m.role as "user" | "assistant";
-          const plan = role === "assistant" ? detectPlanFromText(m.content) : null;
-          return {
-            role,
-            content: m.content,
-            id: `${id}-history-${index}`,
-            ...(plan ? { plan } : {}),
-          };
-        }));
+      const normalizedMessages = Array.isArray(msgs)
+        ? normalizeLoadedHomeMessages(msgs, (message, index) => {
+            const plan = message.role === "assistant" ? detectPlanFromText(message.content) : null;
+            return {
+              role: message.role,
+              content: message.content,
+              id: `${id}-history-${index}`,
+              ...(plan ? { plan } : {}),
+            };
+          })
+        : [];
+
+      if (normalizedMessages.length > 0) {
+        setHomeMessages(normalizedMessages);
+        setActiveConversationId(id);
+        setReviewingPlanIds(new Set());
+        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
+        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      } else {
+        setHomeMessages([]);
         setActiveConversationId(id);
         setReviewingPlanIds(new Set());
         try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
@@ -2353,21 +2379,22 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
           {homeMessages.length === 0 && (() => {
-            const intents: Array<{ label: string; starter: string }> = [
-              { label: "Think out loud", starter: "I've been turning something over and want to think it through out loud — " },
-              { label: "Untangle something", starter: "Something's tangled and I can't quite see the shape of it. Here's what I know: " },
-              { label: "Weigh a decision", starter: "I'm trying to decide between " },
-              { label: "Where were we", starter: "Where did we leave things last?" },
-            ];
-            const pickStarter = (s: string) => {
-              setInput(s);
+            const pickStarter = (starter: string) => {
+              setInput(starter);
               setTimeout(() => {
                 textareaRef.current?.focus();
                 const el = textareaRef.current;
-                if (el) el.setSelectionRange(s.length, s.length);
+                if (el) el.setSelectionRange(starter.length, starter.length);
                 autoResize();
               }, 0);
             };
+            const intents: Array<{ label: string; action: () => void }> = [
+              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
+              { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
+              { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
+              { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
+              { label: "Briefing", action: () => setShowBriefingPanel(true) },
+            ];
             const rotate = () => {
               const next = (starterIdx + 1) % PLACEHOLDERS.length;
               setStarterIdx(next);
@@ -2396,7 +2423,7 @@ export default function Home() {
                     <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
                       <button
                         type="button"
-                        onClick={() => pickStarter(it.starter)}
+                        onClick={it.action}
                         style={{
                           background: "transparent",
                           border: "none",
