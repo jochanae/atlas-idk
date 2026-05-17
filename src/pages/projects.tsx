@@ -591,10 +591,11 @@ export default function Projects() {
   );
 }
 
-function RepoRow({ repo, linked, importing, onImport }: {
+function RepoRow({ repo, linked, importing, success, onImport }: {
   repo: GithubRepo;
   linked?: boolean;
   importing?: boolean;
+  success?: boolean;
   onImport?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
