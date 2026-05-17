@@ -1030,6 +1030,7 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(true);
+  const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isFree } = useSubscription();
 
