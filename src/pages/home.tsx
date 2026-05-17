@@ -243,13 +243,14 @@ function HomeHandoffCard({
 }
 
 // ── Typewriter hook ──────────────────────────────────────────────────────────
-function useTypewriter(phrases: string[]) {
+function useTypewriter(phrases: string[], paused = false) {
   const [display, setDisplay] = useState("");
   const state = useRef({ phraseIdx: 0, charIdx: 0, phase: "typing" as "typing" | "erasing" });
   const phrasesRef = useRef(phrases);
   phrasesRef.current = phrases;
 
   useEffect(() => {
+    if (paused) return;
     let timer: ReturnType<typeof setTimeout>;
 
     function tick() {
@@ -262,20 +263,17 @@ function useTypewriter(phrases: string[]) {
           setDisplay(phrase.slice(0, s.charIdx));
           timer = setTimeout(tick, 38);
         } else {
-          // fully typed — hold 2 s then erase
           timer = setTimeout(() => {
             s.phase = "erasing";
             tick();
           }, 2000);
         }
       } else {
-        // erasing
         if (s.charIdx > 0) {
           s.charIdx--;
           setDisplay(phrase.slice(0, s.charIdx));
           timer = setTimeout(tick, 22);
         } else {
-          // fully erased — pause then type next
           s.phraseIdx = (s.phraseIdx + 1) % phrasesRef.current.length;
           s.phase = "typing";
           timer = setTimeout(tick, 200);
@@ -283,9 +281,9 @@ function useTypewriter(phrases: string[]) {
       }
     }
 
-    timer = setTimeout(tick, 900); // initial delay before first char
+    timer = setTimeout(tick, 900);
     return () => clearTimeout(timer);
-  }, []);
+  }, [paused]);
 
   return display;
 }
