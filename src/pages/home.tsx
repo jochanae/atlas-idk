@@ -1115,6 +1115,7 @@ export default function Home() {
   }, [isListening]);
 
   const [typewriterPaused, setTypewriterPaused] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
   const { data: projects, isLoading } = useListProjects();
@@ -2066,7 +2067,7 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
-              {!hasInput && (
+              {!hasInput && !inputFocused && (
                 <div
                   onClick={() => {
                     setTypewriterPaused(true);
@@ -2088,6 +2089,7 @@ export default function Home() {
                     textOverflow: "ellipsis",
                     fontFamily: "var(--app-font-sans)",
                     transition: "opacity 160ms ease",
+                    pointerEvents: "none",
                   }}
                 >
                   {placeholder}
@@ -2099,6 +2101,8 @@ export default function Home() {
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); if (createError) setCreateError(null); }}
                 onKeyDown={handleKeyDown}
+                onFocus={() => { setInputFocused(true); setTypewriterPaused(true); }}
+                onBlur={() => setInputFocused(false)}
                 rows={2}
                 style={{
                   width: "100%",
