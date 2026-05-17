@@ -2379,21 +2379,13 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
           {homeMessages.length === 0 && (() => {
-            const intents: Array<{ label: string; starter: string }> = [
-              { label: "Think out loud", starter: "I've been turning something over and want to think it through out loud — " },
-              { label: "Untangle something", starter: "Something's tangled and I can't quite see the shape of it. Here's what I know: " },
-              { label: "Weigh a decision", starter: "I'm trying to decide between " },
-              { label: "Where were we", starter: "Where did we leave things last?" },
+            const intents: Array<{ label: string; action: () => void }> = [
+              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
+              { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
+              { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
+              { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
+              { label: "Briefing", action: () => setShowBriefingPanel(true) },
             ];
-            const pickStarter = (s: string) => {
-              setInput(s);
-              setTimeout(() => {
-                textareaRef.current?.focus();
-                const el = textareaRef.current;
-                if (el) el.setSelectionRange(s.length, s.length);
-                autoResize();
-              }, 0);
-            };
             const rotate = () => {
               const next = (starterIdx + 1) % PLACEHOLDERS.length;
               setStarterIdx(next);
@@ -2422,7 +2414,7 @@ export default function Home() {
                     <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
                       <button
                         type="button"
-                        onClick={() => pickStarter(it.starter)}
+                        onClick={it.action}
                         style={{
                           background: "transparent",
                           border: "none",
