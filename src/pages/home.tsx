@@ -1848,23 +1848,30 @@ export default function Home() {
 
             {/* Greeting */}
             {homeMessages.length === 0 && (() => {
-              const hour = new Date().getHours();
-              const phrases =
-                hour >= 5 && hour < 11
-                  ? ["Good morning.", "Morning.", "Starting fresh?", "Back at it.", "Ready when you are."]
-                  : hour >= 11 && hour < 17
-                    ? ["Good afternoon.", "What's on your mind?", "Picking something back up?", "Where should we begin?"]
-                    : hour >= 17 && hour < 21
-                      ? ["Good evening.", "Still thinking about it?", "Back for another pass?", "Working late tonight?"]
-                      : ["Burning the midnight oil?", "Late one tonight.", "Night owl mode.", "Still untangling it?"];
-              const phrase = phrases[Math.floor(Math.random() * phrases.length)];
-              const firstName = (authUser?.name ?? "").trim().split(/\s+/)[0];
-              const useName = firstName && Math.random() < 0.3;
-              const greeting = useName ? `${firstName}. ${phrase}` : phrase;
+              // eslint-disable-next-line react-hooks/rules-of-hooks
+              const greeting = useMemo(() => {
+                const hasHistory = conversations.length > 0;
+                const returningPhrases = ["Where were we?", "Picking something back up?", "Still untangling it?", "Back for another pass?"];
+                const hour = new Date().getHours();
+                const newPhrases =
+                  hour >= 5 && hour < 11
+                    ? ["Good morning.", "Morning.", "Starting fresh?"]
+                    : hour >= 11 && hour < 17
+                      ? ["Good afternoon.", "What's on your mind?"]
+                      : hour >= 17 && hour < 21
+                        ? ["Good evening.", "Still thinking about it?", "Back tonight?", "Quiet hours."]
+                        : ["Still at it.", "Night owl mode.", "Late one tonight."];
+                const pool = hasHistory ? returningPhrases : newPhrases;
+                const phrase = pool[Math.floor(Math.random() * pool.length)];
+                const firstName = (authUser?.name ?? "").trim().split(/\s+/)[0];
+                const useName = hasHistory && firstName && Math.random() < 0.3;
+                return { phrase, name: useName ? firstName : null };
+              }, [conversations.length, authUser?.name]);
               return (
-                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
-                  <p style={{ fontSize: 15, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.7, margin: 0, letterSpacing: "-0.01em" }}>
-                    {greeting}
+                <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1, animation: "fadeIn 600ms ease forwards" }}>
+                  <p style={{ fontSize: 22, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.85, margin: 0, letterSpacing: "-0.01em", lineHeight: 1.35 }}>
+                    {greeting.name && (<>{greeting.name}.<br /></>)}
+                    {greeting.phrase}
                   </p>
                 </div>
               );
