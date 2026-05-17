@@ -647,7 +647,27 @@ function RepoRow({ repo, linked, importing, success, onImport }: {
 
       {/* Action */}
       {linked ? (
-        <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.1em", color: "rgba(74,222,128,0.55)", flexShrink: 0, textTransform: "uppercase" }}>
+        <span style={{
+          ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
+          color: "rgb(251,191,36)",
+          background: "rgba(251,191,36,0.1)",
+          border: "1px solid rgba(251,191,36,0.3)",
+          borderRadius: 4, padding: "3px 7px",
+        }}>
+          Already linked
+        </span>
+      ) : success ? (
+        <span style={{
+          ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
+          color: "rgb(74,222,128)",
+          background: "rgba(74,222,128,0.12)",
+          border: "1px solid rgba(74,222,128,0.4)",
+          borderRadius: 4, padding: "3px 9px",
+          display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2.5 6.5l2.5 2.5 4.5-5" />
+          </svg>
           Linked
         </span>
       ) : (
@@ -664,7 +684,7 @@ function RepoRow({ repo, linked, importing, success, onImport }: {
             transition: "all 140ms ease",
           }}
         >
-          {importing ? "…" : "Import"}
+          {importing ? "…" : "Link →"}
         </button>
       )}
     </div>
