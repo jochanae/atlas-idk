@@ -10526,15 +10526,15 @@ export default function Workspace() {
           </div>
           )} {/* end chat/diff ternary */}
 
-          {/* Ledger status bar */}
-          <div className="atlas-ledger-bar">
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", boxShadow: entryCount > 0 ? "0 0 6px rgba(201,162,76,0.45)" : "none", transition: "all 400ms ease" }} />
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: entryCount > 0 ? "rgba(var(--atlas-gold-rgb),0.82)" : "rgba(200,190,185,0.6)", transition: "color 400ms ease" }}>
-              [{entryCount}] Ledger Entries
+          {/* Ledger status bar — whispered */}
+          <div className="atlas-ledger-bar" style={{ opacity: 0.4 }}>
+            <span style={{ width: 4, height: 4, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", transition: "all 400ms ease" }} />
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: "var(--atlas-muted)", transition: "color 400ms ease" }}>
+              {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
             </span>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(200,190,185,0.5)" }}>·</span>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", transition: "color 300ms ease" }}>
-              {chatPending ? "Generating" : "Session Active"}
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, color: "var(--atlas-muted)" }}>·</span>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: chatPending ? "rgba(74,222,128,0.75)" : "var(--atlas-muted)", transition: "color 300ms ease" }}>
+              {chatPending ? "generating" : "session active"}
             </span>
           </div>
 
@@ -10548,25 +10548,25 @@ export default function Workspace() {
             }}
           />
 
-          {/* Forge shortcut — visible on Chat tab only */}
+          {/* Forge shortcut — visible on Chat tab only; floating pill above composer */}
           {leftTab === "chat" && forgeState && !forgeState.dismissed && (
-            <div style={{ padding: "0 14px 8px", flexShrink: 0 }}>
+            <div style={{ padding: "0 14px 6px", flexShrink: 0, display: "flex", justifyContent: "center" }}>
               {forgeState.forged ? (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <button
                     aria-label="Open The Forge"
                     title="The Forge — re-run or review strategic map"
                     onClick={() => { setForgeActiveProjectName(project?.name); setForgeActiveProjectId(id); setShowForgeExternal(true); }}
                     style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 28, height: 28, borderRadius: 8,
-                      background: "rgba(var(--atlas-gold-rgb),0.07)",
+                      height: 24, padding: "0 8px", borderRadius: 999,
+                      background: "transparent",
                       border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
-                      color: "rgba(var(--atlas-gold-rgb),0.85)",
+                      color: "rgba(var(--atlas-gold-rgb),0.75)",
                       cursor: "pointer",
                     }}
                   >
-                    <svg width={12} height={12} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width={11} height={11} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
                       <path d="M5.5 11L2 14.5" />
                       <path d="M11 3.5L13 5.5" />
@@ -10578,11 +10578,10 @@ export default function Workspace() {
                     onClick={() => void updateForgeState("dismissed")}
                     style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 22, height: 22, borderRadius: 999,
-                      border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
-                      background: "rgba(var(--atlas-gold-rgb),0.04)",
-                      color: "rgba(var(--atlas-gold-rgb),0.65)",
-                      cursor: "pointer", fontSize: 13, lineHeight: 1,
+                      width: 18, height: 18, borderRadius: 999,
+                      border: "none", background: "transparent",
+                      color: "rgba(var(--atlas-gold-rgb),0.5)",
+                      cursor: "pointer", fontSize: 12, lineHeight: 1,
                     }}
                   >
                     ×
@@ -10592,23 +10591,23 @@ export default function Workspace() {
                 <button
                   onClick={() => { setForgeActiveProjectName(project?.name); setForgeActiveProjectId(id); setShowForgeExternal(true); }}
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 7,
-                    padding: "6px 10px 6px 12px", borderRadius: 8,
-                    background: "rgba(var(--atlas-gold-rgb),0.07)",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    height: 26, padding: "0 11px", borderRadius: 999,
+                    background: "transparent",
                     border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
-                    color: "rgba(var(--atlas-gold-rgb),0.85)",
+                    color: "rgba(var(--atlas-gold-rgb),0.75)",
                     cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+                    fontFamily: "var(--app-font-mono)", fontSize: 9,
                     letterSpacing: "0.1em", textTransform: "uppercase" as const,
                     transition: "all 160ms ease",
                   }}
                 >
-                  <svg width={11} height={11} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width={10} height={10} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
                     <path d="M5.5 11L2 14.5" />
                     <path d="M11 3.5L13 5.5" />
                   </svg>
-                  Forge — Extract strategy from a doc or transcript
+                  Forge
                 </button>
               )}
             </div>
@@ -10747,11 +10746,8 @@ export default function Workspace() {
             <div
               className="atlas-input-shell"
               style={{
-                padding: "13px 15px",
-                borderColor: LENS_CONFIG[detectedLens ?? wsLens].borderColor,
-                boxShadow: `0 4px 24px rgba(0,0,0,0.28), 0 0 14px -8px ${LENS_CONFIG[detectedLens ?? wsLens].glowColor}`,
-                transition: "border-color 220ms ease, box-shadow 220ms ease",
-                ...(wsLens === "scenario" ? { background: "rgba(120,113,108,0.04)" } : {}),
+                padding: "4px 4px",
+                transition: "none",
               }}
             >
               <div style={{ position: "relative" }}>
@@ -10759,9 +10755,9 @@ export default function Workspace() {
                   <div
                     aria-hidden
                     style={{
-                      position: "absolute", top: 0, left: 0,
+                      position: "absolute", top: 0, left: 2,
                       color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1.6,
-                      opacity: 0.82, pointerEvents: "none",
+                      opacity: 0.6, pointerEvents: "none",
                       fontFamily: "var(--app-font-sans)",
                     }}
                   >
@@ -10774,13 +10770,14 @@ export default function Workspace() {
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(); }}
                   onKeyDown={handleKeyDown}
-                  rows={2}
+                  rows={1}
                   style={{
                     width: "100%", background: "transparent", border: "none", outline: "none",
                     color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
                     resize: "none", fontFamily: "var(--app-font-sans)",
                     position: "relative", zIndex: 1,
-                    minHeight: 46, maxHeight: 180, overflowY: "hidden", display: "block",
+                    minHeight: 24, maxHeight: 180, overflowY: "hidden", display: "block",
+                    padding: "2px 2px",
                   }}
                 />
               </div>
