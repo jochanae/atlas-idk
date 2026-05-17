@@ -896,6 +896,26 @@ function ProjectRow({
         </div>
       ) : showActions ? (
         <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+          {/* Link Repo */}
+          {onLinkRepo && !p.linkedRepo && (
+            <button
+              title="Link a GitHub repo"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onLinkRepo(); setMenuOpen(false); }}
+              style={{
+                background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 4,
+                padding: "4px 7px", cursor: "pointer", lineHeight: 1,
+                color: "var(--atlas-muted)", transition: "all 140ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(74,222,128,0.4)"; e.currentTarget.style.color = "rgba(74,222,128,0.85)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--atlas-border)"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6.5 8.5l3-3" />
+                <path d="M7.5 4.5l1.5-1.5a2.83 2.83 0 014 4L11.5 8.5" />
+                <path d="M8.5 11.5L7 13a2.83 2.83 0 01-4-4l1.5-1.5" />
+              </svg>
+            </button>
+          )}
           {/* Archive / Restore */}
           <button
             title={isArchived ? "Restore project" : "Archive project"}
