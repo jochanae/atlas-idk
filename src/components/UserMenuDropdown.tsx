@@ -339,7 +339,7 @@ export function UserMenuDropdown({ openSignal, onOpenProfile }: Props) {
         {isAdmin && (
           <>
             <div style={{ height: 1, background: "rgba(201,162,76,0.08)", margin: "4px 6px" }} />
-            <MenuRow icon={<CrownIcon />} label="Admin Hub" badge="ADMIN" onClick={() => { setOpen(false); navigate("/admin"); }} />
+            <MenuRow icon={<ShieldIcon />} label="Admin Hub" badge="ADMIN" onClick={() => { setOpen(false); navigate("/admin"); }} />
           </>
         )}
 
@@ -379,6 +379,14 @@ function CrownIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 20h20M4 20V10l4 4 4-8 4 8 4-4v10" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
 }
