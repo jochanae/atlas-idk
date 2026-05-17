@@ -339,7 +339,7 @@ export function UserMenuDropdown({ openSignal, onOpenProfile }: Props) {
         {isAdmin && (
           <>
             <div style={{ height: 1, background: "rgba(201,162,76,0.08)", margin: "4px 6px" }} />
-            <MenuRow icon={<CrownIcon />} label="Admin Hub" badge="ADMIN" onClick={() => { setOpen(false); navigate("/admin"); }} />
+            <MenuRow icon={<ShieldIcon />} label="Admin Hub" badge="ADMIN" onClick={() => { setOpen(false); navigate("/admin"); }} />
           </>
         )}
 
