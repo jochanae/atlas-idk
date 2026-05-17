@@ -970,6 +970,7 @@ function FirstRunOverlay({
 // ── Home ─────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [input, setInput] = useState("");
+  const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
