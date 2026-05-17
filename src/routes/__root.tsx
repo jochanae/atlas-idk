@@ -1,36 +1,11 @@
 import {
   Outlet,
-  Link,
   createRootRoute,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { AuthProvider } from "@/lib/auth";
-import { Toaster } from "@/components/ui/sonner";
 
 import "../styles.css";
-
-function NotFoundComponent() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export const Route = createRootRoute({
   head: () => ({
@@ -43,20 +18,11 @@ export const Route = createRootRoute({
         content:
           "Atlas: a decision enforcement system. Permanent record of architectural decisions, costs, and bought lessons.",
       },
-      { name: "author", content: "Into Innovations" },
-      { property: "og:title", content: "Atlas — Decision Enforcement System" },
-      {
-        property: "og:description",
-        content:
-          "Chat, workspace, and preview surfaces over a permanent ledger of decisions.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
+  component: () => <Outlet />,
+  notFoundComponent: () => null,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
@@ -70,14 +36,5 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
-}
-
-function RootComponent() {
-  return (
-    <AuthProvider>
-      <Toaster />
-      <Outlet />
-    </AuthProvider>
   );
 }
