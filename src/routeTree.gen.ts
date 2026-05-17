@@ -9,122 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WorkspaceRouteImport } from './routes/workspace'
-import { Route as WorkshopRouteImport } from './routes/workshop'
-import { Route as VaultRouteImport } from './routes/vault'
-import { Route as ThinkFreelyRouteImport } from './routes/think-freely'
-import { Route as SecretsRouteImport } from './routes/secrets'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as ProjectCompassRouteImport } from './routes/project-compass'
-import { Route as ParkingLotRouteImport } from './routes/parking-lot'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as NotFoundRouteImport } from './routes/not-found'
-import { Route as NexusRouteImport } from './routes/nexus'
-import { Route as MasterMapRouteImport } from './routes/master-map'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as LedgerRouteImport } from './routes/ledger'
-import { Route as LandingRouteImport } from './routes/landing'
-import { Route as GuardReportRouteImport } from './routes/guard-report'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
-const WorkspaceRoute = WorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WorkshopRoute = WorkshopRouteImport.update({
-  id: '/workshop',
-  path: '/workshop',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VaultRoute = VaultRouteImport.update({
-  id: '/vault',
-  path: '/vault',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ThinkFreelyRoute = ThinkFreelyRouteImport.update({
-  id: '/think-freely',
-  path: '/think-freely',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecretsRoute = SecretsRouteImport.update({
-  id: '/secrets',
-  path: '/secrets',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsRoute = ProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectCompassRoute = ProjectCompassRouteImport.update({
-  id: '/project-compass',
-  path: '/project-compass',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParkingLotRoute = ParkingLotRouteImport.update({
-  id: '/parking-lot',
-  path: '/parking-lot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotFoundRoute = NotFoundRouteImport.update({
-  id: '/not-found',
-  path: '/not-found',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NexusRoute = NexusRouteImport.update({
-  id: '/nexus',
-  path: '/nexus',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MasterMapRoute = MasterMapRouteImport.update({
-  id: '/master-map',
-  path: '/master-map',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LedgerRoute = LedgerRouteImport.update({
-  id: '/ledger',
-  path: '/ledger',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LandingRoute = LandingRouteImport.update({
-  id: '/landing',
-  path: '/landing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GuardReportRoute = GuardReportRouteImport.update({
-  id: '/guard-report',
-  path: '/guard-report',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -133,298 +19,28 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
-  '/guard-report': typeof GuardReportRoute
-  '/landing': typeof LandingRoute
-  '/ledger': typeof LedgerRoute
-  '/login': typeof LoginRoute
-  '/master-map': typeof MasterMapRoute
-  '/nexus': typeof NexusRoute
-  '/not-found': typeof NotFoundRoute
-  '/onboarding': typeof OnboardingRoute
-  '/parking-lot': typeof ParkingLotRoute
-  '/project-compass': typeof ProjectCompassRoute
-  '/projects': typeof ProjectsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/secrets': typeof SecretsRoute
-  '/think-freely': typeof ThinkFreelyRoute
-  '/vault': typeof VaultRoute
-  '/workshop': typeof WorkshopRoute
-  '/workspace': typeof WorkspaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
-  '/guard-report': typeof GuardReportRoute
-  '/landing': typeof LandingRoute
-  '/ledger': typeof LedgerRoute
-  '/login': typeof LoginRoute
-  '/master-map': typeof MasterMapRoute
-  '/nexus': typeof NexusRoute
-  '/not-found': typeof NotFoundRoute
-  '/onboarding': typeof OnboardingRoute
-  '/parking-lot': typeof ParkingLotRoute
-  '/project-compass': typeof ProjectCompassRoute
-  '/projects': typeof ProjectsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/secrets': typeof SecretsRoute
-  '/think-freely': typeof ThinkFreelyRoute
-  '/vault': typeof VaultRoute
-  '/workshop': typeof WorkshopRoute
-  '/workspace': typeof WorkspaceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
-  '/guard-report': typeof GuardReportRoute
-  '/landing': typeof LandingRoute
-  '/ledger': typeof LedgerRoute
-  '/login': typeof LoginRoute
-  '/master-map': typeof MasterMapRoute
-  '/nexus': typeof NexusRoute
-  '/not-found': typeof NotFoundRoute
-  '/onboarding': typeof OnboardingRoute
-  '/parking-lot': typeof ParkingLotRoute
-  '/project-compass': typeof ProjectCompassRoute
-  '/projects': typeof ProjectsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/secrets': typeof SecretsRoute
-  '/think-freely': typeof ThinkFreelyRoute
-  '/vault': typeof VaultRoute
-  '/workshop': typeof WorkshopRoute
-  '/workspace': typeof WorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/auth'
-    | '/dashboard'
-    | '/guard-report'
-    | '/landing'
-    | '/ledger'
-    | '/login'
-    | '/master-map'
-    | '/nexus'
-    | '/not-found'
-    | '/onboarding'
-    | '/parking-lot'
-    | '/project-compass'
-    | '/projects'
-    | '/reset-password'
-    | '/secrets'
-    | '/think-freely'
-    | '/vault'
-    | '/workshop'
-    | '/workspace'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/auth'
-    | '/dashboard'
-    | '/guard-report'
-    | '/landing'
-    | '/ledger'
-    | '/login'
-    | '/master-map'
-    | '/nexus'
-    | '/not-found'
-    | '/onboarding'
-    | '/parking-lot'
-    | '/project-compass'
-    | '/projects'
-    | '/reset-password'
-    | '/secrets'
-    | '/think-freely'
-    | '/vault'
-    | '/workshop'
-    | '/workspace'
-  id:
-    | '__root__'
-    | '/'
-    | '/auth'
-    | '/dashboard'
-    | '/guard-report'
-    | '/landing'
-    | '/ledger'
-    | '/login'
-    | '/master-map'
-    | '/nexus'
-    | '/not-found'
-    | '/onboarding'
-    | '/parking-lot'
-    | '/project-compass'
-    | '/projects'
-    | '/reset-password'
-    | '/secrets'
-    | '/think-freely'
-    | '/vault'
-    | '/workshop'
-    | '/workspace'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthRoute: typeof AuthRoute
-  DashboardRoute: typeof DashboardRoute
-  GuardReportRoute: typeof GuardReportRoute
-  LandingRoute: typeof LandingRoute
-  LedgerRoute: typeof LedgerRoute
-  LoginRoute: typeof LoginRoute
-  MasterMapRoute: typeof MasterMapRoute
-  NexusRoute: typeof NexusRoute
-  NotFoundRoute: typeof NotFoundRoute
-  OnboardingRoute: typeof OnboardingRoute
-  ParkingLotRoute: typeof ParkingLotRoute
-  ProjectCompassRoute: typeof ProjectCompassRoute
-  ProjectsRoute: typeof ProjectsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
-  SecretsRoute: typeof SecretsRoute
-  ThinkFreelyRoute: typeof ThinkFreelyRoute
-  VaultRoute: typeof VaultRoute
-  WorkshopRoute: typeof WorkshopRoute
-  WorkspaceRoute: typeof WorkspaceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/workspace': {
-      id: '/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof WorkspaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/workshop': {
-      id: '/workshop'
-      path: '/workshop'
-      fullPath: '/workshop'
-      preLoaderRoute: typeof WorkshopRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/vault': {
-      id: '/vault'
-      path: '/vault'
-      fullPath: '/vault'
-      preLoaderRoute: typeof VaultRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/think-freely': {
-      id: '/think-freely'
-      path: '/think-freely'
-      fullPath: '/think-freely'
-      preLoaderRoute: typeof ThinkFreelyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/secrets': {
-      id: '/secrets'
-      path: '/secrets'
-      fullPath: '/secrets'
-      preLoaderRoute: typeof SecretsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/project-compass': {
-      id: '/project-compass'
-      path: '/project-compass'
-      fullPath: '/project-compass'
-      preLoaderRoute: typeof ProjectCompassRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/parking-lot': {
-      id: '/parking-lot'
-      path: '/parking-lot'
-      fullPath: '/parking-lot'
-      preLoaderRoute: typeof ParkingLotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/not-found': {
-      id: '/not-found'
-      path: '/not-found'
-      fullPath: '/not-found'
-      preLoaderRoute: typeof NotFoundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nexus': {
-      id: '/nexus'
-      path: '/nexus'
-      fullPath: '/nexus'
-      preLoaderRoute: typeof NexusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/master-map': {
-      id: '/master-map'
-      path: '/master-map'
-      fullPath: '/master-map'
-      preLoaderRoute: typeof MasterMapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ledger': {
-      id: '/ledger'
-      path: '/ledger'
-      fullPath: '/ledger'
-      preLoaderRoute: typeof LedgerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/landing': {
-      id: '/landing'
-      path: '/landing'
-      fullPath: '/landing'
-      preLoaderRoute: typeof LandingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/guard-report': {
-      id: '/guard-report'
-      path: '/guard-report'
-      fullPath: '/guard-report'
-      preLoaderRoute: typeof GuardReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -437,26 +53,17 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthRoute: AuthRoute,
-  DashboardRoute: DashboardRoute,
-  GuardReportRoute: GuardReportRoute,
-  LandingRoute: LandingRoute,
-  LedgerRoute: LedgerRoute,
-  LoginRoute: LoginRoute,
-  MasterMapRoute: MasterMapRoute,
-  NexusRoute: NexusRoute,
-  NotFoundRoute: NotFoundRoute,
-  OnboardingRoute: OnboardingRoute,
-  ParkingLotRoute: ParkingLotRoute,
-  ProjectCompassRoute: ProjectCompassRoute,
-  ProjectsRoute: ProjectsRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
-  SecretsRoute: SecretsRoute,
-  ThinkFreelyRoute: ThinkFreelyRoute,
-  VaultRoute: VaultRoute,
-  WorkshopRoute: WorkshopRoute,
-  WorkspaceRoute: WorkspaceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
