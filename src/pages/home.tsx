@@ -2343,11 +2343,26 @@ export default function Home() {
             background: "linear-gradient(to bottom, transparent, var(--atlas-bg))",
           }} />
 
-          {/* Portfolio pulse strip — only when no messages, pinned near bottom of hero */}
+          {/* Continuity strip — only when no messages, pinned near bottom of hero */}
           {homeMessages.length === 0 && projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
-            const focusedProject = homeFocus ? (projects as Project[]).find((p: Project) => p.id === homeFocus) : null;
-            const spotlightName = focusedProject?.name ?? activeProjects[0]?.name ?? null;
+            const mostRecent = [...activeProjects].sort((a, b) => {
+              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+              return bt - at;
+            })[0];
+            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
+            const formatAgo = (ts: number) => {
+              const diff = Math.max(0, Date.now() - ts);
+              const m = Math.floor(diff / 60000);
+              if (m < 1) return "just now";
+              if (m < 60) return `${m}m ago`;
+              const h = Math.floor(m / 60);
+              if (h < 24) return `${h}h ago`;
+              const d = Math.floor(h / 24);
+              return `${d}d ago`;
+            };
+            const lastTouched = lastTs ? formatAgo(lastTs) : null;
             return (
               <div aria-hidden style={{ position: "absolute", bottom: 20, left: 0, right: 0, display: "flex", justifyContent: "center", pointerEvents: "none", zIndex: 2 }}>
                 <div style={{
@@ -2362,11 +2377,9 @@ export default function Home() {
                     <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "var(--atlas-ember)" : "var(--atlas-gold)", opacity: 0.9 }} />
                   </span>
                   <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
-                    {activeProjects.length} active
-                    {spotlightName && (
-                      <> &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>{spotlightName}</span></>
-                    )}
-                    &nbsp;·&nbsp; overview below
+                    {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                    &nbsp;·&nbsp; {activeProjects.length} open
+                    &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
                   </span>
                 </div>
               </div>
