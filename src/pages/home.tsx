@@ -2068,7 +2068,10 @@ export default function Home() {
             <div style={{ position: "relative" }}>
               {!hasInput && (
                 <div
-                  aria-hidden
+                  onClick={() => {
+                    setTypewriterPaused(true);
+                    textareaRef.current?.focus();
+                  }}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -2078,16 +2081,17 @@ export default function Home() {
                     color: "var(--atlas-muted)",
                     fontSize: 15,
                     lineHeight: 1.55,
-                    opacity: 0.65,
-                    pointerEvents: "none",
+                    opacity: typewriterPaused ? 0.4 : 0.65,
+                    cursor: "text",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     fontFamily: "var(--app-font-sans)",
+                    transition: "opacity 160ms ease",
                   }}
                 >
                   {placeholder}
-                  <span className="atlas-cursor" />
+                  {!typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
