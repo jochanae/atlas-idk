@@ -2069,10 +2069,6 @@ export default function Home() {
             <div style={{ position: "relative" }}>
               {!hasInput && !inputFocused && (
                 <div
-                  onClick={() => {
-                    setTypewriterPaused(true);
-                    textareaRef.current?.focus();
-                  }}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -2082,7 +2078,7 @@ export default function Home() {
                     color: "var(--atlas-muted)",
                     fontSize: 15,
                     lineHeight: 1.55,
-                    opacity: typewriterPaused ? 0.4 : 0.65,
+                    opacity: homeMessages.length > 0 ? 0.45 : (typewriterPaused ? 0.4 : 0.65),
                     cursor: "text",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
@@ -2092,8 +2088,8 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {placeholder}
-                  {!typewriterPaused && <span className="atlas-cursor" />}
+                  {homeMessages.length > 0 ? "Message Atlas…" : placeholder}
+                  {homeMessages.length === 0 && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
