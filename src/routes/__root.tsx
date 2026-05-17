@@ -31,6 +31,33 @@ function RootShell({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
         <style>{`html,body{background:#0D0B09 !important;}`}</style>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+  var KEY='__atlas_chunk_reload__';
+  var RX=/Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Unable to preload CSS|Loading chunk \\\\d+ failed|Loading CSS chunk/i;
+  function reload(msg){
+    try{
+      if(!msg||!RX.test(String(msg)))return false;
+      var last=Number(sessionStorage.getItem(KEY)||0);
+      if(Date.now()-last<10000)return false;
+      sessionStorage.setItem(KEY,String(Date.now()));
+      location.reload();
+      return true;
+    }catch(_){return false;}
+  }
+  window.addEventListener('error',function(e){
+    var m=e&&(e.message||(e.error&&e.error.message));
+    if(reload(m)){e.preventDefault&&e.preventDefault();}
+  },true);
+  window.addEventListener('unhandledrejection',function(e){
+    var r=e&&e.reason;
+    var m=r&&(r.message||String(r));
+    if(reload(m)){e.preventDefault&&e.preventDefault();}
+  });
+})();`,
+          }}
+        />
       </head>
       <body style={{ background: "#0D0B09" }}>
         {children}
