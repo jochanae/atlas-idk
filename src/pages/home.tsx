@@ -2379,6 +2379,15 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
           {homeMessages.length === 0 && (() => {
+            const pickStarter = (starter: string) => {
+              setInput(starter);
+              setTimeout(() => {
+                textareaRef.current?.focus();
+                const el = textareaRef.current;
+                if (el) el.setSelectionRange(starter.length, starter.length);
+                autoResize();
+              }, 0);
+            };
             const intents: Array<{ label: string; action: () => void }> = [
               { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
               { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
