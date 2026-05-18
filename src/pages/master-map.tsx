@@ -821,13 +821,17 @@ export default function MasterMap() {
         mat.opacity = edge * 0.72;
       });
 
-      // ── Node hover glow + scale ──
+      // ── Node hover glow + scale (respects per-node baseScale from Ledger overlay) ──
       nodeMeshes.forEach((mesh, i) => {
         const hovered = i === hoveredIdxRef.current;
         const mat = mesh.material as THREE.MeshPhysicalMaterial;
-        const base = 0.12 + actLevel(projectsRef.current[i]?.updatedAt ?? "") * 0.3;
+        const proj = projectsRef.current[i];
+        const stats = proj ? statsRef.current.get(proj.id) ?? { committed: 0, tension: 0 } : { committed: 0, tension: 0 };
+        const boost = stats.committed === 0 ? 0 : (stats.tension > 0 ? 0.18 : 0.22);
+        const base = 0.12 + actLevel(proj?.updatedAt ?? "") * 0.3 + boost;
         mat.emissiveIntensity = hovered ? base + 0.32 + Math.sin(t * 3.5) * 0.12 : base;
-        const tgt = hovered ? 1.15 : 1.0;
+        const bs = baseScales[i] ?? 1;
+        const tgt = bs * (hovered ? 1.15 : 1.0);
         mesh.scale.setScalar(mesh.scale.x + (tgt - mesh.scale.x) * 0.11);
       });
 
@@ -838,12 +842,14 @@ export default function MasterMap() {
           (rippleIds.current.has(pid) || isRecentEntry(projectsRef.current[i]?.latestEntryAt));
         ring.lookAt(camera.position);
         const mat = ring.material as THREE.MeshBasicMaterial;
+        const bs = baseScales[i] ?? 1;
         if (active) {
           rippleTimers.current[i] = (rippleTimers.current[i] + 0.011) % 1;
           const rt = rippleTimers.current[i];
-          ring.scale.setScalar(1 + rt * 3.2);
+          ring.scale.setScalar(bs * (1 + rt * 3.2));
           mat.opacity = 0.6 * (1 - rt);
         } else {
+          ring.scale.setScalar(bs);
           mat.opacity = 0;
           rippleTimers.current[i] = 0;
         }
@@ -859,8 +865,18 @@ export default function MasterMap() {
         if (!el || !nodeMeshes[i]) return;
         const sp = toScreen(nodeMeshes[i].position);
         el.style.left = `${sp.x}px`;
-        el.style.top = `${sp.y + NODE_R + 7}px`;
+        el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
+
+      // ── Peek panel positioning (anchored above tapped node) ──
+      const pk = peekRef.current;
+      const pkEl = peekElRef.current;
+      if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
+        const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
+        const bs = baseScales[pk.nodeIdx] ?? 1;
+        pkEl.style.left = `${sp.x}px`;
+        pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
+      }
 
       renderer.render(scene, camera);
     };
