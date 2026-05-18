@@ -14,7 +14,7 @@ import Workspace from "./pages/workspace";
 import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";
 import EntryDetail from "./pages/entry-detail";
-import ThinkFreely from "./pages/think-freely";
+
 import Workshop from "./pages/workshop";
 import ProjectCompass from "./pages/project-compass";
 import Terms from "./pages/terms";
