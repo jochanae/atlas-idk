@@ -1632,6 +1632,14 @@ export default function MasterMap() {
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldTextStrong }}>
             {currentLayer === 3 ? (context.projectName ?? "Project") : "Portfolio"}
           </span>
+          {context.projectName && currentLayer === 2 && (
+            <>
+              <span style={{ color: palette.mutedText, fontSize: 10 }}>·</span>
+              <span style={{ fontSize: 10, color: palette.mutedText, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                {context.projectName}
+              </span>
+            </>
+          )}
           {context.projectName && currentLayer === 3 && context.parentLabel && (
             <>
               <span style={{ color: palette.mutedText, fontSize: 10 }}>·</span>
