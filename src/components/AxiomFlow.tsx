@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
