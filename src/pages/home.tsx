@@ -1228,8 +1228,11 @@ export default function Home() {
   }, [activeConversationId]);
 
 
-  const handleNewProject = useCallback((name = "New Project") => {
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
+  const performCreateProject = useCallback((name: string, _githubRepo?: string) => {
     if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowNewProjectModal(false);
       setShowUpgrade(true);
       return;
     }
@@ -1237,12 +1240,14 @@ export default function Home() {
       { data: { name } },
       {
         onSuccess: (p) => {
+          setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           setLocation(`/project/${p.id}`);
         },
         onError: (err: any) => {
           const msg = extractApiErrorMessage(err);
           if (msg?.includes("PROJECT_LIMIT_REACHED") || err?.status === 402) {
+            setShowNewProjectModal(false);
             setShowUpgrade(true);
           } else {
             setCreateError(msg ?? "Failed to create project");
@@ -1251,6 +1256,15 @@ export default function Home() {
       }
     );
   }, [isFree, projects, createProject, queryClient, setLocation]);
+
+  const handleNewProject = useCallback((_name = "New Project") => {
+    if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowUpgrade(true);
+      return;
+    }
+    setCreateError(null);
+    setShowNewProjectModal(true);
+  }, [isFree, projects]);
 
   useEffect(() => {
     try { sessionStorage.removeItem("atlas-from-landing"); } catch {}
