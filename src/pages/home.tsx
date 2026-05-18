@@ -1516,6 +1516,7 @@ export default function Home() {
 
     setHomeMessages(prev => [...prev, { role: 'user', content: messageText, imageUrl, createdAt: new Date().toISOString() }]);
     setIsAtlasStreaming(true);
+    const streamingId = Date.now().toString();
     try {
       const res = await fetch("/api/nexus/chat", {
         method: "POST",
@@ -1537,8 +1538,8 @@ export default function Home() {
       let streamedText = "";
 
       // Add a streaming message bubble immediately
-      const streamingId = Date.now().toString();
       setHomeMessages(prev => [...prev, { role: 'assistant', content: '', model: homeModel, intentType: null, isNew: true, id: streamingId, streaming: true, createdAt: new Date().toISOString() }]);
+
 
       while (true) {
         const { done, value } = await reader.read();
