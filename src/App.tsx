@@ -14,7 +14,7 @@ import Workspace from "./pages/workspace";
 import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";
 import EntryDetail from "./pages/entry-detail";
-import ThinkFreely from "./pages/think-freely";
+
 import Workshop from "./pages/workshop";
 import ProjectCompass from "./pages/project-compass";
 import Terms from "./pages/terms";
@@ -267,7 +267,7 @@ function Router() {
         <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/compass", { replace: true }), []); return null; }} />
         <Route path="/entry/:id" component={EntryDetail} />
         <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/dashboard", { replace: true }), []); return null; }} />
-        <Route path="/think-freely" component={ThinkFreely} />
+        
         <Route path="/workshop" component={Workshop} />
         <Route path="/compass" component={ProjectCompass} />
         <Route path="/terms" component={Terms} />

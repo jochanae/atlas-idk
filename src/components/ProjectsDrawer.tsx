@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, Feather, Hammer, Compass, Archive, LayoutDashboard, Globe, Wand2, KeyRound } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, Hammer, Compass, Archive, LayoutDashboard, Globe, Wand2, KeyRound } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 
 export type DrawerProject = {
@@ -257,7 +257,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decision Ledger" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
           )}
           <NavRow icon={<Inbox size={14} strokeWidth={1.6} />} label="Parking Lot" onClick={() => { onOpenParking?.(); onClose(); }} />
-          <NavRow icon={<Feather size={14} strokeWidth={1.6} />} label="Think Freely" onClick={() => navigate("/think-freely")} />
+          
 
           <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
 
