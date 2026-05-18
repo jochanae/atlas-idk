@@ -1836,6 +1836,21 @@ export default function Home() {
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <button
+                    onClick={() => setShowVault(true)}
+                    title="Visual Vault"
+                    aria-label="Open visual vault"
+                    style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="7" rx="1"/>
+                      <rect x="14" y="3" width="7" height="7" rx="1"/>
+                      <rect x="3" y="14" width="7" height="7" rx="1"/>
+                      <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                  </button>
+                  <button
                     onClick={() => setShowBriefingPanel(true)}
                     title="Show briefing"
                     aria-label="Show briefing"
