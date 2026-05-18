@@ -25,7 +25,7 @@ import { CommitCard } from "../components/CommitCard";
 import { PlanCard } from "../components/PlanCard";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { StreamingMarkdown, MarkdownProse } from "../components/MessageRenderer";
-import { Eye, TerminalSquare } from "lucide-react";
+import { Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
