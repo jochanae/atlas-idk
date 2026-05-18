@@ -9207,7 +9207,12 @@ export default function Workspace() {
         typeof body?.snapshot?.score === "number" ? body.snapshot.score :
         typeof body?.latestSnapshotScore === "number" ? body.latestSnapshotScore :
         null;
-      if (newScore != null) setMapReadiness(Math.round(newScore));
+      if (newScore != null) {
+        const rounded = Math.round(newScore);
+        const prev = mapReadiness;
+        setMapReadiness(rounded);
+        if (prev > 0 && rounded < prev) haptic.warn();
+      }
       queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
       if (!silent && newScore != null) {
         toast(`Scanned. Readiness: ${Math.round(newScore)}%`);
