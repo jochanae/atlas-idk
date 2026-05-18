@@ -10587,13 +10587,18 @@ export default function Workspace() {
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
                     if (sessionId) {
-                      const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
-                      const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
-                      doSend(
-                        `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
-                        sessionId,
-                        messagesRef.current,
-                      );
+                      if (agenticMode && agenticIterCount >= 8) {
+                        // hard-stop at 8 iterations
+                      } else {
+                        const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
+                        const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                        if (agenticMode) setAgenticIterCount((n) => n + 1);
+                        doSend(
+                          `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                          sessionId,
+                          messagesRef.current,
+                        );
+                      }
                     }
                   }}
                 />
