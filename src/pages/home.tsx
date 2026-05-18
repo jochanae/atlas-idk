@@ -2316,6 +2316,16 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+                          {!msg.streaming && (
+                            <ThoughtForBadge
+                              metrics={{
+                                executionTimeMs: msg.executionTimeMs,
+                                inputTokens: msg.inputTokens,
+                                outputTokens: msg.outputTokens,
+                                costUsd: msg.costUsd,
+                              }}
+                            />
+                          )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;
                             const isExpanded = reviewingPlanIds.has(planKey);
