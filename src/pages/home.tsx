@@ -1595,6 +1595,9 @@ export default function Home() {
               setHomeMessages(prev => prev.map(m =>
                 (m as any).id === streamingId ? { ...m, content: streamedText } : m
               ));
+            } else if (evtName === "step") {
+              const step = JSON.parse(evtData) as { verb?: string; target?: string; status?: "ok" | "warn" | "fail" };
+              if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
             } else if (evtName === "done") {
               const meta = JSON.parse(evtData) as {
                 memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
