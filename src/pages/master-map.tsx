@@ -1201,6 +1201,49 @@ export default function MasterMap() {
         </div>
       )}
 
+      {/* Tension tooltip — anchored to filament midpoint; positioned by loop */}
+      {hoveredTension && (
+        <div
+          ref={tensionTooltipElRef}
+          style={{
+            position: "absolute",
+            transform: "translate(-50%, -100%)",
+            zIndex: 55,
+            minWidth: 200,
+            maxWidth: 260,
+            padding: "8px 11px 9px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 9,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            fontFamily: "var(--app-font-sans)",
+            color: palette.labelText,
+            pointerEvents: "none",
+            animation: "picker-in 120ms cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        >
+          <div style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
+            Tension · {Math.round((hoveredTension.tension.score ?? 0) * 100)}%
+          </div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: palette.goldTextStrong, lineHeight: 1.3 }}>
+            {hoveredTension.tension.projectA?.name} <span style={{ color: palette.mutedText, margin: "0 5px" }}>↔</span> {hoveredTension.tension.projectB?.name}
+          </div>
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+            <div style={{ fontSize: 10.5, color: palette.labelText, lineHeight: 1.35 }}>
+              <span style={{ color: palette.goldText, marginRight: 5 }}>◆</span>
+              {hoveredTension.tension.entryA?.title}
+            </div>
+            <div style={{ fontSize: 10.5, color: palette.labelText, lineHeight: 1.35 }}>
+              <span style={{ color: palette.goldText, marginRight: 5 }}>◆</span>
+              {hoveredTension.tension.entryB?.title}
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {/* Header */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
