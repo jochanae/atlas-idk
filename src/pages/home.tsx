@@ -64,6 +64,10 @@ type HomeMessage = {
   handoffSignal?: HomeHandoffSignal;
   plan?: Plan;
   createdAt?: string;
+  executionTimeMs?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  costUsd?: number | null;
 };
 
 function formatMessageTime(iso?: string): string {
