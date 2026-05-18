@@ -126,8 +126,19 @@ type Project = {
   updatedAt: string;
   entryCount?: number;
   latestEntryAt?: string | null;
+  latestSnapshotScore?: number | null;
 };
 type Connection = { a: number; b: number; strength: number };
+type DecisionStats = { committed: number; tension: number };
+type PeekEntry = { id: number; title: string };
+type PeekState = {
+  projectId: number;
+  nodeIdx: number;
+  name: string;
+  score: number;
+  entries: PeekEntry[];
+  loading: boolean;
+};
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
