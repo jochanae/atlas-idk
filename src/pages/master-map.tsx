@@ -1667,7 +1667,7 @@ function ViewKey({ allProjects, palette, onRecenter, onDive, onNewIdea }: {
   const tintBorder = palette.pickerItemText.startsWith("#3") ? "rgba(180,83,9,0.18)" : "rgba(201,162,76,0.14)";
 
   return (
-    <div style={{ position: "absolute", top: 68, right: 14, zIndex: 50 }}>
+    <div ref={flowRootRef} style={{ position: "absolute", top: 68, right: 14, zIndex: 50 }}>
       {/* Glass pod */}
       <div style={{
         background: palette.panelBg,
