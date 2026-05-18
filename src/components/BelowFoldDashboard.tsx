@@ -15,7 +15,6 @@ type Props = {
   onOpenProject: (id: number) => void;
   onOpenLedger?: () => void;
   onOpenParking?: () => void;
-  onOpenQuickPrompt?: () => void;
   committedCount?: number;
   parkedCount?: number;
   briefing?: string | null;
@@ -234,7 +233,7 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
   );
 }
 
-export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, onOpenQuickPrompt, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
+export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
   
   if (projects.length === 0) return null;
 
@@ -249,7 +248,9 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes bfd-spin { to { transform: rotate(360deg); } }
+        @keyframes bfd-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
       `}</style>
+
 
       {/* Scroll hint / divider */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -260,8 +261,76 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <div style={{ flex: 1, height: 1, background: "var(--atlas-gold-border)" }} />
       </div>
 
-      {/* 1. WHERE WERE WE */}
+      {/* 0. CONNECTIONS DOCK (visual only) */}
       <RevealOnScroll delayMs={0}>
+        <div className="atlas-discovery-card">
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+                Connections
+              </h3>
+              <span style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.55, fontStyle: "italic" }}>
+                Your active ecosystem
+              </span>
+            </div>
+          </div>
+          <div style={{
+            display: "flex", gap: 8, overflowX: "auto", padding: "2px 1px",
+            border: "1px solid rgba(201,162,76,0.08)", borderRadius: 10,
+            background: "rgba(255,255,255,0.015)",
+            scrollbarWidth: "none",
+          }}>
+            {[
+              { name: "GitHub", initials: "GH", status: "2m ago", dot: "rgba(74,222,128,0.6)", pulse: true },
+              { name: "Lovable", initials: "LV", status: "Active", dot: "rgba(201,162,76,0.45)" },
+              { name: "Cursor", initials: "CU", status: "Build 17", dot: "rgba(99,102,241,0.45)" },
+              { name: "Railway", initials: "RW", status: "Live", dot: "rgba(168,85,247,0.45)" },
+            ].map((c) => (
+              <div key={c.name} style={{
+                flex: "1 1 0", minWidth: 110,
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 10px", borderRadius: 8,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                backdropFilter: "blur(8px)",
+                opacity: 0.7,
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: 6,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(201,162,76,0.06)",
+                  border: "1px solid rgba(201,162,76,0.1)",
+                  fontSize: 9, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.7)",
+                  letterSpacing: "0.04em", flexShrink: 0,
+                }}>
+                  {c.initials}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--atlas-fg)", opacity: 0.75, fontFamily: "var(--app-font-sans)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.name}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                    <span style={{
+                      width: 5, height: 5, borderRadius: "50%", background: c.dot, flexShrink: 0,
+                      animation: c.pulse ? "bfd-pulse 1.8s ease-in-out infinite" : undefined,
+                    }} />
+                    <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {c.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: "10px 0 0", fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.04em", textAlign: "center" }}>
+            Connect your tools to make this your mission control
+          </p>
+        </div>
+      </RevealOnScroll>
+
+      {/* 1. WHERE WERE WE */}
+      <RevealOnScroll delayMs={40}>
+
         <div className="atlas-discovery-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -348,38 +417,12 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         </div>
       </RevealOnScroll>
 
-      {/* QUICK PROMPT */}
-      {onOpenQuickPrompt && (
-        <RevealOnScroll delayMs={200}>
-          <div className="atlas-discovery-card" style={{ cursor: "pointer" }} onClick={onOpenQuickPrompt}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-                Quick Prompt
-              </h3>
-              <span style={{ fontSize: 10, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em", opacity: 0.75 }}>
-                Open →
-              </span>
-            </div>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.55, opacity: 0.75 }}>
-              Describe what you want to build. Pick your platform. Get a ready-to-paste prompt — no filler.
-            </p>
-            <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-              {["Cursor", "Replit", "Lovable", "Bolt"].map(p => (
-                <span key={p} style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.6)", border: "1px solid rgba(201,162,76,0.15)", borderRadius: 20, padding: "3px 10px" }}>
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
-        </RevealOnScroll>
-      )}
-
-      {/* 4. UNFINISHED THOUGHTS */}
+      {/* 4. COGNITIVE MOMENTUM (parking) */}
       <RevealOnScroll delayMs={240}>
         <div className="atlas-discovery-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-              Unfinished Thoughts
+              Cognitive Momentum
             </h3>
             {onOpenParking && (
               <button type="button" onClick={onOpenParking} style={{ background: "transparent", border: "none", fontSize: 10, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", cursor: "pointer", letterSpacing: "0.05em", opacity: 0.75 }}>
