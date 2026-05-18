@@ -1292,17 +1292,23 @@ export default function Home() {
     return () => { clearTimeout(t); };
   }, [convSearchQuery, showConvSearch, conversations]);
 
-  // Escape closes search bar
+  // Escape + click-outside closes search bar
   useEffect(() => {
     if (!showConvSearch) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowConvSearch(false);
-        setConvSearchQuery("");
-      }
+    const close = () => { setShowConvSearch(false); setConvSearchQuery(""); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (t.closest("[data-conv-search-root]")) return;
+      close();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer, true);
+    };
   }, [showConvSearch]);
 
   useEffect(() => {
