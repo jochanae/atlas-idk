@@ -1269,6 +1269,7 @@ export default function Home() {
   // Load the active conversation from DB (re-runs when conversationId changes)
   useEffect(() => {
     setHomeMessages([]);
+    setLoadedHistoryCount(0);
     setThreadLoading(true);
     try {
       setHandoffCardDismissed(sessionStorage.getItem(`atlas-home-handoff-dismissed-${activeConversationId}`) === "1");
@@ -1282,6 +1283,7 @@ export default function Home() {
         const normalizedMessages = normalizeLoadedHomeMessages(msgs);
         if (normalizedMessages.length > 0) {
           setHomeMessages(normalizedMessages);
+          setLoadedHistoryCount(normalizedMessages.length);
           return;
         }
       })
