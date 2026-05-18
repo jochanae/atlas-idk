@@ -1999,7 +1999,7 @@ export default function Home() {
 
       {/* Conversation search bar + results — slides below subheader */}
       {showConvSearch && homeMessages.length > 0 && (
-        <div style={{ position: "sticky", top: 86, zIndex: 30, padding: "10px 14px 0", background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)" }}>
+        <div data-conv-search-root style={{ position: "sticky", top: 86, zIndex: 30, padding: "10px 14px 0", background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "7px 10px" }}>
             <Search size={13} strokeWidth={1.75} color="var(--atlas-muted)" />
             <input
