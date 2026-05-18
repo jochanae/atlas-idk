@@ -2326,7 +2326,7 @@ function AssistantBubble({
           isNew={isNew}
           onStreamTextChange={onStreamActivityUpdate}
           onComplete={onStreamActivityComplete}
-          textStyle={{ fontSize: 14, lineHeight: 1.78, color: "var(--atlas-fg)", opacity: 0.9, whiteSpace: "pre-wrap" }}
+          textStyle={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85, whiteSpace: "pre-wrap" }}
         />
 
         {message.plan && planState !== "skipped" && (
