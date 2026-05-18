@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import * as THREE from "three";
 import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
+import { useMapStore, type MapNode } from "@/lib/master-map-store";
+import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
@@ -234,6 +236,24 @@ export default function MasterMap() {
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
   const recenterFnRef = useRef<(() => void) | null>(null);
+  const layerStackRef = useRef<LayerStack | null>(null);
+  const layer2TooltipRef = useRef<{ rec: LayerNodeRecord } | null>(null);
+  const [layer2Tooltip, setLayer2Tooltip] = useState<{
+    id: string;
+    label: string;
+    description?: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const mapState = useMapStore();
+  const currentLayer = mapState.currentLayer;
+  const focusedNodeId = mapState.focusedNodeId;
+  const context = mapState.context;
+  const navigateToNode = useMapStore((s) => s.navigateToNode);
+  const resetToSource = useMapStore((s) => s.resetToSource);
+  const currentLayerRef = useRef(currentLayer);
+  useEffect(() => { currentLayerRef.current = currentLayer; }, [currentLayer]);
 
 
   const activeProjectId = useMemo(() => {
@@ -252,6 +272,62 @@ export default function MasterMap() {
   useEffect(() => { peekRef.current = peek; }, [peek]);
   useEffect(() => { tensionsRef.current = tensions; }, [tensions]);
   useEffect(() => { hoveredTensionRef.current = hoveredTension; }, [hoveredTension]);
+
+  // Reset to Layer 1 on page mount
+  useEffect(() => { resetToSource(); }, [resetToSource]);
+
+  // Fetch & populate Layer 2/3 children whenever the focused node changes
+  useEffect(() => {
+    const ls = layerStackRef.current;
+    if (!ls) return;
+    if (currentLayer === 1 || !focusedNodeId) {
+      ls.hideAll();
+      setLayer2Tooltip(null);
+      layer2TooltipRef.current = null;
+      return;
+    }
+    const target = mapState.cameraTarget;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (currentLayer === 2 && context.projectId) {
+          const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/map-nodes`, { credentials: "include" });
+          const list: MapNode[] = r.ok ? await r.json() : [];
+          if (cancelled) return;
+          ls.populate(2, target, list);
+        } else if (currentLayer === 3 && context.projectId && context.parentLabel) {
+          const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/entries`, { credentials: "include" });
+          const raw = r.ok ? await r.json() : [];
+          const entries: Array<{ id: number | string; title: string; description?: string }> = Array.isArray(raw) ? raw : [];
+          const sprintTitle = context.parentLabel.toLowerCase();
+          const filtered = entries
+            .filter((e) => (e.title ?? "").toLowerCase().includes(sprintTitle))
+            .slice(0, 8)
+            .map<MapNode>((e) => ({
+              id: String(e.id),
+              label: e.title,
+              type: "LEAF",
+              description: e.description,
+              position: [0, 0, 0],
+              color: "#C9A24C",
+            }));
+          if (cancelled) return;
+          ls.populate(3, target, filtered, { maxChildren: 8 });
+        }
+      } catch {
+        if (!cancelled) ls.hideAll();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentLayer, focusedNodeId, context.projectId, context.parentLabel, mapState.cameraTarget]);
+
+  // Pause loop when tab hidden (perf)
+  const tabVisibleRef = useRef(true);
+  useEffect(() => {
+    const onVis = () => { tabVisibleRef.current = document.visibilityState === "visible"; };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   // ── cross-project tensions ─────────────────────────────────────────────────
   useEffect(() => {
@@ -622,16 +698,24 @@ export default function MasterMap() {
       });
     });
 
+    // ── Layer 2/3 stack ───────────────────────────────────────────────────
+    const layerStack = new LayerStack(scene);
+    layerStackRef.current = layerStack;
+
     // ── Raycasting ────────────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 6 };
     const ndc = new THREE.Vector2();
 
-    const hitTest = (cx: number, cy: number) => {
+    const setRay = (cx: number, cy: number) => {
       const rect = canvas.getBoundingClientRect();
       ndc.x = ((cx - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((cy - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
+    };
+
+    const hitTest = (cx: number, cy: number) => {
+      setRay(cx, cy);
       return raycaster.intersectObjects([nexMesh, ...nodeMeshes]);
     };
 
@@ -686,7 +770,58 @@ export default function MasterMap() {
       }
     };
 
+    const handleLayer23Click = (cx: number, cy: number): boolean => {
+      if (currentLayerRef.current === 1) return false;
+      setRay(cx, cy);
+      const hit = layerStack.hit(raycaster);
+      if (hit === "source") {
+        haptics.tap();
+        resetToSource();
+        return true;
+      }
+      if (hit) {
+        haptics.tap();
+        const layer = currentLayerRef.current;
+        if (hit.subType === "BLUEPRINT") {
+          setLocation(`/blueprints/${hit.id}`);
+          return true;
+        }
+        if (hit.subType === "DECISION") {
+          setLocation(`/entry/${hit.id}`);
+          return true;
+        }
+        if (hit.subType === "SPRINT" && layer === 2) {
+          // Drill into Layer 3
+          const projectId = useMapStore.getState().context.projectId;
+          const projectName = useMapStore.getState().context.projectName;
+          navigateToNode(hit.id, [hit.worldPos.x, hit.worldPos.y, hit.worldPos.z], 3, {
+            projectId,
+            projectName,
+            parentId: hit.id,
+            parentLabel: hit.label,
+          });
+          return true;
+        }
+        // Default: show glassmorphic tooltip
+        const sp = hit.worldPos.clone().project(camera);
+        setLayer2Tooltip({
+          id: hit.id,
+          label: hit.label,
+          description: hit.description,
+          x: (sp.x * 0.5 + 0.5) * canvas.clientWidth,
+          y: (-sp.y * 0.5 + 0.5) * canvas.clientHeight,
+        });
+        layer2TooltipRef.current = { rec: hit };
+        return true;
+      }
+      // Empty tap on layer 2/3 → dismiss tooltip
+      setLayer2Tooltip(null);
+      layer2TooltipRef.current = null;
+      return true;
+    };
+
     const handleClick = (cx: number, cy: number) => {
+      if (handleLayer23Click(cx, cy)) return;
       const hits = hitTest(cx, cy);
       if (!hits.length) {
         // Tap on a tension filament shows tooltip; else dismiss peek/tension
@@ -853,7 +988,11 @@ export default function MasterMap() {
 
     const loop = () => {
       frameId = requestAnimationFrame(loop);
+      if (!tabVisibleRef.current) return;
       const t = (Date.now() - t0) / 1000;
+      const nowMs = performance.now();
+      const layerNow = currentLayerRef.current;
+      const storeState = useMapStore.getState();
 
       // ── Nexium rotation + breathe ──
       nexMesh.rotation.y = t * 0.22;
@@ -865,28 +1004,40 @@ export default function MasterMap() {
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
 
-      // ── Camera: gyro + pan offset + zoom ──
+      // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
       const gy = gyroTilt.current.y;
-      // Rubber-band: spring pan back toward center if beyond threshold
       const panDist = Math.hypot(panRef.current.x, panRef.current.y);
       if (!isDraggingRef.current && panDist > 480) {
         panRef.current.x *= 0.96;
         panRef.current.y *= 0.96;
       }
-      const targetX = gy * 95 + panRef.current.x;
-      const targetY = -gx * 70 + panRef.current.y;
-      camera.position.x += (targetX - camera.position.x) * 0.055;
-      camera.position.y += (targetY - camera.position.y) * 0.055;
-      camera.position.z += (camZTarget.current - camera.position.z) * 0.07;
-      // Star layers parallax: further back = moves less (nearer to camera parallaxes faster)
-      starsBack.position.x  = camera.position.x * 0.12;
-      starsBack.position.y  = camera.position.y * 0.12;
-      starsMid.position.x   = camera.position.x * 0.28;
-      starsMid.position.y   = camera.position.y * 0.28;
-      starsFront.position.x = camera.position.x * 0.55;
-      starsFront.position.y = camera.position.y * 0.55;
-      camera.lookAt(0, 0, 0);
+
+      if (layerNow === 1) {
+        const targetX = gy * 95 + panRef.current.x;
+        const targetY = -gx * 70 + panRef.current.y;
+        camera.position.x += (targetX - camera.position.x) * 0.055;
+        camera.position.y += (targetY - camera.position.y) * 0.055;
+        camera.position.z += (camZTarget.current - camera.position.z) * 0.07;
+        starsBack.position.x  = camera.position.x * 0.12;
+        starsBack.position.y  = camera.position.y * 0.12;
+        starsMid.position.x   = camera.position.x * 0.28;
+        starsMid.position.y   = camera.position.y * 0.28;
+        starsFront.position.x = camera.position.x * 0.55;
+        starsFront.position.y = camera.position.y * 0.55;
+        camera.lookAt(0, 0, 0);
+      } else {
+        // Cinematic camera: lerp toward target with zoom-derived offset
+        const tgt = storeState.cameraTarget;
+        const zoom = storeState.zoomLevel;
+        const desired = new THREE.Vector3(
+          tgt[0],
+          tgt[1] + zoom * 0.4 * 10, // scale to match world units (~25 ≈ CAM_Z)
+          tgt[2] + zoom * 10,
+        );
+        camera.position.lerp(desired, 0.08);
+        camera.lookAt(tgt[0], tgt[1], tgt[2]);
+      }
 
       // ── Warp dive ──
       if (warpTarget.current) {
@@ -927,18 +1078,32 @@ export default function MasterMap() {
       });
 
       // ── Node hover glow + scale (respects per-node baseScale from Ledger overlay) ──
+      const layer1FadeTarget = layerNow === 1 ? 0.86 : 0.15;
       nodeMeshes.forEach((mesh, i) => {
-        const hovered = i === hoveredIdxRef.current;
+        const hovered = i === hoveredIdxRef.current && layerNow === 1;
         const mat = mesh.material as THREE.MeshPhysicalMaterial;
         const proj = projectsRef.current[i];
         const stats = proj ? statsRef.current.get(proj.id) ?? { committed: 0, tension: 0 } : { committed: 0, tension: 0 };
         const boost = stats.committed === 0 ? 0 : (stats.tension > 0 ? 0.18 : 0.22);
         const base = 0.12 + actLevel(proj?.updatedAt ?? "") * 0.3 + boost;
         mat.emissiveIntensity = hovered ? base + 0.32 + Math.sin(t * 3.5) * 0.12 : base;
+        mat.opacity += (layer1FadeTarget - mat.opacity) * 0.08;
         const bs = baseScales[i] ?? 1;
         const tgt = bs * (hovered ? 1.15 : 1.0);
         mesh.scale.setScalar(mesh.scale.x + (tgt - mesh.scale.x) * 0.11);
       });
+      // Tick Layer 2/3
+      layerStack.tick(t, nowMs);
+      // Update Layer 2 tooltip screen position
+      if (layer2TooltipRef.current) {
+        const rec = layer2TooltipRef.current.rec;
+        const sp = rec.worldPos.clone().project(camera);
+        setLayer2Tooltip((prev) => prev ? {
+          ...prev,
+          x: (sp.x * 0.5 + 0.5) * canvas.clientWidth,
+          y: (-sp.y * 0.5 + 0.5) * canvas.clientHeight,
+        } : prev);
+      }
 
       // ── Ripple rings ──
       rippleMeshes.forEach((ring, i) => {
@@ -1006,6 +1171,8 @@ export default function MasterMap() {
       canvas.removeEventListener("touchend", onTouchEnd);
       canvas.removeEventListener("wheel", onWheel);
       ro.disconnect();
+      layerStack.clear();
+      layerStackRef.current = null;
       renderer.dispose();
     };
   }, [loading, theme, statsVersion, tensionsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1188,6 +1355,32 @@ export default function MasterMap() {
             }}
           >
             Open Project →
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              haptics.tap();
+              const proj = projectsRef.current[peek.nodeIdx];
+              if (!proj) return;
+              const pos = nodePos3D(peek.nodeIdx, projectsRef.current.length);
+              setPeek(null);
+              navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
+                projectId: proj.id,
+                projectName: proj.name,
+              });
+            }}
+            style={{
+              marginTop: 6, width: "100%",
+              padding: "7px 10px",
+              background: "transparent",
+              border: `1px solid ${palette.panelBorder}`,
+              borderRadius: 7,
+              color: palette.goldTextStrong,
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: "var(--app-font-mono)", cursor: "pointer",
+            }}
+          >
+            Explore →
           </button>
           {/* Tail pointing down at the node */}
           <div style={{
