@@ -250,6 +250,27 @@ export default function MasterMap() {
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
   useEffect(() => { peekRef.current = peek; }, [peek]);
+  useEffect(() => { tensionsRef.current = tensions; }, [tensions]);
+  useEffect(() => { hoveredTensionRef.current = hoveredTension; }, [hoveredTension]);
+
+  // ── cross-project tensions ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${BASE_URL}/api/projects/tensions`, { credentials: "include" });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (cancelled) return;
+        const list: Tension[] = Array.isArray(data) ? data : (data?.tensions ?? []);
+        setTensions(list);
+        setTensionsVersion(v => v + 1);
+      } catch { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [loading, projects]);
+
 
   // ── decision stats (per project) ───────────────────────────────────────────
   useEffect(() => {
