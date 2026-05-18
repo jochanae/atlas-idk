@@ -1913,6 +1913,22 @@ export default function Home() {
                     </svg>
                   </button>
                   <button
+                    onClick={() => {
+                      setShowConvSearch(v => {
+                        const next = !v;
+                        if (!next) setConvSearchQuery("");
+                        return next;
+                      });
+                    }}
+                    title="Search conversations"
+                    aria-label="Search conversations"
+                    style={{ background: showConvSearch ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showConvSearch ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = showConvSearch ? "1" : "0.7")}
+                  >
+                    <Search size={14} strokeWidth={1.75} />
+                  </button>
+                  <button
                     onClick={() => setShowBriefingPanel(true)}
                     title="Show briefing"
                     aria-label="Show briefing"
