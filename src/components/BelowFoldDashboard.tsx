@@ -261,72 +261,11 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <div style={{ flex: 1, height: 1, background: "var(--atlas-gold-border)" }} />
       </div>
 
-      {/* 0. CONNECTIONS DOCK (visual only) */}
+      {/* 0. CONNECTIONS DOCK — live wired */}
       <RevealOnScroll delayMs={0}>
-        <div className="atlas-discovery-card">
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
-              <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-                Connections
-              </h3>
-              <span style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.55, fontStyle: "italic" }}>
-                Your active ecosystem
-              </span>
-            </div>
-          </div>
-          <div style={{
-            display: "flex", gap: 8, overflowX: "auto", padding: "2px 1px",
-            border: "1px solid rgba(201,162,76,0.08)", borderRadius: 10,
-            background: "rgba(255,255,255,0.015)",
-            scrollbarWidth: "none",
-          }}>
-            {[
-              { name: "GitHub", initials: "GH", status: "2m ago", dot: "rgba(74,222,128,0.6)", pulse: true },
-              { name: "Lovable", initials: "LV", status: "Active", dot: "rgba(201,162,76,0.45)" },
-              { name: "Cursor", initials: "CU", status: "Build 17", dot: "rgba(99,102,241,0.45)" },
-              { name: "Railway", initials: "RW", status: "Live", dot: "rgba(168,85,247,0.45)" },
-            ].map((c) => (
-              <div key={c.name} style={{
-                flex: "1 1 0", minWidth: 110,
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 10px", borderRadius: 8,
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.05)",
-                backdropFilter: "blur(8px)",
-                opacity: 0.7,
-              }}>
-                <div style={{
-                  width: 22, height: 22, borderRadius: 6,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "rgba(201,162,76,0.06)",
-                  border: "1px solid rgba(201,162,76,0.1)",
-                  fontSize: 9, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.7)",
-                  letterSpacing: "0.04em", flexShrink: 0,
-                }}>
-                  {c.initials}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "var(--atlas-fg)", opacity: 0.75, fontFamily: "var(--app-font-sans)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {c.name}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                    <span style={{
-                      width: 5, height: 5, borderRadius: "50%", background: c.dot, flexShrink: 0,
-                      animation: c.pulse ? "bfd-pulse 1.8s ease-in-out infinite" : undefined,
-                    }} />
-                    <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {c.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p style={{ margin: "10px 0 0", fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.04em", textAlign: "center" }}>
-            Connect your tools to make this your mission control
-          </p>
-        </div>
+        <ConnectionsDock />
       </RevealOnScroll>
+
 
       {/* 1. WHERE WERE WE */}
       <RevealOnScroll delayMs={40}>
@@ -478,3 +417,374 @@ function MetricCell({ value, label }: { value: number; label: string }) {
     </div>
   );
 }
+
+// ============================================================================
+// Connections Dock
+// ============================================================================
+
+type ConnType = "github" | "railway" | "lovable" | "cursor";
+
+type Connection = {
+  id: string | number;
+  type: ConnType;
+  label?: string | null;
+  url?: string | null;
+  meta?: Record<string, any> | null;
+};
+
+type ConnStatus = {
+  state?: "active" | "error" | "building" | "failed" | "linked" | "loading" | "success" | string;
+  message?: string | null;
+  timestamp?: string | null;
+  // GitHub-specific
+  lastCommitMessage?: string | null;
+  lastCommitAt?: string | null;
+  // Railway-specific
+  lastDeployStatus?: string | null;
+  lastDeployAt?: string | null;
+};
+
+const CONN_META: Record<ConnType, { name: string; initials: string }> = {
+  github:  { name: "GitHub",  initials: "GH" },
+  railway: { name: "Railway", initials: "RW" },
+  lovable: { name: "Lovable", initials: "LV" },
+  cursor:  { name: "Cursor",  initials: "CU" },
+};
+
+function truncate(s: string, n: number) {
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function dotForStatus(type: ConnType, st?: ConnStatus): { color: string; pulse: boolean; label: string } {
+  if (!st || st.state === "loading") {
+    return { color: "rgba(160,160,160,0.5)", pulse: false, label: "Loading…" };
+  }
+  if (type === "github") {
+    if (st.state === "error" || st.state === "failed") return { color: "rgba(248,113,113,0.85)", pulse: false, label: st.message ?? "Error" };
+    const msg = st.lastCommitMessage ? truncate(st.lastCommitMessage, 40) : "Active";
+    const when = st.lastCommitAt ? formatRelative(st.lastCommitAt) : "";
+    return { color: "rgba(74,222,128,0.7)", pulse: true, label: when ? `${msg} · ${when}` : msg };
+  }
+  if (type === "railway") {
+    const s = (st.lastDeployStatus ?? st.state ?? "").toUpperCase();
+    const when = st.lastDeployAt ? formatRelative(st.lastDeployAt) : "";
+    if (s === "SUCCESS" || s === "ACTIVE") return { color: "rgba(74,222,128,0.7)", pulse: true, label: when ? `Live · ${when}` : "Live" };
+    if (s === "BUILDING" || s === "DEPLOYING" || s === "QUEUED") return { color: "rgba(245,191,107,0.85)", pulse: true, label: when ? `Building · ${when}` : "Building" };
+    if (s === "FAILED" || s === "CRASHED" || s === "ERROR") return { color: "rgba(248,113,113,0.85)", pulse: false, label: when ? `Failed · ${when}` : "Failed" };
+    return { color: "rgba(160,160,160,0.5)", pulse: false, label: when || "—" };
+  }
+  if (type === "lovable") return { color: "rgba(168,85,247,0.55)", pulse: false, label: "Linked" };
+  return { color: "rgba(96,165,250,0.55)", pulse: false, label: "Linked" }; // cursor
+}
+
+function ConnectionsDock() {
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [statuses, setStatuses] = useState<Record<string, ConnStatus>>({});
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const loadConnections = async () => {
+    try {
+      const res = await fetch("/api/connections", { credentials: "include" });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      const list: Connection[] = Array.isArray(data) ? data : (data.connections ?? []);
+      setConnections(list);
+    } catch {
+      setConnections([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStatus = async () => {
+    try {
+      const res = await fetch("/api/connections/status", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const map: Record<string, ConnStatus> = data.statuses ?? data ?? {};
+      setStatuses(map);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadConnections();
+    loadStatus();
+    const t = setInterval(loadStatus, 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const handleDelete = async (id: Connection["id"]) => {
+    setConnections((cs) => cs.filter((c) => c.id !== id));
+    try { await fetch(`/api/connections/${id}`, { method: "DELETE", credentials: "include" }); } catch {}
+  };
+
+  const handleSaved = () => {
+    setShowAdd(false);
+    loadConnections().then(loadStatus);
+  };
+
+  const handleCardClick = (c: Connection) => {
+    if ((c.type === "lovable" || c.type === "cursor") && c.url) {
+      window.open(c.url, "_blank", "noopener");
+    }
+  };
+
+  const isEmpty = !loading && connections.length === 0;
+
+  return (
+    <div className="atlas-discovery-card">
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+          <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+            Connections
+          </h3>
+          <span style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.55, fontStyle: "italic" }}>
+            Your active ecosystem
+          </span>
+        </div>
+        {!isEmpty && (
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            aria-label="Add connection"
+            style={{
+              width: 22, height: 22, borderRadius: 6, cursor: "pointer",
+              background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.25)",
+              color: "var(--atlas-gold)", fontSize: 14, lineHeight: 1, padding: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            +
+          </button>
+        )}
+      </div>
+
+      {isEmpty ? (
+        <div style={{ padding: "20px 14px", textAlign: "center", border: "1px dashed rgba(201,162,76,0.15)", borderRadius: 10 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.75, lineHeight: 1.5 }}>
+            Connect your tools to make this your mission control
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            style={{
+              padding: "7px 14px", borderRadius: 8, cursor: "pointer",
+              background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)",
+              color: "var(--atlas-gold)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.06em", textTransform: "uppercase",
+            }}
+          >
+            + Add connection
+          </button>
+        </div>
+      ) : (
+        <div style={{
+          display: "flex", gap: 8, overflowX: "auto", padding: "2px 1px",
+          border: "1px solid rgba(201,162,76,0.08)", borderRadius: 10,
+          background: "rgba(255,255,255,0.015)",
+          scrollbarWidth: "none",
+        }}>
+          {connections.map((c) => {
+            const st = statuses[String(c.id)];
+            const d = dotForStatus(c.type, loading ? { state: "loading" } : st);
+            const meta = CONN_META[c.type] ?? { name: c.type, initials: c.type.slice(0, 2).toUpperCase() };
+            const clickable = (c.type === "lovable" || c.type === "cursor") && !!c.url;
+            return (
+              <div key={c.id} style={{
+                position: "relative",
+                flex: "1 1 0", minWidth: 130,
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 10px", borderRadius: 8,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                backdropFilter: "blur(8px)",
+                cursor: clickable ? "pointer" : "default",
+              }}
+                onClick={clickable ? () => handleCardClick(c) : undefined}
+              >
+                <div style={{
+                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(201,162,76,0.06)", border: "1px solid rgba(201,162,76,0.1)",
+                  fontSize: 9, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.7)",
+                  letterSpacing: "0.04em",
+                }}>
+                  {meta.initials}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--atlas-fg)", opacity: 0.85, fontFamily: "var(--app-font-sans)", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {meta.name}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                    <span style={{
+                      width: 5, height: 5, borderRadius: "50%", background: d.color, flexShrink: 0,
+                      animation: d.pulse ? "bfd-pulse 1.8s ease-in-out infinite" : undefined,
+                    }} />
+                    <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.7, letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {d.label}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}
+                  aria-label={`Remove ${meta.name}`}
+                  style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                    background: "transparent", border: "none", color: "var(--atlas-muted)",
+                    opacity: 0.4, cursor: "pointer", fontSize: 12, lineHeight: 1, padding: 0,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.color = "rgba(248,113,113,0.9)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showAdd && <AddConnectionModal onClose={() => setShowAdd(false)} onSaved={handleSaved} />}
+    </div>
+  );
+}
+
+function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [type, setType] = useState<ConnType | null>(null);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    if (!type) return;
+    setSaving(true); setError(null);
+    try {
+      const body: Record<string, any> = { type };
+      if (type === "railway") body.token = value.trim();
+      if (type === "lovable" || type === "cursor") body.url = value.trim();
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      onSaved();
+    } catch (e: any) {
+      setError(e?.message ?? "Save failed");
+      setSaving(false);
+    }
+  };
+
+  const canSave = !!type && (type === "github" || value.trim().length > 0) && !saving;
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 1000,
+      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: "100%", maxWidth: 360, borderRadius: 12,
+        background: "var(--atlas-surface)", border: "1px solid var(--atlas-gold-border)",
+        padding: 18, boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <h3 style={{ margin: 0, fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-fg)" }}>
+            {type ? `Add ${CONN_META[type].name}` : "Add connection"}
+          </h3>
+          <button type="button" onClick={onClose} aria-label="Close" style={{
+            background: "transparent", border: "none", color: "var(--atlas-muted)",
+            fontSize: 18, cursor: "pointer", padding: 0, lineHeight: 1,
+          }}>×</button>
+        </div>
+
+        {!type ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {(["github", "railway", "lovable", "cursor"] as const).map((t) => (
+              <button key={t} type="button" onClick={() => setType(t)} style={{
+                padding: "14px 8px", borderRadius: 8, cursor: "pointer",
+                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,76,0.18)",
+                color: "var(--atlas-fg)", fontSize: 12, fontFamily: "var(--app-font-sans)",
+              }}>
+                <div style={{ fontSize: 14, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", marginBottom: 4 }}>
+                  {CONN_META[t].initials}
+                </div>
+                {CONN_META[t].name}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div>
+            {type === "github" && (
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+                Auto-detected from your projects.
+              </p>
+            )}
+            {type === "railway" && (
+              <>
+                <input
+                  autoFocus value={value} onChange={(e) => setValue(e.target.value)}
+                  placeholder="Paste your Railway API token"
+                  style={inputStyle}
+                />
+                <a href="https://railway.com/account/tokens" target="_blank" rel="noopener noreferrer" style={{
+                  display: "block", marginTop: 6, fontSize: 10, color: "var(--atlas-muted)",
+                  opacity: 0.6, fontFamily: "var(--app-font-mono)", textDecoration: "underline",
+                }}>
+                  railway.com/account/tokens
+                </a>
+              </>
+            )}
+            {type === "lovable" && (
+              <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
+                placeholder="Paste your Lovable project URL" style={inputStyle} />
+            )}
+            {type === "cursor" && (
+              <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
+                placeholder="Paste your repository URL" style={inputStyle} />
+            )}
+
+            {error && (
+              <p style={{ margin: "10px 0 0", fontSize: 11, color: "rgba(248,113,113,0.9)", fontFamily: "var(--app-font-mono)" }}>{error}</p>
+            )}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => { setType(null); setValue(""); setError(null); }} style={btnGhostStyle}>
+                Back
+              </button>
+              <button type="button" disabled={!canSave} onClick={save} style={{
+                ...btnPrimaryStyle, opacity: canSave ? 1 : 0.4, cursor: canSave ? "pointer" : "not-allowed",
+              }}>
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "9px 11px", borderRadius: 7,
+  background: "rgba(0,0,0,0.3)", border: "1px solid var(--atlas-border)",
+  color: "var(--atlas-fg)", fontSize: 12, fontFamily: "var(--app-font-mono)",
+  outline: "none",
+};
+
+const btnGhostStyle: React.CSSProperties = {
+  padding: "7px 14px", borderRadius: 7, cursor: "pointer",
+  background: "transparent", border: "1px solid var(--atlas-border)",
+  color: "var(--atlas-muted)", fontSize: 11, fontFamily: "var(--app-font-mono)",
+  letterSpacing: "0.06em", textTransform: "uppercase",
+};
+
+const btnPrimaryStyle: React.CSSProperties = {
+  padding: "7px 14px", borderRadius: 7,
+  background: "rgba(201,162,76,0.18)", border: "1px solid rgba(201,162,76,0.5)",
+  color: "var(--atlas-gold)", fontSize: 11, fontFamily: "var(--app-font-mono)",
+  letterSpacing: "0.06em", textTransform: "uppercase",
+};
