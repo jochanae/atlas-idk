@@ -5121,11 +5121,13 @@ ${t}
   };
 
 
-  // Device config
+  // Device config — desktop renders at a real desktop width then scales down,
+  // otherwise the iframe inherits the narrow panel width and the site responds
+  // as mobile. Landscape on desktop = ultrawide (1920); portrait = standard 1440.
   const DEVICE_CONFIG = {
     phone:   { portrait: [390, 844],   landscape: [844, 390] },
     tablet:  { portrait: [768, 1024],  landscape: [1024, 768] },
-    desktop: { portrait: [null, null], landscape: [null, null] },
+    desktop: { portrait: [1440, 900],  landscape: [1920, 1080] },
   } as const;
   const orient = isLandscape ? "landscape" : "portrait";
   const [dW, dH] = DEVICE_CONFIG[deviceSize][orient];
@@ -5141,19 +5143,22 @@ ${t}
     cursor: "pointer", transition: "all 140ms ease", opacity: active ? 1 : 0.5,
   });
 
-  // Device iframe wrapper — inline to avoid component-in-component remounting
-  const deviceWrapperStyle: React.CSSProperties = deviceSize === "desktop"
-    ? { flex: 1, position: "relative", overflow: "hidden" }
-    : { flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "hidden", padding: "12px 8px", background: "rgba(0,0,0,0.18)" };
-  const deviceInnerStyle: React.CSSProperties = deviceSize === "desktop"
-    ? { width: "100%", height: "100%", position: "absolute", inset: 0 }
-    : {
-        width: dW ?? undefined, height: dH ?? undefined,
-        transform: `scale(${scale})`, transformOrigin: "top center",
-        borderRadius: 14, overflow: "hidden", flexShrink: 0,
-        boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.55)",
-        background: "#fff",
-      };
+  // Device iframe wrapper — all three sizes render at their real viewport width
+  // and get scaled to fit the panel, so responsive sites render the right layout.
+  const deviceWrapperStyle: React.CSSProperties = {
+    flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center",
+    overflow: "auto",
+    padding: deviceSize === "desktop" ? "8px 6px" : "12px 8px",
+    background: "rgba(0,0,0,0.18)",
+  };
+  const deviceInnerStyle: React.CSSProperties = {
+    width: dW ?? undefined, height: dH ?? undefined,
+    transform: `scale(${scale})`, transformOrigin: "top center",
+    borderRadius: deviceSize === "desktop" ? 6 : 14,
+    overflow: "hidden", flexShrink: 0,
+    boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.55)",
+    background: "#fff",
+  };
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
