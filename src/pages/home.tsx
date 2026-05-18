@@ -2599,6 +2599,13 @@ export default function Home() {
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
       {showProfile && <AccountHubPanel onClose={() => setShowProfile(false)} />}
       {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} reason="project_limit" />}
+      <NewProjectModal
+        open={showNewProjectModal}
+        onClose={() => { setShowNewProjectModal(false); setCreateError(null); }}
+        onCreate={(name, repo) => performCreateProject(name, repo)}
+        creating={createProject.isPending}
+        error={createError}
+      />
 
 
       {showProjectsSheet && (
