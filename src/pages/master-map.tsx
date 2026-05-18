@@ -736,13 +736,17 @@ export default function MasterMap() {
       } else {
         isDraggingRef.current = false;
         const hits = hitTest(e.clientX, e.clientY);
-        canvas.style.cursor = hits.length ? "pointer" : "grab";
         if (hits.length) {
           const obj = hits[0].object as THREE.Mesh;
           const i = nodeMeshes.indexOf(obj);
           setHoveredIdx(i >= 0 ? i : null);
+          setHoveredTension(null);
+          canvas.style.cursor = "pointer";
         } else {
           setHoveredIdx(null);
+          const th = tensionHitTest();
+          setHoveredTension(th);
+          canvas.style.cursor = th ? "help" : "grab";
         }
       }
       lastMX = e.clientX;
