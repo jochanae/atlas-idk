@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type React from "react";
+import { LongPressTip } from "@/lib/long-press-tip";
 import type { ProjectNodeState } from "@workspace/api-client-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -138,7 +139,7 @@ export function ReadinessRing({
 
   const hasTrend = trend && trend.delta !== 0;
   const trendColor = hasTrend ? (trend.delta > 0 ? "#4ade80" : "rgba(252,165,165,0.85)") : "var(--atlas-muted)";
-  const trendArrow = hasTrend ? (trend.delta > 0 ? "↑" : "↓") : null;
+  
   const [showTooltip, setShowTooltip] = useState(false);
   const MODES: ReadinessMode[] = ["blended", "arch", "decisions"];
   const cycleMode = (e: React.MouseEvent) => {
@@ -151,74 +152,78 @@ export function ReadinessRing({
     ? `${trend.delta > 0 ? "+" : ""}${trend.delta}pts ${trend.label} · ${trend.history.length} snapshots`
     : `${MODE_META[mode].description}: ${score}%`;
 
+  const deltaText = hasTrend
+    ? ` ${trend!.delta > 0 ? "↑" : "↓"}${Math.abs(trend!.delta)}`
+    : "";
+
   return (
     <div
-      style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, position: "relative" }}
+      style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, position: "relative" }}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      <button
-        onClick={onClick}
-        title={tooltipText}
-        aria-label={`Readiness ${score}% (${MODE_META[mode].label}). Click to open System Map.`}
-        style={{
-          background: "transparent", border: "none",
-          cursor: onClick ? "pointer" : "default",
-          padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, position: "relative", width: 28, height: 28,
-          borderRadius: "50%", transition: "opacity 160ms ease",
-        }}
-        onMouseEnter={(e) => { if (onClick) e.currentTarget.style.opacity = "0.75"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-      >
-        <RingSvg score={score} size={28} radius={10} strokeWidth={2.5} pulse />
-        <span
-          style={{
-            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            fontFamily: "var(--app-font-mono)", fontSize: 7, fontWeight: 700, letterSpacing: "0.02em",
-            color: score > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)",
-            lineHeight: 1, pointerEvents: "none", userSelect: "none",
-          }}
-        >
-          {score}
-        </span>
-      </button>
-
-      <button
-        onClick={cycleMode}
-        title={`Viewing: ${MODE_META[mode].description}. Click to switch mode.`}
-        aria-label={`Readiness mode: ${MODE_META[mode].label}. Click to cycle modes.`}
-        style={{
-          background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.18)",
-          borderRadius: 3, cursor: "pointer", padding: "1px 3px",
-          fontFamily: "var(--app-font-mono)", fontSize: 6.5, fontWeight: 700, letterSpacing: "0.08em",
-          color: "var(--atlas-muted)", lineHeight: 1, userSelect: "none", flexShrink: 0,
-          transition: "color 150ms ease, border-color 150ms ease",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = "var(--atlas-gold)";
-          e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = "var(--atlas-muted)";
-          e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)";
-        }}
-      >
-        {MODE_META[mode].abbr}
-      </button>
-
-      {trendArrow && (
-        <span
-          style={{
-            fontSize: 9, fontFamily: "var(--app-font-mono)", fontWeight: 700,
-            color: trendColor, lineHeight: 1, letterSpacing: "0.02em",
-            userSelect: "none", flexShrink: 0,
-          }}
+      {/* Combined readiness pill — score% + delta in ONE element */}
+      <LongPressTip tip="Readiness score — how complete this project is across architecture and committed decisions">
+        <button
+          onClick={onClick}
           title={tooltipText}
+          aria-label={`Readiness ${score}%${hasTrend ? ` (${trend!.delta > 0 ? "+" : ""}${trend!.delta})` : ""}. Click to open System Map.`}
+          className="atlas-readiness-pill"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            background: "rgba(201,162,76,0.08)",
+            border: "1px solid rgba(201,162,76,0.22)",
+            borderRadius: 999,
+            padding: "2px 7px",
+            cursor: onClick ? "pointer" : "default",
+            transition: "background 160ms ease, border-color 160ms ease",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => { if (onClick) e.currentTarget.style.background = "rgba(201,162,76,0.14)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
         >
-          {trendArrow}{Math.abs(trend!.delta)}
-        </span>
-      )}
+          <RingSvg score={score} size={16} radius={6} strokeWidth={2} pulse />
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.02em", lineHeight: 1,
+              color: score > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              userSelect: "none", whiteSpace: "nowrap",
+            }}
+          >
+            {score}%
+            {hasTrend && (
+              <span style={{ color: trendColor, marginLeft: 3 }}>{deltaText.trim()}</span>
+            )}
+          </span>
+        </button>
+      </LongPressTip>
+
+      <LongPressTip tip="Readiness mode: Blended · tap to switch to Architecture or Decisions">
+        <button
+          onClick={cycleMode}
+          title={`Viewing: ${MODE_META[mode].description}. Click to switch mode.`}
+          aria-label={`Readiness mode: ${MODE_META[mode].label}. Click to cycle modes.`}
+          className="atlas-mix-btn"
+          style={{
+            background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.18)",
+            borderRadius: 3, cursor: "pointer", padding: "1px 3px",
+            fontFamily: "var(--app-font-mono)", fontSize: 6.5, fontWeight: 700, letterSpacing: "0.08em",
+            color: "var(--atlas-muted)", lineHeight: 1, userSelect: "none", flexShrink: 0,
+            transition: "color 150ms ease, border-color 150ms ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--atlas-gold)";
+            e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--atlas-muted)";
+            e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)";
+          }}
+        >
+          {MODE_META[mode].abbr}
+        </button>
+      </LongPressTip>
 
       {showTooltip && (
         <div

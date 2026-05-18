@@ -823,3 +823,18 @@ html.atlas-landing-active,
 .atlas-rescan-btn:hover {
   border-color: rgba(201, 162, 76, 0.55) !important;
 }
+
+/* ── Narrow-screen header tightening (outer-fold etc. ≤ 420px) ─────────── */
+@media (max-width: 420px) {
+  .atlas-app-header-row {
+    gap: 6px !important;
+    padding: 5px 10px !important;
+  }
+  .atlas-app-header-row svg { max-width: 16px; max-height: 16px; }
+  .atlas-app-header-row .atlas-readiness-pill { padding: 2px 5px !important; }
+}
+
+/* ── Restore full header on inner-fold / tablets (≥ 600px) ─────────────── */
+@media (min-width: 600px) {
+  .atlas-app-header-row { gap: 8px; }
+}

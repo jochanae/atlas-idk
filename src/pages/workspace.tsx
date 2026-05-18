@@ -62,6 +62,7 @@ import {
   READINESS_MODE_KEY,
   computeBlendedScore,
 } from "../components/ReadinessRing";
+import { LongPressTip, haptic } from "@/lib/long-press-tip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 44, minHeight: 44, padding: 9 };
@@ -288,9 +289,9 @@ function useIsMobile() {
 }
 
 function useIsTinyScreen() {
-  const [tiny, setTiny] = useState(() => window.innerWidth < 390);
+  const [tiny, setTiny] = useState(() => window.innerWidth < 420);
   useEffect(() => {
-    const handler = () => setTiny(window.innerWidth < 390);
+    const handler = () => setTiny(window.innerWidth < 420);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
@@ -586,7 +587,7 @@ function ProactiveAlertCard({
             {payload.headline}
           </span>
         </div>
-        <button onClick={onDismiss} title="Dismiss" aria-label="Dismiss notice"
+        <button onClick={() => { haptic.short(); onDismiss(); }} title="Dismiss" aria-label="Dismiss notice"
           style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, padding: "2px 4px", opacity: 0.45 }}>x</button>
       </div>
       <p style={{ margin: "0 0 9px", fontSize: 12, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.75 }}>
@@ -768,6 +769,7 @@ function UserBubble({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).catch(() => {});
+    haptic.short();
     setCopied(true);
     onCopy();
     setTimeout(() => setCopied(false), 1800);
@@ -2720,6 +2722,7 @@ function ParkingLotEntry({ entry }: { entry: Entry }) {
 
   const handleCommit = () => {
     if (done) return;
+    haptic.short();
     updateEntry.mutate(
       { id: entry.id, data: { status: "committed", severity: "committed" } },
       { onSuccess: () => { setDone(true); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) }); } }
@@ -9082,6 +9085,7 @@ export default function Workspace() {
   const handlePark = useCallback(
     (content: string) => {
       if (!sessionId) return;
+      haptic.short();
       playPark();
       const title = content.replace(/\n/g, " ").slice(0, 80).trim();
       createEntry.mutate(
@@ -9107,7 +9111,7 @@ export default function Workspace() {
         .trim();
       createEntry.mutate(
         { projectId: id, data: { title, summary: content.slice(0, 500), status: "committed", severity: "committed", mode: "think", sessionId } },
-        { onSuccess: () => { playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
+        { onSuccess: () => { haptic.short(); playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
       );
     },
     [id, sessionId, createEntry, queryClient, playCommit, refreshParkedEntries]
@@ -9203,7 +9207,12 @@ export default function Workspace() {
         typeof body?.snapshot?.score === "number" ? body.snapshot.score :
         typeof body?.latestSnapshotScore === "number" ? body.latestSnapshotScore :
         null;
-      if (newScore != null) setMapReadiness(Math.round(newScore));
+      if (newScore != null) {
+        const rounded = Math.round(newScore);
+        const prev = mapReadiness;
+        setMapReadiness(rounded);
+        if (prev > 0 && rounded < prev) haptic.warn();
+      }
       queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
       if (!silent && newScore != null) {
         toast(`Scanned. Readiness: ${Math.round(newScore)}%`);
@@ -9215,7 +9224,7 @@ export default function Workspace() {
     } finally {
       if (!silent) setIsScanning(false);
     }
-  }, [id, queryClient]);
+  }, [id, queryClient, mapReadiness]);
 
   useEffect(() => {
     if (!Number.isFinite(id) || !hasLinkedRepo) return;
@@ -9569,6 +9578,7 @@ export default function Workspace() {
               <AtlasLogo small />
             </button>
             {/* Autopilot toggle — lightning bolt both states */}
+            <LongPressTip tip="Agentic mode — Atlas auto-continues after each file edit">
             <button
               onClick={() => {
                 if (trustMode === "review") {
@@ -9582,8 +9592,8 @@ export default function Workspace() {
               title={trustMode === "auto" ? "Autopilot ON — Atlas applies changes continuously. Tap to turn off." : "Autopilot OFF — you review every diff. Tap to turn on."}
               aria-label="Toggle trust mode"
               style={{
-                display: "flex", alignItems: "center", gap: isMobile ? 0 : 5,
-                padding: isMobile ? "5px 7px" : "4px 10px",
+                display: "flex", alignItems: "center", gap: isTinyScreen ? 0 : (isMobile ? 0 : 5),
+                padding: isTinyScreen ? "5px 6px" : (isMobile ? "5px 7px" : "4px 10px"),
                 borderRadius: 6, fontSize: 10, fontFamily: "var(--app-font-mono)",
                 letterSpacing: "0.08em", cursor: "pointer",
                 background: trustMode === "auto" ? "rgba(239,100,68,0.12)" : "var(--atlas-surface)",
@@ -9593,11 +9603,12 @@ export default function Workspace() {
               }}
             >
               {/* Lightning bolt — both states, intensity signals on/off */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ opacity: trustMode === "auto" ? 1 : 0.55 }}>
+              <svg width={isTinyScreen ? 11 : 12} height={isTinyScreen ? 11 : 12} viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ opacity: trustMode === "auto" ? 1 : 0.55 }}>
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
-              {!isMobile && <span>{trustMode === "auto" ? "Autopilot ON" : "Autopilot OFF"}</span>}
+              {!isMobile && !isTinyScreen && <span>{trustMode === "auto" ? "Autopilot ON" : "Autopilot OFF"}</span>}
             </button>
+            </LongPressTip>
           </div>
 
           {/* Center: project name + readiness ring + dropdown — hidden in mobile map mode */}
@@ -9660,7 +9671,10 @@ export default function Workspace() {
                       className={autoNameKey > 0 ? "atlas-name-fresh" : undefined}
                       style={{ fontSize: 13, color: "var(--atlas-fg)", opacity: 0.92, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}
                     >
-                      {project?.name ?? "…"}
+                      {(() => {
+                        const n = project?.name ?? "…";
+                        return isTinyScreen && n.length > 12 ? n.slice(0, 12) + "…" : n;
+                      })()}
                     </span>
                     <span className="atlas-name-pencil" style={{ fontSize: 10, color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
                   </span>
@@ -9669,6 +9683,29 @@ export default function Workspace() {
                     <path d="M1 1l5 5 5-5" />
                   </svg>
                 </>
+              )}
+            </button>
+
+            {/* Lens chip — moved here (left/center), immediately after project name.
+                Dot-only on tiny screens; full label on wider. */}
+            <button
+              title={`Lens: ${LENS_CONFIG[wsLens].sub}`}
+              onClick={() => setShowLensPicker(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 4,
+                padding: isTinyScreen ? "5px 6px" : "3px 8px", borderRadius: 20,
+                background: "transparent",
+                border: `1px solid ${detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"}`,
+                cursor: "pointer", transition: "all 180ms ease", flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = LENS_CONFIG[wsLens].borderColor; e.currentTarget.style.background = LENS_CONFIG[wsLens].glowColor; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"; e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, flexShrink: 0, transition: "background 220ms ease" }} />
+              {!isTinyScreen && (
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, letterSpacing: "0.08em", transition: "color 220ms ease", whiteSpace: "nowrap" }}>
+                  {LENS_CONFIG[wsLens].label}{detectedLens ? ` → ${LENS_CONFIG[detectedLens].label}` : ""}
+                </span>
               )}
             </button>
 
@@ -9907,30 +9944,11 @@ export default function Workspace() {
 
           {/* Right: vault + % score + mode + avatar */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {/* Lens chip — dot-only on tiny screens */}
-            <button
-              title={`Lens: ${LENS_CONFIG[wsLens].sub}`}
-              onClick={() => setShowLensPicker(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: 4,
-                padding: isTinyScreen ? "5px 6px" : "3px 8px", borderRadius: 20,
-                background: "transparent",
-                border: `1px solid ${detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"}`,
-                cursor: "pointer", transition: "all 180ms ease", flexShrink: 0,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = LENS_CONFIG[wsLens].borderColor; e.currentTarget.style.background = LENS_CONFIG[wsLens].glowColor; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"; e.currentTarget.style.background = "transparent"; }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, flexShrink: 0, transition: "background 220ms ease" }} />
-              {!isTinyScreen && (
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, letterSpacing: "0.08em", transition: "color 220ms ease", whiteSpace: "nowrap" }}>
-                  {LENS_CONFIG[wsLens].label}{detectedLens ? ` → ${LENS_CONFIG[detectedLens].label}` : ""}
-                </span>
-              )}
-            </button>
+            {/* Lens chip moved to the left/center cluster */}
 
             {/* Vault — hidden from header on tiny screens (moved to input bar) */}
             {!isTinyScreen && (
+              <LongPressTip tip="Dashboard view">
               <button
                 title="Visual Vault"
                 aria-label="Open visual vault"
@@ -9945,13 +9963,14 @@ export default function Workspace() {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.45)")}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <svg width={isTinyScreen ? 13 : 15} height={isTinyScreen ? 13 : 15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="7" rx="1"/>
                   <rect x="14" y="3" width="7" height="7" rx="1"/>
                   <rect x="3" y="14" width="7" height="7" rx="1"/>
                   <rect x="14" y="14" width="7" height="7" rx="1"/>
                 </svg>
               </button>
+              </LongPressTip>
             )}
             <div
               className="atlas-rescan-wrap"
@@ -9966,6 +9985,7 @@ export default function Workspace() {
                 trend={readinessTrend}
               />
               {hasLinkedRepo && (
+                <LongPressTip tip="Rescan GitHub repo and update readiness score">
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); if (!isScanning) void runScan(false); }}
@@ -9993,6 +10013,7 @@ export default function Workspace() {
                     }}
                   />
                 </button>
+                </LongPressTip>
               )}
             </div>
             {sessionPrUrl ? (
@@ -10649,6 +10670,7 @@ export default function Workspace() {
                   onExecuteHomePlan={executeHomePlan}
                   trustMode={trustMode}
                   onPushSuccess={(records) => {
+                    haptic.double();
                     setPushHistory((prev) => {
                       const next = [...prev, ...records].slice(-20);
                       updateProjectHeader.mutate({ id, data: { pushHistory: next } });
