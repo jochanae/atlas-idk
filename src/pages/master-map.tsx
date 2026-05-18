@@ -576,20 +576,50 @@ export default function MasterMap() {
       }, 950);
     };
 
+    const openPeek = async (idx: number) => {
+      const proj = projectsRef.current[idx];
+      if (!proj) return;
+      setPeek({
+        projectId: proj.id,
+        nodeIdx: idx,
+        name: proj.name,
+        score: Math.round(proj.latestSnapshotScore ?? 0),
+        entries: [],
+        loading: true,
+      });
+      try {
+        const r = await fetch(`${BASE_URL}/api/projects/${proj.id}/entries?status=committed`, { credentials: "include" });
+        const list = r.ok ? (await r.json()) as Array<{ id: number; title: string }> : [];
+        const top3 = list.slice(0, 3).map(e => ({ id: e.id, title: e.title }));
+        setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, loading: false } : prev);
+      } catch {
+        setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, loading: false } : prev);
+      }
+    };
+
     const handleClick = (cx: number, cy: number) => {
       const hits = hitTest(cx, cy);
-      if (!hits.length) return;
+      if (!hits.length) {
+        // Tap on empty canvas dismisses peek without warping
+        if (peekRef.current) {
+          haptics.tap();
+          setPeek(null);
+        }
+        return;
+      }
       const obj = hits[0].object as THREE.Mesh;
       haptics.tap();
       if (obj === nexMesh || obj === nexWire) {
+        setPeek(null);
         setWarping(true);
         setTimeout(() => setLocation("/nexus"), 950);
         return;
       }
       const idx = nodeMeshes.indexOf(obj);
       if (idx < 0) return;
-      const proj = projectsRef.current[idx];
-      warpTo(proj.id, nodeMeshes[idx].position, "?view=flow");
+      // First tap on a project node → open peek panel. Warp only via the
+      // panel's "Open Project →" button.
+      openPeek(idx);
     };
 
     // ── Mouse drag + click ────────────────────────────────────────────────
