@@ -29,6 +29,7 @@ import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, Search } from "lucide-react";
+import { ThoughtForBadge } from "../components/ThoughtForBadge";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
