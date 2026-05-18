@@ -2365,27 +2365,39 @@ export default function Home() {
                               )}
                             </button>
                           )}
+                          {msg.createdAt && !msg.streaming && (
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
+                              {formatMessageTime(msg.createdAt)}
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div style={{
-                          maxWidth: "80%", padding: "9px 13px", borderRadius: "12px 12px 4px 12px",
-                          background: "rgba(201,162,76,0.12)",
-                          border: "0.5px solid rgba(201,162,76,0.3)",
-                          fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)",
-                          fontFamily: "var(--app-font-sans)",
-                        }}>
-                          {msg.imageUrl && (
-                            <img
-                              src={msg.imageUrl}
-                              alt="Attached"
-                              style={{
-                                maxWidth: "100%", borderRadius: 8, display: "block",
-                                marginBottom: msg.content ? 8 : 0,
-                                maxHeight: 320, objectFit: "cover",
-                              }}
-                            />
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", maxWidth: "80%", gap: 3 }}>
+                          <div style={{
+                            padding: "9px 13px", borderRadius: "12px 12px 4px 12px",
+                            background: "rgba(201,162,76,0.12)",
+                            border: "0.5px solid rgba(201,162,76,0.3)",
+                            fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)",
+                            fontFamily: "var(--app-font-sans)",
+                          }}>
+                            {msg.imageUrl && (
+                              <img
+                                src={msg.imageUrl}
+                                alt="Attached"
+                                style={{
+                                  maxWidth: "100%", borderRadius: 8, display: "block",
+                                  marginBottom: msg.content ? 8 : 0,
+                                  maxHeight: 320, objectFit: "cover",
+                                }}
+                              />
+                            )}
+                            {msg.content}
+                          </div>
+                          {msg.createdAt && (
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
+                              {formatMessageTime(msg.createdAt)}
+                            </div>
                           )}
-                          {msg.content}
                         </div>
                       )}
                     </div>
