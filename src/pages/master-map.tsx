@@ -198,6 +198,8 @@ export default function MasterMap() {
   const [loading, setLoading] = useState(true);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [warping, setWarping] = useState(false);
+  const [statsVersion, setStatsVersion] = useState(0);
+  const [peek, setPeek] = useState<PeekState | null>(null);
 
   const projectsRef = useRef<Project[]>([]);
   const hoveredIdxRef = useRef<number | null>(null);
@@ -207,13 +209,17 @@ export default function MasterMap() {
   const gyroTilt = useRef({ x: 0, y: 0 });
   const camZTarget = useRef(CAM_Z);
   const warpTarget = useRef<{ pos: THREE.Vector3; cb: () => void; start: number } | null>(null);
+  const statsRef = useRef<Map<number, DecisionStats>>(new Map());
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
+  const peekElRef = useRef<HTMLDivElement | null>(null);
+  const peekRef = useRef<PeekState | null>(null);
   const panRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
   const recenterFnRef = useRef<(() => void) | null>(null);
+
 
   const activeProjectId = useMemo(() => {
     try {
