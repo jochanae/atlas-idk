@@ -444,12 +444,14 @@ type ConnStatus = {
   lastDeployAt?: string | null;
 };
 
-const CONN_META: Record<ConnType, { name: string; initials: string }> = {
+const CONN_META: Record<string, { name: string; initials: string }> = {
   github:  { name: "GitHub",  initials: "GH" },
   railway: { name: "Railway", initials: "RW" },
   lovable: { name: "Lovable", initials: "LV" },
   cursor:  { name: "Cursor",  initials: "CU" },
+  custom:  { name: "Custom",  initials: "URL" },
 };
+
 
 function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
