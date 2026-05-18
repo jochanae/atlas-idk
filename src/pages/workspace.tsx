@@ -587,7 +587,7 @@ function ProactiveAlertCard({
             {payload.headline}
           </span>
         </div>
-        <button onClick={onDismiss} title="Dismiss" aria-label="Dismiss notice"
+        <button onClick={() => { haptic.short(); onDismiss(); }} title="Dismiss" aria-label="Dismiss notice"
           style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, padding: "2px 4px", opacity: 0.45 }}>x</button>
       </div>
       <p style={{ margin: "0 0 9px", fontSize: 12, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.75 }}>
