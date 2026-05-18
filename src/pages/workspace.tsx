@@ -10630,6 +10630,13 @@ export default function Workspace() {
             </div>
           ) : leftTab === "terminal" ? (
             <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} />
+          ) : leftTab === "blueprints" ? (
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <BlueprintsTab
+                projectId={id}
+                onContinueSession={(sid) => { setSessionId(Number(sid)); setLeftTab("chat"); }}
+              />
+            </div>
           ) : (
           /* ── Chat view ── */
           <div
