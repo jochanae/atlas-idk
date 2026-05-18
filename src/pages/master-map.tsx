@@ -983,6 +983,15 @@ export default function MasterMap() {
         pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
       }
 
+      // ── Tension tooltip positioning (anchored at curve midpoint) ──
+      const ht = hoveredTensionRef.current;
+      const htEl = tensionTooltipElRef.current;
+      if (ht && htEl && tensionFilaments[ht.index]) {
+        const sp = toScreen(tensionFilaments[ht.index].mid);
+        htEl.style.left = `${sp.x}px`;
+        htEl.style.top = `${sp.y - 12}px`;
+      }
+
       renderer.render(scene, camera);
     };
     loop();
