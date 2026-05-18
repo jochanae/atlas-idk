@@ -869,3 +869,13 @@ html.atlas-landing-active,
   60% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* ── Blueprint print styles ──────────────────────────────────────────── */
+@media print {
+  .screen-only { display: none !important; }
+  nav, header, [data-tab-bar] { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .blueprint-detail-root { background: white !important; }
+  .blueprint-detail-root h1, .blueprint-detail-root p, .blueprint-detail-root li { color: black !important; }
+  .blueprint-section-label { color: #8B6914 !important; }
+}
