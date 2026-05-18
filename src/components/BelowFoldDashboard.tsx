@@ -249,6 +249,8 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         }
         @keyframes bfd-spin { to { transform: rotate(360deg); } }
         @keyframes bfd-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+      `}</style>
+
 
       {/* Scroll hint / divider */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
