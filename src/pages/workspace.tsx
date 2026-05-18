@@ -9110,7 +9110,7 @@ export default function Workspace() {
         .trim();
       createEntry.mutate(
         { projectId: id, data: { title, summary: content.slice(0, 500), status: "committed", severity: "committed", mode: "think", sessionId } },
-        { onSuccess: () => { playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
+        { onSuccess: () => { haptic.short(); playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
       );
     },
     [id, sessionId, createEntry, queryClient, playCommit, refreshParkedEntries]
