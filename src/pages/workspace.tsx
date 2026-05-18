@@ -2605,7 +2605,8 @@ function AssistantBubble({
         )}
 
         {/* Action row — icon-only cockpit buttons */}
-        <div style={{ display: "flex", gap: 4, marginTop: 7, opacity: hov ? 1 : 0.32, transition: "opacity 180ms ease" }}>
+        <div style={{ display: "flex", gap: 0, marginTop: 7, marginLeft: -8, opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+
           {/* Copy */}
           <button
             className={`atlas-icon-action${copied ? " copy-done" : ""}`}
