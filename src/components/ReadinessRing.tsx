@@ -124,6 +124,7 @@ export function ReadinessRing({
   onModeChange,
   onClick,
   trend,
+  hideModePill,
 }: {
   archScore: number;
   decisionsScore: number;
@@ -131,6 +132,7 @@ export function ReadinessRing({
   onModeChange: (m: ReadinessMode) => void;
   onClick?: () => void;
   trend?: ReadinessTrend;
+  hideModePill?: boolean;
 }) {
   const score =
     mode === "arch"      ? archScore :
