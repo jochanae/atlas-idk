@@ -6946,7 +6946,7 @@ function RightPanel({
     <div
       style={{
         height: "100%", display: "flex", flexDirection: "column",
-        background: "var(--atlas-surface-alt)",
+        background: "var(--atlas-surface-alt)", overflow: "hidden", minHeight: 0,
       }}
     >
       {/* Tab bar — desktop only; on mobile the MobileTabBar drives navigation */}
