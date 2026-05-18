@@ -2738,7 +2738,6 @@ export default function Home() {
               { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
               { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
               { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
-              { label: "Briefing", action: () => setShowBriefingPanel(true) },
             ];
             const rotate = () => {
               const next = (starterIdx + 1) % PLACEHOLDERS.length;
