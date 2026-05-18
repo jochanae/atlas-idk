@@ -101,23 +101,38 @@ function renderMarkdown(text: string): string {
 function HomeStreamingText({ text, animate, style }: { text: string; animate: boolean; style?: React.CSSProperties }) {
   const [visibleCount, setVisibleCount] = useState(animate ? 0 : Infinity);
   const words = useRef<string[]>([]);
+  const animateRef = useRef(animate);
 
+  // Reset only when animate flips, not on every text change.
   useEffect(() => {
-    words.current = text.match(/\S+|\n/g) ?? [];
-    setVisibleCount(animate ? 0 : Infinity);
-  }, [text, animate]);
+    if (animateRef.current !== animate) {
+      animateRef.current = animate;
+      setVisibleCount(animate ? 0 : Infinity);
+    }
+  }, [animate]);
+
+  // Keep the word list in sync with the (growing) text without resetting progress.
+  words.current = text.match(/\S+|\n/g) ?? [];
 
   useEffect(() => {
     if (!animate) return;
     const total = words.current.length;
-    if (visibleCount >= total) return;
+    if (visibleCount >= total) {
+      // Wait for more tokens to arrive; re-check shortly.
+      const t = setTimeout(() => setVisibleCount(c => c), 60);
+      return () => clearTimeout(t);
+    }
     const last = words.current[visibleCount - 1] ?? "";
     const pause = /[.!?]$/.test(last) ? 140 : 28 + Math.random() * 24;
-    const t = setTimeout(() => setVisibleCount(c => Math.min(c + (Math.random() > 0.7 ? 2 : 1), total)), pause);
+    const t = setTimeout(
+      () => setVisibleCount(c => Math.min(c + (Math.random() > 0.7 ? 2 : 1), words.current.length)),
+      pause
+    );
     return () => clearTimeout(t);
-  }, [visibleCount, animate]);
+  }, [visibleCount, animate, text]);
 
-  const done = !animate || visibleCount >= (words.current.length || Infinity);
+  const total = words.current.length;
+  const done = !animate || (visibleCount >= total && total > 0);
   if (done) return <div style={style} dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }} />;
   const visible = words.current.slice(0, visibleCount).join(" ");
   return <div style={style}>{visible}<span className="atlas-cursor" /></div>;
