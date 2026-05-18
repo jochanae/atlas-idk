@@ -2546,20 +2546,50 @@ export default function Home() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <LoadingSpinner size="sm" color="atlas" />
-                          <span
-                            key={pendingPhraseIdx}
-                            style={{
-                              fontFamily: "var(--app-font-mono)",
-                              fontSize: 10,
-                              color: "var(--atlas-muted)",
-                              letterSpacing: "0.07em",
-                              opacity: 0.7,
-                              animation: "fadeIn 360ms ease",
-                              display: "inline-block",
-                            }}
-                          >
-                            {HOME_PENDING_PHRASES[pendingPhraseIdx]}
-                          </span>
+                          {liveStep ? (
+                            <span
+                              key={`step-${liveStep.verb}-${liveStep.target ?? ""}`}
+                              style={{
+                                fontFamily: "var(--app-font-mono)",
+                                fontSize: 10,
+                                letterSpacing: "0.05em",
+                                animation: "fadeIn 320ms ease",
+                                display: "inline-flex",
+                                alignItems: "baseline",
+                                gap: 6,
+                              }}
+                            >
+                              <span style={{
+                                color: liveStep.status === "warn" ? "var(--atlas-gold)"
+                                  : liveStep.status === "fail" ? "#e25b5b"
+                                  : "var(--atlas-fg)",
+                                opacity: 0.9,
+                                fontWeight: 500,
+                              }}>
+                                {liveStep.verb}
+                              </span>
+                              {liveStep.target && (
+                                <span style={{ color: "var(--atlas-muted)", opacity: 0.75 }}>
+                                  {liveStep.target}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span
+                              key={pendingPhraseIdx}
+                              style={{
+                                fontFamily: "var(--app-font-mono)",
+                                fontSize: 10,
+                                color: "var(--atlas-muted)",
+                                letterSpacing: "0.07em",
+                                opacity: 0.7,
+                                animation: "fadeIn 360ms ease",
+                                display: "inline-block",
+                              }}
+                            >
+                              {HOME_PENDING_PHRASES[pendingPhraseIdx]}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
