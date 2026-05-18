@@ -61,6 +61,7 @@ import {
   ReadinessMode,
   READINESS_MODE_KEY,
   computeBlendedScore,
+  MODE_META,
 } from "../components/ReadinessRing";
 import { LongPressTip, haptic } from "@/lib/long-press-tip";
 
