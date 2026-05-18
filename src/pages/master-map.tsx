@@ -126,8 +126,19 @@ type Project = {
   updatedAt: string;
   entryCount?: number;
   latestEntryAt?: string | null;
+  latestSnapshotScore?: number | null;
 };
 type Connection = { a: number; b: number; strength: number };
+type DecisionStats = { committed: number; tension: number };
+type PeekEntry = { id: number; title: string };
+type PeekState = {
+  projectId: number;
+  nodeIdx: number;
+  name: string;
+  score: number;
+  entries: PeekEntry[];
+  loading: boolean;
+};
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -187,6 +198,8 @@ export default function MasterMap() {
   const [loading, setLoading] = useState(true);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [warping, setWarping] = useState(false);
+  const [statsVersion, setStatsVersion] = useState(0);
+  const [peek, setPeek] = useState<PeekState | null>(null);
 
   const projectsRef = useRef<Project[]>([]);
   const hoveredIdxRef = useRef<number | null>(null);
@@ -196,13 +209,17 @@ export default function MasterMap() {
   const gyroTilt = useRef({ x: 0, y: 0 });
   const camZTarget = useRef(CAM_Z);
   const warpTarget = useRef<{ pos: THREE.Vector3; cb: () => void; start: number } | null>(null);
+  const statsRef = useRef<Map<number, DecisionStats>>(new Map());
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
+  const peekElRef = useRef<HTMLDivElement | null>(null);
+  const peekRef = useRef<PeekState | null>(null);
   const panRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
   const recenterFnRef = useRef<(() => void) | null>(null);
+
 
   const activeProjectId = useMemo(() => {
     try {
@@ -217,6 +234,39 @@ export default function MasterMap() {
 
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
+  useEffect(() => { peekRef.current = peek; }, [peek]);
+
+  // ── decision stats (per project) ───────────────────────────────────────────
+  useEffect(() => {
+    if (loading || projects.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(projects.map(async (p) => {
+        try {
+          const r = await fetch(`${BASE_URL}/api/projects/${p.id}/entries?status=committed`, { credentials: "include" });
+          if (!r.ok) return [p.id, { committed: 0, tension: 0 }] as const;
+          const list = await r.json() as Array<{
+            deviation?: boolean; isViolation?: boolean;
+            catchAgainstId?: number | null; supersedesId?: number | null;
+          }>;
+          const committed = list.length;
+          const tension = list.filter(e =>
+            e.deviation || e.isViolation || e.catchAgainstId != null || e.supersedesId != null
+          ).length;
+          return [p.id, { committed, tension }] as const;
+        } catch {
+          return [p.id, { committed: 0, tension: 0 }] as const;
+        }
+      }));
+      if (cancelled) return;
+      const m = new Map<number, DecisionStats>();
+      results.forEach(([id, s]) => m.set(id, s));
+      statsRef.current = m;
+      setStatsVersion(v => v + 1);
+    })();
+    return () => { cancelled = true; };
+  }, [loading, projects]);
+
 
   // ── data ───────────────────────────────────────────────────────────────────
 
@@ -369,20 +419,47 @@ export default function MasterMap() {
     const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
     const rippleMeshes: THREE.Mesh[] = [];
+    const baseScales: number[] = [];
     rippleTimers.current = new Array(projs.length).fill(0);
+
+    // Ledger overlay color constants
+    const GOLD = new THREE.Color(0xC9A24C);
+    const AMBER = new THREE.Color(0xD28852); // color-mix 60% #d97757 / 40% gold
 
     projs.forEach((p, i) => {
       const act = actLevel(p.updatedAt);
-      const col = nodeColor(p.name);
-      const glass = nodeGlassColor(p.name);
+      const stats = statsRef.current.get(p.id) ?? { committed: 0, tension: 0 };
+      const hueCol = nodeColor(p.name);
+      const hueGlass = nodeGlassColor(p.name);
+
+      // Decision health → color + emissive intensity
+      let bodyColor: THREE.Color;
+      let emissiveColor: THREE.Color;
+      let emissiveBoost = 0;
+      if (stats.committed === 0) {
+        bodyColor = hueGlass;
+        emissiveColor = hueCol;
+      } else if (stats.tension > 0) {
+        bodyColor = AMBER.clone();
+        emissiveColor = AMBER.clone();
+        emissiveBoost = 0.18;
+      } else {
+        bodyColor = GOLD.clone();
+        emissiveColor = GOLD.clone();
+        emissiveBoost = 0.22;
+      }
+
+      // Size: scale 1.0x → 2.0x by committed count (saturates at 8)
+      const sizeBoost = 1 + Math.min(stats.committed / 8, 1);
+      baseScales.push(sizeBoost);
 
       // Glass sphere
       const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(NODE_R, 36, 36),
         new THREE.MeshPhysicalMaterial({
-          color: glass,
-          emissive: col,
-          emissiveIntensity: 0.12 + act * 0.32,
+          color: bodyColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.12 + act * 0.32 + emissiveBoost,
           roughness: 0.08,
           metalness: 0.04,
           clearcoat: 1.0,
@@ -393,15 +470,17 @@ export default function MasterMap() {
         }),
       );
       mesh.position.copy(positions[i]);
+      mesh.scale.setScalar(sizeBoost);
       scene.add(mesh);
       nodeMeshes.push(mesh);
 
-      // Ripple ring (billboarded)
+      // Ripple ring (billboarded) — keep per-name hue so pulse stays recognizable
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(NODE_R, 1.5, 8, 64),
-        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, side: THREE.DoubleSide }),
+        new THREE.MeshBasicMaterial({ color: hueCol, transparent: true, opacity: 0, side: THREE.DoubleSide }),
       );
       ring.position.copy(positions[i]);
+      ring.scale.setScalar(sizeBoost);
       scene.add(ring);
       rippleMeshes.push(ring);
     });
@@ -497,20 +576,50 @@ export default function MasterMap() {
       }, 950);
     };
 
+    const openPeek = async (idx: number) => {
+      const proj = projectsRef.current[idx];
+      if (!proj) return;
+      setPeek({
+        projectId: proj.id,
+        nodeIdx: idx,
+        name: proj.name,
+        score: Math.round(proj.latestSnapshotScore ?? 0),
+        entries: [],
+        loading: true,
+      });
+      try {
+        const r = await fetch(`${BASE_URL}/api/projects/${proj.id}/entries?status=committed`, { credentials: "include" });
+        const list = r.ok ? (await r.json()) as Array<{ id: number; title: string }> : [];
+        const top3 = list.slice(0, 3).map(e => ({ id: e.id, title: e.title }));
+        setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, loading: false } : prev);
+      } catch {
+        setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, loading: false } : prev);
+      }
+    };
+
     const handleClick = (cx: number, cy: number) => {
       const hits = hitTest(cx, cy);
-      if (!hits.length) return;
+      if (!hits.length) {
+        // Tap on empty canvas dismisses peek without warping
+        if (peekRef.current) {
+          haptics.tap();
+          setPeek(null);
+        }
+        return;
+      }
       const obj = hits[0].object as THREE.Mesh;
       haptics.tap();
       if (obj === nexMesh || obj === nexWire) {
+        setPeek(null);
         setWarping(true);
         setTimeout(() => setLocation("/nexus"), 950);
         return;
       }
       const idx = nodeMeshes.indexOf(obj);
       if (idx < 0) return;
-      const proj = projectsRef.current[idx];
-      warpTo(proj.id, nodeMeshes[idx].position, "?view=flow");
+      // First tap on a project node → open peek panel. Warp only via the
+      // panel's "Open Project →" button.
+      openPeek(idx);
     };
 
     // ── Mouse drag + click ────────────────────────────────────────────────
@@ -712,13 +821,17 @@ export default function MasterMap() {
         mat.opacity = edge * 0.72;
       });
 
-      // ── Node hover glow + scale ──
+      // ── Node hover glow + scale (respects per-node baseScale from Ledger overlay) ──
       nodeMeshes.forEach((mesh, i) => {
         const hovered = i === hoveredIdxRef.current;
         const mat = mesh.material as THREE.MeshPhysicalMaterial;
-        const base = 0.12 + actLevel(projectsRef.current[i]?.updatedAt ?? "") * 0.3;
+        const proj = projectsRef.current[i];
+        const stats = proj ? statsRef.current.get(proj.id) ?? { committed: 0, tension: 0 } : { committed: 0, tension: 0 };
+        const boost = stats.committed === 0 ? 0 : (stats.tension > 0 ? 0.18 : 0.22);
+        const base = 0.12 + actLevel(proj?.updatedAt ?? "") * 0.3 + boost;
         mat.emissiveIntensity = hovered ? base + 0.32 + Math.sin(t * 3.5) * 0.12 : base;
-        const tgt = hovered ? 1.15 : 1.0;
+        const bs = baseScales[i] ?? 1;
+        const tgt = bs * (hovered ? 1.15 : 1.0);
         mesh.scale.setScalar(mesh.scale.x + (tgt - mesh.scale.x) * 0.11);
       });
 
@@ -729,12 +842,14 @@ export default function MasterMap() {
           (rippleIds.current.has(pid) || isRecentEntry(projectsRef.current[i]?.latestEntryAt));
         ring.lookAt(camera.position);
         const mat = ring.material as THREE.MeshBasicMaterial;
+        const bs = baseScales[i] ?? 1;
         if (active) {
           rippleTimers.current[i] = (rippleTimers.current[i] + 0.011) % 1;
           const rt = rippleTimers.current[i];
-          ring.scale.setScalar(1 + rt * 3.2);
+          ring.scale.setScalar(bs * (1 + rt * 3.2));
           mat.opacity = 0.6 * (1 - rt);
         } else {
+          ring.scale.setScalar(bs);
           mat.opacity = 0;
           rippleTimers.current[i] = 0;
         }
@@ -750,8 +865,18 @@ export default function MasterMap() {
         if (!el || !nodeMeshes[i]) return;
         const sp = toScreen(nodeMeshes[i].position);
         el.style.left = `${sp.x}px`;
-        el.style.top = `${sp.y + NODE_R + 7}px`;
+        el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
+
+      // ── Peek panel positioning (anchored above tapped node) ──
+      const pk = peekRef.current;
+      const pkEl = peekElRef.current;
+      if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
+        const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
+        const bs = baseScales[pk.nodeIdx] ?? 1;
+        pkEl.style.left = `${sp.x}px`;
+        pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
+      }
 
       renderer.render(scene, camera);
     };
@@ -769,7 +894,7 @@ export default function MasterMap() {
       ro.disconnect();
       renderer.dispose();
     };
-  }, [loading, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, theme, statsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isMobile = window.innerWidth < 768;
 
@@ -864,6 +989,100 @@ export default function MasterMap() {
             position: "absolute", inset: 0,
             background: palette.warpConic,
             animation: "warp-conic 900ms ease both",
+          }} />
+        </div>
+      )}
+
+      {/* Peek panel — tooltip above tapped node; positioned by animation loop */}
+      {peek && (
+        <div
+          ref={peekElRef}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            transform: "translate(-50%, -100%)",
+            zIndex: 60,
+            minWidth: 220,
+            maxWidth: 260,
+            padding: "10px 12px 11px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 10,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            fontFamily: "var(--app-font-sans)",
+            color: palette.labelText,
+            pointerEvents: "auto",
+            animation: "picker-in 140ms cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setPeek(null); }}
+            aria-label="Dismiss"
+            style={{
+              position: "absolute", top: 4, right: 6,
+              width: 18, height: 18, padding: 0,
+              background: "transparent", border: "none",
+              color: palette.mutedText, fontSize: 14, lineHeight: 1, cursor: "pointer",
+            }}
+          >×</button>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: palette.goldTextStrong, letterSpacing: "0.01em", paddingRight: 16, lineHeight: 1.25 }}>
+            {peek.name}
+          </div>
+          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>
+            Readiness · {peek.score}%
+          </div>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+            {peek.loading ? (
+              <div style={{ fontSize: 10.5, color: palette.mutedText, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em" }}>
+                Loading committed…
+              </div>
+            ) : peek.entries.length === 0 ? (
+              <div style={{ fontSize: 10.5, color: palette.mutedText, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em", fontStyle: "italic" }}>
+                No committed entries yet
+              </div>
+            ) : (
+              peek.entries.map(e => (
+                <div key={e.id} style={{
+                  fontSize: 11, color: palette.labelText, lineHeight: 1.35,
+                  overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
+                  WebkitLineClamp: 1, WebkitBoxOrient: "vertical",
+                }}>
+                  <span style={{ color: palette.goldText, marginRight: 6 }}>◆</span>
+                  {e.title}
+                </div>
+              ))
+            )}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const id = peek.projectId;
+              setPeek(null);
+              warpFnRef.current?.(id);
+            }}
+            style={{
+              marginTop: 10, width: "100%",
+              padding: "7px 10px",
+              background: theme === "parchment" ? "rgba(180,83,9,0.14)" : "rgba(201,162,76,0.14)",
+              border: `1px solid ${palette.panelBorder}`,
+              borderRadius: 7,
+              color: palette.goldTextStrong,
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: "var(--app-font-mono)", cursor: "pointer",
+            }}
+          >
+            Open Project →
+          </button>
+          {/* Tail pointing down at the node */}
+          <div style={{
+            position: "absolute", left: "50%", bottom: -6,
+            transform: "translateX(-50%) rotate(45deg)",
+            width: 10, height: 10,
+            background: palette.panelBg,
+            borderRight: `1px solid ${palette.panelBorder}`,
+            borderBottom: `1px solid ${palette.panelBorder}`,
           }} />
         </div>
       )}
