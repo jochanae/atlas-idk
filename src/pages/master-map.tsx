@@ -1642,6 +1642,23 @@ function ViewKey({ allProjects, palette, onRecenter, onDive, onNewIdea }: {
   onNewIdea: () => void;
 }) {
   const [flowOpen, setFlowOpen] = useState(false);
+  const flowRootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!flowOpen) return;
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (target && flowRootRef.current && !flowRootRef.current.contains(target)) {
+        setFlowOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFlowOpen(false); };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [flowOpen]);
   const allNodes = [...allProjects];
   const goldSoft = palette.goldText;
   const goldStrong = palette.goldTextStrong;
