@@ -5200,15 +5200,15 @@ ${t}
           </button>
           <div style={{ flex: 1 }} />
           <button
-            onClick={() => { if (deviceSize !== "desktop") setIsLandscape((l) => !l); }}
-            title={deviceSize === "desktop" ? "Rotate applies to Phone / Tablet only" : isLandscape ? "Switch to portrait" : "Switch to landscape"}
+            onClick={() => setIsLandscape((l) => !l)}
+            title={isLandscape ? "Switch to portrait" : "Switch to landscape"}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-              padding: "4px 8px", borderRadius: 4, cursor: deviceSize === "desktop" ? "not-allowed" : "pointer",
-              background: isLandscape && deviceSize !== "desktop" ? "rgba(201,162,76,0.1)" : "transparent",
-              border: `1px solid ${isLandscape && deviceSize !== "desktop" ? "rgba(201,162,76,0.28)" : "var(--atlas-border)"}`,
-              color: isLandscape && deviceSize !== "desktop" ? "var(--atlas-gold)" : "var(--atlas-muted)",
-              opacity: deviceSize === "desktop" ? 0.22 : 0.8,
+              padding: "4px 8px", borderRadius: 4, cursor: "pointer",
+              background: isLandscape ? "rgba(201,162,76,0.1)" : "transparent",
+              border: `1px solid ${isLandscape ? "rgba(201,162,76,0.28)" : "var(--atlas-border)"}`,
+              color: isLandscape ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              opacity: 0.8,
               transition: "all 140ms ease",
             }}
           >
@@ -5218,7 +5218,7 @@ ${t}
               <path d="M3 13H7M3 13v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
-              {deviceSize !== "desktop" ? (isLandscape ? "Landscape" : "Portrait") : "Rotate"}
+              {isLandscape ? "Landscape" : "Portrait"}
             </span>
           </button>
         </div>
