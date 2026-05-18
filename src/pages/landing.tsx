@@ -96,13 +96,12 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           textTransform: "uppercase",
           letterSpacing: "0.04em",
         }}>
-          Build nothing
+          Every great thing
           <br />
-          until it's{" "}
+          begins as a
+          <br />
           <span style={{ fontStyle: "italic", color: "#D4AF37" }}>
-            structurally
-            <br />
-            sound.
+            Conversation.
           </span>
         </h1>
 
