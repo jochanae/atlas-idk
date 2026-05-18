@@ -170,8 +170,20 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,175,55,0.07)"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.75)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; }}
         >
-          Enter Axiom
+          Start the conversation →
         </button>
+
+        <p className="mt-6 mx-auto text-center uppercase" style={{
+          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+          fontSize: "0.6rem",
+          letterSpacing: "0.2em",
+          color: "#e8dcc8",
+          opacity: 0.45,
+          maxWidth: 420,
+          lineHeight: 1.7,
+        }}>
+          For the builder with a codebase. For the thinker with an idea. For anyone who needs to decide what comes next.
+        </p>
       </div>
 
       {/* Bottom-left system readout */}
