@@ -422,7 +422,7 @@ function MetricCell({ value, label }: { value: number; label: string }) {
 // Connections Dock
 // ============================================================================
 
-type ConnType = "github" | "railway" | "lovable" | "cursor";
+type ConnType = "github" | "railway" | "lovable" | "cursor" | "custom";
 
 type Connection = {
   id: string | number;
