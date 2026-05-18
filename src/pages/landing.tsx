@@ -227,6 +227,7 @@ function InterrogationSection() {
     { value: "62%", label: "of builds get re-scoped mid-sprint", delay: "0.15s" },
     { value: "3.2×", label: "longer to ship without a structural spec", delay: "0.35s" },
     { value: "$41K", label: "average do-over tax per failed feature", delay: "0.55s" },
+    { value: "2.4", label: "avg years an idea sits before someone acts on it", delay: "0.55s" },
   ];
 
   return (
