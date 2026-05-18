@@ -502,7 +502,20 @@ function ConnectionsDock() {
       const res = await fetch("/api/connections/status", { credentials: "include" });
       if (!res.ok) return;
       const data = await res.json();
-      const map: Record<string, ConnStatus> = data.statuses ?? data ?? {};
+      const raw: Record<string, any> = data.statuses ?? data ?? {};
+      const map: Record<string, ConnStatus> = {};
+      for (const [id, s] of Object.entries(raw)) {
+        if (!s || typeof s !== "object") continue;
+        map[id] = {
+          state: s.status ?? s.state,
+          message: s.message ?? s.lastCommit?.message ?? null,
+          timestamp: s.timestamp ?? s.lastCommit?.timestamp ?? s.lastDeploy?.timestamp ?? null,
+          lastCommitMessage: s.lastCommit?.message ?? s.lastCommitMessage ?? null,
+          lastCommitAt: s.lastCommit?.timestamp ?? s.lastCommitAt ?? null,
+          lastDeployStatus: s.lastDeploy?.status ?? s.lastDeployStatus ?? null,
+          lastDeployAt: s.lastDeploy?.timestamp ?? s.lastDeployAt ?? null,
+        };
+      }
       setStatuses(map);
     } catch { /* ignore */ }
   };
