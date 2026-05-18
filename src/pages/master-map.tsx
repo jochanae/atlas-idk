@@ -139,6 +139,14 @@ type PeekState = {
   entries: PeekEntry[];
   loading: boolean;
 };
+type Tension = {
+  projectA: { id: number; name: string };
+  projectB: { id: number; name: string };
+  entryA: { id?: number; title: string };
+  entryB: { id?: number; title: string };
+  score: number;
+};
+type HoveredTension = { index: number; tension: Tension };
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
