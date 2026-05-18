@@ -1244,6 +1244,30 @@ export default function Home() {
     const t = setInterval(() => setPendingPhraseIdx(i => (i + 1) % HOME_PENDING_PHRASES.length), 2400);
     return () => clearInterval(t);
   }, [isAtlasStreaming]);
+
+  // Demo: simulate live step events when ?demo=runsummary or localStorage flag is set
+  useEffect(() => {
+    if (!isAtlasStreaming) return;
+    const demo = typeof window !== "undefined" &&
+      (window.location.search.includes("demo=runsummary") ||
+        window.localStorage.getItem("atlas_demo_runsummary") === "1");
+    if (!demo) return;
+    const fakeSteps: Array<{ verb: string; target: string; status?: "ok" | "warn" }> = [
+      { verb: "Read", target: "chat_messages.ts" },
+      { verb: "Grepped", target: "codebase" },
+      { verb: "Read", target: "nexus.ts L1180–1420" },
+      { verb: "Updated", target: "nexus.ts" },
+      { verb: "Skipped", target: "_journal.json", status: "warn" },
+      { verb: "Pushed", target: "main" },
+    ];
+    let i = 0;
+    setLiveStep(fakeSteps[0]);
+    const t = setInterval(() => {
+      i = (i + 1) % fakeSteps.length;
+      setLiveStep(fakeSteps[i]);
+    }, 1600);
+    return () => clearInterval(t);
+  }, [isAtlasStreaming]);
   const [, setLocation] = useLocation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
