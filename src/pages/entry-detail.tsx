@@ -404,6 +404,4 @@ export default function EntryDetail() {
     </div>
   );
 }
-    </div>
-  );
-}
+
