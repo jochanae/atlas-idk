@@ -508,7 +508,152 @@ function Loading() {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+const HEALTH_CHECKS = ["server", "database", "anthropic", "github", "stripe", "gemini", "openai"] as const;
+type HealthKey = typeof HEALTH_CHECKS[number];
+type HealthStatus = "ok" | "error" | "missing" | "unknown";
+
+interface HealthResponse {
+  status?: string;
+  checks?: Partial<Record<HealthKey, string>>;
+  [k: string]: unknown;
+}
+
+function normalizeStatus(v: unknown): HealthStatus {
+  if (typeof v === "string") {
+    const s = v.toLowerCase();
+    if (s === "ok" || s === "healthy" || s === "up") return "ok";
+    if (s === "missing" || s === "not_configured" || s === "unconfigured") return "missing";
+    if (s === "error" || s === "down" || s === "fail" || s === "failed") return "error";
+  }
+  if (v && typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    if ("status" in obj) return normalizeStatus(obj.status);
+    if ("ok" in obj) return obj.ok ? "ok" : "error";
+  }
+  return "unknown";
+}
+
+function statusColor(s: HealthStatus): string {
+  if (s === "ok") return "rgba(74,222,128,1)";
+  if (s === "error") return "rgba(248,113,113,1)";
+  if (s === "missing") return "rgba(251,191,36,1)";
+  return "rgba(120,113,108,0.6)";
+}
+
+function SystemHealth() {
+  const [data, setData] = useState<HealthResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastChecked, setLastChecked] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch(api("/api/health"), { credentials: "include" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = (await r.json()) as HealthResponse;
+      setData(json);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch");
+      setData(null);
+    } finally {
+      setLastChecked(Date.now());
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 60000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const checks: Record<HealthKey, HealthStatus> = {} as Record<HealthKey, HealthStatus>;
+  for (const k of HEALTH_CHECKS) {
+    const src = data?.checks?.[k] ?? (data as Record<string, unknown> | null)?.[k];
+    checks[k] = error ? "error" : normalizeStatus(src);
+  }
+
+  const overallRaw = (data?.status ?? "").toString().toLowerCase();
+  const allOk = !error && HEALTH_CHECKS.every(k => checks[k] === "ok");
+  const isDown = error || overallRaw === "down" || overallRaw === "degraded" ||
+    HEALTH_CHECKS.some(k => checks[k] === "error");
+
+  const ageLabel = (() => {
+    void tick;
+    if (!lastChecked) return "Checking…";
+    const s = Math.max(0, Math.floor((Date.now() - lastChecked) / 1000));
+    return `Last checked ${s}s ago`;
+  })();
+
+  return (
+    <div style={{ padding: "16px 16px 0", maxWidth: 680, margin: "0 auto" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: 8,
+      }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "var(--atlas-muted)", ...mono }}>
+          SYSTEM HEALTH
+        </div>
+        <div style={{ fontSize: 9.5, color: "var(--atlas-muted)", opacity: 0.6, ...mono }}>{ageLabel}</div>
+      </div>
+
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: 8,
+        padding: "10px 12px",
+        background: "var(--atlas-surface)",
+        border: "1px solid var(--atlas-border)",
+        borderRadius: 8,
+      }}>
+        {HEALTH_CHECKS.map(k => {
+          const s = checks[k];
+          const label = s === "unknown" ? "—" : s;
+          return (
+            <div key={k} style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "4px 8px", borderRadius: 6,
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid var(--atlas-border)",
+            }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: "50%",
+                background: statusColor(s),
+                boxShadow: s === "ok" ? `0 0 6px ${statusColor(s)}` : "none",
+              }} />
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--atlas-fg)", ...mono }}>
+                {k}
+              </span>
+              <span style={{ fontSize: 9, color: "var(--atlas-muted)", ...mono }}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop: 10,
+        padding: "8px 12px",
+        borderRadius: 6,
+        fontSize: 11, fontWeight: 600, ...mono, letterSpacing: "0.04em",
+        background: isDown ? "rgba(201,162,76,0.1)" : "rgba(74,222,128,0.08)",
+        border: `1px solid ${isDown ? "rgba(201,162,76,0.3)" : "rgba(74,222,128,0.25)"}`,
+        color: isDown ? "var(--atlas-gold)" : "rgba(134,239,172,0.95)",
+      }}>
+        {isDown
+          ? "⚠️ System degraded — check indicators"
+          : allOk
+            ? "✓ All systems operational"
+            : "Checking system status…"}
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
+
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>("overview");
