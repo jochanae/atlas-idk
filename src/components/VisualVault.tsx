@@ -259,13 +259,17 @@ export function VisualVault({ projectId, onClose }: VisualVaultProps) {
               </button>
               <button
                 onClick={onClose}
+                aria-label="Close vault"
                 style={{
                   width: 30, height: 30, borderRadius: "50%",
-                  background: "var(--atlas-fg)",
-                  border: "1px solid var(--atlas-fg)",
-                  color: "var(--atlas-muted)", fontSize: 16, lineHeight: 1,
+                  background: "rgba(201,162,76,0.08)",
+                  border: "1px solid rgba(201,162,76,0.3)",
+                  color: "var(--atlas-gold)", fontSize: 16, lineHeight: 1,
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "background 140ms, border-color 140ms",
                 }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,162,76,0.18)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.55)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.3)"; }}
               >×</button>
             </div>
           </div>
