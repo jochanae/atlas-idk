@@ -1977,6 +1977,82 @@ export default function Home() {
         </div>
       )}
 
+      {/* Conversation search bar + results — slides below subheader */}
+      {showConvSearch && homeMessages.length > 0 && (
+        <div style={{ position: "sticky", top: 86, zIndex: 30, padding: "10px 14px 0", background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "7px 10px" }}>
+            <Search size={13} strokeWidth={1.75} color="var(--atlas-muted)" />
+            <input
+              autoFocus
+              value={convSearchQuery}
+              onChange={(e) => setConvSearchQuery(e.target.value)}
+              placeholder="Search conversations..."
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontSize: 13 }}
+            />
+            <button
+              onClick={() => { setShowConvSearch(false); setConvSearchQuery(""); }}
+              aria-label="Close search"
+              style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, opacity: 0.6 }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ marginTop: 6, marginBottom: 10, maxHeight: 300, overflowY: "auto", background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.35)" }}>
+            {convSearchLoading ? (
+              <div style={{ padding: "14px 12px", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, textAlign: "center", letterSpacing: "0.06em" }}>
+                Searching…
+              </div>
+            ) : convSearchResults.length === 0 ? (
+              <div style={{ padding: "14px 12px", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, textAlign: "center", letterSpacing: "0.04em" }}>
+                {convSearchQuery.trim()
+                  ? `Nothing matching '${convSearchQuery.trim()}'`
+                  : "No conversations found."}
+              </div>
+            ) : (
+              convSearchResults.map((c) => {
+                const snippet = (c.title ?? "").slice(0, 60) + ((c.title ?? "").length > 60 ? "…" : "");
+                const ago = (() => {
+                  const ms = Date.now() - new Date(c.createdAt).getTime();
+                  const s = Math.floor(ms / 1000);
+                  if (s < 60) return `${s}s ago`;
+                  const m = Math.floor(s / 60);
+                  if (m < 60) return `${m}m ago`;
+                  const h = Math.floor(m / 60);
+                  if (h < 24) return `${h}h ago`;
+                  const d = Math.floor(h / 24);
+                  if (d < 30) return `${d} day${d === 1 ? "" : "s"} ago`;
+                  const mo = Math.floor(d / 30);
+                  if (mo < 12) return `${mo}mo ago`;
+                  return `${Math.floor(mo / 12)}y ago`;
+                })();
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      try { sessionStorage.setItem("atlas-home-conversation-id", c.id); } catch {}
+                      setActiveConversationId(c.id);
+                      setShowConvSearch(false);
+                      setConvSearchQuery("");
+                    }}
+                    style={{ display: "flex", width: "100%", flexDirection: "column", alignItems: "flex-start", gap: 3, background: "transparent", border: "none", borderBottom: "1px solid var(--atlas-border)", padding: "10px 12px", cursor: "pointer", textAlign: "left" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.06)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", lineHeight: 1.4 }}>
+                      {snippet || "Untitled conversation"}
+                    </div>
+                    <div style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.05em" }}>
+                      {ago}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+
       {/* First-run overlay — new users with no projects, once per session */}
       {showShredChoice && (
         <div
