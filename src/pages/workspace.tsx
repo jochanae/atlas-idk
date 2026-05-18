@@ -7113,6 +7113,7 @@ function RightPanel({
           </div>
         </div>
       )}
+      {tab === "blueprints" && <BlueprintsTab projectId={projectId} onContinueSession={onContinueSession} />}
       {tab === "files" && <FilesTab projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} />}
       {tab === "preview" && <PreviewTab projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
