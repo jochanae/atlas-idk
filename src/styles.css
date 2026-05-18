@@ -810,3 +810,16 @@ html.atlas-landing-active,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Readiness rescan button ────────────────────────────────────────────── */
+@keyframes atlas-rescan-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.atlas-rescan-wrap:hover .atlas-rescan-btn,
+.atlas-rescan-wrap:focus-within .atlas-rescan-btn {
+  opacity: 1 !important;
+}
+.atlas-rescan-btn:hover {
+  border-color: rgba(201, 162, 76, 0.55) !important;
+}

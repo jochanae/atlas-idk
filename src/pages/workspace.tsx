@@ -25,7 +25,7 @@ import { CommitCard } from "../components/CommitCard";
 import { PlanCard } from "../components/PlanCard";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { StreamingMarkdown, MarkdownProse } from "../components/MessageRenderer";
-import { Eye, TerminalSquare } from "lucide-react";
+import { Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
@@ -9172,6 +9172,59 @@ export default function Workspace() {
     readinessMode === "arch" ? mapReadiness :
     readinessMode === "decisions" ? healthPct :
     blendedReadiness;
+
+  // ── Manual + auto readiness rescan ────────────────────────────────────────
+  const [isScanning, setIsScanning] = useState(false);
+  const autoScanTriggeredRef = useRef<Set<number>>(new Set());
+  const hasLinkedRepo = !!project?.linkedRepo;
+  const runScan = useCallback(async (silent: boolean) => {
+    if (!Number.isFinite(id)) return;
+    if (!silent) setIsScanning(true);
+    try {
+      const r = await fetch(`/api/projects/${id}/scan`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "github" }),
+      });
+      if (!r.ok) {
+        if (!silent) {
+          if (r.status === 400 || r.status === 404) {
+            toast("No GitHub repo linked. Connect one in the Files tab.");
+          } else {
+            toast("Scan failed. Try again.");
+          }
+        }
+        return;
+      }
+      const body = await r.json().catch(() => ({} as any));
+      const newScore =
+        typeof body?.score === "number" ? body.score :
+        typeof body?.snapshot?.score === "number" ? body.snapshot.score :
+        typeof body?.latestSnapshotScore === "number" ? body.latestSnapshotScore :
+        null;
+      if (newScore != null) setMapReadiness(Math.round(newScore));
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+      if (!silent && newScore != null) {
+        toast(`Scanned. Readiness: ${Math.round(newScore)}%`);
+      } else if (!silent) {
+        toast("Scanned.");
+      }
+    } catch {
+      if (!silent) toast("Scan failed. Check your connection.");
+    } finally {
+      if (!silent) setIsScanning(false);
+    }
+  }, [id, queryClient]);
+
+  useEffect(() => {
+    if (!Number.isFinite(id) || !hasLinkedRepo) return;
+    if (autoScanTriggeredRef.current.has(id)) return;
+    if (project?.latestSnapshotScore != null) return;
+    autoScanTriggeredRef.current.add(id);
+    void runScan(true);
+  }, [id, hasLinkedRepo, project?.latestSnapshotScore, runScan]);
+
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [desktopForceTab, setDesktopForceTab] = useState<RightTab | undefined>(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : undefined
@@ -9900,14 +9953,48 @@ export default function Workspace() {
                 </svg>
               </button>
             )}
-            <ReadinessRing
-              archScore={mapReadiness}
-              decisionsScore={healthPct}
-              mode={readinessMode}
-              onModeChange={handleReadinessModeChange}
-              onClick={focusSystemMap}
-              trend={readinessTrend}
-            />
+            <div
+              className="atlas-rescan-wrap"
+              style={{ position: "relative", display: "flex", alignItems: "center" }}
+            >
+              <ReadinessRing
+                archScore={mapReadiness}
+                decisionsScore={healthPct}
+                mode={readinessMode}
+                onModeChange={handleReadinessModeChange}
+                onClick={focusSystemMap}
+                trend={readinessTrend}
+              />
+              {hasLinkedRepo && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); if (!isScanning) void runScan(false); }}
+                  disabled={isScanning}
+                  title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
+                  aria-label="Rescan readiness"
+                  className="atlas-rescan-btn"
+                  style={{
+                    marginLeft: 4,
+                    width: 16, height: 16, padding: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "transparent",
+                    border: "1px solid rgba(201,162,76,0.25)",
+                    borderRadius: "50%",
+                    color: "var(--atlas-gold)",
+                    cursor: isScanning ? "default" : "pointer",
+                    opacity: isScanning ? 1 : 0.45,
+                    transition: "opacity 160ms ease, border-color 160ms ease",
+                  }}
+                >
+                  <RefreshCw
+                    size={10}
+                    style={{
+                      animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined,
+                    }}
+                  />
+                </button>
+              )}
+            </div>
             {sessionPrUrl ? (
               <a
                 href={sessionPrUrl}
