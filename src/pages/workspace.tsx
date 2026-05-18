@@ -72,6 +72,13 @@ interface CatchPayload {
   leadSentence: string;
 }
 
+interface AlertPayload {
+  type: string;
+  headline: string;
+  detail: string;
+  action: string;
+}
+
 interface FileEdit {
   path: string;
   language: string;
@@ -122,6 +129,8 @@ interface ChatMessage {
   planFromHome?: boolean;
   catchPayload?: CatchPayload | null;
   catchResolved?: boolean;
+  alertPayload?: AlertPayload | null;
+  alertResolved?: boolean;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];
   linePatches?: LinePatch[];
@@ -546,6 +555,54 @@ function DecisionLogCard({
           }}
         >
           Adjust
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProactiveAlertCard({
+  payload, projectId, sessionId, onDismiss,
+}: {
+  payload: AlertPayload; projectId: number; sessionId: number; onDismiss: () => void;
+}) {
+  const createEntry = useCreateEntry();
+  const queryClient = useQueryClient();
+  const handleNote = () => {
+    createEntry.mutate(
+      { projectId, data: { title: payload.headline, summary: payload.detail, status: "committed", severity: "neutral", mode: "THINK", sessionId } },
+      { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(projectId, {}) }); onDismiss(); } }
+    );
+  };
+  return (
+    <div role="status" aria-label="Atlas notice" className="atlas-bubble-in"
+      style={{ marginTop: 8, padding: "10px 12px", borderRadius: 8,
+        background: "color-mix(in oklab, var(--atlas-gold) 5%, var(--atlas-surface))",
+        border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: "var(--atlas-gold)", boxShadow: "0 0 6px color-mix(in oklab, var(--atlas-gold) 48%, transparent)" }} />
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: "var(--atlas-gold)", opacity: 0.85 }}>
+            {payload.headline}
+          </span>
+        </div>
+        <button onClick={onDismiss} title="Dismiss" aria-label="Dismiss notice"
+          style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, padding: "2px 4px", opacity: 0.45 }}>x</button>
+      </div>
+      <p style={{ margin: "0 0 9px", fontSize: 12, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.75 }}>
+        {payload.detail}
+      </p>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button disabled={createEntry.isPending} onClick={handleNote}
+          style={{ padding: "4px 11px", fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase" as const, background: "transparent",
+            color: "color-mix(in oklab, var(--atlas-gold) 85%, var(--atlas-fg))", border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 42%, transparent)", borderRadius: 4,
+            cursor: createEntry.isPending ? "not-allowed" : "pointer", opacity: createEntry.isPending ? 0.5 : 1 }}>
+          {createEntry.isPending ? "Noting..." : (payload.action || "Note it")}
+        </button>
+        <button onClick={onDismiss}
+          style={{ padding: "4px 11px", fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase" as const, background: "transparent",
+            color: "var(--atlas-muted)", border: "0.5px solid color-mix(in oklab, var(--atlas-border) 70%, transparent)", borderRadius: 4, cursor: "pointer", opacity: 0.6 }}>
+          Got it
         </button>
       </div>
     </div>
@@ -1619,6 +1676,7 @@ function InlineDiffCard({
   trustMode,
   onReviewDiff,
   onPushSuccess,
+  onEditDeclined,
   onPrCreated,
 }: {
   fileEdits: FileEdit[];
@@ -1628,6 +1686,7 @@ function InlineDiffCard({
   trustMode: "review" | "auto";
   onReviewDiff: () => void;
   onPushSuccess: (records: PushRecord[]) => void;
+  onEditDeclined?: () => void;
   onPrCreated?: (prUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1636,6 +1695,7 @@ function InlineDiffCard({
   const [patchedEdits, setPatchedEdits] = useState<FileEdit[] | null>(null);
   const [showPushModal, setShowPushModal] = useState(false);
   const [originals, setOriginals] = useState<Record<string, string | null>>({});
+  const pushSucceededRef = useRef(false);
 
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const token = project?.githubToken ?? null;
@@ -1725,6 +1785,7 @@ function InlineDiffCard({
         edits.push({ path: filePath, language, content });
       }
       setPatchedEdits(edits);
+      pushSucceededRef.current = false;
       setShowPushModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not apply patches.");
@@ -1735,6 +1796,7 @@ function InlineDiffCard({
 
   const handleApply = () => {
     if (fileEdits.length > 0) {
+      pushSucceededRef.current = false;
       setShowPushModal(true);
       return;
     }
@@ -1840,8 +1902,8 @@ function InlineDiffCard({
           fileEdits={modalEdits}
           linkedRepo={linkedRepo}
           projectId={projectId}
-          onClose={() => setShowPushModal(false)}
-          onPushSuccess={(records) => { onPushSuccess(records); setShowPushModal(false); }}
+          onClose={() => { setShowPushModal(false); if (!pushSucceededRef.current) onEditDeclined?.(); }}
+          onPushSuccess={(records) => { pushSucceededRef.current = true; onPushSuccess(records); setShowPushModal(false); }}
           onPrCreated={onPrCreated}
         />
       )}
@@ -1978,6 +2040,8 @@ function AssistantBubble({
   onRunCommand,
   onExtractToForge,
   onReviewDiff,
+  onEditDeclined,
+  onAlertDismiss,
   onStreamActivityUpdate,
   onStreamActivityComplete,
   onCommitCardDone,
@@ -2004,6 +2068,8 @@ function AssistantBubble({
   onRunCommand?: (command: string) => void;
   onExtractToForge?: (content: string) => void;
   onReviewDiff: () => void;
+  onEditDeclined?: () => void;
+  onAlertDismiss?: () => void;
   onStreamActivityUpdate?: (content: string) => void;
   onStreamActivityComplete?: () => void;
   onCommitCardDone?: () => void;
@@ -2440,6 +2506,7 @@ function AssistantBubble({
             trustMode={trustMode}
             onReviewDiff={onReviewDiff}
             onPushSuccess={onPushSuccess}
+            onEditDeclined={onEditDeclined}
             onPrCreated={onPrCreated}
           />
         )}
@@ -2464,6 +2531,15 @@ function AssistantBubble({
             sessionId={sessionId}
             onProceed={onCatchProceed}
             onAdjust={onCatchAdjust}
+          />
+        )}
+
+        {message.alertPayload && !message.alertResolved && (
+          <ProactiveAlertCard
+            payload={message.alertPayload}
+            projectId={projectId}
+            sessionId={sessionId}
+            onDismiss={() => onAlertDismiss?.()}
           />
         )}
 
@@ -2578,15 +2654,24 @@ function AssistantBubble({
           {onExtractToForge && message.content.length > 200 && (
             <button
               className="atlas-icon-action"
-              title="Extract to Forge"
+              title="Extract to Forge — turn this response into strategic nodes"
               aria-label="Open Forge"
               onClick={() => onExtractToForge(message.content)}
-              style={{ ...ICON_TOUCH_TARGET_STYLE, opacity: hov ? 0.85 : 0.32 }}
+              style={{
+                ...ICON_TOUCH_TARGET_STYLE,
+                display: "flex", alignItems: "center", gap: 4,
+                opacity: hov ? 1 : 0.32,
+                padding: "4px 7px", borderRadius: 5,
+                border: hov ? "1px solid rgba(201,162,76,0.30)" : "1px solid transparent",
+                background: hov ? "rgba(201,162,76,0.07)" : "transparent",
+                transition: "all 180ms ease",
+              }}
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 1v8M4 6l3 3 3-3" />
                 <path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" />
               </svg>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>FORGE</span>
             </button>
           )}
         </div>
@@ -9006,7 +9091,16 @@ export default function Workspace() {
   const handleCommit = useCallback(
     (content: string) => {
       if (!sessionId) return;
-      const title = content.replace(/\n/g, " ").slice(0, 80).trim();
+      const title = content
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/`(.+?)`/g, "$1")
+        .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+        .replace(/\n/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .slice(0, 80)
+        .trim();
       createEntry.mutate(
         { projectId: id, data: { title, summary: content.slice(0, 500), status: "committed", severity: "committed", mode: "think", sessionId } },
         { onSuccess: () => { playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
@@ -9139,6 +9233,23 @@ export default function Workspace() {
   }, []);
 
   const messagesRef = useRef<ChatMessage[]>([]);
+  const summarizedSessionRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (assistantCount < 2) return;
+    const onHide = () => {
+      if (!document.hidden) return;
+      if (summarizedSessionRef.current === sessionId) return;
+      summarizedSessionRef.current = sessionId;
+      void fetch(`/api/sessions/${sessionId}/summarize`, {
+        method: "POST",
+        credentials: "include",
+      });
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [sessionId, messages]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const handleTerminalComplete = useCallback((command: string, output: string, exitCode: number | null) => {
@@ -10410,6 +10521,23 @@ export default function Workspace() {
                   onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
                   onExtractToForge={(content) => { setForgePreloadContent(content); setShowForgeExternal(true); }}
                   onReviewDiff={() => setLeftTab("diff")}
+                  onEditDeclined={() => {
+                    if (sessionId) {
+                      const editsInFlight = messages
+                        .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
+                        .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
+                      doSend(
+                        `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
+                        sessionId,
+                        messagesRef.current,
+                      );
+                    }
+                  }}
+                  onAlertDismiss={() => {
+                    setMessages((prev) => prev.map((m) =>
+                      m.id === msg.id ? { ...m, alertResolved: true } : m
+                    ));
+                  }}
                   onStreamActivityUpdate={(content) => {
                     const markers = [
                       msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
@@ -10456,6 +10584,15 @@ export default function Workspace() {
                     setPreviewRefreshTrigger((t) => t + 1);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
+                    if (sessionId) {
+                      const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
+                      const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                      doSend(
+                        `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                        sessionId,
+                        messagesRef.current,
+                      );
+                    }
                   }}
                 />
               )
