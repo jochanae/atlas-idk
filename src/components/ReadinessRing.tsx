@@ -124,6 +124,7 @@ export function ReadinessRing({
   onModeChange,
   onClick,
   trend,
+  hideModePill,
 }: {
   archScore: number;
   decisionsScore: number;
@@ -131,6 +132,7 @@ export function ReadinessRing({
   onModeChange: (m: ReadinessMode) => void;
   onClick?: () => void;
   trend?: ReadinessTrend;
+  hideModePill?: boolean;
 }) {
   const score =
     mode === "arch"      ? archScore :
@@ -199,6 +201,7 @@ export function ReadinessRing({
         </button>
       </LongPressTip>
 
+      {!hideModePill && (
       <LongPressTip tip="Readiness mode: Blended · tap to switch to Architecture or Decisions">
         <button
           onClick={cycleMode}
@@ -224,7 +227,7 @@ export function ReadinessRing({
           {MODE_META[mode].abbr}
         </button>
       </LongPressTip>
-
+      )}
       {showTooltip && (
         <div
           style={{
