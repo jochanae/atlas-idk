@@ -1203,6 +1203,29 @@ export default function MasterMap() {
 
   const isMobile = window.innerWidth < 768;
 
+  // Back navigation: layer 3 → 2 (back to project node), layer 2 → 1 (source)
+  const goBack = () => {
+    const s = useMapStore.getState();
+    if (s.currentLayer === 3 && s.context.projectId != null) {
+      const proj = projects.find((p) => p.id === s.context.projectId);
+      if (proj) {
+        // Re-target the project's last-known position; projectsRef has live meshes
+        const idx = projects.findIndex((p) => p.id === proj.id);
+        const meshPos = idx >= 0 ? null : null; // positions live in three; navigate by reusing cameraTarget approx
+        const pos: [number, number, number] = meshPos ?? [s.cameraTarget[0], s.cameraTarget[1], s.cameraTarget[2]];
+        navigateToNode(String(proj.id), pos, 2, {
+          projectId: proj.id,
+          projectName: proj.name,
+          parentId: undefined,
+          parentLabel: undefined,
+        });
+        return;
+      }
+    }
+    resetToSource();
+  };
+  goBackRef.current = goBack;
+
   return (
     <div style={{ position: "fixed", inset: 0, background: palette.pageBg, fontFamily: "var(--app-font-sans)" }}>
       <style>{STYLES}</style>
