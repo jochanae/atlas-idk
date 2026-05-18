@@ -288,9 +288,9 @@ function useIsMobile() {
 }
 
 function useIsTinyScreen() {
-  const [tiny, setTiny] = useState(() => window.innerWidth < 390);
+  const [tiny, setTiny] = useState(() => window.innerWidth < 420);
   useEffect(() => {
-    const handler = () => setTiny(window.innerWidth < 390);
+    const handler = () => setTiny(window.innerWidth < 420);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
