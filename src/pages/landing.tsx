@@ -96,13 +96,12 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           textTransform: "uppercase",
           letterSpacing: "0.04em",
         }}>
-          Build nothing
+          Every great thing
           <br />
-          until it's{" "}
+          begins as a
+          <br />
           <span style={{ fontStyle: "italic", color: "#D4AF37" }}>
-            structurally
-            <br />
-            sound.
+            Conversation.
           </span>
         </h1>
 
@@ -111,11 +110,11 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(0.6rem, 1.2vw, 0.75rem)",
           color: "#6b5f50",
         }}>
-          Axiom // Spec_Mode + Build_Mode v1.0
+          Axiom // Where ideas become decisions become reality
         </p>
 
         {/* Mode pills */}
-        <div className="flex items-center justify-center gap-3 mb-10">
+        <div className="flex items-center justify-center gap-3 mb-10 flex-wrap">
           <span style={{
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: "0.6rem",
@@ -124,7 +123,17 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             border: "1px solid rgba(212,175,55,0.3)",
             padding: "4px 10px",
             textTransform: "uppercase",
-          }}>Spec Mode</span>
+          }}>Think it through</span>
+          <span style={{ color: "#3d3529", fontSize: "0.7rem" }}>→</span>
+          <span style={{
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: "0.6rem",
+            letterSpacing: "0.2em",
+            color: "#D4AF37",
+            border: "1px solid rgba(212,175,55,0.3)",
+            padding: "4px 10px",
+            textTransform: "uppercase",
+          }}>Map it out</span>
           <span style={{ color: "#3d3529", fontSize: "0.7rem" }}>→</span>
           <span style={{
             fontFamily: "'IBM Plex Mono', monospace",
@@ -134,7 +143,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             border: "1px solid rgba(212,175,55,0.15)",
             padding: "4px 10px",
             textTransform: "uppercase",
-          }}>Build Mode</span>
+          }}>Build it</span>
         </div>
 
         <button
@@ -161,8 +170,20 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,175,55,0.07)"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.75)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; }}
         >
-          Enter Axiom
+          Start the conversation →
         </button>
+
+        <p className="mt-6 mx-auto text-center uppercase" style={{
+          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+          fontSize: "0.6rem",
+          letterSpacing: "0.2em",
+          color: "#e8dcc8",
+          opacity: 0.45,
+          maxWidth: 420,
+          lineHeight: 1.7,
+        }}>
+          For the builder with a codebase. For the thinker with an idea. For anyone who needs to decide what comes next.
+        </p>
       </div>
 
       {/* Bottom-left system readout */}
@@ -206,6 +227,7 @@ function InterrogationSection() {
     { value: "62%", label: "of builds get re-scoped mid-sprint", delay: "0.15s" },
     { value: "3.2×", label: "longer to ship without a structural spec", delay: "0.35s" },
     { value: "$41K", label: "average do-over tax per failed feature", delay: "0.55s" },
+    { value: "2.4", label: "avg years an idea sits before someone acts on it", delay: "0.55s" },
   ];
 
   return (
@@ -311,6 +333,14 @@ function HandoffSection() {
   const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
   const steps = [
+    {
+      phase: "THE SPARK",
+      title: "The Idea",
+      description: "Some things start as a half-formed thought at 2am. Atlas sits with you in that space — asks the right questions, maps what you know, surfaces what you don't. By the end of the conversation, you have a blueprint. Something real you can act on.",
+      visual: "scatter",
+      color: "#8a7e6e",
+      goldAccent: false,
+    },
     {
       phase: "SPEC MODE",
       title: "Structure",
