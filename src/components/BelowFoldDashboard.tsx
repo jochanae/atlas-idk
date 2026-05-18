@@ -15,7 +15,6 @@ type Props = {
   onOpenProject: (id: number) => void;
   onOpenLedger?: () => void;
   onOpenParking?: () => void;
-  onOpenQuickPrompt?: () => void;
   committedCount?: number;
   parkedCount?: number;
   briefing?: string | null;
