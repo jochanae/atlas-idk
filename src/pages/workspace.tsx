@@ -67,7 +67,7 @@ import {
 import { LongPressTip, haptic } from "@/lib/long-press-tip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 44, minHeight: 44, padding: 9 };
+const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
 interface CatchPayload {
   v: number;
