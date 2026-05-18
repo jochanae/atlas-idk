@@ -285,6 +285,9 @@ html, body {
   background: rgba(201, 162, 76, 0.4);
 }
 
+/* Hide scrollbar for single-row chip carousel */
+.suggestion-chips-row::-webkit-scrollbar { display: none; }
+
 /* ── Sonner welcome toast: obsidian glass, mobile-safe lift ───────────────── */
 .atlas-sonner-toaster {
   z-index: 2147483647 !important;
