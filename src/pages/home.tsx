@@ -2196,6 +2196,7 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+                    </Fragment>
                   ))}
 
                   {/* Thinking indicator */}
