@@ -5121,11 +5121,13 @@ ${t}
   };
 
 
-  // Device config
+  // Device config — desktop renders at a real desktop width then scales down,
+  // otherwise the iframe inherits the narrow panel width and the site responds
+  // as mobile. Landscape on desktop = ultrawide (1920); portrait = standard 1440.
   const DEVICE_CONFIG = {
     phone:   { portrait: [390, 844],   landscape: [844, 390] },
     tablet:  { portrait: [768, 1024],  landscape: [1024, 768] },
-    desktop: { portrait: [null, null], landscape: [null, null] },
+    desktop: { portrait: [1440, 900],  landscape: [1920, 1080] },
   } as const;
   const orient = isLandscape ? "landscape" : "portrait";
   const [dW, dH] = DEVICE_CONFIG[deviceSize][orient];
@@ -5141,19 +5143,22 @@ ${t}
     cursor: "pointer", transition: "all 140ms ease", opacity: active ? 1 : 0.5,
   });
 
-  // Device iframe wrapper — inline to avoid component-in-component remounting
-  const deviceWrapperStyle: React.CSSProperties = deviceSize === "desktop"
-    ? { flex: 1, position: "relative", overflow: "hidden" }
-    : { flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", overflow: "hidden", padding: "12px 8px", background: "rgba(0,0,0,0.18)" };
-  const deviceInnerStyle: React.CSSProperties = deviceSize === "desktop"
-    ? { width: "100%", height: "100%", position: "absolute", inset: 0 }
-    : {
-        width: dW ?? undefined, height: dH ?? undefined,
-        transform: `scale(${scale})`, transformOrigin: "top center",
-        borderRadius: 14, overflow: "hidden", flexShrink: 0,
-        boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.55)",
-        background: "#fff",
-      };
+  // Device iframe wrapper — all three sizes render at their real viewport width
+  // and get scaled to fit the panel, so responsive sites render the right layout.
+  const deviceWrapperStyle: React.CSSProperties = {
+    flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center",
+    overflow: "auto",
+    padding: deviceSize === "desktop" ? "8px 6px" : "12px 8px",
+    background: "rgba(0,0,0,0.18)",
+  };
+  const deviceInnerStyle: React.CSSProperties = {
+    width: dW ?? undefined, height: dH ?? undefined,
+    transform: `scale(${scale})`, transformOrigin: "top center",
+    borderRadius: deviceSize === "desktop" ? 6 : 14,
+    overflow: "hidden", flexShrink: 0,
+    boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.55)",
+    background: "#fff",
+  };
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -5189,21 +5194,21 @@ ${t}
             <svg width="10" height="11" viewBox="0 0 10 11" fill="none"><rect x="0.5" y="0.5" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1" /><circle cx="5" cy="8.5" r="0.6" fill="currentColor" /></svg>
             Tablet
           </button>
-          <button style={deviceBtnStyle(deviceSize === "desktop")} onClick={() => { setDeviceSize("desktop"); setIsLandscape(false); }}>
+          <button style={deviceBtnStyle(deviceSize === "desktop")} onClick={() => setDeviceSize("desktop")}>
             <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><rect x="0.5" y="0.5" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1" /><path d="M3 8.5h5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" /></svg>
             Desktop
           </button>
           <div style={{ flex: 1 }} />
           <button
-            onClick={() => { if (deviceSize !== "desktop") setIsLandscape((l) => !l); }}
-            title={deviceSize === "desktop" ? "Rotate applies to Phone / Tablet only" : isLandscape ? "Switch to portrait" : "Switch to landscape"}
+            onClick={() => setIsLandscape((l) => !l)}
+            title={isLandscape ? "Switch to portrait" : "Switch to landscape"}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-              padding: "4px 8px", borderRadius: 4, cursor: deviceSize === "desktop" ? "not-allowed" : "pointer",
-              background: isLandscape && deviceSize !== "desktop" ? "rgba(201,162,76,0.1)" : "transparent",
-              border: `1px solid ${isLandscape && deviceSize !== "desktop" ? "rgba(201,162,76,0.28)" : "var(--atlas-border)"}`,
-              color: isLandscape && deviceSize !== "desktop" ? "var(--atlas-gold)" : "var(--atlas-muted)",
-              opacity: deviceSize === "desktop" ? 0.22 : 0.8,
+              padding: "4px 8px", borderRadius: 4, cursor: "pointer",
+              background: isLandscape ? "rgba(201,162,76,0.1)" : "transparent",
+              border: `1px solid ${isLandscape ? "rgba(201,162,76,0.28)" : "var(--atlas-border)"}`,
+              color: isLandscape ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              opacity: 0.8,
               transition: "all 140ms ease",
             }}
           >
@@ -5213,7 +5218,7 @@ ${t}
               <path d="M3 13H7M3 13v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
-              {deviceSize !== "desktop" ? (isLandscape ? "Landscape" : "Portrait") : "Rotate"}
+              {isLandscape ? "Landscape" : "Portrait"}
             </span>
           </button>
         </div>
