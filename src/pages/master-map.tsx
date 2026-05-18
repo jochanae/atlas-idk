@@ -1171,6 +1171,8 @@ export default function MasterMap() {
       canvas.removeEventListener("touchend", onTouchEnd);
       canvas.removeEventListener("wheel", onWheel);
       ro.disconnect();
+      layerStack.clear();
+      layerStackRef.current = null;
       renderer.dispose();
     };
   }, [loading, theme, statsVersion, tensionsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
