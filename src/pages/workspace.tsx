@@ -281,9 +281,10 @@ function profileToString(p: UserProfile): string {
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 function useIsMobile() {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 760);
+  // Mobile = stacked single-column. Tablet (>=768) and desktop (>=1024) are side-by-side.
+  const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   useEffect(() => {
-    const handler = () => setMobile(window.innerWidth < 760);
+    const handler = () => setMobile(window.innerWidth < 768);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
