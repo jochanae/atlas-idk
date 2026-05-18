@@ -770,7 +770,58 @@ export default function MasterMap() {
       }
     };
 
+    const handleLayer23Click = (cx: number, cy: number): boolean => {
+      if (currentLayerRef.current === 1) return false;
+      setRay(cx, cy);
+      const hit = layerStack.hit(raycaster);
+      if (hit === "source") {
+        haptics.tap();
+        resetToSource();
+        return true;
+      }
+      if (hit) {
+        haptics.tap();
+        const layer = currentLayerRef.current;
+        if (hit.subType === "BLUEPRINT") {
+          setLocation(`/blueprints/${hit.id}`);
+          return true;
+        }
+        if (hit.subType === "DECISION") {
+          setLocation(`/entry/${hit.id}`);
+          return true;
+        }
+        if (hit.subType === "SPRINT" && layer === 2) {
+          // Drill into Layer 3
+          const projectId = useMapStore.getState().context.projectId;
+          const projectName = useMapStore.getState().context.projectName;
+          navigateToNode(hit.id, [hit.worldPos.x, hit.worldPos.y, hit.worldPos.z], 3, {
+            projectId,
+            projectName,
+            parentId: hit.id,
+            parentLabel: hit.label,
+          });
+          return true;
+        }
+        // Default: show glassmorphic tooltip
+        const sp = hit.worldPos.clone().project(camera);
+        setLayer2Tooltip({
+          id: hit.id,
+          label: hit.label,
+          description: hit.description,
+          x: (sp.x * 0.5 + 0.5) * canvas.clientWidth,
+          y: (-sp.y * 0.5 + 0.5) * canvas.clientHeight,
+        });
+        layer2TooltipRef.current = { rec: hit };
+        return true;
+      }
+      // Empty tap on layer 2/3 → dismiss tooltip
+      setLayer2Tooltip(null);
+      layer2TooltipRef.current = null;
+      return true;
+    };
+
     const handleClick = (cx: number, cy: number) => {
+      if (handleLayer23Click(cx, cy)) return;
       const hits = hitTest(cx, cy);
       if (!hits.length) {
         // Tap on a tension filament shows tooltip; else dismiss peek/tension
