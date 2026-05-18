@@ -882,3 +882,20 @@ html.atlas-landing-active,
   .blueprint-detail-root h1, .blueprint-detail-root p, .blueprint-detail-root li { color: black !important; }
   .blueprint-section-label { color: #8B6914 !important; }
 }
+
+/* Compact input action row on tiny screens so Send stays on one line */
+@media (max-width: 419px) {
+  .atlas-input-actionrow > div > label,
+  .atlas-input-actionrow > div > button,
+  .atlas-input-actionrow > div > div > button {
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 4px !important;
+  }
+  .atlas-input-actionrow > div { gap: 0 !important; }
+  .atlas-input-actionrow .atlas-send-btn,
+  .atlas-input-actionrow > div:last-child > button {
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+}

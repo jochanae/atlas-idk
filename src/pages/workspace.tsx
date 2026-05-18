@@ -2605,7 +2605,8 @@ function AssistantBubble({
         )}
 
         {/* Action row — icon-only cockpit buttons */}
-        <div style={{ display: "flex", gap: 4, marginTop: 7, opacity: hov ? 1 : 0.32, transition: "opacity 180ms ease" }}>
+        <div style={{ display: "flex", gap: 0, marginTop: 7, marginLeft: -8, opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+
           {/* Copy */}
           <button
             className={`atlas-icon-action${copied ? " copy-done" : ""}`}
@@ -2667,8 +2668,9 @@ function AssistantBubble({
               </svg>
             </button>
           )}
-          {/* Extract to Forge — surfaces on structured/lengthy responses */}
-          {onExtractToForge && message.content.length > 200 && (
+          {/* Extract to Forge — always available on Atlas replies */}
+          {onExtractToForge && (
+
             <button
               className="atlas-icon-action"
               title="Extract to Forge — turn this response into strategic nodes"
@@ -2677,12 +2679,13 @@ function AssistantBubble({
               style={{
                 ...ICON_TOUCH_TARGET_STYLE,
                 display: "flex", alignItems: "center", gap: 4,
-                opacity: hov ? 1 : 0.32,
+                opacity: 1,
                 padding: "4px 7px", borderRadius: 5,
-                border: hov ? "1px solid rgba(201,162,76,0.30)" : "1px solid transparent",
-                background: hov ? "rgba(201,162,76,0.07)" : "transparent",
+                border: "1px solid rgba(201,162,76,0.30)",
+                background: "rgba(201,162,76,0.07)",
                 transition: "all 180ms ease",
               }}
+
             >
               <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 1v8M4 6l3 3 3-3" />
@@ -11083,7 +11086,9 @@ export default function Workspace() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "wrap", rowGap: 6, columnGap: 6 }}>
+              <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "nowrap", gap: 4 }}>
+
+
                 {/* Left: paperclip + vault (tiny screens) + wrench (read Atlas source) */}
                 <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
                   <label
