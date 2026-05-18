@@ -43,7 +43,9 @@ const PLACEHOLDERS = [
 
 const HOME_PENDING_PHRASES = [
   "Loading context…",
+  "Reading your ledger…",
   "Thinking…",
+  "Checking for conflicts…",
   "Reviewing your portfolio…",
   "Composing a response…",
 ];
@@ -2515,7 +2517,18 @@ export default function Home() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <LoadingSpinner size="sm" color="atlas" />
-                          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.07em", opacity: 0.7, transition: "opacity 400ms ease" }}>
+                          <span
+                            key={pendingPhraseIdx}
+                            style={{
+                              fontFamily: "var(--app-font-mono)",
+                              fontSize: 10,
+                              color: "var(--atlas-muted)",
+                              letterSpacing: "0.07em",
+                              opacity: 0.7,
+                              animation: "fadeIn 360ms ease",
+                              display: "inline-block",
+                            }}
+                          >
                             {HOME_PENDING_PHRASES[pendingPhraseIdx]}
                           </span>
                         </div>
