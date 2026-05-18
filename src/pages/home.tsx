@@ -1799,15 +1799,44 @@ export default function Home() {
       {/* ATLAS subheader — always-visible bar beneath main header */}
       {homeMessages.length > 0 && (
       <div className="atlas-chat-card-top" style={{ borderRadius: 0, padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, boxSizing: "border-box" }}>
-          <span style={{
+          <div style={{
             position: "absolute", left: "50%", top: "50%",
             transform: "translate(-50%, -50%)",
-            fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em",
-            color: "var(--atlas-gold)", opacity: 0.55, fontWeight: 600,
-            textTransform: "uppercase", pointerEvents: "none", whiteSpace: "nowrap",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+            pointerEvents: "auto",
           }}>
-            ATLAS
-          </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{
+                fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em",
+                color: "var(--atlas-gold)", opacity: 0.55, fontWeight: 600,
+                textTransform: "uppercase", whiteSpace: "nowrap",
+              }}>
+                ATLAS
+              </span>
+              <button
+                onClick={handleLockTap}
+                title={reflectionLocked ? "Reflection mode (locked)" : "Enter reflection mode"}
+                aria-label="Toggle reflection mode"
+                style={{
+                  background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--atlas-gold)",
+                  opacity: reflectionLocked ? 1 : 0.4,
+                  lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
+                }}
+              >
+                <Lock size={11} strokeWidth={2} />
+              </button>
+            </div>
+            {reflectionLocked && (
+              <span style={{
+                fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.16em",
+                color: "var(--atlas-muted)", opacity: 0.7, textTransform: "lowercase",
+                marginTop: 1,
+              }}>
+                reflection mode
+              </span>
+            )}
+          </div>
           <div style={{ marginLeft: "auto", position: "relative" }}>
             {showClearConfirm ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
