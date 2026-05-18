@@ -918,6 +918,14 @@ export default function MasterMap() {
         mat.opacity = edge * 0.72;
       });
 
+      // ── Tension filaments: slow pulse, brighten on hover ──
+      tensionFilaments.forEach((tf, i) => {
+        const mat = tf.line.material as THREE.LineBasicMaterial;
+        const pulse = 0.7 + 0.3 * Math.sin(t * 1.6 + tf.phase);
+        const hovered = hoveredTensionRef.current?.index === i;
+        mat.opacity = Math.min(1, tf.baseOpacity * pulse * (hovered ? 1.8 : 1));
+      });
+
       // ── Node hover glow + scale (respects per-node baseScale from Ledger overlay) ──
       nodeMeshes.forEach((mesh, i) => {
         const hovered = i === hoveredIdxRef.current;
