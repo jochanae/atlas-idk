@@ -9084,6 +9084,7 @@ export default function Workspace() {
   const handlePark = useCallback(
     (content: string) => {
       if (!sessionId) return;
+      haptic.short();
       playPark();
       const title = content.replace(/\n/g, " ").slice(0, 80).trim();
       createEntry.mutate(
