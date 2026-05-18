@@ -233,7 +233,7 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
   );
 }
 
-export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, onOpenQuickPrompt, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
+export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
   
   if (projects.length === 0) return null;
 
