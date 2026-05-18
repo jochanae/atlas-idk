@@ -139,7 +139,7 @@ export function ReadinessRing({
 
   const hasTrend = trend && trend.delta !== 0;
   const trendColor = hasTrend ? (trend.delta > 0 ? "#4ade80" : "rgba(252,165,165,0.85)") : "var(--atlas-muted)";
-  const trendArrow = hasTrend ? (trend.delta > 0 ? "↑" : "↓") : null;
+  
   const [showTooltip, setShowTooltip] = useState(false);
   const MODES: ReadinessMode[] = ["blended", "arch", "decisions"];
   const cycleMode = (e: React.MouseEvent) => {
