@@ -1004,28 +1004,40 @@ export default function MasterMap() {
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
 
-      // ── Camera: gyro + pan offset + zoom ──
+      // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
       const gy = gyroTilt.current.y;
-      // Rubber-band: spring pan back toward center if beyond threshold
       const panDist = Math.hypot(panRef.current.x, panRef.current.y);
       if (!isDraggingRef.current && panDist > 480) {
         panRef.current.x *= 0.96;
         panRef.current.y *= 0.96;
       }
-      const targetX = gy * 95 + panRef.current.x;
-      const targetY = -gx * 70 + panRef.current.y;
-      camera.position.x += (targetX - camera.position.x) * 0.055;
-      camera.position.y += (targetY - camera.position.y) * 0.055;
-      camera.position.z += (camZTarget.current - camera.position.z) * 0.07;
-      // Star layers parallax: further back = moves less (nearer to camera parallaxes faster)
-      starsBack.position.x  = camera.position.x * 0.12;
-      starsBack.position.y  = camera.position.y * 0.12;
-      starsMid.position.x   = camera.position.x * 0.28;
-      starsMid.position.y   = camera.position.y * 0.28;
-      starsFront.position.x = camera.position.x * 0.55;
-      starsFront.position.y = camera.position.y * 0.55;
-      camera.lookAt(0, 0, 0);
+
+      if (layerNow === 1) {
+        const targetX = gy * 95 + panRef.current.x;
+        const targetY = -gx * 70 + panRef.current.y;
+        camera.position.x += (targetX - camera.position.x) * 0.055;
+        camera.position.y += (targetY - camera.position.y) * 0.055;
+        camera.position.z += (camZTarget.current - camera.position.z) * 0.07;
+        starsBack.position.x  = camera.position.x * 0.12;
+        starsBack.position.y  = camera.position.y * 0.12;
+        starsMid.position.x   = camera.position.x * 0.28;
+        starsMid.position.y   = camera.position.y * 0.28;
+        starsFront.position.x = camera.position.x * 0.55;
+        starsFront.position.y = camera.position.y * 0.55;
+        camera.lookAt(0, 0, 0);
+      } else {
+        // Cinematic camera: lerp toward target with zoom-derived offset
+        const tgt = storeState.cameraTarget;
+        const zoom = storeState.zoomLevel;
+        const desired = new THREE.Vector3(
+          tgt[0],
+          tgt[1] + zoom * 0.4 * 10, // scale to match world units (~25 ≈ CAM_Z)
+          tgt[2] + zoom * 10,
+        );
+        camera.position.lerp(desired, 0.08);
+        camera.lookAt(tgt[0], tgt[1], tgt[2]);
+      }
 
       // ── Warp dive ──
       if (warpTarget.current) {
