@@ -1123,6 +1123,7 @@ export default function Home() {
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
+  const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: "ok" | "warn" | "fail" } | null>(null);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
@@ -1241,6 +1242,30 @@ export default function Home() {
   useEffect(() => {
     if (!isAtlasStreaming) { setPendingPhraseIdx(0); return; }
     const t = setInterval(() => setPendingPhraseIdx(i => (i + 1) % HOME_PENDING_PHRASES.length), 2400);
+    return () => clearInterval(t);
+  }, [isAtlasStreaming]);
+
+  // Demo: simulate live step events when ?demo=runsummary or localStorage flag is set
+  useEffect(() => {
+    if (!isAtlasStreaming) return;
+    const demo = typeof window !== "undefined" &&
+      (window.location.search.includes("demo=runsummary") ||
+        window.localStorage.getItem("atlas_demo_runsummary") === "1");
+    if (!demo) return;
+    const fakeSteps: Array<{ verb: string; target: string; status?: "ok" | "warn" }> = [
+      { verb: "Read", target: "chat_messages.ts" },
+      { verb: "Grepped", target: "codebase" },
+      { verb: "Read", target: "nexus.ts L1180–1420" },
+      { verb: "Updated", target: "nexus.ts" },
+      { verb: "Skipped", target: "_journal.json", status: "warn" },
+      { verb: "Pushed", target: "main" },
+    ];
+    let i = 0;
+    setLiveStep(fakeSteps[0]);
+    const t = setInterval(() => {
+      i = (i + 1) % fakeSteps.length;
+      setLiveStep(fakeSteps[i]);
+    }, 1600);
     return () => clearInterval(t);
   }, [isAtlasStreaming]);
   const [, setLocation] = useLocation();
@@ -1594,6 +1619,9 @@ export default function Home() {
               setHomeMessages(prev => prev.map(m =>
                 (m as any).id === streamingId ? { ...m, content: streamedText } : m
               ));
+            } else if (evtName === "step") {
+              const step = JSON.parse(evtData) as { verb?: string; target?: string; status?: "ok" | "warn" | "fail" };
+              if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
             } else if (evtName === "done") {
               const meta = JSON.parse(evtData) as {
                 memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
@@ -1645,6 +1673,7 @@ export default function Home() {
     } finally {
       setIsAtlasStreaming(false);
       setIsSending(false);
+      setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     }
   }, [input, attachedFiles, isSending, homeModel, homeFocus, projects, activeConversationId, homeMessages.length]);
@@ -2517,20 +2546,50 @@ export default function Home() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <LoadingSpinner size="sm" color="atlas" />
-                          <span
-                            key={pendingPhraseIdx}
-                            style={{
-                              fontFamily: "var(--app-font-mono)",
-                              fontSize: 10,
-                              color: "var(--atlas-muted)",
-                              letterSpacing: "0.07em",
-                              opacity: 0.7,
-                              animation: "fadeIn 360ms ease",
-                              display: "inline-block",
-                            }}
-                          >
-                            {HOME_PENDING_PHRASES[pendingPhraseIdx]}
-                          </span>
+                          {liveStep ? (
+                            <span
+                              key={`step-${liveStep.verb}-${liveStep.target ?? ""}`}
+                              style={{
+                                fontFamily: "var(--app-font-mono)",
+                                fontSize: 10,
+                                letterSpacing: "0.05em",
+                                animation: "fadeIn 320ms ease",
+                                display: "inline-flex",
+                                alignItems: "baseline",
+                                gap: 6,
+                              }}
+                            >
+                              <span style={{
+                                color: liveStep.status === "warn" ? "var(--atlas-gold)"
+                                  : liveStep.status === "fail" ? "#e25b5b"
+                                  : "var(--atlas-fg)",
+                                opacity: 0.9,
+                                fontWeight: 500,
+                              }}>
+                                {liveStep.verb}
+                              </span>
+                              {liveStep.target && (
+                                <span style={{ color: "var(--atlas-muted)", opacity: 0.75 }}>
+                                  {liveStep.target}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span
+                              key={pendingPhraseIdx}
+                              style={{
+                                fontFamily: "var(--app-font-mono)",
+                                fontSize: 10,
+                                color: "var(--atlas-muted)",
+                                letterSpacing: "0.07em",
+                                opacity: 0.7,
+                                animation: "fadeIn 360ms ease",
+                                display: "inline-block",
+                              }}
+                            >
+                              {HOME_PENDING_PHRASES[pendingPhraseIdx]}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
