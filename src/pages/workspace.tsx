@@ -10413,9 +10413,9 @@ export default function Workspace() {
                 </button>
               );
             })}
-            {/* View PR pill — appears after a PR is created */}
-            {sessionPrUrl && (
-              <div style={{ marginLeft: "auto", paddingRight: 10 }}>
+            {/* Right-aligned controls: PR + lens + grid + MIX + rescan */}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, paddingRight: 8 }}>
+              {sessionPrUrl && (
                 <a
                   href={sessionPrUrl} target="_blank" rel="noopener noreferrer"
                   style={{
@@ -10426,15 +10426,116 @@ export default function Workspace() {
                     textDecoration: "none", letterSpacing: "0.02em", whiteSpace: "nowrap",
                   }}
                 >
-                  {/* PR icon */}
                   <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="4" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="4" r="2"/>
                     <path d="M4 6v4M6 4h3a1 1 0 011 1v3"/>
                   </svg>
                   View PR
                 </a>
-              </div>
-            )}
+              )}
+
+              {/* Lens selector */}
+              <button
+                title={`Lens: ${LENS_CONFIG[wsLens].sub}`}
+                aria-label={`Lens: ${LENS_CONFIG[wsLens].label}`}
+                onClick={() => setShowLensPicker(true)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: isTinyScreen ? "4px 6px" : "3px 8px", borderRadius: 20,
+                  background: "transparent",
+                  border: `1px solid ${detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"}`,
+                  cursor: "pointer", transition: "all 180ms ease", flexShrink: 0,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, flexShrink: 0, transition: "background 220ms ease" }} />
+                {!isTinyScreen && (
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
+                    {LENS_CONFIG[wsLens].label}{detectedLens ? ` → ${LENS_CONFIG[detectedLens].label}` : ""}
+                  </span>
+                )}
+              </button>
+
+              {/* Grid / Visual Vault */}
+              <LongPressTip tip="Dashboard view">
+                <button
+                  title="Visual Vault"
+                  aria-label="Open visual vault"
+                  onClick={() => setShowVault(true)}
+                  style={{
+                    width: 26, height: 26, padding: 0, borderRadius: 6,
+                    background: "transparent", border: "none",
+                    color: "rgba(201,162,76,0.55)", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "color 160ms ease", flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                </button>
+              </LongPressTip>
+
+              {/* MIX mode pill */}
+              <LongPressTip tip="Readiness mode: tap to cycle Blended · Architecture · Decisions">
+                <button
+                  onClick={() => {
+                    const modes: ReadinessMode[] = ["blended", "arch", "decisions"];
+                    const next = modes[(modes.indexOf(readinessMode) + 1) % modes.length];
+                    handleReadinessModeChange(next);
+                  }}
+                  title={`Mode: ${MODE_META[readinessMode].description}`}
+                  aria-label={`Readiness mode: ${MODE_META[readinessMode].label}`}
+                  style={{
+                    background: "rgba(201,162,76,0.08)",
+                    border: "1px solid rgba(201,162,76,0.22)",
+                    borderRadius: 4, cursor: "pointer",
+                    padding: isTinyScreen ? "3px 5px" : "3px 7px",
+                    fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
+                    color: "var(--atlas-muted)", lineHeight: 1, flexShrink: 0,
+                    transition: "color 150ms ease, border-color 150ms ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.5)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
+                >
+                  {MODE_META[readinessMode].abbr}
+                </button>
+              </LongPressTip>
+
+              {/* Rescan */}
+              {hasLinkedRepo && (
+                <LongPressTip tip="Rescan GitHub repo and update readiness score">
+                  <button
+                    type="button"
+                    onClick={() => { if (!isScanning) void runScan(false); }}
+                    disabled={isScanning}
+                    title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
+                    aria-label="Rescan readiness"
+                    style={{
+                      width: 22, height: 22, padding: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "transparent",
+                      border: "1px solid rgba(201,162,76,0.25)",
+                      borderRadius: "50%",
+                      color: "var(--atlas-gold)",
+                      cursor: isScanning ? "default" : "pointer",
+                      opacity: isScanning ? 1 : 0.6,
+                      transition: "opacity 160ms ease, border-color 160ms ease",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <RefreshCw
+                      size={11}
+                      style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }}
+                    />
+                  </button>
+                </LongPressTip>
+              )}
+            </div>
           </div>
 
           {leftTab === "diff" ? (
