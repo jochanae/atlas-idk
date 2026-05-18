@@ -1253,7 +1253,7 @@ export default function MasterMap() {
       </div>
 
       {/* Project labels — positioned by animation loop */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", display: currentLayer === 1 ? "block" : "none" }}>
         {projects.map((p, i) => {
           const act = actLevel(p.updatedAt);
           const isHovered = i === hoveredIdx;
