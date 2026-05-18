@@ -1562,7 +1562,15 @@ export default function Home() {
                 (m as any).id === streamingId ? { ...m, content: streamedText } : m
               ));
             } else if (evtName === "done") {
-              const meta = JSON.parse(evtData) as { memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal; executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number };
+              const meta = JSON.parse(evtData) as {
+                memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
+                executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number;
+                execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number;
+                runStatus?: RunStatus; run_status?: RunStatus;
+                runSummary?: string; run_summary?: string;
+                runActions?: RunAction[]; run_actions?: RunAction[];
+                runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
+              };
               const plan = detectPlanFromText(streamedText);
               const metrics = {
                 executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
@@ -1570,8 +1578,14 @@ export default function Home() {
                 outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
                 costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
               };
+              const runFields = {
+                runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as RunStatus,
+                runSummary: meta.runSummary ?? meta.run_summary ?? null,
+                runActions: meta.runActions ?? meta.run_actions ?? null,
+                runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
+              };
               setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...(plan ? { plan } : {}) } : m
+                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
               ));
               if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
               if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
@@ -1579,7 +1593,7 @@ export default function Home() {
               const errMsg = JSON.parse(evtData) as string;
               setHomeMessages(prev => prev.map(m =>
                 (m as any).id === streamingId
-                  ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false }
+                  ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false, runStatus: "failed" as RunStatus, errorMessage: errMsg || "Unknown error" }
                   : m
               ));
             }
@@ -1587,6 +1601,11 @@ export default function Home() {
         }
       }
     } catch {
+      setHomeMessages(prev => prev.map(m =>
+        (m as any).id === streamingId
+          ? { ...m, streaming: false, runStatus: "failed" as RunStatus, errorMessage: "Connection dropped during run. Tap send again to retry." }
+          : m
+      ));
       toast("Connection error. Your message was not lost — tap send again.");
       setInput(text);
       setAttachedFiles(files);
