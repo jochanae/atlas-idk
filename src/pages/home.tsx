@@ -29,6 +29,7 @@ import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, Search } from "lucide-react";
+import { ThoughtForBadge } from "../components/ThoughtForBadge";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -64,6 +65,10 @@ type HomeMessage = {
   handoffSignal?: HomeHandoffSignal;
   plan?: Plan;
   createdAt?: string;
+  executionTimeMs?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  costUsd?: number | null;
 };
 
 function formatMessageTime(iso?: string): string {
@@ -79,11 +84,11 @@ function formatMessageTime(iso?: string): string {
 }
 
 function normalizeLoadedHomeMessages(
-  msgs: Array<{ role: string; content: string; createdAt?: string }>,
+  msgs: Array<{ role: string; content: string; createdAt?: string; [k: string]: any }>,
   mapMessage?: (message: { role: "user" | "assistant"; content: string; createdAt?: string }, index: number) => HomeMessage,
 ): HomeMessage[] {
   const thread = msgs.filter(
-    (message): message is { role: "user" | "assistant"; content: string; createdAt?: string } =>
+    (message): message is { role: "user" | "assistant"; content: string; createdAt?: string; [k: string]: any } =>
       (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
   );
 
@@ -91,7 +96,15 @@ function normalizeLoadedHomeMessages(
   if (firstUserIndex === -1) return [];
 
   const trimmed = thread.slice(firstUserIndex);
-  return mapMessage ? trimmed.map(mapMessage) : trimmed.map((message) => ({ ...message }));
+  const enrich = (m: any): Partial<HomeMessage> => ({
+    executionTimeMs: m.executionTimeMs ?? m.execution_time_ms ?? null,
+    inputTokens: m.inputTokens ?? m.input_tokens ?? null,
+    outputTokens: m.outputTokens ?? m.output_tokens ?? null,
+    costUsd: m.costUsd != null ? Number(m.costUsd) : m.cost_usd != null ? Number(m.cost_usd) : null,
+  });
+  return mapMessage
+    ? trimmed.map((m, i) => ({ ...mapMessage(m, i), ...enrich(m) }))
+    : trimmed.map((m) => ({ ...m, ...enrich(m) }));
 }
 
 function renderMarkdown(text: string): string {
@@ -1537,10 +1550,16 @@ export default function Home() {
                 (m as any).id === streamingId ? { ...m, content: streamedText } : m
               ));
             } else if (evtName === "done") {
-              const meta = JSON.parse(evtData) as { memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal };
+              const meta = JSON.parse(evtData) as { memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal; executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number };
               const plan = detectPlanFromText(streamedText);
+              const metrics = {
+                executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
+                inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
+                outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
+                costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
+              };
               setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...(plan ? { plan } : {}) } : m
+                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...(plan ? { plan } : {}) } : m
               ));
               if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
               if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
@@ -2297,6 +2316,16 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+                          {!msg.streaming && (
+                            <ThoughtForBadge
+                              metrics={{
+                                executionTimeMs: msg.executionTimeMs,
+                                inputTokens: msg.inputTokens,
+                                outputTokens: msg.outputTokens,
+                                costUsd: msg.costUsd,
+                              }}
+                            />
+                          )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;
                             const isExpanded = reviewingPlanIds.has(planKey);
