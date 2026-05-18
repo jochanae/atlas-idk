@@ -2705,6 +2705,7 @@ export default function Home() {
               <textarea
                 ref={textareaRef}
                 value={input}
+                className="atlas-muted-placeholder"
                 placeholder={!reflectionLocked && homeMessages.length > 0 ? "type a message..." : ""}
                 onChange={(e) => { setInput(e.target.value); autoResize(); if (createError) setCreateError(null); }}
                 onKeyDown={handleKeyDown}

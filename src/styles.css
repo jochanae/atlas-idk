@@ -900,3 +900,11 @@ html.atlas-landing-active,
   }
 }
 
+
+/* Muted, lightweight placeholder for Atlas composer */
+.atlas-muted-placeholder::placeholder {
+  color: rgba(120, 113, 108, 0.35);
+  font-weight: 300;
+  font-family: var(--app-font-mono, monospace);
+  opacity: 1;
+}
