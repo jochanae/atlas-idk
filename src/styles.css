@@ -824,6 +824,26 @@ html.atlas-landing-active,
   border-color: rgba(201, 162, 76, 0.55) !important;
 }
 
+/* ── Toast pill matching the header readiness pill ─────────────────────── */
+.atlas-toast-pill {
+  background: rgba(14, 14, 16, 0.92) !important;
+  border: 1px solid rgba(201, 162, 76, 0.35) !important;
+  border-radius: 999px !important;
+  color: rgba(245, 240, 224, 0.95) !important;
+  font-family: "Geist Sans", system-ui, sans-serif !important;
+  font-size: 13px !important;
+  letter-spacing: -0.01em !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+  backdrop-filter: blur(8px);
+}
+.atlas-toast-pill[data-type="error"] {
+  border-color: rgba(220, 90, 90, 0.45) !important;
+}
+.atlas-toast-pill [data-description] {
+  color: rgba(245, 240, 224, 0.65) !important;
+  font-size: 12px !important;
+}
+
 /* ── Narrow-screen header tightening (outer-fold etc. ≤ 420px) ─────────── */
 @media (max-width: 420px) {
   .atlas-app-header-row {
