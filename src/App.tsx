@@ -267,7 +267,7 @@ function Router() {
         <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/compass", { replace: true }), []); return null; }} />
         <Route path="/entry/:id" component={EntryDetail} />
         <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/dashboard", { replace: true }), []); return null; }} />
-        <Route path="/think-freely" component={ThinkFreely} />
+        
         <Route path="/workshop" component={Workshop} />
         <Route path="/compass" component={ProjectCompass} />
         <Route path="/terms" component={Terms} />
