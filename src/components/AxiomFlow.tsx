@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
@@ -491,6 +492,7 @@ export function AxiomFlow({
   const isMobile = isMobileProp ?? (typeof window !== "undefined" && window.innerWidth < 768);
   const theme = useThemeMode();
   const palette = flowPaletteFor(theme);
+  const [, setLocation] = useLocation();
   const [nodes, setNodes] = useState<ArchNode[]>(() => loadNodes(storageKey));
   const [edges, setEdges] = useState<ArchEdge[]>(() => loadEdges(storageKey));
   const mapSeenKey = projectId ? `atlas-map-seen-${projectId}` : "atlas-map-seen-standalone";
@@ -941,6 +943,27 @@ export function AxiomFlow({
           </button>
         )}
         <span className="text-xs font-bold tracking-widest text-gold uppercase">AXIOM FLOW</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); haptics.tap(); setLocation("/map"); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          title="Open Master Map"
+          aria-label="Open Master Map"
+          style={{
+            width: 22, height: 22, padding: 0,
+            background: "transparent", border: "none",
+            color: "var(--atlas-gold)", opacity: 0.7,
+            cursor: "pointer", display: "flex",
+            alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="2" width="6" height="6" rx="1" />
+            <rect x="16" y="16" width="6" height="6" rx="1" />
+            <rect x="2" y="16" width="6" height="6" rx="1" />
+            <path d="M12 8v4M12 12H5v4M12 12h7v4" />
+          </svg>
+        </button>
       </div>
 
       {nodes.length > 0 && (
