@@ -988,7 +988,11 @@ export default function MasterMap() {
 
     const loop = () => {
       frameId = requestAnimationFrame(loop);
+      if (!tabVisibleRef.current) return;
       const t = (Date.now() - t0) / 1000;
+      const nowMs = performance.now();
+      const layerNow = currentLayerRef.current;
+      const storeState = useMapStore.getState();
 
       // ── Nexium rotation + breathe ──
       nexMesh.rotation.y = t * 0.22;
