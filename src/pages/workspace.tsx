@@ -10665,6 +10665,7 @@ export default function Workspace() {
                   onExecuteHomePlan={executeHomePlan}
                   trustMode={trustMode}
                   onPushSuccess={(records) => {
+                    haptic.double();
                     setPushHistory((prev) => {
                       const next = [...prev, ...records].slice(-20);
                       updateProjectHeader.mutate({ id, data: { pushHistory: next } });
