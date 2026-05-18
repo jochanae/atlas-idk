@@ -247,6 +247,7 @@ export default function MasterMap() {
     y: number;
   } | null>(null);
   const [layer2Empty, setLayer2Empty] = useState(false);
+  const [layer2Loading, setLayer2Loading] = useState(false);
 
   const mapState = useMapStore();
   const currentLayer = mapState.currentLayer;
@@ -288,10 +289,12 @@ export default function MasterMap() {
       setLayer2Tooltip(null);
       layer2TooltipRef.current = null;
       setLayer2Empty(false);
+      setLayer2Loading(false);
       return;
     }
     const target = mapState.cameraTarget;
     let cancelled = false;
+    setLayer2Loading(true);
     (async () => {
       try {
         if (currentLayer === 2 && context.projectId) {
@@ -318,10 +321,12 @@ export default function MasterMap() {
             }));
           if (cancelled) return;
           ls.populate(3, target, filtered, { maxChildren: 8 });
-          setLayer2Empty(false);
+          setLayer2Empty(filtered.length === 0);
         }
       } catch {
-        if (!cancelled) { ls.hideAll(); setLayer2Empty(false); }
+        if (!cancelled) { ls.hideAll(); setLayer2Empty(true); }
+      } finally {
+        if (!cancelled) setLayer2Loading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -1168,21 +1173,48 @@ export default function MasterMap() {
         el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
 
-      // ── Peek panel positioning (anchored above tapped node, flips to left near right edge) ──
+      // ── Peek panel positioning (anchors above node; flips to side & clamps to viewport) ──
       const pk = peekRef.current;
       const pkEl = peekElRef.current;
       if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
         const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
         const bs = baseScales[pk.nodeIdx] ?? 1;
         const vw = canvas.clientWidth;
+        const vh = canvas.clientHeight;
+        const rect = pkEl.getBoundingClientRect();
+        const cardW = rect.width || 240;
+        const cardH = rect.height || 200;
+        const margin = 8;
         const flipLeft = sp.x > vw * 0.6;
-        pkEl.style.left = `${sp.x}px`;
-        pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
-        // Anchor to the LEFT side of the node when near the right edge,
-        // otherwise keep centered above the node.
-        pkEl.style.transform = flipLeft
-          ? "translate(calc(-100% - 12px), -50%)"
-          : "translate(-50%, -100%)";
+        const flipRight = sp.x < vw * 0.4;
+        let left: number;
+        let top: number;
+        let transform: string;
+        if (flipLeft) {
+          // anchor to LEFT of node, vertically centered
+          left = sp.x - NODE_R * bs - 12;
+          top = sp.y;
+          transform = "translate(-100%, -50%)";
+        } else if (flipRight) {
+          // anchor to RIGHT of node, vertically centered
+          left = sp.x + NODE_R * bs + 12;
+          top = sp.y;
+          transform = "translate(0, -50%)";
+        } else {
+          // default: above node, horizontally centered
+          left = sp.x;
+          top = sp.y - NODE_R * bs - 14;
+          transform = "translate(-50%, -100%)";
+        }
+        // Compute the card's projected bounding box and clamp into viewport
+        // Effective top-left after transform:
+        const tx = transform.includes("-100%, -50%") ? left - cardW : transform.includes("-50%, -100%") ? left - cardW / 2 : transform.includes("0, -50%") ? left : left;
+        const ty = transform.includes("-50%") && !transform.includes("-100%)") ? top - cardH / 2 : top - cardH;
+        const dx = Math.max(margin - tx, Math.min(0, vw - margin - (tx + cardW)));
+        const dy = Math.max(margin - ty, Math.min(0, vh - margin - (ty + cardH)));
+        pkEl.style.left = `${left + dx}px`;
+        pkEl.style.top = `${top + dy}px`;
+        pkEl.style.transform = transform;
       }
 
       // ── Tension tooltip positioning (anchored at curve midpoint) ──
@@ -1311,6 +1343,36 @@ export default function MasterMap() {
           );
         })}
       </div>
+
+      {/* Loading overlay — while Layer 2/3 children are being fetched */}
+      {currentLayer >= 2 && layer2Loading && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 39, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "8px 14px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 999,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+            color: palette.goldText,
+          }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: "50%",
+              border: `1.5px solid ${palette.goldText}`,
+              borderTopColor: "transparent",
+              animation: "mm-spin 0.9s linear infinite",
+            }} />
+            Loading map
+          </div>
+          <style>{`@keyframes mm-spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
 
       {/* Empty Layer 2 state — project explored but no decisions yet */}
       {currentLayer === 2 && layer2Empty && (
@@ -1600,6 +1662,14 @@ export default function MasterMap() {
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldTextStrong }}>
             {currentLayer === 3 ? (context.projectName ?? "Project") : "Portfolio"}
           </span>
+          {context.projectName && currentLayer === 2 && (
+            <>
+              <span style={{ color: palette.mutedText, fontSize: 10 }}>·</span>
+              <span style={{ fontSize: 10, color: palette.mutedText, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                {context.projectName}
+              </span>
+            </>
+          )}
           {context.projectName && currentLayer === 3 && context.parentLabel && (
             <>
               <span style={{ color: palette.mutedText, fontSize: 10 }}>·</span>
