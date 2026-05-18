@@ -9194,9 +9194,15 @@ export default function Workspace() {
       if (!r.ok) {
         if (!silent) {
           if (r.status === 400 || r.status === 404) {
-            toast("No GitHub repo linked. Connect one in the Files tab.");
+            toast.error("No GitHub repo linked", {
+              description: "Connect one in the Files tab.",
+              className: "atlas-toast-pill",
+            });
           } else {
-            toast("Scan failed. Try again.");
+            toast.error("Scan failed", {
+              description: "Try again in a moment.",
+              className: "atlas-toast-pill",
+            });
           }
         }
         return;
@@ -9207,20 +9213,31 @@ export default function Workspace() {
         typeof body?.snapshot?.score === "number" ? body.snapshot.score :
         typeof body?.latestSnapshotScore === "number" ? body.latestSnapshotScore :
         null;
+      const prev = mapReadiness;
+      let rounded: number | null = null;
       if (newScore != null) {
-        const rounded = Math.round(newScore);
-        const prev = mapReadiness;
+        rounded = Math.round(newScore);
         setMapReadiness(rounded);
         if (prev > 0 && rounded < prev) haptic.warn();
       }
       queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
-      if (!silent && newScore != null) {
-        toast(`Scanned. Readiness: ${Math.round(newScore)}%`);
-      } else if (!silent) {
-        toast("Scanned.");
+      if (!silent) {
+        if (rounded != null) {
+          const delta = prev > 0 ? rounded - prev : 0;
+          const deltaStr = delta > 0 ? ` ↑${delta}` : delta < 0 ? ` ↓${Math.abs(delta)}` : "";
+          toast.success(`${rounded}%${deltaStr}`, {
+            description: "Readiness updated",
+            className: "atlas-toast-pill",
+          });
+        } else {
+          toast.success("Scanned", { className: "atlas-toast-pill" });
+        }
       }
     } catch {
-      if (!silent) toast("Scan failed. Check your connection.");
+      if (!silent) toast.error("Scan failed", {
+        description: "Check your connection.",
+        className: "atlas-toast-pill",
+      });
     } finally {
       if (!silent) setIsScanning(false);
     }
