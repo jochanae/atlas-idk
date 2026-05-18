@@ -10392,7 +10392,7 @@ export default function Workspace() {
                 <AssistantBubble
                   key={i}
                   message={msg}
-                  isNew={msg.role === "assistant" && i >= historyMsgCountRef.current}
+                  isNew={msg.role === "assistant" && i >= historyMsgCountRef.current && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
                   projectId={id}
                   sessionId={sessionId || 0}
                   linkedRepo={linkedRepo}
