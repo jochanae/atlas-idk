@@ -28,7 +28,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Lock } from "lucide-react";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1081,6 +1081,58 @@ export default function Home() {
   const [handoffProjectName, setHandoffProjectName] = useState("");
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
 
+  // ── Reflection mode ────────────────────────────────────────────────────────
+  const [reflectionLocked, setReflectionLocked] = useState(false);
+  const [showShredChoice, setShowShredChoice] = useState(false);
+  const [isShredding, setIsShredding] = useState(false);
+  const [showGoneFlash, setShowGoneFlash] = useState(false);
+
+  const vibrate = useCallback((pattern: number | number[]) => {
+    try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
+  }, []);
+
+  const callReflectionMode = useCallback(async (enabled: boolean) => {
+    try {
+      await fetch(`/api/sessions/${encodeURIComponent(activeConversationId)}/reflection-mode`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+    } catch {}
+  }, [activeConversationId]);
+
+  const handleLockTap = useCallback(() => {
+    vibrate(50);
+    if (reflectionLocked) {
+      setShowShredChoice(true);
+    } else {
+      setReflectionLocked(true);
+      void callReflectionMode(true);
+    }
+  }, [reflectionLocked, vibrate, callReflectionMode]);
+
+  const handleKeepIt = useCallback(() => {
+    vibrate([50, 50, 50]);
+    void callReflectionMode(false);
+    setReflectionLocked(false);
+    setShowShredChoice(false);
+  }, [vibrate, callReflectionMode]);
+
+  const handleShredIt = useCallback(() => {
+    vibrate(200);
+    void callReflectionMode(false);
+    setShowShredChoice(false);
+    setIsShredding(true);
+    setTimeout(() => {
+      setHomeMessages([]);
+      setIsShredding(false);
+      setReflectionLocked(false);
+      setShowGoneFlash(true);
+      setTimeout(() => setShowGoneFlash(false), 1500);
+    }, 700);
+  }, [vibrate, callReflectionMode]);
+
 
   // Cycle pending phrases while Atlas is generating
   useEffect(() => {
@@ -1747,15 +1799,44 @@ export default function Home() {
       {/* ATLAS subheader — always-visible bar beneath main header */}
       {homeMessages.length > 0 && (
       <div className="atlas-chat-card-top" style={{ borderRadius: 0, padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, boxSizing: "border-box" }}>
-          <span style={{
+          <div style={{
             position: "absolute", left: "50%", top: "50%",
             transform: "translate(-50%, -50%)",
-            fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em",
-            color: "var(--atlas-gold)", opacity: 0.55, fontWeight: 600,
-            textTransform: "uppercase", pointerEvents: "none", whiteSpace: "nowrap",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+            pointerEvents: "auto",
           }}>
-            ATLAS
-          </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{
+                fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em",
+                color: "var(--atlas-gold)", opacity: 0.55, fontWeight: 600,
+                textTransform: "uppercase", whiteSpace: "nowrap",
+              }}>
+                ATLAS
+              </span>
+              <button
+                onClick={handleLockTap}
+                title={reflectionLocked ? "Reflection mode (locked)" : "Enter reflection mode"}
+                aria-label="Toggle reflection mode"
+                style={{
+                  background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                  color: "var(--atlas-gold)",
+                  opacity: reflectionLocked ? 1 : 0.4,
+                  lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
+                }}
+              >
+                <Lock size={11} strokeWidth={2} />
+              </button>
+            </div>
+            {reflectionLocked && (
+              <span style={{
+                fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.16em",
+                color: "var(--atlas-muted)", opacity: 0.7, textTransform: "lowercase",
+                marginTop: 1,
+              }}>
+                reflection mode
+              </span>
+            )}
+          </div>
           <div style={{ marginLeft: "auto", position: "relative" }}>
             {showClearConfirm ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -1826,6 +1907,54 @@ export default function Home() {
       )}
 
       {/* First-run overlay — new users with no projects, once per session */}
+      {showShredChoice && (
+        <div
+          onClick={() => setShowShredChoice(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 60, display: "flex",
+            alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)",
+            animation: "fadeIn 160ms ease forwards",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--atlas-surface)",
+              border: "1px solid rgba(201,162,76,0.45)",
+              borderRadius: 12, padding: "20px 22px",
+              minWidth: 260, maxWidth: "85vw",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 14, color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16, fontFamily: "var(--app-font-sans)" }}>
+              Keep this conversation<br />or let it go?
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button
+                onClick={handleKeepIt}
+                style={{
+                  background: "transparent", border: "1px solid rgba(201,162,76,0.4)",
+                  borderRadius: 6, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 12, color: "var(--atlas-gold)",
+                  fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+                }}
+              >Keep it</button>
+              <button
+                onClick={handleShredIt}
+                style={{
+                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.4)",
+                  borderRadius: 6, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 12, color: "rgba(252,165,165,0.95)",
+                  fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+                }}
+              >Shred it</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showOverlay && (
         <FirstRunOverlay
           loading={isLoading}
@@ -1914,10 +2043,23 @@ export default function Home() {
                     const el = e.currentTarget;
                     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
                   }}
-                  style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden", paddingRight: 4, position: "relative" }}
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 12,
+                    maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    paddingRight: 4, position: "relative",
+                    border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
+                    borderRadius: reflectionLocked ? 8 : undefined,
+                    padding: reflectionLocked ? "10px 12px" : undefined,
+                    transition: "border-color 200ms",
+                  }}
                 >
+                  {showGoneFlash && homeMessages.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "24px 0", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.08em", animation: "fadeOut 1500ms ease forwards" }}>
+                      Gone.
+                    </div>
+                  )}
                   {homeMessages.map((msg, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: "fadeIn 250ms ease forwards" }}>
+                    <div key={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
                       {msg.role === 'assistant' ? (
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* Model label + intent badge */}
@@ -2139,7 +2281,7 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
-              {!hasInput && !inputFocused && homeMessages.length === 0 && (
+              {!hasInput && !inputFocused && (homeMessages.length === 0 || reflectionLocked) && (
                 <div
                   style={{
                     position: "absolute",
@@ -2160,8 +2302,8 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {placeholder}
-                  {!typewriterPaused && <span className="atlas-cursor" />}
+                  {reflectionLocked ? "This stays between us..." : placeholder}
+                  {!reflectionLocked && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
