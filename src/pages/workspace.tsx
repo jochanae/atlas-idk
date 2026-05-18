@@ -154,7 +154,7 @@ interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal";
+type RightTab = "ledger" | "blueprints" | "files" | "preview" | "memory" | "map" | "terminal";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 type PlanState = "pending" | "reviewing" | "executing" | "completed" | "skipped";
