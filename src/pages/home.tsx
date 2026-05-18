@@ -43,7 +43,9 @@ const PLACEHOLDERS = [
 
 const HOME_PENDING_PHRASES = [
   "Loading context…",
+  "Reading your ledger…",
   "Thinking…",
+  "Checking for conflicts…",
   "Reviewing your portfolio…",
   "Composing a response…",
 ];
