@@ -6814,6 +6814,7 @@ function RightPanel({
   externalForgeNodes?: ArchNode[];
   onForgeNodesConsumed?: () => void;
   onForgeCompleted?: () => void;
+  onContinueSession?: (sessionId: number | string) => void;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
