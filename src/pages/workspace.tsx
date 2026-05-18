@@ -7953,7 +7953,8 @@ export default function Workspace() {
   const [, setLocation] = useLocation();
   const id = Number(projectId);
   const queryClient = useQueryClient();
-  const isMobile = useIsMobile();
+  const isDesktop = useIsDesktop();
+  const isMobile = useIsMobile() && !isDesktop;
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
 
