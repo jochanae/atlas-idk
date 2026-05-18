@@ -23,6 +23,7 @@ import { useThemeMode } from "../lib/theme";
 import { useSubscription } from "../hooks/useSubscription";
 import { toast } from "sonner";
 import { UpgradeModal } from "../components/UpgradeModal";
+import { NewProjectModal } from "../components/NewProjectModal";
 import { CompactReadinessRing, computeScoreFromNodeState } from "../components/ReadinessRing";
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
