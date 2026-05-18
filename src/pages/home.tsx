@@ -69,6 +69,11 @@ type HomeMessage = {
   inputTokens?: number | null;
   outputTokens?: number | null;
   costUsd?: number | null;
+  runStatus?: RunStatus | null;
+  runSummary?: string | null;
+  runActions?: RunAction[] | null;
+  runArtifacts?: RunArtifact[] | null;
+  errorMessage?: string | null;
 };
 
 function formatMessageTime(iso?: string): string {
