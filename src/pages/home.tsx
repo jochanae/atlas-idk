@@ -1229,7 +1229,16 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/nexus/conversations", { credentials: "include" })
       .then(r => r.ok ? r.json() : { conversations: [] })
-      .then((data: any) => setConversations(data.conversations ?? []))
+      .then((data: any) => {
+        const list = data.conversations ?? [];
+        setConversations(list);
+        // Auto-load most recent conversation on mount so users return to their previous thread
+        if (list.length > 0 && list[0]?.id) {
+          const recentId = list[0].id as string;
+          try { sessionStorage.setItem("atlas-home-conversation-id", recentId); } catch {}
+          setActiveConversationId(recentId);
+        }
+      })
       .catch(() => {});
   }, []);
 
