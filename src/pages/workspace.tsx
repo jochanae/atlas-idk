@@ -11476,6 +11476,7 @@ export default function Workspace() {
                 externalForgeNodes={externalForgeNodes}
                 onForgeNodesConsumed={() => setExternalForgeNodes([])}
                 onForgeCompleted={() => void updateForgeState("forged")}
+                onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
               />
             </div>
           </>
