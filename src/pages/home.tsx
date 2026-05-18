@@ -1649,6 +1649,7 @@ export default function Home() {
     } finally {
       setIsAtlasStreaming(false);
       setIsSending(false);
+      setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     }
   }, [input, attachedFiles, isSending, homeModel, homeFocus, projects, activeConversationId, homeMessages.length]);
