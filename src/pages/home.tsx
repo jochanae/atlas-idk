@@ -2752,12 +2752,15 @@ export default function Home() {
                 alignItems: "center",
                 gap: 10,
               }}>
-                <div style={{
+                <div className="suggestion-chips-row" style={{
                   display: "flex",
-                  flexWrap: "wrap",
+                  flexWrap: "nowrap",
                   justifyContent: "center",
-                  rowGap: 6,
-                  columnGap: 0,
+                  gap: 6,
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  WebkitOverflowScrolling: "touch",
                   fontFamily: "var(--app-font-sans)",
                   fontSize: 12.5,
                   letterSpacing: "0.01em",
