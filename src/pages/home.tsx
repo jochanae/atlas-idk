@@ -1907,6 +1907,54 @@ export default function Home() {
       )}
 
       {/* First-run overlay — new users with no projects, once per session */}
+      {showShredChoice && (
+        <div
+          onClick={() => setShowShredChoice(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 60, display: "flex",
+            alignItems: "center", justifyContent: "center",
+            background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)",
+            animation: "fadeIn 160ms ease forwards",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--atlas-surface)",
+              border: "1px solid rgba(201,162,76,0.45)",
+              borderRadius: 12, padding: "20px 22px",
+              minWidth: 260, maxWidth: "85vw",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 14, color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16, fontFamily: "var(--app-font-sans)" }}>
+              Keep this conversation<br />or let it go?
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button
+                onClick={handleKeepIt}
+                style={{
+                  background: "transparent", border: "1px solid rgba(201,162,76,0.4)",
+                  borderRadius: 6, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 12, color: "var(--atlas-gold)",
+                  fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+                }}
+              >Keep it</button>
+              <button
+                onClick={handleShredIt}
+                style={{
+                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.4)",
+                  borderRadius: 6, padding: "7px 14px", cursor: "pointer",
+                  fontSize: 12, color: "rgba(252,165,165,0.95)",
+                  fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
+                }}
+              >Shred it</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showOverlay && (
         <FirstRunOverlay
           loading={isLoading}
