@@ -11084,7 +11084,7 @@ export default function Workspace() {
               }}
             >
               <div style={{ position: "relative" }}>
-                {!hasInput && messages.length > 0 && (
+                {!hasInput && (
                   <div
                     aria-hidden
                     style={{
