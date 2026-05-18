@@ -289,10 +289,12 @@ export default function MasterMap() {
       setLayer2Tooltip(null);
       layer2TooltipRef.current = null;
       setLayer2Empty(false);
+      setLayer2Loading(false);
       return;
     }
     const target = mapState.cameraTarget;
     let cancelled = false;
+    setLayer2Loading(true);
     (async () => {
       try {
         if (currentLayer === 2 && context.projectId) {
@@ -319,10 +321,12 @@ export default function MasterMap() {
             }));
           if (cancelled) return;
           ls.populate(3, target, filtered, { maxChildren: 8 });
-          setLayer2Empty(false);
+          setLayer2Empty(filtered.length === 0);
         }
       } catch {
-        if (!cancelled) { ls.hideAll(); setLayer2Empty(false); }
+        if (!cancelled) { ls.hideAll(); setLayer2Empty(true); }
+      } finally {
+        if (!cancelled) setLayer2Loading(false);
       }
     })();
     return () => { cancelled = true; };
