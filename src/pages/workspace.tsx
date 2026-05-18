@@ -24,6 +24,7 @@ import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { CommitCard } from "../components/CommitCard";
 import { PlanCard } from "../components/PlanCard";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
+import { StreamingMarkdown, MarkdownProse } from "../components/MessageRenderer";
 import { Eye, TerminalSquare } from "lucide-react";
 import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
@@ -2321,13 +2322,16 @@ function AssistantBubble({
           </div>
         )}
 
-        <ChunkedBubbles
-          text={cleanContent}
-          isNew={isNew}
-          onStreamTextChange={onStreamActivityUpdate}
-          onComplete={onStreamActivityComplete}
-          textStyle={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85, whiteSpace: "pre-wrap" }}
-        />
+        <div style={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85 }}>
+          {isNew ? (
+            <StreamingMarkdown
+              content={cleanContent}
+              onComplete={onStreamActivityComplete}
+            />
+          ) : (
+            <MarkdownProse content={cleanContent} />
+          )}
+        </div>
 
         {message.plan && planState !== "skipped" && (
           <PlanCard
