@@ -9940,6 +9940,7 @@ export default function Workspace() {
 
             {/* Vault — hidden from header on tiny screens (moved to input bar) */}
             {!isTinyScreen && (
+              <LongPressTip tip="Dashboard view">
               <button
                 title="Visual Vault"
                 aria-label="Open visual vault"
@@ -9954,13 +9955,14 @@ export default function Workspace() {
                 onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.45)")}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <svg width={isTinyScreen ? 13 : 15} height={isTinyScreen ? 13 : 15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="7" height="7" rx="1"/>
                   <rect x="14" y="3" width="7" height="7" rx="1"/>
                   <rect x="3" y="14" width="7" height="7" rx="1"/>
                   <rect x="14" y="14" width="7" height="7" rx="1"/>
                 </svg>
               </button>
+              </LongPressTip>
             )}
             <div
               className="atlas-rescan-wrap"
