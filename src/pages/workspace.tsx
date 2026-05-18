@@ -300,6 +300,18 @@ function useIsTinyScreen() {
   return tiny;
 }
 
+// Desktop breakpoint — used to guarantee the mobile bottom-nav never appears
+// on screens >= 1024px, independent of useIsMobile's narrower threshold.
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+  useEffect(() => {
+    const handler = () => setDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return desktop;
+}
+
 // ── useVoiceInput ─────────────────────────────────────────────────────────────
 function useVoiceInput(onTranscript: (text: string) => void) {
   const [listening, setListening] = useState(false);
