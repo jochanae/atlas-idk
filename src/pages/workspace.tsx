@@ -7933,6 +7933,16 @@ export default function Workspace() {
     setActiveCatch(null);
     priorLoaded.current = false;
     homePlanLoadedRef.current = false;
+    // Abort any in-flight chat fetch from the previous project and clear pending state
+    // so the composer send button is guaranteed active in the new workspace.
+    try { abortControllerRef.current?.abort(); } catch { /* noop */ }
+    abortControllerRef.current = null;
+    setChatPending(false);
+    setActivityStream({ active: false, content: "" });
+    // Reset auto-prime guards so a fresh ?source=handoff load can seed its first message.
+    initialSent.current = false;
+    importPrimed.current = false;
+    homeHandoffPrimed.current = false;
   }, [id]);
   const { playSend, playCatch, playCommit, playPark, playNavigate } = useSound();
   const [memoryChips, setMemoryChips] = useState<MemoryChip[]>([]);
