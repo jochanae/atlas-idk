@@ -2721,6 +2721,7 @@ function ParkingLotEntry({ entry }: { entry: Entry }) {
 
   const handleCommit = () => {
     if (done) return;
+    haptic.short();
     updateEntry.mutate(
       { id: entry.id, data: { status: "committed", severity: "committed" } },
       { onSuccess: () => { setDone(true); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) }); } }
