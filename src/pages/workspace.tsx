@@ -7125,7 +7125,7 @@ function RightPanel({
             ))}
           </div>
           {/* Sub-tab content */}
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {ledgerSubTab === "entries"
               ? <LedgerTab projectId={projectId} entries={entries} activeCatch={activeCatch} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
               : <MemoryTab projectId={projectId} />
