@@ -11283,7 +11283,7 @@ export default function Workspace() {
                 )}
 
                 {/* Right: model chip + mic + send */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
                   {/* Model selector — tappable chip, reserved slot for future model switching */}
                   <button
                     onClick={() => setShowWsModelSheet(true)}
