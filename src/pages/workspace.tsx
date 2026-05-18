@@ -2668,8 +2668,9 @@ function AssistantBubble({
               </svg>
             </button>
           )}
-          {/* Extract to Forge — surfaces on structured/lengthy responses */}
-          {onExtractToForge && message.content.length > 200 && (
+          {/* Extract to Forge — always available on Atlas replies */}
+          {onExtractToForge && (
+
             <button
               className="atlas-icon-action"
               title="Extract to Forge — turn this response into strategic nodes"
