@@ -2916,7 +2916,7 @@ export default function Home() {
             if (p) setLocation(`/ledger/${p.id}`);
           }}
           onOpenParking={() => setLocation("/parking")}
-          onOpenQuickPrompt={() => setShowQuickPrompt(true)}
+          
           parkedCount={0}
           committedCount={0}
           briefing={briefing}
