@@ -11083,7 +11083,7 @@ export default function Workspace() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "wrap", rowGap: 6, columnGap: 6 }}>
                 {/* Left: paperclip + vault (tiny screens) + wrench (read Atlas source) */}
                 <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
                   <label
@@ -11283,7 +11283,7 @@ export default function Workspace() {
                 )}
 
                 {/* Right: model chip + mic + send */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
                   {/* Model selector — tappable chip, reserved slot for future model switching */}
                   <button
                     onClick={() => setShowWsModelSheet(true)}
