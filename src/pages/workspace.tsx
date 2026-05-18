@@ -11086,7 +11086,7 @@ export default function Workspace() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "nowrap", gap: 4 }}>
+              <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "nowrap", gap: 4 }}>
 
 
                 {/* Left: paperclip + vault (tiny screens) + wrench (read Atlas source) */}
