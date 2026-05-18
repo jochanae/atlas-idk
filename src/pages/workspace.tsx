@@ -1676,6 +1676,7 @@ function InlineDiffCard({
   trustMode,
   onReviewDiff,
   onPushSuccess,
+  onEditDeclined,
   onPrCreated,
 }: {
   fileEdits: FileEdit[];
@@ -1685,6 +1686,7 @@ function InlineDiffCard({
   trustMode: "review" | "auto";
   onReviewDiff: () => void;
   onPushSuccess: (records: PushRecord[]) => void;
+  onEditDeclined?: () => void;
   onPrCreated?: (prUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1693,6 +1695,7 @@ function InlineDiffCard({
   const [patchedEdits, setPatchedEdits] = useState<FileEdit[] | null>(null);
   const [showPushModal, setShowPushModal] = useState(false);
   const [originals, setOriginals] = useState<Record<string, string | null>>({});
+  const pushSucceededRef = useRef(false);
 
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const token = project?.githubToken ?? null;
@@ -1782,6 +1785,7 @@ function InlineDiffCard({
         edits.push({ path: filePath, language, content });
       }
       setPatchedEdits(edits);
+      pushSucceededRef.current = false;
       setShowPushModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not apply patches.");
@@ -1792,6 +1796,7 @@ function InlineDiffCard({
 
   const handleApply = () => {
     if (fileEdits.length > 0) {
+      pushSucceededRef.current = false;
       setShowPushModal(true);
       return;
     }
@@ -1897,8 +1902,8 @@ function InlineDiffCard({
           fileEdits={modalEdits}
           linkedRepo={linkedRepo}
           projectId={projectId}
-          onClose={() => setShowPushModal(false)}
-          onPushSuccess={(records) => { onPushSuccess(records); setShowPushModal(false); }}
+          onClose={() => { setShowPushModal(false); if (!pushSucceededRef.current) onEditDeclined?.(); }}
+          onPushSuccess={(records) => { pushSucceededRef.current = true; onPushSuccess(records); setShowPushModal(false); }}
           onPrCreated={onPrCreated}
         />
       )}
