@@ -1737,30 +1737,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Right side: vault (hidden on tiny — lives in input bar) + avatar pair */}
+        {/* Right side: avatar pair (vault icon moved to ATLAS subheader) */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {!isTinyScreen && (
-            <button
-              title="Visual Vault"
-              onClick={() => setShowVault(true)}
-              style={{
-                width: 28, height: 28, borderRadius: 7,
-                background: "transparent", border: "none",
-                color: "rgba(201,162,76,0.5)", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "color 160ms ease", flexShrink: 0,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.5)")}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
-              </svg>
-            </button>
-          )}
           <div style={{ display: "none" }} />
           {/* Avatar + invite/new-project as overlapping pair (avatar in front) */}
           <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
