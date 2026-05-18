@@ -10521,6 +10521,23 @@ export default function Workspace() {
                   onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
                   onExtractToForge={(content) => { setForgePreloadContent(content); setShowForgeExternal(true); }}
                   onReviewDiff={() => setLeftTab("diff")}
+                  onEditDeclined={() => {
+                    if (sessionId) {
+                      const editsInFlight = messages
+                        .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
+                        .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
+                      doSend(
+                        `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
+                        sessionId,
+                        messagesRef.current,
+                      );
+                    }
+                  }}
+                  onAlertDismiss={() => {
+                    setMessages((prev) => prev.map((m) =>
+                      m.id === msg.id ? { ...m, alertResolved: true } : m
+                    ));
+                  }}
                   onStreamActivityUpdate={(content) => {
                     const markers = [
                       msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
@@ -10567,6 +10584,15 @@ export default function Workspace() {
                     setPreviewRefreshTrigger((t) => t + 1);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
+                    if (sessionId) {
+                      const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
+                      const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                      doSend(
+                        `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                        sessionId,
+                        messagesRef.current,
+                      );
+                    }
                   }}
                 />
               )
