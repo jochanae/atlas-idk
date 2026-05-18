@@ -1312,6 +1312,52 @@ export default function MasterMap() {
         })}
       </div>
 
+      {/* Empty Layer 2 state — project explored but no decisions yet */}
+      {currentLayer === 2 && layer2Empty && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 40, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{ position: "relative", width: 320, height: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Ghost orbiting node */}
+            <div style={{
+              position: "absolute", top: 30, left: "50%", transform: "translateX(-50%)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              opacity: 0.18,
+            }}>
+              <div style={{
+                width: 14, height: 14, borderRadius: "50%",
+                border: `1px dashed ${palette.goldText}`, background: "transparent",
+              }} />
+              <div style={{
+                fontSize: 9, fontFamily: "var(--app-font-mono)", color: palette.goldText,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+              }}>
+                First Decision
+              </div>
+            </div>
+
+            {/* Anchor: project name + message */}
+            <div style={{ textAlign: "center", maxWidth: 280 }}>
+              <div style={{
+                fontSize: 15, fontWeight: 600, color: palette.goldTextStrong,
+                fontFamily: "var(--app-font-sans)", letterSpacing: "0.01em",
+              }}>
+                {context.projectName ?? "Project"}
+              </div>
+              <div style={{
+                marginTop: 10, fontSize: 11, color: palette.mutedText,
+                fontFamily: "var(--app-font-sans)", lineHeight: 1.55,
+              }}>
+                No decisions committed yet.<br />
+                Start a conversation to build this map.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {/* Warp overlay */}
       {warping && (
         <div style={{
