@@ -2064,7 +2064,17 @@ export default function Home() {
                     </div>
                   )}
                   {homeMessages.map((msg, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
+                    <Fragment key={i}>
+                      {loadedHistoryCount > 0 && i === loadedHistoryCount && homeMessages.length > loadedHistoryCount && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", opacity: 0.3 }}>
+                          <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
+                          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", color: "var(--atlas-muted)", textTransform: "lowercase" }}>
+                            — earlier —
+                          </span>
+                          <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
+                        </div>
+                      )}
+                    <div style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
                       {msg.role === 'assistant' ? (
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* Model label + intent badge */}
