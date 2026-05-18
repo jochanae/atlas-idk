@@ -2653,7 +2653,7 @@ export default function Home() {
                   letterSpacing: "0.05em", color: "rgba(120,113,108,0.3)",
                   userSelect: "none", pointerEvents: "none",
                 }}>
-                  type / for shortcuts
+                  type a message...
                 </span>
               )}
 
