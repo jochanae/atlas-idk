@@ -492,6 +492,7 @@ export function AxiomFlow({
   const isMobile = isMobileProp ?? (typeof window !== "undefined" && window.innerWidth < 768);
   const theme = useThemeMode();
   const palette = flowPaletteFor(theme);
+  const [, setLocation] = useLocation();
   const [nodes, setNodes] = useState<ArchNode[]>(() => loadNodes(storageKey));
   const [edges, setEdges] = useState<ArchEdge[]>(() => loadEdges(storageKey));
   const mapSeenKey = projectId ? `atlas-map-seen-${projectId}` : "atlas-map-seen-standalone";
