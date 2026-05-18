@@ -9570,6 +9570,7 @@ export default function Workspace() {
               <AtlasLogo small />
             </button>
             {/* Autopilot toggle — lightning bolt both states */}
+            <LongPressTip tip="Agentic mode — Atlas auto-continues after each file edit">
             <button
               onClick={() => {
                 if (trustMode === "review") {
@@ -9583,8 +9584,8 @@ export default function Workspace() {
               title={trustMode === "auto" ? "Autopilot ON — Atlas applies changes continuously. Tap to turn off." : "Autopilot OFF — you review every diff. Tap to turn on."}
               aria-label="Toggle trust mode"
               style={{
-                display: "flex", alignItems: "center", gap: isMobile ? 0 : 5,
-                padding: isMobile ? "5px 7px" : "4px 10px",
+                display: "flex", alignItems: "center", gap: isTinyScreen ? 0 : (isMobile ? 0 : 5),
+                padding: isTinyScreen ? "5px 6px" : (isMobile ? "5px 7px" : "4px 10px"),
                 borderRadius: 6, fontSize: 10, fontFamily: "var(--app-font-mono)",
                 letterSpacing: "0.08em", cursor: "pointer",
                 background: trustMode === "auto" ? "rgba(239,100,68,0.12)" : "var(--atlas-surface)",
@@ -9594,11 +9595,12 @@ export default function Workspace() {
               }}
             >
               {/* Lightning bolt — both states, intensity signals on/off */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ opacity: trustMode === "auto" ? 1 : 0.55 }}>
+              <svg width={isTinyScreen ? 11 : 12} height={isTinyScreen ? 11 : 12} viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ opacity: trustMode === "auto" ? 1 : 0.55 }}>
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
-              {!isMobile && <span>{trustMode === "auto" ? "Autopilot ON" : "Autopilot OFF"}</span>}
+              {!isMobile && !isTinyScreen && <span>{trustMode === "auto" ? "Autopilot ON" : "Autopilot OFF"}</span>}
             </button>
+            </LongPressTip>
           </div>
 
           {/* Center: project name + readiness ring + dropdown — hidden in mobile map mode */}
