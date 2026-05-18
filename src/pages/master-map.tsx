@@ -1164,14 +1164,21 @@ export default function MasterMap() {
         el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
 
-      // ── Peek panel positioning (anchored above tapped node) ──
+      // ── Peek panel positioning (anchored above tapped node, flips to left near right edge) ──
       const pk = peekRef.current;
       const pkEl = peekElRef.current;
       if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
         const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
         const bs = baseScales[pk.nodeIdx] ?? 1;
+        const vw = canvas.clientWidth;
+        const flipLeft = sp.x > vw * 0.6;
         pkEl.style.left = `${sp.x}px`;
         pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
+        // Anchor to the LEFT side of the node when near the right edge,
+        // otherwise keep centered above the node.
+        pkEl.style.transform = flipLeft
+          ? "translate(calc(-100% - 12px), -50%)"
+          : "translate(-50%, -100%)";
       }
 
       // ── Tension tooltip positioning (anchored at curve midpoint) ──
