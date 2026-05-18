@@ -1031,6 +1031,10 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
+  const [showConvSearch, setShowConvSearch] = useState(false);
+  const [convSearchQuery, setConvSearchQuery] = useState("");
+  const [convSearchResults, setConvSearchResults] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
+  const [convSearchLoading, setConvSearchLoading] = useState(false);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
