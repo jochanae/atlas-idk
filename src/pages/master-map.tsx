@@ -1209,13 +1209,10 @@ export default function MasterMap() {
   const goBack = () => {
     const s = useMapStore.getState();
     if (s.currentLayer === 3 && s.context.projectId != null) {
+      const exact = projectPositionsRef.current.get(s.context.projectId);
       const proj = projects.find((p) => p.id === s.context.projectId);
-      if (proj) {
-        // Re-target the project's last-known position; projectsRef has live meshes
-        const idx = projects.findIndex((p) => p.id === proj.id);
-        const meshPos = idx >= 0 ? null : null; // positions live in three; navigate by reusing cameraTarget approx
-        const pos: [number, number, number] = meshPos ?? [s.cameraTarget[0], s.cameraTarget[1], s.cameraTarget[2]];
-        navigateToNode(String(proj.id), pos, 2, {
+      if (exact && proj) {
+        navigateToNode(String(proj.id), exact, 2, {
           projectId: proj.id,
           projectName: proj.name,
           parentId: undefined,
