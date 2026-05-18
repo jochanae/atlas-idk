@@ -30,6 +30,8 @@ import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, Search } from "lucide-react";
 import { ThoughtForBadge } from "../components/ThoughtForBadge";
+import { RunSummaryBlock, RunStatusBadge } from "../components/RunSummary";
+import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -69,6 +71,11 @@ type HomeMessage = {
   inputTokens?: number | null;
   outputTokens?: number | null;
   costUsd?: number | null;
+  runStatus?: RunStatus | null;
+  runSummary?: string | null;
+  runActions?: RunAction[] | null;
+  runArtifacts?: RunArtifact[] | null;
+  errorMessage?: string | null;
 };
 
 function formatMessageTime(iso?: string): string {
@@ -101,6 +108,11 @@ function normalizeLoadedHomeMessages(
     inputTokens: m.inputTokens ?? m.input_tokens ?? null,
     outputTokens: m.outputTokens ?? m.output_tokens ?? null,
     costUsd: m.costUsd != null ? Number(m.costUsd) : m.cost_usd != null ? Number(m.cost_usd) : null,
+    runStatus: (m.runStatus ?? m.run_status ?? null) as RunStatus | null,
+    runSummary: m.runSummary ?? m.run_summary ?? null,
+    runActions: (m.runActions ?? m.run_actions ?? null) as RunAction[] | null,
+    runArtifacts: (m.runArtifacts ?? m.run_artifacts ?? null) as RunArtifact[] | null,
+    errorMessage: m.errorMessage ?? m.error_message ?? null,
   });
   return mapMessage
     ? trimmed.map((m, i) => ({ ...mapMessage(m, i), ...enrich(m) }))
@@ -1504,6 +1516,7 @@ export default function Home() {
 
     setHomeMessages(prev => [...prev, { role: 'user', content: messageText, imageUrl, createdAt: new Date().toISOString() }]);
     setIsAtlasStreaming(true);
+    const streamingId = Date.now().toString();
     try {
       const res = await fetch("/api/nexus/chat", {
         method: "POST",
@@ -1525,8 +1538,8 @@ export default function Home() {
       let streamedText = "";
 
       // Add a streaming message bubble immediately
-      const streamingId = Date.now().toString();
       setHomeMessages(prev => [...prev, { role: 'assistant', content: '', model: homeModel, intentType: null, isNew: true, id: streamingId, streaming: true, createdAt: new Date().toISOString() }]);
+
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1550,7 +1563,15 @@ export default function Home() {
                 (m as any).id === streamingId ? { ...m, content: streamedText } : m
               ));
             } else if (evtName === "done") {
-              const meta = JSON.parse(evtData) as { memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal; executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number };
+              const meta = JSON.parse(evtData) as {
+                memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
+                executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number;
+                execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number;
+                runStatus?: RunStatus; run_status?: RunStatus;
+                runSummary?: string; run_summary?: string;
+                runActions?: RunAction[]; run_actions?: RunAction[];
+                runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
+              };
               const plan = detectPlanFromText(streamedText);
               const metrics = {
                 executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
@@ -1558,8 +1579,14 @@ export default function Home() {
                 outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
                 costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
               };
+              const runFields = {
+                runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as RunStatus,
+                runSummary: meta.runSummary ?? meta.run_summary ?? null,
+                runActions: meta.runActions ?? meta.run_actions ?? null,
+                runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
+              };
               setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...(plan ? { plan } : {}) } : m
+                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
               ));
               if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
               if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
@@ -1567,7 +1594,7 @@ export default function Home() {
               const errMsg = JSON.parse(evtData) as string;
               setHomeMessages(prev => prev.map(m =>
                 (m as any).id === streamingId
-                  ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false }
+                  ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false, runStatus: "failed" as RunStatus, errorMessage: errMsg || "Unknown error" }
                   : m
               ));
             }
@@ -1575,6 +1602,11 @@ export default function Home() {
         }
       }
     } catch {
+      setHomeMessages(prev => prev.map(m =>
+        (m as any).id === streamingId
+          ? { ...m, streaming: false, runStatus: "failed" as RunStatus, errorMessage: "Connection dropped during run. Tap send again to retry." }
+          : m
+      ));
       toast("Connection error. Your message was not lost — tap send again.");
       setInput(text);
       setAttachedFiles(files);
@@ -2305,6 +2337,9 @@ export default function Home() {
                                 color: msg.intentType === "BUILD" ? "#4ade80" : "var(--atlas-gold)",
                               }}>{msg.intentType}</span>
                             )}
+                            {!msg.streaming && msg.runStatus && (
+                              <RunStatusBadge status={msg.runStatus} />
+                            )}
                           </div>
                           {/* Bubble */}
                           <div style={{
@@ -2316,6 +2351,14 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+                          {!msg.streaming && (msg.runActions?.length || msg.runArtifacts?.length || msg.runSummary || msg.errorMessage) && (
+                            <RunSummaryBlock
+                              status={msg.runStatus}
+                              summary={msg.runSummary ?? msg.errorMessage ?? null}
+                              actions={msg.runActions}
+                              artifacts={msg.runArtifacts}
+                            />
+                          )}
                           {!msg.streaming && (
                             <ThoughtForBadge
                               metrics={{
