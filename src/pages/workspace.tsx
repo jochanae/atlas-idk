@@ -6773,6 +6773,7 @@ function RightPanel({
   externalForgeNodes,
   onForgeNodesConsumed,
   onForgeCompleted,
+  onContinueSession,
 }: {
   projectId: number;
   entries: Entry[];
