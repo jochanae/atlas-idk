@@ -8223,6 +8223,8 @@ export default function Workspace() {
 
   const [fileContext, setFileContext] = useState<string | null>(null);
   const [chatPending, setChatPending] = useState(false);
+  const [agenticMode, setAgenticMode] = useState(true);
+  const [agenticIterCount, setAgenticIterCount] = useState(0);
   const [activityStream, setActivityStream] = useState<{ active: boolean; content: string }>({ active: false, content: "" });
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
   const [linkedRepo, setLinkedRepo] = useState<LinkedRepo | null>(null);
@@ -10675,9 +10677,18 @@ export default function Workspace() {
                 {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
               </span>
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, color: "var(--atlas-muted)" }}>·</span>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: chatPending ? "rgba(74,222,128,0.75)" : "var(--atlas-muted)", transition: "color 300ms ease" }}>
-                {chatPending ? "generating" : "session active"}
-              </span>
+              {agenticMode && agenticIterCount > 0 ? (
+                <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)', transition: 'color 300ms ease' }}>
+                  <svg width='8' height='8' viewBox='0 0 24 24' fill='currentColor' style={{ opacity: 0.9, flexShrink: 0 }}>
+                    <path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' />
+                  </svg>
+                  Agent · Loop {agenticIterCount} / 8
+                </span>
+              ) : (
+                <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatPending ? 'rgba(74,222,128,0.75)' : 'rgba(200,190,185,0.6)', transition: 'color 300ms ease' }}>
+                  {chatPending ? 'generating' : 'session active'}
+                </span>
+              )}
             </div>
 
             {/* Forge micro-pill — right-anchored, lowercase */}
