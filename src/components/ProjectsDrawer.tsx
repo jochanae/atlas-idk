@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, Feather, Hammer, Compass, Archive, LayoutDashboard, Globe, Wand2, KeyRound } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, Hammer, Compass, Archive, LayoutDashboard, Globe, Wand2, KeyRound } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 
 export type DrawerProject = {
