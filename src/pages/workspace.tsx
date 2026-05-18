@@ -11311,10 +11311,11 @@ export default function Workspace() {
                 </div>
 
                 {!isTinyScreen && (
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.3 }}>
+                  <span style={{ flex: 1, textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.3 }}>
                     {isMobile ? "type / for shortcuts" : "Enter · Shift+Enter for newline"}
                   </span>
                 )}
+
 
                 {/* Right: model chip + mic + send */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
