@@ -589,6 +589,10 @@ export default function Admin() {
         <div style={{ fontSize: 9.5, ...mono, color: "var(--atlas-muted)", opacity: 0.5 }}>{user.email}</div>
       </div>
 
+      <SystemHealth />
+
+
+
       {/* Tabs */}
       <div style={{
         display: "flex", borderBottom: "1px solid var(--atlas-border)",
