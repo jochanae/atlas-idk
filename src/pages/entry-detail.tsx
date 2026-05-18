@@ -176,7 +176,7 @@ export default function EntryDetail() {
   const sevColor = SEVERITY_COLOR[entry.severity] ?? "var(--muted-text)";
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--foreground)", paddingBottom: 80 }}>
+    <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--foreground)", paddingBottom: 96 }}>
 
       {/* ── Sticky header / breadcrumb ── */}
       <header style={{
