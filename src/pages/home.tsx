@@ -1292,17 +1292,23 @@ export default function Home() {
     return () => { clearTimeout(t); };
   }, [convSearchQuery, showConvSearch, conversations]);
 
-  // Escape closes search bar
+  // Escape + click-outside closes search bar
   useEffect(() => {
     if (!showConvSearch) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowConvSearch(false);
-        setConvSearchQuery("");
-      }
+    const close = () => { setShowConvSearch(false); setConvSearchQuery(""); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (t.closest("[data-conv-search-root]")) return;
+      close();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer, true);
+    };
   }, [showConvSearch]);
 
   useEffect(() => {
@@ -1935,6 +1941,7 @@ export default function Home() {
                     }}
                     title="Search conversations"
                     aria-label="Search conversations"
+                    data-conv-search-root
                     style={{ background: showConvSearch ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showConvSearch ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
                     onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
                     onMouseLeave={e => (e.currentTarget.style.opacity = showConvSearch ? "1" : "0.7")}
@@ -1992,7 +1999,7 @@ export default function Home() {
 
       {/* Conversation search bar + results — slides below subheader */}
       {showConvSearch && homeMessages.length > 0 && (
-        <div style={{ position: "sticky", top: 86, zIndex: 30, padding: "10px 14px 0", background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)" }}>
+        <div data-conv-search-root style={{ position: "sticky", top: 86, zIndex: 30, padding: "10px 14px 0", background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "7px 10px" }}>
             <Search size={13} strokeWidth={1.75} color="var(--atlas-muted)" />
             <input
