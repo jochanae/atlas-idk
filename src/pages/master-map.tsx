@@ -247,6 +247,7 @@ export default function MasterMap() {
     y: number;
   } | null>(null);
   const [layer2Empty, setLayer2Empty] = useState(false);
+  const [layer2Loading, setLayer2Loading] = useState(false);
 
   const mapState = useMapStore();
   const currentLayer = mapState.currentLayer;
