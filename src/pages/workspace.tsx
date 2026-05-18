@@ -6946,7 +6946,7 @@ function RightPanel({
     <div
       style={{
         height: "100%", display: "flex", flexDirection: "column",
-        background: "var(--atlas-surface-alt)",
+        background: "var(--atlas-surface-alt)", overflow: "hidden", minHeight: 0,
       }}
     >
       {/* Tab bar — desktop only; on mobile the MobileTabBar drives navigation */}
@@ -7104,7 +7104,7 @@ function RightPanel({
 
       {/* Tab content */}
       {tab === "ledger" && (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
           {/* Sub-tab bar */}
           <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
             {(["entries", "memory"] as const).map(st => (
