@@ -595,6 +595,13 @@ export default function Projects() {
           </div>
         </div>
       )}
+      <NewProjectModal
+        open={showNewProjectModal}
+        onClose={() => { setShowNewProjectModal(false); setCreateError(null); }}
+        onCreate={(name, repo) => performCreateProject(name, repo)}
+        creating={createProject.isPending}
+        error={createError}
+      />
     </div>
   );
 }
