@@ -139,6 +139,14 @@ type PeekState = {
   entries: PeekEntry[];
   loading: boolean;
 };
+type Tension = {
+  projectA: { id: number; name: string };
+  projectB: { id: number; name: string };
+  entryA: { id?: number; title: string };
+  entryB: { id?: number; title: string };
+  score: number;
+};
+type HoveredTension = { index: number; tension: Tension };
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -200,6 +208,9 @@ export default function MasterMap() {
   const [warping, setWarping] = useState(false);
   const [statsVersion, setStatsVersion] = useState(0);
   const [peek, setPeek] = useState<PeekState | null>(null);
+  const [tensions, setTensions] = useState<Tension[]>([]);
+  const [tensionsVersion, setTensionsVersion] = useState(0);
+  const [hoveredTension, setHoveredTension] = useState<HoveredTension | null>(null);
 
   const projectsRef = useRef<Project[]>([]);
   const hoveredIdxRef = useRef<number | null>(null);
@@ -210,11 +221,15 @@ export default function MasterMap() {
   const camZTarget = useRef(CAM_Z);
   const warpTarget = useRef<{ pos: THREE.Vector3; cb: () => void; start: number } | null>(null);
   const statsRef = useRef<Map<number, DecisionStats>>(new Map());
+  const tensionsRef = useRef<Tension[]>([]);
+  const hoveredTensionRef = useRef<HoveredTension | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
   const peekElRef = useRef<HTMLDivElement | null>(null);
   const peekRef = useRef<PeekState | null>(null);
+  const tensionTooltipElRef = useRef<HTMLDivElement | null>(null);
+
   const panRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
@@ -235,6 +250,27 @@ export default function MasterMap() {
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
   useEffect(() => { peekRef.current = peek; }, [peek]);
+  useEffect(() => { tensionsRef.current = tensions; }, [tensions]);
+  useEffect(() => { hoveredTensionRef.current = hoveredTension; }, [hoveredTension]);
+
+  // ── cross-project tensions ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${BASE_URL}/api/projects/tensions`, { credentials: "include" });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (cancelled) return;
+        const list: Tension[] = Array.isArray(data) ? data : (data?.tensions ?? []);
+        setTensions(list);
+        setTensionsVersion(v => v + 1);
+      } catch { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [loading, projects]);
+
 
   // ── decision stats (per project) ───────────────────────────────────────────
   useEffect(() => {
@@ -544,8 +580,51 @@ export default function MasterMap() {
       filamentTracers.push({ mesh: ft, curve, t: Math.random(), speed: 0.0035 + strength * 0.003 });
     });
 
+    // ── Cross-project tension filaments (from /api/projects/tensions) ─────
+    type TensionFilament = {
+      line: THREE.Line;
+      mid: THREE.Vector3;
+      tension: Tension;
+      baseOpacity: number;
+      phase: number;
+      high: boolean;
+    };
+    const tensionFilaments: TensionFilament[] = [];
+    const tensionLineMeshes: THREE.Line[] = [];
+
+    (tensionsRef.current ?? []).forEach((ten, ti) => {
+      const ia = projs.findIndex(p => p.id === ten?.projectA?.id);
+      const ib = projs.findIndex(p => p.id === ten?.projectB?.id);
+      if (ia < 0 || ib < 0) return;
+      const pA = positions[ia], pB = positions[ib];
+      const mid = pA.clone().add(pB).multiplyScalar(0.5);
+      const dir = pB.clone().sub(pA);
+      // Opposite perpendicular vs. existing buildConns filaments → visually distinct from spokes
+      const perp = new THREE.Vector3(dir.y, -dir.x, 0).normalize().multiplyScalar(110);
+      mid.add(perp).setZ(mid.z - 30);
+      const curve = new THREE.QuadraticBezierCurve3(pA, mid, pB);
+
+      const high = (ten.score ?? 0) >= 0.6;
+      // rgba(201,162,76,0.25) low / rgba(217,119,87,0.55) high
+      const color = new THREE.Color(high ? 0xD97757 : 0xC9A24C);
+      const baseOpacity = high ? 0.55 : 0.25;
+
+      const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(64));
+      const mat = new THREE.LineBasicMaterial({
+        color, transparent: true, opacity: baseOpacity,
+      });
+      const line = new THREE.Line(geo, mat);
+      scene.add(line);
+      tensionLineMeshes.push(line);
+      tensionFilaments.push({
+        line, mid: curve.getPoint(0.5), tension: ten,
+        baseOpacity, phase: ti * 1.3, high,
+      });
+    });
+
     // ── Raycasting ────────────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
+    raycaster.params.Line = { threshold: 6 };
     const ndc = new THREE.Vector2();
 
     const hitTest = (cx: number, cy: number) => {
@@ -555,6 +634,16 @@ export default function MasterMap() {
       raycaster.setFromCamera(ndc, camera);
       return raycaster.intersectObjects([nexMesh, ...nodeMeshes]);
     };
+
+    const tensionHitTest = (): HoveredTension | null => {
+      if (!tensionLineMeshes.length) return null;
+      const hits = raycaster.intersectObjects(tensionLineMeshes);
+      if (!hits.length) return null;
+      const idx = tensionLineMeshes.indexOf(hits[0].object as THREE.Line);
+      if (idx < 0) return null;
+      return { index: idx, tension: tensionFilaments[idx].tension };
+    };
+
 
     const toScreen = (pos3d: THREE.Vector3) => {
       const v = pos3d.clone().project(camera);
@@ -600,11 +689,15 @@ export default function MasterMap() {
     const handleClick = (cx: number, cy: number) => {
       const hits = hitTest(cx, cy);
       if (!hits.length) {
-        // Tap on empty canvas dismisses peek without warping
-        if (peekRef.current) {
+        // Tap on a tension filament shows tooltip; else dismiss peek/tension
+        const th = tensionHitTest();
+        if (th) {
           haptics.tap();
-          setPeek(null);
+          setHoveredTension(th);
+          return;
         }
+        if (peekRef.current) { haptics.tap(); setPeek(null); }
+        if (hoveredTensionRef.current) setHoveredTension(null);
         return;
       }
       const obj = hits[0].object as THREE.Mesh;
@@ -647,13 +740,17 @@ export default function MasterMap() {
       } else {
         isDraggingRef.current = false;
         const hits = hitTest(e.clientX, e.clientY);
-        canvas.style.cursor = hits.length ? "pointer" : "grab";
         if (hits.length) {
           const obj = hits[0].object as THREE.Mesh;
           const i = nodeMeshes.indexOf(obj);
           setHoveredIdx(i >= 0 ? i : null);
+          setHoveredTension(null);
+          canvas.style.cursor = "pointer";
         } else {
           setHoveredIdx(null);
+          const th = tensionHitTest();
+          setHoveredTension(th);
+          canvas.style.cursor = th ? "help" : "grab";
         }
       }
       lastMX = e.clientX;
@@ -821,6 +918,14 @@ export default function MasterMap() {
         mat.opacity = edge * 0.72;
       });
 
+      // ── Tension filaments: slow pulse, brighten on hover ──
+      tensionFilaments.forEach((tf, i) => {
+        const mat = tf.line.material as THREE.LineBasicMaterial;
+        const pulse = 0.7 + 0.3 * Math.sin(t * 1.6 + tf.phase);
+        const hovered = hoveredTensionRef.current?.index === i;
+        mat.opacity = Math.min(1, tf.baseOpacity * pulse * (hovered ? 1.8 : 1));
+      });
+
       // ── Node hover glow + scale (respects per-node baseScale from Ledger overlay) ──
       nodeMeshes.forEach((mesh, i) => {
         const hovered = i === hoveredIdxRef.current;
@@ -878,6 +983,15 @@ export default function MasterMap() {
         pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
       }
 
+      // ── Tension tooltip positioning (anchored at curve midpoint) ──
+      const ht = hoveredTensionRef.current;
+      const htEl = tensionTooltipElRef.current;
+      if (ht && htEl && tensionFilaments[ht.index]) {
+        const sp = toScreen(tensionFilaments[ht.index].mid);
+        htEl.style.left = `${sp.x}px`;
+        htEl.style.top = `${sp.y - 12}px`;
+      }
+
       renderer.render(scene, camera);
     };
     loop();
@@ -894,7 +1008,7 @@ export default function MasterMap() {
       ro.disconnect();
       renderer.dispose();
     };
-  }, [loading, theme, statsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, theme, statsVersion, tensionsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isMobile = window.innerWidth < 768;
 
@@ -1086,6 +1200,49 @@ export default function MasterMap() {
           }} />
         </div>
       )}
+
+      {/* Tension tooltip — anchored to filament midpoint; positioned by loop */}
+      {hoveredTension && (
+        <div
+          ref={tensionTooltipElRef}
+          style={{
+            position: "absolute",
+            transform: "translate(-50%, -100%)",
+            zIndex: 55,
+            minWidth: 200,
+            maxWidth: 260,
+            padding: "8px 11px 9px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 9,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            fontFamily: "var(--app-font-sans)",
+            color: palette.labelText,
+            pointerEvents: "none",
+            animation: "picker-in 120ms cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        >
+          <div style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 4 }}>
+            Tension · {Math.round((hoveredTension.tension.score ?? 0) * 100)}%
+          </div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: palette.goldTextStrong, lineHeight: 1.3 }}>
+            {hoveredTension.tension.projectA?.name} <span style={{ color: palette.mutedText, margin: "0 5px" }}>↔</span> {hoveredTension.tension.projectB?.name}
+          </div>
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+            <div style={{ fontSize: 10.5, color: palette.labelText, lineHeight: 1.35 }}>
+              <span style={{ color: palette.goldText, marginRight: 5 }}>◆</span>
+              {hoveredTension.tension.entryA?.title}
+            </div>
+            <div style={{ fontSize: 10.5, color: palette.labelText, lineHeight: 1.35 }}>
+              <span style={{ color: palette.goldText, marginRight: 5 }}>◆</span>
+              {hoveredTension.tension.entryB?.title}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Header */}
       <div style={{
