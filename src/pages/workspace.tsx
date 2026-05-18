@@ -7104,7 +7104,7 @@ function RightPanel({
 
       {/* Tab content */}
       {tab === "ledger" && (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
           {/* Sub-tab bar */}
           <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
             {(["entries", "memory"] as const).map(st => (
