@@ -1354,6 +1354,32 @@ export default function MasterMap() {
           >
             Open Project →
           </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              haptics.tap();
+              const proj = projectsRef.current[peek.nodeIdx];
+              if (!proj) return;
+              const pos = nodePos3D(peek.nodeIdx, projectsRef.current.length);
+              setPeek(null);
+              navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
+                projectId: proj.id,
+                projectName: proj.name,
+              });
+            }}
+            style={{
+              marginTop: 6, width: "100%",
+              padding: "7px 10px",
+              background: "transparent",
+              border: `1px solid ${palette.panelBorder}`,
+              borderRadius: 7,
+              color: palette.goldTextStrong,
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: "var(--app-font-mono)", cursor: "pointer",
+            }}
+          >
+            Explore →
+          </button>
           {/* Tail pointing down at the node */}
           <div style={{
             position: "absolute", left: "50%", bottom: -6,
