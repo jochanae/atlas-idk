@@ -993,6 +993,100 @@ export default function MasterMap() {
         </div>
       )}
 
+      {/* Peek panel — tooltip above tapped node; positioned by animation loop */}
+      {peek && (
+        <div
+          ref={peekElRef}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            transform: "translate(-50%, -100%)",
+            zIndex: 60,
+            minWidth: 220,
+            maxWidth: 260,
+            padding: "10px 12px 11px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 10,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            fontFamily: "var(--app-font-sans)",
+            color: palette.labelText,
+            pointerEvents: "auto",
+            animation: "picker-in 140ms cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setPeek(null); }}
+            aria-label="Dismiss"
+            style={{
+              position: "absolute", top: 4, right: 6,
+              width: 18, height: 18, padding: 0,
+              background: "transparent", border: "none",
+              color: palette.mutedText, fontSize: 14, lineHeight: 1, cursor: "pointer",
+            }}
+          >×</button>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: palette.goldTextStrong, letterSpacing: "0.01em", paddingRight: 16, lineHeight: 1.25 }}>
+            {peek.name}
+          </div>
+          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>
+            Readiness · {peek.score}%
+          </div>
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+            {peek.loading ? (
+              <div style={{ fontSize: 10.5, color: palette.mutedText, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em" }}>
+                Loading committed…
+              </div>
+            ) : peek.entries.length === 0 ? (
+              <div style={{ fontSize: 10.5, color: palette.mutedText, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em", fontStyle: "italic" }}>
+                No committed entries yet
+              </div>
+            ) : (
+              peek.entries.map(e => (
+                <div key={e.id} style={{
+                  fontSize: 11, color: palette.labelText, lineHeight: 1.35,
+                  overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
+                  WebkitLineClamp: 1, WebkitBoxOrient: "vertical",
+                }}>
+                  <span style={{ color: palette.goldText, marginRight: 6 }}>◆</span>
+                  {e.title}
+                </div>
+              ))
+            )}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const id = peek.projectId;
+              setPeek(null);
+              warpFnRef.current?.(id);
+            }}
+            style={{
+              marginTop: 10, width: "100%",
+              padding: "7px 10px",
+              background: theme === "parchment" ? "rgba(180,83,9,0.14)" : "rgba(201,162,76,0.14)",
+              border: `1px solid ${palette.panelBorder}`,
+              borderRadius: 7,
+              color: palette.goldTextStrong,
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+              fontFamily: "var(--app-font-mono)", cursor: "pointer",
+            }}
+          >
+            Open Project →
+          </button>
+          {/* Tail pointing down at the node */}
+          <div style={{
+            position: "absolute", left: "50%", bottom: -6,
+            transform: "translateX(-50%) rotate(45deg)",
+            width: 10, height: 10,
+            background: palette.panelBg,
+            borderRight: `1px solid ${palette.panelBorder}`,
+            borderBottom: `1px solid ${palette.panelBorder}`,
+          }} />
+        </div>
+      )}
+
       {/* Header */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
