@@ -10984,6 +10984,21 @@ export default function Workspace() {
               </div>
             )}
 
+            {/* Generate Blueprint pill — surfaces when Atlas hints at it or chat has depth */}
+            {(() => {
+              const assistantMsgs = messages.filter(m => m.role === "assistant");
+              const last = assistantMsgs[assistantMsgs.length - 1]?.content ?? "";
+              const phraseHit = /Want me to generate|Blueprint ready/i.test(last);
+              const depthHit = messages.length > 8;
+              if (!phraseHit && !depthHit) return null;
+              return (
+                <GenerateBlueprintPill
+                  projectId={id}
+                  onCreated={() => { if (isMobile) setMobileTab("blueprints"); else setDesktopForceTab("blueprints"); }}
+                />
+              );
+            })()}
+
             {/* Attachment preview strip */}
             {attachedFiles.length > 0 && (
               <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
