@@ -254,6 +254,7 @@ export default function MasterMap() {
   const resetToSource = useMapStore((s) => s.resetToSource);
   const currentLayerRef = useRef(currentLayer);
   useEffect(() => { currentLayerRef.current = currentLayer; }, [currentLayer]);
+  const goBackRef = useRef<(() => void) | null>(null);
 
 
   const activeProjectId = useMemo(() => {
