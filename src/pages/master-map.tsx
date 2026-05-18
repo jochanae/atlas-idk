@@ -698,16 +698,24 @@ export default function MasterMap() {
       });
     });
 
+    // ── Layer 2/3 stack ───────────────────────────────────────────────────
+    const layerStack = new LayerStack(scene);
+    layerStackRef.current = layerStack;
+
     // ── Raycasting ────────────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
     raycaster.params.Line = { threshold: 6 };
     const ndc = new THREE.Vector2();
 
-    const hitTest = (cx: number, cy: number) => {
+    const setRay = (cx: number, cy: number) => {
       const rect = canvas.getBoundingClientRect();
       ndc.x = ((cx - rect.left) / rect.width) * 2 - 1;
       ndc.y = -((cy - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
+    };
+
+    const hitTest = (cx: number, cy: number) => {
+      setRay(cx, cy);
       return raycaster.intersectObjects([nexMesh, ...nodeMeshes]);
     };
 
