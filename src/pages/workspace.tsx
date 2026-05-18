@@ -12,6 +12,7 @@ import type { ArchNode as SystemMapNode } from "../components/SystemMap";
 import { TheForge } from "../components/TheForge";
 import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
+import { BlueprintsTab, GenerateBlueprintPill } from "../components/BlueprintsTab";
 import { CockpitBar } from "../components/CockpitBar";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
@@ -154,7 +155,7 @@ interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal";
+type RightTab = "ledger" | "blueprints" | "files" | "preview" | "memory" | "map" | "terminal";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 type PlanState = "pending" | "reviewing" | "executing" | "completed" | "skipped";
@@ -6772,6 +6773,7 @@ function RightPanel({
   externalForgeNodes,
   onForgeNodesConsumed,
   onForgeCompleted,
+  onContinueSession,
 }: {
   projectId: number;
   entries: Entry[];
@@ -6812,6 +6814,7 @@ function RightPanel({
   externalForgeNodes?: ArchNode[];
   onForgeNodesConsumed?: () => void;
   onForgeCompleted?: () => void;
+  onContinueSession?: (sessionId: number | string) => void;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
@@ -6848,6 +6851,18 @@ function RightPanel({
           <circle cx="3.5" cy="5" r="0.8" fill="currentColor" opacity={0.5} />
           <circle cx="3.5" cy="8" r="0.8" fill="currentColor" opacity={0.5} />
           <circle cx="3.5" cy="11" r="0.8" fill="currentColor" opacity={0.5} />
+        </svg>
+      ),
+    },
+    {
+      id: "blueprints",
+      label: "Blueprints",
+      icon: (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="8" y1="13" x2="16" y2="13" />
+          <line x1="8" y1="17" x2="14" y2="17" />
         </svg>
       ),
     },
@@ -7100,6 +7115,7 @@ function RightPanel({
           </div>
         </div>
       )}
+      {tab === "blueprints" && <BlueprintsTab projectId={projectId} onContinueSession={onContinueSession} />}
       {tab === "files" && <FilesTab projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} />}
       {tab === "preview" && <PreviewTab projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
@@ -7643,13 +7659,13 @@ function MobileTabBar({
   entryCount,
   activeCatch,
 }: {
-  activeTab: "chat" | "ledger" | "files" | "map" | "preview";
-  onTabChange: (tab: "chat" | "ledger" | "files" | "map" | "preview") => void;
+  activeTab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview";
+  onTabChange: (tab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview") => void;
   entryCount: number;
   activeCatch: boolean;
 }) {
   const [, navTo] = useLocation();
-  const tabs: { id: "chat" | "ledger" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
+  const tabs: { id: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
     {
       id: "chat",
       label: "Chat",
@@ -7670,6 +7686,18 @@ function MobileTabBar({
           <rect x="9" y="3" width="6" height="4" rx="1" />
           <line x1="9" y1="12" x2="15" y2="12" />
           <line x1="9" y1="16" x2="13" y2="16" />
+        </svg>
+      ),
+    },
+    {
+      id: "blueprints",
+      label: "Blueprints",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="8" y1="13" x2="16" y2="13" />
+          <line x1="8" y1="17" x2="14" y2="17" />
         </svg>
       ),
     },
@@ -8068,7 +8096,7 @@ export default function Workspace() {
     }
   }, [wsLens, leftTab]);
 
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "files" | "map" | "preview">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [onboardingCoachVisible, setOnboardingCoachVisible] = useState(() => {
@@ -10956,6 +10984,21 @@ export default function Workspace() {
               </div>
             )}
 
+            {/* Generate Blueprint pill — surfaces when Atlas hints at it or chat has depth */}
+            {(() => {
+              const assistantMsgs = messages.filter(m => m.role === "assistant");
+              const last = assistantMsgs[assistantMsgs.length - 1]?.content ?? "";
+              const phraseHit = /Want me to generate|Blueprint ready/i.test(last);
+              const depthHit = messages.length > 8;
+              if (!phraseHit && !depthHit) return null;
+              return (
+                <GenerateBlueprintPill
+                  projectId={id}
+                  onCreated={() => { if (isMobile) setMobileTab("blueprints"); else setDesktopForceTab("blueprints"); }}
+                />
+              );
+            })()}
+
             {/* Attachment preview strip */}
             {attachedFiles.length > 0 && (
               <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
@@ -11433,7 +11476,7 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 onHomeNav={() => setLocation("/home")}
-                forceTab={isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : desktopForceTab}
+                forceTab={isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : desktopForceTab}
                 onSendIntent={sendFromIntentCapture}
                 onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
                 onMapReadinessChange={setMapReadiness}
@@ -11460,6 +11503,7 @@ export default function Workspace() {
                 externalForgeNodes={externalForgeNodes}
                 onForgeNodesConsumed={() => setExternalForgeNodes([])}
                 onForgeCompleted={() => void updateForgeState("forged")}
+                onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
               />
             </div>
           </>
@@ -11510,7 +11554,7 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 onHomeNav={() => setLocation("/home")}
-                forceTab={mobileTab === "map" ? "map" : mobileTab === "files" ? "files" : mobileTab === "preview" ? "preview" : undefined}
+                forceTab={mobileTab === "map" ? "map" : mobileTab === "files" ? "files" : mobileTab === "preview" ? "preview" : mobileTab === "blueprints" ? "blueprints" : undefined}
                 onSendIntent={sendFromIntentCapture}
                 onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
                 onBackToChat={mobileTab === "map" ? () => { setMobileTab("chat"); setRightOpen(false); } : undefined}
@@ -11538,6 +11582,7 @@ export default function Workspace() {
                 externalForgeNodes={externalForgeNodes}
                 onForgeNodesConsumed={() => setExternalForgeNodes([])}
                 onForgeCompleted={() => void updateForgeState("forged")}
+                onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
               />
             </div>
           </div>
