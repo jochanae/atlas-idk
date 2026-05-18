@@ -273,6 +273,62 @@ export default function MasterMap() {
   useEffect(() => { tensionsRef.current = tensions; }, [tensions]);
   useEffect(() => { hoveredTensionRef.current = hoveredTension; }, [hoveredTension]);
 
+  // Reset to Layer 1 on page mount
+  useEffect(() => { resetToSource(); }, [resetToSource]);
+
+  // Fetch & populate Layer 2/3 children whenever the focused node changes
+  useEffect(() => {
+    const ls = layerStackRef.current;
+    if (!ls) return;
+    if (currentLayer === 1 || !focusedNodeId) {
+      ls.hideAll();
+      setLayer2Tooltip(null);
+      layer2TooltipRef.current = null;
+      return;
+    }
+    const target = mapState.cameraTarget;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (currentLayer === 2 && context.projectId) {
+          const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/map-nodes`, { credentials: "include" });
+          const list: MapNode[] = r.ok ? await r.json() : [];
+          if (cancelled) return;
+          ls.populate(2, target, list);
+        } else if (currentLayer === 3 && context.projectId && context.parentLabel) {
+          const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/entries`, { credentials: "include" });
+          const raw = r.ok ? await r.json() : [];
+          const entries: Array<{ id: number | string; title: string; description?: string }> = Array.isArray(raw) ? raw : [];
+          const sprintTitle = context.parentLabel.toLowerCase();
+          const filtered = entries
+            .filter((e) => (e.title ?? "").toLowerCase().includes(sprintTitle))
+            .slice(0, 8)
+            .map<MapNode>((e) => ({
+              id: String(e.id),
+              label: e.title,
+              type: "LEAF",
+              description: e.description,
+              position: [0, 0, 0],
+              color: "#C9A24C",
+            }));
+          if (cancelled) return;
+          ls.populate(3, target, filtered, { maxChildren: 8 });
+        }
+      } catch {
+        if (!cancelled) ls.hideAll();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentLayer, focusedNodeId, context.projectId, context.parentLabel, mapState.cameraTarget]);
+
+  // Pause loop when tab hidden (perf)
+  const tabVisibleRef = useRef(true);
+  useEffect(() => {
+    const onVis = () => { tabVisibleRef.current = document.visibilityState === "visible"; };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   // ── cross-project tensions ─────────────────────────────────────────────────
   useEffect(() => {
     if (loading) return;
