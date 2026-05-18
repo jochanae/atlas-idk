@@ -30,6 +30,8 @@ import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, Search } from "lucide-react";
 import { ThoughtForBadge } from "../components/ThoughtForBadge";
+import { RunSummaryBlock, RunStatusBadge } from "../components/RunSummary";
+import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
