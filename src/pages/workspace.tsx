@@ -2326,7 +2326,7 @@ function AssistantBubble({
           isNew={isNew}
           onStreamTextChange={onStreamActivityUpdate}
           onComplete={onStreamActivityComplete}
-          textStyle={{ fontSize: 14, lineHeight: 1.78, color: "var(--atlas-fg)", opacity: 0.9, whiteSpace: "pre-wrap" }}
+          textStyle={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85, whiteSpace: "pre-wrap" }}
         />
 
         {message.plan && planState !== "skipped" && (
@@ -10392,7 +10392,7 @@ export default function Workspace() {
                 <AssistantBubble
                   key={i}
                   message={msg}
-                  isNew={msg.role === "assistant" && i >= historyMsgCountRef.current}
+                  isNew={msg.role === "assistant" && i >= historyMsgCountRef.current && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
                   projectId={id}
                   sessionId={sessionId || 0}
                   linkedRepo={linkedRepo}
