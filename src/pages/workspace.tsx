@@ -9982,7 +9982,7 @@ export default function Workspace() {
                     borderRadius: "50%",
                     color: "var(--atlas-gold)",
                     cursor: isScanning ? "default" : "pointer",
-                    opacity: isScanning ? 1 : 0,
+                    opacity: isScanning ? 1 : 0.45,
                     transition: "opacity 160ms ease, border-color 160ms ease",
                   }}
                 >
