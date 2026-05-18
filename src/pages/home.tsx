@@ -2233,7 +2233,7 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
-              {!hasInput && !inputFocused && homeMessages.length === 0 && (
+              {!hasInput && !inputFocused && (homeMessages.length === 0 || reflectionLocked) && (
                 <div
                   style={{
                     position: "absolute",
@@ -2254,8 +2254,8 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {placeholder}
-                  {!typewriterPaused && <span className="atlas-cursor" />}
+                  {reflectionLocked ? "This stays between us..." : placeholder}
+                  {!reflectionLocked && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
