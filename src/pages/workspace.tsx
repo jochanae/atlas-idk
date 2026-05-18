@@ -9224,7 +9224,7 @@ export default function Workspace() {
     } finally {
       if (!silent) setIsScanning(false);
     }
-  }, [id, queryClient]);
+  }, [id, queryClient, mapReadiness]);
 
   useEffect(() => {
     if (!Number.isFinite(id) || !hasLinkedRepo) return;
