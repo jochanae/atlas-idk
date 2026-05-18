@@ -62,6 +62,7 @@ import {
   READINESS_MODE_KEY,
   computeBlendedScore,
 } from "../components/ReadinessRing";
+import { LongPressTip, haptic } from "@/lib/long-press-tip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 44, minHeight: 44, padding: 9 };
