@@ -580,8 +580,51 @@ export default function MasterMap() {
       filamentTracers.push({ mesh: ft, curve, t: Math.random(), speed: 0.0035 + strength * 0.003 });
     });
 
+    // ── Cross-project tension filaments (from /api/projects/tensions) ─────
+    type TensionFilament = {
+      line: THREE.Line;
+      mid: THREE.Vector3;
+      tension: Tension;
+      baseOpacity: number;
+      phase: number;
+      high: boolean;
+    };
+    const tensionFilaments: TensionFilament[] = [];
+    const tensionLineMeshes: THREE.Line[] = [];
+
+    (tensionsRef.current ?? []).forEach((ten, ti) => {
+      const ia = projs.findIndex(p => p.id === ten?.projectA?.id);
+      const ib = projs.findIndex(p => p.id === ten?.projectB?.id);
+      if (ia < 0 || ib < 0) return;
+      const pA = positions[ia], pB = positions[ib];
+      const mid = pA.clone().add(pB).multiplyScalar(0.5);
+      const dir = pB.clone().sub(pA);
+      // Opposite perpendicular vs. existing buildConns filaments → visually distinct from spokes
+      const perp = new THREE.Vector3(dir.y, -dir.x, 0).normalize().multiplyScalar(110);
+      mid.add(perp).setZ(mid.z - 30);
+      const curve = new THREE.QuadraticBezierCurve3(pA, mid, pB);
+
+      const high = (ten.score ?? 0) >= 0.6;
+      // rgba(201,162,76,0.25) low / rgba(217,119,87,0.55) high
+      const color = new THREE.Color(high ? 0xD97757 : 0xC9A24C);
+      const baseOpacity = high ? 0.55 : 0.25;
+
+      const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(64));
+      const mat = new THREE.LineBasicMaterial({
+        color, transparent: true, opacity: baseOpacity,
+      });
+      const line = new THREE.Line(geo, mat);
+      scene.add(line);
+      tensionLineMeshes.push(line);
+      tensionFilaments.push({
+        line, mid: curve.getPoint(0.5), tension: ten,
+        baseOpacity, phase: ti * 1.3, high,
+      });
+    });
+
     // ── Raycasting ────────────────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
+    raycaster.params.Line = { threshold: 6 };
     const ndc = new THREE.Vector2();
 
     const hitTest = (cx: number, cy: number) => {
@@ -591,6 +634,16 @@ export default function MasterMap() {
       raycaster.setFromCamera(ndc, camera);
       return raycaster.intersectObjects([nexMesh, ...nodeMeshes]);
     };
+
+    const tensionHitTest = (): HoveredTension | null => {
+      if (!tensionLineMeshes.length) return null;
+      const hits = raycaster.intersectObjects(tensionLineMeshes);
+      if (!hits.length) return null;
+      const idx = tensionLineMeshes.indexOf(hits[0].object as THREE.Line);
+      if (idx < 0) return null;
+      return { index: idx, tension: tensionFilaments[idx].tension };
+    };
+
 
     const toScreen = (pos3d: THREE.Vector3) => {
       const v = pos3d.clone().project(camera);
