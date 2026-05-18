@@ -9172,6 +9172,59 @@ export default function Workspace() {
     readinessMode === "arch" ? mapReadiness :
     readinessMode === "decisions" ? healthPct :
     blendedReadiness;
+
+  // ── Manual + auto readiness rescan ────────────────────────────────────────
+  const [isScanning, setIsScanning] = useState(false);
+  const autoScanTriggeredRef = useRef<Set<number>>(new Set());
+  const hasLinkedRepo = !!project?.linkedRepo;
+  const runScan = useCallback(async (silent: boolean) => {
+    if (!Number.isFinite(id)) return;
+    if (!silent) setIsScanning(true);
+    try {
+      const r = await fetch(`/api/projects/${id}/scan`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "github" }),
+      });
+      if (!r.ok) {
+        if (!silent) {
+          if (r.status === 400 || r.status === 404) {
+            toast("No GitHub repo linked. Connect one in the Files tab.");
+          } else {
+            toast("Scan failed. Try again.");
+          }
+        }
+        return;
+      }
+      const body = await r.json().catch(() => ({} as any));
+      const newScore =
+        typeof body?.score === "number" ? body.score :
+        typeof body?.snapshot?.score === "number" ? body.snapshot.score :
+        typeof body?.latestSnapshotScore === "number" ? body.latestSnapshotScore :
+        null;
+      if (newScore != null) setMapReadiness(Math.round(newScore));
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+      if (!silent && newScore != null) {
+        toast(`Scanned. Readiness: ${Math.round(newScore)}%`);
+      } else if (!silent) {
+        toast("Scanned.");
+      }
+    } catch {
+      if (!silent) toast("Scan failed. Check your connection.");
+    } finally {
+      if (!silent) setIsScanning(false);
+    }
+  }, [id, queryClient]);
+
+  useEffect(() => {
+    if (!Number.isFinite(id) || !hasLinkedRepo) return;
+    if (autoScanTriggeredRef.current.has(id)) return;
+    if (project?.latestSnapshotScore != null) return;
+    autoScanTriggeredRef.current.add(id);
+    void runScan(true);
+  }, [id, hasLinkedRepo, project?.latestSnapshotScore, runScan]);
+
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [desktopForceTab, setDesktopForceTab] = useState<RightTab | undefined>(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : undefined
