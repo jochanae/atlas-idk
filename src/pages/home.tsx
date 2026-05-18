@@ -1081,6 +1081,58 @@ export default function Home() {
   const [handoffProjectName, setHandoffProjectName] = useState("");
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
 
+  // ── Reflection mode ────────────────────────────────────────────────────────
+  const [reflectionLocked, setReflectionLocked] = useState(false);
+  const [showShredChoice, setShowShredChoice] = useState(false);
+  const [isShredding, setIsShredding] = useState(false);
+  const [showGoneFlash, setShowGoneFlash] = useState(false);
+
+  const vibrate = useCallback((pattern: number | number[]) => {
+    try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
+  }, []);
+
+  const callReflectionMode = useCallback(async (enabled: boolean) => {
+    try {
+      await fetch(`/api/sessions/${encodeURIComponent(activeConversationId)}/reflection-mode`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+    } catch {}
+  }, [activeConversationId]);
+
+  const handleLockTap = useCallback(() => {
+    vibrate(50);
+    if (reflectionLocked) {
+      setShowShredChoice(true);
+    } else {
+      setReflectionLocked(true);
+      void callReflectionMode(true);
+    }
+  }, [reflectionLocked, vibrate, callReflectionMode]);
+
+  const handleKeepIt = useCallback(() => {
+    vibrate([50, 50, 50]);
+    void callReflectionMode(false);
+    setReflectionLocked(false);
+    setShowShredChoice(false);
+  }, [vibrate, callReflectionMode]);
+
+  const handleShredIt = useCallback(() => {
+    vibrate(200);
+    void callReflectionMode(false);
+    setShowShredChoice(false);
+    setIsShredding(true);
+    setTimeout(() => {
+      setHomeMessages([]);
+      setIsShredding(false);
+      setReflectionLocked(false);
+      setShowGoneFlash(true);
+      setTimeout(() => setShowGoneFlash(false), 1500);
+    }, 700);
+  }, [vibrate, callReflectionMode]);
+
 
   // Cycle pending phrases while Atlas is generating
   useEffect(() => {
