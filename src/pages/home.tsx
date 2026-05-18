@@ -2705,10 +2705,16 @@ export default function Home() {
               <textarea
                 ref={textareaRef}
                 value={input}
+                placeholder={!reflectionLocked && homeMessages.length > 0 ? "type a message..." : ""}
                 onChange={(e) => { setInput(e.target.value); autoResize(); if (createError) setCreateError(null); }}
                 onKeyDown={handleKeyDown}
                 onFocus={() => { setInputFocused(true); setTypewriterPaused(true); }}
-                onBlur={() => setInputFocused(false)}
+                onBlur={() => {
+                  setInputFocused(false);
+                  if (!reflectionLocked && homeMessages.length === 0 && !input.trim()) {
+                    setTypewriterPaused(false);
+                  }
+                }}
                 rows={2}
                 style={{
                   width: "100%",
@@ -2866,17 +2872,6 @@ export default function Home() {
                   </>
                 )}
               </div>
-
-              {/* Center hint — hidden on tiny screens; sits inline (auto-margin on right group handles spacing) */}
-              {!isTinyScreen && (
-                <span style={{
-                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
-                  letterSpacing: "0.05em", color: "rgba(120,113,108,0.3)",
-                  userSelect: "none", pointerEvents: "none",
-                }}>
-                  type a message...
-                </span>
-              )}
 
               {/* Mic + Send — pinned to right via auto left margin */}
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
