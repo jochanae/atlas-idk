@@ -236,6 +236,24 @@ export default function MasterMap() {
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
   const recenterFnRef = useRef<(() => void) | null>(null);
+  const layerStackRef = useRef<LayerStack | null>(null);
+  const layer2TooltipRef = useRef<{ rec: LayerNodeRecord } | null>(null);
+  const [layer2Tooltip, setLayer2Tooltip] = useState<{
+    id: string;
+    label: string;
+    description?: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const mapState = useMapStore();
+  const currentLayer = mapState.currentLayer;
+  const focusedNodeId = mapState.focusedNodeId;
+  const context = mapState.context;
+  const navigateToNode = useMapStore((s) => s.navigateToNode);
+  const resetToSource = useMapStore((s) => s.resetToSource);
+  const currentLayerRef = useRef(currentLayer);
+  useEffect(() => { currentLayerRef.current = currentLayer; }, [currentLayer]);
 
 
   const activeProjectId = useMemo(() => {
