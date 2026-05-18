@@ -5194,7 +5194,7 @@ ${t}
             <svg width="10" height="11" viewBox="0 0 10 11" fill="none"><rect x="0.5" y="0.5" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1" /><circle cx="5" cy="8.5" r="0.6" fill="currentColor" /></svg>
             Tablet
           </button>
-          <button style={deviceBtnStyle(deviceSize === "desktop")} onClick={() => { setDeviceSize("desktop"); setIsLandscape(false); }}>
+          <button style={deviceBtnStyle(deviceSize === "desktop")} onClick={() => setDeviceSize("desktop")}>
             <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><rect x="0.5" y="0.5" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1" /><path d="M3 8.5h5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" /></svg>
             Desktop
           </button>
