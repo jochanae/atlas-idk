@@ -7659,13 +7659,13 @@ function MobileTabBar({
   entryCount,
   activeCatch,
 }: {
-  activeTab: "chat" | "ledger" | "files" | "map" | "preview";
-  onTabChange: (tab: "chat" | "ledger" | "files" | "map" | "preview") => void;
+  activeTab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview";
+  onTabChange: (tab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview") => void;
   entryCount: number;
   activeCatch: boolean;
 }) {
   const [, navTo] = useLocation();
-  const tabs: { id: "chat" | "ledger" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
+  const tabs: { id: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
     {
       id: "chat",
       label: "Chat",
@@ -8084,7 +8084,7 @@ export default function Workspace() {
     }
   }, [wsLens, leftTab]);
 
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "files" | "map" | "preview">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [onboardingCoachVisible, setOnboardingCoachVisible] = useState(() => {
