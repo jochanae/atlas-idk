@@ -234,6 +234,39 @@ export default function MasterMap() {
 
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
+  useEffect(() => { peekRef.current = peek; }, [peek]);
+
+  // ── decision stats (per project) ───────────────────────────────────────────
+  useEffect(() => {
+    if (loading || projects.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(projects.map(async (p) => {
+        try {
+          const r = await fetch(`${BASE_URL}/api/projects/${p.id}/entries?status=committed`, { credentials: "include" });
+          if (!r.ok) return [p.id, { committed: 0, tension: 0 }] as const;
+          const list = await r.json() as Array<{
+            deviation?: boolean; isViolation?: boolean;
+            catchAgainstId?: number | null; supersedesId?: number | null;
+          }>;
+          const committed = list.length;
+          const tension = list.filter(e =>
+            e.deviation || e.isViolation || e.catchAgainstId != null || e.supersedesId != null
+          ).length;
+          return [p.id, { committed, tension }] as const;
+        } catch {
+          return [p.id, { committed: 0, tension: 0 }] as const;
+        }
+      }));
+      if (cancelled) return;
+      const m = new Map<number, DecisionStats>();
+      results.forEach(([id, s]) => m.set(id, s));
+      statsRef.current = m;
+      setStatsVersion(v => v + 1);
+    })();
+    return () => { cancelled = true; };
+  }, [loading, projects]);
+
 
   // ── data ───────────────────────────────────────────────────────────────────
 
