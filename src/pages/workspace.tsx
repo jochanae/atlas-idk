@@ -10439,9 +10439,13 @@ export default function Workspace() {
         >
           {/* ── Chat / Diff / Terminal tab strip ── */}
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, paddingLeft: 4, background: "var(--atlas-glass-bg)" }}>
-            {(["chat", "diff", "terminal"] as const).filter(tab => tab !== "terminal" || wsLens === "build" || wsLens === "scenario").map((tab) => {
+            {(["chat", "diff", "blueprints", "terminal"] as const).filter(tab => {
+              if (tab === "terminal") return wsLens === "build" || wsLens === "scenario";
+              if (tab === "blueprints") return isMobile;
+              return true;
+            }).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : "Terminal";
+              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? "Blueprints" : "Terminal";
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
               return (
                 <button
