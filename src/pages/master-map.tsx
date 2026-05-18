@@ -1173,21 +1173,48 @@ export default function MasterMap() {
         el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
 
-      // ── Peek panel positioning (anchored above tapped node, flips to left near right edge) ──
+      // ── Peek panel positioning (anchors above node; flips to side & clamps to viewport) ──
       const pk = peekRef.current;
       const pkEl = peekElRef.current;
       if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
         const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
         const bs = baseScales[pk.nodeIdx] ?? 1;
         const vw = canvas.clientWidth;
+        const vh = canvas.clientHeight;
+        const rect = pkEl.getBoundingClientRect();
+        const cardW = rect.width || 240;
+        const cardH = rect.height || 200;
+        const margin = 8;
         const flipLeft = sp.x > vw * 0.6;
-        pkEl.style.left = `${sp.x}px`;
-        pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
-        // Anchor to the LEFT side of the node when near the right edge,
-        // otherwise keep centered above the node.
-        pkEl.style.transform = flipLeft
-          ? "translate(calc(-100% - 12px), -50%)"
-          : "translate(-50%, -100%)";
+        const flipRight = sp.x < vw * 0.4;
+        let left: number;
+        let top: number;
+        let transform: string;
+        if (flipLeft) {
+          // anchor to LEFT of node, vertically centered
+          left = sp.x - NODE_R * bs - 12;
+          top = sp.y;
+          transform = "translate(-100%, -50%)";
+        } else if (flipRight) {
+          // anchor to RIGHT of node, vertically centered
+          left = sp.x + NODE_R * bs + 12;
+          top = sp.y;
+          transform = "translate(0, -50%)";
+        } else {
+          // default: above node, horizontally centered
+          left = sp.x;
+          top = sp.y - NODE_R * bs - 14;
+          transform = "translate(-50%, -100%)";
+        }
+        // Compute the card's projected bounding box and clamp into viewport
+        // Effective top-left after transform:
+        const tx = transform.includes("-100%, -50%") ? left - cardW : transform.includes("-50%, -100%") ? left - cardW / 2 : transform.includes("0, -50%") ? left : left;
+        const ty = transform.includes("-50%") && !transform.includes("-100%)") ? top - cardH / 2 : top - cardH;
+        const dx = Math.max(margin - tx, Math.min(0, vw - margin - (tx + cardW)));
+        const dy = Math.max(margin - ty, Math.min(0, vh - margin - (ty + cardH)));
+        pkEl.style.left = `${left + dx}px`;
+        pkEl.style.top = `${top + dy}px`;
+        pkEl.style.transform = transform;
       }
 
       // ── Tension tooltip positioning (anchored at curve midpoint) ──
