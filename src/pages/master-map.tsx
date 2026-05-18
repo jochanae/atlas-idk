@@ -1008,7 +1008,7 @@ export default function MasterMap() {
       ro.disconnect();
       renderer.dispose();
     };
-  }, [loading, theme, statsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, theme, statsVersion, tensionsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isMobile = window.innerWidth < 768;
 
