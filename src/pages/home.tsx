@@ -1549,10 +1549,16 @@ export default function Home() {
                 (m as any).id === streamingId ? { ...m, content: streamedText } : m
               ));
             } else if (evtName === "done") {
-              const meta = JSON.parse(evtData) as { memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal };
+              const meta = JSON.parse(evtData) as { memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal; executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number; execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number };
               const plan = detectPlanFromText(streamedText);
+              const metrics = {
+                executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
+                inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
+                outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
+                costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
+              };
               setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...(plan ? { plan } : {}) } : m
+                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...(plan ? { plan } : {}) } : m
               ));
               if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
               if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
