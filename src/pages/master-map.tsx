@@ -215,6 +215,7 @@ export default function MasterMap() {
   const [hoveredTension, setHoveredTension] = useState<HoveredTension | null>(null);
 
   const projectsRef = useRef<Project[]>([]);
+  const projectPositionsRef = useRef<Map<number, [number, number, number]>>(new Map());
   const hoveredIdxRef = useRef<number | null>(null);
   const rippleIds = useRef<Set<number>>(new Set());
   const rippleTimers = useRef<number[]>([]);
