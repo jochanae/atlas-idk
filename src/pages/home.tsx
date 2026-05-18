@@ -63,14 +63,27 @@ type HomeMessage = {
   streaming?: boolean;
   handoffSignal?: HomeHandoffSignal;
   plan?: Plan;
+  createdAt?: string;
 };
 
+function formatMessageTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return time;
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${date} · ${time}`;
+}
+
 function normalizeLoadedHomeMessages(
-  msgs: Array<{ role: string; content: string }>,
-  mapMessage?: (message: { role: "user" | "assistant"; content: string }, index: number) => HomeMessage,
+  msgs: Array<{ role: string; content: string; createdAt?: string }>,
+  mapMessage?: (message: { role: "user" | "assistant"; content: string; createdAt?: string }, index: number) => HomeMessage,
 ): HomeMessage[] {
   const thread = msgs.filter(
-    (message): message is { role: "user" | "assistant"; content: string } =>
+    (message): message is { role: "user" | "assistant"; content: string; createdAt?: string } =>
       (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
   );
 
@@ -1476,7 +1489,7 @@ export default function Home() {
     const imageNote = imageFiles.length > 1 ? ` [${imageFiles.length} images attached — showing first]` : "";
     const messageText = fullText + imageNote;
 
-    setHomeMessages(prev => [...prev, { role: 'user', content: messageText, imageUrl }]);
+    setHomeMessages(prev => [...prev, { role: 'user', content: messageText, imageUrl, createdAt: new Date().toISOString() }]);
     setIsAtlasStreaming(true);
     try {
       const res = await fetch("/api/nexus/chat", {
@@ -1500,7 +1513,7 @@ export default function Home() {
 
       // Add a streaming message bubble immediately
       const streamingId = Date.now().toString();
-      setHomeMessages(prev => [...prev, { role: 'assistant', content: '', model: homeModel, intentType: null, isNew: true, id: streamingId, streaming: true }]);
+      setHomeMessages(prev => [...prev, { role: 'assistant', content: '', model: homeModel, intentType: null, isNew: true, id: streamingId, streaming: true, createdAt: new Date().toISOString() }]);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -2352,27 +2365,39 @@ export default function Home() {
                               )}
                             </button>
                           )}
+                          {msg.createdAt && !msg.streaming && (
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
+                              {formatMessageTime(msg.createdAt)}
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div style={{
-                          maxWidth: "80%", padding: "9px 13px", borderRadius: "12px 12px 4px 12px",
-                          background: "rgba(201,162,76,0.12)",
-                          border: "0.5px solid rgba(201,162,76,0.3)",
-                          fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)",
-                          fontFamily: "var(--app-font-sans)",
-                        }}>
-                          {msg.imageUrl && (
-                            <img
-                              src={msg.imageUrl}
-                              alt="Attached"
-                              style={{
-                                maxWidth: "100%", borderRadius: 8, display: "block",
-                                marginBottom: msg.content ? 8 : 0,
-                                maxHeight: 320, objectFit: "cover",
-                              }}
-                            />
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", maxWidth: "80%", gap: 3 }}>
+                          <div style={{
+                            padding: "9px 13px", borderRadius: "12px 12px 4px 12px",
+                            background: "rgba(201,162,76,0.12)",
+                            border: "0.5px solid rgba(201,162,76,0.3)",
+                            fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)",
+                            fontFamily: "var(--app-font-sans)",
+                          }}>
+                            {msg.imageUrl && (
+                              <img
+                                src={msg.imageUrl}
+                                alt="Attached"
+                                style={{
+                                  maxWidth: "100%", borderRadius: 8, display: "block",
+                                  marginBottom: msg.content ? 8 : 0,
+                                  maxHeight: 320, objectFit: "cover",
+                                }}
+                              />
+                            )}
+                            {msg.content}
+                          </div>
+                          {msg.createdAt && (
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
+                              {formatMessageTime(msg.createdAt)}
+                            </div>
                           )}
-                          {msg.content}
                         </div>
                       )}
                     </div>
