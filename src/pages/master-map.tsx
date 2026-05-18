@@ -419,20 +419,47 @@ export default function MasterMap() {
     const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
     const rippleMeshes: THREE.Mesh[] = [];
+    const baseScales: number[] = [];
     rippleTimers.current = new Array(projs.length).fill(0);
+
+    // Ledger overlay color constants
+    const GOLD = new THREE.Color(0xC9A24C);
+    const AMBER = new THREE.Color(0xD28852); // color-mix 60% #d97757 / 40% gold
 
     projs.forEach((p, i) => {
       const act = actLevel(p.updatedAt);
-      const col = nodeColor(p.name);
-      const glass = nodeGlassColor(p.name);
+      const stats = statsRef.current.get(p.id) ?? { committed: 0, tension: 0 };
+      const hueCol = nodeColor(p.name);
+      const hueGlass = nodeGlassColor(p.name);
+
+      // Decision health → color + emissive intensity
+      let bodyColor: THREE.Color;
+      let emissiveColor: THREE.Color;
+      let emissiveBoost = 0;
+      if (stats.committed === 0) {
+        bodyColor = hueGlass;
+        emissiveColor = hueCol;
+      } else if (stats.tension > 0) {
+        bodyColor = AMBER.clone();
+        emissiveColor = AMBER.clone();
+        emissiveBoost = 0.18;
+      } else {
+        bodyColor = GOLD.clone();
+        emissiveColor = GOLD.clone();
+        emissiveBoost = 0.22;
+      }
+
+      // Size: scale 1.0x → 2.0x by committed count (saturates at 8)
+      const sizeBoost = 1 + Math.min(stats.committed / 8, 1);
+      baseScales.push(sizeBoost);
 
       // Glass sphere
       const mesh = new THREE.Mesh(
         new THREE.SphereGeometry(NODE_R, 36, 36),
         new THREE.MeshPhysicalMaterial({
-          color: glass,
-          emissive: col,
-          emissiveIntensity: 0.12 + act * 0.32,
+          color: bodyColor,
+          emissive: emissiveColor,
+          emissiveIntensity: 0.12 + act * 0.32 + emissiveBoost,
           roughness: 0.08,
           metalness: 0.04,
           clearcoat: 1.0,
@@ -443,15 +470,17 @@ export default function MasterMap() {
         }),
       );
       mesh.position.copy(positions[i]);
+      mesh.scale.setScalar(sizeBoost);
       scene.add(mesh);
       nodeMeshes.push(mesh);
 
-      // Ripple ring (billboarded)
+      // Ripple ring (billboarded) — keep per-name hue so pulse stays recognizable
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(NODE_R, 1.5, 8, 64),
-        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, side: THREE.DoubleSide }),
+        new THREE.MeshBasicMaterial({ color: hueCol, transparent: true, opacity: 0, side: THREE.DoubleSide }),
       );
       ring.position.copy(positions[i]);
+      ring.scale.setScalar(sizeBoost);
       scene.add(ring);
       rippleMeshes.push(ring);
     });
