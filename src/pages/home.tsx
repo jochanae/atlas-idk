@@ -83,11 +83,11 @@ function formatMessageTime(iso?: string): string {
 }
 
 function normalizeLoadedHomeMessages(
-  msgs: Array<{ role: string; content: string; createdAt?: string }>,
+  msgs: Array<{ role: string; content: string; createdAt?: string; [k: string]: any }>,
   mapMessage?: (message: { role: "user" | "assistant"; content: string; createdAt?: string }, index: number) => HomeMessage,
 ): HomeMessage[] {
   const thread = msgs.filter(
-    (message): message is { role: "user" | "assistant"; content: string; createdAt?: string } =>
+    (message): message is { role: "user" | "assistant"; content: string; createdAt?: string; [k: string]: any } =>
       (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
   );
 
@@ -95,7 +95,15 @@ function normalizeLoadedHomeMessages(
   if (firstUserIndex === -1) return [];
 
   const trimmed = thread.slice(firstUserIndex);
-  return mapMessage ? trimmed.map(mapMessage) : trimmed.map((message) => ({ ...message }));
+  const enrich = (m: any): Partial<HomeMessage> => ({
+    executionTimeMs: m.executionTimeMs ?? m.execution_time_ms ?? null,
+    inputTokens: m.inputTokens ?? m.input_tokens ?? null,
+    outputTokens: m.outputTokens ?? m.output_tokens ?? null,
+    costUsd: m.costUsd != null ? Number(m.costUsd) : m.cost_usd != null ? Number(m.cost_usd) : null,
+  });
+  return mapMessage
+    ? trimmed.map((m, i) => ({ ...mapMessage(m, i), ...enrich(m) }))
+    : trimmed.map((m) => ({ ...m, ...enrich(m) }));
 }
 
 function renderMarkdown(text: string): string {
