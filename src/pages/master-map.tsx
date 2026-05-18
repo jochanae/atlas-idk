@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import * as THREE from "three";
 import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
+import { useMapStore, type MapNode } from "@/lib/master-map-store";
+import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
