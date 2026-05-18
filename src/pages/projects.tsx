@@ -167,12 +167,19 @@ export default function Projects() {
     }
   }, [projects, queryClient, secretToken, targetProjectId]);
 
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
   const handleNew = () => {
     setCreateError(null);
+    setShowNewProjectModal(true);
+  };
+
+  const performCreateProject = (name: string, _githubRepo?: string) => {
     createProject.mutate(
-      { data: { name: "New Project" } },
+      { data: { name } },
       {
         onSuccess: (created) => {
+          setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           if (created?.id) setLocation(`/project/${created.id}`);
         },
