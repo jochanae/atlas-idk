@@ -944,7 +944,7 @@ export function AxiomFlow({
         )}
         <span className="text-xs font-bold tracking-widest text-gold uppercase">AXIOM FLOW</span>
         <button
-          onClick={(e) => { e.stopPropagation(); haptics.light(); setLocation("/map"); }}
+          onClick={(e) => { e.stopPropagation(); haptics.tap(); setLocation("/map"); }}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           title="Open Master Map"
