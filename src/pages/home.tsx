@@ -1058,6 +1058,7 @@ export default function Home() {
   const { isFree } = useSubscription();
 
   // Compute greeting phrase once on mount and never change it
+  const greetingNameRef = useRef<string | null>(null);
   if (greetingPhraseRef.current === null) {
     const hasHistory = conversations.length > 0;
     const hour = new Date().getHours();
@@ -1066,11 +1067,23 @@ export default function Home() {
       : hour >= 5 && hour < 11
         ? ["Good morning.", "Morning."]
         : hour >= 11 && hour < 17
-          ? ["Good afternoon.", "What's on your mind?"]
+          ? ["Good afternoon.", "Afternoon."]
           : hour >= 17 && hour < 21
             ? ["Good evening.", "Still thinking about it?"]
             : ["Still at it.", "Night owl mode."];
     greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
+
+    // Name prefix: 30% chance, return sessions only, first name only
+    try {
+      const visitedKey = "atlas-home-visited";
+      const isReturn = typeof localStorage !== "undefined" && localStorage.getItem(visitedKey) === "1";
+      if (typeof localStorage !== "undefined") localStorage.setItem(visitedKey, "1");
+      const fullName = (authUser?.name ?? "").trim();
+      const first = fullName.split(/\s+/)[0] ?? "";
+      if (isReturn && first && Math.random() < 0.3) {
+        greetingNameRef.current = first;
+      }
+    } catch {}
   }
 
   // ── Home context: repo / branch / model ────────────────────────────────────
@@ -2158,6 +2171,9 @@ export default function Home() {
             {homeMessages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
                 <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
+                  {greetingNameRef.current && (
+                    <><span style={{ fontWeight: 300 }}>{greetingNameRef.current}.</span><br /></>
+                  )}
                   {greetingPhraseRef.current}
                 </h1>
                 <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
@@ -2637,7 +2653,7 @@ export default function Home() {
                   letterSpacing: "0.05em", color: "rgba(120,113,108,0.3)",
                   userSelect: "none", pointerEvents: "none",
                 }}>
-                  type / for shortcuts
+                  type a message...
                 </span>
               )}
 
