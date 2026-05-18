@@ -110,11 +110,11 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(0.6rem, 1.2vw, 0.75rem)",
           color: "#6b5f50",
         }}>
-          Axiom // Spec_Mode + Build_Mode v1.0
+          Axiom // Where ideas become decisions become reality
         </p>
 
         {/* Mode pills */}
-        <div className="flex items-center justify-center gap-3 mb-10">
+        <div className="flex items-center justify-center gap-3 mb-10 flex-wrap">
           <span style={{
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: "0.6rem",
@@ -123,7 +123,17 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             border: "1px solid rgba(212,175,55,0.3)",
             padding: "4px 10px",
             textTransform: "uppercase",
-          }}>Spec Mode</span>
+          }}>Think it through</span>
+          <span style={{ color: "#3d3529", fontSize: "0.7rem" }}>→</span>
+          <span style={{
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: "0.6rem",
+            letterSpacing: "0.2em",
+            color: "#D4AF37",
+            border: "1px solid rgba(212,175,55,0.3)",
+            padding: "4px 10px",
+            textTransform: "uppercase",
+          }}>Map it out</span>
           <span style={{ color: "#3d3529", fontSize: "0.7rem" }}>→</span>
           <span style={{
             fontFamily: "'IBM Plex Mono', monospace",
@@ -133,7 +143,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
             border: "1px solid rgba(212,175,55,0.15)",
             padding: "4px 10px",
             textTransform: "uppercase",
-          }}>Build Mode</span>
+          }}>Build it</span>
         </div>
 
         <button
