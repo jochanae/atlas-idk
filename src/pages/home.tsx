@@ -1030,6 +1030,7 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
+  const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
