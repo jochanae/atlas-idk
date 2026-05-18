@@ -176,7 +176,7 @@ export default function EntryDetail() {
   const sevColor = SEVERITY_COLOR[entry.severity] ?? "var(--muted-text)";
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--foreground)", paddingBottom: 80 }}>
+    <div style={{ minHeight: "100vh", background: "var(--background)", color: "var(--foreground)", paddingBottom: 96 }}>
 
       {/* ── Sticky header / breadcrumb ── */}
       <header style={{
@@ -357,37 +357,51 @@ export default function EntryDetail() {
         {/* Draft successors / reopen chain */}
         <DraftSuccessors entryId={entry.id} projectId={entry.projectId} />
 
-        {/* Divider */}
-        <div style={{ height: 1, background: "var(--border)", margin: "32px 0 24px" }} />
-
-        {/* Navigation back */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Link
-            href={`/ledger/${entry.projectId}`}
-            style={{
-              ...sMono, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const,
-              padding: "7px 16px", borderRadius: 4,
-              background: "transparent", border: "1px solid var(--border)",
-              color: "var(--muted-text)", textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            ← Project Ledger
-          </Link>
-          <Link
-            href="/parking"
-            style={{
-              ...sMono, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const,
-              padding: "7px 16px", borderRadius: 4,
-              background: "transparent", border: "1px solid var(--border)",
-              color: "var(--muted-text)", textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            Parking Lot →
-          </Link>
-        </div>
       </main>
+
+      {/* ── Sticky bottom action bar ── */}
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 30,
+          padding: "10px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
+          background: "color-mix(in oklab, var(--background) 88%, transparent)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          gap: 8,
+        }}
+      >
+        <Link
+          href={`/ledger/${entry.projectId}`}
+          style={{
+            ...sMono, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const,
+            padding: "10px 12px", borderRadius: 4,
+            background: "transparent", border: "1px solid var(--border)",
+            color: "var(--muted-text)", textDecoration: "none",
+            flex: 1, textAlign: "center" as const,
+          }}
+        >
+          ← Project Ledger
+        </Link>
+        <Link
+          href="/parking"
+          style={{
+            ...sMono, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const,
+            padding: "10px 12px", borderRadius: 4,
+            background: "transparent", border: "1px solid var(--border)",
+            color: "var(--muted-text)", textDecoration: "none",
+            flex: 1, textAlign: "center" as const,
+          }}
+        >
+          Parking Lot →
+        </Link>
+      </div>
     </div>
   );
 }
+
