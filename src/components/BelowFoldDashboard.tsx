@@ -724,15 +724,19 @@ function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved
 
   return (
     <div onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 1000,
+      position: "fixed", inset: 0, zIndex: 99999,
       background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+      overflowY: "auto",
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
         width: "100%", maxWidth: 380, borderRadius: 12,
         background: "var(--atlas-surface)", border: "1px solid var(--atlas-gold-border)",
         padding: 18, boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+        maxHeight: "calc(100vh - 32px)", overflowY: "auto",
+        margin: "auto",
       }}>
+
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <h3 style={{ margin: 0, fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-fg)" }}>
             Add connection
