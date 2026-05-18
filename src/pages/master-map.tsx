@@ -208,6 +208,9 @@ export default function MasterMap() {
   const [warping, setWarping] = useState(false);
   const [statsVersion, setStatsVersion] = useState(0);
   const [peek, setPeek] = useState<PeekState | null>(null);
+  const [tensions, setTensions] = useState<Tension[]>([]);
+  const [tensionsVersion, setTensionsVersion] = useState(0);
+  const [hoveredTension, setHoveredTension] = useState<HoveredTension | null>(null);
 
   const projectsRef = useRef<Project[]>([]);
   const hoveredIdxRef = useRef<number | null>(null);
@@ -218,11 +221,15 @@ export default function MasterMap() {
   const camZTarget = useRef(CAM_Z);
   const warpTarget = useRef<{ pos: THREE.Vector3; cb: () => void; start: number } | null>(null);
   const statsRef = useRef<Map<number, DecisionStats>>(new Map());
+  const tensionsRef = useRef<Tension[]>([]);
+  const hoveredTensionRef = useRef<HoveredTension | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
   const peekElRef = useRef<HTMLDivElement | null>(null);
   const peekRef = useRef<PeekState | null>(null);
+  const tensionTooltipElRef = useRef<HTMLDivElement | null>(null);
+
   const panRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
