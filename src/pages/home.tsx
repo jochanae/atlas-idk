@@ -108,6 +108,11 @@ function normalizeLoadedHomeMessages(
     inputTokens: m.inputTokens ?? m.input_tokens ?? null,
     outputTokens: m.outputTokens ?? m.output_tokens ?? null,
     costUsd: m.costUsd != null ? Number(m.costUsd) : m.cost_usd != null ? Number(m.cost_usd) : null,
+    runStatus: (m.runStatus ?? m.run_status ?? null) as RunStatus | null,
+    runSummary: m.runSummary ?? m.run_summary ?? null,
+    runActions: (m.runActions ?? m.run_actions ?? null) as RunAction[] | null,
+    runArtifacts: (m.runArtifacts ?? m.run_artifacts ?? null) as RunArtifact[] | null,
+    errorMessage: m.errorMessage ?? m.error_message ?? null,
   });
   return mapMessage
     ? trimmed.map((m, i) => ({ ...mapMessage(m, i), ...enrich(m) }))
