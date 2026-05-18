@@ -769,6 +769,7 @@ function UserBubble({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).catch(() => {});
+    haptic.short();
     setCopied(true);
     onCopy();
     setTimeout(() => setCopied(false), 1800);
