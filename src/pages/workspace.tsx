@@ -9953,14 +9953,48 @@ export default function Workspace() {
                 </svg>
               </button>
             )}
-            <ReadinessRing
-              archScore={mapReadiness}
-              decisionsScore={healthPct}
-              mode={readinessMode}
-              onModeChange={handleReadinessModeChange}
-              onClick={focusSystemMap}
-              trend={readinessTrend}
-            />
+            <div
+              className="atlas-rescan-wrap"
+              style={{ position: "relative", display: "flex", alignItems: "center" }}
+            >
+              <ReadinessRing
+                archScore={mapReadiness}
+                decisionsScore={healthPct}
+                mode={readinessMode}
+                onModeChange={handleReadinessModeChange}
+                onClick={focusSystemMap}
+                trend={readinessTrend}
+              />
+              {hasLinkedRepo && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); if (!isScanning) void runScan(false); }}
+                  disabled={isScanning}
+                  title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
+                  aria-label="Rescan readiness"
+                  className="atlas-rescan-btn"
+                  style={{
+                    marginLeft: 4,
+                    width: 16, height: 16, padding: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "transparent",
+                    border: "1px solid rgba(201,162,76,0.25)",
+                    borderRadius: "50%",
+                    color: "var(--atlas-gold)",
+                    cursor: isScanning ? "default" : "pointer",
+                    opacity: isScanning ? 1 : 0,
+                    transition: "opacity 160ms ease, border-color 160ms ease",
+                  }}
+                >
+                  <RefreshCw
+                    size={10}
+                    style={{
+                      animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined,
+                    }}
+                  />
+                </button>
+              )}
+            </div>
             {sessionPrUrl ? (
               <a
                 href={sessionPrUrl}
