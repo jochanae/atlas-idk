@@ -2040,6 +2040,8 @@ function AssistantBubble({
   onRunCommand,
   onExtractToForge,
   onReviewDiff,
+  onEditDeclined,
+  onAlertDismiss,
   onStreamActivityUpdate,
   onStreamActivityComplete,
   onCommitCardDone,
@@ -2066,6 +2068,8 @@ function AssistantBubble({
   onRunCommand?: (command: string) => void;
   onExtractToForge?: (content: string) => void;
   onReviewDiff: () => void;
+  onEditDeclined?: () => void;
+  onAlertDismiss?: () => void;
   onStreamActivityUpdate?: (content: string) => void;
   onStreamActivityComplete?: () => void;
   onCommitCardDone?: () => void;
@@ -2502,6 +2506,7 @@ function AssistantBubble({
             trustMode={trustMode}
             onReviewDiff={onReviewDiff}
             onPushSuccess={onPushSuccess}
+            onEditDeclined={onEditDeclined}
             onPrCreated={onPrCreated}
           />
         )}
@@ -2526,6 +2531,15 @@ function AssistantBubble({
             sessionId={sessionId}
             onProceed={onCatchProceed}
             onAdjust={onCatchAdjust}
+          />
+        )}
+
+        {message.alertPayload && !message.alertResolved && (
+          <ProactiveAlertCard
+            payload={message.alertPayload}
+            projectId={projectId}
+            sessionId={sessionId}
+            onDismiss={() => onAlertDismiss?.()}
           />
         )}
 
@@ -2640,15 +2654,24 @@ function AssistantBubble({
           {onExtractToForge && message.content.length > 200 && (
             <button
               className="atlas-icon-action"
-              title="Extract to Forge"
+              title="Extract to Forge — turn this response into strategic nodes"
               aria-label="Open Forge"
               onClick={() => onExtractToForge(message.content)}
-              style={{ ...ICON_TOUCH_TARGET_STYLE, opacity: hov ? 0.85 : 0.32 }}
+              style={{
+                ...ICON_TOUCH_TARGET_STYLE,
+                display: "flex", alignItems: "center", gap: 4,
+                opacity: hov ? 1 : 0.32,
+                padding: "4px 7px", borderRadius: 5,
+                border: hov ? "1px solid rgba(201,162,76,0.30)" : "1px solid transparent",
+                background: hov ? "rgba(201,162,76,0.07)" : "transparent",
+                transition: "all 180ms ease",
+              }}
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 1v8M4 6l3 3 3-3" />
                 <path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" />
               </svg>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>FORGE</span>
             </button>
           )}
         </div>
