@@ -587,6 +587,7 @@ export default function MasterMap() {
       mesh.scale.setScalar(sizeBoost);
       scene.add(mesh);
       nodeMeshes.push(mesh);
+      projectPositionsRef.current.set(projs[i].id, [positions[i].x, positions[i].y, positions[i].z]);
 
       // Ripple ring (billboarded) — keep per-name hue so pulse stays recognizable
       const ring = new THREE.Mesh(
