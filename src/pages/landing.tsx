@@ -334,6 +334,14 @@ function HandoffSection() {
 
   const steps = [
     {
+      phase: "THE SPARK",
+      title: "The Idea",
+      description: "Some things start as a half-formed thought at 2am. Atlas sits with you in that space — asks the right questions, maps what you know, surfaces what you don't. By the end of the conversation, you have a blueprint. Something real you can act on.",
+      visual: "scatter",
+      color: "#8a7e6e",
+      goldAccent: false,
+    },
+    {
       phase: "SPEC MODE",
       title: "Structure",
       description: "Three sprints interrogate every layer — auth, data, logic, UI. Axiom asks the questions you haven't thought to ask yet. The system map fills with gold as each decision resolves.",
