@@ -1246,6 +1246,52 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  // ── Conversation search: debounced fetch with client-side fallback ───────
+  useEffect(() => {
+    if (!showConvSearch) return;
+    const q = convSearchQuery.trim();
+    setConvSearchLoading(true);
+    const t = setTimeout(() => {
+      const ctrl = new AbortController();
+      const url = q
+        ? `/api/nexus/conversations?search=${encodeURIComponent(q)}`
+        : `/api/nexus/conversations`;
+      fetch(url, { credentials: "include", signal: ctrl.signal })
+        .then(r => r.ok ? r.json() : { conversations: [] })
+        .then((data: any) => {
+          const list: Array<{ id: string; title: string; createdAt: string; messageCount: number }> = data.conversations ?? [];
+          // If the server doesn't filter, fall back to client-side filtering by title.
+          const lower = q.toLowerCase();
+          const filtered = q
+            ? list.filter(c => (c.title ?? "").toLowerCase().includes(lower))
+            : list;
+          setConvSearchResults(filtered);
+          setConvSearchLoading(false);
+        })
+        .catch(() => {
+          // Fallback: filter from already-loaded conversations list
+          const lower = q.toLowerCase();
+          setConvSearchResults(q ? conversations.filter(c => (c.title ?? "").toLowerCase().includes(lower)) : conversations);
+          setConvSearchLoading(false);
+        });
+      return () => ctrl.abort();
+    }, 400);
+    return () => { clearTimeout(t); };
+  }, [convSearchQuery, showConvSearch, conversations]);
+
+  // Escape closes search bar
+  useEffect(() => {
+    if (!showConvSearch) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowConvSearch(false);
+        setConvSearchQuery("");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showConvSearch]);
+
   useEffect(() => {
     if (homeMessages.length === 0) return;
     const container = messagesEndRef.current?.parentElement;
