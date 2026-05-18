@@ -9091,7 +9091,16 @@ export default function Workspace() {
   const handleCommit = useCallback(
     (content: string) => {
       if (!sessionId) return;
-      const title = content.replace(/\n/g, " ").slice(0, 80).trim();
+      const title = content
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/`(.+?)`/g, "$1")
+        .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+        .replace(/\n/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .slice(0, 80)
+        .trim();
       createEntry.mutate(
         { projectId: id, data: { title, summary: content.slice(0, 500), status: "committed", severity: "committed", mode: "think", sessionId } },
         { onSuccess: () => { playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
@@ -9224,6 +9233,23 @@ export default function Workspace() {
   }, []);
 
   const messagesRef = useRef<ChatMessage[]>([]);
+  const summarizedSessionRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (assistantCount < 2) return;
+    const onHide = () => {
+      if (!document.hidden) return;
+      if (summarizedSessionRef.current === sessionId) return;
+      summarizedSessionRef.current = sessionId;
+      void fetch(`/api/sessions/${sessionId}/summarize`, {
+        method: "POST",
+        credentials: "include",
+      });
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [sessionId, messages]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   const handleTerminalComplete = useCallback((command: string, output: string, exitCode: number | null) => {
