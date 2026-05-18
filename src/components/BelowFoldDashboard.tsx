@@ -667,25 +667,36 @@ function ConnectionsDock() {
 }
 
 function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [type, setType] = useState<ConnType | null>(null);
+  const [type, setType] = useState<ConnType>("custom");
+  const [label, setLabel] = useState("");
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const save = async () => {
-    if (!type) return;
     setSaving(true); setError(null);
     try {
       const body: Record<string, any> = { type };
-      if (type === "railway") body.token = value.trim();
-      if (type === "lovable" || type === "cursor") body.url = value.trim();
+      const trimmed = value.trim();
+      if (type === "railway") {
+        body.token = trimmed;
+        if (label.trim()) body.label = label.trim();
+      } else {
+        // github, lovable, cursor, custom — all take a URL
+        body.url = trimmed;
+        if (label.trim()) body.label = label.trim();
+      }
       const res = await fetch("/api/connections", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      if (!res.ok) {
+        let detail = "";
+        try { const j = await res.json(); detail = j?.error || j?.message || ""; } catch {}
+        throw new Error(detail ? `${detail} (${res.status})` : `Save failed (${res.status})`);
+      }
       onSaved();
     } catch (e: any) {
       setError(e?.message ?? "Save failed");
@@ -693,7 +704,23 @@ function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved
     }
   };
 
-  const canSave = !!type && (type === "github" || value.trim().length > 0) && !saving;
+  const canSave = value.trim().length > 0 && !saving;
+
+  const placeholderFor: Record<ConnType, string> = {
+    custom:  "https://example.com",
+    github:  "https://github.com/user/repo",
+    railway: "Paste your Railway API token",
+    lovable: "https://lovable.dev/projects/...",
+    cursor:  "https://github.com/user/repo",
+  };
+
+  const hintFor: Record<ConnType, string> = {
+    custom:  "Any URL — dashboard, docs, deploy log.",
+    github:  "Paste the repo URL you want to track.",
+    railway: "Token from railway.com/account/tokens.",
+    lovable: "Your Lovable project URL.",
+    cursor:  "A repository URL Cursor is editing.",
+  };
 
   return (
     <div onClick={onClose} style={{
@@ -702,13 +729,13 @@ function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved
       display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 360, borderRadius: 12,
+        width: "100%", maxWidth: 380, borderRadius: 12,
         background: "var(--atlas-surface)", border: "1px solid var(--atlas-gold-border)",
         padding: 18, boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <h3 style={{ margin: 0, fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-fg)" }}>
-            {type ? `Add ${CONN_META[type].name}` : "Add connection"}
+            Add connection
           </h3>
           <button type="button" onClick={onClose} aria-label="Close" style={{
             background: "transparent", border: "none", color: "var(--atlas-muted)",
@@ -716,72 +743,60 @@ function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved
           }}>×</button>
         </div>
 
-        {!type ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {(["github", "railway", "lovable", "cursor"] as const).map((t) => (
-              <button key={t} type="button" onClick={() => setType(t)} style={{
-                padding: "14px 8px", borderRadius: 8, cursor: "pointer",
-                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,76,0.18)",
-                color: "var(--atlas-fg)", fontSize: 12, fontFamily: "var(--app-font-sans)",
-              }}>
-                <div style={{ fontSize: 14, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", marginBottom: 4 }}>
-                  {CONN_META[t].initials}
-                </div>
-                {CONN_META[t].name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div>
-            {type === "github" && (
-              <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.5 }}>
-                Auto-detected from your projects.
-              </p>
-            )}
-            {type === "railway" && (
-              <>
-                <input
-                  autoFocus value={value} onChange={(e) => setValue(e.target.value)}
-                  placeholder="Paste your Railway API token"
-                  style={inputStyle}
-                />
-                <a href="https://railway.com/account/tokens" target="_blank" rel="noopener noreferrer" style={{
-                  display: "block", marginTop: 6, fontSize: 10, color: "var(--atlas-muted)",
-                  opacity: 0.6, fontFamily: "var(--app-font-mono)", textDecoration: "underline",
-                }}>
-                  railway.com/account/tokens
-                </a>
-              </>
-            )}
-            {type === "lovable" && (
-              <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
-                placeholder="Paste your Lovable project URL" style={inputStyle} />
-            )}
-            {type === "cursor" && (
-              <input autoFocus value={value} onChange={(e) => setValue(e.target.value)}
-                placeholder="Paste your repository URL" style={inputStyle} />
-            )}
+        {/* Primary: label + URL */}
+        <input
+          autoFocus
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Label (optional) — e.g. Production API"
+          style={inputStyle}
+        />
+        <div style={{ height: 8 }} />
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={placeholderFor[type]}
+          style={inputStyle}
+        />
+        <p style={{ margin: "6px 2px 0", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.6, fontFamily: "var(--app-font-mono)" }}>
+          {hintFor[type]}
+        </p>
 
-            {error && (
-              <p style={{ margin: "10px 0 0", fontSize: 11, color: "rgba(248,113,113,0.9)", fontFamily: "var(--app-font-mono)" }}>{error}</p>
-            )}
+        {/* Quick-add type chips — optional */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+          {(["custom", "github", "railway", "lovable", "cursor"] as const).map((t) => (
+            <button key={t} type="button" onClick={() => setType(t)} style={{
+              padding: "5px 10px", borderRadius: 14, cursor: "pointer",
+              background: type === t ? "rgba(201,162,76,0.15)" : "transparent",
+              border: `1px solid ${type === t ? "rgba(201,162,76,0.5)" : "rgba(201,162,76,0.15)"}`,
+              color: type === t ? "var(--atlas-gold)" : "var(--atlas-muted)",
+              fontSize: 10, fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.06em", textTransform: "uppercase",
+            }}>
+              {CONN_META[t].name}
+            </button>
+          ))}
+        </div>
 
-            <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => { setType(null); setValue(""); setError(null); }} style={btnGhostStyle}>
-                Back
-              </button>
-              <button type="button" disabled={!canSave} onClick={save} style={{
-                ...btnPrimaryStyle, opacity: canSave ? 1 : 0.4, cursor: canSave ? "pointer" : "not-allowed",
-              }}>
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
+        {error && (
+          <p style={{ margin: "10px 0 0", fontSize: 11, color: "rgba(248,113,113,0.9)", fontFamily: "var(--app-font-mono)" }}>{error}</p>
         )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
+          <button type="button" onClick={onClose} style={btnGhostStyle}>
+            Cancel
+          </button>
+          <button type="button" disabled={!canSave} onClick={save} style={{
+            ...btnPrimaryStyle, opacity: canSave ? 1 : 0.4, cursor: canSave ? "pointer" : "not-allowed",
+          }}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "9px 11px", borderRadius: 7,
