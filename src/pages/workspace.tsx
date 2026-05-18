@@ -9939,80 +9939,17 @@ export default function Workspace() {
             )}
           </div>
 
-          {/* Right: vault + % score + mode + avatar */}
+          {/* Right: readiness pill (score + delta) + avatar. Lens/Grid/MIX/Rescan moved to tab bar. */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {/* Lens chip moved to the left/center cluster */}
-
-            {/* Vault — hidden from header on tiny screens (moved to input bar) */}
-            {!isTinyScreen && (
-              <LongPressTip tip="Dashboard view">
-              <button
-                title="Visual Vault"
-                aria-label="Open visual vault"
-                onClick={() => setShowVault(true)}
-                style={{
-                  minWidth: 44, minHeight: 44, padding: 8, borderRadius: 7,
-                  background: "transparent", border: "none",
-                  color: "rgba(201,162,76,0.45)", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "color 160ms ease", flexShrink: 0,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.45)")}
-              >
-                <svg width={isTinyScreen ? 13 : 15} height={isTinyScreen ? 13 : 15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1"/>
-                  <rect x="14" y="3" width="7" height="7" rx="1"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1"/>
-                  <rect x="14" y="14" width="7" height="7" rx="1"/>
-                </svg>
-              </button>
-              </LongPressTip>
-            )}
-            <div
-              className="atlas-rescan-wrap"
-              style={{ position: "relative", display: "flex", alignItems: "center" }}
-            >
-              <ReadinessRing
-                archScore={mapReadiness}
-                decisionsScore={healthPct}
-                mode={readinessMode}
-                onModeChange={handleReadinessModeChange}
-                onClick={focusSystemMap}
-                trend={readinessTrend}
-              />
-              {hasLinkedRepo && (
-                <LongPressTip tip="Rescan GitHub repo and update readiness score">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); if (!isScanning) void runScan(false); }}
-                  disabled={isScanning}
-                  title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
-                  aria-label="Rescan readiness"
-                  className="atlas-rescan-btn"
-                  style={{
-                    marginLeft: 4,
-                    width: 16, height: 16, padding: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "transparent",
-                    border: "1px solid rgba(201,162,76,0.25)",
-                    borderRadius: "50%",
-                    color: "var(--atlas-gold)",
-                    cursor: isScanning ? "default" : "pointer",
-                    opacity: isScanning ? 1 : 0.45,
-                    transition: "opacity 160ms ease, border-color 160ms ease",
-                  }}
-                >
-                  <RefreshCw
-                    size={10}
-                    style={{
-                      animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined,
-                    }}
-                  />
-                </button>
-                </LongPressTip>
-              )}
-            </div>
+            <ReadinessRing
+              archScore={mapReadiness}
+              decisionsScore={healthPct}
+              mode={readinessMode}
+              onModeChange={handleReadinessModeChange}
+              onClick={focusSystemMap}
+              trend={readinessTrend}
+              hideModePill
+            />
             {sessionPrUrl ? (
               <a
                 href={sessionPrUrl}
