@@ -1123,6 +1123,7 @@ export default function Home() {
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
+  const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: "ok" | "warn" | "fail" } | null>(null);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
