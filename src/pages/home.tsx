@@ -28,7 +28,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Lock } from "lucide-react";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
