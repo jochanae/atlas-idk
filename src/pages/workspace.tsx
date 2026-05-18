@@ -9663,7 +9663,10 @@ export default function Workspace() {
                       className={autoNameKey > 0 ? "atlas-name-fresh" : undefined}
                       style={{ fontSize: 13, color: "var(--atlas-fg)", opacity: 0.92, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}
                     >
-                      {project?.name ?? "…"}
+                      {(() => {
+                        const n = project?.name ?? "…";
+                        return isTinyScreen && n.length > 12 ? n.slice(0, 12) + "…" : n;
+                      })()}
                     </span>
                     <span className="atlas-name-pencil" style={{ fontSize: 10, color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
                   </span>
