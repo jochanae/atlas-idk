@@ -11083,7 +11083,7 @@ export default function Workspace() {
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "wrap", rowGap: 6, columnGap: 6 }}>
                 {/* Left: paperclip + vault (tiny screens) + wrench (read Atlas source) */}
                 <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
                   <label
