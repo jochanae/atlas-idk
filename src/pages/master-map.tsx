@@ -246,6 +246,7 @@ export default function MasterMap() {
     x: number;
     y: number;
   } | null>(null);
+  const [layer2Empty, setLayer2Empty] = useState(false);
 
   const mapState = useMapStore();
   const currentLayer = mapState.currentLayer;
@@ -286,6 +287,7 @@ export default function MasterMap() {
       ls.hideAll();
       setLayer2Tooltip(null);
       layer2TooltipRef.current = null;
+      setLayer2Empty(false);
       return;
     }
     const target = mapState.cameraTarget;
@@ -297,6 +299,7 @@ export default function MasterMap() {
           const list: MapNode[] = r.ok ? await r.json() : [];
           if (cancelled) return;
           ls.populate(2, target, list);
+          setLayer2Empty(list.length === 0);
         } else if (currentLayer === 3 && context.projectId && context.parentLabel) {
           const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/entries`, { credentials: "include" });
           const raw = r.ok ? await r.json() : [];
@@ -315,9 +318,10 @@ export default function MasterMap() {
             }));
           if (cancelled) return;
           ls.populate(3, target, filtered, { maxChildren: 8 });
+          setLayer2Empty(false);
         }
       } catch {
-        if (!cancelled) ls.hideAll();
+        if (!cancelled) { ls.hideAll(); setLayer2Empty(false); }
       }
     })();
     return () => { cancelled = true; };
@@ -1164,14 +1168,21 @@ export default function MasterMap() {
         el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
 
-      // ── Peek panel positioning (anchored above tapped node) ──
+      // ── Peek panel positioning (anchored above tapped node, flips to left near right edge) ──
       const pk = peekRef.current;
       const pkEl = peekElRef.current;
       if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
         const sp = toScreen(nodeMeshes[pk.nodeIdx].position);
         const bs = baseScales[pk.nodeIdx] ?? 1;
+        const vw = canvas.clientWidth;
+        const flipLeft = sp.x > vw * 0.6;
         pkEl.style.left = `${sp.x}px`;
         pkEl.style.top = `${sp.y - NODE_R * bs - 14}px`;
+        // Anchor to the LEFT side of the node when near the right edge,
+        // otherwise keep centered above the node.
+        pkEl.style.transform = flipLeft
+          ? "translate(calc(-100% - 12px), -50%)"
+          : "translate(-50%, -100%)";
       }
 
       // ── Tension tooltip positioning (anchored at curve midpoint) ──
@@ -1246,7 +1257,7 @@ export default function MasterMap() {
       </div>
 
       {/* Project labels — positioned by animation loop */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", display: currentLayer === 1 ? "block" : "none" }}>
         {projects.map((p, i) => {
           const act = actLevel(p.updatedAt);
           const isHovered = i === hoveredIdx;
@@ -1300,6 +1311,52 @@ export default function MasterMap() {
           );
         })}
       </div>
+
+      {/* Empty Layer 2 state — project explored but no decisions yet */}
+      {currentLayer === 2 && layer2Empty && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 40, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{ position: "relative", width: 320, height: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Ghost orbiting node */}
+            <div style={{
+              position: "absolute", top: 30, left: "50%", transform: "translateX(-50%)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              opacity: 0.18,
+            }}>
+              <div style={{
+                width: 14, height: 14, borderRadius: "50%",
+                border: `1px dashed ${palette.goldText}`, background: "transparent",
+              }} />
+              <div style={{
+                fontSize: 9, fontFamily: "var(--app-font-mono)", color: palette.goldText,
+                letterSpacing: "0.14em", textTransform: "uppercase",
+              }}>
+                First Decision
+              </div>
+            </div>
+
+            {/* Anchor: project name + message */}
+            <div style={{ textAlign: "center", maxWidth: 280 }}>
+              <div style={{
+                fontSize: 15, fontWeight: 600, color: palette.goldTextStrong,
+                fontFamily: "var(--app-font-sans)", letterSpacing: "0.01em",
+              }}>
+                {context.projectName ?? "Project"}
+              </div>
+              <div style={{
+                marginTop: 10, fontSize: 11, color: palette.mutedText,
+                fontFamily: "var(--app-font-sans)", lineHeight: 1.55,
+              }}>
+                No decisions committed yet.<br />
+                Start a conversation to build this map.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Warp overlay */}
       {warping && (
