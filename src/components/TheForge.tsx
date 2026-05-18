@@ -66,7 +66,7 @@ interface Props {
   readinessScore?: number;
   activeProjectName?: string;
   projectId?: number;
-  defaultTab?: "forge" | "prompt";
+  defaultTab?: "forge" | "prompt" | "dna";
   preloadContent?: string;
   onClose: () => void;
   onNodesReady?: (nodes: ArchNode[]) => void;
@@ -75,7 +75,7 @@ interface Props {
 
 export function TheForge({ platform, readinessScore = 0, activeProjectName, projectId, defaultTab = "forge", preloadContent, onClose, onNodesReady, onFillChatInput }: Props) {
   const [isMobile] = useState(() => window.innerWidth < 768);
-  const [tab, setTab] = useState<"forge" | "prompt">(defaultTab);
+  const [tab, setTab] = useState<"forge" | "prompt" | "dna">(defaultTab);
 
   // Forge state — pre-fill transcript from preloadContent if provided
   const [transcript, setTranscript] = useState(preloadContent ?? "");
@@ -1052,6 +1052,60 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     </div>
   );
 
+  // ── Tab: Project DNA ───────────────────────────────────────────────────────
+  const dnaContent = (
+    <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* IDENTITY */}
+      <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "#D4AF37", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Identity</span>
+          <span style={{ fontSize: 11, color: "rgba(120,113,108,0.6)", lineHeight: 1.4 }}>Who you are and what you&apos;re building</span>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(120,113,108,0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+          Define your core persona, vision, and strategic context
+        </p>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.25)", background: "rgba(212,175,55,0.08)", color: "rgba(212,175,55,0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+          + Add Identity
+        </button>
+      </div>
+
+      {/* CONSTRAINTS */}
+      <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "#D4AF37", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Constraints</span>
+          <span style={{ fontSize: 11, color: "rgba(120,113,108,0.6)", lineHeight: 1.4 }}>The boundaries the AI must respect</span>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(120,113,108,0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+          Add financial, stylistic, or technical constraints
+        </p>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.25)", background: "rgba(212,175,55,0.08)", color: "rgba(212,175,55,0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+          + Add Constraint
+        </button>
+      </div>
+
+      {/* FORMAT */}
+      <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "#D4AF37", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Format</span>
+          <span style={{ fontSize: 11, color: "rgba(120,113,108,0.6)", lineHeight: 1.4 }}>How you want intelligence packaged</span>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(120,113,108,0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+          Define your preferred output structure and style
+        </p>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.25)", background: "rgba(212,175,55,0.08)", color: "rgba(212,175,55,0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+          + Add Format
+        </button>
+      </div>
+
+      {/* Bottom pill */}
+      <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+        <button style={{ padding: "7px 18px", borderRadius: 20, border: "1px solid rgba(120,113,108,0.2)", background: "rgba(120,113,108,0.08)", color: "rgba(120,113,108,0.55)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase", transition: "all 180ms" }}>
+          Copy Strategic Payload →
+        </button>
+      </div>
+    </div>
+  );
+
   // ── Header ─────────────────────────────────────────────────────────────────
   const headerBlock = (
     <div style={{ flexShrink: 0 }}>
@@ -1061,11 +1115,13 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37", letterSpacing: "0.06em", fontFamily: "var(--app-font-mono)" }}>
-            {tab === "forge" ? "THE FORGE" : "QUICK PROMPT"}
+            {tab === "forge" ? "THE FORGE" : tab === "dna" ? "PROJECT DNA" : "QUICK PROMPT"}
           </span>
           <span style={{ fontSize: 10, color: "rgba(120,113,108,0.6)" }}>
             {tab === "forge"
               ? `Decompose your thinking into a strategic map${activeProjectName ? ` · ${activeProjectName}` : ""}${readinessScore > 0 ? ` · ${readinessScore}% ready` : ""}`
+              : tab === "dna"
+              ? "Define your identity, constraints, and output format for sharper AI responses"
               : "Generate a ready-to-paste prompt for any AI builder"}
           </span>
         </div>
@@ -1076,9 +1132,13 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       <div style={{ display: "flex", gap: 4, padding: "0 16px 12px", borderBottom: "1px solid rgba(212,175,55,0.10)" }}>
         <button style={tabBtn(tab === "forge")} onClick={() => setTab("forge")}>The Forge</button>
         <button style={tabBtn(tab === "prompt")} onClick={() => setTab("prompt")}>Quick Prompt</button>
+        <button style={tabBtn(tab === "dna")} onClick={() => setTab("dna")}>Project DNA</button>
       </div>
     </div>
   );
+
+  const tabContent = tab === "forge" ? forgeContent : tab === "dna" ? dnaContent : quickPromptContent;
+  const tabLabel = tab === "forge" ? "THE FORGE" : tab === "dna" ? "PROJECT DNA" : "QUICK PROMPT";
 
   if (!isMobile) {
     return (
@@ -1086,7 +1146,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
         <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-surface)", border: "1px solid rgba(212,175,55,0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
           {headerBlock}
-          {tab === "forge" ? forgeContent : quickPromptContent}
+          {tabContent}
         </div>
       </>
     );
@@ -1101,10 +1161,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(212,175,55,0.18)" }} />
         </div>
         {headerBlock}
-        {tab === "forge" ? forgeContent : quickPromptContent}
+        {tabContent}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid rgba(212,175,55,0.07)", flexShrink: 0 }}>
           <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 20, background: "rgba(120,113,108,0.09)", border: "1px solid rgba(120,113,108,0.2)", color: "rgba(120,113,108,0.75)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-mono)" }}>‹ Back</button>
-          <span style={{ fontSize: 10, color: "rgba(120,113,108,0.35)", fontFamily: "var(--app-font-mono)" }}>AXIOM // {tab === "forge" ? "THE FORGE" : "QUICK PROMPT"}</span>
+          <span style={{ fontSize: 10, color: "rgba(120,113,108,0.35)", fontFamily: "var(--app-font-mono)" }}>AXIOM // {tabLabel}</span>
         </div>
       </div>
     </>
