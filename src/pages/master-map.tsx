@@ -254,6 +254,7 @@ export default function MasterMap() {
   const resetToSource = useMapStore((s) => s.resetToSource);
   const currentLayerRef = useRef(currentLayer);
   useEffect(() => { currentLayerRef.current = currentLayer; }, [currentLayer]);
+  const goBackRef = useRef<(() => void) | null>(null);
 
 
   const activeProjectId = useMemo(() => {
@@ -900,12 +901,17 @@ export default function MasterMap() {
     let tStartX = 0, tStartY = 0, tLastX = 0, tLastY = 0;
     let isTouchDrag = false;
     let pinchStartDist = 0, pinchStartZ = CAM_Z;
+    let tStartTime = 0;
+    let lastTapTime = 0, lastTapX = 0, lastTapY = 0;
+    let edgeSwipeCandidate = false;
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
         tStartX = tLastX = e.touches[0].clientX;
         tStartY = tLastY = e.touches[0].clientY;
         isTouchDrag = false;
+        tStartTime = performance.now();
+        edgeSwipeCandidate = tStartX < 24 && currentLayerRef.current > 1;
         isDraggingRef.current = false;
       } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -923,7 +929,7 @@ export default function MasterMap() {
           isTouchDrag = true;
           isDraggingRef.current = true;
         }
-        if (isTouchDrag) {
+        if (isTouchDrag && !edgeSwipeCandidate) {
           panRef.current.x += dx * 1.4;
           panRef.current.y -= dy * 1.4;
         }
@@ -941,11 +947,29 @@ export default function MasterMap() {
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length === 0) {
         isDraggingRef.current = false;
+        const t = e.changedTouches[0];
+        // Edge-swipe back: started near left edge and swiped right > 60px
+        if (edgeSwipeCandidate && (t.clientX - tStartX) > 60 && Math.abs(t.clientY - tStartY) < 80) {
+          haptics.tap();
+          goBackRef.current?.();
+          edgeSwipeCandidate = false;
+          isTouchDrag = false;
+          return;
+        }
         if (!isTouchDrag) {
-          const t = e.changedTouches[0];
-          handleClick(t.clientX, t.clientY);
+          const now = performance.now();
+          // Double-tap detection — navigate deeper
+          if (now - lastTapTime < 320 && Math.hypot(t.clientX - lastTapX, t.clientY - lastTapY) < 30) {
+            lastTapTime = 0;
+            handleClick(t.clientX, t.clientY);
+          } else {
+            lastTapTime = now;
+            lastTapX = t.clientX; lastTapY = t.clientY;
+            handleClick(t.clientX, t.clientY);
+          }
         }
         isTouchDrag = false;
+        edgeSwipeCandidate = false;
       }
     };
 
@@ -1178,6 +1202,29 @@ export default function MasterMap() {
   }, [loading, theme, statsVersion, tensionsVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isMobile = window.innerWidth < 768;
+
+  // Back navigation: layer 3 → 2 (back to project node), layer 2 → 1 (source)
+  const goBack = () => {
+    const s = useMapStore.getState();
+    if (s.currentLayer === 3 && s.context.projectId != null) {
+      const proj = projects.find((p) => p.id === s.context.projectId);
+      if (proj) {
+        // Re-target the project's last-known position; projectsRef has live meshes
+        const idx = projects.findIndex((p) => p.id === proj.id);
+        const meshPos = idx >= 0 ? null : null; // positions live in three; navigate by reusing cameraTarget approx
+        const pos: [number, number, number] = meshPos ?? [s.cameraTarget[0], s.cameraTarget[1], s.cameraTarget[2]];
+        navigateToNode(String(proj.id), pos, 2, {
+          projectId: proj.id,
+          projectName: proj.name,
+          parentId: undefined,
+          parentLabel: undefined,
+        });
+        return;
+      }
+    }
+    resetToSource();
+  };
+  goBackRef.current = goBack;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: palette.pageBg, fontFamily: "var(--app-font-sans)" }}>
@@ -1472,6 +1519,76 @@ export default function MasterMap() {
           </div>
         </div>
       </div>
+
+      {/* Layer breadcrumb — only shown in Layer 2/3 */}
+      {currentLayer > 1 && (
+        <div
+          onClick={() => { haptics.tap(); goBack(); }}
+          style={{
+            position: "absolute", top: 64, left: 16, zIndex: 25,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "6px 11px 6px 8px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 999,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            cursor: "pointer",
+            fontFamily: "var(--app-font-mono)",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={palette.goldTextStrong} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13L5 8l5-5" />
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldTextStrong }}>
+            {currentLayer === 3 ? (context.projectName ?? "Project") : "Portfolio"}
+          </span>
+          {context.projectName && currentLayer === 3 && context.parentLabel && (
+            <>
+              <span style={{ color: palette.mutedText, fontSize: 10 }}>·</span>
+              <span style={{ fontSize: 10, color: palette.mutedText, letterSpacing: "0.08em" }}>
+                {context.parentLabel}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Layer 2/3 node tooltip — glassmorphic, anchored at tapped node */}
+      {layer2Tooltip && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            left: layer2Tooltip.x,
+            top: layer2Tooltip.y,
+            transform: "translate(-50%, calc(-100% - 14px))",
+            zIndex: 58,
+            minWidth: 200,
+            maxWidth: 260,
+            padding: "9px 12px 10px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 10,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            fontFamily: "var(--app-font-sans)",
+            color: palette.labelText,
+            animation: "picker-in 140ms cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        >
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: palette.goldTextStrong, lineHeight: 1.3 }}>
+            {layer2Tooltip.label}
+          </div>
+          {layer2Tooltip.description && (
+            <div style={{ marginTop: 5, fontSize: 10.5, color: palette.mutedText, lineHeight: 1.4 }}>
+              {layer2Tooltip.description}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 10 }}>
