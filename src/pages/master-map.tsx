@@ -1078,18 +1078,32 @@ export default function MasterMap() {
       });
 
       // ── Node hover glow + scale (respects per-node baseScale from Ledger overlay) ──
+      const layer1FadeTarget = layerNow === 1 ? 0.86 : 0.15;
       nodeMeshes.forEach((mesh, i) => {
-        const hovered = i === hoveredIdxRef.current;
+        const hovered = i === hoveredIdxRef.current && layerNow === 1;
         const mat = mesh.material as THREE.MeshPhysicalMaterial;
         const proj = projectsRef.current[i];
         const stats = proj ? statsRef.current.get(proj.id) ?? { committed: 0, tension: 0 } : { committed: 0, tension: 0 };
         const boost = stats.committed === 0 ? 0 : (stats.tension > 0 ? 0.18 : 0.22);
         const base = 0.12 + actLevel(proj?.updatedAt ?? "") * 0.3 + boost;
         mat.emissiveIntensity = hovered ? base + 0.32 + Math.sin(t * 3.5) * 0.12 : base;
+        mat.opacity += (layer1FadeTarget - mat.opacity) * 0.08;
         const bs = baseScales[i] ?? 1;
         const tgt = bs * (hovered ? 1.15 : 1.0);
         mesh.scale.setScalar(mesh.scale.x + (tgt - mesh.scale.x) * 0.11);
       });
+      // Tick Layer 2/3
+      layerStack.tick(t, nowMs);
+      // Update Layer 2 tooltip screen position
+      if (layer2TooltipRef.current) {
+        const rec = layer2TooltipRef.current.rec;
+        const sp = rec.worldPos.clone().project(camera);
+        setLayer2Tooltip((prev) => prev ? {
+          ...prev,
+          x: (sp.x * 0.5 + 0.5) * canvas.clientWidth,
+          y: (-sp.y * 0.5 + 0.5) * canvas.clientHeight,
+        } : prev);
+      }
 
       // ── Ripple rings ──
       rippleMeshes.forEach((ring, i) => {
