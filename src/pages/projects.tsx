@@ -4,6 +4,7 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { useListProjects, useCreateProject, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
+import { NewProjectModal } from "../components/NewProjectModal";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
@@ -167,12 +168,19 @@ export default function Projects() {
     }
   }, [projects, queryClient, secretToken, targetProjectId]);
 
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
   const handleNew = () => {
     setCreateError(null);
+    setShowNewProjectModal(true);
+  };
+
+  const performCreateProject = (name: string, _githubRepo?: string) => {
     createProject.mutate(
-      { data: { name: "New Project" } },
+      { data: { name } },
       {
         onSuccess: (created) => {
+          setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           if (created?.id) setLocation(`/project/${created.id}`);
         },
@@ -588,6 +596,13 @@ export default function Projects() {
           </div>
         </div>
       )}
+      <NewProjectModal
+        open={showNewProjectModal}
+        onClose={() => { setShowNewProjectModal(false); setCreateError(null); }}
+        onCreate={(name, repo) => performCreateProject(name, repo)}
+        creating={createProject.isPending}
+        error={createError}
+      />
     </div>
   );
 }
