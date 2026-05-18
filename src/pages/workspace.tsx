@@ -9704,28 +9704,7 @@ export default function Workspace() {
               )}
             </button>
 
-            {/* Lens chip — moved here (left/center), immediately after project name.
-                Dot-only on tiny screens; full label on wider. */}
-            <button
-              title={`Lens: ${LENS_CONFIG[wsLens].sub}`}
-              onClick={() => setShowLensPicker(true)}
-              style={{
-                display: "flex", alignItems: "center", gap: 4,
-                padding: isTinyScreen ? "5px 6px" : "3px 8px", borderRadius: 20,
-                background: "transparent",
-                border: `1px solid ${detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"}`,
-                cursor: "pointer", transition: "all 180ms ease", flexShrink: 0,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = LENS_CONFIG[wsLens].borderColor; e.currentTarget.style.background = LENS_CONFIG[wsLens].glowColor; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"; e.currentTarget.style.background = "transparent"; }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, flexShrink: 0, transition: "background 220ms ease" }} />
-              {!isTinyScreen && (
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, letterSpacing: "0.08em", transition: "color 220ms ease", whiteSpace: "nowrap" }}>
-                  {LENS_CONFIG[wsLens].label}{detectedLens ? ` → ${LENS_CONFIG[detectedLens].label}` : ""}
-                </span>
-              )}
-            </button>
+            {/* Lens chip moved to the tab bar */}
 
             {/* Readiness ring — blended arch + decisions score; clicks to open Map panel */}
             {/* Drift pill — flow has changed since the last Atlas handover.
