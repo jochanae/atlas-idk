@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -1030,6 +1030,7 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
+  const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
@@ -1228,7 +1229,16 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/nexus/conversations", { credentials: "include" })
       .then(r => r.ok ? r.json() : { conversations: [] })
-      .then((data: any) => setConversations(data.conversations ?? []))
+      .then((data: any) => {
+        const list = data.conversations ?? [];
+        setConversations(list);
+        // Auto-load most recent conversation on mount so users return to their previous thread
+        if (list.length > 0 && list[0]?.id) {
+          const recentId = list[0].id as string;
+          try { sessionStorage.setItem("atlas-home-conversation-id", recentId); } catch {}
+          setActiveConversationId(recentId);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -1259,6 +1269,7 @@ export default function Home() {
   // Load the active conversation from DB (re-runs when conversationId changes)
   useEffect(() => {
     setHomeMessages([]);
+    setLoadedHistoryCount(0);
     setThreadLoading(true);
     try {
       setHandoffCardDismissed(sessionStorage.getItem(`atlas-home-handoff-dismissed-${activeConversationId}`) === "1");
@@ -1272,6 +1283,7 @@ export default function Home() {
         const normalizedMessages = normalizeLoadedHomeMessages(msgs);
         if (normalizedMessages.length > 0) {
           setHomeMessages(normalizedMessages);
+          setLoadedHistoryCount(normalizedMessages.length);
           return;
         }
       })
@@ -2052,7 +2064,17 @@ export default function Home() {
                     </div>
                   )}
                   {homeMessages.map((msg, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
+                    <Fragment key={i}>
+                      {loadedHistoryCount > 0 && i === loadedHistoryCount && homeMessages.length > loadedHistoryCount && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", opacity: 0.3 }}>
+                          <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
+                          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", color: "var(--atlas-muted)", textTransform: "lowercase" }}>
+                            — earlier —
+                          </span>
+                          <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
+                        </div>
+                      )}
+                    <div style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
                       {msg.role === 'assistant' ? (
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* Model label + intent badge */}
@@ -2174,6 +2196,7 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+                    </Fragment>
                   ))}
 
                   {/* Thinking indicator */}
