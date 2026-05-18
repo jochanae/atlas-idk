@@ -1520,6 +1520,76 @@ export default function MasterMap() {
         </div>
       </div>
 
+      {/* Layer breadcrumb — only shown in Layer 2/3 */}
+      {currentLayer > 1 && (
+        <div
+          onClick={() => { haptics.tap(); goBack(); }}
+          style={{
+            position: "absolute", top: 64, left: 16, zIndex: 25,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "6px 11px 6px 8px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 999,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            cursor: "pointer",
+            fontFamily: "var(--app-font-mono)",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={palette.goldTextStrong} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13L5 8l5-5" />
+          </svg>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldTextStrong }}>
+            {currentLayer === 3 ? (context.projectName ?? "Project") : "Portfolio"}
+          </span>
+          {context.projectName && currentLayer === 3 && context.parentLabel && (
+            <>
+              <span style={{ color: palette.mutedText, fontSize: 10 }}>·</span>
+              <span style={{ fontSize: 10, color: palette.mutedText, letterSpacing: "0.08em" }}>
+                {context.parentLabel}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Layer 2/3 node tooltip — glassmorphic, anchored at tapped node */}
+      {layer2Tooltip && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            left: layer2Tooltip.x,
+            top: layer2Tooltip.y,
+            transform: "translate(-50%, calc(-100% - 14px))",
+            zIndex: 58,
+            minWidth: 200,
+            maxWidth: 260,
+            padding: "9px 12px 10px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 10,
+            boxShadow: palette.panelShadow,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            fontFamily: "var(--app-font-sans)",
+            color: palette.labelText,
+            animation: "picker-in 140ms cubic-bezier(0.22,1,0.36,1) both",
+          }}
+        >
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: palette.goldTextStrong, lineHeight: 1.3 }}>
+            {layer2Tooltip.label}
+          </div>
+          {layer2Tooltip.description && (
+            <div style={{ marginTop: 5, fontSize: 10.5, color: palette.mutedText, lineHeight: 1.4 }}>
+              {layer2Tooltip.description}
+            </div>
+          )}
+        </div>
+      )}
+
       {loading && (
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 10 }}>
           <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.1em" }}>
