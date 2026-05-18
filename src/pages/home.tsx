@@ -63,14 +63,27 @@ type HomeMessage = {
   streaming?: boolean;
   handoffSignal?: HomeHandoffSignal;
   plan?: Plan;
+  createdAt?: string;
 };
 
+function formatMessageTime(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return time;
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${date} · ${time}`;
+}
+
 function normalizeLoadedHomeMessages(
-  msgs: Array<{ role: string; content: string }>,
-  mapMessage?: (message: { role: "user" | "assistant"; content: string }, index: number) => HomeMessage,
+  msgs: Array<{ role: string; content: string; createdAt?: string }>,
+  mapMessage?: (message: { role: "user" | "assistant"; content: string; createdAt?: string }, index: number) => HomeMessage,
 ): HomeMessage[] {
   const thread = msgs.filter(
-    (message): message is { role: "user" | "assistant"; content: string } =>
+    (message): message is { role: "user" | "assistant"; content: string; createdAt?: string } =>
       (message.role === "user" || message.role === "assistant") && typeof message.content === "string",
   );
 
