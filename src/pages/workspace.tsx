@@ -10763,8 +10763,8 @@ export default function Workspace() {
           </div>
           )} {/* end chat/diff ternary */}
 
-          {/* Ledger status bar — whispered; Forge pill anchored right */}
-          <div className="atlas-ledger-bar" style={{ opacity: 0.55, justifyContent: "space-between" }}>
+          {/* Ledger status bar — whispered */}
+          <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ width: 4, height: 4, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", transition: "all 400ms ease" }} />
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: "var(--atlas-muted)", transition: "color 400ms ease" }}>
@@ -10784,51 +10784,6 @@ export default function Workspace() {
                 </span>
               )}
             </div>
-
-            {/* Forge micro-pill — right-anchored, lowercase */}
-            {leftTab === "chat" && forgeState && !forgeState.dismissed && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                <button
-                  aria-label={forgeState.forged ? "Open The Forge" : "Open The Forge"}
-                  title={forgeState.forged ? "The Forge — re-run or review strategic map" : "Open The Forge"}
-                  onClick={() => { setForgeActiveProjectName(project?.name); setForgeActiveProjectId(id); setShowForgeExternal(true); }}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    height: 18, padding: "0 7px", borderRadius: 999,
-                    background: "transparent",
-                    border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
-                    color: "rgba(var(--atlas-gold-rgb),0.72)",
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)", fontSize: 8,
-                    letterSpacing: "0.08em",
-                    transition: "all 160ms ease",
-                  }}
-                >
-                  <svg width={8} height={8} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
-                    <path d="M5.5 11L2 14.5" />
-                    <path d="M11 3.5L13 5.5" />
-                  </svg>
-                  forge
-                </button>
-                {forgeState.forged && (
-                  <button
-                    aria-label="Dismiss Forge shortcut"
-                    title="Dismiss"
-                    onClick={() => void updateForgeState("dismissed")}
-                    style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 14, height: 14, borderRadius: 999,
-                      border: "none", background: "transparent",
-                      color: "rgba(var(--atlas-gold-rgb),0.45)",
-                      cursor: "pointer", fontSize: 10, lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
