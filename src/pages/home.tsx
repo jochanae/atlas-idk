@@ -103,17 +103,47 @@ function normalizeLoadedHomeMessages(
   if (firstUserIndex === -1) return [];
 
   const trimmed = thread.slice(firstUserIndex);
-  const enrich = (m: any): Partial<HomeMessage> => ({
-    executionTimeMs: m.executionTimeMs ?? m.execution_time_ms ?? null,
-    inputTokens: m.inputTokens ?? m.input_tokens ?? null,
-    outputTokens: m.outputTokens ?? m.output_tokens ?? null,
-    costUsd: m.costUsd != null ? Number(m.costUsd) : m.cost_usd != null ? Number(m.cost_usd) : null,
-    runStatus: (m.runStatus ?? m.run_status ?? null) as RunStatus | null,
-    runSummary: m.runSummary ?? m.run_summary ?? null,
-    runActions: (m.runActions ?? m.run_actions ?? null) as RunAction[] | null,
-    runArtifacts: (m.runArtifacts ?? m.run_artifacts ?? null) as RunArtifact[] | null,
-    errorMessage: m.errorMessage ?? m.error_message ?? null,
-  });
+  const demoRunSummary =
+    typeof window !== "undefined" &&
+    (window.location.search.includes("demo=runsummary") ||
+      window.localStorage.getItem("atlas_demo_runsummary") === "1");
+
+  const enrich = (m: any): Partial<HomeMessage> => {
+    const runStatus = (m.runStatus ?? m.run_status ?? null) as RunStatus | null;
+    const runActions = (m.runActions ?? m.run_actions ?? null) as RunAction[] | null;
+    const runArtifacts = (m.runArtifacts ?? m.run_artifacts ?? null) as RunArtifact[] | null;
+    const runSummary = m.runSummary ?? m.run_summary ?? null;
+
+    const shouldMock = demoRunSummary && m.role === "assistant" && !runStatus;
+    return {
+      executionTimeMs: m.executionTimeMs ?? m.execution_time_ms ?? null,
+      inputTokens: m.inputTokens ?? m.input_tokens ?? null,
+      outputTokens: m.outputTokens ?? m.output_tokens ?? null,
+      costUsd: m.costUsd != null ? Number(m.costUsd) : m.cost_usd != null ? Number(m.cost_usd) : null,
+      runStatus: shouldMock ? ("completed" as RunStatus) : runStatus,
+      runSummary: shouldMock
+        ? "Wired run metadata into the SSE done event and persisted to chat_messages."
+        : runSummary,
+      runActions: shouldMock
+        ? ([
+            { verb: "Read", target: "chat_messages.ts", status: "ok" },
+            { verb: "Grepped", target: "codebase", status: "ok" },
+            { verb: "Read", target: "nexus.ts L1180–1420", status: "ok" },
+            { verb: "Updated", target: "nexus.ts", status: "ok" },
+            { verb: "Skipped", target: "_journal.json (no changes needed)", status: "warn" },
+            { verb: "Pushed", target: "main", status: "ok" },
+          ] as RunAction[])
+        : runActions,
+      runArtifacts: shouldMock
+        ? ([
+            { type: "commit", label: "fa20782", href: "https://github.com/" },
+            { type: "file", label: "nexus.ts", href: "https://github.com/" },
+            { type: "url", label: "preview.lovable.app", href: "https://preview.lovable.app" },
+          ] as RunArtifact[])
+        : runArtifacts,
+      errorMessage: m.errorMessage ?? m.error_message ?? null,
+    };
+  };
   return mapMessage
     ? trimmed.map((m, i) => ({ ...mapMessage(m, i), ...enrich(m) }))
     : trimmed.map((m) => ({ ...m, ...enrich(m) }));
