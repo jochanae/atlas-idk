@@ -2769,18 +2769,27 @@ export default function Home() {
                         type="button"
                         onClick={it.action}
                         style={{
-                          background: "transparent",
-                          border: "none",
-                          padding: "4px 10px",
-                          color: "var(--atlas-muted)",
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          backdropFilter: "blur(8px)",
+                          WebkitBackdropFilter: "blur(8px)",
+                          borderRadius: 20,
+                          padding: "5px 12px",
+                          color: "rgba(212,175,55,0.5)",
                           cursor: "pointer",
                           fontFamily: "inherit",
-                          fontSize: "inherit",
+                          fontSize: 11,
                           letterSpacing: "inherit",
-                          transition: "color 160ms ease",
+                          transition: "color 160ms ease, box-shadow 160ms ease",
                         }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-fg)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--atlas-muted)"; }}
+                        onMouseEnter={(e) => { 
+                          (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.9)";
+                          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(212,175,55,0.15)";
+                        }}
+                        onMouseLeave={(e) => { 
+                          (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.5)";
+                          (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                        }}
                       >
                         {it.label}
                       </button>
@@ -2794,23 +2803,32 @@ export default function Home() {
                   type="button"
                   onClick={rotate}
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: "2px 6px",
-                    color: "var(--atlas-muted)",
-                    opacity: 0.55,
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    borderRadius: 20,
+                    padding: "5px 12px",
+                    color: "rgba(212,175,55,0.5)",
                     cursor: "pointer",
                     fontFamily: "var(--app-font-sans)",
-                    fontSize: 11.5,
+                    fontSize: 11,
                     letterSpacing: "0.01em",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 5,
-                    transition: "opacity 160ms ease",
+                    transition: "color 160ms ease, box-shadow 160ms ease",
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.9"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
+                  onMouseEnter={(e) => { 
+                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.9)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(212,175,55,0.15)";
+                  }}
+                  onMouseLeave={(e) => { 
+                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.5)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                  }}
                 >
+                  <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(212,175,55,0.7)", display: "inline-block" }} />
                   need a starting point? <span style={{ fontSize: 12 }}>↻</span>
                 </button>
               </div>
