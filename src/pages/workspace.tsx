@@ -7708,18 +7708,6 @@ function MobileTabBar({
       ),
     },
     {
-      id: "blueprints",
-      label: "Blueprints",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="8" y1="13" x2="16" y2="13" />
-          <line x1="8" y1="17" x2="14" y2="17" />
-        </svg>
-      ),
-    },
-    {
       id: "files",
       label: "Files",
       icon: (
@@ -7994,7 +7982,7 @@ export default function Workspace() {
   const { playSend, playCatch, playCommit, playPark, playNavigate } = useSound();
   const [memoryChips, setMemoryChips] = useState<MemoryChip[]>([]);
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
-  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "terminal">("chat");
+  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal">("chat");
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
   const [rightOpen, setRightOpen] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flow"
@@ -10439,9 +10427,13 @@ export default function Workspace() {
         >
           {/* ── Chat / Diff / Terminal tab strip ── */}
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, paddingLeft: 4, background: "var(--atlas-glass-bg)" }}>
-            {(["chat", "diff", "terminal"] as const).filter(tab => tab !== "terminal" || wsLens === "build" || wsLens === "scenario").map((tab) => {
+            {(["chat", "diff", "blueprints", "terminal"] as const).filter(tab => {
+              if (tab === "terminal") return wsLens === "build" || wsLens === "scenario";
+              if (tab === "blueprints") return isMobile;
+              return true;
+            }).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : "Terminal";
+              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? "Blueprints" : "Terminal";
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
               return (
                 <button
@@ -10626,6 +10618,13 @@ export default function Workspace() {
             </div>
           ) : leftTab === "terminal" ? (
             <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} />
+          ) : leftTab === "blueprints" ? (
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <BlueprintsTab
+                projectId={id}
+                onContinueSession={(sid) => { setSessionId(Number(sid)); setLeftTab("chat"); }}
+              />
+            </div>
           ) : (
           /* ── Chat view ── */
           <div
@@ -10901,7 +10900,7 @@ export default function Workspace() {
           </div>
 
           {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
-          {leftTab !== "terminal" && <div style={{ padding: "10px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30, background: "var(--atlas-bg)", borderTop: "1px solid var(--atlas-border)" }}>
+          {leftTab !== "terminal" && leftTab !== "blueprints" && <div style={{ padding: "10px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30, background: "var(--atlas-bg)", borderTop: "1px solid var(--atlas-border)" }}>
             {/* Hidden file input — handles both images and ZIP files */}
             <input
               ref={fileInputRef}
