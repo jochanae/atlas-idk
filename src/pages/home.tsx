@@ -1058,6 +1058,7 @@ export default function Home() {
   const { isFree } = useSubscription();
 
   // Compute greeting phrase once on mount and never change it
+  const greetingNameRef = useRef<string | null>(null);
   if (greetingPhraseRef.current === null) {
     const hasHistory = conversations.length > 0;
     const hour = new Date().getHours();
@@ -1066,11 +1067,23 @@ export default function Home() {
       : hour >= 5 && hour < 11
         ? ["Good morning.", "Morning."]
         : hour >= 11 && hour < 17
-          ? ["Good afternoon.", "What's on your mind?"]
+          ? ["Good afternoon.", "Afternoon."]
           : hour >= 17 && hour < 21
             ? ["Good evening.", "Still thinking about it?"]
             : ["Still at it.", "Night owl mode."];
     greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
+
+    // Name prefix: 30% chance, return sessions only, first name only
+    try {
+      const visitedKey = "atlas-home-visited";
+      const isReturn = typeof localStorage !== "undefined" && localStorage.getItem(visitedKey) === "1";
+      if (typeof localStorage !== "undefined") localStorage.setItem(visitedKey, "1");
+      const fullName = (authUser?.name ?? "").trim();
+      const first = fullName.split(/\s+/)[0] ?? "";
+      if (isReturn && first && Math.random() < 0.3) {
+        greetingNameRef.current = first;
+      }
+    } catch {}
   }
 
   // ── Home context: repo / branch / model ────────────────────────────────────
