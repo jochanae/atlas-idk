@@ -246,6 +246,7 @@ export default function MasterMap() {
     x: number;
     y: number;
   } | null>(null);
+  const [layer2Empty, setLayer2Empty] = useState(false);
 
   const mapState = useMapStore();
   const currentLayer = mapState.currentLayer;
@@ -286,6 +287,7 @@ export default function MasterMap() {
       ls.hideAll();
       setLayer2Tooltip(null);
       layer2TooltipRef.current = null;
+      setLayer2Empty(false);
       return;
     }
     const target = mapState.cameraTarget;
@@ -297,6 +299,7 @@ export default function MasterMap() {
           const list: MapNode[] = r.ok ? await r.json() : [];
           if (cancelled) return;
           ls.populate(2, target, list);
+          setLayer2Empty(list.length === 0);
         } else if (currentLayer === 3 && context.projectId && context.parentLabel) {
           const r = await fetch(`${BASE_URL}/api/projects/${context.projectId}/entries`, { credentials: "include" });
           const raw = r.ok ? await r.json() : [];
@@ -315,9 +318,10 @@ export default function MasterMap() {
             }));
           if (cancelled) return;
           ls.populate(3, target, filtered, { maxChildren: 8 });
+          setLayer2Empty(false);
         }
       } catch {
-        if (!cancelled) ls.hideAll();
+        if (!cancelled) { ls.hideAll(); setLayer2Empty(false); }
       }
     })();
     return () => { cancelled = true; };
