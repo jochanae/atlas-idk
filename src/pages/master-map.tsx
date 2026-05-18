@@ -1344,6 +1344,36 @@ export default function MasterMap() {
         })}
       </div>
 
+      {/* Loading overlay — while Layer 2/3 children are being fetched */}
+      {currentLayer >= 2 && layer2Loading && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 39, pointerEvents: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "8px 14px",
+            background: palette.panelBg,
+            border: `1px solid ${palette.panelBorder}`,
+            borderRadius: 999,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+            color: palette.goldText,
+          }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: "50%",
+              border: `1.5px solid ${palette.goldText}`,
+              borderTopColor: "transparent",
+              animation: "mm-spin 0.9s linear infinite",
+            }} />
+            Loading map
+          </div>
+          <style>{`@keyframes mm-spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
       {/* Empty Layer 2 state — project explored but no decisions yet */}
       {currentLayer === 2 && layer2Empty && (
         <div style={{
