@@ -9977,6 +9977,7 @@ export default function Workspace() {
                 trend={readinessTrend}
               />
               {hasLinkedRepo && (
+                <LongPressTip tip="Rescan GitHub repo and update readiness score">
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); if (!isScanning) void runScan(false); }}
@@ -10004,6 +10005,7 @@ export default function Workspace() {
                     }}
                   />
                 </button>
+                </LongPressTip>
               )}
             </div>
             {sessionPrUrl ? (
