@@ -900,12 +900,17 @@ export default function MasterMap() {
     let tStartX = 0, tStartY = 0, tLastX = 0, tLastY = 0;
     let isTouchDrag = false;
     let pinchStartDist = 0, pinchStartZ = CAM_Z;
+    let tStartTime = 0;
+    let lastTapTime = 0, lastTapX = 0, lastTapY = 0;
+    let edgeSwipeCandidate = false;
 
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
         tStartX = tLastX = e.touches[0].clientX;
         tStartY = tLastY = e.touches[0].clientY;
         isTouchDrag = false;
+        tStartTime = performance.now();
+        edgeSwipeCandidate = tStartX < 24 && currentLayerRef.current > 1;
         isDraggingRef.current = false;
       } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -923,7 +928,7 @@ export default function MasterMap() {
           isTouchDrag = true;
           isDraggingRef.current = true;
         }
-        if (isTouchDrag) {
+        if (isTouchDrag && !edgeSwipeCandidate) {
           panRef.current.x += dx * 1.4;
           panRef.current.y -= dy * 1.4;
         }
@@ -941,11 +946,29 @@ export default function MasterMap() {
     const onTouchEnd = (e: TouchEvent) => {
       if (e.touches.length === 0) {
         isDraggingRef.current = false;
+        const t = e.changedTouches[0];
+        // Edge-swipe back: started near left edge and swiped right > 60px
+        if (edgeSwipeCandidate && (t.clientX - tStartX) > 60 && Math.abs(t.clientY - tStartY) < 80) {
+          haptics.tap();
+          goBackRef.current?.();
+          edgeSwipeCandidate = false;
+          isTouchDrag = false;
+          return;
+        }
         if (!isTouchDrag) {
-          const t = e.changedTouches[0];
-          handleClick(t.clientX, t.clientY);
+          const now = performance.now();
+          // Double-tap detection — navigate deeper
+          if (now - lastTapTime < 320 && Math.hypot(t.clientX - lastTapX, t.clientY - lastTapY) < 30) {
+            lastTapTime = 0;
+            handleClick(t.clientX, t.clientY);
+          } else {
+            lastTapTime = now;
+            lastTapX = t.clientX; lastTapY = t.clientY;
+            handleClick(t.clientX, t.clientY);
+          }
         }
         isTouchDrag = false;
+        edgeSwipeCandidate = false;
       }
     };
 
