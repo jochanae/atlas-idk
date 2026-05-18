@@ -2803,12 +2803,9 @@ export default function Home() {
                   type="button"
                   onClick={rotate}
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    borderRadius: 20,
-                    padding: "5px 12px",
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 6px",
                     color: "rgba(212,175,55,0.5)",
                     cursor: "pointer",
                     fontFamily: "var(--app-font-sans)",
@@ -2817,16 +2814,10 @@ export default function Home() {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 5,
-                    transition: "color 160ms ease, box-shadow 160ms ease",
+                    transition: "color 160ms ease",
                   }}
-                  onMouseEnter={(e) => { 
-                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.9)";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(212,175,55,0.15)";
-                  }}
-                  onMouseLeave={(e) => { 
-                    (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.5)";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.9)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.5)"; }}
                 >
                   <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(212,175,55,0.7)", display: "inline-block" }} />
                   need a starting point? <span style={{ fontSize: 12 }}>↻</span>
