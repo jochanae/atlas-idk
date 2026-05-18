@@ -689,11 +689,15 @@ export default function MasterMap() {
     const handleClick = (cx: number, cy: number) => {
       const hits = hitTest(cx, cy);
       if (!hits.length) {
-        // Tap on empty canvas dismisses peek without warping
-        if (peekRef.current) {
+        // Tap on a tension filament shows tooltip; else dismiss peek/tension
+        const th = tensionHitTest();
+        if (th) {
           haptics.tap();
-          setPeek(null);
+          setHoveredTension(th);
+          return;
         }
+        if (peekRef.current) { haptics.tap(); setPeek(null); }
+        if (hoveredTensionRef.current) setHoveredTension(null);
         return;
       }
       const obj = hits[0].object as THREE.Mesh;
