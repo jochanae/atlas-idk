@@ -1995,10 +1995,23 @@ export default function Home() {
                     const el = e.currentTarget;
                     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
                   }}
-                  style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden", paddingRight: 4, position: "relative" }}
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 12,
+                    maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    paddingRight: 4, position: "relative",
+                    border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
+                    borderRadius: reflectionLocked ? 8 : undefined,
+                    padding: reflectionLocked ? "10px 12px" : undefined,
+                    transition: "border-color 200ms",
+                  }}
                 >
+                  {showGoneFlash && homeMessages.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "24px 0", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.08em", animation: "fadeOut 1500ms ease forwards" }}>
+                      Gone.
+                    </div>
+                  )}
                   {homeMessages.map((msg, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: "fadeIn 250ms ease forwards" }}>
+                    <div key={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
                       {msg.role === 'assistant' ? (
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* Model label + intent badge */}
