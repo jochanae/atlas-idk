@@ -8225,6 +8225,8 @@ export default function Workspace() {
   const [chatPending, setChatPending] = useState(false);
   const [agenticMode, setAgenticMode] = useState(true);
   const [agenticIterCount, setAgenticIterCount] = useState(0);
+  useEffect(() => { setAgenticIterCount(0); }, [sessionId]);
+  useEffect(() => { if (!agenticMode) setAgenticIterCount(0); }, [agenticMode]);
   const [activityStream, setActivityStream] = useState<{ active: boolean; content: string }>({ active: false, content: "" });
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
   const [linkedRepo, setLinkedRepo] = useState<LinkedRepo | null>(null);
