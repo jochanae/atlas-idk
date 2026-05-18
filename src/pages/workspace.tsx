@@ -67,7 +67,7 @@ import {
 import { LongPressTip, haptic } from "@/lib/long-press-tip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 44, minHeight: 44, padding: 9 };
+const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
 interface CatchPayload {
   v: number;
@@ -2633,7 +2633,7 @@ function AssistantBubble({
         )}
 
         {/* Action row — icon-only cockpit buttons */}
-        <div style={{ display: "flex", gap: 0, marginTop: 7, marginLeft: -8, opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+        <div style={{ display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
 
           {/* Copy */}
           <button
@@ -2706,13 +2706,14 @@ function AssistantBubble({
               onClick={() => onExtractToForge(message.content)}
               style={{
                 ...ICON_TOUCH_TARGET_STYLE,
-                display: "flex", alignItems: "center", gap: 4,
-                opacity: 1,
-                padding: "4px 7px", borderRadius: 5,
-                border: "1px solid rgba(201,162,76,0.30)",
-                background: "rgba(201,162,76,0.07)",
-                transition: "all 180ms ease",
+                display: "flex", alignItems: "center", gap: 3,
+                opacity: hov ? 0.85 : 0.5,
+                color: "var(--atlas-gold)",
+                background: "transparent",
+                border: "none",
+                transition: "opacity 180ms ease",
               }}
+
 
             >
               <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

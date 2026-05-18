@@ -883,8 +883,8 @@ html.atlas-landing-active,
   .blueprint-section-label { color: #8B6914 !important; }
 }
 
-/* Compact input action row on tiny screens so Send stays on one line */
-@media (max-width: 419px) {
+/* Compact input action row on phone/tablet so Send stays on one line and icons sit tight */
+@media (max-width: 900px) {
   .atlas-input-actionrow > div > label,
   .atlas-input-actionrow > div > button,
   .atlas-input-actionrow > div > div > button {
@@ -899,3 +899,4 @@ html.atlas-landing-active,
     min-height: 36px !important;
   }
 }
+
