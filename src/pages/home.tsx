@@ -1883,8 +1883,12 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }, [homeMessages]);
 
-  const handleKeyDown = (_e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter adds a new line naturally — send via the send button
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Issue found: Enter submits were a no-op, and the send button was gated by project loading instead of chat sending.
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      void handleSubmit();
+    }
   };
 
   const autoResize = () => {
@@ -2912,16 +2916,16 @@ export default function Home() {
                 <button
                   className="atlas-send-btn"
                   onClick={handleSubmit}
-                  disabled={isLoading}
+                  disabled={isSending}
                   style={{
                     width: 40, height: 40, flexShrink: 0,
-                    background: hasInput && !isLoading ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
+                    background: hasInput && !isSending ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
                     border: hasInput ? "none" : "1px solid var(--atlas-border)",
-                    boxShadow: hasInput && !isLoading ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
-                    opacity: isLoading ? 0.5 : 1,
+                    boxShadow: hasInput && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
+                    opacity: isSending ? 0.5 : 1,
                   }}
                 >
-                  {isLoading ? (
+                  {isSending ? (
                     <LoadingSpinner size="sm" color="ember" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={13} height={13}
