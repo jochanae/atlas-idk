@@ -2731,7 +2731,7 @@ export default function Home() {
             </div>
 
             {/* Bottom action bar */}
-            <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
               {/* History clock */}
               <button
                 onClick={handleOpenHistory}
