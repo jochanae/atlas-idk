@@ -1551,26 +1551,38 @@ export default function Home() {
     const fullText = text + suffix;
 
     // Use first image for display preview, safe-resize for API (always caps at 7000px — no raw fallback)
-    let imageUrl: string | undefined;
+    const imageUrl = imageFiles.length > 0 ? URL.createObjectURL(imageFiles[0]) : undefined;
+    // Append image count note if multiple were attached
+    const imageNote = imageFiles.length > 1 ? ` [${imageFiles.length} images attached — showing first]` : "";
+    const messageText = fullText + imageNote;
+
+    const userMessageCreatedAt = new Date().toISOString();
+    const userMessage: HomeMessage = { role: 'user', content: messageText, imageUrl, createdAt: userMessageCreatedAt };
+    const appendUserMessageIfMissing = () => {
+      setHomeMessages(prev =>
+        prev.some(m => m.role === 'user' && m.content === messageText && m.createdAt === userMessageCreatedAt)
+          ? prev
+          : [...prev, userMessage]
+      );
+    };
+
+    appendUserMessageIfMissing();
+
     let imageBase64: string | undefined;
     let imageMimeType: string | undefined;
     if (imageFiles.length > 0) {
-      imageUrl = URL.createObjectURL(imageFiles[0]);
       try {
         const safe = await fileToBase64Safe(imageFiles[0]);
         imageBase64 = safe.base64;
         imageMimeType = safe.mediaType;
       } catch {
         // If resize fails entirely, skip the image and continue with text only
-        imageUrl = undefined;
+        setHomeMessages(prev => prev.map(m => (
+          m === userMessage ? { ...m, imageUrl: undefined } : m
+        )));
       }
     }
 
-    // Append image count note if multiple were attached
-    const imageNote = imageFiles.length > 1 ? ` [${imageFiles.length} images attached — showing first]` : "";
-    const messageText = fullText + imageNote;
-
-    setHomeMessages(prev => [...prev, { role: 'user', content: messageText, imageUrl, createdAt: new Date().toISOString() }]);
     setIsAtlasStreaming(true);
     const streamingId = Date.now().toString();
     try {
@@ -1588,6 +1600,7 @@ export default function Home() {
         setAttachedFiles(files);
         return;
       }
+      appendUserMessageIfMissing();
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buf = "";
