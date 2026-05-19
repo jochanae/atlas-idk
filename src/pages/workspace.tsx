@@ -11085,7 +11085,7 @@ export default function Workspace() {
               }}
             >
               <div style={{ position: "relative" }}>
-                {!hasInput && (
+                {!hasInput && !inputFocused && (
                   <div
                     aria-hidden
                     style={{
@@ -11103,6 +11103,8 @@ export default function Workspace() {
                   aria-label="Message Atlas"
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(); }}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
                   onKeyDown={handleKeyDown}
                   rows={1}
                   style={{
