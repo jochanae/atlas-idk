@@ -8329,6 +8329,7 @@ export default function Workspace() {
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [wsComposerFocused, setWsComposerFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initialSent = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -11103,6 +11104,8 @@ export default function Workspace() {
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(); }}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setWsComposerFocused(true)}
+                  onBlur={() => setWsComposerFocused(false)}
                   rows={1}
                   style={{
                     width: "100%", background: "transparent", border: "none", outline: "none",
@@ -11310,7 +11313,7 @@ export default function Workspace() {
                   )}
                 </div>
 
-                {!isTinyScreen && (
+                {!isTinyScreen && !wsComposerFocused && !input && (
                   <span style={{ flex: 1, textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.3 }}>
                     {isMobile ? "type / for shortcuts" : "Enter · Shift+Enter for newline"}
                   </span>
