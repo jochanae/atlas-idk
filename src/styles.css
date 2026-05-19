@@ -576,7 +576,7 @@ html, body {
 /* 16px invisible hit area, 1px visible gold thread */
 .atlas-resize-thread {
   width: 1px;
-  background: var(--atlas-border);
+  background: transparent;
   transition: background 200ms;
   pointer-events: none;
 }
