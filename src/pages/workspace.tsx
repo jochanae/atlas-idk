@@ -6985,9 +6985,11 @@ function RightPanel({
       <div
         style={{
           display: isMobile ? "none" : "flex", alignItems: "center",
-          borderBottom: "1px solid var(--atlas-border)",
           flexShrink: 0,
-          paddingLeft: 4,
+          paddingLeft: 6,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          whiteSpace: "nowrap",
         }}
       >
         {!isMobile && tabs.filter(t => t.id !== "map").map((t) => {
