@@ -28,7 +28,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, Lock, Search } from "lucide-react";
+import { Briefcase, Lock, LockOpen, Search } from "lucide-react";
 import { ThoughtForBadge } from "../components/ThoughtForBadge";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 
@@ -2096,11 +2096,15 @@ export default function Home() {
                 style={{
                   background: "transparent", border: "none", padding: 0, cursor: "pointer",
                   color: "var(--atlas-gold)",
-                  opacity: reflectionLocked ? 1 : 0.4,
+                  opacity: reflectionLocked ? 1 : 0.5,
                   lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
                 }}
               >
-                <Lock size={11} strokeWidth={2} />
+                {reflectionLocked ? (
+                  <Lock size={11} strokeWidth={2} />
+                ) : (
+                  <LockOpen size={11} strokeWidth={2} />
+                )}
               </button>
             </div>
             {reflectionLocked && (
