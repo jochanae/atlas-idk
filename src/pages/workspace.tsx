@@ -11103,6 +11103,8 @@ export default function Workspace() {
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(); }}
                   onKeyDown={handleKeyDown}
+                  onFocus={() => setWsComposerFocused(true)}
+                  onBlur={() => setWsComposerFocused(false)}
                   rows={1}
                   style={{
                     width: "100%", background: "transparent", border: "none", outline: "none",
