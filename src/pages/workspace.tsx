@@ -8329,6 +8329,7 @@ export default function Workspace() {
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [wsComposerFocused, setWsComposerFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initialSent = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
