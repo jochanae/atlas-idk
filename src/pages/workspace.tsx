@@ -155,6 +155,54 @@ interface LinkedRepo {
   name: string;
 }
 
+type AccountConnection = {
+  type?: string | null;
+  token?: string | null;
+  accessToken?: string | null;
+  githubToken?: string | null;
+  meta?: {
+    token?: string | null;
+    accessToken?: string | null;
+    githubToken?: string | null;
+  } | null;
+};
+
+type AccountGithubTokenState =
+  | { loaded: false }
+  | { loaded: true; hasConnection: boolean; token: string | null };
+
+function githubTokenFromConnection(connection: AccountConnection): string | null {
+  return connection.token ?? connection.accessToken ?? connection.githubToken ??
+    connection.meta?.token ?? connection.meta?.accessToken ?? connection.meta?.githubToken ?? null;
+}
+
+function useGithubPushToken(projectToken?: string | null): string | null {
+  const [accountTokenState, setAccountTokenState] = useState<AccountGithubTokenState>({ loaded: false });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/connections", { credentials: "include" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (cancelled) return;
+        const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
+        const githubConnection = connections.find((connection) => connection?.type === "github");
+        setAccountTokenState({
+          loaded: true,
+          hasConnection: !!githubConnection,
+          token: githubConnection ? githubTokenFromConnection(githubConnection) : null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setAccountTokenState({ loaded: true, hasConnection: false, token: null });
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!accountTokenState.loaded) return null;
+  return accountTokenState.hasConnection ? accountTokenState.token : projectToken ?? null;
+}
+
 type RightTab = "ledger" | "blueprints" | "files" | "preview" | "memory" | "map" | "terminal";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
@@ -992,7 +1040,7 @@ function GitHubPushModal({
   const [localApplyError, setLocalApplyError] = useState<string | null>(null);
 
   const { data: modalProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
-  const token = modalProject?.githubToken ?? null;
+  const token = useGithubPushToken(modalProject?.githubToken);
 
   useEffect(() => {
     setConfirmPush(false);
@@ -1016,7 +1064,7 @@ function GitHubPushModal({
       if (!cancelled) { setOriginalContents(originals); setLoadingOriginals(false); }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [fileEdits, linkedRepo, token]);
 
   const currentFile = fileEdits[selectedIdx] ?? fileEdits[0];
   const currentOriginal = originalContents[selectedIdx] ?? null;
@@ -1592,7 +1640,7 @@ function LinePatchReviewCard({
   const [showPushModal, setShowPushModal] = useState(false);
 
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
-  const token = project?.githubToken ?? null;
+  const token = useGithubPushToken(project?.githubToken);
 
   const pathGroups = useMemo(() => {
     const groups: Record<string, LinePatch[]> = {};
@@ -1743,7 +1791,7 @@ function InlineDiffCard({
   const pushSucceededRef = useRef(false);
 
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
-  const token = project?.githubToken ?? null;
+  const token = useGithubPushToken(project?.githubToken);
   const fileEditKey = fileEdits.map((edit) => `${edit.path}:${edit.content.length}`).join("|");
 
   useEffect(() => {
@@ -2139,7 +2187,7 @@ function AssistantBubble({
   const activeEdits = message.fileEdits ?? (message.fileEdit ? [message.fileEdit] : []);
   const planMessageId = message.id ?? 0;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
-  const planGithubToken = planProject?.githubToken ?? null;
+  const planGithubToken = useGithubPushToken(planProject?.githubToken);
   const imageSrc = message.imageB64 ? `data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}` : "";
 
   // Parse CMD_EXEC block from Atlas response
@@ -8387,6 +8435,7 @@ export default function Workspace() {
 
   const { data: allProjects } = useListProjects();
   const { data: project, isLoading: projectLoading } = useGetProject(id, { query: { enabled: !!id, queryKey: getGetProjectQueryKey(id) } });
+  const githubPushToken = useGithubPushToken(project?.githubToken);
   // True when forge has run this session OR when saved AxiomFlow nodes exist for this project
   const hasForgeNodes = forgeContext !== null ||
     Object.keys((project?.nodeState ?? {}) as Record<string, unknown>)
@@ -8492,7 +8541,7 @@ export default function Workspace() {
 
   const handlePushAll = useCallback(async (fileEdits: FileEdit[]) => {
     if (!linkedRepo) return;
-    const token = project?.githubToken ?? null;
+    const token = githubPushToken;
     if (!token) return;
     const today = new Date().toISOString().slice(0, 10);
     const branch = `atlas/auto-${today}-${Date.now().toString(36).slice(-4)}`;
@@ -8546,7 +8595,7 @@ export default function Workspace() {
     } catch (e: unknown) {
       toast.error(`AUTO push failed: ${e instanceof Error ? e.message : "unknown error"}`);
     }
-  }, [linkedRepo, project, autoRunCmd]);
+  }, [linkedRepo, githubPushToken, autoRunCmd]);
 
   useEffect(() => {
     if (trustMode !== "auto") return;
@@ -9244,7 +9293,7 @@ export default function Workspace() {
   );
 
   const handleRollbackPush = useCallback(async (record: PushRecord) => {
-    const token = project?.githubToken ?? null;
+    const token = githubPushToken;
     if (!linkedRepo || !token || !record.originalContent) return;
     await fetch("/api/github/commit", {
       method: "PUT",
@@ -9256,7 +9305,7 @@ export default function Workspace() {
       }),
     });
     setPushHistory((prev) => prev.map((r) => r.id === record.id ? { ...r, rolledBack: true } : r));
-  }, [linkedRepo]);
+  }, [linkedRepo, githubPushToken]);
 
   const handleVoiceTranscript = useCallback((text: string) => {
     setInput((prev) => (prev ? `${prev} ${text}` : text));
