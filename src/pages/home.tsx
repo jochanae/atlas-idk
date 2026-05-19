@@ -2867,12 +2867,15 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Center hint — hidden on tiny screens; sits inline (auto-margin on right group handles spacing) */}
+              {/* Center hint — absolutely centered in the input row */}
               {!isTinyScreen && (
                 <span style={{
+                  position: "absolute", left: "50%", top: "50%",
+                  transform: "translate(-50%, -50%)",
                   fontFamily: "var(--app-font-mono)", fontSize: 10.5,
                   letterSpacing: "0.05em", color: "rgba(120,113,108,0.3)",
                   userSelect: "none", pointerEvents: "none",
+                  whiteSpace: "nowrap",
                 }}>
                   type a message...
                 </span>
