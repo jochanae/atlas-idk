@@ -8031,6 +8031,7 @@ export default function Workspace() {
   const [scenarioBuffer, setScenarioBuffer] = useState<Array<{ role: string; content: string }>>([]);
   const [showWsModelSheet, setShowWsModelSheet] = useState(false);
   const [rightFullscreen, setRightFullscreen] = useState(false);
+  const [desktopRightFull, setDesktopRightFull] = useState(false);
   const [showSrcPicker, setShowSrcPicker] = useState(false);
   const [srcReadLoading, setSrcReadLoading] = useState(false);
   const [showDeepDiveMenu, setShowDeepDiveMenu] = useState(false);
