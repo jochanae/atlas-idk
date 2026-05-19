@@ -30,7 +30,6 @@ import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, Search } from "lucide-react";
 import { ThoughtForBadge } from "../components/ThoughtForBadge";
-import { RunSummaryBlock, RunStatusBadge } from "../components/RunSummary";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 
 const PLACEHOLDERS = [
@@ -2402,9 +2401,6 @@ export default function Home() {
                                 color: msg.intentType === "BUILD" ? "#4ade80" : "var(--atlas-gold)",
                               }}>{msg.intentType}</span>
                             )}
-                            {!msg.streaming && msg.runStatus && (
-                              <RunStatusBadge status={msg.runStatus} />
-                            )}
                           </div>
                           {/* Bubble */}
                           <div style={{
@@ -2416,14 +2412,6 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
-                          {!msg.streaming && (msg.runActions?.length || msg.runArtifacts?.length || msg.runSummary || msg.errorMessage) && (
-                            <RunSummaryBlock
-                              status={msg.runStatus}
-                              summary={msg.runSummary ?? msg.errorMessage ?? null}
-                              actions={msg.runActions}
-                              artifacts={msg.runArtifacts}
-                            />
-                          )}
                           {!msg.streaming && (
                             <ThoughtForBadge
                               metrics={{
