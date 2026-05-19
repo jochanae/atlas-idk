@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -1111,6 +1111,9 @@ export default function Home() {
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
+  const [showOverviewSheet, setShowOverviewSheet] = useState(false);
+  const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
+  const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
@@ -1531,6 +1534,64 @@ export default function Home() {
       setLocation(`/project/${projectId}`);
     },
     [input, setLocation]
+  );
+
+  const openOverviewSheet = useCallback(() => {
+    if (overviewCloseTimerRef.current) {
+      window.clearTimeout(overviewCloseTimerRef.current);
+      overviewCloseTimerRef.current = null;
+    }
+    setIsOverviewSheetClosing(false);
+    setShowOverviewSheet(true);
+  }, []);
+
+  const closeOverviewSheet = useCallback(() => {
+    setIsOverviewSheetClosing(true);
+    if (overviewCloseTimerRef.current) {
+      window.clearTimeout(overviewCloseTimerRef.current);
+    }
+    overviewCloseTimerRef.current = window.setTimeout(() => {
+      setShowOverviewSheet(false);
+      setIsOverviewSheetClosing(false);
+      overviewCloseTimerRef.current = null;
+    }, 250);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (overviewCloseTimerRef.current) {
+        window.clearTimeout(overviewCloseTimerRef.current);
+      }
+    };
+  }, []);
+
+  const renderOverviewDashboard = (closeOnNavigate = false) => (
+    <BelowFoldDashboard
+      projects={(projects ?? []).map((p: Project) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        updatedAt: p.createdAt,
+        latestSnapshotScore: p.latestSnapshotScore ?? null,
+      }))}
+      onOpenProject={(id) => {
+        if (closeOnNavigate) closeOverviewSheet();
+        navigateToProject(id);
+      }}
+      onOpenLedger={() => {
+        if (closeOnNavigate) closeOverviewSheet();
+        const p = projects?.[0];
+        if (p) setLocation(`/ledger/${p.id}`);
+      }}
+      onOpenParking={() => {
+        if (closeOnNavigate) closeOverviewSheet();
+        setLocation("/parking");
+      }}
+      parkedCount={0}
+      committedCount={0}
+      briefing={briefing}
+      briefingLoading={briefingLoading}
+    />
   );
 
 
@@ -2306,6 +2367,7 @@ export default function Home() {
 
       {/* Main content */}
       <div
+        className="atlas-home-responsive-shell"
         style={{
           flex: 1,
           display: "flex",
@@ -2313,7 +2375,8 @@ export default function Home() {
           padding: "0 24px",
         }}
       >
-        <div style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
+        <div className="atlas-home-chat-column">
+        <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
           <div style={{ minHeight: homeMessages.length > 0 ? 0 : "calc(100svh - 50px - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: homeMessages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: homeMessages.length > 0 ? 0 : 120 }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
@@ -3114,33 +3177,20 @@ export default function Home() {
           </div>{/* end hero */}
 
         </div>
+        </div>
+        <aside className="atlas-home-desktop-overview" aria-label="Overview">
+          <div className="atlas-home-desktop-overview-scroll">
+            {renderOverviewDashboard()}
+          </div>
+        </aside>
       </div>
 
       {/* Below-the-fold: Recent Activity / Discovery section */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
+      <div className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
         <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
           <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
         </div>
-        <BelowFoldDashboard
-          projects={(projects ?? []).map((p: Project) => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            updatedAt: p.createdAt,
-            latestSnapshotScore: p.latestSnapshotScore ?? null,
-          }))}
-          onOpenProject={navigateToProject}
-          onOpenLedger={() => {
-            const p = projects?.[0];
-            if (p) setLocation(`/ledger/${p.id}`);
-          }}
-          onOpenParking={() => setLocation("/parking")}
-          
-          parkedCount={0}
-          committedCount={0}
-          briefing={briefing}
-          briefingLoading={briefingLoading}
-        />
+        {renderOverviewDashboard()}
       </div>
 
       {showBriefingPanel && (
@@ -3300,7 +3350,16 @@ export default function Home() {
         />
       )}
 
-      {/* Fixed 5-item bottom nav — true flex row, even spacing */}
+      {showOverviewSheet && (
+        <OverviewBottomSheet
+          closing={isOverviewSheetClosing}
+          onClose={closeOverviewSheet}
+        >
+          {renderOverviewDashboard(true)}
+        </OverviewBottomSheet>
+      )}
+
+      {/* Fixed bottom nav — true flex row, even spacing */}
       <style>{`
         @keyframes homePurpleAtmosphere {
           0%, 100% { opacity: 0.45; }
@@ -3321,8 +3380,120 @@ export default function Home() {
               0 0 44px 12px rgba(212,175,55,0.14);
           }
         }
+        @keyframes atlasOverviewSheetUp {
+          from { transform: translateY(100%); }
+          to   { transform: translateY(0); }
+        }
+        @keyframes atlasOverviewSheetDown {
+          from { transform: translateY(0); }
+          to   { transform: translateY(100%); }
+        }
+        .atlas-home-chat-column {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          min-width: 0;
+        }
+        .atlas-home-desktop-overview {
+          display: none;
+        }
+        .atlas-overview-sheet-layer {
+          position: fixed;
+          inset: 0;
+          z-index: 220;
+          display: flex;
+          align-items: flex-end;
+        }
+        .atlas-overview-scrim {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0.5);
+        }
+        .atlas-overview-bottom-sheet {
+          position: relative;
+          width: 100%;
+          height: 78dvh;
+          background: var(--atlas-bg);
+          border: 1px solid var(--atlas-border);
+          border-bottom: none;
+          border-radius: 20px 20px 0 0;
+          display: flex;
+          flex-direction: column;
+          animation: atlasOverviewSheetUp 300ms ease-out both;
+        }
+        .atlas-overview-bottom-sheet.is-closing {
+          animation: atlasOverviewSheetDown 250ms ease-in both;
+        }
+        .atlas-overview-sheet-handle {
+          width: 40px;
+          height: 4px;
+          border-radius: 999px;
+          background: var(--atlas-border);
+          margin: 12px auto 8px;
+          flex-shrink: 0;
+        }
+        .atlas-overview-sheet-scroll {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          padding: 0 16px max(20px, env(safe-area-inset-bottom));
+        }
+        .atlas-overview-sheet-scroll > .atlas-below-fold-dashboard {
+          max-width: none !important;
+          padding-bottom: 0 !important;
+        }
+        @media (max-width: 767px) {
+          .atlas-home-tablet-overview {
+            display: none !important;
+          }
+        }
+        @media (min-width: 768px) {
+          .atlas-overview-sheet-layer {
+            display: none;
+          }
+        }
+        @media (min-width: 1024px) {
+          .atlas-home-responsive-shell {
+            width: min(calc(100% - 48px), 1100px);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 !important;
+            display: grid !important;
+            grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
+            gap: 20px;
+            align-items: start;
+            justify-content: initial !important;
+          }
+          .atlas-home-chat-column {
+            justify-content: stretch;
+          }
+          .atlas-home-chat-inner {
+            max-width: none !important;
+            padding-bottom: 48px !important;
+          }
+          .atlas-home-desktop-overview {
+            display: block;
+            min-width: 0;
+            max-height: calc(100svh - 32px);
+            position: sticky;
+            top: 16px;
+          }
+          .atlas-home-desktop-overview-scroll {
+            max-height: inherit;
+            overflow-y: auto;
+            padding-right: 4px;
+          }
+          .atlas-home-desktop-overview-scroll > .atlas-below-fold-dashboard {
+            max-width: none !important;
+            padding-bottom: 24px !important;
+          }
+          .atlas-home-tablet-overview,
+          .atlas-home-bottom-nav {
+            display: none !important;
+          }
+        }
       `}</style>
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, overflow: "visible" }}>
+      <div className="atlas-home-bottom-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, overflow: "visible" }}>
         {/* Arch SVG — visual layer only */}
         <svg
           style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
@@ -3342,7 +3513,7 @@ export default function Home() {
           />
         </svg>
 
-        {/* 5-item flex row — interaction layer */}
+        {/* Flex row — interaction layer */}
         <div style={{
           position: "relative",
           display: "flex",
@@ -3362,6 +3533,18 @@ export default function Home() {
               <polyline points="9,22 9,12 15,12 15,22" />
             </svg>
             <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.9)", fontWeight: 700 }}>Home</span>
+          </button>
+
+          {/* OVERVIEW */}
+          <button
+            onClick={openOverviewSheet}
+            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 0" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={showOverviewSheet ? "var(--atlas-gold)" : "var(--atlas-muted)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M7 8h10M7 12h6M7 16h8" />
+            </svg>
+            <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: showOverviewSheet ? "var(--atlas-gold)" : "var(--atlas-muted)" }}>Overview</span>
           </button>
 
           {/* PROJECTS */}
@@ -3440,6 +3623,51 @@ export default function Home() {
 
         </div>
       </div>
+    </div>
+  );
+}
+
+function OverviewBottomSheet({
+  closing,
+  onClose,
+  children,
+}: {
+  closing: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartScrollTopRef = useRef(0);
+
+  return (
+    <div className="atlas-overview-sheet-layer" role="presentation">
+      <div className="atlas-overview-scrim" onClick={onClose} />
+      <section
+        className={`atlas-overview-bottom-sheet${closing ? " is-closing" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Overview"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => {
+          touchStartYRef.current = e.touches[0]?.clientY ?? null;
+          touchStartScrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
+        }}
+        onTouchEnd={(e) => {
+          const startY = touchStartYRef.current;
+          if (startY === null) return;
+          const endY = e.changedTouches[0]?.clientY ?? startY;
+          if (endY - startY > 70 && touchStartScrollTopRef.current <= 0) {
+            onClose();
+          }
+          touchStartYRef.current = null;
+        }}
+      >
+        <div className="atlas-overview-sheet-handle" aria-hidden />
+        <div ref={scrollRef} className="atlas-overview-sheet-scroll">
+          {children}
+        </div>
+      </section>
     </div>
   );
 }

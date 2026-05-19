@@ -241,7 +241,7 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
   const actualParked = parkedCount ?? projects.length;
 
   return (
-    <div style={{ width: "100%", maxWidth: 560, padding: "0 0 120px", display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="atlas-below-fold-dashboard" style={{ width: "100%", maxWidth: 560, padding: "0 0 120px", display: "flex", flexDirection: "column", gap: 14 }}>
       <style>{`
         @keyframes briefingSlideDown {
           from { opacity: 0; transform: translateY(-6px); }
