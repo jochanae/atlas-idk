@@ -8491,6 +8491,7 @@ export default function Workspace() {
   const { data: entries } = useListEntries(id, {}, { query: { enabled: !!id, queryKey: getListEntriesQueryKey(id, {}) } });
   const createSession = useCreateSession();
   const createEntry = useCreateEntry();
+  const creatingSessionRef = useRef<Promise<number> | null>(null);
   const [parkedEntries, setParkedEntries] = useState<Entry[]>([]);
   const [showParkingDrawer, setShowParkingDrawer] = useState(false);
 
@@ -8808,22 +8809,30 @@ export default function Workspace() {
     if (id) { try { localStorage.setItem("atlas-last-project", String(id)); } catch {} }
   }, [id]);
 
+  const ensureSessionId = useCallback(async () => {
+    if (sessionId) return sessionId;
+    if (!creatingSessionRef.current) {
+      creatingSessionRef.current = createSession.mutateAsync(
+        { projectId: id, data: { title: "Session", mode: "think" } }
+      ).then((s) => {
+        setSessionId(s.id);
+        queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
+        return s.id;
+      }).finally(() => {
+        creatingSessionRef.current = null;
+      });
+    }
+    return creatingSessionRef.current;
+  }, [createSession, id, queryClient, sessionId]);
+
   useEffect(() => {
     if (sessionsLoading) return;
     if (sessions && sessions.length > 0) {
-      setSessionId(sessions[0].id);
-    } else if (!createSession.isPending && !sessionId) {
-      createSession.mutate(
-        { projectId: id, data: { title: "Session", mode: "think" } },
-        {
-          onSuccess: (s) => {
-            setSessionId(s.id);
-            queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
-          },
-        }
-      );
+      if (!sessionId) setSessionId(sessions[0].id);
+    } else if (!sessionId) {
+      void ensureSessionId();
     }
-  }, [sessions, sessionsLoading, id]);
+  }, [ensureSessionId, sessionId, sessions, sessionsLoading]);
 
   // Always-current ref so doSend doesn't capture stale state
   sendCtxRef.current = { wsLens, wsModel };
@@ -9221,9 +9230,13 @@ export default function Workspace() {
     el.style.height = Math.min(el.scrollHeight, 180) + "px";
   };
 
-  const handleSend = () => {
+  const sendPreparingSession = !sessionId && (sessionsLoading || createSession.isPending);
+
+  const handleSend = async () => {
     const text = input.trim();
-    if (!text || !sessionId || chatPending) return;
+    if (!text || chatPending) return;
+    const sid = sessionId ?? await ensureSessionId().catch(() => null);
+    if (!sid) return;
     setShowHomeHandoffBanner(false);
     // Auto-dismiss any active catch — user chose to keep moving
     if (activeCatch) {
@@ -9246,10 +9259,10 @@ export default function Workspace() {
 
     if (imageFile) {
       fileToBase64Safe(imageFile)
-        .then(({ base64, mediaType }) => doSend(fullText, sessionId, current, undefined, { base64, mediaType }))
-        .catch(() => doSend(fullText, sessionId, current));
+        .then(({ base64, mediaType }) => doSend(fullText, sid, current, undefined, { base64, mediaType }))
+        .catch(() => doSend(fullText, sid, current));
     } else {
-      doSend(fullText, sessionId, current);
+      doSend(fullText, sid, current);
     }
   };
 
@@ -11493,22 +11506,28 @@ export default function Workspace() {
                     <button
                       className="atlas-send-btn"
                       onClick={handleSend}
-                      disabled={!hasInput || !sessionId}
-                      aria-label="Send message"
+                      disabled={!hasInput || createSession.isPending}
+                      aria-label={sendPreparingSession ? "Preparing session" : "Send message"}
                       style={{
                         minWidth: 44, minHeight: 44, padding: 3,
-                        background: hasInput && sessionId ? "var(--atlas-ember)" : "var(--atlas-surface)",
+                        background: hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "var(--atlas-surface)",
                         border: hasInput ? "none" : "1px solid var(--atlas-border)",
                         boxShadow: hasInput ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
                       }}
                     >
-                      <svg viewBox="0 0 20 20" width={13} height={13}
-                        fill={hasInput ? "var(--atlas-fg)" : "none"}
-                        stroke={hasInput ? "var(--atlas-fg)" : "var(--atlas-muted)"}
-                        strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
-                        <path d="M17 3 9.5 11.5" />
-                      </svg>
+                      {sendPreparingSession ? (
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ animation: "spin 1s linear infinite" }}>
+                          <circle cx="8" cy="8" r="6" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeDasharray="10 6" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 20 20" width={13} height={13}
+                          fill={hasInput ? "var(--atlas-fg)" : "none"}
+                          stroke={hasInput ? "var(--atlas-fg)" : "var(--atlas-muted)"}
+                          strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
+                          <path d="M17 3 9.5 11.5" />
+                        </svg>
+                      )}
                     </button>
                   )}
                 </div>
