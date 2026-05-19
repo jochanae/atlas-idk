@@ -10404,18 +10404,23 @@ export default function Workspace() {
         {/* Left: Chat */}
         <div
           style={{
-            width: isMobile ? "100%" : `${chatWidthPct}%`,
-            minWidth: isMobile ? 0 : 300,
+            width: isMobile ? "100%" : (desktopRightFull ? 0 : `${chatWidthPct}%`),
+            minWidth: isMobile ? 0 : (desktopRightFull ? 0 : 300),
             flexShrink: 0,
-            display: "flex",
+            display: desktopRightFull && !isMobile ? "none" : "flex",
             flexDirection: "column",
-            background: "var(--atlas-bg)",
+            background: "var(--atlas-surface-alt)",
             overflow: "hidden",
             position: "relative",
+            margin: isMobile ? 0 : "8px 0 8px 8px",
+            borderRadius: isMobile ? 0 : 14,
+            border: isMobile ? "none" : "1px solid var(--atlas-border)",
+            boxShadow: isMobile ? "none" : "0 4px 18px rgba(0,0,0,0.25)",
           }}
         >
           {/* ── Chat / Diff / Terminal tab strip ── */}
-          <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, paddingLeft: 4, background: "var(--atlas-glass-bg)" }}>
+          <div style={{ display: "flex", alignItems: "center", flexShrink: 0, paddingLeft: 4, background: "transparent" }}>
+
             {(["chat", "diff", "blueprints", "terminal"] as const).filter(tab => {
               if (tab === "terminal") return wsLens === "build" || wsLens === "scenario";
               if (tab === "blueprints") return isMobile;
