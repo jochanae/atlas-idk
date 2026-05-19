@@ -26,7 +26,7 @@ import { CommitCard } from "../components/CommitCard";
 import { PlanCard } from "../components/PlanCard";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { StreamingMarkdown, MarkdownProse } from "../components/MessageRenderer";
-import { Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { Download, Eye, RefreshCw, TerminalSquare, X } from "lucide-react";
 import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
@@ -2135,10 +2135,12 @@ function AssistantBubble({
   const [selfApplyStatus, setSelfApplyStatus] = useState<"idle" | "applying" | "done" | "error">("idle");
   const [selfApplyMsg, setSelfApplyMsg] = useState("");
   const [commitCardDone, setCommitCardDone] = useState(false);
+  const [imageExpanded, setImageExpanded] = useState(false);
   const activeEdits = message.fileEdits ?? (message.fileEdit ? [message.fileEdit] : []);
   const planMessageId = message.id ?? 0;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const planGithubToken = planProject?.githubToken ?? null;
+  const imageSrc = message.imageB64 ? `data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}` : "";
 
   // Parse CMD_EXEC block from Atlas response
   const { cmdExec, cleanContent } = useMemo(() => {
@@ -2303,6 +2305,14 @@ function AssistantBubble({
     }
   };
 
+  const handleDownloadImage = () => {
+    if (!imageSrc) return;
+    const link = document.createElement("a");
+    link.href = imageSrc;
+    link.download = "atlas-sketch.png";
+    link.click();
+  };
+
   return (
     <div
       className="atlas-bubble-in"
@@ -2399,11 +2409,93 @@ function AssistantBubble({
 
         {message.imageB64 && (
           <div style={{ marginBottom: 12 }}>
-            <img
-              src={`data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}`}
-              alt="Generated visual"
-              style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid rgba(201,162,76,0.2)", display: "block" }}
-            />
+            <button
+              type="button"
+              onClick={() => setImageExpanded(true)}
+              aria-label="Expand generated visual"
+              style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", display: "block", maxWidth: "100%" }}
+            >
+              <img
+                src={imageSrc}
+                alt="Generated visual"
+                style={{ maxWidth: "100%", borderRadius: 10, border: "1px solid rgba(201,162,76,0.2)", display: "block" }}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadImage}
+              aria-label="Download generated visual"
+              title="Download"
+              style={{
+                marginTop: 6,
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                border: "1px solid var(--atlas-border)",
+                background: "var(--atlas-glass-bg)",
+                color: "var(--atlas-muted)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <Download size={13} strokeWidth={1.7} />
+            </button>
+            {imageExpanded && createPortal(
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Expanded generated visual"
+                onClick={() => setImageExpanded(false)}
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 10000,
+                  background: "var(--atlas-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 24,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setImageExpanded(false)}
+                  aria-label="Close expanded visual"
+                  style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    border: "1px solid var(--atlas-border)",
+                    background: "var(--atlas-glass-bg)",
+                    color: "var(--atlas-fg)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                >
+                  <X size={18} strokeWidth={1.8} />
+                </button>
+                <img
+                  src={imageSrc}
+                  alt="Generated visual"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    borderRadius: 12,
+                    border: "1px solid var(--atlas-border)",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>,
+              document.body
+            )}
           </div>
         )}
 
