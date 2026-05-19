@@ -6985,9 +6985,11 @@ function RightPanel({
       <div
         style={{
           display: isMobile ? "none" : "flex", alignItems: "center",
-          borderBottom: "1px solid var(--atlas-border)",
           flexShrink: 0,
-          paddingLeft: 4,
+          paddingLeft: 6,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          whiteSpace: "nowrap",
         }}
       >
         {!isMobile && tabs.filter(t => t.id !== "map").map((t) => {
@@ -6998,7 +7000,7 @@ function RightPanel({
               onClick={() => setTab(t.id)}
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                padding: "10px 12px",
+                padding: "10px 10px",
                 background: "transparent", border: "none",
                 borderBottom: `2px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
                 cursor: "pointer",
@@ -7007,9 +7009,10 @@ function RightPanel({
                 transition: "all 160ms ease",
                 fontFamily: "var(--app-font-mono)",
                 fontSize: 9.5,
-                letterSpacing: "0.12em",
+                letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: -1,
+                flexShrink: 0,
               }}
               onMouseEnter={(e) => { if (!active) e.currentTarget.style.opacity = "0.8"; }}
               onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = "0.55"; }}
@@ -7090,7 +7093,7 @@ function RightPanel({
       {tab === "ledger" && (
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
           {/* Sub-tab bar */}
-          <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+          <div style={{ display: "flex", flexShrink: 0 }}>
             {(["entries", "memory"] as const).map(st => (
               <button
                 key={st}
