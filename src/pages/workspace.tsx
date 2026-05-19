@@ -11313,7 +11313,7 @@ export default function Workspace() {
                   )}
                 </div>
 
-                {!isTinyScreen && (
+                {!isTinyScreen && !wsComposerFocused && !input && (
                   <span style={{ flex: 1, textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.3 }}>
                     {isMobile ? "type / for shortcuts" : "Enter · Shift+Enter for newline"}
                   </span>
