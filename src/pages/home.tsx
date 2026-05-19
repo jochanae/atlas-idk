@@ -3013,9 +3013,6 @@ export default function Home() {
                       >
                         {it.label}
                       </button>
-                      {i < intents.length - 1 && (
-                        <span aria-hidden style={{ opacity: 0.4, userSelect: "none" }}>·</span>
-                      )}
                     </span>
                   ))}
                 </div>
