@@ -9236,6 +9236,7 @@ export default function Workspace() {
 
 
   const hasInput = input.trim().length > 0;
+  const [inputFocused, setInputFocused] = useState(false);
   const entryCount = entries?.length ?? 0;
   const parkedCount = parkedEntries.length;
   const committedCount = entries?.filter((e) => e.status === "committed").length ?? 0;
@@ -11084,7 +11085,7 @@ export default function Workspace() {
               }}
             >
               <div style={{ position: "relative" }}>
-                {!hasInput && (
+                {!hasInput && !inputFocused && (
                   <div
                     aria-hidden
                     style={{
@@ -11102,6 +11103,8 @@ export default function Workspace() {
                   aria-label="Message Atlas"
                   value={input}
                   onChange={(e) => { setInput(e.target.value); autoResize(); }}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
                   onKeyDown={handleKeyDown}
                   rows={1}
                   style={{
