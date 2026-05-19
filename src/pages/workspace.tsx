@@ -11461,37 +11461,40 @@ export default function Workspace() {
         {/* Desktop: resize handle + right panel */}
         {!isMobile && (
           <>
-            <div
-              onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
-              onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
-              onDoubleClick={() => setChatWidthPct(45)}
-              title="Drag to resize · Double-tap to reset"
-              style={{
-                width: 16, flexShrink: 0, cursor: "col-resize",
-                background: "transparent",
-                zIndex: 10,
-                touchAction: "none",
-                display: "flex",
-                alignItems: "stretch",
-                justifyContent: "center",
-              }}
-            >
-              <div className="atlas-resize-thread" style={{
-                width: 1,
-                background: "var(--atlas-border)",
-                transition: "background 200ms",
-                pointerEvents: "none",
-              }} />
-            </div>
+            {!desktopRightFull && (
+              <div
+                onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
+                onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
+                onDoubleClick={() => setChatWidthPct(45)}
+                title="Drag to resize · Double-tap to reset"
+                style={{
+                  width: 12, flexShrink: 0, cursor: "col-resize",
+                  background: "transparent",
+                  zIndex: 10,
+                  touchAction: "none",
+                  display: "flex",
+                  alignItems: "stretch",
+                  justifyContent: "center",
+                }}
+              >
+                <div className="atlas-resize-thread" style={{
+                  width: 1,
+                  transition: "background 200ms",
+                  pointerEvents: "none",
+                }} />
+              </div>
+            )}
             <div style={{
               flex: 1, minWidth: 240, overflow: "hidden",
-              margin: "8px 8px 8px 0",
+              margin: desktopRightFull ? "8px" : "8px 8px 8px 0",
               borderRadius: 14,
               border: "1px solid var(--atlas-border)",
               background: "var(--atlas-surface-alt)",
               boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
+              position: "relative",
             }}>
               <RightPanel
+
                 projectId={id}
                 entries={entries || []}
                 activeCatch={activeCatch}
