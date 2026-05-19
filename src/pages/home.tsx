@@ -3153,7 +3153,12 @@ export default function Home() {
             };
             const lastTouched = lastTs ? formatAgo(lastTs) : null;
             return (
-              <div aria-hidden style={{ position: "absolute", bottom: 20, left: 0, right: 0, display: "flex", justifyContent: "center", pointerEvents: "none", zIndex: 2 }}>
+              <button
+                type="button"
+                aria-label="Pick up below"
+                onClick={openOverviewSheet}
+                style={{ position: "absolute", bottom: 20, left: 0, right: 0, display: "flex", justifyContent: "center", zIndex: 2, background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer" }}
+              >
                 <div style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "7px 16px", borderRadius: 20,
                   background: isParchment ? "rgba(220,210,195,0.75)" : "rgba(28,25,23,0.6)",
@@ -3171,7 +3176,7 @@ export default function Home() {
                     &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })()}
           </div>{/* end hero */}
@@ -3359,7 +3364,7 @@ export default function Home() {
         </OverviewBottomSheet>
       )}
 
-      {/* Fixed bottom nav — true flex row, even spacing */}
+      {/* Fixed 5-item bottom nav — true flex row, even spacing */}
       <style>{`
         @keyframes homePurpleAtmosphere {
           0%, 100% { opacity: 0.45; }
@@ -3513,7 +3518,7 @@ export default function Home() {
           />
         </svg>
 
-        {/* Flex row — interaction layer */}
+        {/* 5-item flex row — interaction layer */}
         <div style={{
           position: "relative",
           display: "flex",
@@ -3533,18 +3538,6 @@ export default function Home() {
               <polyline points="9,22 9,12 15,12 15,22" />
             </svg>
             <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.9)", fontWeight: 700 }}>Home</span>
-          </button>
-
-          {/* OVERVIEW */}
-          <button
-            onClick={openOverviewSheet}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 0" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={showOverviewSheet ? "var(--atlas-gold)" : "var(--atlas-muted)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M7 8h10M7 12h6M7 16h8" />
-            </svg>
-            <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: showOverviewSheet ? "var(--atlas-gold)" : "var(--atlas-muted)" }}>Overview</span>
           </button>
 
           {/* PROJECTS */}
