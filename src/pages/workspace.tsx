@@ -7030,56 +7030,8 @@ function RightPanel({
             </button>
           );
         })}
-        {/* Desktop: handover trigger button — pushed to the right of the tabs.
-            Mirrors the mobile footer pill in AxiomFlow. Switches to the Map
-            tab and opens the popover so the user can confirm/title the
-            snapshot before sending it to Atlas. */}
-        {!isMobile && onHandover && (
-          <>
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={() => {
-                setTab("map");
-                onHandoverOpenChange?.(true);
-              }}
-              disabled={!currentSnapshot || (currentSnapshot?.definedCount ?? 0) === 0 || !!handoverPending}
-              title={
-                handoverPending
-                  ? "Handing over to Atlas…"
-                  : !currentSnapshot || currentSnapshot.definedCount === 0
-                    ? "Define at least one node to hand over"
-                    : "Send the current Axiom Flow snapshot to Atlas as a new chat"
-              }
-              style={{
-                marginRight: 8,
-                padding: "5px 11px",
-                borderRadius: 5,
-                background: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.15)"
-                  : "rgba(146,64,14,0.22)",
-                border: `1px solid ${
-                  !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                    ? "rgba(var(--atlas-muted-rgb),0.35)"
-                    : "rgba(146,64,14,0.65)"
-                }`,
-                color: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.7)"
-                  : "rgba(230,150,90,0.95)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 9.5,
-                fontWeight: 600,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                cursor: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "not-allowed"
-                  : "pointer",
-                transition: "all 160ms ease",
-              }}
-            >
-              {handoverPending ? "Sending…" : "→ Atlas"}
-            </button>
-          </>
-        )}
+        {/* Spacer to keep mobile close/fullscreen buttons right-aligned on desktop too */}
+        {!isMobile && <div style={{ flex: 1 }} />}
 
         {/* Mobile: spacer so close/fullscreen stay right-aligned */}
         {isMobile && <div style={{ flex: 1 }} />}
@@ -11522,7 +11474,14 @@ export default function Workspace() {
                 pointerEvents: "none",
               }} />
             </div>
-            <div style={{ flex: 1, minWidth: 240, overflow: "hidden" }}>
+            <div style={{
+              flex: 1, minWidth: 240, overflow: "hidden",
+              margin: "8px 8px 8px 0",
+              borderRadius: 14,
+              border: "1px solid var(--atlas-border)",
+              background: "var(--atlas-surface-alt)",
+              boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
+            }}>
               <RightPanel
                 projectId={id}
                 entries={entries || []}
