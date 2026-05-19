@@ -11513,6 +11513,8 @@ export default function Workspace() {
                 handoverPending={handoverPending}
                 lastHandoverHash={project?.lastHandoverHash ?? null}
                 isMobile={false}
+                fullscreen={desktopRightFull}
+                onToggleFullscreen={() => setDesktopRightFull((v) => !v)}
                 resolvedNodeIds={pendingResolvedNodeIds}
                 onResolvedConsumed={() => setPendingResolvedNodeIds([])}
                 currentSnapshot={currentSnapshot}
