@@ -11474,7 +11474,14 @@ export default function Workspace() {
                 pointerEvents: "none",
               }} />
             </div>
-            <div style={{ flex: 1, minWidth: 240, overflow: "hidden" }}>
+            <div style={{
+              flex: 1, minWidth: 240, overflow: "hidden",
+              margin: "8px 8px 8px 0",
+              borderRadius: 14,
+              border: "1px solid var(--atlas-border)",
+              background: "var(--atlas-surface-alt)",
+              boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
+            }}>
               <RightPanel
                 projectId={id}
                 entries={entries || []}
