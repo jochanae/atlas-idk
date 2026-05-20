@@ -1380,6 +1380,19 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const queryClient = useQueryClient();
 
+  // Atlas Core center-button → focus composer
+  useEffect(() => {
+    const onFocus = () => {
+      const el = textareaRef.current;
+      if (!el) return;
+      try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
+      setTimeout(() => el.focus(), 60);
+    };
+    window.addEventListener("atlas:focus-composer", onFocus);
+    return () => window.removeEventListener("atlas:focus-composer", onFocus);
+  }, []);
+
+
   const toggleVoice = useCallback(() => {
     if (isListening) {
       recognitionRef.current?.stop();

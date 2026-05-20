@@ -155,6 +155,27 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
+  const handleAtlasTap = () => {
+    // Haptic
+    try { (navigator as any).vibrate?.(12); } catch {}
+    // Visible pulse on the center button
+    if (typeof document !== "undefined") {
+      const el = document.querySelector<HTMLButtonElement>(".udock-center");
+      if (el) {
+        el.classList.remove("udock-center-pulse");
+        // force reflow so animation restarts
+        void el.offsetWidth;
+        el.classList.add("udock-center-pulse");
+      }
+    }
+    // Universal: ask the active page to focus its Atlas composer
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+    }
+    onAtlasCore();
+  };
+
+
   let left: Slot[] = [];
   let right: Slot[] = [];
 
@@ -283,8 +304,15 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       <style>{`
         .udock-slot:active { transform: scale(0.92); }
         .udock-slot:hover { color: rgba(212,175,55,0.75) !important; }
-        .udock-center:active { transform: translateY(0) scale(0.96); }
+        .udock-center:active { transform: translateY(0) scale(0.94); }
+        @keyframes udockCenterPulse {
+          0%   { box-shadow: 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
+          35%  { box-shadow: 0 0 0 10px rgba(212,175,55,0.35), 0 0 36px rgba(212,175,55,0.75), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1.06); }
+          100% { box-shadow: 0 0 0 0 rgba(212,175,55,0), 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
+        }
+        .udock-center-pulse { animation: udockCenterPulse 520ms var(--ease-standard); }
       `}</style>
+
       {/* Arch — fixed-width center dimple, flanks fill remaining width */}
       <div
         style={{
@@ -349,7 +377,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             title="Atlas Core"
             aria-label="Return to Atlas Core"
             className="udock-center"
-            onClick={onAtlasCore}
+            onClick={handleAtlasTap}
             style={{
               width: 56,
               height: 56,
