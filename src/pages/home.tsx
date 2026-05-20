@@ -3648,123 +3648,18 @@ export default function Home() {
           }
         }
       `}</style>
-      <div className="atlas-home-bottom-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, overflow: "visible" }}>
-        {/* Arch SVG — visual layer only */}
-        <svg
-          style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
-          preserveAspectRatio="none"
-          viewBox="0 0 390 64"
-        >
-          <path
-            d="M0,0 L148,0 C163,0 172,22 195,22 C218,22 227,0 242,0 L390,0 L390,64 L0,64 Z"
-            fill="var(--atlas-nav-arch-fill)"
-          />
-          <path
-            d="M0,0.5 L148,0.5 C163,0.5 172,22 195,22 C218,22 227,0.5 242,0.5 L390,0.5"
-            fill="none"
-            stroke="rgba(212,175,55,0.2)"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-
-        {/* 5-item flex row — interaction layer */}
-        <div style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          height: 64,
-          paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
-          zIndex: 1,
-        }}>
-
-          {/* HOME — active/gold */}
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 0" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-              <polyline points="9,22 9,12 15,12 15,22" />
-            </svg>
-            <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(212,175,55,0.9)", fontWeight: 700 }}>Home</span>
-          </button>
-
-          {/* PROJECTS */}
-          <button
-            onClick={() => setShowProjectsSheet(true)}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 0" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(120,113,108,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-            </svg>
-            <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(120,113,108,0.55)" }}>Projects</span>
-          </button>
-
-          {/* CENTER — AXIOM raised button → Spec Mode */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <button
-              title="Spec Mode"
-              className="atlas-home-center-btn"
-              style={{
-                width: 56, height: 56, borderRadius: "50%",
-                border: "2px solid #D4AF37",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", marginTop: -26,
-                animation: "homeAxiomPulse 2.5s ease-in-out infinite",
-                flexShrink: 0,
-              }}
-              onClick={() => setLocation(projects && projects.length > 0 ? `/project/${projects[0]?.id}` : "/projects")}
-            >
-              <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
-                <svg viewBox="0 0 512 512" width="52" height="52" display="block">
-                  <defs>
-                    <radialGradient id="hnpg" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#5B21B6" stopOpacity="0.35" />
-                      <stop offset="100%" stopColor="#0D0B09" stopOpacity="0" />
-                    </radialGradient>
-                    <radialGradient id="hngs" cx="50%" cy="40%" r="50%">
-                      <stop offset="0%" stopColor="#F5D97A" />
-                      <stop offset="50%" stopColor="#D4AF37" />
-                      <stop offset="100%" stopColor="#A07820" />
-                    </radialGradient>
-                  </defs>
-                  <circle cx="256" cy="256" r="256" fill="#0D0B09" />
-                  <circle cx="256" cy="256" r="256" fill="url(#hnpg)" />
-                  <polygon points="256,130 178,390 216,390 268,188" fill="url(#hngs)" />
-                  <polygon points="256,130 334,390 296,390 244,188" fill="url(#hngs)" />
-                  <rect x="192" y="292" width="128" height="30" rx="5" fill="url(#hngs)" />
-                </svg>
-              </div>
-            </button>
-          </div>
-
-          {/* LEDGER */}
-          <button
-            onClick={() => setLocation("/ledger")}
-
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 0" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(120,113,108,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
-            </svg>
-            <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(120,113,108,0.55)" }}>Decisions</span>
-          </button>
-
-          {/* YOU */}
-          <button
-            onClick={() => setShowProfile(true)}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "6px 0" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(120,113,108,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(120,113,108,0.55)" }}>You</span>
-          </button>
-
-        </div>
+      <div className="atlas-home-bottom-nav">
+        <UnifiedContextDock
+          mode={homeMessages.length > 0 ? "active" : "ambient"}
+          onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onProjects={() => setShowProjectsSheet(true)}
+          onDecisions={() => setLocation("/ledger")}
+          onYou={() => setShowProfile(true)}
+          onMap={() => setLocation("/map")}
+          onFiles={() => setShowProjectsSheet(true)}
+          onForge={() => setLocation(projects && projects.length > 0 ? `/project/${projects[0]?.id}` : "/projects")}
+        />
       </div>
     </div>
   );
