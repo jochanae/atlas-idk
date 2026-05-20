@@ -42,8 +42,36 @@ function projectIdFromPath(pathname: string): number | null {
 }
 
 function ShellWordmark() {
+  const openProjects = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
+  }, []);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <button
+        type="button"
+        onClick={openProjects}
+        title="Open projects"
+        aria-label="Open projects"
+        style={{
+          background: "transparent",
+          border: "none",
+          padding: 4,
+          margin: 0,
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "rgba(201,162,76,0.55)",
+          transition: "color 160ms ease",
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.95)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 7.2c0-.9.7-1.6 1.6-1.6h4.3c.4 0 .8.2 1.1.5l1.3 1.4c.3.3.7.5 1.1.5h6c.9 0 1.6.7 1.6 1.6v8.8c0 .9-.7 1.6-1.6 1.6H4.6C3.7 20 3 19.3 3 18.4V7.2z" />
+        </svg>
+      </button>
       <img
         src="/axiom-logo.svg"
         alt="Axiom"
