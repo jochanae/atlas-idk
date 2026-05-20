@@ -93,6 +93,13 @@ html, body {
 :root {
   color-scheme: dark;
 
+  /* Unified shell layout tokens */
+  --atlas-header-height: 50px;
+  --atlas-dock-height: 64px;
+  --atlas-dock-clearance: calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px) + 24px);
+
+
+
   --background: 20 14% 4%;
   --foreground: 20 8% 90%;
   --border: 20 8% 14%;
