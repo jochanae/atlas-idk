@@ -98,6 +98,25 @@ html, body {
   --atlas-dock-height: 64px;
   --atlas-dock-clearance: calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px) + 24px);
 
+  /* Type scale — mono-forward, 4-step minor */
+  --ts-micro:   10px;  /* dock labels, badges, tiny meta */
+  --ts-caption: 11px;  /* status chip, mono captions */
+  --ts-label:   12px;  /* wordmark, mono UI labels */
+  --ts-body:    13px;  /* default UI body, switcher, buttons */
+  --ts-h3:      15px;  /* section headings */
+  --ts-h2:      18px;
+  --ts-h1:      22px;
+
+  /* Line heights */
+  --lh-tight:   1.2;
+  --lh-snug:    1.4;
+  --lh-body:    1.6;
+
+  /* Letter spacing */
+  --ls-mono-cap: 0.1em;
+  --ls-tight:    -0.01em;
+
+
 
 
   --background: 20 14% 4%;
