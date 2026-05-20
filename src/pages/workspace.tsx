@@ -82,8 +82,6 @@ import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
-  type PlanState,
-} from "@/components/workspace/chatShared";
 
 
 export interface CatchPayload {
