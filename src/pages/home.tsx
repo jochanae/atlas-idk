@@ -1389,8 +1389,14 @@ export default function Home() {
       setTimeout(() => el.focus(), 60);
     };
     window.addEventListener("atlas:focus-composer", onFocus);
+    // Handle deferred focus from variant-switcher cross-page nav
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("atlas:focusComposerOnLoad")) {
+      sessionStorage.removeItem("atlas:focusComposerOnLoad");
+      setTimeout(onFocus, 250);
+    }
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
+
 
 
   const toggleVoice = useCallback(() => {
