@@ -13,7 +13,7 @@ export interface ChatComposerProps {
   leftTab: "chat" | "diff" | "blueprints" | "terminal" | string;
 
   // File / image / ZIP
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   processZip: (file: File) => Promise<void>;
   attachedFiles: File[];
   setAttachedFiles: React.Dispatch<React.SetStateAction<File[]>>;
