@@ -155,6 +155,27 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
+  const handleAtlasTap = () => {
+    // Haptic
+    try { (navigator as any).vibrate?.(12); } catch {}
+    // Visible pulse on the center button
+    if (typeof document !== "undefined") {
+      const el = document.querySelector<HTMLButtonElement>(".udock-center");
+      if (el) {
+        el.classList.remove("udock-center-pulse");
+        // force reflow so animation restarts
+        void el.offsetWidth;
+        el.classList.add("udock-center-pulse");
+      }
+    }
+    // Universal: ask the active page to focus its Atlas composer
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+    }
+    onAtlasCore();
+  };
+
+
   let left: Slot[] = [];
   let right: Slot[] = [];
 
