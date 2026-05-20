@@ -477,6 +477,97 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
 
         {right.map(renderSlot)}
       </div>
+
+      {sheetOpen && (
+        <>
+          <div
+            onClick={() => setSheetOpen(false)}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)", zIndex: 250,
+              animation: "udockFade 180ms var(--ease-standard) both",
+            }}
+            aria-hidden
+          />
+          <div
+            role="dialog"
+            aria-label="Switch surface"
+            style={{
+              position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 260,
+              padding: "16px 16px calc(env(safe-area-inset-bottom) + 88px)",
+              animation: "udockSlideUp 220ms var(--ease-standard) both",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 480, margin: "0 auto",
+                background: "var(--atlas-bg)",
+                border: "1px solid rgba(212,175,55,0.25)",
+                borderRadius: 18,
+                boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{
+                padding: "14px 18px 6px",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: "var(--ts-micro)",
+                letterSpacing: "var(--ls-mono-cap)",
+                textTransform: "uppercase",
+                color: "rgba(212,175,55,0.7)",
+              }}>Switch surface</div>
+              {[
+                { id: "ambient", title: "Ambient", subtitle: "Home · broad navigation" },
+                { id: "active", title: "Active", subtitle: "Composer focused · ready to think" },
+                { id: "operational", title: "Operational", subtitle: "Workspace · build & ledger" },
+              ].map((opt) => {
+                const isCurrent = opt.id === mode;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => goVariant(opt.id as "ambient" | "active" | "operational")}
+                    style={{
+                      display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                      padding: "14px 18px",
+                      background: "none", border: "none", textAlign: "left", cursor: "pointer",
+                      borderTop: "1px solid rgba(212,175,55,0.08)",
+                      color: "var(--atlas-text, #E8E4DD)",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{opt.title}</div>
+                      <div style={{ fontSize: 12, color: "rgba(168,162,158,0.85)", marginTop: 2 }}>{opt.subtitle}</div>
+                    </div>
+                    {isCurrent && (
+                      <span style={{
+                        fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "var(--ls-mono-cap)",
+                        textTransform: "uppercase", color: "rgba(212,175,55,0.9)",
+                        padding: "3px 8px", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 999,
+                      }}>Current</span>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setSheetOpen(false)}
+                style={{
+                  display: "block", width: "100%", padding: "14px 18px",
+                  background: "rgba(0,0,0,0.25)", border: "none", borderTop: "1px solid rgba(212,175,55,0.12)",
+                  color: "rgba(168,162,158,0.85)", cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)",
+                  letterSpacing: "var(--ls-mono-cap)", textTransform: "uppercase",
+                }}
+              >Cancel</button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes udockFade { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes udockSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          `}</style>
+        </>
+      )}
     </div>
   );
 }
+
