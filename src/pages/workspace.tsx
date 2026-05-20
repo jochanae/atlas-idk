@@ -6,6 +6,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
+import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { AxiomFlow } from "../components/AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../components/AxiomFlow";
 import { SystemMap } from "../components/SystemMap";
@@ -5190,7 +5191,15 @@ export default function Workspace() {
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
 
-  const [input, setInput] = useState("");
+  const {
+    input, setInput,
+    attachedFiles, setAttachedFiles,
+    inputFocused, setInputFocused,
+    firstRunDismissed, setFirstRunDismissed,
+    firstRunInput, setFirstRunInput,
+    textareaRef,
+    fileInputRef,
+  } = useComposerDraft();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
@@ -5266,7 +5275,7 @@ export default function Workspace() {
     };
   }, [doResize, endResize]);
 
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  
   const [wsModel, setWsModel] = useState<string>(() => {
     try { const r = localStorage.getItem("atlas-home-context"); return r ? (JSON.parse(r).model ?? "claude") : "claude"; } catch { return "claude"; }
   });
@@ -5375,8 +5384,6 @@ export default function Workspace() {
   const [forgeActiveProjectName, setForgeActiveProjectName] = useState<string | undefined>(undefined);
   const [forgeActiveProjectId, setForgeActiveProjectId] = useState<number | undefined>(undefined);
   const [autoNameKey, setAutoNameKey] = useState(0);
-  const [firstRunDismissed, setFirstRunDismissed] = useState(false);
-  const [firstRunInput, setFirstRunInput] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -5535,8 +5542,6 @@ export default function Workspace() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const initialSent = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const importPrimed = useRef(false);
@@ -6514,7 +6519,7 @@ export default function Workspace() {
 
 
   const hasInput = input.trim().length > 0;
-  const [inputFocused, setInputFocused] = useState(false);
+  
   const entryCount = entries?.length ?? 0;
   const parkedCount = parkedEntries.length;
   const committedCount = entries?.filter((e) => e.status === "committed").length ?? 0;
