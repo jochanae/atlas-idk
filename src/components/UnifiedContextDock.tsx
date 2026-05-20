@@ -220,7 +220,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           position: "relative",
           color,
           WebkitTapHighlightColor: "transparent",
-          transition: "color 180ms ease, transform 120ms ease",
+          transition: "color var(--motion-fast) var(--ease-standard), transform var(--motion-instant) var(--ease-standard)",
         }}
       >
         <span style={{ position: "relative", display: "inline-flex", lineHeight: 0 }}>
@@ -363,7 +363,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               marginTop: -26,
               flexShrink: 0,
               boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
-              transition: "transform 140ms ease, box-shadow 200ms ease",
+              transition: "transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard)",
               WebkitTapHighlightColor: "transparent",
             }}
           >
