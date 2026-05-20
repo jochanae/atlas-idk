@@ -60,6 +60,8 @@ type AmbientSurface = {
   type: "MAP" | "WORKSPACE" | "DECISION";
   label: string;
   reason?: string | null;
+  projectId?: number | null;
+  workspaceId?: number | null;
 } | null;
 
 type HomeMessage = {
@@ -248,7 +250,7 @@ function HomeChunkedBubbles({ text, isNew }: { text: string; isNew: boolean }) {
   );
 }
 
-function AmbientEmergenceCard({ surface }: { surface: AmbientSurface }) {
+function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; onAction: (surface: NonNullable<AmbientSurface>) => void }) {
   if (!surface) return null;
   const actionLabel = surface.type === "MAP"
     ? "View Structure"
@@ -282,12 +284,13 @@ function AmbientEmergenceCard({ surface }: { surface: AmbientSurface }) {
       )}
       <button
         type="button"
+        onClick={() => onAction(surface)}
         style={{
           background: "transparent",
           border: "1px solid rgba(201,162,76,0.28)",
           borderRadius: 999,
           color: "var(--atlas-gold)",
-          cursor: "default",
+          cursor: "pointer",
           fontFamily: "var(--app-font-mono)",
           fontSize: 10,
           letterSpacing: "0.08em",
@@ -1961,6 +1964,47 @@ export default function Home() {
     }
   }, [homeMessages, queryClient, setLocation]);
 
+  const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
+    if (surface.type === "MAP") {
+      openOverviewSheet();
+      return;
+    }
+
+    const activeProjectId = surface.projectId ?? surface.workspaceId ?? homeProjectState.project?.id ?? mostRecentActiveProjectId;
+
+    if (surface.type === "WORKSPACE") {
+      if (activeProjectId) {
+        setLocation(`/project/${activeProjectId}`);
+        return;
+      }
+      await handleHandoff(undefined, surface.label || "New Project");
+      return;
+    }
+
+    if (surface.type === "DECISION") {
+      if (!activeProjectId) return;
+      try {
+        const res = await fetch(`/api/projects/${activeProjectId}/entries`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: surface.label,
+            status: "committed",
+            severity: "committed",
+            summary: "Logged from Atlas surface signal",
+          }),
+        });
+        if (res.ok) {
+          toast("Decision captured");
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        }
+      } catch {
+        // Surface actions stay ambient; failures should not interrupt the thread.
+      }
+    }
+  }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, openOverviewSheet, queryClient, setLocation]);
+
   const handleClearThread = useCallback(async () => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
     setHomeMessages([]);
@@ -2574,7 +2618,12 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
-                          {!msg.streaming && <AmbientEmergenceCard surface={msg.surface ?? null} />}
+                          {!msg.streaming && (
+                            <AmbientEmergenceCard
+                              surface={msg.surface ?? null}
+                              onAction={handleAmbientSurfaceAction}
+                            />
+                          )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;
                             const isExpanded = reviewingPlanIds.has(planKey);

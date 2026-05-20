@@ -128,6 +128,8 @@ type AmbientSurface = {
   type: "MAP" | "WORKSPACE" | "DECISION";
   label: string;
   reason?: string | null;
+  projectId?: number | null;
+  workspaceId?: number | null;
 } | null;
 
 interface ChatMessage {
@@ -2124,7 +2126,7 @@ function AtlasActivityBar({ content }: { content: string }) {
 }
 
 // ── AssistantBubble ───────────────────────────────────────────────────────────
-function AmbientEmergenceCard({ surface }: { surface: AmbientSurface }) {
+function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; onAction: (surface: NonNullable<AmbientSurface>) => void }) {
   if (!surface) return null;
   const actionLabel = surface.type === "MAP"
     ? "View Structure"
@@ -2158,12 +2160,13 @@ function AmbientEmergenceCard({ surface }: { surface: AmbientSurface }) {
       )}
       <button
         type="button"
+        onClick={() => onAction(surface)}
         style={{
           background: "transparent",
           border: "1px solid rgba(201,162,76,0.28)",
           borderRadius: 999,
           color: "var(--atlas-gold)",
-          cursor: "default",
+          cursor: "pointer",
           fontFamily: "var(--app-font-mono)",
           fontSize: 10,
           letterSpacing: "0.08em",
@@ -2200,6 +2203,7 @@ function AssistantBubble({
   onStreamActivityUpdate,
   onStreamActivityComplete,
   onCommitCardDone,
+  onSurfaceAction,
   planState,
   planExecution,
   onPlanStateChange,
@@ -2228,6 +2232,7 @@ function AssistantBubble({
   onStreamActivityUpdate?: (content: string) => void;
   onStreamActivityComplete?: () => void;
   onCommitCardDone?: () => void;
+  onSurfaceAction: (surface: NonNullable<AmbientSurface>) => void;
   planState?: PlanState;
   planExecution?: PlanExecution;
   onPlanStateChange?: (messageId: number, state: PlanState) => void;
@@ -2646,7 +2651,7 @@ function AssistantBubble({
           )}
         </div>
 
-        <AmbientEmergenceCard surface={message.surface ?? null} />
+        <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
 
         {message.plan && planState !== "skipped" && (
           <PlanCard
@@ -9142,6 +9147,57 @@ export default function Workspace() {
     [sessionId, chatPending, messages, doSend]
   );
 
+  const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
+    const targetProjectId = surface.projectId ?? surface.workspaceId ?? id;
+
+    if (surface.type === "MAP") {
+      if (isMobile) {
+        setMobileTab("map");
+        setRightOpen(true);
+      } else {
+        setDesktopForceTab("map");
+        setTimeout(() => setDesktopForceTab(undefined), 120);
+      }
+      return;
+    }
+
+    if (surface.type === "WORKSPACE") {
+      if (targetProjectId && targetProjectId !== id) {
+        setLocation(`/project/${targetProjectId}`);
+        return;
+      }
+      setLeftTab("chat");
+      setMobileTab("chat");
+      setRightOpen(false);
+      setTimeout(() => textareaRef.current?.focus(), 0);
+      return;
+    }
+
+    if (surface.type === "DECISION") {
+      if (!targetProjectId) return;
+      try {
+        const res = await fetch(`/api/projects/${targetProjectId}/entries`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: surface.label,
+            status: "committed",
+            severity: "committed",
+            summary: "Logged from Atlas surface signal",
+          }),
+        });
+        if (res.ok) {
+          toast("Decision captured");
+          queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(targetProjectId, {}) });
+          if (targetProjectId === id) void refreshParkedEntries();
+        }
+      } catch {
+        // Surface actions stay ambient; failures should not interrupt the thread.
+      }
+    }
+  }, [id, isMobile, queryClient, refreshParkedEntries, setLocation]);
+
   const updatePlanState = useCallback((messageId: number, state: PlanState) => {
     setPlanStates((prev) => {
       const next = new Map(prev);
@@ -11029,6 +11085,7 @@ export default function Workspace() {
                     queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
                     void refreshParkedEntries();
                   }}
+                  onSurfaceAction={handleAmbientSurfaceAction}
                   planState={planStates.get(msg.id ?? 0) ?? "pending"}
                   planExecution={planExecutions.get(msg.id ?? 0)}
                   onPlanStateChange={updatePlanState}
