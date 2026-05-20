@@ -2467,7 +2467,7 @@ export default function Home() {
           mode={homeMessages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
-              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
+              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
                 {stream}
               </div>
             </div>
