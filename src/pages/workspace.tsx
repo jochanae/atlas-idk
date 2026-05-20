@@ -3202,6 +3202,23 @@ export default function Workspace() {
     window.addEventListener("axiom:open-account-hub", open);
     return () => window.removeEventListener("axiom:open-account-hub", open);
   }, []);
+
+  // Atlas Core center-button → switch to chat tab + focus composer
+  useEffect(() => {
+    const onFocus = () => {
+      setMobileTab("chat");
+      setRightOpen(false);
+      const el = textareaRef.current;
+      if (!el) return;
+      setTimeout(() => {
+        try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
+        el.focus();
+      }, 80);
+    };
+    window.addEventListener("atlas:focus-composer", onFocus);
+    return () => window.removeEventListener("atlas:focus-composer", onFocus);
+  }, []);
+
   const [chatWidthPct, setChatWidthPct] = useState(45);
   const resizeDrag = useRef({ active: false, startX: 0, startPct: 45 });
   const containerRef = useRef<HTMLDivElement>(null);
