@@ -91,7 +91,7 @@ interface AlertPayload {
   action: string;
 }
 
-interface FileEdit {
+export interface FileEdit {
   path: string;
   language: string;
   content: string;
@@ -114,7 +114,7 @@ type HomeHandoffMeta = {
   parkedTitles?: string[];
 };
 
-interface LinePatch {
+export interface LinePatch {
   path: string;
   find: string;
   replace: string;
@@ -132,7 +132,7 @@ export interface PushRecord {
   rolledBack: boolean;
 }
 
-type AmbientSurface = {
+export type AmbientSurface = {
   type: "MAP" | "WORKSPACE" | "DECISION";
   label: string;
   reason?: string | null;
@@ -140,7 +140,7 @@ type AmbientSurface = {
   workspaceId?: number | null;
 } | null;
 
-interface ChatMessage {
+export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
   content: string;
@@ -165,7 +165,7 @@ interface ChatMessage {
   surface?: AmbientSurface;
 }
 
-type MemoryChip = { label: string; insight?: string };
+export type MemoryChip = { label: string; insight?: string };
 
 export interface LinkedRepo {
   fullName: string;
@@ -245,7 +245,7 @@ const LENS_CONFIG: Record<WorkspaceLens, {
   scenario: { label: "Scenario", sub: "What if — no commitment",     color: "#78716C", borderColor: "rgba(120,113,108,0.35)", glowColor: "rgba(120,113,108,0.06)", bgTint: "rgba(120,113,108,0.04)",       model: "" },
 };
 
-interface ProjectScan {
+export interface ProjectScan {
   projectName: string;
   description: string;
   stack: string[];
@@ -261,35 +261,7 @@ interface ProjectScan {
   totalFiles: number;
 }
 
-// ── User profile helpers ──────────────────────────────────────────────────────
-interface UserProfile {
-  name: string;
-  stack: string;
-  projects: string;
-  notes: string;
-  photoUrl?: string;
-}
-
-function loadProfile(): UserProfile {
-  try {
-    const raw = localStorage.getItem("atlas-user-profile");
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { name: "", stack: "React, React Router, Tailwind CSS, Supabase", projects: "Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, Atlas", notes: "", photoUrl: "" };
-}
-
-function saveProfile(p: UserProfile) {
-  try { localStorage.setItem("atlas-user-profile", JSON.stringify(p)); } catch {}
-}
-
-function profileToString(p: UserProfile): string {
-  const parts: string[] = [];
-  if (p.name) parts.push(`Name: ${p.name}`);
-  if (p.stack) parts.push(`Stack: ${p.stack}`);
-  if (p.projects) parts.push(`Projects: ${p.projects}`);
-  if (p.notes) parts.push(`Notes: ${p.notes}`);
-  return parts.join("\n");
-}
+// User profile helpers moved to @/lib/userProfile.
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 // URL override: ?desktop=1 forces desktop layout regardless of viewport width.
