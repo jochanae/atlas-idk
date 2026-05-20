@@ -13,6 +13,7 @@ import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 
 type ShellDepth = "ambient" | "active" | "operational";
 
@@ -687,7 +688,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <ShellStatusChip projectId={activeProjectId} />
-            <ShellAvatar />
+            <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
         </header>
         <div
