@@ -2138,50 +2138,89 @@ export default function Home() {
       }}
     >
       {/* ATLAS subheader — always-visible bar beneath main header */}
-      {homeMessages.length > 0 && (
-      <div className="atlas-chat-card-top" style={{ borderRadius: 0, padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, boxSizing: "border-box" }}>
+      {homeMessages.length > 0 && (() => {
+        const firstUserMsg = homeMessages.find(m => m.role === "user");
+        const rawTitle = (firstUserMsg?.content ?? "").trim().replace(/\s+/g, " ");
+        const conversationTitle = rawTitle
+          ? (rawTitle.length > 38 ? rawTitle.slice(0, 36).trimEnd() + "…" : rawTitle)
+          : "New conversation";
+        return (
+        <div className="atlas-chat-card-top" style={{ borderRadius: 0, padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, boxSizing: "border-box" }}>
+          {/* Centered: conversation title + caret (opens thread menu) + lock */}
           <div style={{
             position: "absolute", left: "50%", top: "50%",
             transform: "translate(-50%, -50%)",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-            pointerEvents: "auto",
+            display: "flex", alignItems: "center", gap: 6,
+            pointerEvents: "auto", maxWidth: "60%",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={() => setShowChatMenu(v => !v)}
+              title="Conversation actions"
+              aria-label="Conversation actions"
+              style={{
+                background: showChatMenu ? "rgba(201,162,76,0.10)" : "transparent",
+                border: "none", padding: "3px 8px", cursor: "pointer",
+                display: "inline-flex", alignItems: "center", gap: 5,
+                borderRadius: 6, transition: "background 140ms",
+                maxWidth: "100%", overflow: "hidden",
+              }}
+            >
               <span style={{
-                fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em",
-                color: "var(--atlas-gold)", opacity: 0.55, fontWeight: 600,
-                textTransform: "uppercase", whiteSpace: "nowrap",
+                fontSize: 12, fontFamily: "var(--app-font-sans)",
+                color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 400,
+                letterSpacing: "-0.005em",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                maxWidth: "100%",
               }}>
-                ATLAS
+                {conversationTitle}
               </span>
-              <button
-                onClick={handleLockTap}
-                title={reflectionLocked ? "Reflection mode (locked)" : "Enter reflection mode"}
-                aria-label="Toggle reflection mode"
-                style={{
-                  background: "transparent", border: "none", padding: 0, cursor: "pointer",
-                  color: "var(--atlas-gold)",
-                  opacity: reflectionLocked ? 1 : 0.5,
-                  lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
-                }}
-              >
-                {reflectionLocked ? (
-                  <Lock size={11} strokeWidth={2} />
-                ) : (
-                  <LockOpen size={11} strokeWidth={2} />
-                )}
-              </button>
-            </div>
-            {reflectionLocked && (
-              <span style={{
-                fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.16em",
-                color: "var(--atlas-muted)", opacity: 0.7, textTransform: "lowercase",
-                marginTop: 1,
-              }}>
-                reflection mode
-              </span>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-muted)", opacity: 0.7, flexShrink: 0 }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+            <button
+              onClick={handleLockTap}
+              title={reflectionLocked ? "Reflection mode (locked)" : "Enter reflection mode"}
+              aria-label="Toggle reflection mode"
+              style={{
+                background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                color: "var(--atlas-gold)",
+                opacity: reflectionLocked ? 1 : 0.45,
+                lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
+                flexShrink: 0,
+              }}
+            >
+              {reflectionLocked ? (
+                <Lock size={10} strokeWidth={2} />
+              ) : (
+                <LockOpen size={10} strokeWidth={2} />
+              )}
+            </button>
+            {/* Thread menu — drops from title */}
+            {showChatMenu && (
+              <>
+                <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: "50%", transform: "translateX(-50%)", zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
+                  {([
+                    { label: "Rename", action: () => { setShowChatMenu(false); /* TODO: open rename */ } },
+                    { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
+                    { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
+                    { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
+                    { label: "Clear conversation", action: () => { setShowClearConfirm(true); setShowChatMenu(false); }, danger: true },
+                  ] as Array<{ label: string; action: () => void; danger?: boolean }>).map(item => (
+                    <button
+                      key={item.label}
+                      onClick={item.action}
+                      style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: 12, fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
+          {/* Right-side utility cluster */}
           <div style={{ marginLeft: "auto", position: "relative" }}>
             {showClearConfirm ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2200,88 +2239,55 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <button
-                    onClick={() => setShowVault(true)}
-                    title="Visual Vault"
-                    aria-label="Open visual vault"
-                    style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="7" height="7" rx="1"/>
-                      <rect x="14" y="3" width="7" height="7" rx="1"/>
-                      <rect x="3" y="14" width="7" height="7" rx="1"/>
-                      <rect x="14" y="14" width="7" height="7" rx="1"/>
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowConvSearch(v => {
-                        const next = !v;
-                        if (!next) setConvSearchQuery("");
-                        return next;
-                      });
-                    }}
-                    title="Search conversations"
-                    aria-label="Search conversations"
-                    data-conv-search-root
-                    style={{ background: showConvSearch ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showConvSearch ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = showConvSearch ? "1" : "0.7")}
-                  >
-                    <Search size={14} strokeWidth={1.75} />
-                  </button>
-                  <button
-                    onClick={() => setShowBriefingPanel(true)}
-                    title="Show briefing"
-                    aria-label="Show briefing"
-                    style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.7, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.7")}
-                  >
-                    <Briefcase size={13} strokeWidth={1.75} />
-                  </button>
-                  <button
-                    onClick={() => setShowChatMenu(v => !v)}
-                    title="More options"
-                    style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-muted)", opacity: 0.65, lineHeight: 1, transition: "opacity 140ms" }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = "0.65")}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-                    </svg>
-                  </button>
-                </div>
-                {showChatMenu && (
-                  <>
-                    <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
-                    <div style={{ position: "absolute", top: "100%", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 178, boxShadow: "0 4px 16px rgba(0,0,0,0.3)" }}>
-                      {([
-                        { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
-                        { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
-                        { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
-                        { label: "Clear conversation", action: () => { setShowClearConfirm(true); setShowChatMenu(false); }, danger: true },
-                      ] as Array<{ label: string; action: () => void; danger?: boolean }>).map(item => (
-                        <button
-                          key={item.label}
-                          onClick={item.action}
-                          style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: 12, fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <button
+                  onClick={() => setShowVault(true)}
+                  title="Visual Vault"
+                  aria-label="Open visual vault"
+                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConvSearch(v => {
+                      const next = !v;
+                      if (!next) setConvSearchQuery("");
+                      return next;
+                    });
+                  }}
+                  title="Search conversations"
+                  aria-label="Search conversations"
+                  data-conv-search-root
+                  style={{ background: showConvSearch ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showConvSearch ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = showConvSearch ? "1" : "0.7")}
+                >
+                  <Search size={14} strokeWidth={1.75} />
+                </button>
+                <button
+                  onClick={() => setShowBriefingPanel(true)}
+                  title="Show briefing"
+                  aria-label="Show briefing"
+                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.7, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.7")}
+                >
+                  <Briefcase size={13} strokeWidth={1.75} />
+                </button>
+              </div>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Conversation search bar + results — slides below subheader */}
       {showConvSearch && homeMessages.length > 0 && (
@@ -2464,7 +2470,7 @@ export default function Home() {
 
             {/* Greeting */}
             {homeMessages.length === 0 && (
-              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 32, position: "relative", zIndex: 1 }}>
+              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
                 <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
                   {greetingNameRef.current && (
                     <><span style={{ fontWeight: 300 }}>{greetingNameRef.current}.</span><br /></>
