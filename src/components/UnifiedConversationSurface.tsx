@@ -52,6 +52,15 @@ export interface UnifiedConversationSurfaceProps {
   ledgerPanel?: React.ReactNode;
   filesPanel?: React.ReactNode;
   previewPanel?: React.ReactNode;
+
+  // Host-owned conversation content. When provided, it is rendered in place
+  // of (chatStreamProps + betweenSlot + composerProps) inside a
+  // layout-neutral wrapper (display:contents). This lets pages whose chat
+  // UI predates the extracted ChatStream/ChatComposer components (e.g.
+  // home.tsx) flow their existing JSX through the surface without any
+  // visual change. The wrapper still carries `data-surface-mode` for
+  // future styling hooks.
+  children?: React.ReactNode;
 }
 
 export function UnifiedConversationSurface({
@@ -68,11 +77,27 @@ export function UnifiedConversationSurface({
   ledgerPanel,
   filesPanel,
   previewPanel,
+  children,
 }: UnifiedConversationSurfaceProps) {
   // Mark the surface for future mode-driven styling hooks without changing
   // current layout. The fragment-style wrapper preserves the host's DOM.
   void mode;
   void projectId;
+
+  // Host-owned content path: render children inside a layout-neutral
+  // wrapper. `display: contents` makes the wrapper invisible to layout so
+  // existing host CSS keeps full control. Used by home.tsx today.
+  if (children !== undefined) {
+    return (
+      <div
+        data-surface-mode={mode}
+        data-project-id={projectId ?? undefined}
+        style={{ display: "contents" }}
+      >
+        {children}
+      </div>
+    );
+  }
 
   const conversation = (
     <>

@@ -12,6 +12,7 @@ import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
+import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
@@ -2461,6 +2462,7 @@ export default function Home() {
           padding: "0 24px",
         }}
       >
+        <UnifiedConversationSurface mode={homeMessages.length > 0 ? "active" : "ambient"}>
         <div className="atlas-home-chat-column">
         <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
@@ -3294,6 +3296,7 @@ export default function Home() {
 
         </div>
         </div>
+        </UnifiedConversationSurface>
         <aside className="atlas-home-desktop-overview" aria-label="Overview">
           <div className="atlas-home-desktop-overview-scroll">
             {renderOverviewDashboard()}
