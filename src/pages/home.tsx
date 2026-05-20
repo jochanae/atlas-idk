@@ -2543,7 +2543,7 @@ export default function Home() {
                           <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
                         </div>
                       )}
-                    <div style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
+                    <div data-msg-idx={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
                       {msg.role === 'assistant' ? (
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* Model label + intent badge */}
