@@ -334,14 +334,14 @@ function MenuBtn({ icon, label, onClick, badge, disabled, style }: { icon: React
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       title={disabled ? "Coming soon" : undefined}
-      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "transparent", border: "none", padding: "9px 12px", borderRadius: 7, cursor: disabled ? "not-allowed" : "pointer", color: "var(--atlas-fg)", opacity: disabled ? 0.45 : 1, fontSize: 13, textAlign: "left", ...style }}
+      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "transparent", border: "none", padding: "9px 12px", borderRadius: 7, cursor: disabled ? "not-allowed" : "pointer", color: "var(--atlas-fg)", opacity: disabled ? 0.45 : 1, fontSize: "var(--ts-body)", textAlign: "left", ...style }}
       onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-fg) 8%, transparent)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
     >
       <span style={{ color: "var(--atlas-muted)", display: "flex", flexShrink: 0, opacity: 0.7 }}>{icon}</span>
       <span style={{ flex: 1 }}>{label}</span>
       {badge && (
-        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.1em", flexShrink: 0 }}>{badge}</span>
+        <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.1em", flexShrink: 0 }}>{badge}</span>
       )}
     </button>
   );
@@ -381,7 +381,7 @@ function AtlasLogo({ small, mode }: { small?: boolean; mode?: "THINK" | "PLAN" |
         {modeLabel && (
           <span style={{
             fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-            fontSize: 7.5,
+            fontSize: "var(--ts-tiny)",
             fontWeight: 500,
             letterSpacing: "0.14em",
             color: modeColor,
@@ -649,10 +649,10 @@ function LinePatchReviewCard({
             </svg>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--atlas-gold)", marginBottom: 2 }}>
+            <div style={{ fontSize: "var(--ts-caption)", fontWeight: 600, color: "var(--atlas-gold)", marginBottom: 2 }}>
               {patchCount} patch{patchCount !== 1 ? "es" : ""} ready
             </div>
-            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
               {fileCount === 1
                 ? uniquePaths[0]
                 : `${fileCount} files — ${uniquePaths.map(p => p.split("/").pop()).join(", ")}`}
@@ -663,7 +663,7 @@ function LinePatchReviewCard({
           onClick={handleApply}
           disabled={applying}
           style={{
-            flexShrink: 0, padding: "6px 13px", borderRadius: 5, fontSize: 11, fontWeight: 600,
+            flexShrink: 0, padding: "6px 13px", borderRadius: 5, fontSize: "var(--ts-caption)", fontWeight: 600,
             fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
             background: applying
               ? "rgba(201,162,76,0.25)"
@@ -682,7 +682,7 @@ function LinePatchReviewCard({
         <div style={{
           marginTop: 8, padding: "8px 12px", borderRadius: 6,
           background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
-          fontSize: 11, color: "rgba(239,68,68,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.55,
+          fontSize: "var(--ts-caption)", color: "rgba(239,68,68,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.55,
         }}>
           {error}
         </div>
@@ -836,19 +836,19 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
         <Link
           href={`/entry/${entry.id}`}
           onClick={(e) => e.stopPropagation()}
-          style={{ flex: 1, fontSize: 12.5, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4, textDecoration: "none" }}
+          style={{ flex: 1, fontSize: "var(--ts-label)", color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4, textDecoration: "none" }}
         >
           {entry.title}
         </Link>
         {/* NOTE badge */}
-        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.07em", background: "rgba(var(--atlas-muted-rgb),0.12)", color: "rgba(var(--atlas-muted-rgb),0.6)", padding: "2px 7px", borderRadius: 4, flexShrink: 0, textTransform: "uppercase" as const }}>
+        <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.07em", background: "rgba(var(--atlas-muted-rgb),0.12)", color: "rgba(var(--atlas-muted-rgb),0.6)", padding: "2px 7px", borderRadius: 4, flexShrink: 0, textTransform: "uppercase" as const }}>
           NOTE
         </span>
       </div>
 
       {/* Source line (collapsed) */}
       {!expanded && (
-        <div style={{ paddingLeft: 20, paddingBottom: 6, fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.38)", fontFamily: "var(--app-font-mono)" }}>
+        <div style={{ paddingLeft: 20, paddingBottom: 6, fontSize: "var(--ts-micro)", color: "rgba(var(--atlas-muted-rgb),0.38)", fontFamily: "var(--app-font-mono)" }}>
           chat message · {timeAgo(entry.createdAt)}
         </div>
       )}
@@ -858,20 +858,20 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
         <div style={{ marginLeft: 20, marginBottom: 14, background: "var(--atlas-surface-alt)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 12%, transparent)", borderRadius: 10, padding: "14px 16px" }}>
           {/* Category tags + status badge */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" as const }}>
-            <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "rgba(var(--atlas-muted-rgb),0.45)", textTransform: "uppercase" as const }}>
+            <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "rgba(var(--atlas-muted-rgb),0.45)", textTransform: "uppercase" as const }}>
               {modeLabel} · {typeLabel}
             </span>
             {entry.buildId && (
-              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(var(--atlas-muted-rgb),0.1)", border: "0.5px solid rgba(var(--atlas-muted-rgb),0.2)", color: "rgba(var(--atlas-muted-rgb),0.65)", padding: "1px 7px", borderRadius: 10 }}>
+              <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(var(--atlas-muted-rgb),0.1)", border: "0.5px solid rgba(var(--atlas-muted-rgb),0.2)", color: "rgba(var(--atlas-muted-rgb),0.65)", padding: "1px 7px", borderRadius: 10 }}>
                 #{entry.buildId}
               </span>
             )}
             {entry.costOfLesson && (
-              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "rgba(var(--atlas-muted-rgb),0.55)" }}>
+              <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "rgba(var(--atlas-muted-rgb),0.55)" }}>
                 cost: {entry.costOfLesson}
               </span>
             )}
-            <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: entry.isViolation ? "rgba(239,68,68,0.08)" : "rgba(74,222,128,0.07)", border: `1px solid ${entry.isViolation ? "rgba(239,68,68,0.18)" : "rgba(74,222,128,0.18)"}`, color: entry.isViolation ? "rgba(239,68,68,0.75)" : "rgba(74,222,128,0.75)", padding: "2px 9px", borderRadius: 20, textTransform: "uppercase" as const }}>
+            <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: entry.isViolation ? "rgba(239,68,68,0.08)" : "rgba(74,222,128,0.07)", border: `1px solid ${entry.isViolation ? "rgba(239,68,68,0.18)" : "rgba(74,222,128,0.18)"}`, color: entry.isViolation ? "rgba(239,68,68,0.75)" : "rgba(74,222,128,0.75)", padding: "2px 9px", borderRadius: 20, textTransform: "uppercase" as const }}>
               <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
               {entry.isViolation ? "OVERRIDE" : "REVERSIBLE"}
             </span>
@@ -881,14 +881,14 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
           <Link
             href={`/entry/${entry.id}`}
             onClick={(e) => e.stopPropagation()}
-            style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 8, lineHeight: 1.35, textDecoration: "none" }}
+            style={{ display: "block", fontSize: "var(--ts-md)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 8, lineHeight: 1.35, textDecoration: "none" }}
           >
             {entry.title}
           </Link>
 
           {/* Short definition (italic intro) */}
           {shortDef && (
-            <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.65, marginBottom: context ? 12 : 10, fontStyle: "italic" }}>
+            <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", lineHeight: 1.65, marginBottom: context ? 12 : 10, fontStyle: "italic" }}>
               {shortDef}
             </div>
           )}
@@ -896,10 +896,10 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
           {/* WHAT IT MEANS */}
           {context && (
             <>
-              <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "rgba(var(--atlas-muted-rgb),0.45)", marginBottom: 5 }}>
+              <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "rgba(var(--atlas-muted-rgb),0.45)", marginBottom: 5 }}>
                 What it means
               </div>
-              <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.65, marginBottom: 12 }}>
+              <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", lineHeight: 1.65, marginBottom: 12 }}>
                 {context}
               </div>
             </>
@@ -914,7 +914,7 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
                 marginBottom: 10, background: "transparent", border: "none",
                 cursor: "pointer", padding: 0,
                 display: "flex", alignItems: "center", gap: 4,
-                fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                 color: "rgba(var(--atlas-muted-rgb),0.5)", textTransform: "uppercase" as const,
               }}
             >
@@ -938,7 +938,7 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
               {entry.details && (
                 <pre style={{
                   margin: 0, marginBottom: (entry.touched && entry.touched.length > 0) ? 10 : 0,
-                  fontSize: 11, fontFamily: "var(--app-font-mono)",
+                  fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)",
                   color: "var(--atlas-muted)", lineHeight: 1.6,
                   whiteSpace: "pre-wrap", wordBreak: "break-word",
                 }}>
@@ -947,12 +947,12 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
               )}
               {entry.touched && entry.touched.length > 0 && (
                 <>
-                  <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(var(--atlas-muted-rgb),0.45)", marginBottom: 6 }}>
+                  <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(var(--atlas-muted-rgb),0.45)", marginBottom: 6 }}>
                     Touched files
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3 }}>
                     {entry.touched.map((f, i) => (
-                      <li key={i} style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.6)", letterSpacing: "0.03em" }}>
+                      <li key={i} style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.6)", letterSpacing: "0.03em" }}>
                         · {f}
                       </li>
                     ))}
@@ -963,19 +963,19 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
           )}
 
           {/* Source */}
-          <div style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.35)", fontFamily: "var(--app-font-mono)", marginBottom: 12 }}>
+          <div style={{ fontSize: "var(--ts-micro)", color: "rgba(var(--atlas-muted-rgb),0.35)", fontFamily: "var(--app-font-mono)", marginBottom: 12 }}>
             chat message · {timeAgo(entry.createdAt)}
           </div>
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={handleResolve} disabled={done || updateEntry.isPending}
-              style={{ flex: 1, padding: "7px", borderRadius: 7, fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.22)", color: "var(--atlas-muted)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
+              style={{ flex: 1, padding: "7px", borderRadius: 7, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.22)", color: "var(--atlas-muted)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
               onMouseEnter={(e) => { if (!done) e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.5)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.22)"; }}
             >Resolve</button>
             <button onClick={handleCommit} disabled={done || updateEntry.isPending}
-              style={{ flex: 1, padding: "7px", borderRadius: 7, fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
+              style={{ flex: 1, padding: "7px", borderRadius: 7, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
               onMouseEnter={(e) => { if (!done) e.currentTarget.style.background = "rgba(201,162,76,0.15)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
             >Commit</button>
@@ -1033,12 +1033,12 @@ export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]
         >
           <path d="M3 2l4 3-4 3" stroke="var(--atlas-fg)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10.5, color: "var(--atlas-fg)", flex: 1 }}>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", flex: 1 }}>
           {records.length} File{records.length !== 1 ? "s" : ""} Changed
         </span>
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "#4ade80", opacity: 0.8 }}>+{totalAdded}</span>
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "#f87171", opacity: 0.8, marginRight: 4 }}>-{totalDeleted}</span>
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8.5, color: "var(--atlas-muted)", opacity: 0.45 }}>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#4ade80", opacity: 0.8 }}>+{totalAdded}</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#f87171", opacity: 0.8, marginRight: 4 }}>-{totalDeleted}</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: "var(--atlas-muted)", opacity: 0.45 }}>
           {new Date(first.pushedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
       </button>
@@ -1065,14 +1065,14 @@ export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]
                   <path d="M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V6L9 1z" stroke={iconColor} strokeWidth="1.2" strokeLinejoin="round" />
                   <path d="M9 1v5h5" stroke={iconColor} strokeWidth="1.2" strokeLinejoin="round" />
                 </svg>
-                <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, color: "var(--atlas-fg)", opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {r.filename}
                 </span>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "#4ade80", flexShrink: 0 }}>+{r.additions}</span>
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "#4ade80", flexShrink: 0 }}>+{r.additions}</span>
                 {isNew ? (
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8.5, background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "0px 5px", borderRadius: 4, flexShrink: 0, letterSpacing: "0.04em" }}>New</span>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "0px 5px", borderRadius: 4, flexShrink: 0, letterSpacing: "0.04em" }}>New</span>
                 ) : (
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "#f87171", flexShrink: 0 }}>-{r.deletions}</span>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "#f87171", flexShrink: 0 }}>-{r.deletions}</span>
                 )}
               </div>
             );
@@ -1082,13 +1082,13 @@ export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]
 
       {/* Footer actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", justifyContent: "space-between" }}>
-        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", opacity: 0.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {first.branch}
         </div>
         <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
           {first.commitUrl && (
             <a href={first.commitUrl} target="_blank" rel="noopener noreferrer"
-              style={{ padding: "3px 9px", borderRadius: 4, fontSize: 9.5, fontFamily: "var(--app-font-mono)", background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", textDecoration: "none", opacity: 0.75 }}
+              style={{ padding: "3px 9px", borderRadius: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", textDecoration: "none", opacity: 0.75 }}
             >
               View →
             </a>
@@ -1097,12 +1097,12 @@ export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]
             <button
               disabled={rolling}
               onClick={async () => { setRolling(true); await onRollbackAll(); setRolling(false); setDone(true); }}
-              style={{ padding: "3px 9px", borderRadius: 4, fontSize: 9.5, fontFamily: "var(--app-font-mono)", background: rolling ? "rgba(255,255,255,0.03)" : "rgba(239,68,68,0.07)", border: `1px solid ${rolling ? "var(--atlas-border)" : "rgba(239,68,68,0.22)"}`, color: rolling ? "var(--atlas-muted)" : "rgba(252,165,165,0.8)", cursor: rolling ? "not-allowed" : "pointer", transition: "all 150ms ease" }}
+              style={{ padding: "3px 9px", borderRadius: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: rolling ? "rgba(255,255,255,0.03)" : "rgba(239,68,68,0.07)", border: `1px solid ${rolling ? "var(--atlas-border)" : "rgba(239,68,68,0.22)"}`, color: rolling ? "var(--atlas-muted)" : "rgba(252,165,165,0.8)", cursor: rolling ? "not-allowed" : "pointer", transition: "all 150ms ease" }}
             >
               {rolling ? "…" : "↺ Rollback"}
             </button>
           )}
-          {done && <span style={{ padding: "3px 9px", fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>rolled back</span>}
+          {done && <span style={{ padding: "3px 9px", fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>rolled back</span>}
         </div>
       </div>
     </div>
@@ -1227,14 +1227,14 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
             cursor: "pointer",
           }}
         >
-          <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis" }}>
             {displayMessage}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 4 }}>
-            <span style={{ fontSize: 10.5, color: "var(--atlas-muted)" }}>{commit.author}</span>
-            <span style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55 }}>·</span>
-            <span style={{ fontSize: 10.5, color: "var(--atlas-muted)" }}>{formatCommitTimeAgo(commit.timestamp)}</span>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-muted)", opacity: 0.65 }}>{commit.sha.slice(0, 7)}</span>
+            <span style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)" }}>{commit.author}</span>
+            <span style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", opacity: 0.55 }}>·</span>
+            <span style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)" }}>{formatCommitTimeAgo(commit.timestamp)}</span>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.65 }}>{commit.sha.slice(0, 7)}</span>
           </div>
         </button>
         <a
@@ -1246,7 +1246,7 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
           style={{
             color: "var(--atlas-gold)",
             textDecoration: "none",
-            fontSize: 15,
+            fontSize: "var(--ts-h3)",
             lineHeight: 1,
             padding: "10px 12px",
             flexShrink: 0,
@@ -1258,24 +1258,24 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
       </div>
       {expanded && (
         <div style={{ borderTop: "1px solid var(--atlas-border)", padding: "9px 12px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+          <div style={{ fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
             {commit.message || "(no commit message)"}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {commit.files.length > 0 ? commit.files.map((file) => (
               <div key={file.filename} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10.5, color: "var(--atlas-fg)", fontFamily: "var(--app-font-mono)" }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", fontFamily: "var(--app-font-mono)" }}>
                   {file.filename}
                 </span>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-phosphor)", flexShrink: 0 }}>
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "var(--atlas-phosphor)", flexShrink: 0 }}>
                   +{file.additions}
                 </span>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-ember)", flexShrink: 0 }}>
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "var(--atlas-ember)", flexShrink: 0 }}>
                   -{file.deletions}
                 </span>
               </div>
             )) : (
-              <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.65 }}>No file details available.</div>
+              <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", opacity: 0.65 }}>No file details available.</div>
             )}
           </div>
           <a
@@ -1283,7 +1283,7 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.06em", color: "var(--atlas-gold)", textDecoration: "none", alignSelf: "flex-start" }}
+            style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.06em", color: "var(--atlas-gold)", textDecoration: "none", alignSelf: "flex-start" }}
           >
             View on GitHub →
           </a>
@@ -1375,7 +1375,7 @@ export function GhTreeNodeRow({
             <path d="M2 1l4 3-4 3" stroke="var(--atlas-fg)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <FolderIcon open={open} />
-          <span style={{ fontSize: 11.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left" }}>
+          <span style={{ fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left" }}>
             {node.name}
           </span>
         </button>
@@ -1401,7 +1401,7 @@ export function GhTreeNodeRow({
       onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
     >
       <FileIcon ext={node.ext} />
-      <span style={{ fontSize: 11.5, color: isSelected ? "var(--atlas-fg)" : "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: "var(--ts-caption)", color: isSelected ? "var(--atlas-fg)" : "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {node.name}
       </span>
     </button>
@@ -1469,7 +1469,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Header */}
       <div style={{ padding: "7px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.6 }}>
+        <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.6 }}>
           {(() => {
             try {
               const p = memory ? JSON.parse(memory) : null;
@@ -1483,7 +1483,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
             <button
               onClick={clear}
               disabled={saving}
-              style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 9, ...sMono, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.35, padding: "2px 4px" }}
+              style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "var(--ts-xs)", ...sMono, letterSpacing: "0.06em", color: "var(--atlas-muted)", opacity: 0.35, padding: "2px 4px" }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.35")}
             >
@@ -1493,7 +1493,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
           {!editing && (
             <button
               onClick={startEdit}
-              style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 9, ...sMono, letterSpacing: "0.06em", color: "var(--atlas-gold)", opacity: 0.55, padding: "2px 4px" }}
+              style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "var(--ts-xs)", ...sMono, letterSpacing: "0.06em", color: "var(--atlas-gold)", opacity: 0.55, padding: "2px 4px" }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
             >
@@ -1504,14 +1504,14 @@ function MemoryTab({ projectId }: { projectId: number }) {
             <>
               <button
                 onClick={() => setEditing(false)}
-                style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 9, ...sMono, color: "var(--atlas-muted)", opacity: 0.4, padding: "2px 4px" }}
+                style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "var(--ts-xs)", ...sMono, color: "var(--atlas-muted)", opacity: 0.4, padding: "2px 4px" }}
               >
                 cancel
               </button>
               <button
                 onClick={save}
                 disabled={saving}
-                style={{ background: "var(--atlas-ember)", border: "none", cursor: saving ? "not-allowed" : "pointer", fontSize: 9, ...sMono, letterSpacing: "0.08em", color: "var(--atlas-fg)", padding: "2px 8px", borderRadius: 4, opacity: saving ? 0.5 : 1 }}
+                style={{ background: "var(--atlas-ember)", border: "none", cursor: saving ? "not-allowed" : "pointer", fontSize: "var(--ts-xs)", ...sMono, letterSpacing: "0.08em", color: "var(--atlas-fg)", padding: "2px 8px", borderRadius: 4, opacity: saving ? 0.5 : 1 }}
               >
                 {saving ? "saving…" : "save"}
               </button>
@@ -1530,7 +1530,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
             style={{
               width: "100%", height: "100%", minHeight: 200, resize: "none",
               background: "var(--atlas-surface)", border: "1px solid rgba(201,162,76,0.25)",
-              borderRadius: 6, color: "var(--atlas-fg)", fontSize: 11,
+              borderRadius: 6, color: "var(--atlas-fg)", fontSize: "var(--ts-caption)",
               ...sMono, lineHeight: 1.65, padding: "10px 12px",
               outline: "none", boxSizing: "border-box",
             }}
@@ -1551,7 +1551,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
             if (!parsed?.entries?.length) {
               return (
                 <div style={{ padding: "48px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4, lineHeight: 1.7, fontFamily: "var(--app-font-mono)" }}>
+                  <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", opacity: 0.4, lineHeight: 1.7, fontFamily: "var(--app-font-mono)" }}>
                     Nothing here yet.<br />Atlas builds memory as you work.
                   </div>
                 </div>
@@ -1562,7 +1562,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
 
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.08em", paddingBottom: 4, borderBottom: "1px solid var(--atlas-border)" }}>
+                <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.08em", paddingBottom: 4, borderBottom: "1px solid var(--atlas-border)" }}>
                   {totalCount} MEMORY {totalCount === 1 ? "ENTRY" : "ENTRIES"} ACROSS {tierConfig.filter(t => parsed!.entries.some(e => e.tier === t.tier)).length} TIERS
                 </div>
                 {tierConfig.map(({ tier, label, sublabel, color, bg, border }) => {
@@ -1571,12 +1571,12 @@ function MemoryTab({ projectId }: { projectId: number }) {
                   return (
                     <div key={tier} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color, fontWeight: 600 }}>T{tier} · {label}</span>
-                        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4 }}>{sublabel}</span>
-                        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color, opacity: 0.5, marginLeft: "auto" }}>{entries.length}</span>
+                        <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color, fontWeight: 600 }}>T{tier} · {label}</span>
+                        <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4 }}>{sublabel}</span>
+                        <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color, opacity: 0.5, marginLeft: "auto" }}>{entries.length}</span>
                       </div>
                       {entries.map((entry, i) => (
-                        <div key={i} style={{ padding: "7px 10px", borderRadius: 6, background: bg, border: `1px solid ${border}`, fontSize: 11, color: "var(--atlas-fg)", lineHeight: 1.55, fontFamily: "var(--app-font-mono)", opacity: 0.85 }}>
+                        <div key={i} style={{ padding: "7px 10px", borderRadius: 6, background: bg, border: `1px solid ${border}`, fontSize: "var(--ts-caption)", color: "var(--atlas-fg)", lineHeight: 1.55, fontFamily: "var(--app-font-mono)", opacity: 0.85 }}>
                           {entry.text}
                         </div>
                       ))}
@@ -1598,7 +1598,7 @@ function MapSection({ label, items, color = "var(--atlas-muted)" }: { label: str
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{
-        fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+        fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
         textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.5, marginBottom: 7,
       }}>
         {label} <span style={{ opacity: 0.5 }}>({items.length})</span>
@@ -1608,7 +1608,7 @@ function MapSection({ label, items, color = "var(--atlas-muted)" }: { label: str
           <span key={item} style={{
             padding: "3px 8px", borderRadius: 4,
             background: "var(--atlas-glass-bg)", border: "1px solid var(--atlas-border)",
-            fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+            fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
             color, opacity: 0.8,
           }}>
             {item}
@@ -1698,7 +1698,7 @@ function MapTab({ projectId }: { projectId: number }) {
           <rect x="1" y="1" width="30" height="30" rx="6" stroke="currentColor" strokeWidth="1.5" />
           <path d="M8 10h16M8 16h12M8 22h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <div style={{ textAlign: "center", fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.7 }}>
+        <div style={{ textAlign: "center", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", lineHeight: 1.7 }}>
           Link a repo in the <strong style={{ color: "var(--atlas-fg)", opacity: 0.65 }}>Files</strong> tab first,<br />
           then come back here to map your project.
         </div>
@@ -1714,11 +1714,11 @@ function MapTab({ projectId }: { projectId: number }) {
         flexShrink: 0, display: "flex", alignItems: "center", gap: 8,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, ...sMono, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.5 }}>
+          <div style={{ fontSize: "var(--ts-micro)", ...sMono, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.5 }}>
             {linkedRepo.fullName}
           </div>
           {scan && (
-            <div style={{ fontSize: 9, ...sMono, color: "var(--atlas-muted)", opacity: 0.3, marginTop: 1 }}>
+            <div style={{ fontSize: "var(--ts-xs)", ...sMono, color: "var(--atlas-muted)", opacity: 0.3, marginTop: 1 }}>
               Scanned {scan.scannedAt.slice(0, 10)} · {scan.totalFiles} files
             </div>
           )}
@@ -1727,7 +1727,7 @@ function MapTab({ projectId }: { projectId: number }) {
           onClick={handleScan}
           disabled={scanning}
           style={{
-            padding: "5px 12px", borderRadius: 5, fontSize: 10, fontWeight: 600,
+            padding: "5px 12px", borderRadius: 5, fontSize: "var(--ts-micro)", fontWeight: 600,
             ...sMono, letterSpacing: "0.08em",
             background: scanning
               ? "rgba(var(--atlas-muted-rgb),0.15)"
@@ -1745,7 +1745,7 @@ function MapTab({ projectId }: { projectId: number }) {
       {scanning && (
         <div style={{ padding: "24px 14px", textAlign: "center" }}>
           <div style={{ display: "flex", justifyContent: "center" }}><LoadingSpinner size="sm" color="atlas" /></div>
-          <div style={{ marginTop: 10, fontSize: 10, ...sMono, color: "var(--atlas-muted)", opacity: 0.45 }}>
+          <div style={{ marginTop: 10, fontSize: "var(--ts-micro)", ...sMono, color: "var(--atlas-muted)", opacity: 0.45 }}>
             Reading key files and mapping structure…
           </div>
         </div>
@@ -1756,7 +1756,7 @@ function MapTab({ projectId }: { projectId: number }) {
         <div style={{
           margin: "10px 12px", padding: "9px 12px", borderRadius: 6,
           background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-          fontSize: 11, color: "rgba(252,165,165,0.8)",
+          fontSize: "var(--ts-caption)", color: "rgba(252,165,165,0.8)",
         }}>
           {error}
         </div>
@@ -1765,7 +1765,7 @@ function MapTab({ projectId }: { projectId: number }) {
       {/* Empty state */}
       {!scan && !scanning && !error && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 18px", gap: 10 }}>
-          <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", lineHeight: 1.8, textAlign: "center", opacity: 0.55, ...sMono }}>
+          <div style={{ fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.8, textAlign: "center", opacity: 0.55, ...sMono }}>
             Click <strong style={{ color: "var(--atlas-gold)" }}>Scan Project</strong> to map<br />
             your routes, components, and tables.
           </div>
@@ -1777,10 +1777,10 @@ function MapTab({ projectId }: { projectId: number }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 20px" }} className="scrollbar-none">
           {/* Project name + summary */}
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 5 }}>
+            <div style={{ fontSize: "var(--ts-md)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 5 }}>
               {scan.projectName}
             </div>
-            <div style={{ fontSize: 12, color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.7 }}>
+            <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.7 }}>
               {scan.summary}
             </div>
           </div>
@@ -1792,7 +1792,7 @@ function MapTab({ projectId }: { projectId: number }) {
                 <span key={s} style={{
                   padding: "3px 9px", borderRadius: 20,
                   background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)",
-                  fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", opacity: 0.85,
+                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", opacity: 0.85,
                 }}>
                   {s}
                 </span>
@@ -1801,7 +1801,7 @@ function MapTab({ projectId }: { projectId: number }) {
                 <span style={{
                   padding: "3px 9px", borderRadius: 20,
                   background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)",
-                  fontSize: 10, fontFamily: "var(--app-font-mono)", color: "rgba(134,239,172,0.85)",
+                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "rgba(134,239,172,0.85)",
                 }}>
                   Auth ✓
                 </span>
@@ -1827,8 +1827,8 @@ function MapTab({ projectId }: { projectId: number }) {
               ["Files", scan.totalFiles],
             ].map(([label, val]) => (
               <div key={label as string} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--atlas-fg)" }}>{val}</div>
-                <div style={{ fontSize: 9, ...sMono, color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.06em" }}>
+                <div style={{ fontSize: "var(--ts-h3)", fontWeight: 700, color: "var(--atlas-fg)" }}>{val}</div>
+                <div style={{ fontSize: "var(--ts-xs)", ...sMono, color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.06em" }}>
                   {label as string}
                 </div>
               </div>
@@ -1844,7 +1844,7 @@ function MapTab({ projectId }: { projectId: number }) {
             transition: "all 300ms ease",
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: savedToMemory ? "#34d399" : "var(--atlas-muted)", opacity: savedToMemory ? 1 : 0.3 }} />
-            <span style={{ fontSize: 10, ...sMono, color: savedToMemory ? "rgba(134,239,172,0.8)" : "var(--atlas-muted)", opacity: savedToMemory ? 1 : 0.45, letterSpacing: "0.04em" }}>
+            <span style={{ fontSize: "var(--ts-micro)", ...sMono, color: savedToMemory ? "rgba(134,239,172,0.8)" : "var(--atlas-muted)", opacity: savedToMemory ? 1 : 0.45, letterSpacing: "0.04em" }}>
               {updateProject.isPending ? "Saving to memory…" : savedToMemory ? "Saved to Atlas memory — active in chat" : "Scan to save map to Atlas memory"}
             </span>
           </div>
@@ -2082,7 +2082,7 @@ function RightPanel({
                 opacity: active ? 1 : 0.55,
                 transition: "all 160ms ease",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 9.5,
+                fontSize: "var(--ts-xs)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 marginBottom: -1,
@@ -2098,7 +2098,7 @@ function RightPanel({
                   style={{
                     padding: "1px 4px", borderRadius: 3,
                     background: active ? "rgba(201,162,76,0.15)" : "rgba(var(--atlas-muted-rgb),0.15)",
-                    fontSize: 8.5,
+                    fontSize: "var(--ts-tiny)",
                   }}
                 >
                   {t.badge}
@@ -2141,7 +2141,7 @@ function RightPanel({
                   ? "rgba(var(--atlas-muted-rgb),0.6)"
                   : "rgba(230,150,90,0.95)",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 9,
+                fontSize: "var(--ts-xs)",
                 fontWeight: 500,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
@@ -2198,7 +2198,7 @@ function RightPanel({
               marginLeft: onToggleFullscreen ? 0 : "auto", marginRight: 6,
               width: 28, height: 28, borderRadius: 6,
               background: "transparent", border: "none",
-              color: "var(--atlas-muted)", fontSize: 16, lineHeight: 1,
+              color: "var(--atlas-muted)", fontSize: "var(--ts-base)", lineHeight: 1,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               opacity: 0.5, transition: "opacity 160ms ease",
             }}
@@ -2222,7 +2222,7 @@ function RightPanel({
                 style={{
                   flex: 1, padding: "8px 0", background: "transparent", border: "none",
                   borderBottom: ledgerSubTab === st ? "2px solid var(--atlas-gold)" : "2px solid transparent",
-                  fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                   textTransform: "uppercase" as const,
                   color: ledgerSubTab === st ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", transition: "all 160ms ease",
@@ -2583,14 +2583,14 @@ function TerminalPanel({
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ flexShrink: 0 }}>
               <path d="M5.5 1v9M1 5.5l4.5-4.5 4.5 4.5" stroke={isParchment ? "#8B5E3C" : "rgba(201,162,76,0.7)"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em", color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.7)", textTransform: "uppercase" }}>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.1em", color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.7)", textTransform: "uppercase" }}>
               Sync to GitHub
             </span>
             {syncFiles.length > 0 && (
               <span style={{
                 marginLeft: "auto", padding: "1px 6px", borderRadius: 3,
                 background: "rgba(201,162,76,0.12)", border: "0.5px solid rgba(201,162,76,0.3)",
-                fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                 color: "var(--atlas-gold)",
               }}>
                 {syncFiles.length} modified
@@ -2600,7 +2600,7 @@ function TerminalPanel({
               <span style={{
                 marginLeft: "auto", padding: "1px 6px", borderRadius: 3,
                 background: "rgba(52,211,153,0.08)", border: "0.5px solid rgba(52,211,153,0.25)",
-                fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                 color: "#34d399",
               }}>
                 ✓ pushed {syncResult.shortSha}
@@ -2618,13 +2618,13 @@ function TerminalPanel({
               {syncFiles.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                   {syncFiles.map(f => (
-                    <div key={f} style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: isParchment ? "rgba(100,70,40,0.7)" : "rgba(var(--atlas-muted-rgb),0.7)", letterSpacing: "0.04em", padding: "2px 0" }}>
+                    <div key={f} style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(100,70,40,0.7)" : "rgba(var(--atlas-muted-rgb),0.7)", letterSpacing: "0.04em", padding: "2px 0" }}>
                       · {f}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: isParchment ? "rgba(100,70,40,0.5)" : "rgba(var(--atlas-muted-rgb),0.45)", letterSpacing: "0.05em" }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(100,70,40,0.5)" : "rgba(var(--atlas-muted-rgb),0.45)", letterSpacing: "0.05em" }}>
                   No tracked edits yet — Atlas writes files here when it self-updates.
                 </div>
               )}
@@ -2641,14 +2641,14 @@ function TerminalPanel({
                   background: isParchment ? "rgba(240,228,210,0.6)" : "rgba(255,255,255,0.04)",
                   border: `1px solid ${termBorder}`,
                   borderRadius: 5, padding: "6px 9px",
-                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)",
                   color: termFgText, outline: "none",
                 }}
               />
 
               {/* Error / result */}
               {syncStatus === "error" && syncError && (
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "rgba(252,100,100,0.88)", lineHeight: 1.5 }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "rgba(252,100,100,0.88)", lineHeight: 1.5 }}>
                   ✗ {syncError}
                 </div>
               )}
@@ -2657,7 +2657,7 @@ function TerminalPanel({
                   href={syncResult.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "#34d399", letterSpacing: "0.04em", textDecoration: "none" }}
+                  style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#34d399", letterSpacing: "0.04em", textDecoration: "none" }}
                 >
                   ✓ {syncResult.filesCommitted} file{syncResult.filesCommitted !== 1 ? "s" : ""} pushed · {syncResult.shortSha} →
                 </a>
@@ -2672,7 +2672,7 @@ function TerminalPanel({
                   background: syncFiles.length === 0 ? "transparent" : "rgba(146,64,14,0.22)",
                   border: `1px solid ${syncFiles.length === 0 ? termBorder : "rgba(146,64,14,0.4)"}`,
                   color: syncFiles.length === 0 ? "rgba(var(--atlas-muted-rgb),0.4)" : "rgba(230,150,90,0.9)",
-                  fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
+                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
                   textTransform: "uppercase", cursor: syncFiles.length === 0 ? "not-allowed" : "pointer",
                   transition: "all 160ms ease",
                 }}
@@ -2689,7 +2689,7 @@ function TerminalPanel({
         onClick={() => inputRef.current?.focus()}
         style={{
           flex: 1, overflowY: "auto", padding: "12px 14px",
-          fontFamily: "var(--app-font-mono)", fontSize: 12, lineHeight: 1.7,
+          fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-label)", lineHeight: 1.7,
           cursor: "text",
         }}
       >
@@ -2725,7 +2725,7 @@ function TerminalPanel({
         display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
         background: termInputBg,
       }}>
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 13, color: termPrompt, flexShrink: 0 }}>$</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-body)", color: termPrompt, flexShrink: 0 }}>$</span>
         <input
           ref={inputRef}
           value={input}
@@ -2738,7 +2738,7 @@ function TerminalPanel({
           spellCheck={false}
           style={{
             flex: 1, background: "transparent", border: "none", outline: "none",
-            fontFamily: "var(--app-font-mono)", fontSize: 12,
+            fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-label)",
             color: termFgText,
             caretColor: termCaret,
           }}
@@ -2750,7 +2750,7 @@ function TerminalPanel({
             style={{
               flexShrink: 0, padding: "3px 10px", borderRadius: 4,
               background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)",
-              color: "rgba(252,100,100,0.9)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+              color: "rgba(252,100,100,0.9)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
               fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 5,
             }}
@@ -2766,7 +2766,7 @@ function TerminalPanel({
             style={{
               flexShrink: 0, padding: "3px 10px", borderRadius: 4,
               background: "rgba(146,64,14,0.22)", border: "1px solid rgba(146,64,14,0.4)",
-              color: "rgba(230,150,90,0.88)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+              color: "rgba(230,150,90,0.88)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
               fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
             }}
           >
@@ -2924,7 +2924,7 @@ function MobileTabBar({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 8,
+                  fontSize: "var(--ts-tiny)",
                   fontFamily: "var(--app-font-mono)",
                   color: "#fff",
                   fontWeight: 700,
@@ -2938,7 +2938,7 @@ function MobileTabBar({
             {icon}
             <span
               style={{
-                fontSize: 9,
+                fontSize: "var(--ts-xs)",
                 fontFamily: "var(--app-font-mono)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
@@ -4516,11 +4516,11 @@ export default function Workspace() {
   if (!projectLoading && !sessionsLoading && id && !project) {
     return (
       <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--atlas-bg)", gap: 20 }}>
-        <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.35em", color: "var(--atlas-gold)", opacity: 0.4, textTransform: "uppercase" }}>Axiom</div>
-        <div style={{ fontSize: 20, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "0.04em" }}>Project not found.</div>
+        <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.35em", color: "var(--atlas-gold)", opacity: 0.4, textTransform: "uppercase" }}>Axiom</div>
+        <div style={{ fontSize: "var(--ts-display)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "0.04em" }}>Project not found.</div>
         <button
           onClick={() => setLocation("/home")}
-          style={{ padding: "10px 24px", borderRadius: 9, cursor: "pointer", background: "linear-gradient(180deg, var(--atlas-gold) 0%, #B8942A 100%)", border: "1px solid rgba(var(--atlas-gold-rgb),0.4)", color: "#0C0A09", fontSize: 11, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase" }}
+          style={{ padding: "10px 24px", borderRadius: 9, cursor: "pointer", background: "linear-gradient(180deg, var(--atlas-gold) 0%, #B8942A 100%)", border: "1px solid rgba(var(--atlas-gold-rgb),0.4)", color: "#0C0A09", fontSize: "var(--ts-caption)", fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase" }}
         >
           Go home
         </button>
@@ -4657,7 +4657,7 @@ export default function Workspace() {
                   {tab === "terminal" && <TerminalSquare size={13} strokeWidth={1.7} />}
                   {label}
                   {badge !== undefined && (
-                    <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", background: "rgba(201,162,76,0.15)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "0 4px", borderRadius: 8, lineHeight: "15px" }}>
+                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "rgba(201,162,76,0.15)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "0 4px", borderRadius: 8, lineHeight: "15px" }}>
                       {badge}
                     </span>
                   )}
@@ -4683,7 +4683,7 @@ export default function Workspace() {
                 color: "var(--atlas-gold)",
                 cursor: "pointer",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 9.5,
+                fontSize: "var(--ts-xs)",
                 fontWeight: 700,
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
@@ -4707,7 +4707,7 @@ export default function Workspace() {
                   background: "rgba(134,239,172,0.08)",
                   border: "1px solid rgba(134,239,172,0.25)",
                   color: "rgba(134,239,172,0.85)",
-                  fontSize: 10, fontFamily: "var(--app-font-mono)",
+                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)",
                   textDecoration: "none", letterSpacing: "0.06em",
                   flexShrink: 0,
                 }}
@@ -4728,7 +4728,7 @@ export default function Workspace() {
                   background: "rgba(201,162,76,0.06)",
                   border: "1px solid rgba(201,162,76,0.2)",
                   color: "var(--atlas-gold)",
-                  fontSize: 10, fontFamily: "var(--app-font-mono)",
+                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)",
                   cursor: "pointer", letterSpacing: "0.06em",
                   flexShrink: 0,
                 }}
@@ -4757,7 +4757,7 @@ export default function Workspace() {
                   cursor: "pointer",
                   padding: isTinyScreen ? "3px 5px" : "3px 7px",
                   fontFamily: "var(--app-font-mono)",
-                  fontSize: 9,
+                  fontSize: "var(--ts-xs)",
                   fontWeight: 700,
                   letterSpacing: "0.1em",
                   color: "var(--atlas-muted)",
@@ -4924,10 +4924,10 @@ export default function Workspace() {
                       onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
                     });
                   }}
-                  style={{ background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: 13, fontWeight: 500, fontFamily: "var(--app-font-sans)", width: 180, opacity: updateProjectHeader.isPending ? 0.5 : 1, transition: "opacity 150ms ease" }}
+                  style={{ background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: "var(--ts-body)", fontWeight: 500, fontFamily: "var(--app-font-sans)", width: 180, opacity: updateProjectHeader.isPending ? 0.5 : 1, transition: "opacity 150ms ease" }}
                 />
                 {renameError && (
-                  <span style={{ fontSize: 10.5, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginTop: 2, lineHeight: 1.3, pointerEvents: "none" }}>
+                  <span style={{ fontSize: "var(--ts-sm)", color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginTop: 2, lineHeight: 1.3, pointerEvents: "none" }}>
                     {renameError}
                   </span>
                 )}
@@ -4942,14 +4942,14 @@ export default function Workspace() {
                 <span
                   key={autoNameKey}
                   className={autoNameKey > 0 ? "atlas-name-fresh" : undefined}
-                  style={{ fontSize: 13, opacity: 0.92, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+                  style={{ fontSize: "var(--ts-body)", opacity: 0.92, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
                 >
                   {(() => {
                     const n = project?.name ?? "…";
                     return isTinyScreen && n.length > 12 ? n.slice(0, 12) + "…" : n;
                   })()}
                 </span>
-                <span className="atlas-name-pencil" style={{ fontSize: 10, color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
+                <span className="atlas-name-pencil" style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
               </button>
             )}
 
@@ -4965,7 +4965,7 @@ export default function Workspace() {
                   border: "1px solid rgba(146,64,14,0.55)",
                   color: "rgba(230,150,90,0.95)",
                   fontFamily: "var(--app-font-mono)",
-                  fontSize: 8.5,
+                  fontSize: "var(--ts-tiny)",
                   fontWeight: 700,
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
@@ -5010,7 +5010,7 @@ export default function Workspace() {
                       color: active || detected ? cfg.color : "var(--atlas-muted)",
                       cursor: "pointer",
                       fontFamily: "var(--app-font-mono)",
-                      fontSize: 8.5,
+                      fontSize: "var(--ts-tiny)",
                       fontWeight: 700,
                       letterSpacing: "0.1em",
                       transition: "all 160ms ease",
@@ -5055,9 +5055,9 @@ export default function Workspace() {
               <div style={{ marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", display: "inline-block", flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "#4ade80" }}>Switching to Build Mode</span>
+                  <span style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "#4ade80" }}>Switching to Build Mode</span>
                 </div>
-                <p style={{ fontSize: 13, color: "var(--atlas-fg)", margin: 0, lineHeight: 1.6, opacity: 0.85 }}>
+                <p style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", margin: 0, lineHeight: 1.6, opacity: 0.85 }}>
                   You have {planMsgs.length} planning {planMsgs.length === 1 ? "response" : "responses"} from this session. Commit the key decisions to your ledger before you start building?
                 </p>
               </div>
@@ -5092,7 +5092,7 @@ export default function Workspace() {
                       }}>
                         {selected && <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#0C0A09" strokeWidth="2.2" strokeLinecap="round"><path d="M2 6l3 3 5-5" /></svg>}
                       </span>
-                      <span style={{ fontSize: 12, color: selected ? "var(--atlas-fg)" : "var(--atlas-muted)", lineHeight: 1.55, transition: "color 140ms" }}>
+                      <span style={{ fontSize: "var(--ts-label)", color: selected ? "var(--atlas-fg)" : "var(--atlas-muted)", lineHeight: 1.55, transition: "color 140ms" }}>
                         {preview}{preview.length >= 100 ? "…" : ""}
                       </span>
                     </button>
@@ -5110,7 +5110,7 @@ export default function Workspace() {
                     background: handoffSelected.size === 0 ? "rgba(74,222,128,0.08)" : "rgba(74,222,128,0.14)",
                     border: `1px solid ${handoffSelected.size === 0 ? "rgba(74,222,128,0.12)" : "rgba(74,222,128,0.4)"}`,
                     color: handoffSelected.size === 0 ? "rgba(74,222,128,0.3)" : "#4ade80",
-                    fontSize: 11, fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const,
+                    fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const,
                     transition: "all 160ms ease",
                   }}
                 >
@@ -5121,7 +5121,7 @@ export default function Workspace() {
                   style={{
                     padding: "11px 16px", borderRadius: 9, cursor: "pointer",
                     background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.2)",
-                    color: "var(--atlas-muted)", fontSize: 11, fontFamily: "var(--app-font-mono)",
+                    color: "var(--atlas-muted)", fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)",
                     fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const,
                     opacity: 0.7,
                   }}
@@ -5151,13 +5151,13 @@ export default function Workspace() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block" }} />
-            <span style={{ fontSize: 12, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em" }}>
+            <span style={{ fontSize: "var(--ts-label)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em" }}>
               Spec loaded from {importSourceLabel ?? "external source"} — your architecture decisions are committed.
             </span>
           </div>
           <button
             onClick={dismissAxiomBanner}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: 16, lineHeight: 1, padding: "2px 4px", flexShrink: 0 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0 }}
             title="Dismiss"
             aria-label="Dismiss"
           >
@@ -5190,7 +5190,7 @@ export default function Workspace() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block" }} />
-            <span style={{ fontSize: 12, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "var(--ts-label)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {homeHandoffMeta?.parkedCount ?? 0} ideas parked · {homeHandoffMeta?.flowNodeCount ?? 0} flow nodes mapped · conversation memory loaded
             </span>
           </div>
@@ -5204,7 +5204,7 @@ export default function Workspace() {
                 color: "var(--atlas-gold)",
                 cursor: "pointer",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 11,
+                fontSize: "var(--ts-caption)",
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 padding: "2px 0",
@@ -5216,7 +5216,7 @@ export default function Workspace() {
             {!showHomeHandoffDrawer && (
               <button
                 onClick={() => setShowHomeHandoffBanner(false)}
-                style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: 16, lineHeight: 1, padding: "2px 4px", flexShrink: 0, opacity: 0.55 }}
+                style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0, opacity: 0.55 }}
                 title="Dismiss"
                 aria-label="Dismiss"
               >
@@ -5249,10 +5249,10 @@ export default function Workspace() {
           <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 4 }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 4 }}>
                   Home handoff
                 </div>
-                <div style={{ color: "var(--atlas-fg)", fontSize: 15, fontWeight: 600 }}>
+                <div style={{ color: "var(--atlas-fg)", fontSize: "var(--ts-h3)", fontWeight: 600 }}>
                   Picked up from your home session
                 </div>
               </div>
@@ -5260,55 +5260,55 @@ export default function Workspace() {
 
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 12 }}>
               <section style={{ border: "1px solid rgba(var(--atlas-gold-rgb),0.16)", borderRadius: 12, padding: 12, background: "rgba(var(--atlas-surface-rgb),0.78)" }}>
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 10 }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 10 }}>
                   Flow Nodes
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflowY: "auto" }}>
                   {homeHandoffNodes.length > 0 ? homeHandoffNodes.map((node) => (
                     <div key={node.id ?? `${node.type}-${node.label}`} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
-                        <span style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.label}</span>
-                        <span style={{ color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>{node.type}</span>
+                        <span style={{ color: "var(--atlas-fg)", fontSize: "var(--ts-label)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.label}</span>
+                        <span style={{ color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>{node.type}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         {(node.moscow ?? node.meta) && (
-                          <span style={{ flexShrink: 0, color: "var(--atlas-gold)", border: "1px solid rgba(var(--atlas-gold-rgb),0.28)", background: "rgba(var(--atlas-gold-rgb),0.08)", borderRadius: 999, padding: "1px 6px", fontFamily: "var(--app-font-mono)", fontSize: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                          <span style={{ flexShrink: 0, color: "var(--atlas-gold)", border: "1px solid rgba(var(--atlas-gold-rgb),0.28)", background: "rgba(var(--atlas-gold-rgb),0.08)", borderRadius: 999, padding: "1px 6px", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                             {node.moscow ?? node.meta}
                           </span>
                         )}
                         {node.details && (
-                          <span style={{ minWidth: 0, color: "var(--atlas-muted)", fontSize: 11, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ minWidth: 0, color: "var(--atlas-muted)", fontSize: "var(--ts-caption)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {node.details}
                           </span>
                         )}
                       </div>
                     </div>
                   )) : (
-                    <div style={{ color: "var(--atlas-muted)", fontSize: 12, lineHeight: 1.5 }}>No flow node details were saved for this handoff.</div>
+                    <div style={{ color: "var(--atlas-muted)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>No flow node details were saved for this handoff.</div>
                   )}
                 </div>
               </section>
 
               <section style={{ border: "1px solid rgba(var(--atlas-gold-rgb),0.16)", borderRadius: 12, padding: 12, background: "rgba(var(--atlas-surface-rgb),0.78)" }}>
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 10 }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 10 }}>
                   Parked Ideas
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflowY: "auto" }}>
                   {homeHandoffParkedTitles.length > 0 ? homeHandoffParkedTitles.map((title) => (
-                    <div key={title} style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.45 }}>
+                    <div key={title} style={{ color: "var(--atlas-fg)", fontSize: "var(--ts-label)", lineHeight: 1.45 }}>
                       {title}
                     </div>
                   )) : (
-                    <div style={{ color: "var(--atlas-muted)", fontSize: 12, lineHeight: 1.5 }}>No parked ideas were saved for this handoff.</div>
+                    <div style={{ color: "var(--atlas-muted)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>No parked ideas were saved for this handoff.</div>
                   )}
                 </div>
               </section>
 
               <section style={{ border: "1px solid rgba(var(--atlas-gold-rgb),0.16)", borderRadius: 12, padding: 12, background: "rgba(var(--atlas-surface-rgb),0.78)" }}>
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 10 }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 10 }}>
                   Memory
                 </div>
-                <div style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.5 }}>
+                <div style={{ color: "var(--atlas-fg)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>
                   Conversation memory loaded from home session
                 </div>
               </section>
@@ -5325,7 +5325,7 @@ export default function Workspace() {
                 color: "var(--atlas-gold)",
                 cursor: "pointer",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 12,
+                fontSize: "var(--ts-label)",
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 padding: "12px 14px",
@@ -5456,9 +5456,9 @@ export default function Workspace() {
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.2" strokeLinecap="round" style={{ opacity: 0.25 }}>
                           <path d="M9 1H3a1 1 0 00-1 1v18a1 1 0 001 1h18a1 1 0 001-1V9L13 1z"/><path d="M13 1v8h8"/><path d="M8 13h8M8 17h5"/>
                         </svg>
-                        <div style={{ fontSize: 12, color: "var(--atlas-muted)", opacity: 0.4, textAlign: "center", lineHeight: 1.65 }}>
+                        <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", opacity: 0.4, textAlign: "center", lineHeight: 1.65 }}>
                           No code changes this session yet.<br />
-                          <span style={{ fontSize: 10.5 }}>Push files from a Build response to see diffs here.</span>
+                          <span style={{ fontSize: "var(--ts-sm)" }}>Push files from a Build response to see diffs here.</span>
                         </div>
                       </div>
                     ) : (() => {
@@ -5616,7 +5616,7 @@ export default function Workspace() {
             betweenSlot={
               agenticMode && agenticIterCount > 0 ? (
                 <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
-                  <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)' }}>
+                  <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: "var(--ts-xs)", letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)' }}>
                     <svg width='8' height='8' viewBox='0 0 24 24' fill='currentColor' style={{ opacity: 0.9, flexShrink: 0 }}>
                       <path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' />
                     </svg>
@@ -5714,16 +5714,16 @@ export default function Workspace() {
               >
                 <div style={{ padding: "13px 14px", borderBottom: "1px solid var(--atlas-border)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block" }} />
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
                     Parking Lot
                   </span>
-                  <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", opacity: 0.65 }}>
+                  <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.65 }}>
                     {parkedCount} items
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowParkingDrawer(false)}
-                    style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 3px", opacity: 0.65 }}
+                    style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: "var(--ts-base)", lineHeight: 1, padding: "0 3px", opacity: 0.65 }}
                     aria-label="Close parking lot"
                   >
                     ×
@@ -5731,7 +5731,7 @@ export default function Workspace() {
                 </div>
                 <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "12px 14px" }} className="scrollbar-none">
                   {parkedEntries.length === 0 ? (
-                    <div style={{ padding: "30px 10px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 12, opacity: 0.6 }}>
+                    <div style={{ padding: "30px 10px", textAlign: "center", color: "var(--atlas-muted)", fontSize: "var(--ts-label)", opacity: 0.6 }}>
                       Nothing parked right now.
                     </div>
                   ) : (
@@ -5857,7 +5857,7 @@ export default function Workspace() {
       {!isMobile && (
         <div style={{ position: "fixed", bottom: 10, left: 12, display: "flex", gap: 12, zIndex: 10, pointerEvents: "none" }}>
           {[["Terms", "/terms"], ["Privacy", "/privacy"]].map(([label, href]) => (
-            <a key={label} href={href} style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.25, letterSpacing: "0.08em", textDecoration: "none", pointerEvents: "auto" }}
+            <a key={label} href={href} style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.25, letterSpacing: "0.08em", textDecoration: "none", pointerEvents: "auto" }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.5")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.25")}
             >{label}</a>
@@ -5936,8 +5936,8 @@ export default function Workspace() {
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--atlas-border)", margin: "12px auto 4px" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 10px" }}>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Model</span>
-              <button onClick={() => setShowWsModelSheet(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Model</span>
+              <button onClick={() => setShowWsModelSheet(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
             </div>
             <div style={{ padding: "0 14px" }}>
               {([
@@ -5963,20 +5963,20 @@ export default function Workspace() {
                     background: m.available ? "rgba(201,162,76,0.1)" : "var(--atlas-surface)",
                     border: `1px solid ${m.available ? "rgba(201,162,76,0.25)" : "var(--atlas-surface)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700,
+                    fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", fontWeight: 700,
                     color: m.available ? "rgba(201,162,76,0.85)" : "rgba(var(--atlas-muted-rgb),0.4)",
                     letterSpacing: "0.02em",
                   }}>
                     {m.icon}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-body)", fontWeight: 500, color: "var(--atlas-fg)", display: "flex", alignItems: "center", gap: 6 }}>
                       {m.label}
                       {!m.available && (
-                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8, color: "var(--atlas-muted)", letterSpacing: "0.1em", opacity: 0.55, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", borderRadius: 3, padding: "1px 4px" }}>KEY NEEDED</span>
+                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: "var(--atlas-muted)", letterSpacing: "0.1em", opacity: 0.55, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", borderRadius: 3, padding: "1px 4px" }}>KEY NEEDED</span>
                       )}
                     </div>
-                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.05em", marginTop: 2, opacity: m.available ? 0.7 : 0.4 }}>{m.sub}</div>
+                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.05em", marginTop: 2, opacity: m.available ? 0.7 : 0.4 }}>{m.sub}</div>
                   </div>
                   {wsModel === m.id && (
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -5986,7 +5986,7 @@ export default function Workspace() {
                 </button>
               ))}
               <div style={{ margin: "12px 0 4px", padding: "8px 12px", background: "rgba(201,162,76,0.04)", borderRadius: 6, border: "1px solid rgba(201,162,76,0.1)" }}>
-                <p style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
+                <p style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
                   TIP: Type <span style={{ color: "rgba(201,162,76,0.7)" }}>/deep [topic]</span> in any message to run a structured research analysis via Gemini — regardless of selected model.
                 </p>
               </div>
@@ -6008,8 +6008,8 @@ export default function Workspace() {
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--atlas-border)", margin: "12px auto 4px" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 10px" }}>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Lens</span>
-              <button onClick={() => setShowLensPicker(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Lens</span>
+              <button onClick={() => setShowLensPicker(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
             </div>
             <div style={{ padding: "0 14px" }}>
               {(Object.entries(LENS_CONFIG) as [WorkspaceLens, typeof LENS_CONFIG[WorkspaceLens]][]).map(([lensId, cfg]) => (
@@ -6033,15 +6033,15 @@ export default function Workspace() {
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color, display: "block" }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--app-font-sans)", fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-body)", fontWeight: 500, color: "var(--atlas-fg)" }}>
                       <span style={{ color: cfg.color }}>{cfg.label}</span>
                       {cfg.model && (
-                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8, color: "var(--atlas-muted)", letterSpacing: "0.1em", opacity: 0.6, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", borderRadius: 3, padding: "1px 4px" }}>
+                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: "var(--atlas-muted)", letterSpacing: "0.1em", opacity: 0.6, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", borderRadius: 3, padding: "1px 4px" }}>
                           {cfg.model === "claude" ? "Claude" : "Gemini"}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.05em", marginTop: 2, opacity: 0.7 }}>{cfg.sub}</div>
+                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.05em", marginTop: 2, opacity: 0.7 }}>{cfg.sub}</div>
                   </div>
                   {wsLens === lensId && (
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -6049,12 +6049,12 @@ export default function Workspace() {
                     </svg>
                   )}
                   {detectedLens === lensId && wsLens !== lensId && (
-                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8, color: cfg.color, letterSpacing: "0.1em", border: `1px solid ${cfg.borderColor}`, borderRadius: 3, padding: "1px 5px", opacity: 0.85 }}>SUGGESTED</span>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: cfg.color, letterSpacing: "0.1em", border: `1px solid ${cfg.borderColor}`, borderRadius: 3, padding: "1px 5px", opacity: 0.85 }}>SUGGESTED</span>
                   )}
                 </button>
               ))}
               <div style={{ margin: "10px 0 2px", padding: "8px 12px", background: "rgba(201,162,76,0.04)", borderRadius: 6, border: "1px solid rgba(201,162,76,0.1)" }}>
-                <p style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
+                <p style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
                   Lens shapes how Atlas responds — and sets the model. <span style={{ color: "rgba(201,162,76,0.7)" }}>Scenario</span> keeps the model you're already using.
                 </p>
               </div>
@@ -6074,8 +6074,8 @@ export default function Workspace() {
             border: "1px solid rgba(120,113,108,0.35)",
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)", padding: "20px 20px 18px",
           }}>
-            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(120,113,108,0.7)", marginBottom: 8 }}>Leaving Scenario</div>
-            <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 14, color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16 }}>
+            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(120,113,108,0.7)", marginBottom: 8 }}>Leaving Scenario</div>
+            <div style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-md)", color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16 }}>
               What do you want to do with the scenario messages?
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -6104,7 +6104,7 @@ export default function Workspace() {
                   setShowScenarioPrompt(false);
                   setShowLensPicker(false);
                 }}
-                style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.25)", color: "var(--atlas-gold)", cursor: "pointer", fontFamily: "var(--app-font-sans)", fontSize: 13, textAlign: "left" }}
+                style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.25)", color: "var(--atlas-gold)", cursor: "pointer", fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-body)", textAlign: "left" }}
               >
                 Keep — bring it into the project
               </button>
@@ -6127,13 +6127,13 @@ export default function Workspace() {
                   setShowScenarioPrompt(false);
                   setShowLensPicker(false);
                 }}
-                style={{ padding: "10px 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", color: "var(--atlas-muted)", cursor: "pointer", fontFamily: "var(--app-font-sans)", fontSize: 13, textAlign: "left" }}
+                style={{ padding: "10px 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", color: "var(--atlas-muted)", cursor: "pointer", fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-body)", textAlign: "left" }}
               >
                 Discard — remove from this session
               </button>
               <button
                 onClick={() => { setShowScenarioPrompt(false); setPendingLensSwitch(null); }}
-                style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.06em", opacity: 0.55 }}
+                style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.06em", opacity: 0.55 }}
               >
                 Stay in Scenario
               </button>
