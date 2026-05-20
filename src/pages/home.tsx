@@ -1196,6 +1196,11 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
+  useEffect(() => {
+    const active = homeMessages.length > 0;
+    document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
+    return () => { document.body.removeAttribute("data-axiom-thread"); };
+  }, [homeMessages.length]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [showConvSearch, setShowConvSearch] = useState(false);
   const [convSearchQuery, setConvSearchQuery] = useState("");
