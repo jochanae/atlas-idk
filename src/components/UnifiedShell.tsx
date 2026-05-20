@@ -4,11 +4,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
 import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
+import { useProjectState } from "@/hooks/useProjectState";
+import { toast } from "sonner";
 
 type ShellDepth = "ambient" | "active" | "operational";
 
@@ -201,6 +204,132 @@ function ShellAvatar() {
   );
 }
 
+function ShellConversationTitle({ projectId }: { projectId: number | null }) {
+  const { activeSession, refresh } = useProjectState(projectId);
+  const [editing, setEditing] = useState(false);
+  const [displayedTitle, setDisplayedTitle] = useState("");
+  const [draftTitle, setDraftTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const cancelBlurRef = useRef(false);
+
+  useEffect(() => {
+    if (!editing) {
+      const nextTitle = activeSession?.title ?? "";
+      setDisplayedTitle(nextTitle);
+      setDraftTitle(nextTitle);
+    }
+  }, [activeSession?.title, editing]);
+
+  const beginEditing = useCallback(() => {
+    if (!activeSession) return;
+    setDraftTitle(displayedTitle || activeSession.title);
+    setEditing(true);
+  }, [activeSession, displayedTitle]);
+
+  const submitRename = useCallback(async () => {
+    if (!activeSession || saving) return;
+    const previousTitle = displayedTitle || activeSession.title;
+    const newTitle = draftTitle.trim() || previousTitle;
+
+    if (newTitle === previousTitle) {
+      setEditing(false);
+      setDraftTitle(previousTitle);
+      return;
+    }
+
+    setSaving(true);
+    setDisplayedTitle(newTitle);
+    try {
+      const res = await fetch(`/api/sessions/${activeSession.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (!res.ok) throw new Error(`Rename failed: HTTP ${res.status}`);
+      toast("Renamed");
+      await refresh();
+    } catch {
+      setDisplayedTitle(previousTitle);
+      setDraftTitle(previousTitle);
+      toast("Rename failed");
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  }, [activeSession, displayedTitle, draftTitle, refresh, saving]);
+
+  if (!activeSession) return <ShellClock />;
+
+  return (
+    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, pointerEvents: "auto" }}>
+      {editing ? (
+        <input
+          autoFocus
+          value={draftTitle}
+          disabled={saving}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onBlur={() => {
+            if (cancelBlurRef.current) {
+              cancelBlurRef.current = false;
+              return;
+            }
+            void submitRename();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void submitRename();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancelBlurRef.current = true;
+              setDraftTitle(displayedTitle);
+              setEditing(false);
+            }
+          }}
+          style={{
+            width: 180,
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            color: "var(--atlas-fg)",
+            fontFamily: "var(--app-font-sans)",
+            fontSize: 13,
+            fontWeight: 500,
+            textAlign: "center",
+            opacity: saving ? 0.55 : 0.92,
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={beginEditing}
+          title="Rename conversation"
+          style={{
+            maxWidth: 220,
+            background: "transparent",
+            border: "none",
+            color: "var(--atlas-fg)",
+            cursor: "pointer",
+            fontFamily: "var(--app-font-sans)",
+            fontSize: 13,
+            fontWeight: 500,
+            opacity: 0.92,
+            overflow: "hidden",
+            padding: "0 8px",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {displayedTitle || activeSession.title}
+        </button>
+      )}
+      <ShellClock />
+    </div>
+  );
+}
+
 export function UnifiedShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [currentDepth, setCurrentDepth] = useState<ShellDepth>(() => depthFromPath(location));
@@ -318,8 +447,8 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           }}
         >
           <ShellWordmark />
-          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
-            <ShellClock />
+          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+            <ShellConversationTitle projectId={activeProjectId} />
           </div>
           <ShellAvatar />
         </header>
