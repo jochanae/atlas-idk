@@ -80,8 +80,6 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 
 
 // ── Types ────────────────────────────────────────────────────────────────────
-import { UserBubble } from "@/components/workspace/UserBubble";
-import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
