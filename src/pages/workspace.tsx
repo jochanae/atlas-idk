@@ -9948,17 +9948,27 @@ export default function Workspace() {
                           onClick={() => setSwitchToExpanded(x => !x)}
                           style={{
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            width: "100%", background: "transparent", border: "none",
-                            padding: "6px 12px 4px", cursor: "pointer",
+                            width: "calc(100% - 12px)",
+                            margin: "6px",
+                            background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                            border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            cursor: "pointer",
                           }}
                         >
-                          <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.45 }}>
-                            Switch to
+                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)" }}>
+                              <path d="M3 6h10M3 6l3-3M3 6l3 3M13 10H3M13 10l-3-3M13 10l-3 3" />
+                            </svg>
+                            <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
+                              Switch project
+                            </span>
                           </span>
                           <svg
                             width="11" height="11" viewBox="0 0 10 6" fill="none"
                             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                            style={{ color: "var(--atlas-gold)", opacity: 0.7, transition: "transform 200ms ease", transform: switchToExpanded ? "rotate(0deg)" : "rotate(-90deg)", flexShrink: 0 }}
+                            style={{ color: "var(--atlas-gold)", transition: "transform 200ms ease", transform: switchToExpanded ? "rotate(0deg)" : "rotate(-90deg)", flexShrink: 0 }}
                           >
                             <path d="M1 1l4 4 4-4" />
                           </svg>
