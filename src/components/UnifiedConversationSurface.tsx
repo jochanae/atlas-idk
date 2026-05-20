@@ -74,16 +74,70 @@ export function UnifiedConversationSurface({
   void mode;
   void projectId;
 
-  return (
+  const conversation = (
     <>
       {chatStreamProps ? <ChatStream {...chatStreamProps} /> : null}
       {betweenSlot}
       {composerProps ? <ChatComposer {...composerProps} /> : null}
-
-      {showFlow && flowPanel}
-      {showLedger && ledgerPanel}
-      {showFiles && filesPanel}
-      {showPreview && previewPanel}
     </>
+  );
+
+  // Operational mode: keep the existing host DOM untouched (workspace.tsx
+  // already provides its own full-width layout). Render as a fragment so
+  // current visuals are preserved exactly.
+  if (mode === "operational") {
+    const hasPanels =
+      (showFlow && flowPanel) ||
+      (showLedger && ledgerPanel) ||
+      (showFiles && filesPanel) ||
+      (showPreview && previewPanel);
+
+    if (!hasPanels) {
+      return (
+        <>
+          {conversation}
+        </>
+      );
+    }
+
+    return (
+      <div
+        data-surface-mode={mode}
+        data-project-id={projectId ?? undefined}
+        style={{ display: "flex", flex: 1, minHeight: 0, width: "100%" }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
+          {conversation}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+          {showFlow && flowPanel}
+          {showLedger && ledgerPanel}
+          {showFiles && filesPanel}
+          {showPreview && previewPanel}
+        </div>
+      </div>
+    );
+  }
+
+  // ambient / active: centered conversation column, no operational panels.
+  const maxWidth = mode === "active" ? 780 : 680;
+
+  return (
+    <div
+      data-surface-mode={mode}
+      data-project-id={projectId ?? undefined}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        width: "100%",
+        maxWidth,
+        marginLeft: "auto",
+        marginRight: "auto",
+      }}
+    >
+      {conversation}
+    </div>
   );
 }
