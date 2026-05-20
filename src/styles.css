@@ -99,10 +99,10 @@ html, body {
   --atlas-dock-clearance: calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px) + 24px);
 
   /* Type scale — mono-forward, 4-step minor */
-  --ts-tiny:    8px;   /* legacy — to be promoted to --ts-micro */
-  --ts-xs:      9px;   /* legacy — to be promoted to --ts-caption */
+  --ts-tiny:    10px;  /* promoted: was 8px → now meets iOS legibility floor */
+  --ts-xs:      11px;  /* promoted: was 9px → now meets iOS legibility floor */
   --ts-micro:   10px;  /* dock labels, badges, tiny meta */
-  --ts-sm:      10.5px;/* legacy half-step */
+  --ts-sm:      11px;  /* promoted: was 10.5px → aligned with --ts-caption */
   --ts-caption: 11px;  /* status chip, mono captions */
   --ts-label:   12px;  /* wordmark, mono UI labels */
   --ts-body:    13px;  /* default UI body, switcher, buttons */
