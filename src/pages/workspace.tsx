@@ -381,7 +381,7 @@ function AtlasLogo({ small, mode }: { small?: boolean; mode?: "THINK" | "PLAN" |
         {modeLabel && (
           <span style={{
             fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-            fontSize: 7.5,
+            fontSize: "var(--ts-tiny)",
             fontWeight: 500,
             letterSpacing: "0.14em",
             color: modeColor,
@@ -836,7 +836,7 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
         <Link
           href={`/entry/${entry.id}`}
           onClick={(e) => e.stopPropagation()}
-          style={{ flex: 1, fontSize: 12.5, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4, textDecoration: "none" }}
+          style={{ flex: 1, fontSize: "var(--ts-label)", color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4, textDecoration: "none" }}
         >
           {entry.title}
         </Link>
@@ -881,7 +881,7 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
           <Link
             href={`/entry/${entry.id}`}
             onClick={(e) => e.stopPropagation()}
-            style={{ display: "block", fontSize: 14, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 8, lineHeight: 1.35, textDecoration: "none" }}
+            style={{ display: "block", fontSize: "var(--ts-md)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 8, lineHeight: 1.35, textDecoration: "none" }}
           >
             {entry.title}
           </Link>
@@ -1227,7 +1227,7 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
             cursor: "pointer",
           }}
         >
-          <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis" }}>
             {displayMessage}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 4 }}>
@@ -1258,7 +1258,7 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
       </div>
       {expanded && (
         <div style={{ borderTop: "1px solid var(--atlas-border)", padding: "9px 12px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+          <div style={{ fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
             {commit.message || "(no commit message)"}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -1375,7 +1375,7 @@ export function GhTreeNodeRow({
             <path d="M2 1l4 3-4 3" stroke="var(--atlas-fg)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <FolderIcon open={open} />
-          <span style={{ fontSize: 11.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left" }}>
+          <span style={{ fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left" }}>
             {node.name}
           </span>
         </button>
@@ -1401,7 +1401,7 @@ export function GhTreeNodeRow({
       onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "transparent"; }}
     >
       <FileIcon ext={node.ext} />
-      <span style={{ fontSize: 11.5, color: isSelected ? "var(--atlas-fg)" : "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: "var(--ts-caption)", color: isSelected ? "var(--atlas-fg)" : "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {node.name}
       </span>
     </button>
@@ -1698,7 +1698,7 @@ function MapTab({ projectId }: { projectId: number }) {
           <rect x="1" y="1" width="30" height="30" rx="6" stroke="currentColor" strokeWidth="1.5" />
           <path d="M8 10h16M8 16h12M8 22h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <div style={{ textAlign: "center", fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.7 }}>
+        <div style={{ textAlign: "center", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", lineHeight: 1.7 }}>
           Link a repo in the <strong style={{ color: "var(--atlas-fg)", opacity: 0.65 }}>Files</strong> tab first,<br />
           then come back here to map your project.
         </div>
@@ -1777,7 +1777,7 @@ function MapTab({ projectId }: { projectId: number }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 20px" }} className="scrollbar-none">
           {/* Project name + summary */}
           <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 5 }}>
+            <div style={{ fontSize: "var(--ts-md)", fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 5 }}>
               {scan.projectName}
             </div>
             <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.7 }}>
@@ -2198,7 +2198,7 @@ function RightPanel({
               marginLeft: onToggleFullscreen ? 0 : "auto", marginRight: 6,
               width: 28, height: 28, borderRadius: 6,
               background: "transparent", border: "none",
-              color: "var(--atlas-muted)", fontSize: 16, lineHeight: 1,
+              color: "var(--atlas-muted)", fontSize: "var(--ts-base)", lineHeight: 1,
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               opacity: 0.5, transition: "opacity 160ms ease",
             }}
@@ -4517,7 +4517,7 @@ export default function Workspace() {
     return (
       <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--atlas-bg)", gap: 20 }}>
         <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.35em", color: "var(--atlas-gold)", opacity: 0.4, textTransform: "uppercase" }}>Axiom</div>
-        <div style={{ fontSize: 20, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "0.04em" }}>Project not found.</div>
+        <div style={{ fontSize: "var(--ts-display)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "0.04em" }}>Project not found.</div>
         <button
           onClick={() => setLocation("/home")}
           style={{ padding: "10px 24px", borderRadius: 9, cursor: "pointer", background: "linear-gradient(180deg, var(--atlas-gold) 0%, #B8942A 100%)", border: "1px solid rgba(var(--atlas-gold-rgb),0.4)", color: "#0C0A09", fontSize: "var(--ts-caption)", fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase" }}
@@ -5157,7 +5157,7 @@ export default function Workspace() {
           </div>
           <button
             onClick={dismissAxiomBanner}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: 16, lineHeight: 1, padding: "2px 4px", flexShrink: 0 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0 }}
             title="Dismiss"
             aria-label="Dismiss"
           >
@@ -5216,7 +5216,7 @@ export default function Workspace() {
             {!showHomeHandoffDrawer && (
               <button
                 onClick={() => setShowHomeHandoffBanner(false)}
-                style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: 16, lineHeight: 1, padding: "2px 4px", flexShrink: 0, opacity: 0.55 }}
+                style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0, opacity: 0.55 }}
                 title="Dismiss"
                 aria-label="Dismiss"
               >
@@ -5723,7 +5723,7 @@ export default function Workspace() {
                   <button
                     type="button"
                     onClick={() => setShowParkingDrawer(false)}
-                    style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 3px", opacity: 0.65 }}
+                    style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: "var(--ts-base)", lineHeight: 1, padding: "0 3px", opacity: 0.65 }}
                     aria-label="Close parking lot"
                   >
                     ×
@@ -5937,7 +5937,7 @@ export default function Workspace() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--atlas-border)", margin: "12px auto 4px" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 10px" }}>
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Model</span>
-              <button onClick={() => setShowWsModelSheet(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+              <button onClick={() => setShowWsModelSheet(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
             </div>
             <div style={{ padding: "0 14px" }}>
               {([
@@ -6009,7 +6009,7 @@ export default function Workspace() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--atlas-border)", margin: "12px auto 4px" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 10px" }}>
               <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>Lens</span>
-              <button onClick={() => setShowLensPicker(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+              <button onClick={() => setShowLensPicker(false)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
             </div>
             <div style={{ padding: "0 14px" }}>
               {(Object.entries(LENS_CONFIG) as [WorkspaceLens, typeof LENS_CONFIG[WorkspaceLens]][]).map(([lensId, cfg]) => (
@@ -6075,7 +6075,7 @@ export default function Workspace() {
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)", padding: "20px 20px 18px",
           }}>
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(120,113,108,0.7)", marginBottom: 8 }}>Leaving Scenario</div>
-            <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 14, color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16 }}>
+            <div style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-md)", color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16 }}>
               What do you want to do with the scenario messages?
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

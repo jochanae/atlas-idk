@@ -279,7 +279,7 @@ function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; 
         animation: "fadeIn 260ms ease forwards",
       }}
     >
-      <div style={{ fontSize: 14, lineHeight: 1.4, color: "var(--atlas-fg)", marginBottom: surface.reason ? 4 : 8 }}>
+      <div style={{ fontSize: "var(--ts-md)", lineHeight: 1.4, color: "var(--atlas-fg)", marginBottom: surface.reason ? 4 : 8 }}>
         {surface.label}
       </div>
       {surface.reason && (
@@ -348,7 +348,7 @@ function HomeHandoffCard({
       <div style={{ fontSize: "var(--ts-body)", fontWeight: 700, color: "var(--atlas-fg)", marginBottom: 4 }}>
         This is ready to build.
       </div>
-      <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.55, marginBottom: 10 }}>
+      <div style={{ fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", lineHeight: 1.55, marginBottom: 10 }}>
         {signal.reason ?? "Atlas has enough shape to start a workspace."}
       </div>
       <input
@@ -366,7 +366,7 @@ function HomeHandoffCard({
           color: "var(--atlas-fg)",
           outline: "none",
           fontFamily: "var(--app-font-sans)",
-          fontSize: 12.5,
+          fontSize: "var(--ts-label)",
         }}
       />
       {loading && (
@@ -864,7 +864,7 @@ function RepoSearchSheet({
           <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
             Choose Repository
           </span>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
         </div>
         {/* Search */}
         <div style={{ padding: "0 14px 10px" }}>
@@ -978,7 +978,7 @@ function BranchPickerSheet({
           <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
             Choose Branch
           </span>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}>×</button>
         </div>
         {!repo && (
           <div style={{ padding: "20px 16px 32px", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center" }}>
@@ -1089,7 +1089,7 @@ function FirstRunOverlay({
             onMouseEnter={(e) => { e.currentTarget.style.background = "#C9A24C"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "#D4AF37"; }}
           >
-            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
+            <div style={{ fontSize: "var(--ts-md)", fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
               Start a project →
             </div>
             <div style={{ fontSize: "var(--ts-micro)", fontWeight: 400, opacity: 0.6, marginTop: 3, fontFamily: "var(--app-font-mono)" }}>
@@ -1112,7 +1112,7 @@ function FirstRunOverlay({
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,175,55,0.06)"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.65)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)"; }}
           >
-            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
+            <div style={{ fontSize: "var(--ts-md)", fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
               Map my architecture
             </div>
             <div style={{ fontSize: "var(--ts-micro)", fontWeight: 400, opacity: 0.55, marginTop: 3, fontFamily: "var(--app-font-mono)" }}>
@@ -2317,7 +2317,7 @@ export default function Home() {
             <button
               onClick={() => { setShowConvSearch(false); setConvSearchQuery(""); }}
               aria-label="Close search"
-              style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, opacity: 0.6 }}
+              style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", color: "var(--atlas-muted)", fontSize: "var(--ts-md)", lineHeight: 1, opacity: 0.6 }}
             >
               ×
             </button>
@@ -2363,7 +2363,7 @@ export default function Home() {
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.06)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                   >
-                    <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", lineHeight: 1.4 }}>
+                    <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", lineHeight: 1.4 }}>
                       {snippet || "Untitled conversation"}
                     </div>
                     <div style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.05em" }}>
@@ -2400,7 +2400,7 @@ export default function Home() {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: 14, color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16, fontFamily: "var(--app-font-sans)" }}>
+            <div style={{ fontSize: "var(--ts-md)", color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16, fontFamily: "var(--app-font-sans)" }}>
               Keep this conversation<br />or let it go?
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
@@ -2493,7 +2493,7 @@ export default function Home() {
             {/* Greeting */}
             {homeMessages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
-                <h1 style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
+                <h1 style={{ fontSize: "var(--ts-display-xl)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
                   {greetingNameRef.current && (
                     <><span style={{ fontWeight: 300 }}>{greetingNameRef.current}.</span><br /></>
                   )}
@@ -2782,7 +2782,7 @@ export default function Home() {
                         letterSpacing: "0.04em",
                       }}
                     >
-                      <span style={{ fontSize: 14, lineHeight: 1 }}>↓</span> latest
+                      <span style={{ fontSize: "var(--ts-md)", lineHeight: 1 }}>↓</span> latest
                     </button>
                   )}
                   <div ref={messagesEndRef} />
@@ -3216,7 +3216,7 @@ export default function Home() {
                   msOverflowStyle: "none",
                   WebkitOverflowScrolling: "touch",
                   fontFamily: "var(--app-font-sans)",
-                  fontSize: 12.5,
+                  fontSize: "var(--ts-label)",
                   letterSpacing: "0.01em",
                   color: "var(--atlas-muted)",
                 }}>
@@ -3349,7 +3349,7 @@ export default function Home() {
               </div>
               <button
                 onClick={() => setShowBriefingPanel(false)}
-                style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 4 }}
+                style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: "var(--ts-h2)", lineHeight: 1, padding: 4 }}
                 aria-label="Close briefing"
               >
                 ×
@@ -3780,7 +3780,7 @@ function ProjectsGridSheet({
           </span>
           <button
             onClick={onClose}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: "var(--ts-display)", lineHeight: 1, padding: 4 }}
           >
             ×
           </button>
@@ -3802,7 +3802,7 @@ function ProjectsGridSheet({
               onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(212,175,55,0.3)")}
             >
               <div style={{ height: 90, background: "rgba(212,175,55,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 28, color: "rgba(212,175,55,0.45)", lineHeight: 1 }}>+</span>
+                <span style={{ fontSize: "var(--ts-display-lg)", color: "rgba(212,175,55,0.45)", lineHeight: 1 }}>+</span>
               </div>
               <div style={{ padding: "10px 12px 12px" }}>
                 <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 600, color: "rgba(212,175,55,0.7)" }}>New Project</p>
