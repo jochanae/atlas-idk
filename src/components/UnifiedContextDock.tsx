@@ -377,7 +377,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             title="Atlas Core"
             aria-label="Return to Atlas Core"
             className="udock-center"
-            onClick={onAtlasCore}
+            onClick={handleAtlasTap}
             style={{
               width: 56,
               height: 56,
