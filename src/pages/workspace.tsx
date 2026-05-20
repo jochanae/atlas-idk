@@ -8944,6 +8944,7 @@ export default function Workspace() {
       fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
         signal: controller.signal,
       })
