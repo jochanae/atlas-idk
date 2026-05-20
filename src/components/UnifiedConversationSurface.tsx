@@ -26,40 +26,40 @@ export interface UnifiedConversationSurfaceProps {
   mode: UnifiedConversationMode;
   projectId?: number | null;
 
-  // Optional operational side-panel visibility hints. Reserved for future
-  // mode-driven layout decisions. When a corresponding slot is also
-  // provided, the slot is rendered; the flag alone does not synthesize a
-  // panel.
   showFlow?: boolean;
   showLedger?: boolean;
   showFiles?: boolean;
   showPreview?: boolean;
 
-  // Conversation runtime — null/undefined means "do not mount this half".
-  // Both can be present simultaneously (normal case), or chatStream can be
-  // omitted when the host is showing an alternate tab while keeping the
-  // composer mounted for continuity.
   chatStreamProps?: ChatStreamProps | null;
   composerProps?: ChatComposerProps | null;
 
-  // Slot rendered between the stream and the composer (e.g. the ledger
-  // status bar in workspace.tsx). Kept as a slot to preserve existing DOM.
   betweenSlot?: React.ReactNode;
 
-  // Operational panel slots. Each is rendered if provided; layout is the
-  // caller's responsibility for now (assembly slice).
   flowPanel?: React.ReactNode;
   ledgerPanel?: React.ReactNode;
   filesPanel?: React.ReactNode;
   previewPanel?: React.ReactNode;
 
-  // Host-owned conversation content. When provided, it is rendered in place
-  // of (chatStreamProps + betweenSlot + composerProps) inside a
-  // layout-neutral wrapper (display:contents). This lets pages whose chat
-  // UI predates the extracted ChatStream/ChatComposer components (e.g.
-  // home.tsx) flow their existing JSX through the surface without any
-  // visual change. The wrapper still carries `data-surface-mode` for
-  // future styling hooks.
+  // Host-owned ReactNode slots. Used by pages whose chat UI predates the
+  // extracted ChatStream/ChatComposer components (e.g. home.tsx). When
+  // `hostShell` is also provided, the surface delegates wrapper DOM to the
+  // host; otherwise the slots stack inside the default ambient/active
+  // layout. Either slot may be omitted independently.
+  streamSlot?: React.ReactNode;
+  composerSlot?: React.ReactNode;
+
+  // Optional render-prop that lets the host preserve its own wrapper DOM
+  // while the surface orchestrates slot placement. Only invoked when at
+  // least one of streamSlot/composerSlot is provided.
+  hostShell?: (parts: {
+    stream: React.ReactNode;
+    between: React.ReactNode;
+    composer: React.ReactNode;
+  }) => React.ReactNode;
+
+  // Legacy children pass-through. Prefer streamSlot/composerSlot + hostShell
+  // for new integrations.
   children?: React.ReactNode;
 }
 
