@@ -81,6 +81,7 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
+import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
