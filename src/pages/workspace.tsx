@@ -41,6 +41,7 @@ import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import { reportError } from "../lib/errorReporter";
+import { loadProfile } from "@/lib/userProfile";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import type { Plan, PlanExecution } from "../lib/plan";
 import {
