@@ -3195,6 +3195,11 @@ export default function Workspace() {
     new URLSearchParams(window.location.search).get("view") === "flow"
   );
   const [showProfile, setShowProfile] = useState(false);
+  useEffect(() => {
+    const open = () => setShowProfile(true);
+    window.addEventListener("axiom:open-account-hub", open);
+    return () => window.removeEventListener("axiom:open-account-hub", open);
+  }, []);
   const [chatWidthPct, setChatWidthPct] = useState(45);
   const resizeDrag = useRef({ active: false, startX: 0, startPct: 45 });
   const containerRef = useRef<HTMLDivElement>(null);
