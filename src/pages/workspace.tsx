@@ -6112,9 +6112,7 @@ export default function Workspace() {
     [entries, id, fileContext]
   );
 
-  const handleStop = useCallback(() => {
-    abortControllerRef.current?.abort();
-  }, []);
+  // handleStop owned by useChatStream.
 
   const handleRegenerate = useCallback(
     (assistantMsgIndex: number) => {
