@@ -106,7 +106,14 @@ html, body {
   --ts-caption: 11px;  /* status chip, mono captions */
   --ts-label:   12px;  /* wordmark, mono UI labels */
   --ts-body:    13px;  /* default UI body, switcher, buttons */
+  --ts-md:      14px;  /* body+, CTA inline */
   --ts-h3:      15px;  /* section headings */
+  --ts-base:    16px;  /* prose body */
+  --ts-h2:      18px;
+  --ts-display: 20px;  /* small hero */
+  --ts-h1:      22px;
+  --ts-display-lg: 28px;
+  --ts-display-xl: 30px;
   --ts-h2:      18px;
   --ts-h1:      22px;
 
