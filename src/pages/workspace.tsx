@@ -36,10 +36,8 @@ import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
-import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import { reportError } from "../lib/errorReporter";
 import { loadProfile } from "@/lib/userProfile";
-import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import type { Plan, PlanExecution } from "../lib/plan";
 import {
   useGetProject,
