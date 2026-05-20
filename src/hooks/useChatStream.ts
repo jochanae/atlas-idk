@@ -21,6 +21,11 @@ export interface UseChatStreamOptions<T> {
   mapPriorMessage: (m: PriorMessage) => T;
 }
 
+export interface ActivityStreamState {
+  active: boolean;
+  content: string;
+}
+
 export interface UseChatStreamReturn<T> {
   messages: T[];
   setMessages: Dispatch<SetStateAction<T[]>>;
@@ -30,6 +35,12 @@ export interface UseChatStreamReturn<T> {
   sessionId: number | null;
   setSessionId: Dispatch<SetStateAction<number | null>>;
   ensureSessionId: () => Promise<number>;
+  chatPending: boolean;
+  setChatPending: Dispatch<SetStateAction<boolean>>;
+  activityStream: ActivityStreamState;
+  setActivityStream: Dispatch<SetStateAction<ActivityStreamState>>;
+  abortControllerRef: MutableRefObject<AbortController | null>;
+  handleStop: () => void;
 }
 
 /**
