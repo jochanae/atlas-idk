@@ -23,7 +23,7 @@ import {
 } from "../../pages/workspace";
 
 export
-function FilesTab({
+export function FilesPanel({
   projectId,
   onFileContext,
   onLinkedRepoChange,
@@ -1016,4 +1016,3 @@ function FilesTab({
   );
 }
 
-export { FilesPanel };
