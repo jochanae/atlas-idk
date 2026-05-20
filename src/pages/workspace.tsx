@@ -5579,7 +5579,7 @@ export default function Workspace() {
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
   const initialSent = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // abortControllerRef owned by useChatStream.
   const importPrimed = useRef(false);
   const touchStartX = useRef(0);
   const homeHandoffDbLoadedRef = useRef<number | null>(null);
