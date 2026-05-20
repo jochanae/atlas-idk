@@ -151,5 +151,11 @@ export function useChatStream<T>(
     sessionId,
     setSessionId,
     ensureSessionId,
+    chatPending,
+    setChatPending,
+    activityStream,
+    setActivityStream,
+    abortControllerRef,
+    handleStop,
   };
 }
