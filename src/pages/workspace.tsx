@@ -4881,13 +4881,14 @@ export default function Workspace() {
           </div>
         </div>
 
+        {!isMobile && (
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 10,
             minHeight: 32,
-            padding: isMobile ? "0 10px 6px" : "0 14px 7px",
+            padding: "0 14px 7px",
             borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.06)",
             minWidth: 0,
           }}
@@ -4977,19 +4978,8 @@ export default function Workspace() {
             )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-              {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
-            </span>
-            {!isTinyScreen && (
-              <>
-                <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(var(--atlas-muted-rgb),0.45)", display: "inline-block" }} />
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                  {chatPending ? "generating" : "session active"}
-                </span>
-              </>
-            )}
-          </div>
+
+
 
           {!isMobile && (
             <div role="group" aria-label="Workspace lens" style={{ display: "flex", alignItems: "center", gap: 2, padding: 2, borderRadius: 999, background: "rgba(var(--atlas-muted-rgb),0.05)", border: "1px solid rgba(var(--atlas-muted-rgb),0.14)", flexShrink: 0 }}>
@@ -5035,6 +5025,7 @@ export default function Workspace() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ── Spec → Build handoff modal ── */}
@@ -5623,27 +5614,16 @@ export default function Workspace() {
               },
             } : null}
             betweenSlot={
-              <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", transition: "all 400ms ease" }} />
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: "var(--atlas-muted)", transition: "color 400ms ease" }}>
-                    {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
+              agenticMode && agenticIterCount > 0 ? (
+                <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
+                  <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)' }}>
+                    <svg width='8' height='8' viewBox='0 0 24 24' fill='currentColor' style={{ opacity: 0.9, flexShrink: 0 }}>
+                      <path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' />
+                    </svg>
+                    Agent · Loop {agenticIterCount} / 8
                   </span>
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, color: "var(--atlas-muted)" }}>·</span>
-                  {agenticMode && agenticIterCount > 0 ? (
-                    <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)', transition: 'color 300ms ease' }}>
-                      <svg width='8' height='8' viewBox='0 0 24 24' fill='currentColor' style={{ opacity: 0.9, flexShrink: 0 }}>
-                        <path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' />
-                      </svg>
-                      Agent · Loop {agenticIterCount} / 8
-                    </span>
-                  ) : (
-                    <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatPending ? 'rgba(74,222,128,0.75)' : 'rgba(200,190,185,0.6)', transition: 'color 300ms ease' }}>
-                      {chatPending ? 'generating' : 'session active'}
-                    </span>
-                  )}
                 </div>
-              </div>
+              ) : null
             }
             composerProps={{
               leftTab,
