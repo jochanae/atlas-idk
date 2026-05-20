@@ -3302,9 +3302,9 @@ export default function Home() {
 
           </div>{/* end hero */}
 
-        </div>
-        </div>
-        </UnifiedConversationSurface>
+          </>}
+        />
+
         <aside className="atlas-home-desktop-overview" aria-label="Overview">
           <div className="atlas-home-desktop-overview-scroll">
             {renderOverviewDashboard()}
