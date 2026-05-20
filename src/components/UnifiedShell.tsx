@@ -105,9 +105,10 @@ function ShellWordmark() {
       <span
         style={{
           fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-          fontSize: 12,
+          fontSize: "var(--ts-label)",
           fontWeight: 700,
           letterSpacing: "0.18em",
+          lineHeight: "var(--lh-tight)",
           color: "var(--atlas-gold)",
           textTransform: "uppercase",
         }}
