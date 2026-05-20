@@ -373,9 +373,9 @@ function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: bo
       <ShellFooterIcon icon={item.icon} />
       <span
         style={{
-          fontSize: 8,
+          fontSize: "var(--ts-micro)",
           fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.1em",
+          letterSpacing: "var(--ls-mono-cap)",
           textTransform: "uppercase",
         }}
       >
