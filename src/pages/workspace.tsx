@@ -5274,7 +5274,7 @@ export default function Workspace() {
     };
   }, [doResize, endResize]);
 
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  
   const [wsModel, setWsModel] = useState<string>(() => {
     try { const r = localStorage.getItem("atlas-home-context"); return r ? (JSON.parse(r).model ?? "claude") : "claude"; } catch { return "claude"; }
   });
