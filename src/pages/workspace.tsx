@@ -4881,13 +4881,14 @@ export default function Workspace() {
           </div>
         </div>
 
+        {!isMobile && (
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 10,
             minHeight: 32,
-            padding: isMobile ? "0 10px 6px" : "0 14px 7px",
+            padding: "0 14px 7px",
             borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.06)",
             minWidth: 0,
           }}
