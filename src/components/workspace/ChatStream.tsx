@@ -18,12 +18,7 @@ import type { PlanState } from "@/components/workspace/chatShared";
 type ProjectLike = { name?: string } | null | undefined;
 type HomeHandoffMetaLike = { flowNodeCount: number; goalLabel: string } | null | undefined;
 type LinkedRepoLike = LinkedRepo | null;
-type PushRecordLike = {
-  id: string;
-  filename: string;
-  branch?: string;
-  commitUrl?: string;
-};
+type PushRecordLike = PushRecord;
 type LiveGenerationLike = {
   shouldShow: boolean;
   mode: string;
