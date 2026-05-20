@@ -3985,18 +3985,6 @@ function MapTab({ projectId }: { projectId: number }) {
 }
 
 // ── Platform detection ────────────────────────────────────────────────────────
-function detectPlatform(): string {
-  const host = typeof window !== "undefined" ? window.location.hostname : "";
-  if (host.includes("axiomsystem")) return "Axiom";
-  if (host.includes("lovable")) return "LOVABLE";
-  if (host.includes("replit") || host.includes("repl.co") || host.includes("replit.app")) return "REPLIT";
-  if (host.includes("cursor")) return "CURSOR";
-  if (host.includes("vercel")) return "VERCEL";
-  if (host.includes("netlify")) return "NETLIFY";
-  if (host.includes("localhost") || host.includes("127.0.0.1")) return "LOCAL";
-  return "WEB";
-}
-
 
 // ── RightPanel (tabbed) ──────────────────────────────────────────────────────
 function RightPanel({

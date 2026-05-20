@@ -69,6 +69,19 @@ export function extractPersistedFlowNodes(nodeState: unknown): ArchNode[] {
   });
 }
 
+
+function detectPlatform(): string {
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  if (host.includes("axiomsystem")) return "Axiom";
+  if (host.includes("lovable")) return "LOVABLE";
+  if (host.includes("replit") || host.includes("repl.co") || host.includes("replit.app")) return "REPLIT";
+  if (host.includes("cursor")) return "CURSOR";
+  if (host.includes("vercel")) return "VERCEL";
+  if (host.includes("netlify")) return "NETLIFY";
+  if (host.includes("localhost") || host.includes("127.0.0.1")) return "LOCAL";
+  return "WEB";
+}
+
 export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, onBackToChat, onMapReadinessChange, displayedReadinessScore, onSystemNodeMessage, onHandover, handoverPending, lastHandoverHash, resolvedNodeIds, onResolvedConsumed, onSnapshotChange, handoverOpen, onHandoverOpenChange, isMobile, onOpenForge, externalForgeNodes, onForgeNodesConsumed, onForgeCompleted }: { projectId?: number; onHomeNav: () => void; onSendIntent?: (text: string) => void; onFillIntent?: (text: string) => void; onBackToChat?: () => void; onMapReadinessChange?: (score: number) => void; displayedReadinessScore?: number; onSystemNodeMessage?: (text: string) => void; onHandover?: (payload: { snapshot: HandoverSnapshot; title: string }) => void; handoverPending?: boolean; lastHandoverHash?: string | null; resolvedNodeIds?: string[]; onResolvedConsumed?: () => void; onSnapshotChange?: (s: HandoverSnapshot | null) => void; handoverOpen?: boolean; onHandoverOpenChange?: (open: boolean) => void; isMobile?: boolean; onOpenForge?: () => void; externalForgeNodes?: ArchNode[]; onForgeNodesConsumed?: () => void; onForgeCompleted?: () => void }) {
   const [readinessScore, setReadinessScore] = useState(0);
   useEffect(() => { onMapReadinessChange?.(readinessScore); }, [readinessScore, onMapReadinessChange]);
@@ -756,3 +769,4 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     </div>
   );
 }
+
