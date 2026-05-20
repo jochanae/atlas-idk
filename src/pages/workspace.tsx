@@ -41,7 +41,6 @@ import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import { reportError } from "../lib/errorReporter";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import type { Plan, PlanExecution } from "../lib/plan";
-import type { ZipEntry } from "../components/ZipImport";
 import {
   useGetProject,
   useListProjects,
