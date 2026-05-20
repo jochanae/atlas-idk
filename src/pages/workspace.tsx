@@ -5295,10 +5295,8 @@ export default function Workspace() {
     importPrimed.current = false;
     homeHandoffPrimed.current = false;
   }, [id]);
-  const { playSend, playCatch, playCommit, playPark, playNavigate } = useSound();
-  const [memoryChips, setMemoryChips] = useState<MemoryChip[]>([]);
+  // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
-  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal">("chat");
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
   const [rightOpen, setRightOpen] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flow"
@@ -5344,19 +5342,7 @@ export default function Workspace() {
     };
   }, [doResize, endResize]);
 
-  
-  const {
-    wsModel, setWsModel,
-    wsLens, setWsLensRaw,
-    showLensPicker, setShowLensPicker,
-    detectedLens, setDetectedLens,
-    showScenarioPrompt, setShowScenarioPrompt,
-    pendingLensSwitch, setPendingLensSwitch,
-    scenarioBuffer, setScenarioBuffer,
-    showWsModelSheet, setShowWsModelSheet,
-    sendCtxRef,
-    scenarioStartIdxRef,
-  } = useChatLens(id);
+  // useChatLens destructure moved above (consumed by useChatStream).
   const [rightFullscreen, setRightFullscreen] = useState(false);
   const [desktopRightFull, setDesktopRightFull] = useState(false);
   const [showSrcPicker, setShowSrcPicker] = useState(false);
@@ -5418,9 +5404,7 @@ export default function Workspace() {
     }
   }, [wsLens, leftTab]);
 
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview">(() =>
-    new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
-  );
+  // mobileTab moved above (consumed by useChatStream).
   const [onboardingCoachVisible, setOnboardingCoachVisible] = useState(() => {
     try {
       return new URLSearchParams(window.location.search).get("onboarding") === "true"
@@ -5440,17 +5424,11 @@ export default function Workspace() {
   const [forgePreloadContent, setForgePreloadContent] = useState<string | undefined>(undefined);
   const [externalForgeNodes, setExternalForgeNodes] = useState<ArchNode[]>([]);
   const [forgeState, setForgeState] = useState<ForgeState | null>(null);
-  const [forgeContext, setForgeContext] = useState<string | null>(() => {
-    try { return sessionStorage.getItem(`atlas-forge-ctx-${id}`) ?? null; } catch { return null; }
-  });
-  // Reload per-project forge state when project ID changes — prevents cross-project state contamination
-  useEffect(() => {
-    try { setForgeContext(sessionStorage.getItem(`atlas-forge-ctx-${id}`) ?? null); } catch { setForgeContext(null); }
-  }, [id]);
+  // forgeContext state + reload effect moved above (consumed by useChatStream).
   // Explicit state captured at pill-open time so TheForge always gets a stable context snapshot
   const [forgeActiveProjectName, setForgeActiveProjectName] = useState<string | undefined>(undefined);
   const [forgeActiveProjectId, setForgeActiveProjectId] = useState<number | undefined>(undefined);
-  const [autoNameKey, setAutoNameKey] = useState(0);
+  // autoNameKey moved above (consumed by useChatStream).
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -5583,7 +5561,7 @@ export default function Workspace() {
     }
   };
 
-  const [fileContext, setFileContext] = useState<string | null>(null);
+  // fileContext moved above (consumed by useChatStream).
   // chatPending owned by useChatStream.
   const [agenticMode, setAgenticMode] = useState(true);
   const [agenticIterCount, setAgenticIterCount] = useState(0);
@@ -5665,18 +5643,7 @@ export default function Workspace() {
     }
   }, [hasForgeNodes, id]);
 
-  // fallbackSessions / sessions / sessionsLoading moved above (consumed by useChatStream).
-  const { data: fallbackEntries } = useListEntries(id, {}, {
-    query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
-  });
-  const entries = useMemo<Entry[]>(() => {
-    if (!projectState.state) return fallbackEntries ?? [];
-    const entryMap = new Map<number, Entry>();
-    [...projectState.decisions, ...projectState.parked].forEach((entry) => {
-      entryMap.set(entry.id, entry);
-    });
-    return [...entryMap.values()];
-  }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
+  // fallbackEntries + entries moved above (consumed by useChatStream).
   // createSession moved above (consumed by useChatStream).
   const createEntry = useCreateEntry();
   // creatingSessionRef + ensureSessionId now owned by useChatStream.
@@ -5972,193 +5939,10 @@ export default function Workspace() {
   // Always-current ref so doSend doesn't capture stale state
   sendCtxRef.current = { wsLens, wsModel };
 
-  const doSend = useCallback(
-    (text: string, sid: number, currentMessages: ChatMessage[], ctx?: string | null, imageData?: { base64: string; mediaType: string }) => {
-      const userMsg: ChatMessage = { role: "user", content: text, sentAt: new Date().toISOString() };
-      const history = currentMessages.map((m) => ({ role: m.role, content: m.content }));
-      const ledgerEntries = (entries || []).map((e: Entry) => ({ id: e.id, title: e.title, status: e.status }));
-      const activeCtx = ctx !== undefined ? ctx : fileContext;
-
-      setMessages((prev) => [...prev, userMsg]);
-      setChatPending(true);
-      setActivityStream({ active: true, content: "" });
-
-      const userProfileStr = profileToString(loadProfile());
-
-      // Read cached project scan from localStorage and send as compact map string
-      let projectMap: string | undefined;
-      try {
-        const rawScan = localStorage.getItem(`atlas-scan-${id}`);
-        if (rawScan) {
-          const s = JSON.parse(rawScan) as ProjectScan;
-          const lines = [
-            `Repo: ${s.repo} (scanned ${s.scannedAt?.slice(0, 10) ?? "recently"})`,
-            s.description ? `What it does: ${s.description}` : "",
-            s.stack?.length ? `Stack: ${s.stack.join(", ")}` : "",
-            s.routes?.length ? `Routes (${s.routes.length}): ${s.routes.slice(0, 15).join(", ")}` : "",
-            s.pages?.length ? `Pages: ${s.pages.slice(0, 12).join(", ")}` : "",
-            s.components?.length ? `Components: ${s.components.slice(0, 12).join(", ")}` : "",
-            s.tables?.length ? `DB Tables: ${s.tables.join(", ")}` : "",
-            `Auth: ${s.authEnabled ? "enabled" : "not found"}`,
-            `Total files: ${s.totalFiles}`,
-            s.summary ? `Summary: ${s.summary}` : "",
-          ].filter(Boolean).join("\n");
-          if (lines.trim()) projectMap = lines;
-        }
-      } catch { /* non-fatal */ }
-
-      // Read from always-current ref so stale closure never sends wrong lens/model
-      const lensCtx = sendCtxRef.current;
-      const isScenario = lensCtx.wsLens === "scenario";
-      const body = {
-        sessionId: sid,
-        projectId: id,
-        message: text,
-        model: lensCtx.wsModel,
-        workspaceLens: lensCtx.wsLens,
-        scenarioMode: isScenario,
-        history,
-        entries: ledgerEntries,
-        ...(activeCtx ? { fileContext: activeCtx } : {}),
-        ...(userProfileStr ? { userProfile: userProfileStr } : {}),
-        ...(projectMap ? { projectMap } : {}),
-        ...(imageData ? { imageData } : {}),
-        ...(forgeContext ? { forgeContext } : {}),
-      };
-
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
-        .then((res) => {
-          // Detect LENS_DRIFT signal in response content and strip it
-          if (res.content && typeof res.content === "string") {
-            const driftMatch = res.content.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
-            if (driftMatch) {
-              const drifted = driftMatch[1].toLowerCase() as WorkspaceLens;
-              if (drifted !== sendCtxRef.current.wsLens) {
-                setDetectedLens(drifted);
-              }
-              res.content = res.content.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
-            } else {
-              // No drift token — clear any stale indicator so suggestion doesn't linger
-              setDetectedLens(null);
-            }
-          }
-          const cp = res.catchPayload as CatchPayload | null;
-          const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : [])) as FileEdit[];
-          const lps = (res.linePatches ?? []) as LinePatch[];
-          const aff = (res.autoFetchedFiles ?? []) as string[];
-          setActivityStream({
-            active: true,
-            content: [
-              res.content ?? "",
-              res.plan?.mode === "blueprint" ? "BLUEPRINT" : res.plan ? "PLAN" : "",
-              aff.length > 0 ? "FILE_READ" : "",
-              fes.length > 0 ? "FILE_EDIT" : "",
-              lps.length > 0 ? "LINE_PATCH" : "",
-            ].filter(Boolean).join("\n"),
-          });
-          const rawChips = (res.memoryChips ?? []) as Array<string | MemoryChip>;
-          const normalizedChips: MemoryChip[] = rawChips.map((c) =>
-            typeof c === "string" ? { label: c } : c
-          );
-          setMessages((prev) => [...prev, {
-            id: res.messageId, role: "assistant",
-            content: res.content, intentType: res.intentType, catchPayload: cp,
-            ...(res.plan ? { plan: res.plan as Plan } : {}),
-            sentAt: new Date().toISOString(),
-            model: res.model ?? wsModel,
-            isDeepDive: !!res.isDeepDive,
-            ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
-            ...(lps.length > 0 ? { linePatches: lps } : {}),
-            ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
-            ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
-            ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
-            surface: (res.surface ?? null) as AmbientSurface,
-          }]);
-          // Capture scenario messages in isolated buffer (not persisted to DB)
-          if (isScenario) {
-            setScenarioBuffer(prev => [
-              ...prev,
-              { role: "user", content: text },
-              { role: "assistant", content: res.content ?? "" },
-            ]);
-          }
-          // Auto-switch to Diff tab when Atlas proposes file changes
-          if (fes && fes.length > 0) {
-            setLeftTab("diff");
-            setMobileTab("preview"); // switches to diff view on mobile
-          }
-          if (cp) { playCatch(); setActiveCatch(cp); }
-          if (normalizedChips.length > 0) {
-            setMemoryChips((prev) => {
-              const merged = [...prev];
-              for (const c of normalizedChips) {
-                if (!merged.some((m) => m.label === c.label)) merged.push(c);
-              }
-              return merged.slice(-12);
-            });
-          }
-          if (res.resolvedNodes && res.resolvedNodes.length > 0) {
-            setPendingResolvedNodeIds((prev) => {
-              const merged = [...prev];
-              for (const id of res.resolvedNodes!) {
-                if (!merged.includes(id)) merged.push(id);
-              }
-              return merged;
-            });
-          }
-          // Auto-name: update project name silently when Atlas generates one on the first message
-          if (res.autoName && typeof res.autoName === "string") {
-            setAutoNameKey((k) => k + 1);
-            queryClient.setQueryData(getGetProjectQueryKey(id), (old: unknown) => {
-              if (old && typeof old === "object" && "name" in old) return { ...(old as object), name: res.autoName };
-              return old;
-            });
-            queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          }
-        })
-        .catch((err: unknown) => {
-          if (err instanceof Error && err.name === "AbortError") {
-            setActivityStream({ active: false, content: "" });
-            return;
-          }
-          void reportError(err, { projectId: id });
-          setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", sentAt: new Date().toISOString() }]);
-          setActivityStream({ active: false, content: "" });
-        })
-        .finally(() => { setChatPending(false); abortControllerRef.current = null; });
-    },
-    [entries, id, fileContext]
-  );
-
+  // doSend / handleRegenerate owned by useChatStream.
   // handleStop owned by useChatStream.
 
-  const handleRegenerate = useCallback(
-    (assistantMsgIndex: number) => {
-      if (!sessionId || chatPending) return;
-      // Find the user message that preceded this assistant response
-      const msgsUpToAssistant = messages.slice(0, assistantMsgIndex);
-      const prevUserMsg = [...msgsUpToAssistant].reverse().find((m) => m.role === "user");
-      if (!prevUserMsg) return;
-      // Remove the assistant message and resend
-      const historyUpToPrevUser = msgsUpToAssistant.slice(0, msgsUpToAssistant.lastIndexOf(prevUserMsg));
-      setMessages(msgsUpToAssistant.slice(0, msgsUpToAssistant.lastIndexOf(prevUserMsg) + 1));
-      doSend(prevUserMsg.content, sessionId, historyUpToPrevUser);
-    },
-    [sessionId, chatPending, messages, doSend]
-  );
+
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     const targetProjectId = surface.projectId ?? surface.workspaceId ?? id;
@@ -6626,7 +6410,7 @@ export default function Workspace() {
     void runScan(true);
   }, [id, hasLinkedRepo, project?.latestSnapshotScore, runScan]);
 
-  const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
+  // pendingResolvedNodeIds moved above (consumed by useChatStream).
   const [desktopForceTab, setDesktopForceTab] = useState<RightTab | undefined>(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : undefined
   );
@@ -6690,25 +6474,8 @@ export default function Workspace() {
     setLeftTab("terminal");
   }, []);
 
-  // messagesRef moved into useChatStream.
-  const summarizedSessionRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!sessionId) return;
-    const assistantCount = messages.filter((m) => m.role === "assistant").length;
-    if (assistantCount < 2) return;
-    const onHide = () => {
-      if (!document.hidden) return;
-      if (summarizedSessionRef.current === sessionId) return;
-      summarizedSessionRef.current = sessionId;
-      void fetch(`/api/sessions/${sessionId}/summarize`, {
-        method: "POST",
-        credentials: "include",
-      });
-    };
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
-  }, [sessionId, messages]);
-  // messagesRef sync moved into useChatStream.
+  // messagesRef + summarize effect owned by useChatStream.
+
 
   const handleTerminalComplete = useCallback((command: string, output: string, exitCode: number | null) => {
     if (!sessionId) return;
