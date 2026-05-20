@@ -32,8 +32,8 @@ type PlanExecutionLike = PlanExecution;
 
 export interface ChatStreamProps {
   // scroll container
-  scrollRef: RefObject<HTMLDivElement>;
-  bottomRef: RefObject<HTMLDivElement>;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  bottomRef: RefObject<HTMLDivElement | null>;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   showScrollBtn: boolean;
   onScrollToLatest: () => void;
