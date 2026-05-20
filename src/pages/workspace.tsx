@@ -80,7 +80,19 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 
 
 // ── Types ────────────────────────────────────────────────────────────────────
-const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
+import { UserBubble } from "@/components/workspace/UserBubble";
+import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
+import { InsightChip } from "@/components/workspace/InsightChip";
+import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
+import { useGithubPushToken } from "@/hooks/useGithubPushToken";
+import {
+  ICON_TOUCH_TARGET_STYLE,
+  computeLineDiff,
+  collapseDiff,
+  type DiffItem,
+  type PlanState,
+} from "@/components/workspace/chatShared";
+
 
 export interface CatchPayload {
   v: number;
@@ -177,58 +189,10 @@ export interface LinkedRepo {
   name: string;
 }
 
-type AccountConnection = {
-  type?: string | null;
-  token?: string | null;
-  accessToken?: string | null;
-  githubToken?: string | null;
-  meta?: {
-    token?: string | null;
-    accessToken?: string | null;
-    githubToken?: string | null;
-  } | null;
-};
-
-type AccountGithubTokenState =
-  | { loaded: false }
-  | { loaded: true; hasConnection: boolean; token: string | null };
-
-function githubTokenFromConnection(connection: AccountConnection): string | null {
-  return connection.token ?? connection.accessToken ?? connection.githubToken ??
-    connection.meta?.token ?? connection.meta?.accessToken ?? connection.meta?.githubToken ?? null;
-}
-
-function useGithubPushToken(projectToken?: string | null): string | null {
-  const [accountTokenState, setAccountTokenState] = useState<AccountGithubTokenState>({ loaded: false });
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/connections", { credentials: "include" })
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (cancelled) return;
-        const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
-        const githubConnection = connections.find((connection) => connection?.type === "github");
-        setAccountTokenState({
-          loaded: true,
-          hasConnection: !!githubConnection,
-          token: githubConnection ? githubTokenFromConnection(githubConnection) : null,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setAccountTokenState({ loaded: true, hasConnection: false, token: null });
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (!accountTokenState.loaded) return null;
-  return accountTokenState.hasConnection ? accountTokenState.token : projectToken ?? null;
-}
-
 type RightTab = "ledger" | "blueprints" | "files" | "preview" | "memory" | "map" | "terminal";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
-type PlanState = "pending" | "reviewing" | "executing" | "completed" | "skipped";
+
 type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking";
 
 type ForgeState = { forged: boolean; dismissed: boolean };
@@ -644,102 +608,8 @@ function ProactiveAlertCard({
 // ── Chat bubbles + Memory Chips ──────────────────────────────────────────────
 
 // ── InsightChip ───────────────────────────────────────────────────────────────
-function InsightChip({
-  chip,
-  onPark,
-  onDismiss,
-}: {
-  chip: MemoryChip;
-  onPark: (chip: MemoryChip) => void;
-  onDismiss?: (label: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const hasInsight = !!chip.insight;
-  return (
-    <div style={{ display: "inline-flex", flexDirection: "column" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 4,
-          padding: "2px 8px", borderRadius: 20,
-          background: open ? "rgba(201,162,76,0.14)" : "rgba(201,162,76,0.07)",
-          border: `1px solid ${open ? "rgba(201,162,76,0.42)" : "rgba(201,162,76,0.18)"}`,
-          fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
-          color: open ? "rgba(201,162,76,1)" : "rgba(201,162,76,0.75)",
-          cursor: "pointer", transition: "all 140ms ease",
-        }}
-        onMouseEnter={(e) => { if (!open) { e.currentTarget.style.background = "rgba(201,162,76,0.12)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.35)"; } }}
-        onMouseLeave={(e) => { if (!open) { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)"; } }}
-      >
-        <span style={{ opacity: 0.55, fontSize: 9 }}>◆</span>
-        {chip.label}
-        {hasInsight && (
-          <span style={{ fontSize: 8, opacity: 0.45, display: "inline-block", transform: open ? "rotate(180deg)" : "none", transition: "transform 160ms ease" }}>▾</span>
-        )}
-      </button>
-      {open && (
-        <div
-          className="atlas-bubble-in"
-          style={{
-            marginTop: 5, borderRadius: 9,
-            background: "var(--atlas-surface-alt)",
-            border: "1px solid rgba(201,162,76,0.2)",
-            padding: "11px 13px", maxWidth: 300,
-            position: "relative", zIndex: 5,
-          }}
-        >
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: hasInsight ? 6 : 8, letterSpacing: "-0.01em" }}>
-            {chip.label}
-          </div>
-          {chip.insight && (
-            <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.65, marginBottom: 10, fontStyle: "italic", opacity: 0.85 }}>
-              {chip.insight}
-            </div>
-          )}
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <button
-              type="button"
-              onClick={() => { onPark(chip); setOpen(false); }}
-              style={{
-                background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
-                border: "1px solid rgba(201,162,76,0.3)",
-                borderRadius: 6, color: "var(--atlas-gold)",
-                fontSize: 10, fontFamily: "var(--app-font-mono)",
-                cursor: "pointer", padding: "4px 10px",
-                letterSpacing: "0.05em", transition: "background 130ms",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 20%, transparent)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 12%, transparent)")}
-            >
-              Park this →
-            </button>
-            {onDismiss && (
-              <button
-                type="button"
-                onClick={() => { onDismiss(chip.label); setOpen(false); }}
-                style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 11, opacity: 0.38, padding: "4px 5px", transition: "opacity 120ms", fontFamily: "var(--app-font-mono)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.38")}
-              >
-                Dismiss
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 14, opacity: 0.3, padding: "2px 6px", marginLeft: "auto", lineHeight: 1, transition: "opacity 120ms" }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.65")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.3")}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+
+
 
 // ── MemoryChips (session-level, above the input) ──────────────────────────────
 function MemoryChips({
@@ -765,63 +635,8 @@ const LINE_HEIGHT_PX = 23.8; // 14px * 1.7 line-height
 
 
 
-// ── Diff utilities ────────────────────────────────────────────────────────────
-type DiffLine = { type: "added" | "removed" | "context"; line: string };
-type DiffItem = DiffLine | { type: "ellipsis"; count: number };
 
-function computeLineDiff(before: string, after: string): DiffLine[] {
-  const a = before.split("\n");
-  const b = after.split("\n");
-  const m = a.length, n = b.length;
-  if (m > 400 || n > 400) {
-    return b.map((line) => ({ type: "added" as const, line }));
-  }
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
-    }
-  }
-  const result: DiffLine[] = [];
-  let i = m, j = n;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
-      result.unshift({ type: "context", line: a[i - 1] });
-      i--; j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.unshift({ type: "added", line: b[j - 1] });
-      j--;
-    } else {
-      result.unshift({ type: "removed", line: a[i - 1] });
-      i--;
-    }
-  }
-  return result;
-}
 
-function collapseDiff(lines: DiffLine[], ctx = 3): DiffItem[] {
-  const relevant = new Set<number>();
-  lines.forEach((l, i) => {
-    if (l.type !== "context") {
-      for (let k = Math.max(0, i - ctx); k <= Math.min(lines.length - 1, i + ctx); k++) relevant.add(k);
-    }
-  });
-  if (relevant.size === 0) {
-    const preview = lines.slice(0, ctx);
-    const rest = lines.length - preview.length;
-    return [...preview, ...(rest > 0 ? [{ type: "ellipsis" as const, count: rest }] : [])];
-  }
-  const result: DiffItem[] = [];
-  let last = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (!relevant.has(i)) continue;
-    if (last !== -1 && i > last + 1) result.push({ type: "ellipsis" as const, count: i - last - 1 });
-    result.push(lines[i]);
-    last = i;
-  }
-  if (last < lines.length - 1) result.push({ type: "ellipsis" as const, count: lines.length - 1 - last });
-  return result;
-}
 
 // ── GitHubPushModal ───────────────────────────────────────────────────────────
 
