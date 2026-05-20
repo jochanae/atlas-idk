@@ -20,6 +20,7 @@ import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { PreviewPanel } from "../components/workspace/PreviewPanel";
+import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel, parseZip, assembleContext } from "../components/ZipImport";
