@@ -114,8 +114,6 @@ html, body {
   --ts-h1:      22px;
   --ts-display-lg: 28px;
   --ts-display-xl: 30px;
-  --ts-h2:      18px;
-  --ts-h1:      22px;
 
   /* Line heights */
   --lh-tight:   1.2;
@@ -125,6 +123,28 @@ html, body {
   /* Letter spacing */
   --ls-mono-cap: 0.1em;
   --ls-tight:    -0.01em;
+
+  /* Motion — durations */
+  --motion-instant: 80ms;   /* hover tints, pressed states */
+  --motion-fast:    140ms;  /* button press, small fades */
+  --motion-base:    220ms;  /* default UI transitions */
+  --motion-slow:    320ms;  /* drawers, dock slot swaps */
+  --motion-deliberate: 480ms; /* mode shifts, large reveals */
+
+  /* Motion — easings */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);       /* default — decisive entry */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.0);   /* alias for standard */
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);    /* exits, settles */
+  --ease-in-sharp: cubic-bezier(0.4, 0, 1, 1);       /* dismissals */
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);/* playful, overshoots */
+
+  /* Motion — composed transitions */
+  --transition-color: color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+  --transition-transform: transform var(--motion-base) var(--ease-standard);
+  --transition-opacity: opacity var(--motion-base) var(--ease-standard);
+  --transition-all: all var(--motion-base) var(--ease-standard);
+
+
 
 
 
