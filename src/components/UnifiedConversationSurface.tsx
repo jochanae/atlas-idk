@@ -94,17 +94,25 @@ export function UnifiedConversationSurface({
   void mode;
   void projectId;
 
-  // Host-slot path: stream/composer slots routed through optional hostShell.
-  if (streamSlot !== undefined || composerSlot !== undefined) {
-    const content = hostShell
-      ? hostShell({ stream: streamSlot, between: betweenSlot, composer: composerSlot })
-      : (
-        <>
-          {streamSlot}
-          {betweenSlot}
-          {composerSlot}
-        </>
-      );
+  const panels = {
+    flow: flowPanel,
+    ledger: ledgerPanel,
+    files: filesPanel,
+    preview: previewPanel,
+  };
+
+  // Host-shell path: when the host provides hostShell, it owns the
+  // wrapper DOM. The conversation half can arrive via streamSlot/
+  // composerSlot OR via children (used by workspace.tsx to keep the
+  // existing chat subtree intact while lifting panels through slots).
+  if (hostShell && (streamSlot !== undefined || composerSlot !== undefined || children !== undefined)) {
+    const stream = streamSlot !== undefined ? streamSlot : children;
+    const content = hostShell({
+      stream,
+      between: betweenSlot,
+      composer: composerSlot,
+      panels,
+    });
     return (
       <div
         data-surface-mode={mode}
@@ -116,7 +124,22 @@ export function UnifiedConversationSurface({
     );
   }
 
-  // Legacy children path.
+  // Host-slot path without hostShell: stack the slots in default layout.
+  if (streamSlot !== undefined || composerSlot !== undefined) {
+    return (
+      <div
+        data-surface-mode={mode}
+        data-project-id={projectId ?? undefined}
+        style={{ display: "contents" }}
+      >
+        {streamSlot}
+        {betweenSlot}
+        {composerSlot}
+      </div>
+    );
+  }
+
+  // Legacy children path (no hostShell, no slots).
   if (children !== undefined) {
     return (
       <div
@@ -136,6 +159,8 @@ export function UnifiedConversationSurface({
       {composerProps ? <ChatComposer {...composerProps} /> : null}
     </>
   );
+
+
 
   // Operational mode: keep the existing host DOM untouched (workspace.tsx
   // already provides its own full-width layout). Render as a fragment so
