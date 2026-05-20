@@ -5230,6 +5230,12 @@ export default function Workspace() {
     sessionId,
     setSessionId,
     ensureSessionId,
+    chatPending,
+    setChatPending,
+    activityStream,
+    setActivityStream,
+    abortControllerRef,
+    handleStop,
   } = useChatStream<ChatMessage>(id, {
     sessions,
     sessionsLoading,
