@@ -705,8 +705,10 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
         >
           {children}
         </div>
-        <ShellFooter />
+        {/* ShellFooter intentionally not rendered — UnifiedContextDock owns the bottom nav.
+            Two fixed footers at bottom:0 caused tap collisions. */}
       </div>
     </ShellStateContext.Provider>
   );
 }
+
