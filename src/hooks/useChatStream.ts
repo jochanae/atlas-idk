@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { useListMessages, type Message } from "@/_workspace/api-client-react/src/generated/api";
+import { useListMessages } from "@/_workspace/api-client-react/src/generated/api";
+import type { Message } from "@/_workspace/api-client-react/src/generated/api.schemas";
 
 type PriorMessage = Message;
 
