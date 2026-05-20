@@ -369,7 +369,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   border: (attachedFiles.length > 0 || zipFiles.length > 0) ? "1px solid rgba(201,162,76,0.2)" : "1px solid transparent",
                   color: (attachedFiles.length > 0 || zipFiles.length > 0) ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  opacity: (attachedFiles.length > 0 || zipFiles.length > 0) ? 1 : 0.4, transition: "all 160ms ease",
+                  opacity: (attachedFiles.length > 0 || zipFiles.length > 0) ? 1 : 0.4, transition: "all var(--motion-fast) var(--ease-standard)",
                   flexShrink: 0, userSelect: "none",
                 }}
               >
@@ -389,7 +389,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     background: "transparent", border: "1px solid transparent",
                     color: "var(--atlas-muted)", cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    opacity: 0.4, transition: "all 160ms ease", flexShrink: 0,
+                    opacity: 0.4, transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.opacity = "1"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.opacity = "0.4"; }}
@@ -414,7 +414,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   border: showSrcPicker ? "1px solid rgba(56,189,248,0.3)" : "1px solid transparent",
                   color: showSrcPicker ? "rgba(56,189,248,0.9)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  opacity: srcReadLoading ? 0.5 : (showSrcPicker ? 1 : 0.4), transition: "all 160ms ease",
+                  opacity: srcReadLoading ? 0.5 : (showSrcPicker ? 1 : 0.4), transition: "all var(--motion-fast) var(--ease-standard)",
                   flexShrink: 0,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
@@ -444,7 +444,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     border: showDeepDiveMenu ? "1px solid rgba(201,162,76,0.25)" : "1px solid transparent",
                     color: showDeepDiveMenu ? "var(--atlas-gold)" : "var(--atlas-muted)",
                     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    opacity: showDeepDiveMenu ? 1 : 0.4, transition: "all 160ms ease", flexShrink: 0,
+                    opacity: showDeepDiveMenu ? 1 : 0.4, transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
                   }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
                   onMouseLeave={e => { if (!showDeepDiveMenu) e.currentTarget.style.opacity = "0.4"; }}
@@ -497,7 +497,7 @@ export function ChatComposer(props: ChatComposerProps) {
                           display: "block", width: "100%", textAlign: "left",
                           background: "transparent", border: "none",
                           padding: "7px 10px", borderRadius: 5, cursor: "pointer",
-                          transition: "background 120ms ease",
+                          transition: "background var(--motion-instant) var(--ease-standard)",
                         }}
                         onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -533,7 +533,7 @@ export function ChatComposer(props: ChatComposerProps) {
                         background: "transparent", border: "none",
                         padding: "6px 10px", borderRadius: 5,
                         cursor: "pointer",
-                        transition: "background 120ms ease",
+                        transition: "background var(--motion-instant) var(--ease-standard)",
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(56,189,248,0.07)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -568,7 +568,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   padding: "4px 8px", borderRadius: 20,
                   background: "var(--atlas-surface)",
                   border: "1px solid var(--atlas-surface)",
-                  cursor: "pointer", transition: "all 160ms ease", flexShrink: 0,
+                  cursor: "pointer", transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.32)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "var(--atlas-surface)"; e.currentTarget.style.borderColor = "var(--atlas-surface)"; }}
@@ -596,7 +596,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     border: `1px solid ${voiceListening ? "var(--atlas-ember)" : "var(--atlas-border)"}`,
                     color: voiceListening ? "var(--atlas-fg)" : "var(--atlas-muted)",
                     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 180ms ease", flexShrink: 0,
+                    transition: "all var(--motion-base) var(--ease-standard)", flexShrink: 0,
                   }}
                 >
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -616,7 +616,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     background: "var(--atlas-surface)",
                     border: "1px solid rgba(146,64,14,0.55)",
                     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, transition: "all 150ms ease",
+                    flexShrink: 0, transition: "all var(--motion-fast) var(--ease-standard)",
                   }}
                 >
                   <svg viewBox="0 0 20 20" width={12} height={12} fill="var(--atlas-ember)">

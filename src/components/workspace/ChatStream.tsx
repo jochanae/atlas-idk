@@ -161,7 +161,7 @@ export function ChatStream(props: ChatStreamProps) {
                   padding: "11px 14px", borderRadius: 9, cursor: "pointer",
                   background: "rgba(201,162,76,0.03)",
                   border: "1px solid rgba(201,162,76,0.08)",
-                  textAlign: "left", transition: "all 160ms ease",
+                  textAlign: "left", transition: "all var(--motion-fast) var(--ease-standard)",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.03)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.08)"; }}

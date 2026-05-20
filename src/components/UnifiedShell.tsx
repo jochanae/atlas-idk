@@ -85,7 +85,7 @@ function ShellWordmark() {
           alignItems: "center",
           justifyContent: "center",
           color: "rgba(201,162,76,0.55)",
-          transition: "color 160ms ease",
+          transition: "color var(--motion-fast) var(--ease-standard)",
           flexShrink: 0,
         }}
         onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.95)")}
@@ -365,7 +365,7 @@ function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: bo
         cursor: "pointer",
         opacity: visible ? 1 : 0,
         padding: "6px 0",
-        transition: "opacity 200ms ease, color 160ms ease",
+        transition: "opacity var(--motion-base) var(--ease-standard), color var(--motion-fast) var(--ease-standard)",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
       onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(var(--atlas-muted-rgb),0.55)")}
@@ -608,7 +608,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           backgroundSize: "cover",
           color: "var(--atlas-fg)",
           isolation: "isolate",
-          transition: "background-color 600ms ease, background-image 600ms ease",
+          transition: "background-color var(--motion-deliberate) var(--ease-out-soft), background-image var(--motion-deliberate) var(--ease-out-soft)",
         }}
       >
         <div
@@ -622,7 +622,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
               ? "transparent"
               : "var(--atlas-home-atmosphere)",
             opacity: currentDepth === "ambient" ? 0.9 : currentDepth === "active" ? 0.54 : 0,
-            transition: "opacity 600ms ease, background 600ms ease",
+            transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft)",
           }}
         />
         <div
@@ -637,7 +637,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             pointerEvents: "none",
             background: "rgba(var(--atlas-gold-rgb), 0.15)",
             opacity: currentDepth === "operational" ? 1 : 0,
-            transition: "opacity 400ms ease",
+            transition: "opacity var(--motion-slow) var(--ease-out-soft)",
           }}
         />
         <header
@@ -659,7 +659,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             borderBottom: "none",
             boxShadow: "var(--atlas-home-header-shadow)",
             opacity: 1,
-            transition: "opacity 600ms ease",
+            transition: "opacity var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
           <div style={{ flexShrink: 0, minWidth: 0 }}>
@@ -683,7 +683,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             maxWidth: contentMaxWidth,
             margin: "0 auto",
             padding: contentPadding,
-            transition: "all 600ms ease",
+            transition: "all var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
           {children}

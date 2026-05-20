@@ -119,7 +119,7 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
             border: "0.5px solid var(--atlas-border)",
             color: copied ? "var(--atlas-gold)" : "var(--atlas-muted)",
             cursor: "pointer",
-            transition: "all 160ms ease",
+            transition: "all var(--motion-fast) var(--ease-standard)",
           }}
         >
           {copied ? "Copied" : "Copy"}
