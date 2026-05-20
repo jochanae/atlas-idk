@@ -5936,30 +5936,7 @@ export default function Workspace() {
     if (id) { try { localStorage.setItem("atlas-last-project", String(id)); } catch {} }
   }, [id]);
 
-  const ensureSessionId = useCallback(async () => {
-    if (sessionId) return sessionId;
-    if (!creatingSessionRef.current) {
-      creatingSessionRef.current = createSession.mutateAsync(
-        { projectId: id, data: { title: "Session", mode: "think" } }
-      ).then((s) => {
-        setSessionId(s.id);
-        queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
-        return s.id;
-      }).finally(() => {
-        creatingSessionRef.current = null;
-      });
-    }
-    return creatingSessionRef.current;
-  }, [createSession, id, queryClient, sessionId]);
-
-  useEffect(() => {
-    if (sessionsLoading) return;
-    if (sessions && sessions.length > 0) {
-      if (!sessionId) setSessionId(sessions[0].id);
-    } else if (!sessionId) {
-      void ensureSessionId();
-    }
-  }, [ensureSessionId, sessionId, sessions, sessionsLoading]);
+  // ensureSessionId + session bootstrap effect now owned by useChatStream.
 
   // Always-current ref so doSend doesn't capture stale state
   sendCtxRef.current = { wsLens, wsModel };
