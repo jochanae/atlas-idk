@@ -225,12 +225,8 @@ function ShellAvatar() {
 }
 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
-  const { state } = useProjectState(projectId) as unknown as { state: { project: { name?: string } | null } | null };
-  // useProjectState exposes loadProjectState side-effect via its own internal effect;
-  // we only need `project.name` to render — fall back to the hook's typical surface.
-  void state;
   const ps = useProjectState(projectId);
-  const name = ps.state?.project?.name?.trim() || "Untitled project";
+  const name = ps.project?.name?.trim() || "Untitled project";
 
   const openSwitcher = useCallback(() => {
     window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
