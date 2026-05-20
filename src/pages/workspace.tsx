@@ -71,7 +71,7 @@ import { LongPressTip, haptic } from "@/lib/long-press-tip";
 // ── Types ────────────────────────────────────────────────────────────────────
 const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
-interface CatchPayload {
+export interface CatchPayload {
   v: number;
   against: { id: string; title: string };
   leadSentence: string;
@@ -113,7 +113,7 @@ interface LinePatch {
   replace: string;
 }
 
-interface PushRecord {
+export interface PushRecord {
   id: string;
   path: string;
   filename: string;
@@ -2962,7 +2962,7 @@ function timeAgo(date: string | Date): string {
   return "just now";
 }
 
-function ParkingLotEntry({ entry }: { entry: Entry }) {
+export function ParkingLotEntry({ entry }: { entry: Entry }) {
   const queryClient = useQueryClient();
   const updateEntry = useUpdateEntry();
   const [done, setDone] = useState(false);
@@ -3294,7 +3294,7 @@ function diffStat(original: string | null, next: string): { additions: number; d
 
 // ── PushDiffCard ──────────────────────────────────────────────────────────────
 // Groups one commit's worth of file pushes into a collapsible diff card.
-function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]; onRollbackAll: () => Promise<void> }) {
+export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]; onRollbackAll: () => Promise<void> }) {
   const [open, setOpen] = useState(true);
   const [rolling, setRolling] = useState(false);
   const [done, setDone] = useState(records.every(r => r.rolledBack));
