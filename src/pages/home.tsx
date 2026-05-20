@@ -2462,6 +2462,7 @@ export default function Home() {
           padding: "0 24px",
         }}
       >
+        <UnifiedConversationSurface mode={homeMessages.length > 0 ? "active" : "ambient"}>
         <div className="atlas-home-chat-column">
         <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
