@@ -105,9 +105,10 @@ function ShellWordmark() {
       <span
         style={{
           fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-          fontSize: 12,
+          fontSize: "var(--ts-label)",
           fontWeight: 700,
           letterSpacing: "0.18em",
+          lineHeight: "var(--lh-tight)",
           color: "var(--atlas-gold)",
           textTransform: "uppercase",
         }}
@@ -251,8 +252,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
         cursor: "pointer",
         color: "var(--atlas-fg)",
         fontFamily: "var(--app-font-sans)",
-        fontSize: 13,
+        fontSize: "var(--ts-body)",
         fontWeight: 500,
+        lineHeight: "var(--lh-snug)",
+        letterSpacing: "var(--ls-tight)",
         opacity: 0.92,
         pointerEvents: "auto",
       }}
@@ -282,8 +285,9 @@ function ShellStatusChip({ projectId }: { projectId: number | null }) {
         background: "rgba(var(--atlas-muted-rgb),0.06)",
         border: "1px solid rgba(var(--atlas-muted-rgb),0.14)",
         fontFamily: "var(--app-font-mono)",
-        fontSize: 9,
-        letterSpacing: "0.1em",
+        fontSize: "var(--ts-caption)",
+        letterSpacing: "var(--ls-mono-cap)",
+        lineHeight: 1,
         textTransform: "uppercase",
         color: "var(--atlas-muted)",
         whiteSpace: "nowrap",
@@ -369,9 +373,9 @@ function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: bo
       <ShellFooterIcon icon={item.icon} />
       <span
         style={{
-          fontSize: 8,
+          fontSize: "var(--ts-micro)",
           fontFamily: "var(--app-font-mono)",
-          letterSpacing: "0.1em",
+          letterSpacing: "var(--ls-mono-cap)",
           textTransform: "uppercase",
         }}
       >
