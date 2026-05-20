@@ -243,7 +243,8 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        maxWidth: 240,
+        maxWidth: "min(240px, 100%)",
+        minWidth: 0,
         background: "transparent",
         border: "none",
         padding: "0 8px",
@@ -585,9 +586,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       : 680;
   const contentPadding = currentDepth === "operational"
     ? 0
-    : currentDepth === "active"
-      ? "0 16px"
-      : "0 24px";
+    : "0 clamp(14px, 4vw, 24px)";
 
   return (
     <ShellStateContext.Provider value={value}>
@@ -648,8 +647,8 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             height: 50,
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 24px",
+            gap: 12,
+            padding: "0 clamp(14px, 4vw, 24px)",
             background: "linear-gradient(180deg, var(--atlas-bg), transparent)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
@@ -659,11 +658,13 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             transition: "opacity 600ms ease",
           }}
         >
-          <ShellWordmark />
-          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "auto" }}>
+          <div style={{ flexShrink: 0, minWidth: 0 }}>
+            <ShellWordmark />
+          </div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center", pointerEvents: "auto" }}>
             <ShellProjectSwitcher projectId={activeProjectId} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <ShellStatusChip projectId={activeProjectId} />
             <ShellAvatar />
           </div>
