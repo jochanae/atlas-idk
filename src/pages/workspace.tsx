@@ -9822,7 +9822,7 @@ export default function Workspace() {
             <button
               ref={projectBtnRef}
               onClick={() => setShowProjectMenu((v) => !v)}
-              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, background: "transparent", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 8, transition: "background 150ms ease", minWidth: 0, overflow: "hidden", width: "100%" }}
+              style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 8, transition: "background 150ms ease", minWidth: 0, overflow: "hidden", width: "100%" }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--atlas-glass-bg)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
