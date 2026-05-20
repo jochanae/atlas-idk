@@ -283,7 +283,7 @@ function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; 
         {surface.label}
       </div>
       {surface.reason && (
-        <div style={{ fontSize: 12, lineHeight: 1.45, color: "var(--atlas-muted)", opacity: 0.72, marginBottom: 10 }}>
+        <div style={{ fontSize: "var(--ts-label)", lineHeight: 1.45, color: "var(--atlas-muted)", opacity: 0.72, marginBottom: 10 }}>
           {surface.reason}
         </div>
       )}
@@ -297,7 +297,7 @@ function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; 
           color: "var(--atlas-gold)",
           cursor: "pointer",
           fontFamily: "var(--app-font-mono)",
-          fontSize: 10,
+          fontSize: "var(--ts-micro)",
           letterSpacing: "0.08em",
           padding: "5px 10px",
           textTransform: "uppercase",
@@ -345,7 +345,7 @@ function HomeHandoffCard({
         border: "1px solid color-mix(in oklab, var(--atlas-gold) 24%, transparent)",
       }}
     >
-      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-fg)", marginBottom: 4 }}>
+      <div style={{ fontSize: "var(--ts-body)", fontWeight: 700, color: "var(--atlas-fg)", marginBottom: 4 }}>
         This is ready to build.
       </div>
       <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.55, marginBottom: 10 }}>
@@ -370,7 +370,7 @@ function HomeHandoffCard({
         }}
       />
       {loading && (
-        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-gold)", marginBottom: 10, letterSpacing: "0.06em" }}>
+        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "var(--atlas-gold)", marginBottom: 10, letterSpacing: "0.06em" }}>
           {stage || "Setting up your workspace..."}
         </div>
       )}
@@ -389,7 +389,7 @@ function HomeHandoffCard({
             cursor: loading ? "not-allowed" : "pointer",
             opacity: loading ? 0.55 : 1,
             fontFamily: "var(--app-font-mono)",
-            fontSize: 10.5,
+            fontSize: "var(--ts-sm)",
             fontWeight: 800,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
@@ -410,7 +410,7 @@ function HomeHandoffCard({
             cursor: loading ? "not-allowed" : "pointer",
             opacity: loading ? 0.55 : 1,
             fontFamily: "var(--app-font-mono)",
-            fontSize: 10.5,
+            fontSize: "var(--ts-sm)",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
           }}
@@ -489,7 +489,7 @@ function InlineTimestamp() {
       aria-hidden
       style={{
         fontFamily: "var(--app-font-mono)",
-        fontSize: 10,
+        fontSize: "var(--ts-micro)",
         letterSpacing: "0.18em",
         color: "rgba(120,113,108,0.5)",
         userSelect: "none",
@@ -515,7 +515,7 @@ function AtlasLogo() {
       <span
         style={{
           fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-          fontSize: 12,
+          fontSize: "var(--ts-label)",
           fontWeight: 700,
           letterSpacing: "0.18em",
           color: "var(--atlas-gold)",
@@ -644,7 +644,7 @@ function ProjectThumbnail({ name, id }: { name: string; id: number }) {
       <span
         style={{
           fontFamily: "var(--app-font-mono)",
-          fontSize: 15,
+          fontSize: "var(--ts-h3)",
           fontWeight: 600,
           color: `hsla(${hue},52%,62%,0.9)`,
           letterSpacing: "-0.02em",
@@ -715,7 +715,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
       <div style={{ minWidth: 0, flex: 1 }}>
         <div
           style={{
-            fontSize: 13,
+            fontSize: "var(--ts-body)",
             fontWeight: 500,
             color: hov ? "var(--atlas-fg)" : "var(--atlas-fg)",
             whiteSpace: "nowrap",
@@ -730,7 +730,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
         {project.description && (
           <div
             style={{
-              fontSize: 11,
+              fontSize: "var(--ts-caption)",
               color: "var(--atlas-muted)",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -748,7 +748,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
             </svg>
             <span style={{
-              fontSize: 10,
+              fontSize: "var(--ts-micro)",
               fontFamily: "var(--app-font-mono)",
               color: "rgba(74,222,128,0.65)",
               letterSpacing: "0.02em",
@@ -776,7 +776,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
               <circle cx="12" cy="10" r="1" fill="rgba(120,113,108,0.4)" stroke="none" />
             </svg>
             <span style={{
-              fontSize: 10,
+              fontSize: "var(--ts-micro)",
               fontFamily: "var(--app-font-mono)",
               color: "rgba(120,113,108,0.4)",
               letterSpacing: "0.02em",
@@ -792,7 +792,7 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
         <span
           style={{
             fontFamily: "var(--app-font-mono)",
-            fontSize: 9.5,
+            fontSize: "var(--ts-xs)",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "rgba(120,113,108,0.5)",
@@ -861,7 +861,7 @@ function RepoSearchSheet({
         <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--atlas-border)", margin: "12px auto 4px" }} />
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 10px" }}>
-          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
             Choose Repository
           </span>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
@@ -877,19 +877,19 @@ function RepoSearchSheet({
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search repositories..."
-              style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: 13, fontFamily: "var(--app-font-sans)" }}
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: "var(--ts-body)", fontFamily: "var(--app-font-sans)" }}
             />
           </div>
         </div>
         {/* List */}
         <div style={{ overflowY: "auto", flex: 1, padding: "0 14px 32px" }}>
           {loading && (
-            <div style={{ padding: "24px 0", textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5 }}>
+            <div style={{ padding: "24px 0", textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", opacity: 0.5 }}>
               Loading...
             </div>
           )}
           {!loading && filtered.length === 0 && (
-            <div style={{ padding: "24px 0", textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5 }}>
+            <div style={{ padding: "24px 0", textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", opacity: 0.5 }}>
               No repositories found
             </div>
           )}
@@ -911,10 +911,10 @@ function RepoSearchSheet({
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
               </svg>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 12, fontWeight: 500, color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 500, color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {r.name}
                 </div>
-                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.6, marginTop: 1 }}>
+                <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", opacity: 0.6, marginTop: 1 }}>
                   {r.fullName}
                 </div>
               </div>
@@ -975,20 +975,20 @@ function BranchPickerSheet({
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--atlas-border)", margin: "12px auto 4px" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 10px" }}>
-          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
             Choose Branch
           </span>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.6)", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
         </div>
         {!repo && (
-          <div style={{ padding: "20px 16px 32px", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center" }}>
+          <div style={{ padding: "20px 16px 32px", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center" }}>
             Link a repository first
           </div>
         )}
         {repo && (
           <div style={{ overflowY: "auto", flex: 1, padding: "0 14px 32px" }}>
             {loading ? (
-              <div style={{ padding: "20px 0", textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5 }}>Loading...</div>
+              <div style={{ padding: "20px 0", textAlign: "center", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", opacity: 0.5 }}>Loading...</div>
             ) : displayBranches.map(b => (
               <button
                 key={b}
@@ -1006,7 +1006,7 @@ function BranchPickerSheet({
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="rgba(120,113,108,0.6)" style={{ flexShrink: 0 }}>
                   <path d="M11.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zm-2.25.75a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25zM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5zM4.25 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5z" />
                 </svg>
-                <span style={{ fontFamily: "var(--app-font-sans)", fontSize: 12, fontWeight: 500, color: "var(--atlas-fg)" }}>{b}</span>
+                <span style={{ fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 500, color: "var(--atlas-fg)" }}>{b}</span>
                 {current === b && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: "auto" }}>
                     <path d="M2 6l3 3 5-5" stroke="var(--atlas-gold)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -1065,10 +1065,10 @@ function FirstRunOverlay({
               <rect x="16" y="27" width="16" height="4" rx="1" fill="#D4AF37" />
             </svg>
           </div>
-          <div style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em", color: "rgba(201,162,76,0.7)", textTransform: "uppercase", marginBottom: 12 }}>
+          <div style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.22em", color: "rgba(201,162,76,0.7)", textTransform: "uppercase", marginBottom: 12 }}>
             AXIOM
           </div>
-          <div style={{ fontSize: 13, color: "rgba(120,113,108,0.6)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", lineHeight: 1.5 }}>
+          <div style={{ fontSize: "var(--ts-body)", color: "rgba(120,113,108,0.6)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", lineHeight: 1.5 }}>
             Structure before speed.
           </div>
         </div>
@@ -1092,7 +1092,7 @@ function FirstRunOverlay({
             <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
               Start a project →
             </div>
-            <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.6, marginTop: 3, fontFamily: "var(--app-font-mono)" }}>
+            <div style={{ fontSize: "var(--ts-micro)", fontWeight: 400, opacity: 0.6, marginTop: 3, fontFamily: "var(--app-font-mono)" }}>
               Chat + Decision Ledger
             </div>
           </button>
@@ -1115,7 +1115,7 @@ function FirstRunOverlay({
             <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
               Map my architecture
             </div>
-            <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.55, marginTop: 3, fontFamily: "var(--app-font-mono)" }}>
+            <div style={{ fontSize: "var(--ts-micro)", fontWeight: 400, opacity: 0.55, marginTop: 3, fontFamily: "var(--app-font-mono)" }}>
               System Map + Intent Capture
             </div>
           </button>
@@ -1127,7 +1127,7 @@ function FirstRunOverlay({
             onClick={onDismiss}
             style={{
               background: "none", border: "none", cursor: "pointer",
-              color: "rgba(120,113,108,0.45)", fontSize: 11,
+              color: "rgba(120,113,108,0.45)", fontSize: "var(--ts-caption)",
               fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
               marginTop: 18, textAlign: "center", padding: "4px 0",
               animation: "atlas-btn-rise 400ms ease 640ms both",
@@ -2179,7 +2179,7 @@ export default function Home() {
               }}
             >
               <span style={{
-                fontSize: 12, fontFamily: "var(--app-font-sans)",
+                fontSize: "var(--ts-label)", fontFamily: "var(--app-font-sans)",
                 color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 400,
                 letterSpacing: "-0.005em",
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
@@ -2224,7 +2224,7 @@ export default function Home() {
                     <button
                       key={item.label}
                       onClick={item.action}
-                      style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: 12, fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
+                      style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
                     >
                       {item.label}
                     </button>
@@ -2237,16 +2237,16 @@ export default function Home() {
           <div style={{ marginLeft: "auto", position: "relative" }}>
             {showClearConfirm ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "rgba(239,68,68,0.65)", letterSpacing: "0.04em" }}>Clear conversation?</span>
+                <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "rgba(239,68,68,0.65)", letterSpacing: "0.04em" }}>Clear conversation?</span>
                 <button
                   onClick={handleClearThread}
-                  style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 4, padding: "3px 9px", fontSize: 10, color: "rgba(252,165,165,0.9)", cursor: "pointer", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}
+                  style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 4, padding: "3px 9px", fontSize: "var(--ts-micro)", color: "rgba(252,165,165,0.9)", cursor: "pointer", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => setShowClearConfirm(false)}
-                  style={{ background: "transparent", border: "none", padding: "3px 6px", fontSize: 11, color: "var(--atlas-muted)", cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", padding: "3px 6px", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", cursor: "pointer" }}
                 >
                   Cancel
                 </button>
@@ -2312,7 +2312,7 @@ export default function Home() {
               value={convSearchQuery}
               onChange={(e) => setConvSearchQuery(e.target.value)}
               placeholder="Search conversations..."
-              style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontSize: 13 }}
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-body)" }}
             />
             <button
               onClick={() => { setShowConvSearch(false); setConvSearchQuery(""); }}
@@ -2324,11 +2324,11 @@ export default function Home() {
           </div>
           <div style={{ marginTop: 6, marginBottom: 10, maxHeight: 300, overflowY: "auto", background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.35)" }}>
             {convSearchLoading ? (
-              <div style={{ padding: "14px 12px", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, textAlign: "center", letterSpacing: "0.06em" }}>
+              <div style={{ padding: "14px 12px", fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, textAlign: "center", letterSpacing: "0.06em" }}>
                 Searching…
               </div>
             ) : convSearchResults.length === 0 ? (
-              <div style={{ padding: "14px 12px", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, textAlign: "center", letterSpacing: "0.04em" }}>
+              <div style={{ padding: "14px 12px", fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, textAlign: "center", letterSpacing: "0.04em" }}>
                 {convSearchQuery.trim()
                   ? `Nothing matching '${convSearchQuery.trim()}'`
                   : "No conversations found."}
@@ -2366,7 +2366,7 @@ export default function Home() {
                     <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", lineHeight: 1.4 }}>
                       {snippet || "Untitled conversation"}
                     </div>
-                    <div style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.05em" }}>
+                    <div style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.05em" }}>
                       {ago}
                     </div>
                   </button>
@@ -2409,7 +2409,7 @@ export default function Home() {
                 style={{
                   background: "transparent", border: "1px solid rgba(201,162,76,0.4)",
                   borderRadius: 6, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 12, color: "var(--atlas-gold)",
+                  fontSize: "var(--ts-label)", color: "var(--atlas-gold)",
                   fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
                 }}
               >Keep it</button>
@@ -2418,7 +2418,7 @@ export default function Home() {
                 style={{
                   background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.4)",
                   borderRadius: 6, padding: "7px 14px", cursor: "pointer",
-                  fontSize: 12, color: "rgba(252,165,165,0.95)",
+                  fontSize: "var(--ts-label)", color: "rgba(252,165,165,0.95)",
                   fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
                 }}
               >Shred it</button>
@@ -2499,7 +2499,7 @@ export default function Home() {
                   )}
                   {greetingPhraseRef.current}
                 </h1>
-                <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
+                <p style={{ fontSize: "var(--ts-body)", color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
                   I'm here. What's on your mind?
                 </p>
               </div>
@@ -2542,7 +2542,7 @@ export default function Home() {
                   }}
                 >
                   {showGoneFlash && homeMessages.length === 0 && (
-                    <div style={{ textAlign: "center", padding: "24px 0", fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.08em", animation: "fadeOut 1500ms ease forwards" }}>
+                    <div style={{ textAlign: "center", padding: "24px 0", fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.08em", animation: "fadeOut 1500ms ease forwards" }}>
                       Gone.
                     </div>
                   )}
@@ -2551,7 +2551,7 @@ export default function Home() {
                       {loadedHistoryCount > 0 && i === loadedHistoryCount && homeMessages.length > loadedHistoryCount && (
                         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", opacity: 0.3 }}>
                           <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
-                          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", color: "var(--atlas-muted)", textTransform: "lowercase" }}>
+                          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.14em", color: "var(--atlas-muted)", textTransform: "lowercase" }}>
                             — earlier —
                           </span>
                           <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
@@ -2563,13 +2563,13 @@ export default function Home() {
                           {/* Model label + intent badge */}
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
                             <span style={{
-                              fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                              fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
                               color: msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)",
                             }}>Atlas</span>
                             {msg.intentType && (
                               <span style={{
-                                fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+                                fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                                 padding: "1px 6px", borderRadius: 3,
                                 background: msg.intentType === "BUILD" ? "rgba(74,222,128,0.1)" : "rgba(201,162,76,0.1)",
                                 border: `1px solid ${msg.intentType === "BUILD" ? "rgba(74,222,128,0.25)" : "rgba(201,162,76,0.25)"}`,
@@ -2582,7 +2582,7 @@ export default function Home() {
                             padding: "4px 0",
                             background: "transparent",
                             border: "none",
-                            fontSize: 13, lineHeight: 1.65, color: "var(--atlas-fg)",
+                            fontSize: "var(--ts-body)", lineHeight: 1.65, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
@@ -2663,7 +2663,7 @@ export default function Home() {
                             </button>
                           )}
                           {msg.createdAt && !msg.streaming && (
-                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
@@ -2674,7 +2674,7 @@ export default function Home() {
                             padding: "9px 13px", borderRadius: "12px 12px 4px 12px",
                             background: "rgba(201,162,76,0.12)",
                             border: "0.5px solid rgba(201,162,76,0.3)",
-                            fontSize: 13, lineHeight: 1.55, color: "var(--atlas-fg)",
+                            fontSize: "var(--ts-body)", lineHeight: 1.55, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             {msg.imageUrl && (
@@ -2691,7 +2691,7 @@ export default function Home() {
                             {msg.content}
                           </div>
                           {msg.createdAt && (
-                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
@@ -2705,7 +2705,7 @@ export default function Home() {
                   {isAtlasStreaming && (
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 6, animation: "fadeIn 200ms ease forwards" }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
+                        <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
                           Atlas
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2715,7 +2715,7 @@ export default function Home() {
                               key={`step-${liveStep.verb}-${liveStep.target ?? ""}`}
                               style={{
                                 fontFamily: "var(--app-font-mono)",
-                                fontSize: 10,
+                                fontSize: "var(--ts-micro)",
                                 letterSpacing: "0.05em",
                                 animation: "fadeIn 320ms ease",
                                 display: "inline-flex",
@@ -2743,7 +2743,7 @@ export default function Home() {
                               key={pendingPhraseIdx}
                               style={{
                                 fontFamily: "var(--app-font-mono)",
-                                fontSize: 10,
+                                fontSize: "var(--ts-micro)",
                                 color: "var(--atlas-muted)",
                                 letterSpacing: "0.07em",
                                 opacity: 0.7,
@@ -2775,7 +2775,7 @@ export default function Home() {
                         alignItems: "center",
                         gap: 6,
                         color: "var(--atlas-gold)",
-                        fontSize: 12,
+                        fontSize: "var(--ts-label)",
                         fontFamily: "var(--app-font-mono)",
                         cursor: "pointer",
                         boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
@@ -2844,12 +2844,12 @@ export default function Home() {
                     ) : (
                       <div style={{ width: 54, height: 54, borderRadius: 7, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="rgba(201,162,76,0.6)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        <span style={{ fontSize: 8, color: "rgba(201,162,76,0.55)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
+                        <span style={{ fontSize: "var(--ts-tiny)", color: "rgba(201,162,76,0.55)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
                       </div>
                     )}
                     <button
                       onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                      style={{ position: "absolute", top: -5, right: -5, width: 16, height: 16, borderRadius: "50%", background: "var(--atlas-bg)", border: "1px solid rgba(201,162,76,0.3)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 1 }}
+                      style={{ position: "absolute", top: -5, right: -5, width: 16, height: 16, borderRadius: "50%", background: "var(--atlas-bg)", border: "1px solid rgba(201,162,76,0.3)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: "var(--ts-micro)", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 1 }}
                     >×</button>
                   </div>
                 ))}
@@ -2866,7 +2866,7 @@ export default function Home() {
                     right: 44,
                     zIndex: 2,
                     color: "var(--atlas-muted)",
-                    fontSize: 15,
+                    fontSize: "var(--ts-h3)",
                     lineHeight: 1.55,
                     opacity: typewriterPaused ? 0.4 : 0.65,
                     cursor: "text",
@@ -2897,7 +2897,7 @@ export default function Home() {
                   border: "none",
                   outline: "none",
                   color: "var(--atlas-fg)",
-                  fontSize: 15,
+                  fontSize: "var(--ts-h3)",
                   lineHeight: 1.6,
                   resize: "none",
                   fontFamily: "var(--app-font-sans)",
@@ -2999,7 +2999,7 @@ export default function Home() {
                     className="atlas-popover"
                     style={{ position: "absolute", bottom: "calc(100% + 8px)", left: 0, zIndex: 60, minWidth: 210 }}
                   >
-                    <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(201,162,76,0.5)", padding: "4px 10px 6px", borderBottom: "1px solid rgba(201,162,76,0.08)", marginBottom: 4 }}>
+                    <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(201,162,76,0.5)", padding: "4px 10px 6px", borderBottom: "1px solid rgba(201,162,76,0.08)", marginBottom: 4 }}>
                       Deep Dive
                     </div>
                     {([
@@ -3039,8 +3039,8 @@ export default function Home() {
                         onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
-                        <div style={{ fontSize: 12, color: "var(--atlas-fg)", fontWeight: 500 }}>{p.label}</div>
-                        <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 1, fontFamily: "var(--app-font-mono)" }}>{p.sub}</div>
+                        <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", fontWeight: 500 }}>{p.label}</div>
+                        <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", marginTop: 1, fontFamily: "var(--app-font-mono)" }}>{p.sub}</div>
                       </button>
                     ))}
                   </div>
@@ -3053,7 +3053,7 @@ export default function Home() {
                 <span style={{
                   position: "absolute", left: "50%", top: "50%",
                   transform: "translate(-50%, -50%)",
-                  fontFamily: "var(--app-font-mono)", fontSize: 10.5,
+                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)",
                   letterSpacing: "0.05em", color: "rgba(120,113,108,0.3)",
                   userSelect: "none", pointerEvents: "none",
                   whiteSpace: "nowrap",
@@ -3166,7 +3166,7 @@ export default function Home() {
                   <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.45)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
                   <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "var(--atlas-ember)" : "var(--atlas-gold)", opacity: 0.9 }} />
                 </span>
-                <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
                   {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
                   &nbsp;·&nbsp; {activeProjects.length} open
                   &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
@@ -3235,7 +3235,7 @@ export default function Home() {
                           color: "rgba(212,175,55,0.5)",
                           cursor: "pointer",
                           fontFamily: "inherit",
-                          fontSize: 11,
+                          fontSize: "var(--ts-caption)",
                           letterSpacing: "inherit",
                           transition: "color 160ms ease, box-shadow 160ms ease",
                         }}
@@ -3263,7 +3263,7 @@ export default function Home() {
                     color: "rgba(212,175,55,0.5)",
                     cursor: "pointer",
                     fontFamily: "var(--app-font-sans)",
-                    fontSize: 11,
+                    fontSize: "var(--ts-caption)",
                     letterSpacing: "0.01em",
                     display: "inline-flex",
                     alignItems: "center",
@@ -3274,7 +3274,7 @@ export default function Home() {
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.5)"; }}
                 >
                   <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(212,175,55,0.7)", display: "inline-block" }} />
-                  need a starting point? <span style={{ fontSize: 12 }}>↻</span>
+                  need a starting point? <span style={{ fontSize: "var(--ts-label)" }}>↻</span>
                 </button>
               </div>
             );
@@ -3283,7 +3283,7 @@ export default function Home() {
           {/* Inline create error */}
           {createError && (
             <div style={{
-              marginTop: 8, padding: "6px 12px", borderRadius: 5, fontSize: 11,
+              marginTop: 8, padding: "6px 12px", borderRadius: 5, fontSize: "var(--ts-caption)",
               background: "rgba(146,64,14,0.1)",
               border: "0.5px solid rgba(146,64,14,0.35)",
               color: "var(--atlas-ember)",
@@ -3343,7 +3343,7 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Briefcase size={13} strokeWidth={1.75} color="var(--atlas-gold)" />
-                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase", opacity: 0.8 }}>
+                <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase", opacity: 0.8 }}>
                   Briefing
                 </span>
               </div>
@@ -3356,15 +3356,15 @@ export default function Home() {
               </button>
             </div>
             {briefingLoading ? (
-              <div style={{ fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.6 }}>
+              <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.6 }}>
                 Atlas is preparing your briefing…
               </div>
             ) : briefing ? (
-              <p style={{ margin: 0, fontSize: 13, color: "var(--atlas-fg)", lineHeight: 1.6, fontFamily: "var(--app-font-sans)", opacity: 0.9, whiteSpace: "pre-wrap" }}>
+              <p style={{ margin: 0, fontSize: "var(--ts-body)", color: "var(--atlas-fg)", lineHeight: 1.6, fontFamily: "var(--app-font-sans)", opacity: 0.9, whiteSpace: "pre-wrap" }}>
                 {briefing}
               </p>
             ) : (
-              <p style={{ margin: 0, fontSize: 12, color: "var(--atlas-muted)", fontStyle: "italic", opacity: 0.6 }}>
+              <p style={{ margin: 0, fontSize: "var(--ts-label)", color: "var(--atlas-muted)", fontStyle: "italic", opacity: 0.6 }}>
                 No briefing available yet.
               </p>
             )}
@@ -3390,7 +3390,7 @@ export default function Home() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)" }}>
+              <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)" }}>
                 CONVERSATION HISTORY
               </div>
               <button
@@ -3402,7 +3402,7 @@ export default function Home() {
                   borderRadius: 999,
                   padding: "6px 12px",
                   color: "var(--atlas-fg)",
-                  fontSize: 11,
+                  fontSize: "var(--ts-caption)",
                   fontFamily: "var(--app-font-mono)",
                   letterSpacing: "0.05em",
                   cursor: "pointer",
@@ -3414,9 +3414,9 @@ export default function Home() {
               </button>
             </div>
             {historyLoading ? (
-              <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: 12 }}>Loading...</div>
+              <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-label)" }}>Loading...</div>
             ) : conversations.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: 12, fontFamily: "var(--app-font-mono)" }}>No saved conversations yet.</div>
+              <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)" }}>No saved conversations yet.</div>
             ) : conversations.map(c => (
               <div
                 key={c.id}
@@ -3431,8 +3431,8 @@ export default function Home() {
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 13, color: "var(--atlas-fg)", marginBottom: 2 }}>{c.title}</div>
-                  <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
+                  <div style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", marginBottom: 2 }}>{c.title}</div>
+                  <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
                     {new Date(c.createdAt).toLocaleDateString()} · {c.messageCount} messages
                   </div>
                 </div>
@@ -3775,7 +3775,7 @@ function ProjectsGridSheet({
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px 12px" }}>
-          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
             Projects
           </span>
           <button
@@ -3805,8 +3805,8 @@ function ProjectsGridSheet({
                 <span style={{ fontSize: 28, color: "rgba(212,175,55,0.45)", lineHeight: 1 }}>+</span>
               </div>
               <div style={{ padding: "10px 12px 12px" }}>
-                <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: 12, fontWeight: 600, color: "rgba(212,175,55,0.7)" }}>New Project</p>
-                <p style={{ margin: "3px 0 0", fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.5)", letterSpacing: "0.05em" }}>Start fresh</p>
+                <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 600, color: "rgba(212,175,55,0.7)" }}>New Project</p>
+                <p style={{ margin: "3px 0 0", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "rgba(120,113,108,0.5)", letterSpacing: "0.05em" }}>Start fresh</p>
               </div>
             </button>
 
@@ -3837,18 +3837,18 @@ function ProjectsGridSheet({
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ position: "relative", zIndex: 1 }}>
                       {icon}
                     </svg>
-                    <div style={{ position: "absolute", top: 8, right: 8, fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.5)" }}>
+                    <div style={{ position: "absolute", top: 8, right: 8, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.5)" }}>
                       {initials}
                     </div>
                   </div>
                   <div style={{ padding: "10px 12px 12px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
-                      <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: 12, fontWeight: 600, color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: "var(--ts-label)", fontWeight: 600, color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, minWidth: 0 }}>
                         {p.name}
                       </p>
                       <CompactReadinessRing score={p.latestSnapshotScore ?? 0} />
                     </div>
-                    <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.05em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <p style={{ margin: 0, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.05em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {p.description ?? "No description"}
                     </p>
                   </div>
@@ -3866,7 +3866,7 @@ function ProjectsGridSheet({
             style={{
               width: "100%", padding: "11px 0", borderRadius: 10,
               background: "transparent", border: "1px solid rgba(201,162,76,0.25)",
-              cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: 11,
+              cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-caption)",
               fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
               color: "var(--atlas-gold)", transition: "all 160ms ease",
             }}
