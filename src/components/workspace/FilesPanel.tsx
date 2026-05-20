@@ -22,7 +22,6 @@ import {
   buildTree,
 } from "../../pages/workspace";
 
-export
 export function FilesPanel({
   projectId,
   onFileContext,
