@@ -90,7 +90,7 @@ export interface CatchPayload {
   leadSentence: string;
 }
 
-interface AlertPayload {
+export interface AlertPayload {
   type: string;
   headline: string;
   detail: string;
