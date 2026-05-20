@@ -8,6 +8,7 @@ import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatLens } from "@/hooks/useChatLens";
+import { useComposerZip } from "@/hooks/useComposerZip";
 import { AxiomFlow } from "../components/AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../components/AxiomFlow";
 import { SystemMap } from "../components/SystemMap";
@@ -27,7 +28,7 @@ import { FilesPanel } from "../components/workspace/FilesPanel";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
-import { ZipDragOverlay, ZipPanel, parseZip, assembleContext } from "../components/ZipImport";
+import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { CommitCard } from "../components/CommitCard";
 import { PlanCard } from "../components/PlanCard";
@@ -40,7 +41,6 @@ import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import { reportError } from "../lib/errorReporter";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import type { Plan, PlanExecution } from "../lib/plan";
-import type { ZipEntry } from "../components/ZipImport";
 import {
   useGetProject,
   useListProjects,
@@ -6825,42 +6825,13 @@ export default function Workspace() {
   }, [isMobile]);
 
   // ── ZIP import ─────────────────────────────────────────────────────────────
-  const [zipFiles, setZipFiles] = useState<ZipEntry[]>([]);
-  const [zipName, setZipName] = useState("");
-  const [zipTruncated, setZipTruncated] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const processZip = useCallback(async (file: File) => {
-    try {
-      const { entries: parsed, truncated } = await parseZip(file);
-      setZipFiles(parsed);
-      setZipName(file.name);
-      setZipTruncated(truncated);
-      setFileContext(assembleContext(file.name, parsed));
-    } catch { /* ignore */ }
-  }, []);
-
-  const clearZip = useCallback(() => {
-    setZipFiles([]);
-    setZipName("");
-    setZipTruncated(false);
-    setFileContext(null);
-  }, []);
-
-  const toggleZipFile = useCallback((path: string) => {
-    setZipFiles((prev) => {
-      const next = prev.map((e) => e.path === path ? { ...e, selected: !e.selected } : e);
-      setFileContext(assembleContext(zipName, next));
-      return next;
-    });
-  }, [zipName]);
-
-  const setAllZip = useCallback((selected: boolean) => {
-    setZipFiles((prev) => {
-      const next = prev.map((e) => ({ ...e, selected }));
-      setFileContext(assembleContext(zipName, next));
-      return next;
-    });
-  }, [zipName]);
+  const {
+    zipFiles, setZipFiles,
+    zipName, setZipName,
+    zipTruncated, setZipTruncated,
+    isDragOver, setIsDragOver,
+    processZip, clearZip, toggleZipFile, setAllZip,
+  } = useComposerZip(id, setFileContext);
 
   const liveGeneration = useMemo(
     () => parseLiveGeneration(activityStream.content, chatPending),
