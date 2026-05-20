@@ -9,6 +9,7 @@ import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
+import { useParkingLot } from "@/hooks/useParkingLot";
 import { AxiomFlow } from "../components/AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../components/AxiomFlow";
 import { SystemMap } from "../components/SystemMap";
@@ -5619,16 +5620,13 @@ export default function Workspace() {
   const createSession = useCreateSession();
   const createEntry = useCreateEntry();
   const creatingSessionRef = useRef<Promise<number> | null>(null);
-  const [showParkingDrawer, setShowParkingDrawer] = useState(false);
-
-  const refreshParkedEntries = useCallback(async () => {
-    if (!id) return;
-    await projectState.refresh();
-    if (useProjectStateFallback) {
-      queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
-      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
-    }
-  }, [id, projectState, queryClient, useProjectStateFallback]);
+  const { showParkingDrawer, setShowParkingDrawer, refreshParkedEntries } = useParkingLot(id, {
+    projectState,
+    queryClient,
+    useProjectStateFallback,
+    getListEntriesQueryKey,
+    getListSessionsQueryKey,
+  });
 
   const parkedEntries = projectState.state
     ? projectState.parked
