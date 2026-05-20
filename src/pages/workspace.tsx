@@ -4978,19 +4978,8 @@ export default function Workspace() {
             )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-              {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
-            </span>
-            {!isTinyScreen && (
-              <>
-                <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(var(--atlas-muted-rgb),0.45)", display: "inline-block" }} />
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                  {chatPending ? "generating" : "session active"}
-                </span>
-              </>
-            )}
-          </div>
+
+
 
           {!isMobile && (
             <div role="group" aria-label="Workspace lens" style={{ display: "flex", alignItems: "center", gap: 2, padding: 2, borderRadius: 999, background: "rgba(var(--atlas-muted-rgb),0.05)", border: "1px solid rgba(var(--atlas-muted-rgb),0.14)", flexShrink: 0 }}>
