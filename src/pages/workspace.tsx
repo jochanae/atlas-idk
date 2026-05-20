@@ -75,6 +75,9 @@ import {
   MODE_META,
 } from "../components/ReadinessRing";
 import { LongPressTip, haptic } from "@/lib/long-press-tip";
+import { UserBubble } from "@/components/workspace/UserBubble";
+import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
+
 
 // ── Types ────────────────────────────────────────────────────────────────────
 const ICON_TOUCH_TARGET_STYLE: React.CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
