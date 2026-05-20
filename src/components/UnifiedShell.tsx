@@ -224,131 +224,91 @@ function ShellAvatar() {
   );
 }
 
-function ShellConversationTitle({ projectId }: { projectId: number | null }) {
-  const { activeSession, refresh } = useProjectState(projectId);
-  const [editing, setEditing] = useState(false);
-  const [displayedTitle, setDisplayedTitle] = useState("");
-  const [draftTitle, setDraftTitle] = useState("");
-  const [saving, setSaving] = useState(false);
-  const cancelBlurRef = useRef(false);
+function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
+  const { state } = useProjectState(projectId) as unknown as { state: { project: { name?: string } | null } | null };
+  // useProjectState exposes loadProjectState side-effect via its own internal effect;
+  // we only need `project.name` to render — fall back to the hook's typical surface.
+  void state;
+  const ps = useProjectState(projectId);
+  const name = ps.state?.project?.name?.trim() || "Untitled project";
 
-  useEffect(() => {
-    if (!editing) {
-      const nextTitle = activeSession?.title ?? "";
-      setDisplayedTitle(nextTitle);
-      setDraftTitle(nextTitle);
-    }
-  }, [activeSession?.title, editing]);
+  const openSwitcher = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
+  }, []);
 
-  const beginEditing = useCallback(() => {
-    if (!activeSession) return;
-    setDraftTitle(displayedTitle || activeSession.title);
-    setEditing(true);
-  }, [activeSession, displayedTitle]);
-
-  const submitRename = useCallback(async () => {
-    if (!activeSession || saving) return;
-    const previousTitle = displayedTitle || activeSession.title;
-    const newTitle = draftTitle.trim() || previousTitle;
-
-    if (newTitle === previousTitle) {
-      setEditing(false);
-      setDraftTitle(previousTitle);
-      return;
-    }
-
-    setSaving(true);
-    setDisplayedTitle(newTitle);
-    try {
-      const res = await fetch(`/api/sessions/${activeSession.id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle }),
-      });
-      if (!res.ok) throw new Error(`Rename failed: HTTP ${res.status}`);
-      toast("Renamed");
-      await refresh();
-    } catch {
-      setDisplayedTitle(previousTitle);
-      setDraftTitle(previousTitle);
-      toast("Rename failed");
-    } finally {
-      setSaving(false);
-      setEditing(false);
-    }
-  }, [activeSession, displayedTitle, draftTitle, refresh, saving]);
-
-  if (!activeSession) return <ShellClock />;
+  if (projectId == null) return null;
 
   return (
-    <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, pointerEvents: "auto" }}>
-      {editing ? (
-        <input
-          autoFocus
-          value={draftTitle}
-          disabled={saving}
-          onChange={(e) => setDraftTitle(e.target.value)}
-          onBlur={() => {
-            if (cancelBlurRef.current) {
-              cancelBlurRef.current = false;
-              return;
-            }
-            void submitRename();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void submitRename();
-            }
-            if (e.key === "Escape") {
-              e.preventDefault();
-              cancelBlurRef.current = true;
-              setDraftTitle(displayedTitle);
-              setEditing(false);
-            }
-          }}
-          style={{
-            width: 180,
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            color: "var(--atlas-fg)",
-            fontFamily: "var(--app-font-sans)",
-            fontSize: 13,
-            fontWeight: 500,
-            textAlign: "center",
-            opacity: saving ? 0.55 : 0.92,
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={beginEditing}
-          title="Rename conversation"
-          style={{
-            maxWidth: 220,
-            background: "transparent",
-            border: "none",
-            color: "var(--atlas-fg)",
-            cursor: "pointer",
-            fontFamily: "var(--app-font-sans)",
-            fontSize: 13,
-            fontWeight: 500,
-            opacity: 0.92,
-            overflow: "hidden",
-            padding: "0 8px",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {displayedTitle || activeSession.title}
-        </button>
-      )}
-      <ShellClock />
+    <button
+      type="button"
+      onClick={openSwitcher}
+      title="Switch project"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        maxWidth: 240,
+        background: "transparent",
+        border: "none",
+        padding: "0 8px",
+        cursor: "pointer",
+        color: "var(--atlas-fg)",
+        fontFamily: "var(--app-font-sans)",
+        fontSize: 13,
+        fontWeight: 500,
+        opacity: 0.92,
+        pointerEvents: "auto",
+      }}
+    >
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
+  );
+}
+
+function ShellStatusChip({ projectId }: { projectId: number | null }) {
+  const ps = useProjectState(projectId);
+  if (projectId == null) return null;
+  const count = ps.state?.decisions?.length ?? 0;
+  const active = !!ps.state?.activeSession;
+  return (
+    <div
+      aria-label={`${count} ledger ${count === 1 ? "entry" : "entries"}, ${active ? "session active" : "idle"}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "3px 9px",
+        borderRadius: 999,
+        background: "rgba(var(--atlas-muted-rgb),0.06)",
+        border: "1px solid rgba(var(--atlas-muted-rgb),0.14)",
+        fontFamily: "var(--app-font-mono)",
+        fontSize: 9,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        color: "var(--atlas-muted)",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        userSelect: "none",
+      }}
+    >
+      <span
+        className={active ? "atlas-pulse-dot" : undefined}
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: active ? "#4ade80" : "rgba(var(--atlas-muted-rgb),0.5)",
+          display: "inline-block",
+        }}
+      />
+      <span style={{ fontWeight: 700, color: count > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)" }}>{count}</span>
     </div>
   );
 }
+
 
 function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
   const common = {
