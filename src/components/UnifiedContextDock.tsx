@@ -205,6 +205,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         key={s.id}
         onClick={s.onClick}
         aria-label={s.label}
+        className="udock-slot"
         style={{
           flex: 1,
           display: "flex",
@@ -219,6 +220,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           position: "relative",
           color,
           WebkitTapHighlightColor: "transparent",
+          transition: "color 180ms ease, transform 120ms ease",
         }}
       >
         <span style={{ position: "relative", display: "inline-flex", lineHeight: 0 }}>
