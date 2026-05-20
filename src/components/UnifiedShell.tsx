@@ -267,8 +267,8 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 function ShellStatusChip({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   if (projectId == null) return null;
-  const count = ps.state?.decisions?.length ?? 0;
-  const active = !!ps.state?.activeSession;
+  const count = ps.decisions?.length ?? 0;
+  const active = !!ps.activeSession;
   return (
     <div
       aria-label={`${count} ledger ${count === 1 ? "entry" : "entries"}, ${active ? "session active" : "idle"}`}
