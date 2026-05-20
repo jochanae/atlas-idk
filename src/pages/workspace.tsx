@@ -5202,20 +5202,35 @@ export default function Workspace() {
     textareaRef,
     fileInputRef,
   } = useComposerDraft();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
 
+  const {
+    messages,
+    setMessages,
+    messagesRef,
+    historyMsgCountRef,
+    priorLoadedRef: priorLoaded,
+  } = useChatStream<ChatMessage>(id, {
+    sessionId,
+    mapPriorMessage: (m) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant",
+      content: m.content,
+      intentType: m.intentType,
+      sentAt: m.createdAt,
+    }),
+  });
+
   // Reset all chat state when the project changes so old messages never bleed into a new workspace
+  // (messages / priorLoaded / historyMsgCountRef portion lives in useChatStream)
   useEffect(() => {
-    setMessages([]);
     setPlanStates(new Map());
     setPlanExecutions(new Map());
     setSessionId(null);
     setActiveCatch(null);
-    priorLoaded.current = false;
     homePlanLoadedRef.current = false;
     // Abort any in-flight chat fetch from the previous project and clear pending state
     // so the composer send button is guaranteed active in the new workspace.
