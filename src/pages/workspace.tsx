@@ -5619,16 +5619,13 @@ export default function Workspace() {
   const createSession = useCreateSession();
   const createEntry = useCreateEntry();
   const creatingSessionRef = useRef<Promise<number> | null>(null);
-  const [showParkingDrawer, setShowParkingDrawer] = useState(false);
-
-  const refreshParkedEntries = useCallback(async () => {
-    if (!id) return;
-    await projectState.refresh();
-    if (useProjectStateFallback) {
-      queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
-      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
-    }
-  }, [id, projectState, queryClient, useProjectStateFallback]);
+  const { showParkingDrawer, setShowParkingDrawer, refreshParkedEntries } = useParkingLot(id, {
+    projectState,
+    queryClient,
+    useProjectStateFallback,
+    getListEntriesQueryKey,
+    getListSessionsQueryKey,
+  });
 
   const parkedEntries = projectState.state
     ? projectState.parked
