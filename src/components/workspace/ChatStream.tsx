@@ -28,7 +28,7 @@ type LiveGenerationLike = {
   mode: string;
   steps: unknown[];
 };
-type PlanExecutionLike = unknown;
+type PlanExecutionLike = PlanExecution;
 
 export interface ChatStreamProps {
   // scroll container
