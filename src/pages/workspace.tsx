@@ -5728,7 +5728,10 @@ export default function Workspace() {
           )}
         </div>
 
-        {/* Desktop: resize handle + right panel */}
+        {/* Desktop: resize handle + right panel (RightPanel lifted into
+            UnifiedConversationSurface.flowPanel; rendered here via the
+            host-shell `panels.flow` slot). Per-pane card chrome removed
+            so left + right read as one unified surface. */}
         {!isMobile && (
           <>
             {!desktopRightFull && (
@@ -5756,57 +5759,14 @@ export default function Workspace() {
             )}
             <div style={{
               flex: 1, minWidth: 240, overflow: "hidden",
-              margin: desktopRightFull ? "8px" : "8px 8px 8px 0",
-              borderRadius: 14,
-              border: "1px solid var(--atlas-border)",
-              background: "var(--atlas-surface-alt)",
-              boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
+              background: "transparent",
               position: "relative",
             }}>
-              <RightPanel
-
-                projectId={id}
-                entries={entries || []}
-                activeCatch={activeCatch}
-                onFileContext={setFileContext}
-                onLinkedRepoChange={setLinkedRepo}
-                pushHistory={pushHistory}
-                onRollbackPush={handleRollbackPush}
-                onHomeNav={() => setLocation("/home")}
-                forceTab={isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : desktopForceTab}
-                onSendIntent={sendFromIntentCapture}
-                onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
-                onMapReadinessChange={setMapReadiness}
-                displayedReadinessScore={displayedReadinessScore}
-                onSystemNodeMessage={pushSystemNodeMessage}
-                onHandover={handleHandover}
-                handoverPending={handoverPending}
-                lastHandoverHash={project?.lastHandoverHash ?? null}
-                isMobile={false}
-                fullscreen={desktopRightFull}
-                onToggleFullscreen={() => setDesktopRightFull((v) => !v)}
-                resolvedNodeIds={pendingResolvedNodeIds}
-                onResolvedConsumed={() => setPendingResolvedNodeIds([])}
-                currentSnapshot={currentSnapshot}
-                onSnapshotChange={setCurrentSnapshot}
-                handoverOpen={handoverOpen}
-                onHandoverOpenChange={setHandoverOpen}
-                sandboxCode={sandboxCode}
-                onSandboxConsumed={() => setSandboxCode(null)}
-                previewRefreshTrigger={previewRefreshTrigger}
-                pendingTerminalCommand={pendingTerminalCommand}
-                onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
-                onCommandComplete={handleTerminalComplete}
-                wsLens={wsLens}
-                onOpenForge={() => setShowForgeExternal(true)}
-                externalForgeNodes={externalForgeNodes}
-                onForgeNodesConsumed={() => setExternalForgeNodes([])}
-                onForgeCompleted={() => void updateForgeState("forged")}
-                onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
-              />
+              {panels.flow}
             </div>
           </>
         )}
+
 
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
