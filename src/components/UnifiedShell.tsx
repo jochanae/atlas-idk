@@ -75,6 +75,16 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
     : currentDepth === "active"
       ? "linear-gradient(rgba(var(--atlas-bg-rgb),0.4), rgba(var(--atlas-bg-rgb),0.4)), var(--atlas-home-bg-gradient)"
       : "var(--atlas-home-bg-gradient)";
+  const contentMaxWidth = currentDepth === "operational"
+    ? "100%"
+    : currentDepth === "active"
+      ? 780
+      : 680;
+  const contentPadding = currentDepth === "operational"
+    ? 0
+    : currentDepth === "active"
+      ? "0 16px"
+      : "0 24px";
 
   return (
     <ShellStateContext.Provider value={value}>
@@ -117,15 +127,30 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             left: 0,
             right: 0,
             zIndex: 1,
-            height: 48,
+            height: 1,
+            pointerEvents: "none",
+            background: "rgba(var(--atlas-gold-rgb), 0.15)",
+            opacity: currentDepth === "operational" ? 1 : 0,
+            transition: "opacity 400ms ease",
+          }}
+        />
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            top: 1,
+            left: 0,
+            right: 0,
+            zIndex: 1,
+            height: 47,
             display: "flex",
             alignItems: "center",
             padding: "0 18px",
             pointerEvents: "none",
             background: "linear-gradient(180deg, var(--atlas-bg), transparent)",
-            borderBottom: "1px solid var(--atlas-border)",
+            borderBottom: "none",
             opacity: currentDepth === "operational" ? 0.28 : 0.18,
-            transition: "opacity 600ms ease, border-color 600ms ease",
+            transition: "opacity 600ms ease",
           }}
         >
           <span
@@ -161,6 +186,10 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             width: "100%",
             height: "100%",
             minHeight: "100dvh",
+            maxWidth: contentMaxWidth,
+            margin: "0 auto",
+            padding: contentPadding,
+            transition: "all 600ms ease",
           }}
         >
           {children}
