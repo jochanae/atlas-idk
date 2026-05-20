@@ -9884,8 +9884,8 @@ export default function Workspace() {
                     </span>
                     <span className="atlas-name-pencil" style={{ fontSize: 10, color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
                   </span>
-                  {/* Chevron on its own line, centered below */}
-                  <svg width="10" height="6" viewBox="0 0 12 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(var(--atlas-muted-rgb),0.45)", flexShrink: 0 }}>
+                  {/* Chevron beside the title — separate touch target so it doesn't trigger rename */}
+                  <svg width="10" height="6" viewBox="0 0 12 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(var(--atlas-muted-rgb),0.55)", flexShrink: 0, marginLeft: 2 }}>
                     <path d="M1 1l5 5 5-5" />
                   </svg>
                 </>
