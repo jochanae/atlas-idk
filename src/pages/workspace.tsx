@@ -5586,8 +5586,7 @@ export default function Workspace() {
   const homePlanLoadedRef = useRef(false);
 
   const { data: allProjects } = useListProjects();
-  const projectState = useProjectState(Number.isFinite(id) ? id : null);
-  const useProjectStateFallback = !!projectState.error;
+  // projectState / useProjectStateFallback moved above (consumed by useChatStream).
   const { data: fallbackProject, isLoading: fallbackProjectLoading } = useGetProject(id, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
   });
@@ -5635,16 +5634,10 @@ export default function Workspace() {
     }
   }, [hasForgeNodes, id]);
 
-  const { data: fallbackSessions, isLoading: fallbackSessionsLoading } = useListSessions(id, {
-    query: { enabled: !!id && useProjectStateFallback, queryKey: getListSessionsQueryKey(id) },
-  });
+  // fallbackSessions / sessions / sessionsLoading moved above (consumed by useChatStream).
   const { data: fallbackEntries } = useListEntries(id, {}, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
   });
-  const sessions = projectState.activeSession ? [projectState.activeSession] : fallbackSessions;
-  const sessionsLoading = projectState.loading && !projectState.activeSession && !useProjectStateFallback
-    ? true
-    : fallbackSessionsLoading;
   const entries = useMemo<Entry[]>(() => {
     if (!projectState.state) return fallbackEntries ?? [];
     const entryMap = new Map<number, Entry>();
