@@ -5852,9 +5852,14 @@ export default function Workspace() {
 
 
       {isMobile && mobileTab !== "map" && (
-        <MobileTabBar
-          activeTab={mobileTab}
-          onTabChange={(tab) => setMobileTab(tab)}
+        <UnifiedContextDock
+          mode="operational"
+          activeOperationalTab={mobileTab as "chat" | "ledger" | "preview" | "map" | "files"}
+          onAtlasCore={() => { setMobileTab("chat"); setRightOpen(false); }}
+          onChat={() => setMobileTab("chat")}
+          onLedger={() => setMobileTab("ledger")}
+          onPreview={() => setMobileTab("preview")}
+          onFlow={() => setLocation("/map")}
           entryCount={entryCount}
           activeCatch={!!activeCatch}
         />
