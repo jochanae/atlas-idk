@@ -167,8 +167,25 @@ function ShellAvatar() {
   const name = user?.name || user?.email?.split("@")[0] || "Account";
   const isAdmin = isSuperAdmin(user);
 
+  const openAccount = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("axiom:open-account-hub"));
+  }, []);
+
   return (
-    <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+    <div
+      style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}
+      role="button"
+      tabIndex={0}
+      aria-label="Open settings"
+      onClick={openAccount}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openAccount();
+        }
+      }}
+    >
+
       <div
         title={name}
         aria-label={name}
@@ -688,8 +705,10 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
         >
           {children}
         </div>
-        <ShellFooter />
+        {/* ShellFooter intentionally not rendered — UnifiedContextDock owns the bottom nav.
+            Two fixed footers at bottom:0 caused tap collisions. */}
       </div>
     </ShellStateContext.Provider>
   );
 }
+
