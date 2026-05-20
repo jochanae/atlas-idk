@@ -5346,8 +5346,62 @@ export default function Workspace() {
         </div>
       )}
 
-      {/* ── Two-pane body ── */}
-      <div ref={containerRef} style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+      {/* ── Two-pane body (owned by UnifiedConversationSurface on desktop) ── */}
+      <UnifiedConversationSurface
+        mode="operational"
+        projectId={id}
+        flowPanel={!isMobile ? (
+          <RightPanel
+            projectId={id}
+            entries={entries || []}
+            activeCatch={activeCatch}
+            onFileContext={setFileContext}
+            onLinkedRepoChange={setLinkedRepo}
+            pushHistory={pushHistory}
+            onRollbackPush={handleRollbackPush}
+            onHomeNav={() => setLocation("/home")}
+            forceTab={isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : desktopForceTab}
+            onSendIntent={sendFromIntentCapture}
+            onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
+            onMapReadinessChange={setMapReadiness}
+            displayedReadinessScore={displayedReadinessScore}
+            onSystemNodeMessage={pushSystemNodeMessage}
+            onHandover={handleHandover}
+            handoverPending={handoverPending}
+            lastHandoverHash={project?.lastHandoverHash ?? null}
+            isMobile={false}
+            fullscreen={desktopRightFull}
+            onToggleFullscreen={() => setDesktopRightFull((v) => !v)}
+            resolvedNodeIds={pendingResolvedNodeIds}
+            onResolvedConsumed={() => setPendingResolvedNodeIds([])}
+            currentSnapshot={currentSnapshot}
+            onSnapshotChange={setCurrentSnapshot}
+            handoverOpen={handoverOpen}
+            onHandoverOpenChange={setHandoverOpen}
+            sandboxCode={sandboxCode}
+            onSandboxConsumed={() => setSandboxCode(null)}
+            previewRefreshTrigger={previewRefreshTrigger}
+            pendingTerminalCommand={pendingTerminalCommand}
+            onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
+            onCommandComplete={handleTerminalComplete}
+            wsLens={wsLens}
+            onOpenForge={() => setShowForgeExternal(true)}
+            externalForgeNodes={externalForgeNodes}
+            onForgeNodesConsumed={() => setExternalForgeNodes([])}
+            onForgeCompleted={() => void updateForgeState("forged")}
+            onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
+          />
+        ) : undefined}
+        showFlow={!isMobile}
+        hostShell={({ stream, panels }) => (
+      <div ref={containerRef} style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", ...(isMobile ? null : { margin: "8px", borderRadius: 14, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface-alt)", boxShadow: "0 4px 18px rgba(0,0,0,0.25)" }) }}>
+        {stream}
+      </div>
+        )}
+      >
+        {/* Children below become `stream` inside hostShell. */}
+        <>
+
 
         {/* ZIP drag overlay */}
         <ZipDragOverlay visible={isDragOver} />
