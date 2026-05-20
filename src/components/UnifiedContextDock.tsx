@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * UnifiedContextDock
@@ -155,25 +155,93 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
-  const handleAtlasTap = () => {
-    // Haptic
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
+
+  const pulseCenter = () => {
+    if (typeof document === "undefined") return;
+    const el = document.querySelector<HTMLButtonElement>(".udock-center");
+    if (!el) return;
+    el.classList.remove("udock-center-pulse");
+    void el.offsetWidth;
+    el.classList.add("udock-center-pulse");
+  };
+
+  const fireTap = () => {
     try { (navigator as any).vibrate?.(12); } catch {}
-    // Visible pulse on the center button
-    if (typeof document !== "undefined") {
-      const el = document.querySelector<HTMLButtonElement>(".udock-center");
-      if (el) {
-        el.classList.remove("udock-center-pulse");
-        // force reflow so animation restarts
-        void el.offsetWidth;
-        el.classList.add("udock-center-pulse");
-      }
-    }
-    // Universal: ask the active page to focus its Atlas composer
+    pulseCenter();
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
     }
     onAtlasCore();
   };
+
+  const startLongPress = () => {
+    longPressFired.current = false;
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true;
+      try { (navigator as any).vibrate?.(28); } catch {}
+      setSheetOpen(true);
+    }, 480);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+  const handleAtlasClick = () => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    fireTap();
+  };
+
+  // Close sheet on Escape
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+
+  const goVariant = (target: "ambient" | "active" | "operational") => {
+    setSheetOpen(false);
+    try { (navigator as any).vibrate?.(10); } catch {}
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    const projectMatch = path.match(/^\/project\/([^/]+)/);
+    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
+    if (projectMatch) localStorage.setItem("atlas:lastProjectId", projectMatch[1]);
+
+    if (target === "ambient") {
+      window.location.assign("/home");
+    } else if (target === "active") {
+      // Active = Home with composer focused
+      if (path === "/home" || path === "/") {
+        window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+      } else {
+        sessionStorage.setItem("atlas:focusComposerOnLoad", "1");
+        window.location.assign("/home");
+      }
+    } else {
+      // Operational = workspace chat
+      if (lastProject) {
+        if (projectMatch) {
+          window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+        } else {
+          window.location.assign(`/project/${lastProject}`);
+        }
+      } else {
+        window.location.assign("/projects");
+      }
+    }
+  };
+
+
 
 
   let left: Slot[] = [];
@@ -374,10 +442,15 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core"
-            aria-label="Return to Atlas Core"
+            title="Atlas Core — hold for surfaces"
+            aria-label="Return to Atlas Core. Long-press to switch surface."
             className="udock-center"
-            onClick={handleAtlasTap}
+            onClick={handleAtlasClick}
+            onPointerDown={startLongPress}
+            onPointerUp={cancelLongPress}
+            onPointerLeave={cancelLongPress}
+            onPointerCancel={cancelLongPress}
+            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; setSheetOpen(true); }}
             style={{
               width: 56,
               height: 56,
@@ -393,6 +466,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
               transition: "transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard)",
               WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
             }}
           >
             <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
@@ -403,6 +477,97 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
 
         {right.map(renderSlot)}
       </div>
+
+      {sheetOpen && (
+        <>
+          <div
+            onClick={() => setSheetOpen(false)}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)", zIndex: 250,
+              animation: "udockFade 180ms var(--ease-standard) both",
+            }}
+            aria-hidden
+          />
+          <div
+            role="dialog"
+            aria-label="Switch surface"
+            style={{
+              position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 260,
+              padding: "16px 16px calc(env(safe-area-inset-bottom) + 88px)",
+              animation: "udockSlideUp 220ms var(--ease-standard) both",
+            }}
+          >
+            <div
+              style={{
+                maxWidth: 480, margin: "0 auto",
+                background: "var(--atlas-bg)",
+                border: "1px solid rgba(212,175,55,0.25)",
+                borderRadius: 18,
+                boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{
+                padding: "14px 18px 6px",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: "var(--ts-micro)",
+                letterSpacing: "var(--ls-mono-cap)",
+                textTransform: "uppercase",
+                color: "rgba(212,175,55,0.7)",
+              }}>Switch surface</div>
+              {[
+                { id: "ambient", title: "Ambient", subtitle: "Home · broad navigation" },
+                { id: "active", title: "Active", subtitle: "Composer focused · ready to think" },
+                { id: "operational", title: "Operational", subtitle: "Workspace · build & ledger" },
+              ].map((opt) => {
+                const isCurrent = opt.id === mode;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => goVariant(opt.id as "ambient" | "active" | "operational")}
+                    style={{
+                      display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                      padding: "14px 18px",
+                      background: "none", border: "none", textAlign: "left", cursor: "pointer",
+                      borderTop: "1px solid rgba(212,175,55,0.08)",
+                      color: "var(--atlas-text, #E8E4DD)",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{opt.title}</div>
+                      <div style={{ fontSize: 12, color: "rgba(168,162,158,0.85)", marginTop: 2 }}>{opt.subtitle}</div>
+                    </div>
+                    {isCurrent && (
+                      <span style={{
+                        fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "var(--ls-mono-cap)",
+                        textTransform: "uppercase", color: "rgba(212,175,55,0.9)",
+                        padding: "3px 8px", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 999,
+                      }}>Current</span>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setSheetOpen(false)}
+                style={{
+                  display: "block", width: "100%", padding: "14px 18px",
+                  background: "rgba(0,0,0,0.25)", border: "none", borderTop: "1px solid rgba(212,175,55,0.12)",
+                  color: "rgba(168,162,158,0.85)", cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)",
+                  letterSpacing: "var(--ls-mono-cap)", textTransform: "uppercase",
+                }}
+              >Cancel</button>
+            </div>
+          </div>
+          <style>{`
+            @keyframes udockFade { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes udockSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          `}</style>
+        </>
+      )}
     </div>
   );
 }
+
