@@ -6692,6 +6692,18 @@ export default function Workspace() {
         if (file && file.name.toLowerCase().endsWith(".zip")) await processZip(file);
       }}
     >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 0,
+          background: "var(--atlas-home-atmosphere)",
+          opacity: 0.6,
+        }}
+      />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
       {/* ── Spec → Build handoff modal ── */}
       {showHandoffModal && (() => {
@@ -8547,6 +8559,7 @@ export default function Workspace() {
         />
       )}
 
+      </div>
     </div>
   );
 }
