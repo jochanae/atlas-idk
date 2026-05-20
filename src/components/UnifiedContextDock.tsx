@@ -442,10 +442,15 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core"
-            aria-label="Return to Atlas Core"
+            title="Atlas Core — hold for surfaces"
+            aria-label="Return to Atlas Core. Long-press to switch surface."
             className="udock-center"
-            onClick={handleAtlasTap}
+            onClick={handleAtlasClick}
+            onPointerDown={startLongPress}
+            onPointerUp={cancelLongPress}
+            onPointerLeave={cancelLongPress}
+            onPointerCancel={cancelLongPress}
+            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; setSheetOpen(true); }}
             style={{
               width: 56,
               height: 56,
@@ -461,6 +466,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
               transition: "transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard)",
               WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
             }}
           >
             <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
