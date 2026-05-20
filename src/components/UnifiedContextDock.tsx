@@ -254,9 +254,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         </span>
         <span
           style={{
-            fontSize: 8,
+            fontSize: "var(--ts-micro)",
             fontFamily: "var(--app-font-mono)",
-            letterSpacing: "0.1em",
+            letterSpacing: "var(--ls-mono-cap)",
+            lineHeight: 1,
             textTransform: "uppercase",
             fontWeight: s.active ? 700 : 500,
           }}
