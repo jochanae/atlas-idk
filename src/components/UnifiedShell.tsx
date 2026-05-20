@@ -664,10 +664,13 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           }}
         >
           <ShellWordmark />
-          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-            <ShellConversationTitle projectId={activeProjectId} />
+          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "auto" }}>
+            <ShellProjectSwitcher projectId={activeProjectId} />
           </div>
-          <ShellAvatar />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <ShellStatusChip projectId={activeProjectId} />
+            <ShellAvatar />
+          </div>
         </header>
         <div
           style={{
