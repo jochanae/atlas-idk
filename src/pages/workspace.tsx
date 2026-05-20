@@ -9931,7 +9931,7 @@ export default function Workspace() {
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "var(--atlas-surface)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(64px + env(safe-area-inset-bottom, 0px))" : 0 }}
+      style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(64px + env(safe-area-inset-bottom, 0px))" : 0 }}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
       onDrop={async (e) => {
@@ -10500,12 +10500,12 @@ export default function Workspace() {
             {messages.length === 0 && !chatPending && !(isHomeHandoff && homeHandoffMeta) && (
               <div style={{ padding: "52px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 {isBrandNewProject ? (
-                    <div style={{ fontSize: 20, fontWeight: 300, color: "var(--atlas-muted)", marginBottom: 28, letterSpacing: "-0.01em", textAlign: "center" }}>
+                    <div style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 24, marginBottom: 28, letterSpacing: "-0.025em", lineHeight: 1.2, textAlign: "center", maxWidth: 520 }}>
                       New project. Before we build — do you have a <GlossaryTip term="north star">The one outcome that makes everything else worth building.</GlossaryTip> for this? Or should we start from what's in your head?
                     </div>
                 ) : (
                   <>
-                    <div style={{ fontSize: 20, fontWeight: 300, color: "var(--atlas-muted)", marginBottom: 6, letterSpacing: "-0.01em", textAlign: "center" }}>
+                    <div style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 24, marginBottom: 6, letterSpacing: "-0.025em", lineHeight: 1.2, textAlign: "center" }}>
                       {project ? project.name : "Ready."}
                     </div>
                     <div style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.4)", marginBottom: 28, textAlign: "center" }}>
