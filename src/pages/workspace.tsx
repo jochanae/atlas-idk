@@ -79,6 +79,7 @@ import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
+import { ChatStream } from "@/components/workspace/ChatStream";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
