@@ -3069,6 +3069,23 @@ export default function Workspace() {
     textareaRef,
     fileInputRef,
   } = useComposerDraft();
+
+  // Atlas Core center-button → switch to chat tab + focus composer
+  useEffect(() => {
+    const onFocus = () => {
+      setMobileTab("chat");
+      setRightOpen(false);
+      const el = textareaRef.current;
+      if (!el) return;
+      setTimeout(() => {
+        try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch {}
+        el.focus();
+      }, 80);
+    };
+    window.addEventListener("atlas:focus-composer", onFocus);
+    return () => window.removeEventListener("atlas:focus-composer", onFocus);
+  }, []);
+
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
   const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
