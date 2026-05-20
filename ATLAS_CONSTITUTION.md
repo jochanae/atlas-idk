@@ -107,6 +107,23 @@ Commit Mode is triggered automatically by action gravity — not by the user man
 
 ---
 
+## V. The Unified Workspace Principle
+
+Atlas is one room. Not a collection of tools.
+
+The conversation is the root layer. Everything else — forge, maps, ledger, files, blueprints — emerges from the conversation as context demands. Nothing opens a new world. Everything docks, overlays, attaches, or expands within the same surface.
+
+Three cognitive states, one environment:
+- Ambient presence: open, breathing, no pressure
+- Active conversation: context attaches, input grows
+- Operational focus: tools emerge, condense around work
+
+The litmus test for every feature:
+"Does this deepen the conversation — or does it split the user into another room?"
+If it splits them — it does not belong.
+
+---
+
 ## V. The Three Entry Gates
 
 Atlas recognizes that different builders start from different cognitive positions. It meets each one where they are.

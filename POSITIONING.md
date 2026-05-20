@@ -23,6 +23,7 @@ Order of operations is sacred:
 Atlas never skips the Decide step. It never refuses the Build step.
 
 Internally, the brain that protects the order is the **Decision Catch Engine.**
+(internal architecture term — never surface to users)
 Externally, lead with *"Decision-led builder"* or *"Sovereign Strategic
 Partner."* Forge, codegen, and GitHub push are first-class capabilities —
 they just always come after a committed intent.
@@ -71,6 +72,7 @@ If any of these break, Atlas is no longer Atlas:
 ---
 
 ## 3. The Decision Catch Engine (The Brain)
+(internal architecture term — never surface to users)
 
 The moment Atlas proves its value. If this feels fake → Atlas fails. If this
 feels precise → Atlas becomes the thing builders refuse to ship without.
@@ -339,3 +341,6 @@ pattern detection, cross-project memory, deeper Workshop polish.
 
 *If a future decision conflicts with this document, this document wins
 until it is explicitly updated. Update the date at the top when you do.*
+
+## The Unified Experience Principle
+The workspace is not a destination. It is a state. The conversation is always the root — tools, maps, forge, and files emerge from it contextually. Repos are mounted contexts, not identities. Atlas is primary. Everything else is secondary.
