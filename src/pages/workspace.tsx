@@ -6,6 +6,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
+import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { AxiomFlow } from "../components/AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../components/AxiomFlow";
 import { SystemMap } from "../components/SystemMap";
