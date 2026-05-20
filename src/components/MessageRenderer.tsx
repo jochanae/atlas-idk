@@ -178,11 +178,27 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
 
 export function MarkdownProse({ content }: { content: string }) {
   return (
-    <div className="atlas-prose" style={{ color: "var(--atlas-fg)" }}>
+    <div
+      className="atlas-prose"
+      style={{
+        color: "var(--atlas-fg)",
+        maxWidth: "68ch",
+        fontSize: 16,
+        lineHeight: 1.85,
+        letterSpacing: "-0.005em",
+      }}
+    >
       <ReactMarkdown
         components={{
           p: ({ children }) => (
-            <p className="mb-3 text-[16px] leading-[1.75]" style={{ color: "var(--atlas-fg)" }}>
+            <p
+              className="text-[16px]"
+              style={{
+                color: "var(--atlas-fg)",
+                lineHeight: 1.85,
+                marginBottom: "1em",
+              }}
+            >
               {renderMarkdownChildren(children)}
             </p>
           ),
@@ -233,13 +249,13 @@ export function MarkdownProse({ content }: { content: string }) {
             return <CodeBlockCard language={lang} code={raw.replace(/\n+$/, "")} />;
           },
           ul: ({ children }) => (
-            <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>
+            <ul className="ml-4 list-disc" style={{ marginBottom: "1em", display: "flex", flexDirection: "column", gap: "0.5em" }}>{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>
+            <ol className="ml-4 list-decimal" style={{ marginBottom: "1em", display: "flex", flexDirection: "column", gap: "0.5em" }}>{children}</ol>
           ),
           li: ({ children }) => (
-            <li className="mb-1 text-[16px] leading-[1.7]" style={{ color: "var(--atlas-fg)" }}>
+            <li className="text-[16px]" style={{ color: "var(--atlas-fg)", lineHeight: 1.8 }}>
               {renderMarkdownChildren(children)}
             </li>
           ),
