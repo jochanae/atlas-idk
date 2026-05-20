@@ -52,6 +52,15 @@ export interface UnifiedConversationSurfaceProps {
   ledgerPanel?: React.ReactNode;
   filesPanel?: React.ReactNode;
   previewPanel?: React.ReactNode;
+
+  // Host-owned conversation content. When provided, it is rendered in place
+  // of (chatStreamProps + betweenSlot + composerProps) inside a
+  // layout-neutral wrapper (display:contents). This lets pages whose chat
+  // UI predates the extracted ChatStream/ChatComposer components (e.g.
+  // home.tsx) flow their existing JSX through the surface without any
+  // visual change. The wrapper still carries `data-surface-mode` for
+  // future styling hooks.
+  children?: React.ReactNode;
 }
 
 export function UnifiedConversationSurface({
