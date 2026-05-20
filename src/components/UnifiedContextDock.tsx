@@ -362,6 +362,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               marginTop: -26,
               flexShrink: 0,
               boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
+              transition: "transform 140ms ease, box-shadow 200ms ease",
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
