@@ -29,7 +29,6 @@ import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, LockOpen, Search } from "lucide-react";
-import { ThoughtForBadge } from "../components/ThoughtForBadge";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 
 const PLACEHOLDERS = [
@@ -1361,12 +1360,6 @@ export default function Home() {
       .then((data: any) => {
         const list = data.conversations ?? [];
         setConversations(list);
-        // Auto-load most recent conversation on mount so users return to their previous thread
-        if (list.length > 0 && list[0]?.id) {
-          const recentId = list[0].id as string;
-          try { sessionStorage.setItem("atlas-home-conversation-id", recentId); } catch {}
-          setActiveConversationId(recentId);
-        }
       })
       .catch(() => {});
   }, []);
@@ -2492,16 +2485,6 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
-                          {!msg.streaming && (
-                            <ThoughtForBadge
-                              metrics={{
-                                executionTimeMs: msg.executionTimeMs,
-                                inputTokens: msg.inputTokens,
-                                outputTokens: msg.outputTokens,
-                                costUsd: msg.costUsd,
-                              }}
-                            />
-                          )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;
                             const isExpanded = reviewingPlanIds.has(planKey);
