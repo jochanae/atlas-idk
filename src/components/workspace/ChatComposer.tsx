@@ -47,8 +47,8 @@ export interface ChatComposerProps {
   // Blueprint pill
   projectId: number;
   isMobile: boolean;
-  setMobileTab: (t: string) => void;
-  setDesktopForceTab: (t: string) => void;
+  setMobileTab: (t: any) => void;
+  setDesktopForceTab: (t: any) => void;
 
   // Textarea
   hasInput: boolean;
