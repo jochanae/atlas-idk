@@ -1,0 +1,338 @@
+import type { ReactNode } from "react";
+
+/**
+ * UnifiedContextDock
+ *
+ * Single context dock shared across the unified surface. Depth-adaptive:
+ *   ambient      — broad nav (Home, Projects, A, Decisions, You)
+ *   active       — contextual tools (Map, Files, A, Decisions, Forge)
+ *   operational  — workspace tools (Chat, Ledger, A, Preview, Flow)
+ *
+ * The center "A" is the persistent Atlas Core anchor — it returns focus
+ * to the conversation spine. It never opens Forge directly.
+ *
+ * Visual language (arch SVG + raised circular A + 4 flanking icon buttons)
+ * is preserved from the existing home bottom nav / CockpitBar so swapping
+ * in this dock does not change the look.
+ *
+ * Behavior is purely cosmetic + callback routing. No chat, API, or route
+ * decisions live here.
+ */
+export type DockMode = "ambient" | "active" | "operational";
+export type OperationalTab = "chat" | "ledger" | "preview" | "map" | "files";
+
+export interface UnifiedContextDockProps {
+  mode: DockMode;
+  /** Return focus to Atlas Core / conversation spine. Always required. */
+  onAtlasCore: () => void;
+
+  // ambient
+  onHome?: () => void;
+  onProjects?: () => void;
+  onDecisions?: () => void;
+  onYou?: () => void;
+
+  // active
+  onMap?: () => void;
+  onFiles?: () => void;
+  onForge?: () => void;
+
+  // operational
+  onChat?: () => void;
+  onLedger?: () => void;
+  onPreview?: () => void;
+  onFlow?: () => void;
+  activeOperationalTab?: OperationalTab;
+
+  // badges (operational ledger)
+  entryCount?: number;
+  activeCatch?: boolean;
+}
+
+type Slot = {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  badge?: number;
+  alert?: boolean;
+};
+
+const ICONS = {
+  home: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9,22 9,12 15,12 15,22" />
+    </svg>
+  ),
+  projects: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+    </svg>
+  ),
+  decisions: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+    </svg>
+  ),
+  you: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  map: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="4" cy="4" r="1.5" />
+      <circle cx="20" cy="4" r="1.5" />
+      <circle cx="4" cy="20" r="1.5" />
+      <circle cx="20" cy="20" r="1.5" />
+      <line x1="5.5" y1="5.5" x2="10.5" y2="10.5" />
+      <line x1="18.5" y1="5.5" x2="13.5" y2="10.5" />
+      <line x1="5.5" y1="18.5" x2="10.5" y2="13.5" />
+      <line x1="18.5" y1="18.5" x2="13.5" y2="13.5" />
+    </svg>
+  ),
+  files: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+    </svg>
+  ),
+  forge: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2l-4 6h6l-4 8" />
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  ),
+  chat: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  ledger: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <line x1="9" y1="12" x2="15" y2="12" />
+      <line x1="9" y1="16" x2="13" y2="16" />
+    </svg>
+  ),
+  preview: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="15" rx="2" />
+      <path d="M2 8h20" />
+      <path d="M8 22h8M12 18v4" />
+    </svg>
+  ),
+};
+
+function AxiomCenterSVG({ size = 52 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 512 512" width={size} height={size} display="block">
+      <defs>
+        <radialGradient id="udockpg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#5B21B6" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#0D0B09" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="udockgs" cx="50%" cy="40%" r="50%">
+          <stop offset="0%" stopColor="#F5D97A" />
+          <stop offset="50%" stopColor="#D4AF37" />
+          <stop offset="100%" stopColor="#A07820" />
+        </radialGradient>
+      </defs>
+      <circle cx="256" cy="256" r="256" fill="#0D0B09" />
+      <circle cx="256" cy="256" r="256" fill="url(#udockpg)" />
+      <polygon points="256,130 178,390 216,390 268,188" fill="url(#udockgs)" />
+      <polygon points="256,130 334,390 296,390 244,188" fill="url(#udockgs)" />
+      <rect x="192" y="292" width="128" height="30" rx="5" fill="url(#udockgs)" />
+    </svg>
+  );
+}
+
+export function UnifiedContextDock(props: UnifiedContextDockProps) {
+  const { mode, onAtlasCore } = props;
+
+  let left: Slot[] = [];
+  let right: Slot[] = [];
+
+  if (mode === "ambient") {
+    left = [
+      { id: "home", label: "Home", icon: ICONS.home, onClick: props.onHome, active: true },
+      { id: "projects", label: "Projects", icon: ICONS.projects, onClick: props.onProjects },
+    ];
+    right = [
+      { id: "decisions", label: "Decisions", icon: ICONS.decisions, onClick: props.onDecisions },
+      { id: "you", label: "You", icon: ICONS.you, onClick: props.onYou },
+    ];
+  } else if (mode === "active") {
+    left = [
+      { id: "map", label: "Map", icon: ICONS.map, onClick: props.onMap },
+      { id: "files", label: "Files", icon: ICONS.files, onClick: props.onFiles },
+    ];
+    right = [
+      { id: "decisions", label: "Decisions", icon: ICONS.decisions, onClick: props.onDecisions },
+      { id: "forge", label: "Forge", icon: ICONS.forge, onClick: props.onForge },
+    ];
+  } else {
+    const at = props.activeOperationalTab;
+    left = [
+      { id: "chat", label: "Chat", icon: ICONS.chat, onClick: props.onChat, active: at === "chat" },
+      {
+        id: "ledger",
+        label: "Ledger",
+        icon: ICONS.ledger,
+        onClick: props.onLedger,
+        active: at === "ledger",
+        badge: props.entryCount && props.entryCount > 0 ? props.entryCount : undefined,
+        alert: props.activeCatch,
+      },
+    ];
+    right = [
+      { id: "preview", label: "Preview", icon: ICONS.preview, onClick: props.onPreview, active: at === "preview" },
+      { id: "flow", label: "Flow", icon: ICONS.map, onClick: props.onFlow, active: at === "map" },
+    ];
+  }
+
+  const renderSlot = (s: Slot) => {
+    const color = s.active
+      ? "rgba(212,175,55,0.9)"
+      : "rgba(120,113,108,0.55)";
+    return (
+      <button
+        key={s.id}
+        onClick={s.onClick}
+        aria-label={s.label}
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          background: "none",
+          border: "none",
+          cursor: s.onClick ? "pointer" : "default",
+          padding: "6px 0",
+          position: "relative",
+          color,
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        {(s.badge !== undefined || s.alert) && (
+          <div
+            style={{
+              position: "absolute",
+              top: 4,
+              right: "calc(50% - 14px)",
+              minWidth: 14,
+              height: 14,
+              borderRadius: 7,
+              background: s.alert ? "var(--atlas-ember)" : "rgba(201,162,76,0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 8,
+              fontFamily: "var(--app-font-mono)",
+              color: "#fff",
+              fontWeight: 700,
+              padding: "0 3px",
+              boxShadow: s.alert ? "0 0 8px rgba(146,64,14,0.6)" : "none",
+            }}
+          >
+            {s.badge !== undefined ? (s.badge > 9 ? "9+" : String(s.badge)) : "!"}
+          </div>
+        )}
+        {s.icon}
+        <span
+          style={{
+            fontSize: 8,
+            fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            fontWeight: s.active ? 700 : 500,
+          }}
+        >
+          {s.label}
+        </span>
+      </button>
+    );
+  };
+
+  return (
+    <div
+      data-dock-mode={mode}
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 200,
+        overflow: "visible",
+      }}
+    >
+      {/* Arch SVG — preserved visual */}
+      <svg
+        style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
+        preserveAspectRatio="none"
+        viewBox="0 0 390 64"
+      >
+        <path
+          d="M0,0 L148,0 C163,0 172,22 195,22 C218,22 227,0 242,0 L390,0 L390,64 L0,64 Z"
+          fill="var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))"
+        />
+        <path
+          d="M0,0.5 L148,0.5 C163,0.5 172,22 195,22 C218,22 227,0.5 242,0.5 L390,0.5"
+          fill="none"
+          stroke="rgba(212,175,55,0.2)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          height: 64,
+          paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
+          zIndex: 1,
+        }}
+      >
+        {left.map(renderSlot)}
+
+        {/* Center — Atlas Core anchor */}
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button
+            title="Atlas Core"
+            aria-label="Return to Atlas Core"
+            onClick={onAtlasCore}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              border: "2px solid #D4AF37",
+              background: "var(--atlas-bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              marginTop: -26,
+              flexShrink: 0,
+              boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
+              <AxiomCenterSVG />
+            </div>
+          </button>
+        </div>
+
+        {right.map(renderSlot)}
+      </div>
+    </div>
+  );
+}
