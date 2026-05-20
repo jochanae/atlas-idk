@@ -155,25 +155,93 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
-  const handleAtlasTap = () => {
-    // Haptic
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
+
+  const pulseCenter = () => {
+    if (typeof document === "undefined") return;
+    const el = document.querySelector<HTMLButtonElement>(".udock-center");
+    if (!el) return;
+    el.classList.remove("udock-center-pulse");
+    void el.offsetWidth;
+    el.classList.add("udock-center-pulse");
+  };
+
+  const fireTap = () => {
     try { (navigator as any).vibrate?.(12); } catch {}
-    // Visible pulse on the center button
-    if (typeof document !== "undefined") {
-      const el = document.querySelector<HTMLButtonElement>(".udock-center");
-      if (el) {
-        el.classList.remove("udock-center-pulse");
-        // force reflow so animation restarts
-        void el.offsetWidth;
-        el.classList.add("udock-center-pulse");
-      }
-    }
-    // Universal: ask the active page to focus its Atlas composer
+    pulseCenter();
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
     }
     onAtlasCore();
   };
+
+  const startLongPress = () => {
+    longPressFired.current = false;
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true;
+      try { (navigator as any).vibrate?.(28); } catch {}
+      setSheetOpen(true);
+    }, 480);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+  const handleAtlasClick = () => {
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    fireTap();
+  };
+
+  // Close sheet on Escape
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+
+  const goVariant = (target: "ambient" | "active" | "operational") => {
+    setSheetOpen(false);
+    try { (navigator as any).vibrate?.(10); } catch {}
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    const projectMatch = path.match(/^\/project\/([^/]+)/);
+    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
+    if (projectMatch) localStorage.setItem("atlas:lastProjectId", projectMatch[1]);
+
+    if (target === "ambient") {
+      window.location.assign("/home");
+    } else if (target === "active") {
+      // Active = Home with composer focused
+      if (path === "/home" || path === "/") {
+        window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+      } else {
+        sessionStorage.setItem("atlas:focusComposerOnLoad", "1");
+        window.location.assign("/home");
+      }
+    } else {
+      // Operational = workspace chat
+      if (lastProject) {
+        if (projectMatch) {
+          window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
+        } else {
+          window.location.assign(`/project/${lastProject}`);
+        }
+      } else {
+        window.location.assign("/projects");
+      }
+    }
+  };
+
+
 
 
   let left: Slot[] = [];
