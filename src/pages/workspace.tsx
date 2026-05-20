@@ -6705,6 +6705,445 @@ export default function Workspace() {
       />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
+      {/* ── Workspace header restored below the unified shell ── */}
+      <div
+        className="atlas-workspace-header"
+        style={{
+          marginTop: 50,
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          background: "rgba(var(--atlas-bg-rgb),0.78)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.12)",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.22)",
+        }}
+      >
+        <div
+          className="atlas-app-header-row"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            minHeight: 42,
+            padding: isMobile ? "5px 10px" : "5px 14px",
+          }}
+        >
+          <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+            {(["chat", "diff", "blueprints", ...((wsLens === "build" || wsLens === "scenario") ? ["terminal"] : [])] as Array<"chat" | "diff" | "blueprints" | "terminal">).map((tab) => {
+              const active = leftTab === tab;
+              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? "Blueprints" : "Terminal";
+              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setLeftTab(tab)}
+                  aria-label={tab === "terminal" ? "Open terminal" : tab === "diff" ? "View diff" : tab === "blueprints" ? "Open blueprints" : "Open chat"}
+                  style={{
+                    padding: isTinyScreen ? "7px 8px" : "8px 12px",
+                    background: active ? "rgba(var(--atlas-gold-rgb),0.08)" : "transparent",
+                    border: "none",
+                    borderBottom: `2px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
+                    color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
+                    fontSize: isTinyScreen ? 11 : 12,
+                    fontFamily: "var(--app-font-sans)",
+                    fontWeight: active ? 600 : 400,
+                    cursor: "pointer",
+                    transition: "color 160ms ease, border-color 160ms ease, opacity 160ms ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    opacity: active ? 1 : 0.62,
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => { if (!active) e.currentTarget.style.opacity = "0.9"; }}
+                  onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = "0.62"; }}
+                >
+                  {tab === "terminal" && <TerminalSquare size={13} strokeWidth={1.7} />}
+                  {label}
+                  {badge !== undefined && (
+                    <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", background: "rgba(201,162,76,0.15)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "0 4px", borderRadius: 8, lineHeight: "15px" }}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 4 : 7, minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={focusSystemMap}
+              title="Open Flow"
+              aria-label="Open Flow"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: isTinyScreen ? "4px 7px" : "5px 10px",
+                borderRadius: 999,
+                background: "rgba(var(--atlas-gold-rgb),0.08)",
+                border: "1px solid rgba(var(--atlas-gold-rgb),0.24)",
+                color: "var(--atlas-gold)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 9.5,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block" }} />
+              Flow
+            </button>
+
+            {sessionPrUrl ? (
+              <a
+                href={sessionPrUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View Pull Request"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 8px", borderRadius: 6,
+                  background: "rgba(134,239,172,0.08)",
+                  border: "1px solid rgba(134,239,172,0.25)",
+                  color: "rgba(134,239,172,0.85)",
+                  fontSize: 10, fontFamily: "var(--app-font-mono)",
+                  textDecoration: "none", letterSpacing: "0.06em",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
+                </svg>
+                PR
+              </a>
+            ) : pushHistory.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setLeftTab("diff")}
+                title="Open Pull Request"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 8px", borderRadius: 6,
+                  background: "rgba(201,162,76,0.06)",
+                  border: "1px solid rgba(201,162,76,0.2)",
+                  color: "var(--atlas-gold)",
+                  fontSize: 10, fontFamily: "var(--app-font-mono)",
+                  cursor: "pointer", letterSpacing: "0.06em",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
+                </svg>
+                PR
+              </button>
+            ) : null}
+
+            <LongPressTip tip="Readiness mode: tap to cycle Blended · Architecture · Decisions">
+              <button
+                type="button"
+                onClick={() => {
+                  const modes: ReadinessMode[] = ["blended", "arch", "decisions"];
+                  const next = modes[(modes.indexOf(readinessMode) + 1) % modes.length];
+                  handleReadinessModeChange(next);
+                }}
+                title={`Mode: ${MODE_META[readinessMode].description}`}
+                aria-label={`Readiness mode: ${MODE_META[readinessMode].label}`}
+                style={{
+                  background: "rgba(201,162,76,0.08)",
+                  border: "1px solid rgba(201,162,76,0.22)",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  padding: isTinyScreen ? "3px 5px" : "3px 7px",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  color: "var(--atlas-muted)",
+                  lineHeight: 1,
+                  flexShrink: 0,
+                  transition: "color 150ms ease, border-color 150ms ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.5)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
+              >
+                {MODE_META[readinessMode].abbr}
+              </button>
+            </LongPressTip>
+
+            <ReadinessRing
+              archScore={mapReadiness}
+              decisionsScore={healthPct}
+              mode={readinessMode}
+              onModeChange={handleReadinessModeChange}
+              onClick={focusSystemMap}
+              trend={readinessTrend}
+              hideModePill
+            />
+
+            {!isMobile && (
+              <button
+                title="Open Preview"
+                aria-label="Toggle preview"
+                type="button"
+                onClick={openPreviewPanel}
+                style={{
+                  width: 26,
+                  height: 26,
+                  padding: 0,
+                  borderRadius: 7,
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--atlas-muted)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "color 160ms ease, opacity 160ms ease",
+                  flexShrink: 0,
+                  opacity: 0.65,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.opacity = "0.65"; }}
+              >
+                <Eye size={15} strokeWidth={1.7} />
+              </button>
+            )}
+
+            {!isMobile && (
+              <LongPressTip tip="Dashboard view">
+                <button
+                  title="Visual Vault"
+                  aria-label="Open visual vault"
+                  type="button"
+                  onClick={() => setShowVault(true)}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    padding: 0,
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "none",
+                    color: "rgba(201,162,76,0.55)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "color 160ms ease",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                </button>
+              </LongPressTip>
+            )}
+
+            {hasLinkedRepo && (
+              <LongPressTip tip="Rescan GitHub repo and update readiness score">
+                <button
+                  type="button"
+                  onClick={() => { if (!isScanning) void runScan(false); }}
+                  disabled={isScanning}
+                  title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
+                  aria-label="Rescan readiness"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "transparent",
+                    border: "1px solid rgba(201,162,76,0.25)",
+                    borderRadius: "50%",
+                    color: "var(--atlas-gold)",
+                    cursor: isScanning ? "default" : "pointer",
+                    opacity: isScanning ? 1 : 0.6,
+                    transition: "opacity 160ms ease, border-color 160ms ease",
+                    flexShrink: 0,
+                  }}
+                >
+                  <RefreshCw
+                    size={11}
+                    style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }}
+                  />
+                </button>
+              </LongPressTip>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            minHeight: 32,
+            padding: isMobile ? "0 10px 6px" : "0 14px 7px",
+            borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.06)",
+            minWidth: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+            <span className={sessionId ? "atlas-pulse-dot" : undefined} style={{ width: 6, height: 6, borderRadius: "50%", background: sessionId ? "#4ade80" : "rgba(var(--atlas-muted-rgb),0.4)", flexShrink: 0, display: "inline-block" }} />
+            {renaming ? (
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
+                <input
+                  ref={renameInputRef}
+                  autoFocus
+                  value={renameDraft}
+                  disabled={updateProjectHeader.isPending}
+                  onChange={(e) => { setRenameDraft(e.target.value); setRenameError(null); }}
+                  onKeyDown={(e) => {
+                    if (updateProjectHeader.isPending) return;
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const newName = renameDraft.trim() || (project?.name ?? "");
+                      updateProjectHeader.mutate({ id, data: { name: newName } }, {
+                        onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); setRenaming(false); setRenameError(null); },
+                        onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
+                      });
+                    }
+                    if (e.key === "Escape") { renameEscapeRef.current = true; setRenaming(false); setRenameError(null); }
+                  }}
+                  onBlur={() => {
+                    if (updateProjectHeader.isPending) return;
+                    if (renameEscapeRef.current) { renameEscapeRef.current = false; return; }
+                    const newName = renameDraft.trim() || (project?.name ?? "");
+                    updateProjectHeader.mutate({ id, data: { name: newName } }, {
+                      onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); setRenaming(false); setRenameError(null); },
+                      onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
+                    });
+                  }}
+                  style={{ background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: 13, fontWeight: 500, fontFamily: "var(--app-font-sans)", width: 180, opacity: updateProjectHeader.isPending ? 0.5 : 1, transition: "opacity 150ms ease" }}
+                />
+                {renameError && (
+                  <span style={{ fontSize: 10.5, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginTop: 2, lineHeight: 1.3, pointerEvents: "none" }}>
+                    {renameError}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setRenameDraft(project?.name ?? ""); setRenaming(true); }}
+                title="Tap to rename"
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: isMobile ? 180 : 320, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--atlas-fg)" }}
+              >
+                <span
+                  key={autoNameKey}
+                  className={autoNameKey > 0 ? "atlas-name-fresh" : undefined}
+                  style={{ fontSize: 13, opacity: 0.92, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+                >
+                  {(() => {
+                    const n = project?.name ?? "…";
+                    return isTinyScreen && n.length > 12 ? n.slice(0, 12) + "…" : n;
+                  })()}
+                </span>
+                <span className="atlas-name-pencil" style={{ fontSize: 10, color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
+              </button>
+            )}
+
+            {!!project?.lastHandoverHash && !!currentSnapshot && currentSnapshot.hash !== project.lastHandoverHash && (
+              <button
+                type="button"
+                title="Architecture flow has changed since last Atlas handover"
+                onClick={focusSystemMap}
+                style={{
+                  padding: "2px 7px",
+                  borderRadius: 4,
+                  background: "rgba(146,64,14,0.18)",
+                  border: "1px solid rgba(146,64,14,0.55)",
+                  color: "rgba(230,150,90,0.95)",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 8.5,
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                Updated since handover
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+              {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
+            </span>
+            {!isTinyScreen && (
+              <>
+                <span style={{ width: 3, height: 3, borderRadius: "50%", background: "rgba(var(--atlas-muted-rgb),0.45)", display: "inline-block" }} />
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  {chatPending ? "generating" : "session active"}
+                </span>
+              </>
+            )}
+          </div>
+
+          {!isMobile && (
+            <div role="group" aria-label="Workspace lens" style={{ display: "flex", alignItems: "center", gap: 2, padding: 2, borderRadius: 999, background: "rgba(var(--atlas-muted-rgb),0.05)", border: "1px solid rgba(var(--atlas-muted-rgb),0.14)", flexShrink: 0 }}>
+              {([
+                ["flow", "THINK"],
+                ["scenario", "PLAN"],
+                ["build", "BUILD"],
+                ["look", "LOOK"],
+              ] as Array<[WorkspaceLens, string]>).map(([lensId, label]) => {
+                const active = wsLens === lensId;
+                const detected = detectedLens === lensId;
+                const cfg = LENS_CONFIG[lensId];
+                return (
+                  <button
+                    key={lensId}
+                    type="button"
+                    onClick={() => setWsLens(lensId)}
+                    title={cfg.sub}
+                    aria-label={`${label} lens`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "4px 7px",
+                      borderRadius: 999,
+                      background: active ? cfg.glowColor : "transparent",
+                      border: `1px solid ${active || detected ? cfg.borderColor : "transparent"}`,
+                      color: active || detected ? cfg.color : "var(--atlas-muted)",
+                      cursor: "pointer",
+                      fontFamily: "var(--app-font-mono)",
+                      fontSize: 8.5,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      transition: "all 160ms ease",
+                      opacity: active ? 1 : 0.72,
+                    }}
+                  >
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: active || detected ? cfg.color : "rgba(var(--atlas-muted-rgb),0.45)", display: "inline-block" }} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Spec → Build handoff modal ── */}
       {showHandoffModal && (() => {
         const planMsgs = messages.filter(msg => msg.role === "assistant" && msg.intentType === "PLAN" && msg.content.trim().length > 0);
@@ -7038,169 +7477,6 @@ export default function Workspace() {
             boxShadow: isMobile ? "none" : "0 4px 18px rgba(0,0,0,0.25)",
           }}
         >
-          {/* ── Chat / Diff / Terminal tab strip ── */}
-          <div style={{ display: "flex", alignItems: "center", flexShrink: 0, paddingLeft: 4, background: "transparent" }}>
-
-            {(["chat", "diff", "blueprints", "terminal"] as const).filter(tab => {
-              if (tab === "terminal") return wsLens === "build" || wsLens === "scenario";
-              if (tab === "blueprints") return isMobile;
-              return true;
-            }).map((tab) => {
-              const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? "Blueprints" : "Terminal";
-              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setLeftTab(tab)}
-                  aria-label={tab === "terminal" ? "Open terminal" : tab === "diff" ? "View diff" : "Open chat"}
-                  style={{
-                    padding: "8px 14px", background: "transparent", border: "none",
-                    borderBottom: `2px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
-                    color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
-                    fontSize: 12, fontFamily: "var(--app-font-sans)", fontWeight: active ? 500 : 400,
-                    cursor: "pointer", transition: "color 160ms ease, border-color 160ms ease",
-                    marginBottom: -1, display: "flex", alignItems: "center", gap: 6,
-                    opacity: active ? 1 : 0.6,
-                  }}
-                  onMouseEnter={(e) => { if (!active) e.currentTarget.style.opacity = "0.9"; }}
-                  onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = "0.6"; }}
-                >
-                  {tab === "terminal" && <TerminalSquare size={13} strokeWidth={1.7} />}
-                  {label}
-                  {badge !== undefined && (
-                    <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", background: "rgba(201,162,76,0.15)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "0 4px", borderRadius: 8, lineHeight: "15px" }}>
-                      {badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-            {/* Right-aligned controls: PR + lens + grid + MIX + rescan */}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, paddingRight: 8 }}>
-              {sessionPrUrl && (
-                <a
-                  href={sessionPrUrl} target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    padding: "3px 10px", borderRadius: 6,
-                    background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.28)",
-                    color: "rgba(74,222,128,0.9)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-                    textDecoration: "none", letterSpacing: "0.02em", whiteSpace: "nowrap",
-                  }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="4" cy="4" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="4" r="2"/>
-                    <path d="M4 6v4M6 4h3a1 1 0 011 1v3"/>
-                  </svg>
-                  View PR
-                </a>
-              )}
-
-              {/* Lens selector */}
-              <button
-                title={`Lens: ${LENS_CONFIG[wsLens].sub}`}
-                aria-label={`Lens: ${LENS_CONFIG[wsLens].label}`}
-                onClick={() => setShowLensPicker(true)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 4,
-                  padding: isTinyScreen ? "4px 6px" : "3px 8px", borderRadius: 20,
-                  background: "transparent",
-                  border: `1px solid ${detectedLens ? LENS_CONFIG[detectedLens].borderColor : "rgba(var(--atlas-muted-rgb),0.2)"}`,
-                  cursor: "pointer", transition: "all 180ms ease", flexShrink: 0,
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, flexShrink: 0, transition: "background 220ms ease" }} />
-                {!isTinyScreen && (
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: detectedLens ? LENS_CONFIG[detectedLens].color : LENS_CONFIG[wsLens].color, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
-                    {LENS_CONFIG[wsLens].label}{detectedLens ? ` → ${LENS_CONFIG[detectedLens].label}` : ""}
-                  </span>
-                )}
-              </button>
-
-              {/* Grid / Visual Vault */}
-              <LongPressTip tip="Dashboard view">
-                <button
-                  title="Visual Vault"
-                  aria-label="Open visual vault"
-                  onClick={() => setShowVault(true)}
-                  style={{
-                    width: 26, height: 26, padding: 0, borderRadius: 6,
-                    background: "transparent", border: "none",
-                    color: "rgba(201,162,76,0.55)", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "color 160ms ease", flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
-                  </svg>
-                </button>
-              </LongPressTip>
-
-              {/* MIX mode pill */}
-              <LongPressTip tip="Readiness mode: tap to cycle Blended · Architecture · Decisions">
-                <button
-                  onClick={() => {
-                    const modes: ReadinessMode[] = ["blended", "arch", "decisions"];
-                    const next = modes[(modes.indexOf(readinessMode) + 1) % modes.length];
-                    handleReadinessModeChange(next);
-                  }}
-                  title={`Mode: ${MODE_META[readinessMode].description}`}
-                  aria-label={`Readiness mode: ${MODE_META[readinessMode].label}`}
-                  style={{
-                    background: "rgba(201,162,76,0.08)",
-                    border: "1px solid rgba(201,162,76,0.22)",
-                    borderRadius: 4, cursor: "pointer",
-                    padding: isTinyScreen ? "3px 5px" : "3px 7px",
-                    fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                    color: "var(--atlas-muted)", lineHeight: 1, flexShrink: 0,
-                    transition: "color 150ms ease, border-color 150ms ease",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.5)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
-                >
-                  {MODE_META[readinessMode].abbr}
-                </button>
-              </LongPressTip>
-
-              {/* Rescan */}
-              {hasLinkedRepo && (
-                <LongPressTip tip="Rescan GitHub repo and update readiness score">
-                  <button
-                    type="button"
-                    onClick={() => { if (!isScanning) void runScan(false); }}
-                    disabled={isScanning}
-                    title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
-                    aria-label="Rescan readiness"
-                    style={{
-                      width: 22, height: 22, padding: 0,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "transparent",
-                      border: "1px solid rgba(201,162,76,0.25)",
-                      borderRadius: "50%",
-                      color: "var(--atlas-gold)",
-                      cursor: isScanning ? "default" : "pointer",
-                      opacity: isScanning ? 1 : 0.6,
-                      transition: "opacity 160ms ease, border-color 160ms ease",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <RefreshCw
-                      size={11}
-                      style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }}
-                    />
-                  </button>
-                </LongPressTip>
-              )}
-            </div>
-          </div>
-
           {leftTab === "diff" ? (
             <div style={{ flex: 1, height: "100%", overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
                     {pushHistory.length === 0 ? (
