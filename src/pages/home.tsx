@@ -18,7 +18,7 @@ import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { fileToBase64Safe } from "../lib/image-resize";
-import { useAuth, useRequireAuth, isSuperAdmin } from "../hooks/useAuth";
+import { useRequireAuth } from "../hooks/useAuth";
 import { useThemeMode } from "../lib/theme";
 import { useSubscription } from "../hooks/useSubscription";
 import { useProjectState } from "../hooks/useProjectState";
@@ -1180,8 +1180,7 @@ export default function Home() {
   const [showDeepDiveMenu, setShowDeepDiveMenu] = useState(false);
   const [deepDiveCopied, setDeepDiveCopied] = useState(false);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
-  const { user: authUser } = useAuth();
-  useRequireAuth();
+  const { user: authUser } = useRequireAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -2138,89 +2137,6 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {/* Header */}
-      <div
-        className="atlas-home-header"
-        style={{
-          position: "sticky",
-          top: 0,
-          height: 50,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 24px",
-          borderBottom: "1px solid var(--atlas-glass-border)",
-          boxShadow: "var(--atlas-home-header-shadow)",
-          zIndex: 10,
-          flexShrink: 0,
-        }}
-      >
-        {/* Left side: menu icon + logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            title="Menu"
-            onClick={() => setShowDrawer(true)}
-            style={{
-              width: 28, height: 28, borderRadius: 7,
-              background: "transparent", border: "none",
-              color: "rgba(201,162,76,0.55)", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "color 160ms ease", flexShrink: 0,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-            </svg>
-          </button>
-          <AtlasLogo />
-        </div>
-
-        {/* Center: timestamp — hidden on tiny screens to avoid overlap */}
-        {!isTinyScreen && (
-          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
-            <InlineTimestamp />
-          </div>
-        )}
-
-        {/* Right side: avatar pair (vault icon moved to ATLAS subheader) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ display: "none" }} />
-          {/* Avatar + invite/new-project as overlapping pair (avatar in front) */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <UserMenuDropdown onOpenProfile={() => setShowProfile(true)} />
-            <button
-              title={isSuperAdmin(authUser) ? "Invite someone" : "New project"}
-              disabled={isLoading}
-              onClick={() => {
-                if (isSuperAdmin(authUser)) {
-                  setShowInvite(true);
-                } else {
-                  handleNewProject("New Project");
-                }
-              }}
-              style={{
-                width: 26, height: 26, borderRadius: "22%",
-                border: "1px dashed rgba(212,175,55,0.45)",
-                background: "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: isLoading ? "not-allowed" : "pointer",
-                color: "rgba(212,175,55,0.55)",
-                fontSize: 14, lineHeight: 1, fontWeight: 300,
-                flexShrink: 0, marginLeft: -4, position: "relative", zIndex: 1,
-                opacity: isLoading ? 0.4 : 1,
-                transition: "all 160ms ease",
-              }}
-              onMouseEnter={(e) => { if (!isLoading) { e.currentTarget.style.borderColor = "rgba(212,175,55,0.75)"; e.currentTarget.style.color = "#D4AF37"; } }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; e.currentTarget.style.color = "rgba(212,175,55,0.55)"; }}
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* ATLAS subheader — always-visible bar beneath main header */}
       {homeMessages.length > 0 && (
       <div className="atlas-chat-card-top" style={{ borderRadius: 0, padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, boxSizing: "border-box" }}>

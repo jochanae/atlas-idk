@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
+import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 
 type ShellDepth = "ambient" | "active" | "operational";
 
@@ -38,6 +39,138 @@ function projectIdFromPath(pathname: string): number | null {
   if (!match) return null;
   const id = Number(match[1]);
   return Number.isFinite(id) ? id : null;
+}
+
+function ShellWordmark() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <img
+        src="/axiom-logo.svg"
+        alt="Axiom"
+        width={26}
+        height={26}
+        style={{ borderRadius: "20%", flexShrink: 0 }}
+      />
+      <span
+        style={{
+          fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: "0.18em",
+          color: "var(--atlas-gold)",
+          textTransform: "uppercase",
+        }}
+      >
+        AXIOM
+      </span>
+    </div>
+  );
+}
+
+function ShellClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  const day = days[now.getDay()];
+  const mon = months[now.getMonth()];
+  const date = now.getDate();
+  let h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        fontFamily: "var(--app-font-mono)",
+        fontSize: 10,
+        letterSpacing: "0.18em",
+        color: "rgba(120,113,108,0.5)",
+        userSelect: "none",
+        textTransform: "uppercase",
+      }}
+    >
+      {day} {mon} {date} · {h}:{m} {ampm}
+    </div>
+  );
+}
+
+function ShellAvatar() {
+  const { user } = useAuth();
+  const photoUrl = user?.avatarUrl || (() => {
+    try {
+      const raw = localStorage.getItem("atlas-user-profile");
+      return raw ? (JSON.parse(raw).photoUrl ?? "") : "";
+    } catch {
+      return "";
+    }
+  })();
+  const name = user?.name || user?.email?.split("@")[0] || "Account";
+  const isAdmin = isSuperAdmin(user);
+
+  return (
+    <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      <div
+        title={name}
+        aria-label={name}
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "22%",
+          borderTop: "none",
+          borderBottom: "none",
+          borderLeft: "2px solid rgba(212,175,55,0.65)",
+          borderRight: "2px solid rgba(212,175,55,0.65)",
+          background: photoUrl ? "transparent" : "var(--atlas-bg)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        {photoUrl ? (
+          <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "20%" }} />
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
+            <circle cx="10" cy="7.5" r="3.2" stroke="#C9A24C" strokeWidth="1.2" />
+            <path d="M3 18.5c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#C9A24C" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+        )}
+      </div>
+      {isAdmin && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: -4,
+            right: -4,
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg,#D4AF37,#A07820)",
+            border: "1.5px solid var(--atlas-bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 6px rgba(212,175,55,0.5)",
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        >
+          <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#0C0A09" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 20h20M4 20V10l4 4 4-8 4 8 4-4v10" />
+          </svg>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function UnifiedShell({ children }: { children: ReactNode }) {
@@ -134,51 +267,34 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             transition: "opacity 400ms ease",
           }}
         />
-        <div
-          aria-hidden
+        <header
+          className="atlas-app-header"
           style={{
             position: "fixed",
             top: 1,
             left: 0,
             right: 0,
-            zIndex: 1,
-            height: 47,
+            zIndex: 20,
+            height: 50,
             display: "flex",
             alignItems: "center",
-            padding: "0 18px",
-            pointerEvents: "none",
+            justifyContent: "space-between",
+            padding: "0 24px",
             background: "linear-gradient(180deg, var(--atlas-bg), transparent)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
             borderBottom: "none",
-            opacity: currentDepth === "operational" ? 0.28 : 0.18,
+            boxShadow: "var(--atlas-home-header-shadow)",
+            opacity: 1,
             transition: "opacity 600ms ease",
           }}
         >
-          <span
-            style={{
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 9,
-              letterSpacing: "0.22em",
-              textTransform: "uppercase",
-              color: "var(--atlas-gold)",
-            }}
-          >
-            Atlas
-          </span>
-          {activeProjectId != null && (
-            <span
-              style={{
-                marginLeft: 10,
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 9,
-                letterSpacing: "0.12em",
-                color: "var(--atlas-muted)",
-                opacity: 0.72,
-              }}
-            >
-              project {activeProjectId}
-            </span>
-          )}
-        </div>
+          <ShellWordmark />
+          <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
+            <ShellClock />
+          </div>
+          <ShellAvatar />
+        </header>
         <div
           style={{
             position: "relative",
