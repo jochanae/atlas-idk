@@ -5383,8 +5383,6 @@ export default function Workspace() {
   const [forgeActiveProjectName, setForgeActiveProjectName] = useState<string | undefined>(undefined);
   const [forgeActiveProjectId, setForgeActiveProjectId] = useState<number | undefined>(undefined);
   const [autoNameKey, setAutoNameKey] = useState(0);
-  const [firstRunDismissed, setFirstRunDismissed] = useState(false);
-  const [firstRunInput, setFirstRunInput] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
