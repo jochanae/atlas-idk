@@ -55,7 +55,7 @@ export interface ChatComposerProps {
   inputFocused: boolean;
   setInputFocused: (v: boolean) => void;
   wsLens: WorkspaceLens;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   autoResize: () => void;
