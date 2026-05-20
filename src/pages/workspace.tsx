@@ -5553,7 +5553,7 @@ export default function Workspace() {
   };
 
   const [fileContext, setFileContext] = useState<string | null>(null);
-  const [chatPending, setChatPending] = useState(false);
+  // chatPending owned by useChatStream.
   const [agenticMode, setAgenticMode] = useState(true);
   const [agenticIterCount, setAgenticIterCount] = useState(0);
   useEffect(() => { setAgenticIterCount(0); }, [sessionId]);
