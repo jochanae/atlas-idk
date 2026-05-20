@@ -586,9 +586,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       : 680;
   const contentPadding = currentDepth === "operational"
     ? 0
-    : currentDepth === "active"
-      ? "0 16px"
-      : "0 24px";
+    : "0 clamp(14px, 4vw, 24px)";
 
   return (
     <ShellStateContext.Provider value={value}>
