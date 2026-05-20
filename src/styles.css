@@ -284,6 +284,10 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(201, 162, 76, 0.4);
 }
+/* Empty-thread state: hide the gold rail until a conversation begins */
+body[data-axiom-thread="empty"] ::-webkit-scrollbar { width: 0; height: 0; }
+body[data-axiom-thread="empty"] { scrollbar-width: none; }
+body[data-axiom-thread="empty"] * { scrollbar-width: none; }
 
 /* Hide scrollbar for single-row chip carousel */
 .suggestion-chips-row::-webkit-scrollbar { display: none; }
