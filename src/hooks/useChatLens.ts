@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 
 export type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
-export function useChatLens(projectId: string | undefined) {
+export function useChatLens(projectId: number | string | undefined) {
   const [wsModel, setWsModel] = useState<string>(() => {
     try {
       const r = localStorage.getItem("atlas-home-context");
