@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AxiomFlow } from "../AxiomFlow";
-import type { ArchNode, HandoverSnapshot } from "../AxiomFlow";
+import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../AxiomFlow";
 import { SystemMap } from "../SystemMap";
 import type { ArchNode as SystemMapNode } from "../SystemMap";
+import { CockpitBar } from "../CockpitBar";
+import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
 import {
   useGetProject,
