@@ -81,6 +81,15 @@ export function useChatStream<T>(
   const [sessionId, setSessionId] = useState<number | null>(null);
   const creatingSessionRef = useRef<Promise<number> | null>(null);
 
+  // ---- chat-pending / activity stream / abort (B2b-2) ----
+  const [chatPending, setChatPending] = useState(false);
+  const [activityStream, setActivityStream] = useState<ActivityStreamState>({ active: false, content: "" });
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleStop = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
   // Cross-project reset for everything this hook owns.
   useEffect(() => {
     setMessages([]);
@@ -88,6 +97,10 @@ export function useChatStream<T>(
     historyMsgCountRef.current = 0;
     setSessionId(null);
     creatingSessionRef.current = null;
+    try { abortControllerRef.current?.abort(); } catch { /* noop */ }
+    abortControllerRef.current = null;
+    setChatPending(false);
+    setActivityStream({ active: false, content: "" });
   }, [projectId]);
 
   // Prior-message hydration.
