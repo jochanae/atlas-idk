@@ -7,7 +7,9 @@ import { GlossaryTip } from "@/components/GlossaryTip";
 import type {
   ChatMessage,
   AmbientSurface,
+  LinkedRepo,
 } from "@/pages/workspace";
+import type { PlanExecution } from "@/lib/plan";
 import type { Plan } from "@/lib/plan";
 import type { PlanState } from "@/components/workspace/chatShared";
 
