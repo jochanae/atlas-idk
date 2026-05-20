@@ -5886,7 +5886,9 @@ export default function Workspace() {
             </div>
           </div>
         )}
-      </div>
+        </>
+      </UnifiedConversationSurface>
+
 
       {isMobile && mobileTab !== "map" && (
         <MobileTabBar
