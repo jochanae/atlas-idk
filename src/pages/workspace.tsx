@@ -7,6 +7,7 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
+import { useChatStream } from "@/hooks/useChatStream";
 import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
@@ -47,7 +48,7 @@ import {
   useListProjects,
   useListSessions,
   useListEntries,
-  useListMessages,
+  
   useCreateSession,
   useCreateEntry,
   useCreateProject,
@@ -5202,20 +5203,35 @@ export default function Workspace() {
     textareaRef,
     fileInputRef,
   } = useComposerDraft();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
 
+  const {
+    messages,
+    setMessages,
+    messagesRef,
+    historyMsgCountRef,
+    priorLoadedRef: priorLoaded,
+  } = useChatStream<ChatMessage>(id, {
+    sessionId,
+    mapPriorMessage: (m) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant",
+      content: m.content,
+      intentType: m.intentType,
+      sentAt: m.createdAt,
+    }),
+  });
+
   // Reset all chat state when the project changes so old messages never bleed into a new workspace
+  // (messages / priorLoaded / historyMsgCountRef portion lives in useChatStream)
   useEffect(() => {
-    setMessages([]);
     setPlanStates(new Map());
     setPlanExecutions(new Map());
     setSessionId(null);
     setActiveCatch(null);
-    priorLoaded.current = false;
     homePlanLoadedRef.current = false;
     // Abort any in-flight chat fetch from the previous project and clear pending state
     // so the composer send button is guaranteed active in the new workspace.
@@ -5725,26 +5741,7 @@ export default function Workspace() {
     });
   }, [messages, trustMode, handlePushAll]);
 
-  // Load prior messages when a session already exists (resuming a project)
-  const { data: priorMessages } = useListMessages(sessionId ?? 0, {
-    query: { enabled: !!sessionId, queryKey: ["messages", sessionId] },
-  });
-  const priorLoaded = useRef(false);
-  const historyMsgCountRef = useRef<number>(0);
-  useEffect(() => {
-    if (!priorMessages || priorMessages.length === 0 || priorLoaded.current || messages.length > 0) return;
-    priorLoaded.current = true;
-    historyMsgCountRef.current = priorMessages.length;
-    setMessages(
-      priorMessages.map((m) => ({
-        id: m.id,
-        role: m.role as "user" | "assistant",
-        content: m.content,
-        intentType: m.intentType,
-        sentAt: m.createdAt,
-      }))
-    );
-  }, [priorMessages]);
+  // Prior-message hydration moved into useChatStream.
 
   // Sync linkedRepo from project DB when project loads
   useEffect(() => {
@@ -6674,7 +6671,7 @@ export default function Workspace() {
     setLeftTab("terminal");
   }, []);
 
-  const messagesRef = useRef<ChatMessage[]>([]);
+  // messagesRef moved into useChatStream.
   const summarizedSessionRef = useRef<number | null>(null);
   useEffect(() => {
     if (!sessionId) return;
@@ -6692,7 +6689,7 @@ export default function Workspace() {
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [sessionId, messages]);
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  // messagesRef sync moved into useChatStream.
 
   const handleTerminalComplete = useCallback((command: string, output: string, exitCode: number | null) => {
     if (!sessionId) return;
