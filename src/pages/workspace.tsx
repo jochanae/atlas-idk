@@ -5444,13 +5444,17 @@ export default function Workspace() {
             flexShrink: 0,
             display: desktopRightFull && !isMobile ? "none" : "flex",
             flexDirection: "column",
-            background: "var(--atlas-surface-alt)",
+            background: "transparent",
             overflow: "hidden",
             position: "relative",
-            margin: isMobile ? 0 : "8px 0 8px 8px",
-            borderRadius: isMobile ? 0 : 14,
-            border: isMobile ? "none" : "1px solid var(--atlas-border)",
-            boxShadow: isMobile ? "none" : "0 4px 18px rgba(0,0,0,0.25)",
+            // Desktop card chrome lifted onto the outer
+            // UnifiedConversationSurface wrapper so left + right read as
+            // one unified surface (no inner seam). Mobile keeps its
+            // existing edge-to-edge presentation.
+            margin: 0,
+            borderRadius: 0,
+            border: "none",
+            boxShadow: "none",
           }}
         >
           {leftTab === "diff" ? (
