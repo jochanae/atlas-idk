@@ -5407,216 +5407,218 @@ export default function Workspace() {
                 onContinueSession={(sid) => { setSessionId(Number(sid)); setLeftTab("chat"); }}
               />
             </div>
-          ) : (
-          /* ── Chat view ── */
-          <ChatStream
-            scrollRef={chatPanelScrollRef}
-            bottomRef={bottomRef}
-            onScroll={(e) => {
-              const el = e.currentTarget;
-              setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-            }}
-            showScrollBtn={showWsScrollBtn}
-            onScrollToLatest={() => chatPanelScrollRef.current?.scrollTo({ top: chatPanelScrollRef.current.scrollHeight, behavior: "smooth" })}
-            messages={messages}
-            chatPending={chatPending}
-            activityStream={activityStream}
-            liveGeneration={liveGeneration}
-            historyMsgCountRef={historyMsgCountRef}
-            isHomeHandoff={isHomeHandoff}
-            homeHandoffMeta={homeHandoffMeta}
-            isBrandNewProject={isBrandNewProject}
-            project={project}
-            onStarterPrompt={(label) => {
-              setInput(label);
-              setTimeout(() => textareaRef.current?.focus(), 0);
-            }}
-            wsModel={wsModel}
-            onSwitchToGemini={() => { setWsModel("gemini"); }}
-            onEditUserMessage={(content) => {
-              setInput(content);
-              setTimeout(() => textareaRef.current?.focus(), 50);
-            }}
+          ) : null}
+
+          <UnifiedConversationSurface
+            mode="operational"
             projectId={id}
-            sessionId={sessionId}
-            linkedRepo={linkedRepo}
-            trustMode={trustMode}
-            onCatchProceed={(msg) => handleCatchProceed(msg.id)}
-            onCatchAdjust={(msg) => handleCatchAdjust(msg.id)}
-            onPark={handlePark}
-            onCommit={handleCommit}
-            onRegenerate={(i) => handleRegenerate(i)}
-            onPreviewCode={handlePreviewCode}
-            onRunCommand={handleRunCommand}
-            onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
-            onExtractToForge={(content) => { setForgePreloadContent(content); setShowForgeExternal(true); }}
-            onReviewDiff={() => setLeftTab("diff")}
-            onEditDeclined={() => {
-              if (sessionId) {
-                const editsInFlight = messages
-                  .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
-                  .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
-                doSend(
-                  `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
-                  sessionId,
-                  messagesRef.current,
-                );
-              }
-            }}
-            onAlertDismiss={(msg) => {
-              setMessages((prev) => prev.map((m) =>
-                m.id === msg.id ? { ...m, alertResolved: true } : m
-              ));
-            }}
-            onStreamActivityUpdate={(msg, content) => {
-              const markers = [
-                msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
-                msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
-                msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
-              ].filter(Boolean).join("\n");
-              setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
-            }}
-            onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
-            onCommitCardDone={() => {
-              queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
-              void refreshParkedEntries();
-            }}
-            onSurfaceAction={handleAmbientSurfaceAction}
-            planStates={planStates}
-            planExecutions={planExecutions}
-            onPlanStateChange={updatePlanState}
-            onPlanExecutionChange={updatePlanExecution}
-            onExecuteHomePlan={executeHomePlan}
-            onPushSuccess={(records) => {
-              haptic.double();
-              setPushHistory((prev) => {
-                const next = [...prev, ...records].slice(-20);
-                updateProjectHeader.mutate({ id, data: { pushHistory: next } });
-                return next;
-              });
-              const filenames = records.map((r) => r.filename).join(", ");
-              const branch = records[0]?.branch ?? "unknown";
-              const commitUrl = records[0]?.commitUrl ?? "";
-              createEntry.mutate(
-                {
-                  projectId: id,
-                  data: {
-                    title: `Code pushed: ${filenames}`,
-                    summary: `Branch: ${branch} · Files: ${filenames} · Commit: ${commitUrl}`,
-                    status: "committed",
-                    severity: "committed",
-                    mode: "BUILD",
-                    verb: "github_push",
-                  },
-                },
-                { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
-              );
-              setPreviewRefreshTrigger((t) => t + 1);
-              setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
-              setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
-              if (sessionId) {
-                if (agenticMode && agenticIterCount >= 8) {
-                  // hard-stop at 8 iterations
-                } else {
-                  const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
-                  const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
-                  if (agenticMode) setAgenticIterCount((n) => n + 1);
+            chatStreamProps={leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" ? {
+              scrollRef: chatPanelScrollRef,
+              bottomRef: bottomRef,
+              onScroll: (e) => {
+                const el = e.currentTarget;
+                setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+              },
+              showScrollBtn: showWsScrollBtn,
+              onScrollToLatest: () => chatPanelScrollRef.current?.scrollTo({ top: chatPanelScrollRef.current.scrollHeight, behavior: "smooth" }),
+              messages,
+              chatPending,
+              activityStream,
+              liveGeneration,
+              historyMsgCountRef,
+              isHomeHandoff,
+              homeHandoffMeta,
+              isBrandNewProject,
+              project,
+              onStarterPrompt: (label) => {
+                setInput(label);
+                setTimeout(() => textareaRef.current?.focus(), 0);
+              },
+              wsModel,
+              onSwitchToGemini: () => { setWsModel("gemini"); },
+              onEditUserMessage: (content) => {
+                setInput(content);
+                setTimeout(() => textareaRef.current?.focus(), 50);
+              },
+              projectId: id,
+              sessionId,
+              linkedRepo,
+              trustMode,
+              onCatchProceed: (msg) => handleCatchProceed(msg.id),
+              onCatchAdjust: (msg) => handleCatchAdjust(msg.id),
+              onPark: handlePark,
+              onCommit: handleCommit,
+              onRegenerate: (i) => handleRegenerate(i),
+              onPreviewCode: handlePreviewCode,
+              onRunCommand: handleRunCommand,
+              onPrCreated: (url) => { setSessionPrUrl(url); setLeftTab("diff"); },
+              onExtractToForge: (content) => { setForgePreloadContent(content); setShowForgeExternal(true); },
+              onReviewDiff: () => setLeftTab("diff"),
+              onEditDeclined: () => {
+                if (sessionId) {
+                  const editsInFlight = messages
+                    .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
+                    .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
                   doSend(
-                    `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                    `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
                     sessionId,
                     messagesRef.current,
                   );
                 }
-              }
+              },
+              onAlertDismiss: (msg) => {
+                setMessages((prev) => prev.map((m) =>
+                  m.id === msg.id ? { ...m, alertResolved: true } : m
+                ));
+              },
+              onStreamActivityUpdate: (msg, content) => {
+                const markers = [
+                  msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
+                  msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
+                  msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
+                ].filter(Boolean).join("\n");
+                setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
+              },
+              onStreamActivityComplete: () => setActivityStream({ active: false, content: "" }),
+              onCommitCardDone: () => {
+                queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+                void refreshParkedEntries();
+              },
+              onSurfaceAction: handleAmbientSurfaceAction,
+              planStates,
+              planExecutions,
+              onPlanStateChange: updatePlanState,
+              onPlanExecutionChange: updatePlanExecution,
+              onExecuteHomePlan: executeHomePlan,
+              onPushSuccess: (records) => {
+                haptic.double();
+                setPushHistory((prev) => {
+                  const next = [...prev, ...records].slice(-20);
+                  updateProjectHeader.mutate({ id, data: { pushHistory: next } });
+                  return next;
+                });
+                const filenames = records.map((r) => r.filename).join(", ");
+                const branch = records[0]?.branch ?? "unknown";
+                const commitUrl = records[0]?.commitUrl ?? "";
+                createEntry.mutate(
+                  {
+                    projectId: id,
+                    data: {
+                      title: `Code pushed: ${filenames}`,
+                      summary: `Branch: ${branch} · Files: ${filenames} · Commit: ${commitUrl}`,
+                      status: "committed",
+                      severity: "committed",
+                      mode: "BUILD",
+                      verb: "github_push",
+                    },
+                  },
+                  { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
+                );
+                setPreviewRefreshTrigger((t) => t + 1);
+                setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
+                setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
+                if (sessionId) {
+                  if (agenticMode && agenticIterCount >= 8) {
+                    // hard-stop at 8 iterations
+                  } else {
+                    const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
+                    const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                    if (agenticMode) setAgenticIterCount((n) => n + 1);
+                    doSend(
+                      `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                      sessionId,
+                      messagesRef.current,
+                    );
+                  }
+                }
+              },
+            } : null}
+            betweenSlot={
+              <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", transition: "all 400ms ease" }} />
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: "var(--atlas-muted)", transition: "color 400ms ease" }}>
+                    {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
+                  </span>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, color: "var(--atlas-muted)" }}>·</span>
+                  {agenticMode && agenticIterCount > 0 ? (
+                    <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)', transition: 'color 300ms ease' }}>
+                      <svg width='8' height='8' viewBox='0 0 24 24' fill='currentColor' style={{ opacity: 0.9, flexShrink: 0 }}>
+                        <path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' />
+                      </svg>
+                      Agent · Loop {agenticIterCount} / 8
+                    </span>
+                  ) : (
+                    <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatPending ? 'rgba(74,222,128,0.75)' : 'rgba(200,190,185,0.6)', transition: 'color 300ms ease' }}>
+                      {chatPending ? 'generating' : 'session active'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            }
+            composerProps={{
+              leftTab,
+              fileInputRef,
+              processZip,
+              attachedFiles,
+              setAttachedFiles,
+              zipFiles,
+              zipName,
+              zipTruncated,
+              toggleZipFile,
+              setAllZip,
+              clearZip,
+              firstRunDismissed,
+              setFirstRunDismissed,
+              sessionsLoading,
+              projectLoading,
+              sessions,
+              messages,
+              entries,
+              linkedRepo,
+              firstRunInput,
+              setFirstRunInput,
+              sessionId,
+              doSend,
+              projectId: id,
+              isMobile,
+              setMobileTab,
+              setDesktopForceTab,
+              hasInput,
+              inputFocused,
+              setInputFocused,
+              wsLens,
+              textareaRef,
+              input,
+              setInput,
+              autoResize,
+              handleKeyDown,
+              isTinyScreen,
+              setShowVault,
+              showSrcPicker,
+              setShowSrcPicker,
+              srcReadLoading,
+              ATLAS_SRC_FILES,
+              handleReadSrc,
+              showDeepDiveMenu,
+              setShowDeepDiveMenu,
+              deepDiveCopied,
+              setDeepDiveCopied,
+              setShowWsModelSheet,
+              wsModel,
+              voiceSupported,
+              voiceListening,
+              toggleVoice,
+              chatPending,
+              handleStop,
+              handleSend,
+              createSessionPending: createSession.isPending,
+              sendPreparingSession,
+              parkedCount,
+              showParkingDrawer,
+              setShowParkingDrawer,
+              refreshParkedEntries,
             }}
-          />
-          )} {/* end chat/diff ternary */}
-
-          {/* Ledger status bar — whispered */}
-          <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: entryCount > 0 ? "var(--atlas-gold)" : "rgba(200,190,185,0.45)", flexShrink: 0, display: "inline-block", transition: "all 400ms ease" }} />
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, letterSpacing: "0.08em", color: "var(--atlas-muted)", transition: "color 400ms ease" }}>
-                {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
-              </span>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7, color: "var(--atlas-muted)" }}>·</span>
-              {agenticMode && agenticIterCount > 0 ? (
-                <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(201,162,76,0.85)', transition: 'color 300ms ease' }}>
-                  <svg width='8' height='8' viewBox='0 0 24 24' fill='currentColor' style={{ opacity: 0.9, flexShrink: 0 }}>
-                    <path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z' />
-                  </svg>
-                  Agent · Loop {agenticIterCount} / 8
-                </span>
-              ) : (
-                <span style={{ fontFamily: 'var(--app-font-mono)', fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: chatPending ? 'rgba(74,222,128,0.75)' : 'rgba(200,190,185,0.6)', transition: 'color 300ms ease' }}>
-                  {chatPending ? 'generating' : 'session active'}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <ChatComposer
-            leftTab={leftTab}
-            fileInputRef={fileInputRef}
-            processZip={processZip}
-            attachedFiles={attachedFiles}
-            setAttachedFiles={setAttachedFiles}
-            zipFiles={zipFiles}
-            zipName={zipName}
-            zipTruncated={zipTruncated}
-            toggleZipFile={toggleZipFile}
-            setAllZip={setAllZip}
-            clearZip={clearZip}
-            firstRunDismissed={firstRunDismissed}
-            setFirstRunDismissed={setFirstRunDismissed}
-            sessionsLoading={sessionsLoading}
-            projectLoading={projectLoading}
-            sessions={sessions}
-            messages={messages}
-            entries={entries}
-            linkedRepo={linkedRepo}
-            firstRunInput={firstRunInput}
-            setFirstRunInput={setFirstRunInput}
-            sessionId={sessionId}
-            doSend={doSend}
-            projectId={id}
-            isMobile={isMobile}
-            setMobileTab={setMobileTab}
-            setDesktopForceTab={setDesktopForceTab}
-            hasInput={hasInput}
-            inputFocused={inputFocused}
-            setInputFocused={setInputFocused}
-            wsLens={wsLens}
-            textareaRef={textareaRef}
-            input={input}
-            setInput={setInput}
-            autoResize={autoResize}
-            handleKeyDown={handleKeyDown}
-            isTinyScreen={isTinyScreen}
-            setShowVault={setShowVault}
-            showSrcPicker={showSrcPicker}
-            setShowSrcPicker={setShowSrcPicker}
-            srcReadLoading={srcReadLoading}
-            ATLAS_SRC_FILES={ATLAS_SRC_FILES}
-            handleReadSrc={handleReadSrc}
-            showDeepDiveMenu={showDeepDiveMenu}
-            setShowDeepDiveMenu={setShowDeepDiveMenu}
-            deepDiveCopied={deepDiveCopied}
-            setDeepDiveCopied={setDeepDiveCopied}
-            setShowWsModelSheet={setShowWsModelSheet}
-            wsModel={wsModel}
-            voiceSupported={voiceSupported}
-            voiceListening={voiceListening}
-            toggleVoice={toggleVoice}
-            chatPending={chatPending}
-            handleStop={handleStop}
-            handleSend={handleSend}
-            createSessionPending={createSession.isPending}
-            sendPreparingSession={sendPreparingSession}
-            parkedCount={parkedCount}
-            showParkingDrawer={showParkingDrawer}
-            setShowParkingDrawer={setShowParkingDrawer}
-            refreshParkedEntries={refreshParkedEntries}
           />
 
           {showParkingDrawer && (
