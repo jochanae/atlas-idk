@@ -3455,6 +3455,9 @@ export default function Home() {
         />
       )}
 
+      {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
+      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt }))} />
+
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
         open={showDrawer}
