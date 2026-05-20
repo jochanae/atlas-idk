@@ -347,6 +347,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           <button
             title="Atlas Core"
             aria-label="Return to Atlas Core"
+            className="udock-center"
             onClick={onAtlasCore}
             style={{
               width: 56,
