@@ -5190,7 +5190,15 @@ export default function Workspace() {
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
 
-  const [input, setInput] = useState("");
+  const {
+    input, setInput,
+    attachedFiles, setAttachedFiles,
+    inputFocused, setInputFocused,
+    firstRunDismissed, setFirstRunDismissed,
+    firstRunInput, setFirstRunInput,
+    textareaRef,
+    fileInputRef,
+  } = useComposerDraft();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
