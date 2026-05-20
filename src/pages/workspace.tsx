@@ -5258,12 +5258,7 @@ export default function Workspace() {
     setPlanExecutions(new Map());
     setActiveCatch(null);
     homePlanLoadedRef.current = false;
-    // Abort any in-flight chat fetch from the previous project and clear pending state
-    // so the composer send button is guaranteed active in the new workspace.
-    try { abortControllerRef.current?.abort(); } catch { /* noop */ }
-    abortControllerRef.current = null;
-    setChatPending(false);
-    setActivityStream({ active: false, content: "" });
+    // Note: abort/chatPending/activityStream reset is owned by useChatStream.
     // Reset auto-prime guards so a fresh ?source=handoff load can seed its first message.
     initialSent.current = false;
     importPrimed.current = false;
