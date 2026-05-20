@@ -1184,6 +1184,11 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  useEffect(() => {
+    const open = () => setShowDrawer(true);
+    window.addEventListener("axiom:open-projects-drawer", open);
+    return () => window.removeEventListener("axiom:open-projects-drawer", open);
+  }, []);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
   const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
