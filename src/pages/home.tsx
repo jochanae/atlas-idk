@@ -31,6 +31,7 @@ import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
 import { Briefcase, Lock, LockOpen, Search } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
+import { useShellState } from "../components/UnifiedShell";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -54,6 +55,7 @@ type HomeHandoffSignal = {
   confidence: "high" | "medium" | "low";
   projectName: string | null;
   reason: string | null;
+  projectId?: number | null;
 };
 
 type AmbientSurface = {
@@ -308,6 +310,7 @@ function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; 
 function HomeHandoffCard({
   signal,
   projectName,
+  projectId,
   onProjectNameChange,
   onStart,
   onDismiss,
@@ -316,12 +319,19 @@ function HomeHandoffCard({
 }: {
   signal: HomeHandoffSignal;
   projectName: string;
+  projectId?: number | null;
   onProjectNameChange: (value: string) => void;
   onStart: () => void;
   onDismiss: () => void;
   loading: boolean;
   stage: string;
 }) {
+  const { setActiveProjectId } = useShellState();
+
+  useEffect(() => {
+    if (projectId != null) setActiveProjectId(projectId);
+  }, [projectId, setActiveProjectId]);
+
   return (
     <div
       style={{
@@ -1209,6 +1219,18 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const greetingPhraseRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
+  const { setDepth, setActiveProjectId } = useShellState();
+  const previousHomeMessageCountRef = useRef(0);
+
+  useEffect(() => {
+    const previousCount = previousHomeMessageCountRef.current;
+    if (homeMessages.length === 0) {
+      setDepth("ambient");
+    } else if (previousCount === 0 && homeMessages.length === 1) {
+      setDepth("active");
+    }
+    previousHomeMessageCountRef.current = homeMessages.length;
+  }, [homeMessages.length, setDepth]);
 
   // Compute greeting phrase once on mount and never change it
   const greetingNameRef = useRef<string | null>(null);
@@ -1871,6 +1893,7 @@ export default function Home() {
       const project = await createRes.json();
       if (!createRes.ok || !project.id) throw new Error(project?.error ?? "Project creation failed");
       const projectId = Number(project.id);
+      setActiveProjectId(projectId);
       const transcriptMessages = homeMessages.slice(-20).map(({ role, content }) => ({ role, content }));
       const transcript = transcriptMessages.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`).join("\n\n");
       const summary = signal?.reason || transcriptMessages.map(m => m.content).join(" ").slice(0, 800);
@@ -1962,7 +1985,7 @@ export default function Home() {
       setHandoffLoading(false);
       setHandoffStage("");
     }
-  }, [homeMessages, queryClient, setLocation]);
+  }, [homeMessages, queryClient, setActiveProjectId, setLocation]);
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
@@ -2657,6 +2680,7 @@ export default function Home() {
                             <HomeHandoffCard
                               signal={msg.handoffSignal}
                               projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
+                              projectId={msg.handoffSignal.projectId ?? mostRecentActiveProjectId}
                               onProjectNameChange={setHandoffProjectName}
                               loading={handoffLoading}
                               stage={handoffStage}

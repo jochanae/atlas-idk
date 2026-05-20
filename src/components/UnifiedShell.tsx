@@ -46,8 +46,13 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const [activeProjectId, setActiveProjectIdState] = useState<number | null>(() => projectIdFromPath(location));
 
   useEffect(() => {
-    setCurrentDepth(depthFromPath(location));
-    setActiveProjectIdState(projectIdFromPath(location));
+    const projectId = projectIdFromPath(location);
+    if (projectId != null) {
+      setCurrentDepth("operational");
+      setActiveProjectIdState(projectId);
+    } else {
+      setActiveProjectIdState(null);
+    }
   }, [location]);
 
   const setDepth = useCallback((depth: ShellDepth) => {
@@ -65,6 +70,12 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
     setActiveProjectId,
   }), [activeProjectId, currentDepth, setActiveProjectId, setDepth]);
 
+  const shellBackgroundImage = currentDepth === "operational"
+    ? "none"
+    : currentDepth === "active"
+      ? "linear-gradient(rgba(var(--atlas-bg-rgb),0.4), rgba(var(--atlas-bg-rgb),0.4)), var(--atlas-home-bg-gradient)"
+      : "var(--atlas-home-bg-gradient)";
+
   return (
     <ShellStateContext.Provider value={value}>
       <div
@@ -76,8 +87,12 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           minHeight: "100dvh",
           overflow: "hidden",
           backgroundColor: "var(--atlas-bg)",
+          backgroundImage: shellBackgroundImage,
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
           color: "var(--atlas-fg)",
           isolation: "isolate",
+          transition: "background-color 600ms ease, background-image 600ms ease",
         }}
       >
         <div
@@ -87,25 +102,10 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             inset: 0,
             zIndex: 0,
             pointerEvents: "none",
-            backgroundColor: "var(--atlas-bg)",
-            backgroundImage: currentDepth === "operational"
-              ? "linear-gradient(180deg, var(--atlas-bg) 0%, var(--atlas-surface) 100%)"
-              : "var(--atlas-home-bg-gradient)",
-            opacity: currentDepth === "ambient" ? 1 : currentDepth === "active" ? 0.72 : 1,
-            transition: "background-color 600ms ease, background-image 600ms ease, opacity 600ms ease",
-          }}
-        />
-        <div
-          aria-hidden
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 0,
-            pointerEvents: "none",
             background: currentDepth === "operational"
-              ? "linear-gradient(90deg, var(--atlas-bg), transparent 36%, transparent 64%, var(--atlas-bg))"
+              ? "transparent"
               : "var(--atlas-home-atmosphere)",
-            opacity: currentDepth === "ambient" ? 0.9 : currentDepth === "active" ? 0.52 : 0.18,
+            opacity: currentDepth === "ambient" ? 0.9 : currentDepth === "active" ? 0.54 : 0,
             transition: "opacity 600ms ease, background 600ms ease",
           }}
         />
