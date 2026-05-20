@@ -1192,6 +1192,11 @@ export default function Home() {
     window.addEventListener("axiom:open-projects-drawer", open);
     return () => window.removeEventListener("axiom:open-projects-drawer", open);
   }, []);
+  useEffect(() => {
+    const open = () => setShowProfile(true);
+    window.addEventListener("axiom:open-account-hub", open);
+    return () => window.removeEventListener("axiom:open-account-hub", open);
+  }, []);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
   const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
