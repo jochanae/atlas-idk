@@ -16,11 +16,12 @@ export default function AuthCallback() {
       return;
     }
 
+    const exchangeTokenValue = token;
     let cancelled = false;
 
     async function exchangeToken() {
       try {
-        const res = await fetch(`/api/auth/session/exchange?token=${encodeURIComponent(token)}`, {
+        const res = await fetch(`/api/auth/session/exchange?token=${encodeURIComponent(exchangeTokenValue)}`, {
           credentials: "include",
         });
         const data = await res.json() as { ok?: boolean };
