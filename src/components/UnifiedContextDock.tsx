@@ -279,24 +279,56 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         overflow: "visible",
       }}
     >
-      {/* Arch SVG — preserved visual */}
-      <svg
-        style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
-        preserveAspectRatio="none"
-        viewBox="0 0 390 64"
+      <style>{`
+        .udock-slot:active { transform: scale(0.92); }
+        .udock-slot:hover { color: rgba(212,175,55,0.75) !important; }
+        .udock-center:active { transform: translateY(0) scale(0.96); }
+      `}</style>
+      {/* Arch — fixed-width center dimple, flanks fill remaining width */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 64,
+          display: "flex",
+          pointerEvents: "none",
+        }}
+        aria-hidden
       >
-        <path
-          d="M0,0 L148,0 C163,0 172,22 195,22 C218,22 227,0 242,0 L390,0 L390,64 L0,64 Z"
-          fill="var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))"
+        <div
+          style={{
+            flex: 1,
+            background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
+            borderTop: "1px solid rgba(212,175,55,0.18)",
+          }}
         />
-        <path
-          d="M0,0.5 L148,0.5 C163,0.5 172,22 195,22 C218,22 227,0.5 242,0.5 L390,0.5"
-          fill="none"
-          stroke="rgba(212,175,55,0.2)"
-          strokeWidth="1"
-          vectorEffect="non-scaling-stroke"
+        <svg
+          width="94"
+          height="64"
+          viewBox="0 0 94 64"
+          style={{ display: "block", overflow: "visible", flexShrink: 0 }}
+        >
+          <path
+            d="M0,0 C15,0 24,22 47,22 C70,22 79,0 94,0 L94,64 L0,64 Z"
+            fill="var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))"
+          />
+          <path
+            d="M0,0.5 C15,0.5 24,22 47,22 C70,22 79,0.5 94,0.5"
+            fill="none"
+            stroke="rgba(212,175,55,0.2)"
+            strokeWidth="1"
+          />
+        </svg>
+        <div
+          style={{
+            flex: 1,
+            background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
+            borderTop: "1px solid rgba(212,175,55,0.18)",
+          }}
         />
-      </svg>
+      </div>
 
       <div
         style={{
