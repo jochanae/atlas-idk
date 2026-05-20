@@ -161,7 +161,7 @@ interface ChatMessage {
 
 type MemoryChip = { label: string; insight?: string };
 
-interface LinkedRepo {
+export interface LinkedRepo {
   fullName: string;
   defaultBranch: string;
   name: string;
@@ -3293,7 +3293,7 @@ export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]
 
 
 // ── GitHub file browser ───────────────────────────────────────────────────────
-interface GhRepo {
+export interface GhRepo {
   id: number;
   name: string;
   fullName: string;
@@ -3304,13 +3304,13 @@ interface GhRepo {
   updatedAt: string;
 }
 
-interface GhTreeItem {
+export interface GhTreeItem {
   path: string;
   type: "blob" | "tree";
   sha: string;
 }
 
-interface GhFileContent {
+export interface GhFileContent {
   path: string;
   content: string;
   size: number;
@@ -3325,7 +3325,7 @@ interface GhCommitFile {
   status: string;
 }
 
-interface GhCommitSummary {
+export interface GhCommitSummary {
   sha: string;
   message: string;
   author: string;
@@ -3377,7 +3377,7 @@ function formatCommitTimeAgo(timestamp: string): string {
   return `${months} month${months === 1 ? "" : "s"} ago`;
 }
 
-function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
+export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
   const [expanded, setExpanded] = useState(false);
   const firstLine = commit.message.split("\n")[0] || "(no commit message)";
   const displayMessage = expanded || firstLine.length <= 80 ? firstLine : `${firstLine.slice(0, 77)}...`;
@@ -3475,7 +3475,7 @@ function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
   );
 }
 
-function CommitHistorySkeleton() {
+export function CommitHistorySkeleton() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <style>{`@keyframes atlas-history-pulse{0%,100%{opacity:.36}50%{opacity:.72}}`}</style>
@@ -3489,7 +3489,7 @@ function CommitHistorySkeleton() {
   );
 }
 
-function buildTree(items: GhTreeItem[]): GhTreeNode[] {
+export function buildTree(items: GhTreeItem[]): GhTreeNode[] {
   const root: GhTreeNode[] = [];
   const map: Record<string, GhTreeNode> = {};
 
@@ -3517,7 +3517,7 @@ function buildTree(items: GhTreeItem[]): GhTreeNode[] {
   return root;
 }
 
-interface GhTreeNode {
+export interface GhTreeNode {
   name: string;
   path: string;
   type: "blob" | "tree";
@@ -3525,7 +3525,7 @@ interface GhTreeNode {
   children?: GhTreeNode[];
 }
 
-function GhTreeNodeRow({
+export function GhTreeNodeRow({
   node,
   depth,
   selectedPath,
