@@ -5194,6 +5194,45 @@ export default function Workspace() {
     : fallbackSessionsLoading;
   const createSession = useCreateSession();
 
+  // ── Hoisted deps for useChatStream (B2c) ────────────────────────────────────
+  const { playSend, playCatch, playCommit, playPark, playNavigate } = useSound();
+  const {
+    wsModel, setWsModel,
+    wsLens, setWsLensRaw,
+    showLensPicker, setShowLensPicker,
+    detectedLens, setDetectedLens,
+    showScenarioPrompt, setShowScenarioPrompt,
+    pendingLensSwitch, setPendingLensSwitch,
+    scenarioBuffer, setScenarioBuffer,
+    showWsModelSheet, setShowWsModelSheet,
+    sendCtxRef,
+    scenarioStartIdxRef,
+  } = useChatLens(id);
+  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal">("chat");
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview">(() =>
+    new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
+  );
+  const [autoNameKey, setAutoNameKey] = useState(0);
+  const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
+  const [fileContext, setFileContext] = useState<string | null>(null);
+  const [forgeContext, setForgeContext] = useState<string | null>(() => {
+    try { return sessionStorage.getItem(`atlas-forge-ctx-${id}`) ?? null; } catch { return null; }
+  });
+  useEffect(() => {
+    try { setForgeContext(sessionStorage.getItem(`atlas-forge-ctx-${id}`) ?? null); } catch { setForgeContext(null); }
+  }, [id]);
+  const { data: fallbackEntries } = useListEntries(id, {}, {
+    query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
+  });
+  const entries = useMemo<Entry[]>(() => {
+    if (!projectState.state) return fallbackEntries ?? [];
+    const entryMap = new Map<number, Entry>();
+    [...projectState.decisions, ...projectState.parked].forEach((entry) => {
+      entryMap.set(entry.id, entry);
+    });
+    return [...entryMap.values()];
+  }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
+
   const {
     messages,
     setMessages,
@@ -5209,7 +5248,11 @@ export default function Workspace() {
     setActivityStream,
     abortControllerRef,
     handleStop,
-  } = useChatStream<ChatMessage>(id, {
+    memoryChips,
+    setMemoryChips,
+    doSend,
+    handleRegenerate,
+  } = useChatStream(id, {
     sessions,
     sessionsLoading,
     createSession,
@@ -5222,6 +5265,21 @@ export default function Workspace() {
       intentType: m.intentType,
       sentAt: m.createdAt,
     }),
+    entries,
+    fileContext,
+    forgeContext,
+    sendCtxRef,
+    setDetectedLens,
+    setScenarioBuffer,
+    setLeftTab,
+    setMobileTab,
+    setActiveCatch,
+    setPendingResolvedNodeIds,
+    setAutoNameKey,
+    playCatch,
+    getGetProjectQueryKey,
+    getListProjectsQueryKey,
+    reportError,
   });
 
   // Reset workspace-owned chat state when the project changes.
