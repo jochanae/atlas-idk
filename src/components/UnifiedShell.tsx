@@ -22,6 +22,25 @@ type ShellState = {
   setActiveProjectId: (id: number | null) => void;
 };
 
+type ShellNavIcon =
+  | "home"
+  | "projects"
+  | "decisions"
+  | "you"
+  | "map"
+  | "files"
+  | "forge"
+  | "chat"
+  | "ledger"
+  | "preview"
+  | "flow";
+
+type ShellNavItem = {
+  label: string;
+  icon: ShellNavIcon;
+  action: () => void;
+};
+
 const ShellStateContext = createContext<ShellState | null>(null);
 
 export function useShellState(): ShellState {
@@ -330,6 +349,240 @@ function ShellConversationTitle({ projectId }: { projectId: number | null }) {
   );
 }
 
+function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
+  const common = {
+    width: 20,
+    height: 20,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (icon) {
+    case "home":
+      return <svg {...common}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9,22 9,12 15,12 15,22" /></svg>;
+    case "projects":
+    case "files":
+      return <svg {...common}><path d="M3 7.2c0-.9.7-1.6 1.6-1.6h4.3c.4 0 .8.2 1.1.5l1.3 1.4c.3.3.7.5 1.1.5h6c.9 0 1.6.7 1.6 1.6v8.8c0 .9-.7 1.6-1.6 1.6H4.6C3.7 20 3 19.3 3 18.4V7.2z" /></svg>;
+    case "decisions":
+    case "ledger":
+      return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" /></svg>;
+    case "you":
+      return <svg {...common}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
+    case "map":
+    case "flow":
+      return <svg {...common}><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z" /><path d="M9 3v15M15 6v15" /></svg>;
+    case "forge":
+      return <svg {...common}><path d="M14.7 6.3a4 4 0 01-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 015.4-5.4l-3 3-3-3 3-3z" /></svg>;
+    case "chat":
+      return <svg {...common}><path d="M21 15a4 4 0 01-4 4H8l-5 3V7a4 4 0 014-4h10a4 4 0 014 4z" /></svg>;
+    case "preview":
+      return <svg {...common}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z" /><circle cx="12" cy="12" r="3" /></svg>;
+  }
+}
+
+function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={item.action}
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        background: "none",
+        border: "none",
+        color: "rgba(var(--atlas-muted-rgb),0.55)",
+        cursor: "pointer",
+        opacity: visible ? 1 : 0,
+        padding: "6px 0",
+        transition: "opacity 200ms ease, color 160ms ease",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
+      onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(var(--atlas-muted-rgb),0.55)")}
+    >
+      <ShellFooterIcon icon={item.icon} />
+      <span
+        style={{
+          fontSize: 8,
+          fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}
+      >
+        {item.label}
+      </span>
+    </button>
+  );
+}
+
+function ShellCenterButton({ onClick }: { onClick: () => void }) {
+  return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <button
+        type="button"
+        title="Axiom"
+        className="atlas-home-center-btn"
+        onClick={onClick}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          border: "2px solid var(--atlas-gold)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          marginTop: -26,
+          flexShrink: 0,
+          boxShadow: "0 0 0 2px rgba(var(--atlas-gold-rgb),0.55), 0 0 18px rgba(var(--atlas-gold-rgb),0.18)",
+        }}
+      >
+        <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+          <svg viewBox="0 0 512 512" width="52" height="52" display="block">
+            <defs>
+              <radialGradient id="shell-center-purple" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="var(--atlas-phosphor)" stopOpacity="0.18" />
+                <stop offset="100%" stopColor="var(--atlas-bg)" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="shell-center-gold" cx="50%" cy="40%" r="50%">
+                <stop offset="0%" stopColor="var(--atlas-fg)" />
+                <stop offset="50%" stopColor="var(--atlas-gold)" />
+                <stop offset="100%" stopColor="var(--atlas-gold)" />
+              </radialGradient>
+            </defs>
+            <circle cx="256" cy="256" r="256" fill="var(--atlas-bg)" />
+            <circle cx="256" cy="256" r="256" fill="url(#shell-center-purple)" />
+            <polygon points="256,130 178,390 216,390 268,188" fill="url(#shell-center-gold)" />
+            <polygon points="256,130 334,390 296,390 244,188" fill="url(#shell-center-gold)" />
+            <rect x="192" y="292" width="128" height="30" rx="5" fill="url(#shell-center-gold)" />
+          </svg>
+        </div>
+      </button>
+    </div>
+  );
+}
+
+function ShellFooter() {
+  const { currentDepth, activeProjectId } = useShellState();
+  const [, setLocation] = useLocation();
+  const [renderDepth, setRenderDepth] = useState<ShellDepth>(currentDepth);
+  const [itemsVisible, setItemsVisible] = useState(true);
+
+  useEffect(() => {
+    if (currentDepth === renderDepth) return;
+    setItemsVisible(false);
+    const fadeOut = window.setTimeout(() => {
+      setRenderDepth(currentDepth);
+      window.requestAnimationFrame(() => setItemsVisible(true));
+    }, 200);
+    return () => window.clearTimeout(fadeOut);
+  }, [currentDepth, renderDepth]);
+
+  const openProjectTab = useCallback((tab: "chat" | "ledger" | "files" | "preview" | "flow" | "forge") => {
+    if (!activeProjectId) {
+      setLocation("/projects");
+      return;
+    }
+    const rightPanelTab = tab === "flow" ? "map" : tab;
+    try {
+      sessionStorage.setItem("atlas-open-tab", rightPanelTab);
+      sessionStorage.setItem("atlas-shell-open-tab", tab);
+    } catch {}
+    const query = tab === "flow" ? "?view=flow" : tab === "chat" ? "" : `?view=${tab}`;
+    setLocation(`/project/${activeProjectId}${query}`);
+    window.dispatchEvent(new CustomEvent("axiom:shell-open-tab", { detail: { tab } }));
+  }, [activeProjectId, setLocation]);
+
+  const scrollHomeConversationToTop = useCallback(() => {
+    const homeSurface = document.querySelector<HTMLElement>(".atlas-home-bg");
+    if (homeSurface) {
+      homeSurface.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const centerAction = useCallback(() => {
+    if (currentDepth === "active") {
+      scrollHomeConversationToTop();
+      return;
+    }
+    setLocation("/home");
+  }, [currentDepth, scrollHomeConversationToTop, setLocation]);
+
+  const navItems = useMemo<[ShellNavItem, ShellNavItem, ShellNavItem, ShellNavItem]>(() => {
+    if (renderDepth === "operational") {
+      return [
+        { label: "Chat", icon: "chat", action: () => openProjectTab("chat") },
+        { label: "Ledger", icon: "ledger", action: () => openProjectTab("ledger") },
+        { label: "Preview", icon: "preview", action: () => openProjectTab("preview") },
+        { label: "Flow", icon: "flow", action: () => openProjectTab("flow") },
+      ];
+    }
+    if (renderDepth === "active") {
+      return [
+        { label: "Map", icon: "map", action: () => setLocation("/map") },
+        { label: "Files", icon: "files", action: () => openProjectTab("files") },
+        { label: "Decisions", icon: "decisions", action: () => setLocation("/ledger") },
+        { label: "Forge", icon: "forge", action: () => openProjectTab("forge") },
+      ];
+    }
+    return [
+      { label: "Home", icon: "home", action: () => setLocation("/home") },
+      { label: "Projects", icon: "projects", action: () => setLocation("/projects") },
+      { label: "Decisions", icon: "decisions", action: () => setLocation("/ledger") },
+      { label: "You", icon: "you", action: () => setLocation("/you") },
+    ];
+  }, [openProjectTab, renderDepth, setLocation]);
+
+  return (
+    <footer className="atlas-mobile-footer" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 250, overflow: "visible" }}>
+      <svg
+        style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
+        preserveAspectRatio="none"
+        viewBox="0 0 390 64"
+      >
+        <path
+          d="M0,0 L148,0 C163,0 172,22 195,22 C218,22 227,0 242,0 L390,0 L390,64 L0,64 Z"
+          fill="var(--atlas-nav-arch-fill)"
+        />
+        <path
+          d="M0,0.5 L148,0.5 C163,0.5 172,22 195,22 C218,22 227,0.5 242,0.5 L390,0.5"
+          fill="none"
+          stroke="rgba(var(--atlas-gold-rgb),0.2)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          height: 64,
+          paddingBottom: "max(env(safe-area-inset-bottom), 6px)",
+          zIndex: 1,
+        }}
+      >
+        <ShellFooterNavItem item={navItems[0]} visible={itemsVisible} />
+        <ShellFooterNavItem item={navItems[1]} visible={itemsVisible} />
+        <ShellCenterButton onClick={centerAction} />
+        <ShellFooterNavItem item={navItems[2]} visible={itemsVisible} />
+        <ShellFooterNavItem item={navItems[3]} visible={itemsVisible} />
+      </div>
+    </footer>
+  );
+}
+
 export function UnifiedShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [currentDepth, setCurrentDepth] = useState<ShellDepth>(() => depthFromPath(location));
@@ -467,6 +720,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
         >
           {children}
         </div>
+        <ShellFooter />
       </div>
     </ShellStateContext.Provider>
   );
