@@ -5245,12 +5245,11 @@ export default function Workspace() {
     }),
   });
 
-  // Reset all chat state when the project changes so old messages never bleed into a new workspace
-  // (messages / priorLoaded / historyMsgCountRef portion lives in useChatStream)
+  // Reset workspace-owned chat state when the project changes.
+  // (messages / sessionId / priorLoaded / historyMsgCountRef portion lives in useChatStream)
   useEffect(() => {
     setPlanStates(new Map());
     setPlanExecutions(new Map());
-    setSessionId(null);
     setActiveCatch(null);
     homePlanLoadedRef.current = false;
     // Abort any in-flight chat fetch from the previous project and clear pending state
