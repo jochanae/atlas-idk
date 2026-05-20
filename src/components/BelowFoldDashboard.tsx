@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { CompactReadinessRing } from "./ReadinessRing";
+import { useProjectState } from "../hooks/useProjectState";
 
 type RecentProject = {
   id: number;
@@ -234,11 +235,21 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
 }
 
 export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
-  
+  const mostRecentProjectId = projects.reduce<number | null>((latestId, project) => {
+    if (latestId == null) return project.id;
+    const latestProject = projects.find((p) => p.id === latestId);
+    if (!latestProject) return project.id;
+    return new Date(project.updatedAt).getTime() > new Date(latestProject.updatedAt).getTime()
+      ? project.id
+      : latestId;
+  }, null);
+  const projectState = useProjectState(mostRecentProjectId);
+
   if (projects.length === 0) return null;
 
   const recent = projects.slice(0, 5);
-  const actualParked = parkedCount ?? projects.length;
+  const actualCommitted = projectState.state ? projectState.decisions.length : committedCount;
+  const actualParked = projectState.state ? projectState.parkedCount : parkedCount ?? projects.length;
 
   return (
     <div className="atlas-below-fold-dashboard" style={{ width: "100%", maxWidth: 560, padding: "0 0 120px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -350,7 +361,7 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <MetricCell value={committedCount} label="DECISIONS COMMITTED" />
+            <MetricCell value={actualCommitted} label="DECISIONS COMMITTED" />
             <MetricCell value={projects.length} label="PROJECTS ACTIVE" />
           </div>
         </div>

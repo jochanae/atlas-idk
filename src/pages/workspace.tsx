@@ -5,6 +5,7 @@ import type React from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { useSound } from "@/hooks/useSound";
+import { useProjectState } from "@/hooks/useProjectState";
 import { AxiomFlow } from "../components/AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../components/AxiomFlow";
 import { SystemMap } from "../components/SystemMap";
@@ -8481,7 +8482,13 @@ export default function Workspace() {
   const homePlanLoadedRef = useRef(false);
 
   const { data: allProjects } = useListProjects();
-  const { data: project, isLoading: projectLoading } = useGetProject(id, { query: { enabled: !!id, queryKey: getGetProjectQueryKey(id) } });
+  const projectState = useProjectState(Number.isFinite(id) ? id : null);
+  const useProjectStateFallback = !!projectState.error;
+  const { data: fallbackProject, isLoading: fallbackProjectLoading } = useGetProject(id, {
+    query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
+  });
+  const project = projectState.project ?? fallbackProject;
+  const projectLoading = projectState.loading && !project ? true : fallbackProjectLoading;
   const githubPushToken = useGithubPushToken(project?.githubToken);
   // True when forge has run this session OR when saved AxiomFlow nodes exist for this project
   const hasForgeNodes = forgeContext !== null ||
@@ -8490,23 +8497,15 @@ export default function Workspace() {
   const isBrandNewProject = messages.length === 0 && !hasForgeNodes;
 
   useEffect(() => {
-    if (!Number.isFinite(id)) return;
-    const controller = new AbortController();
-    setForgeState(null);
-    void (async () => {
-      try {
-        const res = await fetch(`/api/projects/${id}/forge-state`, { credentials: "include", signal: controller.signal });
-        if (!res.ok) throw new Error(`Forge state failed: HTTP ${res.status}`);
-        const data = await res.json() as ForgeState;
-        setForgeState({ forged: !!data.forged, dismissed: !!data.dismissed });
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") return;
-        void reportError(error, { projectId: id });
-        setForgeState({ forged: hasForgeNodes, dismissed: false });
-      }
-    })();
-    return () => controller.abort();
-  }, [id, hasForgeNodes]);
+    if (projectState.forgeState) {
+      setForgeState({
+        forged: !!projectState.forgeState.forged,
+        dismissed: !!projectState.forgeState.dismissed,
+      });
+    } else if (projectState.state && !projectState.loading) {
+      setForgeState({ forged: hasForgeNodes, dismissed: false });
+    }
+  }, [hasForgeNodes, projectState.forgeState, projectState.loading, projectState.state]);
 
   const updateForgeState = useCallback(async (action: "forged" | "dismissed") => {
     if (!Number.isFinite(id)) return;
@@ -8532,35 +8531,41 @@ export default function Workspace() {
     }
   }, [hasForgeNodes, id]);
 
-  const { data: sessions, isLoading: sessionsLoading } = useListSessions(id, {
-    query: { enabled: !!id, queryKey: getListSessionsQueryKey(id) },
+  const { data: fallbackSessions, isLoading: fallbackSessionsLoading } = useListSessions(id, {
+    query: { enabled: !!id && useProjectStateFallback, queryKey: getListSessionsQueryKey(id) },
   });
-  const { data: entries } = useListEntries(id, {}, { query: { enabled: !!id, queryKey: getListEntriesQueryKey(id, {}) } });
+  const { data: fallbackEntries } = useListEntries(id, {}, {
+    query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
+  });
+  const sessions = projectState.activeSession ? [projectState.activeSession] : fallbackSessions;
+  const sessionsLoading = projectState.loading && !projectState.activeSession && !useProjectStateFallback
+    ? true
+    : fallbackSessionsLoading;
+  const entries = useMemo<Entry[]>(() => {
+    if (!projectState.state) return fallbackEntries ?? [];
+    const entryMap = new Map<number, Entry>();
+    [...projectState.decisions, ...projectState.parked].forEach((entry) => {
+      entryMap.set(entry.id, entry);
+    });
+    return [...entryMap.values()];
+  }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
   const createSession = useCreateSession();
   const createEntry = useCreateEntry();
   const creatingSessionRef = useRef<Promise<number> | null>(null);
-  const [parkedEntries, setParkedEntries] = useState<Entry[]>([]);
   const [showParkingDrawer, setShowParkingDrawer] = useState(false);
 
   const refreshParkedEntries = useCallback(async () => {
     if (!id) return;
-    try {
-      const res = await fetch(`/api/projects/${id}/entries?status=parked`);
-      if (!res.ok) return;
-      const data = await res.json() as Entry[];
-      setParkedEntries(data);
-    } catch {
-      // Parking lot count is ambient UI; never interrupt chat if it fails.
+    await projectState.refresh();
+    if (useProjectStateFallback) {
+      queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
     }
-  }, [id]);
+  }, [id, projectState, queryClient, useProjectStateFallback]);
 
-  useEffect(() => {
-    void refreshParkedEntries();
-  }, [refreshParkedEntries]);
-
-  useEffect(() => {
-    void refreshParkedEntries();
-  }, [entries?.length, refreshParkedEntries]);
+  const parkedEntries = projectState.state
+    ? projectState.parked
+    : entries.filter((entry) => entry.status === "parked");
 
   const homeHandoffNodes = useMemo<HomeHandoffNode[]>(() => {
     if (homeHandoffMeta?.nodes?.length) return homeHandoffMeta.nodes;

@@ -21,6 +21,7 @@ import { fileToBase64Safe } from "../lib/image-resize";
 import { useAuth, useRequireAuth, isSuperAdmin } from "../hooks/useAuth";
 import { useThemeMode } from "../lib/theme";
 import { useSubscription } from "../hooks/useSubscription";
+import { useProjectState } from "../hooks/useProjectState";
 import { toast } from "sonner";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { NewProjectModal } from "../components/NewProjectModal";
@@ -1336,6 +1337,18 @@ export default function Home() {
   const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
   const { data: projects, isLoading } = useListProjects();
+  const mostRecentActiveProjectId = useMemo(() => {
+    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "active");
+    const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
+    const latest = candidates.reduce<Project | null>((current, project: Project) => {
+      if (!current) return project;
+      return new Date(project.updatedAt).getTime() > new Date(current.updatedAt).getTime()
+        ? project
+        : current;
+    }, null);
+    return latest?.id ?? null;
+  }, [projects]);
+  const homeProjectState = useProjectState(mostRecentActiveProjectId);
   const createProject = useCreateProject();
 
   useEffect(() => {
@@ -1644,7 +1657,20 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ message: messageText, model: homeModel, focusProjectId: homeFocus, mode: homeMode, imageBase64, imageMimeType, conversationId: activeConversationId }),
+        body: JSON.stringify({
+          message: messageText,
+          model: homeModel,
+          focusProjectId: homeFocus,
+          mode: homeMode,
+          imageBase64,
+          imageMimeType,
+          conversationId: activeConversationId,
+          projectContext: {
+            projectId: mostRecentActiveProjectId,
+            memorySummary: homeProjectState.memorySummary,
+            decisions: homeProjectState.decisions,
+          },
+        }),
       });
       if (!res.ok) {
         const errText = res.status === 413 ? "Images are too large to send. Try fewer or smaller images." : "Something went wrong. Try again.";
@@ -1742,7 +1768,7 @@ export default function Home() {
       setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     }
-  }, [input, attachedFiles, isSending, homeModel, homeFocus, projects, activeConversationId, homeMessages.length]);
+  }, [input, attachedFiles, isSending, homeModel, homeFocus, projects, activeConversationId, homeMessages.length, mostRecentActiveProjectId, homeProjectState.memorySummary, homeProjectState.decisions]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
