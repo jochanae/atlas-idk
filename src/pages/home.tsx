@@ -56,6 +56,12 @@ type HomeHandoffSignal = {
   reason: string | null;
 };
 
+type AmbientSurface = {
+  type: "MAP" | "WORKSPACE" | "DECISION";
+  label: string;
+  reason?: string | null;
+} | null;
+
 type HomeMessage = {
   role: "user" | "assistant";
   content: string;
@@ -77,6 +83,7 @@ type HomeMessage = {
   runActions?: RunAction[] | null;
   runArtifacts?: RunArtifact[] | null;
   errorMessage?: string | null;
+  surface?: AmbientSurface;
 };
 
 function formatMessageTime(iso?: string): string {
@@ -143,6 +150,7 @@ function normalizeLoadedHomeMessages(
           ] as RunArtifact[])
         : runArtifacts,
       errorMessage: m.errorMessage ?? m.error_message ?? null,
+      surface: m.surface ?? null,
     };
   };
   return mapMessage
@@ -237,6 +245,60 @@ function HomeChunkedBubbles({ text, isNew }: { text: string; isNew: boolean }) {
         />
       ))}
     </>
+  );
+}
+
+function AmbientEmergenceCard({ surface }: { surface: AmbientSurface }) {
+  if (!surface) return null;
+  const actionLabel = surface.type === "MAP"
+    ? "View Structure"
+    : surface.type === "WORKSPACE"
+      ? "Continue Working"
+      : surface.type === "DECISION"
+        ? "Capture Decision"
+        : null;
+  if (!actionLabel) return null;
+
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        marginLeft: 14,
+        maxWidth: 420,
+        background: "var(--atlas-surface-alt)",
+        border: "1px solid rgba(201,162,76,0.3)",
+        borderRadius: 10,
+        padding: "12px 16px",
+        animation: "fadeIn 260ms ease forwards",
+      }}
+    >
+      <div style={{ fontSize: 14, lineHeight: 1.4, color: "var(--atlas-fg)", marginBottom: surface.reason ? 4 : 8 }}>
+        {surface.label}
+      </div>
+      {surface.reason && (
+        <div style={{ fontSize: 12, lineHeight: 1.45, color: "var(--atlas-muted)", opacity: 0.72, marginBottom: 10 }}>
+          {surface.reason}
+        </div>
+      )}
+      <button
+        type="button"
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(201,162,76,0.28)",
+          borderRadius: 999,
+          color: "var(--atlas-gold)",
+          cursor: "default",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          padding: "5px 10px",
+          textTransform: "uppercase",
+          opacity: 0.78,
+        }}
+      >
+        {actionLabel}
+      </button>
+    </div>
   );
 }
 
@@ -1723,6 +1785,7 @@ export default function Home() {
                 runSummary?: string; run_summary?: string;
                 runActions?: RunAction[]; run_actions?: RunAction[];
                 runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
+                surface?: AmbientSurface;
               };
               const plan = detectPlanFromText(streamedText);
               const metrics = {
@@ -1738,7 +1801,7 @@ export default function Home() {
                 runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
               };
               setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
+                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
               ));
               if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
               if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
@@ -2511,6 +2574,7 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+                          {!msg.streaming && <AmbientEmergenceCard surface={msg.surface ?? null} />}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;
                             const isExpanded = reviewingPlanIds.has(planKey);

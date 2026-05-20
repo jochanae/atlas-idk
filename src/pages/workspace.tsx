@@ -124,6 +124,12 @@ interface PushRecord {
   rolledBack: boolean;
 }
 
+type AmbientSurface = {
+  type: "MAP" | "WORKSPACE" | "DECISION";
+  label: string;
+  reason?: string | null;
+} | null;
+
 interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
@@ -146,6 +152,7 @@ interface ChatMessage {
   model?: string;
   isDeepDive?: boolean;
   autoPushed?: boolean;
+  surface?: AmbientSurface;
 }
 
 type MemoryChip = { label: string; insight?: string };
@@ -2117,6 +2124,60 @@ function AtlasActivityBar({ content }: { content: string }) {
 }
 
 // ── AssistantBubble ───────────────────────────────────────────────────────────
+function AmbientEmergenceCard({ surface }: { surface: AmbientSurface }) {
+  if (!surface) return null;
+  const actionLabel = surface.type === "MAP"
+    ? "View Structure"
+    : surface.type === "WORKSPACE"
+      ? "Continue Working"
+      : surface.type === "DECISION"
+        ? "Capture Decision"
+        : null;
+  if (!actionLabel) return null;
+
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        marginLeft: 14,
+        maxWidth: 440,
+        background: "var(--atlas-surface-alt)",
+        border: "1px solid rgba(201,162,76,0.3)",
+        borderRadius: 10,
+        padding: "12px 16px",
+        animation: "fadeIn 260ms ease forwards",
+      }}
+    >
+      <div style={{ fontSize: 14, lineHeight: 1.4, color: "var(--atlas-fg)", marginBottom: surface.reason ? 4 : 8 }}>
+        {surface.label}
+      </div>
+      {surface.reason && (
+        <div style={{ fontSize: 12, lineHeight: 1.45, color: "var(--atlas-muted)", opacity: 0.72, marginBottom: 10 }}>
+          {surface.reason}
+        </div>
+      )}
+      <button
+        type="button"
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(201,162,76,0.28)",
+          borderRadius: 999,
+          color: "var(--atlas-gold)",
+          cursor: "default",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          padding: "5px 10px",
+          textTransform: "uppercase",
+          opacity: 0.78,
+        }}
+      >
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
 function AssistantBubble({
   message,
   isNew = false,
@@ -2584,6 +2645,8 @@ function AssistantBubble({
             <MarkdownProse content={cleanContent} />
           )}
         </div>
+
+        <AmbientEmergenceCard surface={message.surface ?? null} />
 
         {message.plan && planState !== "skipped" && (
           <PlanCard
@@ -9002,6 +9065,7 @@ export default function Workspace() {
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
             ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
             ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
+            surface: (res.surface ?? null) as AmbientSurface,
           }]);
           // Capture scenario messages in isolated buffer (not persisted to DB)
           if (isScenario) {
