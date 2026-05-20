@@ -5205,8 +5205,21 @@ export default function Workspace() {
   } = useComposerDraft();
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
-  const [sessionId, setSessionId] = useState<number | null>(null);
   const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
+
+  // Session bootstrap deps for useChatStream — moved up from below so the hook
+  // can own sessionId/ensureSessionId. project/projectLoading/hasForgeNodes etc.
+  // still live in their original spot below.
+  const projectState = useProjectState(Number.isFinite(id) ? id : null);
+  const useProjectStateFallback = !!projectState.error;
+  const { data: fallbackSessions, isLoading: fallbackSessionsLoading } = useListSessions(id, {
+    query: { enabled: !!id && useProjectStateFallback, queryKey: getListSessionsQueryKey(id) },
+  });
+  const sessions = projectState.activeSession ? [projectState.activeSession] : fallbackSessions;
+  const sessionsLoading = projectState.loading && !projectState.activeSession && !useProjectStateFallback
+    ? true
+    : fallbackSessionsLoading;
+  const createSession = useCreateSession();
 
   const {
     messages,
@@ -5214,8 +5227,15 @@ export default function Workspace() {
     messagesRef,
     historyMsgCountRef,
     priorLoadedRef: priorLoaded,
-  } = useChatStream<ChatMessage>(id, {
     sessionId,
+    setSessionId,
+    ensureSessionId,
+  } = useChatStream<ChatMessage>(id, {
+    sessions,
+    sessionsLoading,
+    createSession,
+    queryClient,
+    getListSessionsQueryKey,
     mapPriorMessage: (m) => ({
       id: m.id,
       role: m.role as "user" | "assistant",
@@ -5225,12 +5245,11 @@ export default function Workspace() {
     }),
   });
 
-  // Reset all chat state when the project changes so old messages never bleed into a new workspace
-  // (messages / priorLoaded / historyMsgCountRef portion lives in useChatStream)
+  // Reset workspace-owned chat state when the project changes.
+  // (messages / sessionId / priorLoaded / historyMsgCountRef portion lives in useChatStream)
   useEffect(() => {
     setPlanStates(new Map());
     setPlanExecutions(new Map());
-    setSessionId(null);
     setActiveCatch(null);
     homePlanLoadedRef.current = false;
     // Abort any in-flight chat fetch from the previous project and clear pending state
@@ -5566,8 +5585,7 @@ export default function Workspace() {
   const homePlanLoadedRef = useRef(false);
 
   const { data: allProjects } = useListProjects();
-  const projectState = useProjectState(Number.isFinite(id) ? id : null);
-  const useProjectStateFallback = !!projectState.error;
+  // projectState / useProjectStateFallback moved above (consumed by useChatStream).
   const { data: fallbackProject, isLoading: fallbackProjectLoading } = useGetProject(id, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
   });
@@ -5615,16 +5633,10 @@ export default function Workspace() {
     }
   }, [hasForgeNodes, id]);
 
-  const { data: fallbackSessions, isLoading: fallbackSessionsLoading } = useListSessions(id, {
-    query: { enabled: !!id && useProjectStateFallback, queryKey: getListSessionsQueryKey(id) },
-  });
+  // fallbackSessions / sessions / sessionsLoading moved above (consumed by useChatStream).
   const { data: fallbackEntries } = useListEntries(id, {}, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
   });
-  const sessions = projectState.activeSession ? [projectState.activeSession] : fallbackSessions;
-  const sessionsLoading = projectState.loading && !projectState.activeSession && !useProjectStateFallback
-    ? true
-    : fallbackSessionsLoading;
   const entries = useMemo<Entry[]>(() => {
     if (!projectState.state) return fallbackEntries ?? [];
     const entryMap = new Map<number, Entry>();
@@ -5633,9 +5645,9 @@ export default function Workspace() {
     });
     return [...entryMap.values()];
   }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
-  const createSession = useCreateSession();
+  // createSession moved above (consumed by useChatStream).
   const createEntry = useCreateEntry();
-  const creatingSessionRef = useRef<Promise<number> | null>(null);
+  // creatingSessionRef + ensureSessionId now owned by useChatStream.
   const { showParkingDrawer, setShowParkingDrawer, refreshParkedEntries } = useParkingLot(id, {
     projectState,
     queryClient,
@@ -5923,30 +5935,7 @@ export default function Workspace() {
     if (id) { try { localStorage.setItem("atlas-last-project", String(id)); } catch {} }
   }, [id]);
 
-  const ensureSessionId = useCallback(async () => {
-    if (sessionId) return sessionId;
-    if (!creatingSessionRef.current) {
-      creatingSessionRef.current = createSession.mutateAsync(
-        { projectId: id, data: { title: "Session", mode: "think" } }
-      ).then((s) => {
-        setSessionId(s.id);
-        queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
-        return s.id;
-      }).finally(() => {
-        creatingSessionRef.current = null;
-      });
-    }
-    return creatingSessionRef.current;
-  }, [createSession, id, queryClient, sessionId]);
-
-  useEffect(() => {
-    if (sessionsLoading) return;
-    if (sessions && sessions.length > 0) {
-      if (!sessionId) setSessionId(sessions[0].id);
-    } else if (!sessionId) {
-      void ensureSessionId();
-    }
-  }, [ensureSessionId, sessionId, sessions, sessionsLoading]);
+  // ensureSessionId + session bootstrap effect now owned by useChatStream.
 
   // Always-current ref so doSend doesn't capture stale state
   sendCtxRef.current = { wsLens, wsModel };
