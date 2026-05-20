@@ -16,7 +16,7 @@ import type { PlanState } from "@/components/workspace/chatShared";
 // Minimal structural types — avoid importing private types from workspace.tsx
 type ProjectLike = { name?: string } | null | undefined;
 type HomeHandoffMetaLike = { flowNodeCount: number; goalLabel: string } | null | undefined;
-type LinkedRepoLike = { owner: string; repo: string; branch?: string } | null | undefined;
+type LinkedRepoLike = LinkedRepo | null;
 type PushRecordLike = {
   id: string;
   filename: string;
