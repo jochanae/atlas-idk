@@ -5,6 +5,7 @@ import { LoadingSpinner } from "./components/ui/loading-spinner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { UnifiedShell } from "@/components/UnifiedShell";
 
 import Home from "./pages/home";
 import Landing from "./pages/landing";
@@ -157,6 +158,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 // ── Page Transition Spinner ───────────────────────────────────────────────────
 const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
 
+function isUnifiedShellPath(pathname: string): boolean {
+  return pathname === "/home" || pathname.startsWith("/project/");
+}
+
 function PageTransition() {
   const [location] = useLocation();
   const [visible, setVisible] = useState(false);
@@ -185,8 +190,9 @@ function PageTransition() {
     }
     // Route change
     if (prevLocation.current !== location) {
+      const stayedInUnifiedShell = isUnifiedShellPath(prevLocation.current) && isUnifiedShellPath(location);
       prevLocation.current = location;
-      if (!SKIP_TRANSITION.includes(location)) show();
+      if (!stayedInUnifiedShell && !SKIP_TRANSITION.includes(location)) show();
     }
   }, [location]);
 
@@ -237,52 +243,67 @@ function OnboardingGate() {
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
+function UnifiedShellRoutes() {
+  return (
+    <UnifiedShell>
+      <Switch>
+        <Route path="/home" component={Home} />
+        <Route path="/project/:projectId" component={Workspace} />
+      </Switch>
+    </UnifiedShell>
+  );
+}
+
 function Router() {
+  const [location] = useLocation();
+
   return (
     <>
       <OnboardingGate />
-      <Switch>
-        <Route path="/" component={() => {
-          const [, nav] = useLocation();
-          useEffect(() => {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 4000);
-            fetch("/api/auth/me", { credentials: "include", signal: controller.signal })
-              .then(r => r.ok ? r.json() : null)
-              .then(user => nav(user?.id ? "/home" : "/landing", { replace: true }))
-              .catch(() => nav("/landing", { replace: true }))
-              .finally(() => clearTimeout(timeout));
-          }, []);
-          return null;
-        }} />
-        <Route path="/landing" component={Landing} />
-        <Route path="/login" component={Login} />
-        <Route path="/auth/callback" component={AuthCallback} />
-        <Route path="/reset-password" component={ResetPassword} />
-        <Route path="/onboarding" component={OnboardingPage} />
-        <Route path="/home" component={Home} />
-        <Route path="/projects" component={Projects} />
-        <Route path="/project/:projectId" component={Workspace} />
-        <Route path="/ledger" component={Ledger} />
-        <Route path="/ledger/:projectId" component={Ledger} />
-        <Route path="/parking" component={ParkingLot} />
-        <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/compass", { replace: true }), []); return null; }} />
-        <Route path="/entry/:id" component={EntryDetail} />
-        <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/dashboard", { replace: true }), []); return null; }} />
-        
-        <Route path="/workshop" component={Workshop} />
-        <Route path="/compass" component={ProjectCompass} />
-        <Route path="/terms" component={Terms} />
-        <Route path="/privacy" component={Privacy} />
-        <Route path="/help" component={Help} />
-        <Route path="/vault" component={Vault} />
-        <Route path="/secrets" component={Secrets} />
-        <Route path="/admin" component={Admin} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/map" component={MasterMap} />
-        <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
-        <Route component={NotFound} />
-      </Switch>
+      {isUnifiedShellPath(location) ? (
+        <UnifiedShellRoutes />
+      ) : (
+        <Switch>
+          <Route path="/" component={() => {
+            const [, nav] = useLocation();
+            useEffect(() => {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 4000);
+              fetch("/api/auth/me", { credentials: "include", signal: controller.signal })
+                .then(r => r.ok ? r.json() : null)
+                .then(user => nav(user?.id ? "/home" : "/landing", { replace: true }))
+                .catch(() => nav("/landing", { replace: true }))
+                .finally(() => clearTimeout(timeout));
+            }, []);
+            return null;
+          }} />
+          <Route path="/landing" component={Landing} />
+          <Route path="/login" component={Login} />
+          <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/onboarding" component={OnboardingPage} />
+          <Route path="/projects" component={Projects} />
+          <Route path="/ledger" component={Ledger} />
+          <Route path="/ledger/:projectId" component={Ledger} />
+          <Route path="/parking" component={ParkingLot} />
+          <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/compass", { replace: true }), []); return null; }} />
+          <Route path="/entry/:id" component={EntryDetail} />
+          <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/dashboard", { replace: true }), []); return null; }} />
+          
+          <Route path="/workshop" component={Workshop} />
+          <Route path="/compass" component={ProjectCompass} />
+          <Route path="/terms" component={Terms} />
+          <Route path="/privacy" component={Privacy} />
+          <Route path="/help" component={Help} />
+          <Route path="/vault" component={Vault} />
+          <Route path="/secrets" component={Secrets} />
+          <Route path="/admin" component={Admin} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/map" component={MasterMap} />
+          <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
+          <Route component={NotFound} />
+        </Switch>
+      )}
     </>
   );
 }
