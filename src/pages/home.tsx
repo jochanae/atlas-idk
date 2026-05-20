@@ -3279,8 +3279,29 @@ export default function Home() {
               overflowY: "auto",
             }}
           >
-            <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)", marginBottom: 16 }}>
-              CONVERSATION HISTORY
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)" }}>
+                CONVERSATION HISTORY
+              </div>
+              <button
+                onClick={handleNewConversation}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  background: "transparent",
+                  border: "1px solid var(--atlas-border)",
+                  borderRadius: 999,
+                  padding: "6px 12px",
+                  color: "var(--atlas-fg)",
+                  fontSize: 11,
+                  fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.05em",
+                  cursor: "pointer",
+                }}
+                aria-label="Start new conversation"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                NEW
+              </button>
             </div>
             {historyLoading ? (
               <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: 12 }}>Loading...</div>
