@@ -78,11 +78,10 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
+import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import {
-  ICON_TOUCH_TARGET_STYLE,
-  computeLineDiff,
-  collapseDiff,
-  type DiffItem,
+  type PlanState,
+} from "@/components/workspace/chatShared";
   type PlanState,
 } from "@/components/workspace/chatShared";
 
