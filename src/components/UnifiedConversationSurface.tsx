@@ -77,16 +77,37 @@ export function UnifiedConversationSurface({
   ledgerPanel,
   filesPanel,
   previewPanel,
+  streamSlot,
+  composerSlot,
+  hostShell,
   children,
 }: UnifiedConversationSurfaceProps) {
-  // Mark the surface for future mode-driven styling hooks without changing
-  // current layout. The fragment-style wrapper preserves the host's DOM.
   void mode;
   void projectId;
 
-  // Host-owned content path: render children inside a layout-neutral
-  // wrapper. `display: contents` makes the wrapper invisible to layout so
-  // existing host CSS keeps full control. Used by home.tsx today.
+  // Host-slot path: stream/composer slots routed through optional hostShell.
+  if (streamSlot !== undefined || composerSlot !== undefined) {
+    const content = hostShell
+      ? hostShell({ stream: streamSlot, between: betweenSlot, composer: composerSlot })
+      : (
+        <>
+          {streamSlot}
+          {betweenSlot}
+          {composerSlot}
+        </>
+      );
+    return (
+      <div
+        data-surface-mode={mode}
+        data-project-id={projectId ?? undefined}
+        style={{ display: "contents" }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  // Legacy children path.
   if (children !== undefined) {
     return (
       <div
