@@ -3296,6 +3296,7 @@ export default function Home() {
 
         </div>
         </div>
+        </UnifiedConversationSurface>
         <aside className="atlas-home-desktop-overview" aria-label="Overview">
           <div className="atlas-home-desktop-overview-scroll">
             {renderOverviewDashboard()}
