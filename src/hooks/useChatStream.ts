@@ -1,12 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { useListMessages } from "@/_workspace/api-client-react/src/generated/api";
-import type { Message } from "@/_workspace/api-client-react/src/generated/api.schemas";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
+import {
+  useListMessages,
+  useCreateSession,
+} from "@/_workspace/api-client-react/src/generated/api";
+import type {
+  Message,
+  Session,
+} from "@/_workspace/api-client-react/src/generated/api.schemas";
 
 type PriorMessage = Message;
 
 export interface UseChatStreamOptions<T> {
-  sessionId: number | null;
+  sessions: Session[] | undefined;
+  sessionsLoading: boolean;
+  createSession: ReturnType<typeof useCreateSession>;
+  queryClient: QueryClient;
+  getListSessionsQueryKey: (projectId: number) => QueryKey;
   mapPriorMessage: (m: PriorMessage) => T;
 }
 
@@ -16,49 +27,105 @@ export interface UseChatStreamReturn<T> {
   messagesRef: MutableRefObject<T[]>;
   historyMsgCountRef: MutableRefObject<number>;
   priorLoadedRef: MutableRefObject<boolean>;
+  sessionId: number | null;
+  setSessionId: Dispatch<SetStateAction<number | null>>;
+  ensureSessionId: () => Promise<number>;
 }
 
 /**
- * B2a slice of the chat-stream extraction.
+ * Chat-stream hook — incremental extraction.
  *
- * Owns only message-list state and prior-message hydration. Does NOT own
- * sessionId, doSend, chatPending, activityStream, memoryChips, abort, or
- * any auto-prime effects — those move in later slices.
+ * Currently owns:
+ *   - message-list state + prior-message hydration  (B2a)
+ *   - sessionId state, creatingSessionRef, ensureSessionId, session-bootstrap effect  (B2b-1)
+ *
+ * Does NOT yet own: doSend, chatPending, activityStream, memoryChips,
+ * abortControllerRef, handleStop, handleRegenerate, summarize effect,
+ * auto-prime effects. Those move in later slices.
  */
 export function useChatStream<T>(
-  projectId: number | string | null | undefined,
+  projectId: number,
   opts: UseChatStreamOptions<T>,
 ): UseChatStreamReturn<T> {
+  const {
+    sessions,
+    sessionsLoading,
+    createSession,
+    queryClient,
+    getListSessionsQueryKey,
+    mapPriorMessage,
+  } = opts;
+
+  // ---- message state (B2a) ----
   const [messages, setMessages] = useState<T[]>([]);
   const messagesRef = useRef<T[]>([]);
   const priorLoadedRef = useRef(false);
   const historyMsgCountRef = useRef<number>(0);
 
-  // Keep messagesRef synced (moved from workspace.tsx)
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Cross-project reset (messages + priorLoadedRef + historyMsgCountRef portion only).
-  // Other resets (sessionId, planStates, chatPending, abort, auto-prime guards)
-  // remain in workspace.tsx until later extraction slices.
+  // ---- session state (B2b-1) ----
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const creatingSessionRef = useRef<Promise<number> | null>(null);
+
+  // Cross-project reset for everything this hook owns.
   useEffect(() => {
     setMessages([]);
     priorLoadedRef.current = false;
     historyMsgCountRef.current = 0;
+    setSessionId(null);
+    creatingSessionRef.current = null;
   }, [projectId]);
 
-  // Prior-message hydration (moved from workspace.tsx).
-  const { data: priorMessages } = useListMessages(opts.sessionId ?? 0, {
-    query: { enabled: !!opts.sessionId, queryKey: ["messages", opts.sessionId] },
+  // Prior-message hydration.
+  const { data: priorMessages } = useListMessages(sessionId ?? 0, {
+    query: { enabled: !!sessionId, queryKey: ["messages", sessionId] },
   });
   useEffect(() => {
     if (!priorMessages || priorMessages.length === 0 || priorLoadedRef.current || messages.length > 0) return;
     priorLoadedRef.current = true;
     historyMsgCountRef.current = priorMessages.length;
-    setMessages(priorMessages.map(opts.mapPriorMessage));
+    setMessages(priorMessages.map(mapPriorMessage));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priorMessages]);
 
-  return { messages, setMessages, messagesRef, historyMsgCountRef, priorLoadedRef };
+  // ensureSessionId — create-on-demand with in-flight dedupe.
+  const ensureSessionId = useCallback(async (): Promise<number> => {
+    if (sessionId) return sessionId;
+    if (!creatingSessionRef.current) {
+      creatingSessionRef.current = createSession.mutateAsync(
+        { projectId, data: { title: "Session", mode: "think" } }
+      ).then((s) => {
+        setSessionId(s.id);
+        queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(projectId) });
+        return s.id;
+      }).finally(() => {
+        creatingSessionRef.current = null;
+      });
+    }
+    return creatingSessionRef.current;
+  }, [createSession, projectId, queryClient, getListSessionsQueryKey, sessionId]);
+
+  // Session bootstrap — adopt existing or create one.
+  useEffect(() => {
+    if (sessionsLoading) return;
+    if (sessions && sessions.length > 0) {
+      if (!sessionId) setSessionId(sessions[0].id);
+    } else if (!sessionId) {
+      void ensureSessionId();
+    }
+  }, [ensureSessionId, sessionId, sessions, sessionsLoading]);
+
+  return {
+    messages,
+    setMessages,
+    messagesRef,
+    historyMsgCountRef,
+    priorLoadedRef,
+    sessionId,
+    setSessionId,
+    ensureSessionId,
+  };
 }
