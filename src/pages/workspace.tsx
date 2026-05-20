@@ -6826,42 +6826,13 @@ export default function Workspace() {
   }, [isMobile]);
 
   // ── ZIP import ─────────────────────────────────────────────────────────────
-  const [zipFiles, setZipFiles] = useState<ZipEntry[]>([]);
-  const [zipName, setZipName] = useState("");
-  const [zipTruncated, setZipTruncated] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const processZip = useCallback(async (file: File) => {
-    try {
-      const { entries: parsed, truncated } = await parseZip(file);
-      setZipFiles(parsed);
-      setZipName(file.name);
-      setZipTruncated(truncated);
-      setFileContext(assembleContext(file.name, parsed));
-    } catch { /* ignore */ }
-  }, []);
-
-  const clearZip = useCallback(() => {
-    setZipFiles([]);
-    setZipName("");
-    setZipTruncated(false);
-    setFileContext(null);
-  }, []);
-
-  const toggleZipFile = useCallback((path: string) => {
-    setZipFiles((prev) => {
-      const next = prev.map((e) => e.path === path ? { ...e, selected: !e.selected } : e);
-      setFileContext(assembleContext(zipName, next));
-      return next;
-    });
-  }, [zipName]);
-
-  const setAllZip = useCallback((selected: boolean) => {
-    setZipFiles((prev) => {
-      const next = prev.map((e) => ({ ...e, selected }));
-      setFileContext(assembleContext(zipName, next));
-      return next;
-    });
-  }, [zipName]);
+  const {
+    zipFiles, setZipFiles,
+    zipName, setZipName,
+    zipTruncated, setZipTruncated,
+    isDragOver, setIsDragOver,
+    processZip, clearZip, toggleZipFile, setAllZip,
+  } = useComposerZip(id, setFileContext);
 
   const liveGeneration = useMemo(
     () => parseLiveGeneration(activityStream.content, chatPending),
