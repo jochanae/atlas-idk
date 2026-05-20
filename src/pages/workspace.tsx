@@ -5205,8 +5205,21 @@ export default function Workspace() {
   } = useComposerDraft();
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
-  const [sessionId, setSessionId] = useState<number | null>(null);
   const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
+
+  // Session bootstrap deps for useChatStream — moved up from below so the hook
+  // can own sessionId/ensureSessionId. project/projectLoading/hasForgeNodes etc.
+  // still live in their original spot below.
+  const projectState = useProjectState(Number.isFinite(id) ? id : null);
+  const useProjectStateFallback = !!projectState.error;
+  const { data: fallbackSessions, isLoading: fallbackSessionsLoading } = useListSessions(id, {
+    query: { enabled: !!id && useProjectStateFallback, queryKey: getListSessionsQueryKey(id) },
+  });
+  const sessions = projectState.activeSession ? [projectState.activeSession] : fallbackSessions;
+  const sessionsLoading = projectState.loading && !projectState.activeSession && !useProjectStateFallback
+    ? true
+    : fallbackSessionsLoading;
+  const createSession = useCreateSession();
 
   const {
     messages,
@@ -5214,8 +5227,15 @@ export default function Workspace() {
     messagesRef,
     historyMsgCountRef,
     priorLoadedRef: priorLoaded,
-  } = useChatStream<ChatMessage>(id, {
     sessionId,
+    setSessionId,
+    ensureSessionId,
+  } = useChatStream<ChatMessage>(id, {
+    sessions,
+    sessionsLoading,
+    createSession,
+    queryClient,
+    getListSessionsQueryKey,
     mapPriorMessage: (m) => ({
       id: m.id,
       role: m.role as "user" | "assistant",
