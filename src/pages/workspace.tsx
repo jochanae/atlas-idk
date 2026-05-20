@@ -7515,7 +7515,7 @@ export default function Workspace() {
           </div>
 
           {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
-          {leftTab !== "terminal" && leftTab !== "blueprints" && <div style={{ padding: "10px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30, background: "var(--atlas-bg)", borderTop: "1px solid var(--atlas-border)" }}>
+          {leftTab !== "terminal" && leftTab !== "blueprints" && <div style={{ padding: "10px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30, background: "transparent", border: "none", borderTop: "none", boxShadow: "none" }}>
             {/* Hidden file input — handles both images and ZIP files */}
             <input
               ref={fileInputRef}
