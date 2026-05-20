@@ -5346,8 +5346,92 @@ export default function Workspace() {
         </div>
       )}
 
-      {/* ── Two-pane body ── */}
-      <div ref={containerRef} style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+      {/* ── Two-pane body (owned by UnifiedConversationSurface on desktop) ── */}
+      <UnifiedConversationSurface
+        mode="operational"
+        projectId={id}
+        flowPanel={!isMobile ? (
+          <RightPanel
+            projectId={id}
+            entries={entries || []}
+            activeCatch={activeCatch}
+            onFileContext={setFileContext}
+            onLinkedRepoChange={setLinkedRepo}
+            pushHistory={pushHistory}
+            onRollbackPush={handleRollbackPush}
+            onHomeNav={() => setLocation("/home")}
+            forceTab={isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : desktopForceTab}
+            onSendIntent={sendFromIntentCapture}
+            onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
+            onMapReadinessChange={setMapReadiness}
+            displayedReadinessScore={displayedReadinessScore}
+            onSystemNodeMessage={pushSystemNodeMessage}
+            onHandover={handleHandover}
+            handoverPending={handoverPending}
+            lastHandoverHash={project?.lastHandoverHash ?? null}
+            isMobile={false}
+            fullscreen={desktopRightFull}
+            onToggleFullscreen={() => setDesktopRightFull((v) => !v)}
+            resolvedNodeIds={pendingResolvedNodeIds}
+            onResolvedConsumed={() => setPendingResolvedNodeIds([])}
+            currentSnapshot={currentSnapshot}
+            onSnapshotChange={setCurrentSnapshot}
+            handoverOpen={handoverOpen}
+            onHandoverOpenChange={setHandoverOpen}
+            sandboxCode={sandboxCode}
+            onSandboxConsumed={() => setSandboxCode(null)}
+            previewRefreshTrigger={previewRefreshTrigger}
+            pendingTerminalCommand={pendingTerminalCommand}
+            onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
+            onCommandComplete={handleTerminalComplete}
+            wsLens={wsLens}
+            onOpenForge={() => setShowForgeExternal(true)}
+            externalForgeNodes={externalForgeNodes}
+            onForgeNodesConsumed={() => setExternalForgeNodes([])}
+            onForgeCompleted={() => void updateForgeState("forged")}
+            onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
+          />
+        ) : undefined}
+        showFlow={!isMobile}
+        hostShell={({ stream, panels }) => (
+          <div ref={containerRef} style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", ...(isMobile ? null : { margin: "8px", borderRadius: 14, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface-alt)", boxShadow: "0 4px 18px rgba(0,0,0,0.25)" }) }}>
+            {stream}
+            {!isMobile && (
+              <>
+                {!desktopRightFull && (
+                  <div
+                    onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
+                    onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
+                    onDoubleClick={() => setChatWidthPct(45)}
+                    title="Drag to resize · Double-tap to reset"
+                    style={{
+                      width: 12, flexShrink: 0, cursor: "col-resize",
+                      background: "transparent",
+                      zIndex: 10,
+                      touchAction: "none",
+                      display: "flex",
+                      alignItems: "stretch",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <div className="atlas-resize-thread" style={{
+                      width: 1,
+                      transition: "background 200ms",
+                      pointerEvents: "none",
+                    }} />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 240, overflow: "hidden", background: "transparent", position: "relative" }}>
+                  {panels.flow}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      >
+        {/* Children below become `stream` inside hostShell. */}
+        <>
+
 
         {/* ZIP drag overlay */}
         <ZipDragOverlay visible={isDragOver} />
@@ -5360,13 +5444,17 @@ export default function Workspace() {
             flexShrink: 0,
             display: desktopRightFull && !isMobile ? "none" : "flex",
             flexDirection: "column",
-            background: "var(--atlas-surface-alt)",
+            background: "transparent",
             overflow: "hidden",
             position: "relative",
-            margin: isMobile ? 0 : "8px 0 8px 8px",
-            borderRadius: isMobile ? 0 : 14,
-            border: isMobile ? "none" : "1px solid var(--atlas-border)",
-            boxShadow: isMobile ? "none" : "0 4px 18px rgba(0,0,0,0.25)",
+            // Desktop card chrome lifted onto the outer
+            // UnifiedConversationSurface wrapper so left + right read as
+            // one unified surface (no inner seam). Mobile keeps its
+            // existing edge-to-edge presentation.
+            margin: 0,
+            borderRadius: 0,
+            border: "none",
+            boxShadow: "none",
           }}
         >
           {leftTab === "diff" ? (
@@ -5674,85 +5762,11 @@ export default function Workspace() {
           )}
         </div>
 
-        {/* Desktop: resize handle + right panel */}
-        {!isMobile && (
-          <>
-            {!desktopRightFull && (
-              <div
-                onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
-                onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
-                onDoubleClick={() => setChatWidthPct(45)}
-                title="Drag to resize · Double-tap to reset"
-                style={{
-                  width: 12, flexShrink: 0, cursor: "col-resize",
-                  background: "transparent",
-                  zIndex: 10,
-                  touchAction: "none",
-                  display: "flex",
-                  alignItems: "stretch",
-                  justifyContent: "center",
-                }}
-              >
-                <div className="atlas-resize-thread" style={{
-                  width: 1,
-                  transition: "background 200ms",
-                  pointerEvents: "none",
-                }} />
-              </div>
-            )}
-            <div style={{
-              flex: 1, minWidth: 240, overflow: "hidden",
-              margin: desktopRightFull ? "8px" : "8px 8px 8px 0",
-              borderRadius: 14,
-              border: "1px solid var(--atlas-border)",
-              background: "var(--atlas-surface-alt)",
-              boxShadow: "0 4px 18px rgba(0,0,0,0.25)",
-              position: "relative",
-            }}>
-              <RightPanel
+        {/* Desktop resize handle + right panel now live in the outer
+            UnifiedConversationSurface hostShell above (RightPanel is the
+            `flowPanel` slot). Mobile overlay stays here. */}
 
-                projectId={id}
-                entries={entries || []}
-                activeCatch={activeCatch}
-                onFileContext={setFileContext}
-                onLinkedRepoChange={setLinkedRepo}
-                pushHistory={pushHistory}
-                onRollbackPush={handleRollbackPush}
-                onHomeNav={() => setLocation("/home")}
-                forceTab={isMobile && mobileTab === "map" ? "map" : isMobile && mobileTab === "files" ? "files" : isMobile && mobileTab === "blueprints" ? "blueprints" : desktopForceTab}
-                onSendIntent={sendFromIntentCapture}
-                onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
-                onMapReadinessChange={setMapReadiness}
-                displayedReadinessScore={displayedReadinessScore}
-                onSystemNodeMessage={pushSystemNodeMessage}
-                onHandover={handleHandover}
-                handoverPending={handoverPending}
-                lastHandoverHash={project?.lastHandoverHash ?? null}
-                isMobile={false}
-                fullscreen={desktopRightFull}
-                onToggleFullscreen={() => setDesktopRightFull((v) => !v)}
-                resolvedNodeIds={pendingResolvedNodeIds}
-                onResolvedConsumed={() => setPendingResolvedNodeIds([])}
-                currentSnapshot={currentSnapshot}
-                onSnapshotChange={setCurrentSnapshot}
-                handoverOpen={handoverOpen}
-                onHandoverOpenChange={setHandoverOpen}
-                sandboxCode={sandboxCode}
-                onSandboxConsumed={() => setSandboxCode(null)}
-                previewRefreshTrigger={previewRefreshTrigger}
-                pendingTerminalCommand={pendingTerminalCommand}
-                onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
-                onCommandComplete={handleTerminalComplete}
-                wsLens={wsLens}
-                onOpenForge={() => setShowForgeExternal(true)}
-                externalForgeNodes={externalForgeNodes}
-                onForgeNodesConsumed={() => setExternalForgeNodes([])}
-                onForgeCompleted={() => void updateForgeState("forged")}
-                onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
-              />
-            </div>
-          </>
-        )}
+
 
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
@@ -5832,7 +5846,9 @@ export default function Workspace() {
             </div>
           </div>
         )}
-      </div>
+        </>
+      </UnifiedConversationSurface>
+
 
       {isMobile && mobileTab !== "map" && (
         <MobileTabBar
