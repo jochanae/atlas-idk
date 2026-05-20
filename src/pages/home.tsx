@@ -2514,6 +2514,7 @@ export default function Home() {
                 {/* Messages */}
                 <div
                   ref={chatScrollRef}
+                  className="atlas-home-chat-messages-scroll"
                   onScroll={(e) => {
                     const el = e.currentTarget;
                     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
@@ -2521,6 +2522,7 @@ export default function Home() {
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
                     maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 4, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
                     borderRadius: reflectionLocked ? 8 : undefined,
@@ -3517,6 +3519,9 @@ export default function Home() {
               0 0 16px 4px rgba(212,175,55,0.38),
               0 0 44px 12px rgba(212,175,55,0.14);
           }
+        }
+        .atlas-home-chat-messages-scroll::-webkit-scrollbar {
+          display: none;
         }
         @keyframes atlasOverviewSheetUp {
           from { transform: translateY(100%); }
