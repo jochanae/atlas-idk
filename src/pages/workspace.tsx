@@ -5036,6 +5036,7 @@ export default function Workspace() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ── Spec → Build handoff modal ── */}
