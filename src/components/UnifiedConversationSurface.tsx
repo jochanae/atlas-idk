@@ -50,12 +50,21 @@ export interface UnifiedConversationSurfaceProps {
   composerSlot?: React.ReactNode;
 
   // Optional render-prop that lets the host preserve its own wrapper DOM
-  // while the surface orchestrates slot placement. Only invoked when at
-  // least one of streamSlot/composerSlot is provided.
+  // while the surface orchestrates slot placement. Invoked whenever the
+  // host opts in (any of streamSlot / composerSlot / children present).
+  // Receives the resolved conversation slots and the four operational
+  // panel slots so the host can weave panels into its existing layout
+  // without redesigning each panel.
   hostShell?: (parts: {
     stream: React.ReactNode;
     between: React.ReactNode;
     composer: React.ReactNode;
+    panels: {
+      flow: React.ReactNode;
+      ledger: React.ReactNode;
+      files: React.ReactNode;
+      preview: React.ReactNode;
+    };
   }) => React.ReactNode;
 
   // Legacy children pass-through. Prefer streamSlot/composerSlot + hostShell
