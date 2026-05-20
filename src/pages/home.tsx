@@ -3662,8 +3662,8 @@ export default function Home() {
           onDecisions={() => setLocation("/ledger")}
           onYou={() => setShowProfile(true)}
           onMap={() => setLocation("/map")}
-          onFiles={() => setShowProjectsSheet(true)}
-          onForge={() => setLocation(projects && projects.length > 0 ? `/project/${projects[0]?.id}` : "/projects")}
+          onFiles={() => setShowVault(true)}
+          onForge={() => setShowQuickPrompt(true)}
         />
       </div>
     </div>
