@@ -221,31 +221,35 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           WebkitTapHighlightColor: "transparent",
         }}
       >
-        {(s.badge !== undefined || s.alert) && (
-          <div
-            style={{
-              position: "absolute",
-              top: 4,
-              right: "calc(50% - 14px)",
-              minWidth: 14,
-              height: 14,
-              borderRadius: 7,
-              background: s.alert ? "var(--atlas-ember)" : "rgba(201,162,76,0.8)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 8,
-              fontFamily: "var(--app-font-mono)",
-              color: "#fff",
-              fontWeight: 700,
-              padding: "0 3px",
-              boxShadow: s.alert ? "0 0 8px rgba(146,64,14,0.6)" : "none",
-            }}
-          >
-            {s.badge !== undefined ? (s.badge > 9 ? "9+" : String(s.badge)) : "!"}
-          </div>
-        )}
-        {s.icon}
+        <span style={{ position: "relative", display: "inline-flex", lineHeight: 0 }}>
+          {s.icon}
+          {(s.badge !== undefined || s.alert) && (
+            <span
+              style={{
+                position: "absolute",
+                top: -5,
+                right: -8,
+                minWidth: 14,
+                height: 14,
+                borderRadius: 7,
+                background: s.alert ? "var(--atlas-ember)" : "rgba(201,162,76,0.85)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 8,
+                fontFamily: "var(--app-font-mono)",
+                color: "#fff",
+                fontWeight: 700,
+                padding: "0 3px",
+                boxShadow: s.alert
+                  ? "0 0 8px rgba(146,64,14,0.6)"
+                  : "0 0 0 2px var(--atlas-bg)",
+              }}
+            >
+              {s.badge !== undefined ? (s.badge > 9 ? "9+" : String(s.badge)) : "!"}
+            </span>
+          )}
+        </span>
         <span
           style={{
             fontSize: 8,
