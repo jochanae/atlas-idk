@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { useListMessages } from "@/_workspace/api-client-react/src/generated/api";
+import { useListMessages, type Message } from "@/_workspace/api-client-react/src/generated/api";
 
-type PriorMessage = NonNullable<ReturnType<typeof useListMessages>["data"]>[number];
+type PriorMessage = Message;
 
 export interface UseChatStreamOptions<T> {
   sessionId: number | null;
