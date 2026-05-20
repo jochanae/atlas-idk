@@ -5758,44 +5758,10 @@ export default function Workspace() {
           )}
         </div>
 
-        {/* Desktop: resize handle + right panel (RightPanel lifted into
-            UnifiedConversationSurface.flowPanel; rendered here via the
-            host-shell `panels.flow` slot). Per-pane card chrome removed
-            so left + right read as one unified surface. */}
-        {!isMobile && (
-          <>
-            {!desktopRightFull && (
-              <div
-                onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
-                onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
-                onDoubleClick={() => setChatWidthPct(45)}
-                title="Drag to resize · Double-tap to reset"
-                style={{
-                  width: 12, flexShrink: 0, cursor: "col-resize",
-                  background: "transparent",
-                  zIndex: 10,
-                  touchAction: "none",
-                  display: "flex",
-                  alignItems: "stretch",
-                  justifyContent: "center",
-                }}
-              >
-                <div className="atlas-resize-thread" style={{
-                  width: 1,
-                  transition: "background 200ms",
-                  pointerEvents: "none",
-                }} />
-              </div>
-            )}
-            <div style={{
-              flex: 1, minWidth: 240, overflow: "hidden",
-              background: "transparent",
-              position: "relative",
-            }}>
-              {panels.flow}
-            </div>
-          </>
-        )}
+        {/* Desktop resize handle + right panel now live in the outer
+            UnifiedConversationSurface hostShell above (RightPanel is the
+            `flowPanel` slot). Mobile overlay stays here. */}
+
 
 
         {/* Mobile: overlay panel */}
