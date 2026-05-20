@@ -2683,60 +2683,8 @@ export default function Home() {
             )}
           </div>
 
-          {/* Continuity strip — separates the conversation from the input area */}
-          {projects && projects.length > 0 && (() => {
-            const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
-            const mostRecent = [...activeProjects].sort((a, b) => {
-              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
-              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
-              return bt - at;
-            })[0];
-            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
-            const formatAgo = (ts: number) => {
-              const diff = Math.max(0, Date.now() - ts);
-              const m = Math.floor(diff / 60000);
-              if (m < 1) return "just now";
-              if (m < 60) return `${m}m ago`;
-              const h = Math.floor(m / 60);
-              if (h < 24) return `${h}h ago`;
-              const d = Math.floor(h / 24);
-              return `${d}d ago`;
-            };
-            const lastTouched = lastTs ? formatAgo(lastTs) : null;
-            return (
-              <button
-                type="button"
-                aria-label="Pick up below"
-                onClick={openOverviewSheet}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  margin: "0 0 10px",
-                  padding: "7px 12px",
-                  background: isParchment ? "rgba(220,210,195,0.55)" : "rgba(28,25,23,0.35)",
-                  border: "none",
-                  borderTop: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
-                  borderBottom: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
-                  backdropFilter: "blur(8px)",
-                  font: "inherit",
-                  cursor: "pointer",
-                }}
-              >
-                <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
-                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.45)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
-                  <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "var(--atlas-ember)" : "var(--atlas-gold)", opacity: 0.9 }} />
-                </span>
-                <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
-                  {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
-                  &nbsp;·&nbsp; {activeProjects.length} open
-                  &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
-                </span>
-              </button>
-            );
-          })()}
+          {/* Continuity strip — moved below; anchors above quick-action pills */}
+
 
           {/* Input shell */}
           <div className="atlas-input-shell" style={{ position: "relative", padding: "18px 20px 14px" }}>
@@ -3063,7 +3011,63 @@ export default function Home() {
           </div>
 
 
+          {/* Continuity strip — anchored right above the quick-action pills, acting as the lid for the bottom sheet */}
+          {projects && projects.length > 0 && (() => {
+            const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
+            const mostRecent = [...activeProjects].sort((a, b) => {
+              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+              return bt - at;
+            })[0];
+            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
+            const formatAgo = (ts: number) => {
+              const diff = Math.max(0, Date.now() - ts);
+              const m = Math.floor(diff / 60000);
+              if (m < 1) return "just now";
+              if (m < 60) return `${m}m ago`;
+              const h = Math.floor(m / 60);
+              if (h < 24) return `${h}h ago`;
+              const d = Math.floor(h / 24);
+              return `${d}d ago`;
+            };
+            const lastTouched = lastTs ? formatAgo(lastTs) : null;
+            return (
+              <button
+                type="button"
+                aria-label="Pick up below"
+                onClick={openOverviewSheet}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  margin: "14px 0 0",
+                  padding: "7px 12px",
+                  background: isParchment ? "rgba(220,210,195,0.55)" : "rgba(28,25,23,0.35)",
+                  border: "none",
+                  borderTop: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
+                  borderBottom: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
+                  backdropFilter: "blur(8px)",
+                  font: "inherit",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
+                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.45)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
+                  <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "var(--atlas-ember)" : "var(--atlas-gold)", opacity: 0.9 }} />
+                </span>
+                <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
+                  {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                  &nbsp;·&nbsp; {activeProjects.length} open
+                  &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
+                </span>
+              </button>
+            );
+          })()}
+
           {/* Intent row — soft orientation under the input. Permission, not features. */}
+
           {homeMessages.length === 0 && (() => {
             const pickStarter = (starter: string) => {
               setInput(starter);
