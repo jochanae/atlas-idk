@@ -2462,9 +2462,17 @@ export default function Home() {
           padding: "0 24px",
         }}
       >
-        <UnifiedConversationSurface mode={homeMessages.length > 0 ? "active" : "ambient"}>
-        <div className="atlas-home-chat-column">
-        <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
+        <UnifiedConversationSurface
+          mode={homeMessages.length > 0 ? "active" : "ambient"}
+          hostShell={({ stream }) => (
+            <div className="atlas-home-chat-column">
+              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
+                {stream}
+              </div>
+            </div>
+          )}
+          streamSlot={<>
+
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
           <div style={{ minHeight: homeMessages.length > 0 ? 0 : "calc(100svh - 50px - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: homeMessages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: homeMessages.length > 0 ? 0 : 120 }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
@@ -3294,9 +3302,9 @@ export default function Home() {
 
           </div>{/* end hero */}
 
-        </div>
-        </div>
-        </UnifiedConversationSurface>
+          </>}
+        />
+
         <aside className="atlas-home-desktop-overview" aria-label="Overview">
           <div className="atlas-home-desktop-overview-scroll">
             {renderOverviewDashboard()}
