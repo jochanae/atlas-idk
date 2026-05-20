@@ -79,6 +79,7 @@ import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
+import { ChatStream } from "@/components/workspace/ChatStream";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
@@ -5406,254 +5407,127 @@ export default function Workspace() {
             </div>
           ) : (
           /* ── Chat view ── */
-          <div
-            ref={chatPanelScrollRef}
-            aria-live="polite"
-            aria-label="Atlas conversation"
-            aria-busy={chatPending ? "true" : "false"}
+          <ChatStream
+            scrollRef={chatPanelScrollRef}
+            bottomRef={bottomRef}
             onScroll={(e) => {
               const el = e.currentTarget;
               setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
             }}
-            style={{ flex: 1, overflowY: "auto", padding: "28px 22px 12px", position: "relative" }}
-            className="scrollbar-none atlas-chat-timeline"
-          >
-            {messages.length === 0 && !chatPending && isHomeHandoff && homeHandoffMeta && (
-              <div style={{ padding: "52px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ maxWidth: 520, color: "var(--atlas-fg)", fontSize: 15, lineHeight: 1.75, textAlign: "center", opacity: 0.88 }}>
-                  Picked up where we left off. Your flow map has {homeHandoffMeta.flowNodeCount} nodes — {homeHandoffMeta.goalLabel} is the center. What do you want to tackle first?
-                </div>
-              </div>
-            )}
-            {messages.length === 0 && !chatPending && !(isHomeHandoff && homeHandoffMeta) && (
-              <div style={{ padding: "52px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                {isBrandNewProject ? (
-                    <div style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 24, marginBottom: 28, letterSpacing: "-0.025em", lineHeight: 1.2, textAlign: "center", maxWidth: 520 }}>
-                      New project. Before we build — do you have a <GlossaryTip term="north star">The one outcome that makes everything else worth building.</GlossaryTip> for this? Or should we start from what's in your head?
-                    </div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 24, marginBottom: 6, letterSpacing: "-0.025em", lineHeight: 1.2, textAlign: "center" }}>
-                      {project ? project.name : "Ready."}
-                    </div>
-                    <div style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.4)", marginBottom: 28, textAlign: "center" }}>
-                      What are we working through today?
-                    </div>
-                  </>
-                )}
-                {/* Starter prompts */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 420 }}>
-                  {[
-                    { label: "I need to make a decision", sub: "Walk me through it and log it" },
-                    { label: "I'm not sure which direction to take", sub: "Think out loud, I'll help you see the tension" },
-                    { label: "Audit my recent decisions", sub: "Review what I've committed to" },
-                    { label: "I want to map my architecture", sub: "System Map + layer-by-layer spec" },
-                  ].map((p, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setInput(p.label);
-                        setTimeout(() => textareaRef.current?.focus(), 0);
-                      }}
-                      style={{
-                        display: "flex", flexDirection: "column", alignItems: "flex-start",
-                        padding: "11px 14px", borderRadius: 9, cursor: "pointer",
-                        background: "rgba(201,162,76,0.03)",
-                        border: "1px solid rgba(201,162,76,0.08)",
-                        textAlign: "left", transition: "all 160ms ease",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.03)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.08)"; }}
-                    >
-                      <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", opacity: 0.8, fontWeight: 500, lineHeight: 1.3 }}>{p.label}</span>
-                      <span style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.5, marginTop: 2 }}>{p.sub}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((msg, i) =>
-              msg.role === "user" ? (
-                <UserBubble
-                  key={i}
-                  content={msg.content}
-                  sentAt={msg.sentAt}
-                  onCopy={() => {}}
-                  onEdit={() => {
-                    setInput(msg.content);
-                    setTimeout(() => textareaRef.current?.focus(), 50);
-                  }}
-                />
-              ) : (
-                <AssistantBubble
-                  key={i}
-                  message={msg}
-                  isNew={msg.role === "assistant" && i >= historyMsgCountRef.current && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
-                  projectId={id}
-                  sessionId={sessionId || 0}
-                  linkedRepo={linkedRepo}
-                  onCatchProceed={() => handleCatchProceed(msg.id)}
-                  onCatchAdjust={() => handleCatchAdjust(msg.id)}
-                  onPark={handlePark}
-                  onCommit={handleCommit}
-                  onRegenerate={() => handleRegenerate(i)}
-                  onPreviewCode={handlePreviewCode}
-                  onRunCommand={handleRunCommand}
-                  onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
-                  onExtractToForge={(content) => { setForgePreloadContent(content); setShowForgeExternal(true); }}
-                  onReviewDiff={() => setLeftTab("diff")}
-                  onEditDeclined={() => {
-                    if (sessionId) {
-                      const editsInFlight = messages
-                        .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
-                        .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
-                      doSend(
-                        `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
-                        sessionId,
-                        messagesRef.current,
-                      );
-                    }
-                  }}
-                  onAlertDismiss={() => {
-                    setMessages((prev) => prev.map((m) =>
-                      m.id === msg.id ? { ...m, alertResolved: true } : m
-                    ));
-                  }}
-                  onStreamActivityUpdate={(content) => {
-                    const markers = [
-                      msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
-                      msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
-                      msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
-                    ].filter(Boolean).join("\n");
-                    setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
-                  }}
-                  onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
-                  onCommitCardDone={() => {
-                    queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
-                    void refreshParkedEntries();
-                  }}
-                  onSurfaceAction={handleAmbientSurfaceAction}
-                  planState={planStates.get(msg.id ?? 0) ?? "pending"}
-                  planExecution={planExecutions.get(msg.id ?? 0)}
-                  onPlanStateChange={updatePlanState}
-                  onPlanExecutionChange={updatePlanExecution}
-                  onExecuteHomePlan={executeHomePlan}
-                  trustMode={trustMode}
-                  onPushSuccess={(records) => {
-                    haptic.double();
-                    setPushHistory((prev) => {
-                      const next = [...prev, ...records].slice(-20);
-                      updateProjectHeader.mutate({ id, data: { pushHistory: next } });
-                      return next;
-                    });
-                    const filenames = records.map((r) => r.filename).join(", ");
-                    const branch = records[0]?.branch ?? "unknown";
-                    const commitUrl = records[0]?.commitUrl ?? "";
-                    createEntry.mutate(
-                      {
-                        projectId: id,
-                        data: {
-                          title: `Code pushed: ${filenames}`,
-                          summary: `Branch: ${branch} · Files: ${filenames} · Commit: ${commitUrl}`,
-                          status: "committed",
-                          severity: "committed",
-                          mode: "BUILD",
-                          verb: "github_push",
-                        },
-                      },
-                      { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
-                    );
-                    // Refresh preview iframe after push — immediate + follow-up for slower deployments
-                    setPreviewRefreshTrigger((t) => t + 1);
-                    setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
-                    setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
-                    if (sessionId) {
-                      if (agenticMode && agenticIterCount >= 8) {
-                        // hard-stop at 8 iterations
-                      } else {
-                        const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
-                        const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
-                        if (agenticMode) setAgenticIterCount((n) => n + 1);
-                        doSend(
-                          `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
-                          sessionId,
-                          messagesRef.current,
-                        );
-                      }
-                    }
-                  }}
-                />
-              )
-            )}
-
-            {messages.filter(m => m.role !== "user").length >= 60 && !chatPending && wsModel !== "gemini" && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8, margin: "4px 0 16px",
-                padding: "8px 12px", borderRadius: 8,
-                background: "rgba(66,133,244,0.06)", border: "1px solid rgba(66,133,244,0.2)",
-              }}>
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                  <circle cx="8" cy="8" r="6" stroke="rgba(66,133,244,0.7)" strokeWidth="1.3" />
-                  <path d="M8 5v4M8 10.5v.5" stroke="rgba(66,133,244,0.7)" strokeWidth="1.3" strokeLinecap="round" />
-                </svg>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-fg)", letterSpacing: "0.04em", flex: 1 }}>
-                  Long thread. Gemini handles more context without losing the top.
-                </span>
-                <button
-                  onClick={() => { setWsModel("gemini"); }}
-                  style={{
-                    fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.08em",
-                    padding: "3px 8px", borderRadius: 4, cursor: "pointer",
-                    background: "rgba(66,133,244,0.15)", border: "1px solid rgba(66,133,244,0.35)",
-                    color: "#4285f4", whiteSpace: "nowrap",
-                  }}
-                >
-                  Switch →
-                </button>
-              </div>
-            )}
-
-            {activityStream.active && liveGeneration.shouldShow ? (
-              <LiveGenerationCard
-                mode={liveGeneration.mode}
-                steps={liveGeneration.steps}
-                isComplete={false}
-              />
-            ) : activityStream.active ? (
-              <AtlasActivityBar content={activityStream.content} />
-            ) : null}
-
-            <div ref={bottomRef} />
-
-            {showWsScrollBtn && (
-              <button
-                onClick={() => chatPanelScrollRef.current?.scrollTo({ top: chatPanelScrollRef.current.scrollHeight, behavior: "smooth" })}
-                style={{
-                  position: "sticky",
-                  bottom: 12,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "var(--atlas-surface)",
-                  border: "1px solid var(--atlas-gold)",
-                  borderRadius: 20,
-                  padding: "6px 16px",
-                  color: "var(--atlas-gold)",
-                  fontSize: 12,
-                  fontFamily: "var(--app-font-mono)",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                  letterSpacing: "0.04em",
-                  zIndex: 20,
-                }}
-              >
-                <span style={{ fontSize: 14, lineHeight: 1 }}>↓</span> latest
-              </button>
-            )}
-          </div>
+            showScrollBtn={showWsScrollBtn}
+            onScrollToLatest={() => chatPanelScrollRef.current?.scrollTo({ top: chatPanelScrollRef.current.scrollHeight, behavior: "smooth" })}
+            messages={messages}
+            chatPending={chatPending}
+            activityStream={activityStream}
+            liveGeneration={liveGeneration}
+            historyMsgCountRef={historyMsgCountRef}
+            isHomeHandoff={isHomeHandoff}
+            homeHandoffMeta={homeHandoffMeta}
+            isBrandNewProject={isBrandNewProject}
+            project={project}
+            onStarterPrompt={(label) => {
+              setInput(label);
+              setTimeout(() => textareaRef.current?.focus(), 0);
+            }}
+            wsModel={wsModel}
+            onSwitchToGemini={() => { setWsModel("gemini"); }}
+            onEditUserMessage={(content) => {
+              setInput(content);
+              setTimeout(() => textareaRef.current?.focus(), 50);
+            }}
+            projectId={id}
+            sessionId={sessionId}
+            linkedRepo={linkedRepo}
+            trustMode={trustMode}
+            onCatchProceed={(msg) => handleCatchProceed(msg.id)}
+            onCatchAdjust={(msg) => handleCatchAdjust(msg.id)}
+            onPark={handlePark}
+            onCommit={handleCommit}
+            onRegenerate={(i) => handleRegenerate(i)}
+            onPreviewCode={handlePreviewCode}
+            onRunCommand={handleRunCommand}
+            onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
+            onExtractToForge={(content) => { setForgePreloadContent(content); setShowForgeExternal(true); }}
+            onReviewDiff={() => setLeftTab("diff")}
+            onEditDeclined={() => {
+              if (sessionId) {
+                const editsInFlight = messages
+                  .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
+                  .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
+                doSend(
+                  `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
+                  sessionId,
+                  messagesRef.current,
+                );
+              }
+            }}
+            onAlertDismiss={(msg) => {
+              setMessages((prev) => prev.map((m) =>
+                m.id === msg.id ? { ...m, alertResolved: true } : m
+              ));
+            }}
+            onStreamActivityUpdate={(msg, content) => {
+              const markers = [
+                msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
+                msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
+                msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
+              ].filter(Boolean).join("\n");
+              setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
+            }}
+            onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
+            onCommitCardDone={() => {
+              queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+              void refreshParkedEntries();
+            }}
+            onSurfaceAction={handleAmbientSurfaceAction}
+            planStates={planStates}
+            planExecutions={planExecutions}
+            onPlanStateChange={updatePlanState}
+            onPlanExecutionChange={updatePlanExecution}
+            onExecuteHomePlan={executeHomePlan}
+            onPushSuccess={(records) => {
+              haptic.double();
+              setPushHistory((prev) => {
+                const next = [...prev, ...records].slice(-20);
+                updateProjectHeader.mutate({ id, data: { pushHistory: next } });
+                return next;
+              });
+              const filenames = records.map((r) => r.filename).join(", ");
+              const branch = records[0]?.branch ?? "unknown";
+              const commitUrl = records[0]?.commitUrl ?? "";
+              createEntry.mutate(
+                {
+                  projectId: id,
+                  data: {
+                    title: `Code pushed: ${filenames}`,
+                    summary: `Branch: ${branch} · Files: ${filenames} · Commit: ${commitUrl}`,
+                    status: "committed",
+                    severity: "committed",
+                    mode: "BUILD",
+                    verb: "github_push",
+                  },
+                },
+                { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
+              );
+              setPreviewRefreshTrigger((t) => t + 1);
+              setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
+              setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
+              if (sessionId) {
+                if (agenticMode && agenticIterCount >= 8) {
+                  // hard-stop at 8 iterations
+                } else {
+                  const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
+                  const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                  if (agenticMode) setAgenticIterCount((n) => n + 1);
+                  doSend(
+                    `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                    sessionId,
+                    messagesRef.current,
+                  );
+                }
+              }
+            }}
+          />
           )} {/* end chat/diff ternary */}
 
           {/* Ledger status bar — whispered */}
