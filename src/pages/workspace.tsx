@@ -5230,6 +5230,12 @@ export default function Workspace() {
     sessionId,
     setSessionId,
     ensureSessionId,
+    chatPending,
+    setChatPending,
+    activityStream,
+    setActivityStream,
+    abortControllerRef,
+    handleStop,
   } = useChatStream<ChatMessage>(id, {
     sessions,
     sessionsLoading,
@@ -5252,12 +5258,7 @@ export default function Workspace() {
     setPlanExecutions(new Map());
     setActiveCatch(null);
     homePlanLoadedRef.current = false;
-    // Abort any in-flight chat fetch from the previous project and clear pending state
-    // so the composer send button is guaranteed active in the new workspace.
-    try { abortControllerRef.current?.abort(); } catch { /* noop */ }
-    abortControllerRef.current = null;
-    setChatPending(false);
-    setActivityStream({ active: false, content: "" });
+    // Note: abort/chatPending/activityStream reset is owned by useChatStream.
     // Reset auto-prime guards so a fresh ?source=handoff load can seed its first message.
     initialSent.current = false;
     importPrimed.current = false;
@@ -5552,12 +5553,12 @@ export default function Workspace() {
   };
 
   const [fileContext, setFileContext] = useState<string | null>(null);
-  const [chatPending, setChatPending] = useState(false);
+  // chatPending owned by useChatStream.
   const [agenticMode, setAgenticMode] = useState(true);
   const [agenticIterCount, setAgenticIterCount] = useState(0);
   useEffect(() => { setAgenticIterCount(0); }, [sessionId]);
   useEffect(() => { if (!agenticMode) setAgenticIterCount(0); }, [agenticMode]);
-  const [activityStream, setActivityStream] = useState<{ active: boolean; content: string }>({ active: false, content: "" });
+  // activityStream owned by useChatStream.
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
   const [linkedRepo, setLinkedRepo] = useState<LinkedRepo | null>(null);
 
@@ -5578,7 +5579,7 @@ export default function Workspace() {
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
   const initialSent = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // abortControllerRef owned by useChatStream.
   const importPrimed = useRef(false);
   const touchStartX = useRef(0);
   const homeHandoffDbLoadedRef = useRef<number | null>(null);
@@ -6111,9 +6112,7 @@ export default function Workspace() {
     [entries, id, fileContext]
   );
 
-  const handleStop = useCallback(() => {
-    abortControllerRef.current?.abort();
-  }, []);
+  // handleStop owned by useChatStream.
 
   const handleRegenerate = useCallback(
     (assistantMsgIndex: number) => {

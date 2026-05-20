@@ -21,6 +21,11 @@ export interface UseChatStreamOptions<T> {
   mapPriorMessage: (m: PriorMessage) => T;
 }
 
+export interface ActivityStreamState {
+  active: boolean;
+  content: string;
+}
+
 export interface UseChatStreamReturn<T> {
   messages: T[];
   setMessages: Dispatch<SetStateAction<T[]>>;
@@ -30,6 +35,12 @@ export interface UseChatStreamReturn<T> {
   sessionId: number | null;
   setSessionId: Dispatch<SetStateAction<number | null>>;
   ensureSessionId: () => Promise<number>;
+  chatPending: boolean;
+  setChatPending: Dispatch<SetStateAction<boolean>>;
+  activityStream: ActivityStreamState;
+  setActivityStream: Dispatch<SetStateAction<ActivityStreamState>>;
+  abortControllerRef: MutableRefObject<AbortController | null>;
+  handleStop: () => void;
 }
 
 /**
@@ -70,6 +81,15 @@ export function useChatStream<T>(
   const [sessionId, setSessionId] = useState<number | null>(null);
   const creatingSessionRef = useRef<Promise<number> | null>(null);
 
+  // ---- chat-pending / activity stream / abort (B2b-2) ----
+  const [chatPending, setChatPending] = useState(false);
+  const [activityStream, setActivityStream] = useState<ActivityStreamState>({ active: false, content: "" });
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleStop = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
   // Cross-project reset for everything this hook owns.
   useEffect(() => {
     setMessages([]);
@@ -77,6 +97,10 @@ export function useChatStream<T>(
     historyMsgCountRef.current = 0;
     setSessionId(null);
     creatingSessionRef.current = null;
+    try { abortControllerRef.current?.abort(); } catch { /* noop */ }
+    abortControllerRef.current = null;
+    setChatPending(false);
+    setActivityStream({ active: false, content: "" });
   }, [projectId]);
 
   // Prior-message hydration.
@@ -127,5 +151,11 @@ export function useChatStream<T>(
     sessionId,
     setSessionId,
     ensureSessionId,
+    chatPending,
+    setChatPending,
+    activityStream,
+    setActivityStream,
+    abortControllerRef,
+    handleStop,
   };
 }
