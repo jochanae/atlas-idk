@@ -3133,8 +3133,8 @@ export default function Home() {
             background: "linear-gradient(to bottom, transparent, var(--atlas-bg))",
           }} />
 
-          {/* Continuity strip — only when no messages, pinned near bottom of hero */}
-          {homeMessages.length === 0 && projects && projects.length > 0 && (() => {
+          {/* Continuity strip — pinned near bottom of hero */}
+          {projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
             const mostRecent = [...activeProjects].sort((a, b) => {
               const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
