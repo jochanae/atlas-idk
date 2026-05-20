@@ -6518,7 +6518,7 @@ export default function Workspace() {
 
 
   const hasInput = input.trim().length > 0;
-  const [inputFocused, setInputFocused] = useState(false);
+  
   const entryCount = entries?.length ?? 0;
   const parkedCount = parkedEntries.length;
   const committedCount = entries?.filter((e) => e.status === "committed").length ?? 0;
