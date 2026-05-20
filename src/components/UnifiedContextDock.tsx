@@ -205,6 +205,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         key={s.id}
         onClick={s.onClick}
         aria-label={s.label}
+        className="udock-slot"
         style={{
           flex: 1,
           display: "flex",
@@ -219,33 +220,38 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           position: "relative",
           color,
           WebkitTapHighlightColor: "transparent",
+          transition: "color 180ms ease, transform 120ms ease",
         }}
       >
-        {(s.badge !== undefined || s.alert) && (
-          <div
-            style={{
-              position: "absolute",
-              top: 4,
-              right: "calc(50% - 14px)",
-              minWidth: 14,
-              height: 14,
-              borderRadius: 7,
-              background: s.alert ? "var(--atlas-ember)" : "rgba(201,162,76,0.8)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 8,
-              fontFamily: "var(--app-font-mono)",
-              color: "#fff",
-              fontWeight: 700,
-              padding: "0 3px",
-              boxShadow: s.alert ? "0 0 8px rgba(146,64,14,0.6)" : "none",
-            }}
-          >
-            {s.badge !== undefined ? (s.badge > 9 ? "9+" : String(s.badge)) : "!"}
-          </div>
-        )}
-        {s.icon}
+        <span style={{ position: "relative", display: "inline-flex", lineHeight: 0 }}>
+          {s.icon}
+          {(s.badge !== undefined || s.alert) && (
+            <span
+              style={{
+                position: "absolute",
+                top: -5,
+                right: -8,
+                minWidth: 14,
+                height: 14,
+                borderRadius: 7,
+                background: s.alert ? "var(--atlas-ember)" : "rgba(201,162,76,0.85)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 8,
+                fontFamily: "var(--app-font-mono)",
+                color: "#fff",
+                fontWeight: 700,
+                padding: "0 3px",
+                boxShadow: s.alert
+                  ? "0 0 8px rgba(146,64,14,0.6)"
+                  : "0 0 0 2px var(--atlas-bg)",
+              }}
+            >
+              {s.badge !== undefined ? (s.badge > 9 ? "9+" : String(s.badge)) : "!"}
+            </span>
+          )}
+        </span>
         <span
           style={{
             fontSize: 8,
@@ -273,24 +279,56 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         overflow: "visible",
       }}
     >
-      {/* Arch SVG — preserved visual */}
-      <svg
-        style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
-        preserveAspectRatio="none"
-        viewBox="0 0 390 64"
+      <style>{`
+        .udock-slot:active { transform: scale(0.92); }
+        .udock-slot:hover { color: rgba(212,175,55,0.75) !important; }
+        .udock-center:active { transform: translateY(0) scale(0.96); }
+      `}</style>
+      {/* Arch — fixed-width center dimple, flanks fill remaining width */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 64,
+          display: "flex",
+          pointerEvents: "none",
+        }}
+        aria-hidden
       >
-        <path
-          d="M0,0 L148,0 C163,0 172,22 195,22 C218,22 227,0 242,0 L390,0 L390,64 L0,64 Z"
-          fill="var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))"
+        <div
+          style={{
+            flex: 1,
+            background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
+            borderTop: "1px solid rgba(212,175,55,0.18)",
+          }}
         />
-        <path
-          d="M0,0.5 L148,0.5 C163,0.5 172,22 195,22 C218,22 227,0.5 242,0.5 L390,0.5"
-          fill="none"
-          stroke="rgba(212,175,55,0.2)"
-          strokeWidth="1"
-          vectorEffect="non-scaling-stroke"
+        <svg
+          width="94"
+          height="64"
+          viewBox="0 0 94 64"
+          style={{ display: "block", overflow: "visible", flexShrink: 0 }}
+        >
+          <path
+            d="M0,0 C15,0 24,22 47,22 C70,22 79,0 94,0 L94,64 L0,64 Z"
+            fill="var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))"
+          />
+          <path
+            d="M0,0.5 C15,0.5 24,22 47,22 C70,22 79,0.5 94,0.5"
+            fill="none"
+            stroke="rgba(212,175,55,0.2)"
+            strokeWidth="1"
+          />
+        </svg>
+        <div
+          style={{
+            flex: 1,
+            background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
+            borderTop: "1px solid rgba(212,175,55,0.18)",
+          }}
         />
-      </svg>
+      </div>
 
       <div
         style={{
@@ -309,6 +347,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           <button
             title="Atlas Core"
             aria-label="Return to Atlas Core"
+            className="udock-center"
             onClick={onAtlasCore}
             style={{
               width: 56,
@@ -323,6 +362,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               marginTop: -26,
               flexShrink: 0,
               boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
+              transition: "transform 140ms ease, box-shadow 200ms ease",
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
