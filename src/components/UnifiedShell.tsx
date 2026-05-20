@@ -252,8 +252,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
         cursor: "pointer",
         color: "var(--atlas-fg)",
         fontFamily: "var(--app-font-sans)",
-        fontSize: 13,
+        fontSize: "var(--ts-body)",
         fontWeight: 500,
+        lineHeight: "var(--lh-snug)",
+        letterSpacing: "var(--ls-tight)",
         opacity: 0.92,
         pointerEvents: "auto",
       }}
