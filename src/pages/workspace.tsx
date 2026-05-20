@@ -7173,8 +7173,55 @@ function RightPanel({
             </button>
           );
         })}
-        {/* Spacer to keep mobile close/fullscreen buttons right-aligned on desktop too */}
-        {!isMobile && <div style={{ flex: 1 }} />}
+        {/* Desktop: hand the full thread off to Atlas as a Forge-ready snapshot.
+            Distinct from the per-message Forge link — this commits the whole
+            conversation. Sized to match neighboring tabs so it reads as a
+            primary toolbar action, not a foreign element. */}
+        {!isMobile && onHandover && (
+          <>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={() => {
+                setTab("map");
+                onHandoverOpenChange?.(true);
+              }}
+              disabled={!currentSnapshot || (currentSnapshot?.definedCount ?? 0) === 0 || !!handoverPending}
+              title={
+                handoverPending
+                  ? "Sending thread to Atlas…"
+                  : !currentSnapshot || currentSnapshot.definedCount === 0
+                    ? "Define at least one node to send the thread"
+                    : "Send the entire conversation to Atlas as a Forge-ready snapshot"
+              }
+              style={{
+                marginRight: 8,
+                padding: "4px 10px",
+                borderRadius: 4,
+                background: "transparent",
+                border: `1px solid ${
+                  !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
+                    ? "rgba(var(--atlas-muted-rgb),0.3)"
+                    : "rgba(146,64,14,0.55)"
+                }`,
+                color: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
+                  ? "rgba(var(--atlas-muted-rgb),0.6)"
+                  : "rgba(230,150,90,0.95)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 9,
+                fontWeight: 500,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                cursor: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
+                  ? "not-allowed"
+                  : "pointer",
+                transition: "all 160ms ease",
+              }}
+            >
+              {handoverPending ? "Sending…" : "Forge Thread →"}
+            </button>
+          </>
+        )}
+        {!isMobile && !onHandover && <div style={{ flex: 1 }} />}
 
         {/* Mobile: spacer so close/fullscreen stay right-aligned */}
         {isMobile && <div style={{ flex: 1 }} />}
