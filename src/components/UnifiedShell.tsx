@@ -13,6 +13,7 @@ import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 
 type ShellDepth = "ambient" | "active" | "operational";
 
