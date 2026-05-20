@@ -5646,9 +5646,9 @@ export default function Workspace() {
     });
     return [...entryMap.values()];
   }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
-  const createSession = useCreateSession();
+  // createSession moved above (consumed by useChatStream).
   const createEntry = useCreateEntry();
-  const creatingSessionRef = useRef<Promise<number> | null>(null);
+  // creatingSessionRef + ensureSessionId now owned by useChatStream.
   const { showParkingDrawer, setShowParkingDrawer, refreshParkedEntries } = useParkingLot(id, {
     projectState,
     queryClient,
