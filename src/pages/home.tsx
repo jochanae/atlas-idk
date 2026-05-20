@@ -13,6 +13,7 @@ import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
+import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
