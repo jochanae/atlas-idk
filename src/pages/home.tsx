@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
+import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
@@ -2543,7 +2544,7 @@ export default function Home() {
                           <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
                         </div>
                       )}
-                    <div style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
+                    <div data-msg-idx={i} style={{ display: "flex", flexDirection: msg.role === 'user' ? "row-reverse" : "row", alignItems: "flex-start", gap: 6, animation: isShredding ? `atlas-shred 600ms ${i * 80}ms ease-in forwards` : "fadeIn 250ms ease forwards" }}>
                       {msg.role === 'assistant' ? (
                         <div style={{ minWidth: 0, flex: 1 }}>
                           {/* Model label + intent badge */}
@@ -3453,6 +3454,9 @@ export default function Home() {
           onClose={() => setShowProjectsSheet(false)}
         />
       )}
+
+      {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
+      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt }))} />
 
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
