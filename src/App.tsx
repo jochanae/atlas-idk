@@ -25,6 +25,7 @@ import Secrets from "./pages/secrets";
 import Admin from "./pages/admin";
 import Dashboard from "./pages/dashboard";
 import ResetPassword from "./pages/reset-password";
+import AuthCallback from "./pages/auth-callback";
 import MasterMap from "./pages/master-map";
 import OnboardingPage from "./pages/onboarding";
 import { getListProjectsQueryKey, useListProjects } from "@workspace/api-client-react";
@@ -256,6 +257,7 @@ function Router() {
         }} />
         <Route path="/landing" component={Landing} />
         <Route path="/login" component={Login} />
+        <Route path="/auth/callback" component={AuthCallback} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/home" component={Home} />
