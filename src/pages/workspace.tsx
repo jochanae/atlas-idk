@@ -28,7 +28,7 @@ import { FilesPanel } from "../components/workspace/FilesPanel";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
-import { ZipDragOverlay, ZipPanel, parseZip, assembleContext } from "../components/ZipImport";
+import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { CommitCard } from "../components/CommitCard";
 import { PlanCard } from "../components/PlanCard";
