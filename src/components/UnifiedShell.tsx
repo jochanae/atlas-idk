@@ -11,6 +11,7 @@ import {
 import { useLocation } from "wouter";
 import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 type ShellDepth = "ambient" | "active" | "operational";
@@ -473,6 +474,7 @@ function ShellCenterButton({ onClick }: { onClick: () => void }) {
 function ShellFooter() {
   const { currentDepth, activeProjectId } = useShellState();
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const [renderDepth, setRenderDepth] = useState<ShellDepth>(currentDepth);
   const [itemsVisible, setItemsVisible] = useState(true);
 
@@ -542,6 +544,8 @@ function ShellFooter() {
       { label: "You", icon: "you", action: () => setLocation("/you") },
     ];
   }, [openProjectTab, renderDepth, setLocation]);
+
+  if (!isMobile) return null;
 
   return (
     <footer className="atlas-mobile-footer" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 250, overflow: "visible" }}>
