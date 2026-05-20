@@ -5394,9 +5394,39 @@ export default function Workspace() {
         ) : undefined}
         showFlow={!isMobile}
         hostShell={({ stream, panels }) => (
-      <div ref={containerRef} style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", ...(isMobile ? null : { margin: "8px", borderRadius: 14, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface-alt)", boxShadow: "0 4px 18px rgba(0,0,0,0.25)" }) }}>
-        {stream}
-      </div>
+          <div ref={containerRef} style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", ...(isMobile ? null : { margin: "8px", borderRadius: 14, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface-alt)", boxShadow: "0 4px 18px rgba(0,0,0,0.25)" }) }}>
+            {stream}
+            {!isMobile && (
+              <>
+                {!desktopRightFull && (
+                  <div
+                    onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
+                    onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
+                    onDoubleClick={() => setChatWidthPct(45)}
+                    title="Drag to resize · Double-tap to reset"
+                    style={{
+                      width: 12, flexShrink: 0, cursor: "col-resize",
+                      background: "transparent",
+                      zIndex: 10,
+                      touchAction: "none",
+                      display: "flex",
+                      alignItems: "stretch",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <div className="atlas-resize-thread" style={{
+                      width: 1,
+                      transition: "background 200ms",
+                      pointerEvents: "none",
+                    }} />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 240, overflow: "hidden", background: "transparent", position: "relative" }}>
+                  {panels.flow}
+                </div>
+              </>
+            )}
+          </div>
         )}
       >
         {/* Children below become `stream` inside hostShell. */}
