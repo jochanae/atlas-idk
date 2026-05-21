@@ -1,2 +1,0 @@
-[variables]
-RAILPACK_INSTALL_CMD = "pnpm install --no-frozen-lockfile"
