@@ -3217,22 +3217,23 @@ export default function Home() {
                 aria-label="Pick up below"
                 onClick={openOverviewSheet}
                 style={{
-                  width: "100vw",
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexWrap: "wrap",
                   gap: 8,
-                  margin: "14px calc(50% - 50vw) 0",
+                  alignSelf: "center",
+                  marginTop: 14,
                   padding: "7px 16px",
-                  background: isParchment ? "rgba(220,210,195,0.55)" : "rgba(28,25,23,0.35)",
-                  border: "none",
-                  borderTop: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
-                  borderBottom: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
+                  background: isParchment ? "rgba(220,210,195,0.55)" : "rgba(28,25,23,0.55)",
+                  border: isParchment ? "1px solid rgba(160,130,90,0.22)" : "1px solid rgba(201,162,76,0.14)",
+                  borderRadius: 999,
                   backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                   font: "inherit",
                   cursor: "pointer",
                   boxSizing: "border-box",
+                  maxWidth: "100%",
                 }}
               >
                 <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
