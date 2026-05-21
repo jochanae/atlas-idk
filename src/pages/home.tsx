@@ -2868,21 +2868,8 @@ export default function Home() {
 
           {/* Input shell */}
           <div className="atlas-input-shell" style={{ position: "relative", padding: "18px 20px 14px" }}>
-            {homeMessages.length > 0 && (
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  top: -48,
-                  left: 0,
-                  right: 0,
-                  height: 48,
-                  background: "linear-gradient(to bottom, transparent 0%, var(--atlas-bg) 100%)",
-                  pointerEvents: "none",
-                }}
-              />
-            )}
-            {/* Hidden file input — uses id so label can trigger it natively on mobile */}
+  
+   {/* Hidden file input — uses id so label can trigger it natively on mobile */}
             <input
               ref={fileInputRef}
               id="home-file-input"
