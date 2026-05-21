@@ -4728,33 +4728,46 @@ export default function Workspace() {
           </nav>
 
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 4 : 7, minWidth: 0 }}>
-            <button
-              type="button"
-              onClick={focusSystemMap}
-              title="Open Flow"
-              aria-label="Open Flow"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: isTinyScreen ? "4px 7px" : "5px 10px",
-                borderRadius: 999,
-                background: "rgba(var(--atlas-gold-rgb),0.08)",
-                border: "1px solid rgba(var(--atlas-gold-rgb),0.24)",
-                color: "var(--atlas-gold)",
-                cursor: "pointer",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: "var(--ts-xs)",
-                fontWeight: 700,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block" }} />
-              Flow
-            </button>
+            {(() => {
+              const lensCfg = LENS_CONFIG[wsLens];
+              return (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setShowLensPicker(true);
+                  }}
+                  title={`${lensCfg.label} lens — tap to change`}
+                  aria-label={`${lensCfg.label} lens — tap to change`}
+                  aria-haspopup="dialog"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    padding: isTinyScreen ? "4px 7px" : "5px 10px",
+                    borderRadius: 999,
+                    background: lensCfg.glowColor,
+                    border: `1px solid ${lensCfg.borderColor}`,
+                    color: lensCfg.color,
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: "var(--ts-xs)",
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: lensCfg.color, display: "inline-block" }} />
+                  {lensCfg.label}
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden style={{ opacity: 0.7 }}>
+                    <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              );
+            })()}
 
             {sessionPrUrl ? (
               <a
