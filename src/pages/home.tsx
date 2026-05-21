@@ -1233,6 +1233,11 @@ export default function Home() {
   const [showChatMenu, setShowChatMenu] = useState(false);
   // Home lens state removed — lenses live in workspace only
 
+  // Earned title: identity emerges, never derived from latest message.
+  // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
+  // Persisted per conversation id under `atlas-thread-title:<id>`.
+  const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
+
   const [threadLoading, setThreadLoading] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string>(() => {
     const newId = crypto.randomUUID();
