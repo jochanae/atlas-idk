@@ -2,6 +2,7 @@ import type { CSSProperties, RefObject } from "react";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
+import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "../LiveGenerationCard";
 import { GlossaryTip } from "@/components/GlossaryTip";
 import type {
@@ -184,37 +185,43 @@ export function ChatStream(props: ChatStreamProps) {
             onEdit={() => onEditUserMessage(msg.content)}
           />
         ) : (
-          <AssistantBubble
-            key={i}
-            message={msg}
-            isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
-            projectId={projectId}
-            sessionId={sessionId || 0}
-            linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
-            onCatchProceed={() => onCatchProceed(msg)}
-            onCatchAdjust={() => onCatchAdjust(msg)}
-            onPark={onPark}
-            onCommit={onCommit}
-            onRegenerate={() => onRegenerate(i)}
-            onPreviewCode={onPreviewCode}
-            onRunCommand={onRunCommand}
-            onPrCreated={onPrCreated}
-            onExtractToForge={onExtractToForge}
-            onReviewDiff={onReviewDiff}
-            onEditDeclined={onEditDeclined}
-            onAlertDismiss={() => onAlertDismiss(msg)}
-            onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}
-            onStreamActivityComplete={onStreamActivityComplete}
-            onCommitCardDone={onCommitCardDone}
-            onSurfaceAction={onSurfaceAction}
-            planState={planStates.get(msg.id ?? 0) ?? "pending"}
-            planExecution={planExecutions.get(msg.id ?? 0)}
-            onPlanStateChange={onPlanStateChange}
-            onPlanExecutionChange={onPlanExecutionChange}
-            onExecuteHomePlan={onExecuteHomePlan}
-            trustMode={trustMode}
-            onPushSuccess={onPushSuccess}
-          />
+          <div key={i}>
+            <AssistantBubble
+              message={msg}
+              isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
+              projectId={projectId}
+              sessionId={sessionId || 0}
+              linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
+              onCatchProceed={() => onCatchProceed(msg)}
+              onCatchAdjust={() => onCatchAdjust(msg)}
+              onPark={onPark}
+              onCommit={onCommit}
+              onRegenerate={() => onRegenerate(i)}
+              onPreviewCode={onPreviewCode}
+              onRunCommand={onRunCommand}
+              onPrCreated={onPrCreated}
+              onExtractToForge={onExtractToForge}
+              onReviewDiff={onReviewDiff}
+              onEditDeclined={onEditDeclined}
+              onAlertDismiss={() => onAlertDismiss(msg)}
+              onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}
+              onStreamActivityComplete={onStreamActivityComplete}
+              onCommitCardDone={onCommitCardDone}
+              onSurfaceAction={onSurfaceAction}
+              planState={planStates.get(msg.id ?? 0) ?? "pending"}
+              planExecution={planExecutions.get(msg.id ?? 0)}
+              onPlanStateChange={onPlanStateChange}
+              onPlanExecutionChange={onPlanExecutionChange}
+              onExecuteHomePlan={onExecuteHomePlan}
+              trustMode={trustMode}
+              onPushSuccess={onPushSuccess}
+            />
+            {Boolean(msg.terminalCmd || msg.terminalResult) && (
+              <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
+                <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
+              </div>
+            )}
+          </div>
         )
       )}
 

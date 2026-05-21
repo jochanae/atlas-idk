@@ -17,6 +17,7 @@ import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
+import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
@@ -72,6 +73,8 @@ type AmbientSurface = {
 type HomeMessage = {
   role: "user" | "assistant";
   content: string;
+  terminalCmd?: unknown;
+  terminalResult?: unknown;
   imageUrl?: string;
   model?: string;
   intentType?: string | null;
@@ -156,6 +159,8 @@ function normalizeLoadedHomeMessages(
             { type: "url", label: "preview.lovable.app", href: "https://preview.lovable.app" },
           ] as RunArtifact[])
         : runArtifacts,
+      terminalCmd: m.terminalCmd ?? m.terminal_cmd,
+      terminalResult: m.terminalResult ?? m.terminal_result,
       errorMessage: m.errorMessage ?? m.error_message ?? null,
       surface: m.surface ?? null,
     };
@@ -1851,6 +1856,8 @@ export default function Home() {
                 runSummary?: string; run_summary?: string;
                 runActions?: RunAction[]; run_actions?: RunAction[];
                 runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
+                terminalCmd?: unknown; terminal_cmd?: unknown;
+                terminalResult?: unknown; terminal_result?: unknown;
                 surface?: AmbientSurface;
               };
               const plan = detectPlanFromText(streamedText);
@@ -1865,6 +1872,8 @@ export default function Home() {
                 runSummary: meta.runSummary ?? meta.run_summary ?? null,
                 runActions: meta.runActions ?? meta.run_actions ?? null,
                 runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
+                terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
+                terminalResult: meta.terminalResult ?? meta.terminal_result,
               };
               setHomeMessages(prev => prev.map(m =>
                 (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
@@ -2623,6 +2632,9 @@ export default function Home() {
                               surface={msg.surface ?? null}
                               onAction={handleAmbientSurfaceAction}
                             />
+                          )}
+                          {!msg.streaming && Boolean(msg.terminalCmd || msg.terminalResult) && (
+                            <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
                           )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;

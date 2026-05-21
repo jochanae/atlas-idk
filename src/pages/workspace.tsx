@@ -154,6 +154,8 @@ export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
   content: string;
+  terminalCmd?: unknown;
+  terminalResult?: unknown;
   intentType?: string | null;
   plan?: Plan;
   planFromHome?: boolean;
@@ -3163,6 +3165,8 @@ export default function Workspace() {
     getListSessionsQueryKey,
     mapPriorMessage: (m) => {
       const raw = m as typeof m & {
+        terminalCmd?: unknown; terminal_cmd?: unknown;
+        terminalResult?: unknown; terminal_result?: unknown;
         executionTimeMs?: number | null; execution_time_ms?: number | null;
         inputTokens?: number | null; input_tokens?: number | null;
         outputTokens?: number | null; output_tokens?: number | null;
@@ -3172,6 +3176,8 @@ export default function Workspace() {
         id: m.id,
         role: m.role as "user" | "assistant",
         content: m.content,
+        terminalCmd: raw.terminalCmd ?? raw.terminal_cmd,
+        terminalResult: raw.terminalResult ?? raw.terminal_result,
         intentType: m.intentType,
         sentAt: m.createdAt,
         executionTimeMs: raw.executionTimeMs ?? raw.execution_time_ms ?? null,
