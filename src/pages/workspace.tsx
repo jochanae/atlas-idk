@@ -3056,6 +3056,13 @@ export default function Workspace() {
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
 
+  // Record this project as the user's most recently touched project.
+  // Best-effort; backend may 404 transiently.
+  useEffect(() => {
+    if (!Number.isFinite(id) || id <= 0) return;
+    void import("@/lib/projectRecent").then(({ touchProject }) => touchProject(id));
+  }, [id]);
+
   const {
     input, setInput,
     attachedFiles, setAttachedFiles,
