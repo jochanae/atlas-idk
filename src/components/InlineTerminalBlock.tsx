@@ -43,13 +43,13 @@ function normalizeTerminalResult(value: unknown, fallbackCommand?: string): Pars
   };
 }
 
-async function execTerminalCommand(command: string): Promise<ParsedTerminalResult> {
+async function execTerminalCommand(command: string, projectId?: number): Promise<ParsedTerminalResult> {
   const started = Date.now();
   const res = await fetch("/api/terminal/exec", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ command }),
+    body: JSON.stringify({ command, projectId }),
   });
   const outputChunks: string[] = [];
   let exitCode: number | null = res.ok ? null : res.status;
@@ -98,7 +98,7 @@ async function execTerminalCommand(command: string): Promise<ParsedTerminalResul
   return { command, output: outputChunks.join(""), exitCode, durationMs };
 }
 
-export function InlineTerminalBlock({ terminalCmd, terminalResult }: { terminalCmd?: unknown; terminalResult?: unknown }) {
+export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: { terminalCmd?: unknown; terminalResult?: unknown; projectId?: number }) {
   const cmd = normalizeTerminalCmd(terminalCmd);
   const existingResult = normalizeTerminalResult(terminalResult, cmd?.command);
   const [result, setResult] = useState<ParsedTerminalResult | null>(existingResult);
@@ -116,7 +116,7 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult }: { terminalC
     setRunning(true);
     setError(null);
     try {
-      setResult(await execTerminalCommand(command));
+      setResult(await execTerminalCommand(command, projectId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Command failed.");
     } finally {

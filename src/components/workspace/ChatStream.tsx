@@ -218,7 +218,7 @@ export function ChatStream(props: ChatStreamProps) {
             />
             {Boolean(msg.terminalCmd || msg.terminalResult) && (
               <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
-                <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
+                <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />
               </div>
             )}
           </div>
