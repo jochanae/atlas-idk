@@ -1941,6 +1941,8 @@ function RightPanel({
   onForgeNodesConsumed?: () => void;
   onForgeCompleted?: () => void;
   onContinueSession?: (sessionId: number | string) => void;
+  onNavLedger?: () => void;
+  onNavPreview?: () => void;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
