@@ -3351,12 +3351,18 @@ export default function Workspace() {
   });
   const [showDrawer, setShowDrawer] = useState(false);
   useEffect(() => {
-    // The shell's project chevron dispatches this event. The workspace shows
-    // the full project dropdown (switch / rename / settings / clone / ledger /
-    // dashboard / archive / delete) — NOT the generic ProjectsDrawer.
-    const open = () => setShowProjectMenu(true);
-    window.addEventListener("axiom:open-projects-drawer", open);
-    return () => window.removeEventListener("axiom:open-projects-drawer", open);
+    // The project-name chevron dispatches `open-projects-drawer` and opens the
+    // full project dropdown (switch / rename / settings / clone / ledger /
+    // dashboard / archive / delete). The folder icon dispatches the separate
+    // `open-nav-drawer` event and opens the global navigation drawer.
+    const openProjectMenu = () => setShowProjectMenu(true);
+    const openNavDrawer = () => setShowDrawer(true);
+    window.addEventListener("axiom:open-projects-drawer", openProjectMenu);
+    window.addEventListener("axiom:open-nav-drawer", openNavDrawer);
+    return () => {
+      window.removeEventListener("axiom:open-projects-drawer", openProjectMenu);
+      window.removeEventListener("axiom:open-nav-drawer", openNavDrawer);
+    };
   }, []);
   const [showVault, setShowVault] = useState(false);
   const [showForgeExternal, setShowForgeExternal] = useState(false);
