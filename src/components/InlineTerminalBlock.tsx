@@ -108,6 +108,17 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
   const [confirmText, setConfirmText] = useState("");
   const [diffResult, setDiffResult] = useState<ParsedTerminalResult | null>(null);
   const [diffRunning, setDiffRunning] = useState(false);
+  const [copied, setCopied] = useState<"output" | "all" | null>(null);
+
+  const copyToClipboard = async (text: string, kind: "output" | "all") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(null), 1400);
+    } catch {
+      // clipboard unavailable
+    }
+  };
 
   const command = result?.command || cmd?.command;
   if (!command) return null;
