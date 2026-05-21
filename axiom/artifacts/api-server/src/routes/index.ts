@@ -26,6 +26,12 @@ import storageRouter from "./storage";
 import errorlogRouter from "./errorlog";
 import selfmapRouter from "./selfmap";
 import forgeStateRouter from "./forge-state";
+import serverApiRouter from "./server-api";
+import tensionsRouter from "./tensions";
+import scanRouter from "./scan";
+import blueprintRouter from "./blueprint";
+import connectionsRouter from "./connections";
+import stateRouter from "./state";
 
 const router: IRouter = Router();
 
@@ -35,6 +41,7 @@ router.use(authRouter);
 router.use(googleAuthRouter);
 router.use(healthRouter);
 router.use(errorlogRouter);
+router.use("/server", serverApiRouter);
 
 // Invite redemption is public so users can sign up via invite link
 router.use(invitesRouter);
@@ -57,6 +64,11 @@ router.use(requireAuth, forgeStateRouter);
 router.use(requireAuth, devserverRouter);
 router.use(requireAuth, importRouter);
 router.use(requireAuth, selfmapRouter);
+router.use(requireAuth, tensionsRouter);
+router.use(requireAuth, scanRouter);
+router.use(requireAuth, blueprintRouter);
+router.use(requireAuth, connectionsRouter);
+router.use(requireAuth, stateRouter);
 
 // Stats
 router.use(requireAuth, statsRouter);

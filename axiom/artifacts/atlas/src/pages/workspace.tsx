@@ -71,6 +71,13 @@ interface CatchPayload {
   leadSentence: string;
 }
 
+interface AlertPayload {
+  type: string;
+  headline: string;
+  detail: string;
+  action: string;
+}
+
 interface FileEdit {
   path: string;
   language: string;
@@ -132,6 +139,8 @@ interface ChatMessage {
   model?: string;
   isDeepDive?: boolean;
   autoPushed?: boolean;
+  alertPayload?: AlertPayload | null;
+  alertResolved?: boolean;
 }
 
 type MemoryChip = { label: string; insight?: string };
@@ -268,9 +277,9 @@ function profileToString(p: UserProfile): string {
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
 function useIsMobile() {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 760);
+  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
-    const handler = () => setMobile(window.innerWidth < 760);
+    const handler = () => setMobile(window.innerWidth < 768);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
@@ -545,6 +554,128 @@ function DecisionLogCard({
           }}
         >
           Adjust
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ProactiveAlertCard ───────────────────────────────────────────────────────
+function ProactiveAlertCard({
+  payload,
+  projectId,
+  sessionId,
+  onDismiss,
+}: {
+  payload: AlertPayload;
+  projectId: number;
+  sessionId: number;
+  onDismiss: () => void;
+}) {
+  const createEntry = useCreateEntry();
+  const queryClient = useQueryClient();
+
+  const handleNote = () => {
+    createEntry.mutate(
+      {
+        projectId,
+        data: {
+          title: payload.headline,
+          summary: payload.detail,
+          status: "committed",
+          severity: "neutral",
+          mode: "THINK",
+          sessionId,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(projectId, {}) });
+          onDismiss();
+        },
+      }
+    );
+  };
+
+  return (
+    <div
+      role="status"
+      aria-label="Atlas notice"
+      className="atlas-bubble-in"
+      style={{
+        marginTop: 8, padding: "10px 12px", borderRadius: 8,
+        background: "color-mix(in oklab, var(--atlas-gold) 5%, var(--atlas-surface))",
+        border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{
+            width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
+            background: "var(--atlas-gold)",
+            boxShadow: "0 0 6px color-mix(in oklab, var(--atlas-gold) 48%, transparent)",
+          }} />
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 9,
+            letterSpacing: "0.14em", textTransform: "uppercase" as const,
+            color: "var(--atlas-gold)", opacity: 0.85,
+          }}>
+            {payload.headline}
+          </span>
+        </div>
+        <button
+          onClick={onDismiss}
+          title="Dismiss"
+          aria-label="Dismiss notice"
+          style={{
+            background: "transparent", border: "none", cursor: "pointer",
+            color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1,
+            padding: "2px 4px", opacity: 0.45, transition: "opacity 160ms",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.45")}
+        >×</button>
+      </div>
+
+      <p style={{ margin: "0 0 9px", fontSize: 12, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.75 }}>
+        {payload.detail}
+      </p>
+
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <button
+          disabled={createEntry.isPending}
+          onClick={handleNote}
+          style={{
+            padding: "4px 11px", fontSize: 9.5, fontWeight: 600,
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+            textTransform: "uppercase" as const,
+            background: "transparent",
+            color: "color-mix(in oklab, var(--atlas-gold) 85%, var(--atlas-fg))",
+            border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 42%, transparent)",
+            borderRadius: 4,
+            cursor: createEntry.isPending ? "not-allowed" : "pointer",
+            opacity: createEntry.isPending ? 0.5 : 1,
+            transition: "all 160ms ease",
+          }}
+        >
+          {createEntry.isPending ? "Noting…" : (payload.action || "Note it")}
+        </button>
+        <button
+          onClick={onDismiss}
+          style={{
+            padding: "4px 11px", fontSize: 9.5, fontWeight: 600,
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+            textTransform: "uppercase" as const,
+            background: "transparent",
+            color: "var(--atlas-muted)",
+            border: "0.5px solid color-mix(in oklab, var(--atlas-border) 70%, transparent)",
+            borderRadius: 4, cursor: "pointer", opacity: 0.6,
+            transition: "opacity 160ms ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
+        >
+          Got it
         </button>
       </div>
     </div>
@@ -1619,6 +1750,7 @@ function InlineDiffCard({
   onReviewDiff,
   onPushSuccess,
   onPrCreated,
+  onEditDeclined,
 }: {
   fileEdits: FileEdit[];
   linePatches: LinePatch[];
@@ -1628,6 +1760,7 @@ function InlineDiffCard({
   onReviewDiff: () => void;
   onPushSuccess: (records: PushRecord[]) => void;
   onPrCreated?: (prUrl: string) => void;
+  onEditDeclined?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -1635,6 +1768,7 @@ function InlineDiffCard({
   const [patchedEdits, setPatchedEdits] = useState<FileEdit[] | null>(null);
   const [showPushModal, setShowPushModal] = useState(false);
   const [originals, setOriginals] = useState<Record<string, string | null>>({});
+  const pushSucceededRef = useRef(false);
 
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const token = project?.githubToken ?? null;
@@ -1724,6 +1858,7 @@ function InlineDiffCard({
         edits.push({ path: filePath, language, content });
       }
       setPatchedEdits(edits);
+      pushSucceededRef.current = false;
       setShowPushModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not apply patches.");
@@ -1734,6 +1869,7 @@ function InlineDiffCard({
 
   const handleApply = () => {
     if (fileEdits.length > 0) {
+      pushSucceededRef.current = false;
       setShowPushModal(true);
       return;
     }
@@ -1839,8 +1975,8 @@ function InlineDiffCard({
           fileEdits={modalEdits}
           linkedRepo={linkedRepo}
           projectId={projectId}
-          onClose={() => setShowPushModal(false)}
-          onPushSuccess={(records) => { onPushSuccess(records); setShowPushModal(false); }}
+          onClose={() => { setShowPushModal(false); if (!pushSucceededRef.current) onEditDeclined?.(); }}
+          onPushSuccess={(records) => { pushSucceededRef.current = true; onPushSuccess(records); setShowPushModal(false); }}
           onPrCreated={onPrCreated}
         />
       )}
@@ -1986,6 +2122,9 @@ function AssistantBubble({
   onPlanExecutionChange,
   onExecuteHomePlan,
   trustMode,
+  agenticMode,
+  onEditDeclined,
+  onAlertDismiss,
 }: {
   message: ChatMessage;
   isNew?: boolean;
@@ -2012,8 +2151,12 @@ function AssistantBubble({
   onPlanExecutionChange?: (messageId: number, execution: PlanExecution | null) => void;
   onExecuteHomePlan?: (plan: Plan) => void;
   trustMode: "review" | "auto";
+  agenticMode?: boolean;
+  onEditDeclined?: () => void;
+  onAlertDismiss?: () => void;
 }) {
   const [hov, setHov] = useState(false);
+  const hovTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [parkDone, setParkDone] = useState(false);
   const [commitDone, setCommitDone] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
@@ -2197,6 +2340,11 @@ function AssistantBubble({
       style={{ display: "flex", justifyContent: "flex-start", marginBottom: 24 }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      onTouchStart={() => {
+        if (hovTimerRef.current) clearTimeout(hovTimerRef.current);
+        setHov(true);
+        hovTimerRef.current = setTimeout(() => setHov(false), 3000);
+      }}
     >
       <div style={{ maxWidth: "80%" }}>
         <div
@@ -2212,7 +2360,7 @@ function AssistantBubble({
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 3,
               padding: "1px 6px", borderRadius: 4,
-              background: message.model === "gpt4o"
+              background: false
                 ? "rgba(16,163,127,0.12)"
                 : message.model === "gemini"
                 ? "rgba(66,133,244,0.12)"
@@ -2437,6 +2585,7 @@ function AssistantBubble({
             onReviewDiff={onReviewDiff}
             onPushSuccess={onPushSuccess}
             onPrCreated={onPrCreated}
+            onEditDeclined={onEditDeclined}
           />
         )}
 
@@ -2463,7 +2612,14 @@ function AssistantBubble({
           />
         )}
 
-
+        {message.alertPayload && !message.alertResolved && (
+          <ProactiveAlertCard
+            payload={message.alertPayload}
+            projectId={projectId}
+            sessionId={sessionId}
+            onDismiss={() => onAlertDismiss?.()}
+          />
+        )}
 
         {/* CMD_EXEC — runnable command card suggested by Atlas */}
         {cmdExec && (
@@ -2472,7 +2628,9 @@ function AssistantBubble({
               marginTop: 12, padding: "10px 14px",
               borderRadius: 8,
               background: "var(--atlas-surface)",
-              border: "1px solid rgba(201,162,76,0.22)",
+              border: agenticMode
+                ? "1px solid rgba(201,162,76,0.40)"
+                : "1px solid rgba(201,162,76,0.22)",
               display: "flex", alignItems: "center", gap: 10,
             }}
           >
@@ -2488,22 +2646,36 @@ function AssistantBubble({
                 <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginTop: 2, opacity: 0.8 }}>{cmdExec.description}</div>
               )}
             </div>
-            <button
-              onClick={() => onRunCommand?.(cmdExec.command)}
-              style={{
-                flexShrink: 0, padding: "5px 12px", borderRadius: 5,
-                background: "rgba(146,64,14,0.25)",
-                border: "1px solid rgba(146,64,14,0.55)",
-                color: "rgba(230,150,90,0.95)",
-                fontSize: 11, fontWeight: 600, fontFamily: "var(--app-font-mono)",
-                letterSpacing: "0.08em", cursor: "pointer",
-                transition: "all 140ms ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(146,64,14,0.4)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(146,64,14,0.25)")}
-            >
-              Run →
-            </button>
+            {agenticMode ? (
+              <div style={{
+                flexShrink: 0, padding: "5px 10px", borderRadius: 5,
+                background: "rgba(201,162,76,0.10)",
+                border: "1px solid rgba(201,162,76,0.30)",
+                color: "rgba(201,162,76,0.80)",
+                fontSize: 10, fontWeight: 600, fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 4,
+              }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                Auto
+              </div>
+            ) : (
+              <button
+                onClick={() => onRunCommand?.(cmdExec.command)}
+                style={{
+                  flexShrink: 0, padding: "5px 12px", borderRadius: 5,
+                  background: "rgba(146,64,14,0.25)",
+                  border: "1px solid rgba(146,64,14,0.55)",
+                  color: "rgba(230,150,90,0.95)",
+                  fontSize: 11, fontWeight: 600, fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.08em", cursor: "pointer",
+                  transition: "all 140ms ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(146,64,14,0.4)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(146,64,14,0.25)")}
+              >
+                Run →
+              </button>
+            )}
           </div>
         )}
 
@@ -2574,15 +2746,24 @@ function AssistantBubble({
           {onExtractToForge && message.content.length > 200 && (
             <button
               className="atlas-icon-action"
-              title="Extract to Forge"
+              title="Extract to Forge — turn this response into strategic nodes"
               aria-label="Open Forge"
               onClick={() => onExtractToForge(message.content)}
-              style={{ ...ICON_TOUCH_TARGET_STYLE, opacity: hov ? 0.85 : 0.32 }}
+              style={{
+                ...ICON_TOUCH_TARGET_STYLE,
+                display: "flex", alignItems: "center", gap: 4,
+                opacity: hov ? 1 : 0.32,
+                padding: "4px 7px", borderRadius: 5,
+                border: hov ? "1px solid rgba(201,162,76,0.30)" : "1px solid transparent",
+                background: hov ? "rgba(201,162,76,0.07)" : "transparent",
+                transition: "all 180ms ease",
+              }}
             >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 1v8M4 6l3 3 3-3" />
                 <path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" />
               </svg>
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>FORGE</span>
             </button>
           )}
         </div>
@@ -5603,7 +5784,7 @@ function MemoryTab({ projectId }: { projectId: number }) {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }} className="scrollbar-none">
+      <div style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 200px)", padding: "10px 12px" }} className="scrollbar-none">
         {editing ? (
           <textarea
             value={draft}
@@ -6873,52 +7054,30 @@ function RightPanel({
           );
         })}
         {/* Desktop: handover trigger button — pushed to the right of the tabs.
-            Mirrors the mobile footer pill in AxiomFlow. Switches to the Map
-            tab and opens the popover so the user can confirm/title the
-            snapshot before sending it to Atlas. */}
+            Mirrors the mobile footer pill in AxiomFlow. Opens Atlas home. */}
         {!isMobile && onHandover && (
           <>
             <div style={{ flex: 1 }} />
             <button
-              onClick={() => {
-                setTab("map");
-                onHandoverOpenChange?.(true);
-              }}
-              disabled={!currentSnapshot || (currentSnapshot?.definedCount ?? 0) === 0 || !!handoverPending}
-              title={
-                handoverPending
-                  ? "Handing over to Atlas…"
-                  : !currentSnapshot || currentSnapshot.definedCount === 0
-                    ? "Define at least one node to hand over"
-                    : "Send the current Axiom Flow snapshot to Atlas as a new chat"
-              }
+              onClick={onHomeNav}
+              title="Open Atlas home"
               style={{
                 marginRight: 8,
                 padding: "5px 11px",
                 borderRadius: 5,
-                background: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.15)"
-                  : "rgba(146,64,14,0.22)",
-                border: `1px solid ${
-                  !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                    ? "rgba(var(--atlas-muted-rgb),0.35)"
-                    : "rgba(146,64,14,0.65)"
-                }`,
-                color: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.7)"
-                  : "rgba(230,150,90,0.95)",
+                background: "rgba(146,64,14,0.22)",
+                border: "1px solid rgba(146,64,14,0.65)",
+                color: "rgba(230,150,90,0.95)",
                 fontFamily: "var(--app-font-mono)",
                 fontSize: 9.5,
                 fontWeight: 600,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                cursor: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "not-allowed"
-                  : "pointer",
+                cursor: "pointer",
                 transition: "all 160ms ease",
               }}
             >
-              {handoverPending ? "Sending…" : "→ Atlas"}
+              → Atlas
             </button>
           </>
         )}
@@ -8004,6 +8163,8 @@ export default function Workspace() {
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
   const [trustMode, setTrustMode] = useState<"review" | "auto">("review");
+  const [agenticMode, setAgenticMode] = useState(true);
+  const [agenticIterCount, setAgenticIterCount] = useState(0);
   const [autoRunCmd] = useState<string>("");
   const [previewRefreshTrigger, setPreviewRefreshTrigger] = useState(0);
 
@@ -8640,6 +8801,7 @@ export default function Workspace() {
             }
           }
           const cp = res.catchPayload as CatchPayload | null;
+          const ap = res.alertPayload as AlertPayload | null;
           const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : [])) as FileEdit[];
           const lps = (res.linePatches ?? []) as LinePatch[];
           const aff = (res.autoFetchedFiles ?? []) as string[];
@@ -8660,6 +8822,7 @@ export default function Workspace() {
           setMessages((prev) => [...prev, {
             id: res.messageId, role: "assistant",
             content: res.content, intentType: res.intentType, catchPayload: cp,
+            ...(ap ? { alertPayload: ap } : {}),
             ...(res.plan ? { plan: res.plan as Plan } : {}),
             sentAt: new Date().toISOString(),
             model: res.model ?? wsModel,
@@ -9002,7 +9165,16 @@ export default function Workspace() {
   const handleCommit = useCallback(
     (content: string) => {
       if (!sessionId) return;
-      const title = content.replace(/\n/g, " ").slice(0, 80).trim();
+      const title = content
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/^#{1,6}\s+/gm, "")
+        .replace(/`(.+?)`/g, "$1")
+        .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+        .replace(/\n/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .slice(0, 80)
+        .trim();
       createEntry.mutate(
         { projectId: id, data: { title, summary: content.slice(0, 500), status: "committed", severity: "committed", mode: "think", sessionId } },
         { onSuccess: () => { playCommit(); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
@@ -9133,6 +9305,51 @@ export default function Workspace() {
     setPendingTerminalCommand(command);
     setLeftTab("terminal");
   }, []);
+
+  // ── Agentic auto-execute ──────────────────────────────────────────────────
+  const agenticAutoRunRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!agenticMode || chatPending) return;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg || lastMsg.role !== "assistant") return;
+    const match = lastMsg.content.match(/CMD_EXEC:(\{[^\n}]*\})/);
+    if (!match) return;
+    let cleanup: (() => void) | undefined;
+    try {
+      const parsed = JSON.parse(match[1]) as { command?: string };
+      const cmd = parsed.command;
+      if (!cmd?.trim()) return;
+      const key = (lastMsg.sentAt ?? String(messages.length)) + cmd;
+      if (agenticAutoRunRef.current.has(key)) return;
+      agenticAutoRunRef.current.add(key);
+      setAgenticIterCount((n) => n + 1);
+      const t = setTimeout(() => handleRunCommand(cmd), 900);
+      cleanup = () => clearTimeout(t);
+    } catch {}
+    return cleanup;
+  }, [messages, chatPending, agenticMode, handleRunCommand]);
+
+  // Session memory write — fires when user navigates away / hides the tab.
+  // Calls the summarize endpoint which asks Claude Haiku to distill the session
+  // into a T3 (episodic) memory entry on the project, so Atlas remembers
+  // what was worked on the next time the workspace opens.
+  const summarizedSessionRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!sessionId) return;
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (assistantCount < 2) return;
+    const onHide = () => {
+      if (!document.hidden) return;
+      if (summarizedSessionRef.current === sessionId) return; // already saved this session
+      summarizedSessionRef.current = sessionId;
+      void fetch(`/api/sessions/${sessionId}/summarize`, {
+        method: "POST",
+        credentials: "include",
+      });
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [sessionId, messages]);
 
   const messagesRef = useRef<ChatMessage[]>([]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -9425,6 +9642,28 @@ export default function Workspace() {
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
               {!isMobile && <span>{trustMode === "auto" ? "Autopilot ON" : "Autopilot OFF"}</span>}
+            </button>
+            {/* Agent mode toggle */}
+            <button
+              onClick={() => { setAgenticMode((v) => !v); setAgenticIterCount(0); }}
+              title={agenticMode ? "Agent mode ON — commands run automatically. Tap to switch to manual." : "Agent mode OFF — you tap Run for each command. Tap to enable auto-execute."}
+              aria-label="Toggle agent mode"
+              style={{
+                display: "flex", alignItems: "center", gap: isMobile ? 0 : 5,
+                padding: isMobile ? "5px 7px" : "4px 10px",
+                borderRadius: 6, fontSize: 10, fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.08em", cursor: "pointer",
+                background: agenticMode ? "rgba(201,162,76,0.12)" : "var(--atlas-surface)",
+                border: agenticMode ? "1px solid rgba(201,162,76,0.35)" : "1px solid var(--atlas-border)",
+                color: agenticMode ? "rgba(201,162,76,0.9)" : "var(--atlas-muted)",
+                transition: "all 300ms ease", flexShrink: 0,
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ opacity: agenticMode ? 1 : 0.45 }}>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+                <path d="M8 5l8 7-8 7V5z" />
+              </svg>
+              {!isMobile && <span>{agenticMode ? "Agent ON" : "Agent OFF"}</span>}
             </button>
           </div>
 
@@ -10403,6 +10642,7 @@ export default function Workspace() {
                   onRegenerate={() => handleRegenerate(i)}
                   onPreviewCode={handlePreviewCode}
                   onRunCommand={handleRunCommand}
+                  agenticMode={agenticMode}
                   onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
                   onExtractToForge={(content) => { setForgePreloadContent(content); setShowForgeExternal(true); }}
                   onReviewDiff={() => setLeftTab("diff")}
@@ -10452,6 +10692,33 @@ export default function Workspace() {
                     setPreviewRefreshTrigger((t) => t + 1);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
                     setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
+                    // Close the FILE_EDIT loop — tell Atlas the push landed so it can continue
+                    if (sessionId) {
+                      const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
+                      const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                      doSend(
+                        `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                        sessionId,
+                        messagesRef.current,
+                      );
+                    }
+                  }}
+                  onEditDeclined={() => {
+                    if (sessionId) {
+                      const editsInFlight = messages
+                        .filter((m) => m.role === "assistant" && m.fileEdits && m.fileEdits.length > 0)
+                        .slice(-1)[0]?.fileEdits?.map((e) => e.path.split("/").pop()).join(", ") ?? "the proposed changes";
+                      doSend(
+                        `FILE_EDIT_DECLINED: User reviewed but did not push ${editsInFlight}. Awaiting further instruction.`,
+                        sessionId,
+                        messagesRef.current,
+                      );
+                    }
+                  }}
+                  onAlertDismiss={() => {
+                    setMessages((prev) => prev.map((m) =>
+                      m.id === msg.id ? { ...m, alertResolved: true } : m
+                    ));
                   }}
                 />
               )
@@ -10533,9 +10800,22 @@ export default function Workspace() {
               [{entryCount}] Ledger Entries
             </span>
             <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(200,190,185,0.5)" }}>·</span>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", transition: "color 300ms ease" }}>
-              {chatPending ? "Generating" : "Session Active"}
-            </span>
+            {agenticMode && agenticIterCount > 0 ? (
+              <span style={{
+                fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em",
+                textTransform: "uppercase", display: "flex", alignItems: "center", gap: 4,
+                color: "rgba(201,162,76,0.85)", transition: "color 300ms ease",
+              }}>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" style={{ opacity: 0.9, flexShrink: 0 }}>
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+                Agent · Loop {agenticIterCount} / 8
+              </span>
+            ) : (
+              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: chatPending ? "rgba(74,222,128,0.75)" : "rgba(200,190,185,0.6)", transition: "color 300ms ease" }}>
+                {chatPending ? "Generating" : "Session Active"}
+              </span>
+            )}
           </div>
 
           {/* Memory chips — what Atlas is tracking this session */}
@@ -11006,7 +11286,7 @@ export default function Workspace() {
                       <path d="M5.5 8.5L7 10l3-4" />
                     </svg>
                     <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-fg)", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>
-                      {wsModel === "claude" ? "Claude" : wsModel === "gpt4o" ? "GPT-4o" : wsModel === "gemini" ? "Gemini" : wsModel}
+                      {wsModel === "claude" ? "Claude" : wsModel === "gemini" ? "Gemini" : wsModel}
                     </span>
                     <svg width="7" height="7" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.35, flexShrink: 0 }}>
                       <path d="M1.5 3L4 5.5L6.5 3" stroke="var(--atlas-fg)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -11413,8 +11693,8 @@ export default function Workspace() {
             <div style={{ padding: "0 14px" }}>
               {([
                 { id: "claude", label: "Claude", sub: "Architect · Nuance & Strategy", available: true, icon: "C" },
-                { id: "gpt4o", label: "GPT-4o", sub: "Mechanic · Speed & Logic", available: true, icon: "G" },
                 { id: "gemini", label: "Gemini", sub: "Strategy · Long Context", available: true, icon: "Ge" },
+                { id: "gpt4o", label: "GPT-4o", sub: "Mechanic · Speed & Logic", available: false, icon: "G" },
               ]).map(m => (
                 <button
                   key={m.id}
@@ -11444,7 +11724,7 @@ export default function Workspace() {
                     <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)", display: "flex", alignItems: "center", gap: 6 }}>
                       {m.label}
                       {!m.available && (
-                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8, color: "var(--atlas-muted)", letterSpacing: "0.1em", opacity: 0.55, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", borderRadius: 3, padding: "1px 4px" }}>KEY NEEDED</span>
+                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8, color: "var(--atlas-muted)", letterSpacing: "0.1em", opacity: 0.55, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", borderRadius: 3, padding: "1px 4px" }}>COMING SOON</span>
                       )}
                     </div>
                     <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", letterSpacing: "0.05em", marginTop: 2, opacity: m.available ? 0.7 : 0.4 }}>{m.sub}</div>
