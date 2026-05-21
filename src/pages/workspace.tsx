@@ -5085,6 +5085,38 @@ export default function Workspace() {
               })}
             </div>
           )}
+          {isMobile && (() => {
+            const cfg = LENS_CONFIG[wsLens];
+            return (
+              <button
+                type="button"
+                onClick={() => setShowLensPicker(true)}
+                aria-label={`${cfg.label} lens — tap to change`}
+                aria-haspopup="dialog"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "5px 10px", borderRadius: 999,
+                  background: cfg.glowColor,
+                  border: `1px solid ${cfg.borderColor}`,
+                  color: cfg.color,
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: "var(--ts-tiny)",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.color, display: "inline-block" }} />
+                {cfg.label}
+                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden style={{ opacity: 0.7 }}>
+                  <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            );
+          })()}
+
         </div>
         )}
       </div>

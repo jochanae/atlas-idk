@@ -1231,19 +1231,8 @@ export default function Home() {
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
-  const [homeLens, setHomeLens] = useState<"flow" | "build" | "look" | "scenario">("flow");
-  useEffect(() => {
-    const key = authUser?.id ? `atlas-home-lens-${authUser.id}` : "atlas-home-lens";
-    try {
-      const saved = localStorage.getItem(key) as "flow" | "build" | "look" | "scenario" | null;
-      if (saved) setHomeLens(saved);
-    } catch {}
-  }, [authUser?.id]);
-  const updateHomeLens = useCallback((next: "flow" | "build" | "look" | "scenario") => {
-    setHomeLens(next);
-    const key = authUser?.id ? `atlas-home-lens-${authUser.id}` : "atlas-home-lens";
-    try { localStorage.setItem(key, next); } catch {}
-  }, [authUser?.id]);
+  // Home lens state removed — lenses live in workspace only
+
   const [threadLoading, setThreadLoading] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string>(() => {
     const newId = crypto.randomUUID();
@@ -2354,57 +2343,8 @@ export default function Home() {
         );
       })()}
 
-      {/* Lens chips — Flow / Build / Look / Scenario */}
-      {homeMessages.length > 0 && (
-        <div
-          role="group"
-          aria-label="Conversation lens"
-          style={{
-            position: "sticky",
-            top: 86,
-            zIndex: 19,
-            display: "flex",
-            justifyContent: "center",
-            gap: 4,
-            padding: "6px 12px",
-            background: "rgba(14,12,10,0.88)",
-            borderBottom: "1px solid var(--atlas-border)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-          }}
-        >
-          {([
-            ["flow", "Flow"],
-            ["build", "Build"],
-            ["look", "Look"],
-            ["scenario", "Scenario"],
-          ] as Array<["flow" | "build" | "look" | "scenario", string]>).map(([id, label]) => {
-            const active = homeLens === id;
-            return (
-              <button
-                key={id}
-                onClick={() => updateHomeLens(id)}
-                aria-pressed={active}
-                style={{
-                  background: active ? "rgba(201,162,76,0.16)" : "transparent",
-                  border: `1px solid ${active ? "rgba(201,162,76,0.45)" : "rgba(var(--atlas-muted-rgb),0.18)"}`,
-                  color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  padding: "4px 11px",
-                  borderRadius: 999,
-                  fontSize: "var(--ts-micro)",
-                  fontFamily: "var(--app-font-mono)",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "all 140ms",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Lens chips removed from home — lenses live in the workspace only */}
+
 
       {/* Conversation search bar + results — slides below subheader */}
       {showConvSearch && homeMessages.length > 0 && (
