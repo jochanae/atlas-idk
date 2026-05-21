@@ -131,9 +131,9 @@ export function ChatStream(props: ChatStreamProps) {
         </div>
       )}
       {messages.length === 0 && !chatPending && !(isHomeHandoff && homeHandoffMeta) && (
-        <div style={{ padding: "52px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {isBrandNewProject ? (
-              <div style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 24, marginBottom: 28, letterSpacing: "-0.025em", lineHeight: 1.2, textAlign: "center", maxWidth: 520 }}>
+              <div style={{ fontSize: 26, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 4, marginBottom: 18, letterSpacing: "-0.025em", lineHeight: 1.25, textAlign: "center", maxWidth: 520 }}>
                 New project. Before we build — do you have a <GlossaryTip term="north star">The one outcome that makes everything else worth building.</GlossaryTip> for this? Or should we start from what's in your head?
               </div>
           ) : (
