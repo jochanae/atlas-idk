@@ -67,7 +67,9 @@ function projectIdFromPath(pathname: string): number | null {
 
 function ShellWordmark() {
   const openProjects = useCallback(() => {
-    window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
+    // Folder icon opens the global navigation drawer (Atlas / Projects / Navigate),
+    // NOT the per-project menu. The project-name chevron handles project actions.
+    window.dispatchEvent(new CustomEvent("axiom:open-nav-drawer"));
   }, []);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

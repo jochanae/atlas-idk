@@ -1208,7 +1208,11 @@ export default function Home() {
   useEffect(() => {
     const open = () => setShowDrawer(true);
     window.addEventListener("axiom:open-projects-drawer", open);
-    return () => window.removeEventListener("axiom:open-projects-drawer", open);
+    window.addEventListener("axiom:open-nav-drawer", open);
+    return () => {
+      window.removeEventListener("axiom:open-projects-drawer", open);
+      window.removeEventListener("axiom:open-nav-drawer", open);
+    };
   }, []);
   useEffect(() => {
     const open = () => setShowProfile(true);
