@@ -610,6 +610,26 @@ body[data-axiom-thread="empty"] * { scrollbar-width: none; }
   background-size: 200% 100%;
   animation: atlasChatCardShimmer 4s ease-in-out infinite;
 }
+/* Full-bleed variant — used as the active-mode subheader so it matches the
+   main header edge-to-edge (no inset borders, shimmer line spans wall-to-wall). */
+.atlas-chat-card-top--fullbleed {
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+  background: rgba(14, 12, 10, 0.92);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.08);
+}
+.atlas-chat-card-top--fullbleed::before {
+  background: linear-gradient(90deg, rgba(212,175,55,0.0) 0%, rgba(212,175,55,0.55) 50%, rgba(212,175,55,0.0) 100%);
+}
+[data-theme="parchment"] .atlas-chat-card-top--fullbleed {
+  background: rgba(245, 235, 215, 0.92);
+  border-bottom: 1px solid rgba(180, 83, 9, 0.15);
+}
+[data-theme="parchment"] .atlas-chat-card-top--fullbleed::before {
+  background: linear-gradient(90deg, rgba(180,83,9,0.0) 0%, rgba(180,83,9,0.55) 50%, rgba(180,83,9,0.0) 100%);
+}
+
 
 /* ── Home page theme-aware classes ── */
 .atlas-home-bg {
