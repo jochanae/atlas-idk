@@ -544,39 +544,62 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 textTransform: "uppercase",
                 color: "rgba(212,175,55,0.7)",
               }}>Switch surface</div>
-              {[
-                { id: "ambient", title: "Ambient", subtitle: "Home · broad navigation" },
-                { id: "active", title: "Active", subtitle: "Composer focused · ready to think" },
-                { id: "operational", title: "Operational", subtitle: "Workspace · build & ledger" },
-              ].map((opt) => {
-                const isCurrent = opt.id === mode;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => goVariant(opt.id as "ambient" | "active" | "operational")}
-                    style={{
-                      display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
-                      padding: "14px 18px",
-                      background: "none", border: "none", textAlign: "left", cursor: "pointer",
-                      borderTop: "1px solid rgba(212,175,55,0.08)",
-                      color: "var(--atlas-text, #E8E4DD)",
-                      WebkitTapHighlightColor: "transparent",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{opt.title}</div>
-                      <div style={{ fontSize: 12, color: "rgba(168,162,158,0.85)", marginTop: 2 }}>{opt.subtitle}</div>
-                    </div>
-                    {isCurrent && (
-                      <span style={{
-                        fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "var(--ls-mono-cap)",
-                        textTransform: "uppercase", color: "rgba(212,175,55,0.9)",
-                        padding: "3px 8px", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 999,
-                      }}>Current</span>
-                    )}
-                  </button>
-                );
-              })}
+              {(() => {
+                const hasLastProject = typeof window !== "undefined" && !!localStorage.getItem("atlas:lastProjectId");
+                const rows = [
+                  { id: "ambient", title: "Ambient", subtitle: "Home · open thinking field", action: "Return to home" },
+                  { id: "active", title: "Active", subtitle: "A conversation in motion", action: "Open a focused thread" },
+                  { id: "operational", title: "Operational", subtitle: "Project workspace · build & ledger", action: hasLastProject ? "Open last project" : "Choose a project" },
+                ];
+                return rows.map((opt) => {
+                  const isCurrent = opt.id === mode;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => !isCurrent && goVariant(opt.id as "ambient" | "active" | "operational")}
+                      disabled={isCurrent}
+                      aria-current={isCurrent ? "true" : undefined}
+                      style={{
+                        display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                        gap: 12, padding: "14px 18px",
+                        background: "none", border: "none", textAlign: "left",
+                        cursor: isCurrent ? "default" : "pointer",
+                        borderTop: "1px solid rgba(212,175,55,0.08)",
+                        color: "var(--atlas-text, #E8E4DD)",
+                        WebkitTapHighlightColor: "transparent",
+                        opacity: isCurrent ? 0.65 : 1,
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{opt.title}</div>
+                        <div style={{ fontSize: 12, color: "rgba(168,162,158,0.85)", marginTop: 2 }}>{opt.subtitle}</div>
+                        {!isCurrent && (
+                          <div style={{
+                            fontFamily: "var(--app-font-mono)", fontSize: 10,
+                            letterSpacing: "var(--ls-mono-cap)", textTransform: "uppercase",
+                            color: "rgba(212,175,55,0.75)", marginTop: 6,
+                          }}>{opt.action} →</div>
+                        )}
+                      </div>
+                      {isCurrent ? (
+                        <span style={{
+                          fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "var(--ls-mono-cap)",
+                          textTransform: "uppercase", color: "rgba(212,175,55,0.9)",
+                          padding: "3px 8px", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 999,
+                          flexShrink: 0,
+                        }}>You're here</span>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                          stroke="rgba(212,175,55,0.7)" strokeWidth="1.75"
+                          strokeLinecap="round" strokeLinejoin="round"
+                          style={{ flexShrink: 0 }} aria-hidden>
+                          <polyline points="9 6 15 12 9 18" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                });
+              })()}
               <button
                 onClick={() => setSheetOpen(false)}
                 style={{
