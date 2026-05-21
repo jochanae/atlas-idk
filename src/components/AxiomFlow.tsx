@@ -464,6 +464,7 @@ interface AxiomFlowProps {
   // consistent with the rest of the app and there is no chance of a tablet
   // width range showing both the desktop tab-bar trigger and the footer pill.
   isMobile?: boolean;
+  projectName?: string;
 }
 
 export function AxiomFlow({
@@ -485,6 +486,7 @@ export function AxiomFlow({
   handoverOpen: handoverOpenProp,
   onHandoverOpenChange,
   isMobile: isMobileProp,
+  projectName,
 }: AxiomFlowProps) {
   const storageKey = `${BASE_STORAGE_KEY}${projectId ? `-${projectId}` : ""}`;
   // Prefer the workspace-provided breakpoint; fall back to a local snapshot
@@ -615,6 +617,9 @@ export function AxiomFlow({
   const shouldCount = nodes.filter(n => getMoscow(n) === "should").length;
   const openDecisionCount = nodes.filter(n => n.type === "decision" && !isNodeDefined(n)).length;
   const blockerCount = nodes.filter(n => n.type === "blocker").length;
+  const definedCount = nodes.filter(isNodeDefined).length;
+  const isEmptyMap = definedCount === 0;
+  const projectLabel = projectName?.trim() || "this project";
 
   useEffect(() => { onReadinessChange?.(readinessScore); }, [readinessScore, onReadinessChange]);
 
@@ -1014,7 +1019,7 @@ export function AxiomFlow({
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: palette.goldText, flexShrink: 0 }} />
               <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldText }}>
-                Here's what Atlas mapped from your conversation
+                {isEmptyMap ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
               </span>
               <button
                 onClick={() => {
@@ -1027,29 +1032,59 @@ export function AxiomFlow({
               </button>
             </div>
             <div style={{ color: palette.fgText, fontSize: 12, lineHeight: 1.55, opacity: 0.88, marginBottom: 10 }}>
-              Your goal is {goalForSummary?.label ?? "your first node"}. You have {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, and {blockerCount} blockers. Tap any node to edit.
+              {isEmptyMap ? (
+                <>Atlas hasn't extracted anything for <b>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b>Get started</b> and tell Atlas what you're building.</>
+              ) : (
+                <>Your goal is <b>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
+              )}
             </div>
-            <button
-              onClick={() => {
-                setSummaryCollapsed(true);
-                try { localStorage.setItem(mapSeenKey, "1"); } catch {}
-              }}
-              style={{
-                padding: "6px 11px",
-                borderRadius: 7,
-                background: `rgba(${palette.goldRgb},0.18)`,
-                border: `1px solid rgba(${palette.goldRgb},0.45)`,
-                color: palette.goldText,
-                cursor: "pointer",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 10,
-                fontWeight: 800,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              Got it
-            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {isEmptyMap && onNodeFocus && (
+                <button
+                  onClick={() => {
+                    setSummaryCollapsed(true);
+                    try { localStorage.setItem(mapSeenKey, "1"); } catch {}
+                    onNodeFocus(`Let's map ${projectLabel}. What does winning look like, and what are the must-haves to get there?`);
+                  }}
+                  style={{
+                    padding: "6px 11px",
+                    borderRadius: 7,
+                    background: `rgba(${palette.goldRgb},0.28)`,
+                    border: `1px solid rgba(${palette.goldRgb},0.55)`,
+                    color: palette.goldText,
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Get started
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setSummaryCollapsed(true);
+                  try { localStorage.setItem(mapSeenKey, "1"); } catch {}
+                }}
+                style={{
+                  padding: "6px 11px",
+                  borderRadius: 7,
+                  background: `rgba(${palette.goldRgb},0.18)`,
+                  border: `1px solid rgba(${palette.goldRgb},0.45)`,
+                  color: palette.goldText,
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Got it
+              </button>
+            </div>
           </div>
         )
       )}
