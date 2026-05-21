@@ -35,16 +35,17 @@ export function AtlasActivityBar({ content }: { content: string }) {
         }}
       />
       <span
+        className="atlas-label-shimmer"
         style={{
           fontFamily: "var(--app-font-mono)",
           fontSize: 10,
           letterSpacing: "0.08em",
-          color: "var(--atlas-muted)",
           textTransform: "uppercase",
         }}
       >
         {atlasActivityStatus(content)}
       </span>
+
     </div>
   );
 }

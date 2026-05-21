@@ -5146,7 +5146,7 @@ export default function Workspace() {
                       e.preventDefault();
                       const newName = renameDraft.trim() || (project?.name ?? "");
                       updateProjectHeader.mutate({ id, data: { name: newName } }, {
-                        onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); setRenaming(false); setRenameError(null); },
+                        onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); void projectState.refresh(); setRenaming(false); setRenameError(null); },
                         onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
                       });
                     }
@@ -5157,10 +5157,11 @@ export default function Workspace() {
                     if (renameEscapeRef.current) { renameEscapeRef.current = false; return; }
                     const newName = renameDraft.trim() || (project?.name ?? "");
                     updateProjectHeader.mutate({ id, data: { name: newName } }, {
-                      onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); setRenaming(false); setRenameError(null); },
+                      onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); void projectState.refresh(); setRenaming(false); setRenameError(null); },
                       onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
                     });
                   }}
+
                   style={{ background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: "var(--ts-body)", fontWeight: 500, fontFamily: "var(--app-font-sans)", width: 180, opacity: updateProjectHeader.isPending ? 0.5 : 1, transition: "opacity 150ms ease" }}
                 />
                 {renameError && (

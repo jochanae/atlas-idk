@@ -556,6 +556,30 @@ body[data-axiom-thread="empty"] * { scrollbar-width: none; }
   animation: atlas-dot-pulse 2.2s ease-in-out infinite;
 }
 
+/* ── Thinking-label shimmer (gold sweep across muted text) ── */
+@keyframes atlas-label-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.atlas-label-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--atlas-muted) 0%,
+    var(--atlas-muted) 35%,
+    var(--atlas-gold) 50%,
+    var(--atlas-muted) 65%,
+    var(--atlas-muted) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: atlas-label-shimmer 2.8s linear infinite;
+}
+
+
 /* ── Readiness ring — 100% pulse ── */
 @keyframes atlas-ring-pulse {
   0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px rgba(201,162,76,0.8)); }

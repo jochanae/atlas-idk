@@ -14,6 +14,9 @@ import { useProjectState } from "@/hooks/useProjectState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
+import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+
 
 type ShellDepth = "ambient" | "active" | "operational";
 
@@ -297,15 +300,52 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   const name = ps.project?.name?.trim() || "Untitled project";
   const hasActive = Boolean(ps.activeSession);
+  const qc = useQueryClient();
+  const updateProject = useUpdateProject();
+
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const escapeRef = useRef(false);
 
   const openSwitcher = useCallback(() => {
     window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
   }, []);
 
-  const openRename = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    window.dispatchEvent(new CustomEvent("axiom:rename-project"));
-  }, []);
+  const beginRename = useCallback(() => {
+    setDraft(ps.project?.name ?? "");
+    setError(null);
+    setRenaming(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [ps.project?.name]);
+
+  useEffect(() => {
+    const handler = () => beginRename();
+    window.addEventListener("axiom:rename-project", handler);
+    return () => window.removeEventListener("axiom:rename-project", handler);
+  }, [beginRename]);
+
+  const commit = useCallback(() => {
+    if (projectId == null || updateProject.isPending) return;
+    const newName = draft.trim() || (ps.project?.name ?? "");
+    if (newName === ps.project?.name) { setRenaming(false); return; }
+    updateProject.mutate(
+      { id: projectId, data: { name: newName } },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          void ps.refresh();
+          setRenaming(false);
+          setError(null);
+        },
+        onError: (err) => {
+          setError((err as Error)?.message ?? "Failed to rename.");
+          setTimeout(() => inputRef.current?.focus(), 0);
+        },
+      }
+    );
+  }, [draft, projectId, ps, qc, updateProject]);
 
   if (projectId == null) return null;
 
@@ -324,61 +364,80 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
           boxShadow: hasActive ? "0 0 6px rgba(74,222,128,0.6)" : "none",
         }}
       />
-      <button
-        type="button"
-        onClick={openSwitcher}
-        title="Switch project"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          minWidth: 0,
-          background: "transparent",
-          border: "none",
-          padding: "0 4px 0 6px",
-          cursor: "pointer",
-          color: "var(--atlas-fg)",
-          fontFamily: "var(--app-font-sans)",
-          fontSize: "var(--ts-body)",
-          fontWeight: 500,
-          lineHeight: "var(--lh-snug)",
-          letterSpacing: "var(--ls-tight)",
-          opacity: 0.92,
-          pointerEvents: "auto",
-        }}
-      >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        onClick={openRename}
-        title="Rename project"
-        aria-label="Rename project"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 22,
-          height: 22,
-          background: "transparent",
-          border: "none",
-          padding: 0,
-          cursor: "pointer",
-          color: "var(--atlas-fg)",
-          opacity: 0.55,
-          flexShrink: 0,
-        }}
-      >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M11 2l3 3-8 8H3v-3l8-8z" />
-        </svg>
-      </button>
+      {renaming ? (
+        <div style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
+          <input
+            ref={inputRef}
+            autoFocus
+            value={draft}
+            disabled={updateProject.isPending}
+            onChange={(e) => { setDraft(e.target.value); setError(null); }}
+            onKeyDown={(e) => {
+              if (updateProject.isPending) return;
+              if (e.key === "Enter") { e.preventDefault(); commit(); }
+              if (e.key === "Escape") { escapeRef.current = true; setRenaming(false); setError(null); }
+            }}
+            onBlur={() => {
+              if (updateProject.isPending) return;
+              if (escapeRef.current) { escapeRef.current = false; return; }
+              commit();
+            }}
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(var(--atlas-gold-rgb),0.4)",
+              borderRadius: 4,
+              outline: "none",
+              color: "var(--atlas-fg)",
+              fontFamily: "var(--app-font-sans)",
+              fontSize: "var(--ts-body)",
+              fontWeight: 500,
+              padding: "2px 6px",
+              width: 180,
+              opacity: updateProject.isPending ? 0.5 : 1,
+              transition: "opacity 150ms ease",
+            }}
+          />
+          {error && (
+            <span style={{ fontSize: "var(--ts-sm)", color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginTop: 2, lineHeight: 1.3 }}>
+              {error}
+            </span>
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={openSwitcher}
+          onDoubleClick={beginRename}
+          title="Tap to switch project · double-tap to rename"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            minWidth: 0,
+            background: "transparent",
+            border: "none",
+            padding: "0 4px 0 6px",
+            cursor: "pointer",
+            color: "var(--atlas-fg)",
+            fontFamily: "var(--app-font-sans)",
+            fontSize: "var(--ts-body)",
+            fontWeight: 500,
+            lineHeight: "var(--lh-snug)",
+            letterSpacing: "var(--ls-tight)",
+            opacity: 0.92,
+            pointerEvents: "auto",
+          }}
+        >
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
+
 
 
 function ShellStatusChip({ projectId }: { projectId: number | null }) {
