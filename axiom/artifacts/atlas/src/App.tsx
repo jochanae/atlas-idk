@@ -35,11 +35,11 @@ const SILENT_401_PATTERNS = ["/api/nexus/activity", "/api/nexus/briefing", "/api
 
 let _401redirectPending = false;
 
-// When VITE_API_BASE_URL is set (e.g. Railway backend URL), all relative /api/
+// When VITE_API_URL is set (e.g. Railway backend URL), all relative /api/
 // calls are automatically rewritten to hit that origin. This makes the frontend
 // work correctly when deployed to a different domain (Vercel, Netlify, etc.)
 // without touching any individual fetch call in the codebase.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
   if (!API_BASE) return input;
@@ -54,6 +54,17 @@ function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
 const _originalFetch = window.fetch.bind(window);
 window.fetch = async (...args) => {
   args[0] = resolveApiUrl(args[0]);
+  if (API_BASE) {
+    const url = typeof args[0] === "string"
+      ? args[0]
+      : args[0] instanceof URL
+        ? args[0].toString()
+        : args[0].url;
+    const isApiCall = new URL(url, location.origin).pathname.startsWith("/api/");
+    if (isApiCall && args[1]?.credentials === undefined) {
+      args[1] = { ...(args[1] ?? {}), credentials: "include" };
+    }
+  }
   const res = await _originalFetch(...args);
   if (res.status === 401) {
     const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
@@ -286,6 +297,16 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
+        background: "#92400E", color: "#000",
+        padding: "5px 12px",
+        fontSize: 11, fontWeight: 600, textAlign: "center",
+        fontFamily: "var(--app-font-mono, monospace)", letterSpacing: "0.04em",
+        pointerEvents: "none", userSelect: "none",
+      }}>
+        ⚠️ OLD VERSION — build in axiomsystem.app
+      </div>
       <TooltipProvider>
         <ErrorBoundary>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

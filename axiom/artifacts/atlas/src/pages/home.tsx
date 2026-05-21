@@ -50,6 +50,8 @@ type HomeHandoffSignal = {
   reason: string | null;
 };
 
+type HomeUserType = "idea" | "building" | "clients" | "portfolio";
+
 type HomeMessage = {
   role: "user" | "assistant";
   content: string;
@@ -62,6 +64,27 @@ type HomeMessage = {
   handoffSignal?: HomeHandoffSignal;
   plan?: Plan;
 };
+
+type HomeThreadMessage = {
+  role: string;
+  content: string;
+  isBriefing?: boolean;
+};
+
+function loadHomeUserType(): HomeUserType | null {
+  try {
+    const explicit = localStorage.getItem("axiom_user_type");
+    if (explicit === "idea" || explicit === "building" || explicit === "clients" || explicit === "portfolio") {
+      return explicit;
+    }
+    const legacy = localStorage.getItem("axiom_user_intent");
+    if (legacy === "idea") return "idea";
+    if (legacy === "founder" || legacy === "technical") return "building";
+    if (legacy === "agency") return "clients";
+    if (legacy === "power") return "portfolio";
+  } catch {}
+  return null;
+}
 
 function renderMarkdown(text: string): string {
   return text
@@ -1030,6 +1053,8 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(true);
+  const [briefingDismissed, setBriefingDismissed] = useState(false);
+  const [briefingFading, setBriefingFading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isFree } = useSubscription();
 
@@ -1037,6 +1062,7 @@ export default function Home() {
   const [homeFocus] = useState<number | null>(null);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
+  const [homeUserType] = useState<HomeUserType | null>(() => loadHomeUserType());
   const [showHandoff, setShowHandoff] = useState(false);
   const [handoffLoading, setHandoffLoading] = useState(false);
   const [handoffStage, setHandoffStage] = useState("");
@@ -1137,6 +1163,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!briefing || briefingDismissed) return;
+    setBriefingFading(false);
+    const fadeTimer = window.setTimeout(() => setBriefingFading(true), 10_000);
+    const removeTimer = window.setTimeout(() => setBriefingDismissed(true), 10_500);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(removeTimer);
+    };
+  }, [briefing, briefingDismissed]);
+
+  useEffect(() => {
     fetch("/api/nexus/conversations", { credentials: "include" })
       .then(r => r.ok ? r.json() : { conversations: [] })
       .then((data: any) => setConversations(data.conversations ?? []))
@@ -1177,17 +1214,28 @@ export default function Home() {
       setHandoffCardDismissed(false);
     }
     setHandoffProjectName("");
-    fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
+    const params = new URLSearchParams({ conversationId: activeConversationId });
+    if (homeUserType) params.set("userType", homeUserType);
+    if (homeFocus) params.set("focusProjectId", String(homeFocus));
+    fetch(`/api/nexus/thread?${params.toString()}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
-      .then(async (msgs: Array<{ role: string; content: string }>) => {
+      .then(async (msgs: HomeThreadMessage[]) => {
         if (msgs.length > 0) {
-          setHomeMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+          const briefingMessage = msgs.find(m => m.isBriefing);
+          if (briefingMessage?.content) {
+            setBriefing(briefingMessage.content);
+            setBriefingDismissed(false);
+          }
+          const regularMessages = msgs.filter(m => !m.isBriefing);
+          if (regularMessages.length > 0) {
+            setHomeMessages(regularMessages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+          }
           return;
         }
       })
       .catch(() => {})
       .finally(() => setThreadLoading(false));
-  }, [activeConversationId]);
+  }, [activeConversationId, homeFocus, homeUserType]);
 
 
   const handleNewProject = useCallback((name = "New Project") => {
@@ -1283,7 +1331,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ message: messageText, model: homeModel, focusProjectId: homeFocus, mode: homeMode, imageBase64, imageMimeType, conversationId: activeConversationId }),
+        body: JSON.stringify({ message: messageText, model: homeModel, focusProjectId: homeFocus, mode: homeMode, imageBase64, imageMimeType, conversationId: activeConversationId, userType: homeUserType ?? undefined }),
       });
       if (!res.ok) {
         const errText = res.status === 413 ? "Images are too large to send. Try fewer or smaller images." : "Something went wrong. Try again.";
@@ -1351,7 +1399,7 @@ export default function Home() {
       setIsSending(false);
       document.body.dataset.voiceActive = "false";
     }
-  }, [input, attachedFiles, isSending, homeModel, homeFocus, projects, activeConversationId, homeMessages.length]);
+  }, [input, attachedFiles, isSending, homeModel, homeFocus, homeUserType, projects, activeConversationId, homeMessages.length]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
@@ -1514,9 +1562,15 @@ export default function Home() {
   const handleSwitchConversation = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, { credentials: "include" });
-      const msgs = await res.json() as Array<{ role: string; content: string }>;
+      const msgs = await res.json() as HomeThreadMessage[];
       if (Array.isArray(msgs) && msgs.length > 0) {
-        setHomeMessages(msgs.map((m, index) => {
+        const briefingMessage = msgs.find(m => m.isBriefing);
+        if (briefingMessage?.content) {
+          setBriefing(briefingMessage.content);
+          setBriefingDismissed(false);
+        }
+        const regularMessages = msgs.filter(m => !m.isBriefing);
+        setHomeMessages(regularMessages.map((m, index) => {
           const role = m.role as "user" | "assistant";
           const plan = role === "assistant" ? detectPlanFromText(m.content) : null;
           return {
@@ -1788,9 +1842,9 @@ export default function Home() {
           padding: "0 24px",
         }}
       >
-        <div style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
+        <div className="home-content-shell" style={{ width: "100%", maxWidth: 560, paddingBottom: 120 }}>
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: homeMessages.length > 0 ? 0 : "calc(100svh - 50px - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: homeMessages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: homeMessages.length > 0 ? 0 : 120 }}>
+          <div className="home-hero-shell" style={{ minHeight: homeMessages.length > 0 ? 0 : "calc(100svh - 50px - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: homeMessages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: homeMessages.length > 0 ? 0 : 120 }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -1814,6 +1868,49 @@ export default function Home() {
                 <p style={{ fontSize: 13, color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
                   I'm here. What's on your mind?
                 </p>
+              </div>
+            )}
+
+            {briefing && !briefingDismissed && (
+              <div
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  margin: homeMessages.length > 0 ? "6px 0 14px" : "0 0 14px",
+                  padding: "13px 44px 13px 14px",
+                  borderRadius: 12,
+                  background: "var(--atlas-surface)",
+                  border: "1px solid var(--atlas-border)",
+                  color: "var(--atlas-fg)",
+                  fontSize: 13,
+                  lineHeight: 1.65,
+                  fontFamily: "var(--app-font-sans)",
+                  opacity: briefingFading ? 0 : 1,
+                  transition: "opacity 500ms ease",
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label="Dismiss briefing"
+                  onClick={() => setBriefingDismissed(true)}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 44,
+                    height: 44,
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--atlas-muted)",
+                    cursor: "pointer",
+                    fontSize: 18,
+                    lineHeight: 1,
+                    opacity: 0.65,
+                  }}
+                >
+                  ×
+                </button>
+                <HomeChunkedBubbles text={briefing} isNew={false} />
               </div>
             )}
 
@@ -2378,7 +2475,7 @@ export default function Home() {
       </div>
 
       {/* Below-the-fold: Recent Activity / Discovery section */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
+      <div className="home-below-fold-section" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
         <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
           <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
         </div>
@@ -2524,8 +2621,26 @@ export default function Home() {
               0 0 44px 12px rgba(212,175,55,0.14);
           }
         }
+        @media (min-width: 1024px) {
+          .home-content-shell {
+            max-width: none !important;
+          }
+          .home-hero-shell {
+            width: 100%;
+            max-width: 680px;
+            margin-left: auto;
+            margin-right: auto;
+          }
+          .home-below-fold-section {
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .home-bottom-nav {
+            display: none !important;
+          }
+        }
       `}</style>
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, overflow: "visible" }}>
+      <div className="home-bottom-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, overflow: "visible" }}>
         {/* Arch SVG — visual layer only */}
         <svg
           style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}

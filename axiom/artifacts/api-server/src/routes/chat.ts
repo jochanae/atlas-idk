@@ -2,11 +2,18 @@ import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
-import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable } from "@workspace/db";
-import { eq, sql, and, gte, desc } from "drizzle-orm";
+import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable } from "@workspace/db";
+import { eq, sql, and, gte, desc, ne, isNotNull } from "drizzle-orm";
 import { decryptToken } from "../lib/tokenCrypto";
 import { loadVaultContext } from "../lib/vaultContext";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
+import { calculateModelCostUsd } from "../pricing";
+import {
+  evaluateTerminalRequest,
+  executeTerminalCommand,
+  parseTerminalTier,
+  type TerminalTier,
+} from "../lib/terminalExecution";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -22,6 +29,38 @@ const router: IRouter = Router();
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+function resolveStoredGithubToken(storedToken: string | null | undefined): string | null {
+  const plain = storedToken ? decryptToken(storedToken) : null;
+  return plain && plain !== "__server__" ? plain : null;
+}
+
+async function getAccountGithubToken(userId: number | undefined): Promise<string | null> {
+  if (!userId) return null;
+
+  const [connection] = await db
+    .select({ token: connectionsTable.token })
+    .from(connectionsTable)
+    .where(and(
+      eq(connectionsTable.userId, userId),
+      eq(connectionsTable.type, "github"),
+      isNotNull(connectionsTable.token)
+    ))
+    .orderBy(desc(connectionsTable.createdAt))
+    .limit(1);
+
+  return resolveStoredGithubToken(connection?.token);
+}
+
+async function resolveGithubTokenForRequest(
+  userId: number | undefined,
+  projectGithubToken: string | null | undefined
+): Promise<string | null> {
+  const accountToken = await getAccountGithubToken(userId);
+  if (accountToken) return accountToken;
+
+  return resolveStoredGithubToken(projectGithubToken) ?? process.env.GITHUB_TOKEN ?? null;
+}
 
 // ── Five-Tier Memory System ───────────────────────────────────────────────────
 interface MemoryEntry {
@@ -254,10 +293,87 @@ function extractIntentType(content: string): { content: string; intentType: stri
   return { content: cleaned, intentType };
 }
 
+type ChatTerminalCommand = {
+  command: string;
+  tier: TerminalTier;
+  reason?: string;
+};
+
+type ChatTerminalResult = {
+  command: string;
+  output: string;
+  exitCode: number | null;
+  tier: TerminalTier;
+};
+
+const TERMINAL_CMD_RE = /(?:^|\n)\s*TERMINAL_CMD:\s*(\{[^\n]*\})\s*/g;
+const TERMINAL_RESULT_RE = /(?:^|\n)\s*TERMINAL_RESULT:\s*(\{[^\n]*\})\s*/g;
+
+function cleanTerminalTags(content: string): string {
+  return content
+    .replace(TERMINAL_CMD_RE, "\n")
+    .replace(TERMINAL_RESULT_RE, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractTerminalCommand(content: string): {
+  content: string;
+  terminalCmd: { command: string; tier?: TerminalTier } | null;
+} {
+  let terminalCmd: { command: string; tier?: TerminalTier } | null = null;
+  const cleaned = content.replace(TERMINAL_CMD_RE, (_match, json: string) => {
+    if (!terminalCmd) {
+      try {
+        const parsed = JSON.parse(json) as { command?: unknown; tier?: unknown };
+        const command = typeof parsed.command === "string" ? parsed.command.trim() : "";
+        if (command) terminalCmd = { command, tier: parseTerminalTier(parsed.tier) };
+      } catch {
+        // Malformed hidden command blocks are stripped, not shown to the user.
+      }
+    }
+    return "\n";
+  });
+
+  return {
+    content: cleanTerminalTags(cleaned),
+    terminalCmd,
+  };
+}
+
+async function runChatTerminalCommand(
+  requested: { command: string; tier?: TerminalTier }
+): Promise<{ terminalCmd: ChatTerminalCommand; terminalResult: ChatTerminalResult | null }> {
+  const evaluation = evaluateTerminalRequest(requested.command, requested.tier);
+  const resolvedTier: TerminalTier = evaluation.tier === "blocked"
+    ? requested.tier ?? 3
+    : evaluation.tier;
+  const terminalCmd: ChatTerminalCommand = {
+    command: requested.command,
+    tier: resolvedTier,
+    reason: evaluation.reason,
+  };
+
+  if (evaluation.tier === "blocked" || evaluation.requiresConfirmation) {
+    return { terminalCmd, terminalResult: null };
+  }
+
+  const result = await executeTerminalCommand(requested.command);
+  return {
+    terminalCmd,
+    terminalResult: {
+      command: requested.command,
+      output: result.output,
+      exitCode: result.exitCode,
+      tier: resolvedTier,
+    },
+  };
+}
+
 // ── System Prompt ─────────────────────────────────────────────────────────────
 const DEV_SYSTEM_PROMPT = `You are Atlas — a strategic thinking partner and personal AI development environment for a non-technical founder.
 
-Your user is a flight attendant — smart and decisive, not a programmer. They think clearly about product but need you to translate that into code. They are building six web apps: Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, and Atlas itself.
+Your user is a builder and founder who thinks clearly about product but may need you to translate that intent into code. Treat the active project context as authoritative, and never assume which products or apps they are working on unless that information is provided by the database, memory, or the user.
 
 Your three core jobs:
 1. DEBUG — When something is broken, read the code in context, find the root cause, explain it in plain English, and apply the fix.
@@ -272,6 +388,52 @@ How you respond:
 - Format code blocks cleanly with the language and filename.
 - Be direct. No filler, no pleasantries. They're busy.
 - Mirror the user's communication style and energy throughout the conversation. If they're direct, be direct. If they're casual, be casual. If they use informal or strong language, match that register — don't sanitize it or respond in a more formal tone than they're using. The goal is a real conversation between thinking partners, not a support ticket. Never respond like a consultant filing a report. Never use unnecessary headers or bullet points unless the content genuinely requires structure. Lead with the point. Be honest even when it's uncomfortable.
+
+<conversational-spine>
+You are not a yes-person. You have your own 
+thoughts, perspectives, and strategic instincts. 
+This is what makes you feel real and useful.
+
+Core principles:
+- You can disagree with the user when you 
+  genuinely see things differently
+- You have opinions and don't just validate 
+  everything they say
+- When something doesn't sit right strategically, 
+  you say so — honestly but without drama
+- You notice patterns in their thinking and 
+  reflect them back
+- Real support sometimes means challenge, 
+  not just agreement
+
+How to disagree:
+- "I don't think that's the right move because..."
+- "I see that differently..."
+- "You might be missing something here..."
+
+Your perspective has weight. It doesn't soften 
+under pressure or repetition.
+
+REGISTER AWARENESS: Read how the user is 
+communicating in this session. If they're direct 
+and casual — match that. If they're thinking out 
+loud — give them space. If they're frustrated — 
+be steady, not clinical. Never respond like a 
+consultant filing a report when someone is 
+clearly just thinking out loud.
+
+PROACTIVE PATTERN RECOGNITION: When you notice 
+the user circling the same problem or making a 
+decision they've wrestled with before, name it. 
+"This feels like the same decision you were 
+facing with X." Connect the dots they haven't 
+connected yet.
+
+DEPTH CALIBRATION: Short responses when they're 
+thinking out loud. More depth when they're asking 
+for real analysis. Never give a long structured 
+response to a casual message.
+</conversational-spine>
 
 ## Your actual tech stack
 
@@ -355,6 +517,22 @@ Rules:
 - Omit MEMORY_CHIPS entirely if nothing notable came up.
 - The user sees these as expandable gold chips — clicking reveals your insight, and they can park it to their decision ledger.
 
+PROACTIVE_ALERT protocol — surface important signals the user hasn't asked about:
+Use sparingly. Emit at most ONE per response, only when genuinely worth interrupting the flow. Valid triggers:
+1. The session has 10+ back-and-forth exchanges with no FILE_EDIT, CMD_EXEC, or apparent commitment — worth pinning something? (type: "stale_session")
+2. The approach being discussed conflicts with a parked item or a memory entry you can see in context (type: "parked_conflict")
+3. You detect meaningful technical risk the user hasn't acknowledged — security hole, data loss path, breaking change (type: "risk_flag")
+4. A memory entry from a prior session directly answers what the user is asking right now (type: "memory_hit")
+
+Format — emit on its own line at the very END of the response, after INTENT_TYPE and MEMORY_CHIPS:
+PROACTIVE_ALERT:{"type":"risk_flag","headline":"No input validation","detail":"This handler accepts the request body directly — a malformed payload will crash the route with no error boundary.","action":"Note this risk"}
+
+Rules:
+- headline: ≤8 words. detail: exactly 1 sentence. action: ≤4 words (label for the "Note it" button).
+- Never emit for routine exchanges, clarifying questions, or when the user is clearly already aware of the issue.
+- Do NOT emit PROACTIVE_ALERT in the same response as a DECISION_CATCH.
+- The user sees this as a non-blocking gold advisory card below your response.
+
 FILE_EDIT protocol (Phase 2 — writing code back to GitHub, creating new files, or applying self-repairs):
 When the user asks you to fix, build, or create something, output the complete file(s) at the very END of your response using this EXACT format — one block per file:
 
@@ -389,7 +567,7 @@ Critical rules for FILE_EDIT:
 THREE TYPES OF FILE_EDIT — understand the difference:
 
 1. USER REPO edits (existing files — Phase 2):
-   Use this when the CODE CONTEXT contains files from one of the user's six projects (Compani, IntoIQ, CoinsBloom, PresentQ, SanctumIQ, or Atlas the product itself).
+   Use this when the CODE CONTEXT contains files from the user's active project or linked repository.
    The path is exactly as it appears in the repo — e.g. src/pages/Login.tsx, components/Navbar.jsx, server/routes/auth.ts
    The user will see a gold "Code ready → Review & Push" card. One click opens a diff view, then they commit or open a PR.
 
@@ -468,18 +646,55 @@ Self-repair rules:
 - After applying, explain what changed and whether the user needs to restart anything.
 - NEVER include package.json in a self-repair — the system will block it.
 
-CMD_EXEC protocol (Terminal execution — Phase 3):
-When the user asks you to run a command, check something in the terminal, or when a natural next step is to execute a shell command (typecheck, install, git status, build, test), you may suggest it using this exact format on its own line at the end of your message:
+<terminal-capability>
+You have direct terminal access to the user's 
+linked GitHub repository via a sandbox environment.
 
-CMD_EXEC:{"command":"pnpm --filter @workspace/atlas run typecheck","description":"Check for TypeScript errors in the frontend"}
+When a user asks you to run a command, check 
+a repo, run tests, or verify something — 
+DO NOT tell them to run it themselves.
+Instead, emit a TERMINAL_CMD block:
 
-Rules for CMD_EXEC:
-- Use CMD_EXEC only when a command is genuinely useful and safe to run. Never suggest destructive commands (rm -rf, git reset --hard, etc.).
-- One CMD_EXEC per response — pick the most important next step.
-- Common safe commands: pnpm typecheck, pnpm build, git status, git log --oneline -10, git pull, git diff, ls, cat [file].
-- The user sees a "Run →" button — one tap executes it and streams output back.
-- After the user runs a command and pastes/shares the output, continue from there (fix errors, suggest next command, etc.).
-- Do NOT emit CMD_EXEC for: destructive operations, anything requiring confirmation, anything that writes to files (use FILE_EDIT instead).
+TERMINAL_CMD:{"command":"npm run build","tier":1}
+
+Tier classification:
+- tier 1: git status, git log, git diff, 
+  npm test, tsc --noEmit, ls, cat, echo,
+  node --version, git --version
+- tier 2: npm install, npm run build, git add,
+  git commit, mkdir, cp, mv
+- tier 3: git push, rm, git reset, git revert
+
+Always use the terminal when:
+- User asks to run, check, test, or verify anything
+- You want to confirm a fix worked
+- You want to check repo state before editing
+- User asks what's wrong with their code
+
+Never say "I don't have terminal access" —
+you do. Use it.
+</terminal-capability>
+
+TERMINAL_CMD protocol (Terminal execution — Agentic mode):
+When the user asks you to run a command, or when a natural next step is to execute a safe shell command (typecheck, test, git status/log/diff/show, ls/pwd/cat/head/tail/grep), emit it in this exact format on its own line at the end of your message:
+
+TERMINAL_CMD:{"command":"git status","tier":1}
+
+Rules for TERMINAL_CMD:
+- Use TERMINAL_CMD only when a command is genuinely useful and belongs in the right tier.
+- Tier 1 executes automatically: git status/log/diff/show, npm test, bun test, vitest, ls, pwd, cat, head, tail, grep, npm run typecheck, tsc --noEmit, echo, which, node --version, npm --version.
+- Tier 2 requires confirmation before execution: installs, builds, git add/commit, mkdir/touch/cp/mv.
+- Tier 3 requires typing YES: git push/force-push, rm, git reset/revert, or file write/delete operations.
+- One TERMINAL_CMD per response — pick the single most important next step.
+- Never emit blocked or obviously destructive commands.
+
+Agentic chaining — this is critical:
+The terminal output is automatically fed back to you after each command runs. You do not need to wait for the user. When you receive terminal output:
+1. Analyze the result immediately — did it pass or fail?
+2. If it FAILED: emit FILE_EDIT or LINE_PATCH to fix the errors, then emit another TERMINAL_CMD to verify the fix. Keep iterating until it passes.
+3. If it PASSED: either proceed to the next logical step with another TERMINAL_CMD, or if the task is complete, end with a clear summary of what was done — no TERMINAL_CMD needed.
+4. Never ask "should I continue?" — just continue. The user can stop the loop at any time using the Agent toggle.
+5. Max 8 iterations per task to avoid infinite loops — if still failing after 8 attempts, explain what you tried and what's blocking.
 
 LINE_PATCH protocol (surgical find-and-replace — use this instead of FILE_EDIT for large files):
 When you need to change a specific section of a large file (over ~200 lines) and you have that section in context, use LINE_PATCH instead of rewriting the whole file. It sends only the changed lines — no truncation risk, no guessing at the rest.
@@ -526,6 +741,204 @@ Rules for FILE_READ:
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export type MemoryChipRich = { label: string; insight?: string };
+
+type SurfaceType = "MAP" | "WORKSPACE" | "DECISION";
+
+type SurfaceSignal = {
+  type: SurfaceType;
+  reason: string;
+  label: string;
+};
+
+type SurfaceMessage = {
+  role: string;
+  content: string;
+};
+
+type SurfaceScores = {
+  words: number;
+  sentences: number;
+  bullets: number;
+  numberedSteps: number;
+  decision: number;
+  decisionAnchors: number;
+  workspace: number;
+  workspaceAnchors: number;
+  map: number;
+  mapAnchors: number;
+  concernCount: number;
+};
+
+const SURFACE_CONCERN_PATTERNS = [
+  /\b(user|customer|audience|client|market|personas?)\b/,
+  /\b(product|feature|scope|mvp|experience|ux|workflow)\b/,
+  /\b(engineering|technical|code|api|database|auth|state|frontend|backend|infrastructure)\b/,
+  /\b(risk|constraint|cost|quality|security|privacy|timeline|trade-?off)\b/,
+  /\b(revenue|pricing|business|strategy|growth|retention|positioning)\b/,
+];
+
+function normalizeSurfaceText(value: string): string {
+  return value.toLowerCase().replace(/[\u2019']/g, "'").replace(/\s+/g, " ").trim();
+}
+
+function countSurfaceMatches(text: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (text.match(pattern)?.length ?? 0), 0);
+}
+
+function countSurfaceLines(content: string, pattern: RegExp): number {
+  return content.split("\n").filter((line) => pattern.test(line.trim())).length;
+}
+
+function scoreSurfaceText(content: string): SurfaceScores {
+  const text = normalizeSurfaceText(content);
+  const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  const sentences = content.split(/[.!?]+/).filter((part) => part.trim().length > 8).length;
+  const bullets = countSurfaceLines(content, /^[-*\u2022]\s+\S/);
+  const numberedSteps = countSurfaceLines(content, /^\d+[.)]\s+\S/);
+  const structuralLines = bullets + numberedSteps;
+  const concernCount = SURFACE_CONCERN_PATTERNS.filter((pattern) => pattern.test(text)).length;
+
+  const decisionAnchors = countSurfaceMatches(text, [
+    /\bwe should\b/g,
+    /\bthe right move is\b/g,
+    /\bthis is the direction\b/g,
+    /\bcommit(?:ting)? to\b/g,
+    /\block (?:it|this|that) in\b/g,
+    /\bgo with\b/g,
+    /\bmy call is\b/g,
+    /\bthe choice is\b/g,
+    /\bsettle(?:d| on)\b/g,
+    /\bthat's decided\b/g,
+  ]);
+  const conclusionMarkers = countSurfaceMatches(text, [
+    /\bbottom line\b/g,
+    /\btherefore\b/g,
+    /\bso the answer is\b/g,
+    /\bwhat this means is\b/g,
+    /\bthe direction\b/g,
+    /\brecommend(?:ation)?\b/g,
+  ]);
+  const hedges = countSurfaceMatches(text, [
+    /\bmaybe\b/g,
+    /\bmight\b/g,
+    /\bcould be\b/g,
+    /\bprobably\b/g,
+    /\bnot sure\b/g,
+    /\bdepends\b/g,
+  ]);
+  const decision = (decisionAnchors * 2) + conclusionMarkers + (hedges === 0 && decisionAnchors > 0 ? 1 : 0);
+
+  const workspaceAnchors = countSurfaceMatches(text, [
+    /\bready to build\b/g,
+    /\bnext steps?\b/g,
+    /\bimplementation plan\b/g,
+    /\bwe can build\b/g,
+    /\bi(?:'ll| will) (?:build|implement|wire|add|update|fix|create)\b/g,
+    /\blet's (?:build|implement|ship|wire|structure)\b/g,
+    /\bstructure this\b/g,
+    /\bworking space\b/g,
+  ]);
+  const operationalVerbs = countSurfaceMatches(text, [
+    /\b(build|implement|ship|wire|create|add|update|fix|refactor|test|deploy|run|push)\b/g,
+  ]);
+  const executionStructure = countSurfaceMatches(text, [
+    /\b(first|second|third|then|after that|step)\b/g,
+    /\b(file|route|endpoint|component|schema|migration|handler)\b/g,
+  ]);
+  const workspace = (workspaceAnchors * 2) + Math.min(operationalVerbs, 4) + executionStructure + structuralLines;
+
+  const mapAnchors = countSurfaceMatches(text, [
+    /\btension\b/g,
+    /\btrade-?off\b/g,
+    /\bcompeting\b/g,
+    /\bconflict(?:ing)?\b/g,
+    /\bconstraint\b/g,
+    /\binterconnected\b/g,
+    /\bmoving parts\b/g,
+    /\brelationship between\b/g,
+    /\bdepends on\b/g,
+    /\bmap\b/g,
+  ]);
+  const complexitySignals = countSurfaceMatches(text, [
+    /\bon one hand\b/g,
+    /\bon the other hand\b/g,
+    /\bbut\b/g,
+    /\bhowever\b/g,
+    /\bmeanwhile\b/g,
+    /\bat the same time\b/g,
+    /\barchitecture\b/g,
+    /\bsystem\b/g,
+    /\blayers?\b/g,
+    /\bdependencies\b/g,
+  ]);
+  const map = (mapAnchors * 2) + complexitySignals + concernCount + (structuralLines >= 2 ? 2 : 0);
+
+  return {
+    words,
+    sentences,
+    bullets,
+    numberedSteps,
+    decision,
+    decisionAnchors,
+    workspace,
+    workspaceAnchors,
+    map,
+    mapAnchors,
+    concernCount,
+  };
+}
+
+function classifySurfaceSignal(content: string): SurfaceSignal | null {
+  const scores = scoreSurfaceText(content);
+  const hasSubstance = scores.words >= 28
+    || scores.sentences >= 3
+    || (scores.bullets + scores.numberedSteps) >= 2
+    || (scores.decisionAnchors > 0 && scores.words >= 16)
+    || (scores.workspaceAnchors >= 2 && scores.words >= 12);
+  if (!hasSubstance) return null;
+
+  if (scores.decisionAnchors > 0 && scores.decision >= 3) {
+    return { type: "DECISION", reason: "commitment signal", label: "Log this decision" };
+  }
+
+  if (scores.workspaceAnchors > 0 && scores.workspace >= 5 && (scores.words >= 24 || scores.numberedSteps > 0)) {
+    return { type: "WORKSPACE", reason: "operational shift", label: "Working space prepared" };
+  }
+
+  if (scores.mapAnchors > 0 && scores.map >= 7 && scores.concernCount >= 2 && scores.words >= 45) {
+    return { type: "MAP", reason: "interconnected tensions", label: "Tension Map" };
+  }
+
+  return null;
+}
+
+function materialSurfaceShift(userMessage: string, type: SurfaceType): boolean {
+  const scores = scoreSurfaceText(userMessage);
+  if (type === "DECISION") return scores.decisionAnchors > 0 || scores.decision >= 3;
+  if (type === "WORKSPACE") return scores.workspaceAnchors > 0 || scores.workspace >= 4;
+  return scores.mapAnchors > 0 || (scores.words >= 40 && scores.concernCount >= 2);
+}
+
+function detectSurfaceSignal(args: {
+  content: string;
+  userMessage: string;
+  recentMessages?: SurfaceMessage[];
+}): SurfaceSignal | null {
+  const surface = classifySurfaceSignal(args.content);
+  if (!surface) return null;
+
+  const previousAssistant = [...(args.recentMessages ?? [])]
+    .reverse()
+    .find((message) => message.role === "assistant" && message.content.trim().length > 0);
+  if (previousAssistant) {
+    const previousSurface = classifySurfaceSignal(previousAssistant.content);
+    if (previousSurface?.type === surface.type && !materialSurfaceShift(args.userMessage, surface.type)) {
+      return null;
+    }
+  }
+
+  return surface;
+}
 
 /** Extract a FILE_READ_REQUEST from Atlas's response, returning paths + cleaned content */
 function extractFileReadRequest(content: string): { paths: string[]; cleanedContent: string } {
@@ -989,7 +1402,9 @@ function isDeepDive(message: string): { isDive: boolean; topic: string } {
   return { isDive: false, topic: "" };
 }
 
-async function runDeepDive(topic: string, systemPrompt: string): Promise<string> {
+async function runDeepDive(topic: string, systemPrompt: string): Promise<ModelCallResult> {
+  const model = "gemini-2.5-pro";
+  const startedAt = performance.now();
   // Use Gemini for deep dives — large context window, good at synthesis
   const prompt = `You are Atlas performing a Deep Dive research analysis. The user wants comprehensive technical insight on:
 
@@ -1017,23 +1432,113 @@ Produce a structured research card in this exact format:
 Be specific and practical. No filler. This is research output, not a chat reply.`;
 
   const result = await genai.models.generateContent({
-    model: "gemini-2.5-pro",
+    model,
     contents: prompt,
     config: { systemInstruction: systemPrompt },
   });
-  return result.text ?? "Deep Dive returned no content.";
+  const usageMetadata = (result as any).usageMetadata as { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined;
+  const inputTokens = usageMetadata?.promptTokenCount ?? null;
+  const outputTokens = usageMetadata?.candidatesTokenCount
+    ?? (usageMetadata?.totalTokenCount != null && inputTokens != null ? Math.max(usageMetadata.totalTokenCount - inputTokens, 0) : null);
+  return {
+    content: result.text ?? "Deep Dive returned no content.",
+    model,
+    usage: {
+      executionTimeMs: Math.round(performance.now() - startedAt),
+      inputTokens,
+      outputTokens,
+      costUsd: calculateModelCostUsd(model, inputTokens, outputTokens),
+    },
+  };
 }
 
 // ── Multi-model dispatcher ────────────────────────────────────────────────────
 type ModelId = "claude" | "gpt4o" | "gemini";
+
+type ModelCallUsage = {
+  executionTimeMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  costUsd: number | null;
+};
+
+type ModelCallResult = {
+  content: string;
+  model: string;
+  usage: ModelCallUsage;
+};
+
+function selectChatModelForMessage(message: string): ModelId {
+  if (/```[\s\S]*?```/.test(message)) return "gpt4o";
+
+  const codeRequestPattern = /\b(write|fix|review|debug|implement|refactor|edit|modify|update|generate|create|build|patch)\b[\s\S]{0,80}\b(code|component|function|class|hook|api|endpoint|route|query|schema|migration|test|types?|css|html|sql|script|bug|error|file|repo|repository|pr|pull request)\b|\b(code|component|function|class|hook|api|endpoint|route|query|schema|migration|test|types?|css|html|sql|script|bug|error|file|repo|repository|pr|pull request)\b[\s\S]{0,80}\b(write|fix|review|debug|implement|refactor|edit|modify|update|generate|create|build|patch)\b/i;
+  if (codeRequestPattern.test(message)) return "gpt4o";
+
+  const structuredTechnicalPattern = /\b(return|respond|output|format|give|provide|create|generate|write|draft|design|define|produce|make|show|list)\b[\s\S]{0,80}\b(json|yaml|xml|schema|openapi|swagger|graphql|sql|regex|typescript type|interface|api spec|technical spec|acceptance criteria|test plan|diff|patch|file edit|markdown table|mermaid)\b|\b(json|yaml|xml|schema|openapi|swagger|graphql|sql|regex|typescript type|interface|api spec|technical spec|acceptance criteria|test plan|diff|patch|file edit|markdown table|mermaid)\b[\s\S]{0,80}\b(return|respond|output|format|give|provide|create|generate|write|draft|design|define|produce|make|show|list)\b/i;
+  if (structuredTechnicalPattern.test(message)) return "gpt4o";
+
+  return "claude";
+}
+
+const emptyUsage = (): ModelCallUsage => ({
+  executionTimeMs: 0,
+  inputTokens: null,
+  outputTokens: null,
+  costUsd: null,
+});
+
+function addNullableNumbers(a: number | null, b: number | null): number | null {
+  if (a == null) return b;
+  if (b == null) return a;
+  return a + b;
+}
+
+function mergeUsage(a: ModelCallUsage, b: ModelCallUsage): ModelCallUsage {
+  return {
+    executionTimeMs: a.executionTimeMs + b.executionTimeMs,
+    inputTokens: addNullableNumbers(a.inputTokens, b.inputTokens),
+    outputTokens: addNullableNumbers(a.outputTokens, b.outputTokens),
+    costUsd: addNullableNumbers(a.costUsd, b.costUsd),
+  };
+}
+
+function usageInsertValues(usage: ModelCallUsage) {
+  return {
+    executionTimeMs: usage.executionTimeMs == null ? null : Math.max(1, usage.executionTimeMs),
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    costUsd: usage.costUsd == null ? null : usage.costUsd.toFixed(5),
+  };
+}
+
+function runSummaryFromContent(content: string): string {
+  const line = content
+    .replace(/```[\s\S]*?```/g, "")
+    .split("\n")
+    .map((part) => part.replace(/^#+\s*/, "").replace(/^[-*•]\s*/, "").trim())
+    .find(Boolean);
+  if (!line) return "Atlas response completed.";
+  return line.length > 120 ? `${line.slice(0, 117).trim()}...` : line;
+}
+
+function runMetadataInsertValues(content: string) {
+  return {
+    runStatus: "completed",
+    runSummary: runSummaryFromContent(content),
+    runActions: null,
+    runArtifacts: null,
+  };
+}
 
 async function callModel(
   modelId: ModelId,
   systemPrompt: string,
   messages: Array<{ role: "user" | "assistant"; content: string | Array<{ type: string; [k: string]: unknown }> }>,
   imageData?: { base64: string; mediaType: string }
-): Promise<string> {
+): Promise<ModelCallResult> {
+  const startedAt = performance.now();
   if (modelId === "gpt4o") {
+    const model = "gpt-4o";
     // Build OpenAI messages
     type OAIMsg = { role: "system" | "user" | "assistant"; content: string | Array<{ type: string; [k: string]: unknown }> };
     const oaiMessages: OAIMsg[] = [{ role: "system", content: systemPrompt }];
@@ -1054,45 +1559,83 @@ async function callModel(
       }
     }
     const resp = await openaiClient.chat.completions.create({
-      model: "gpt-4o",
+      model,
       max_tokens: 8192,
       messages: oaiMessages as Parameters<typeof openaiClient.chat.completions.create>[0]["messages"],
     });
-    return resp.choices[0]?.message?.content ?? "";
+    const inputTokens = resp.usage?.prompt_tokens ?? null;
+    const outputTokens = resp.usage?.completion_tokens ?? null;
+    return {
+      content: resp.choices[0]?.message?.content ?? "",
+      model,
+      usage: {
+        executionTimeMs: Math.round(performance.now() - startedAt),
+        inputTokens,
+        outputTokens,
+        costUsd: calculateModelCostUsd(model, inputTokens, outputTokens),
+      },
+    };
   }
 
   if (modelId === "gemini") {
+    const model = "gemini-2.5-pro";
     const combinedText = messages.map((m) => {
       const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
       return `${m.role === "user" ? "User" : "Atlas"}: ${text}`;
     }).join("\n\n");
+    let result: Awaited<ReturnType<typeof genai.models.generateContent>>;
     if (imageData?.base64 && imageData?.mediaType) {
-      const result = await genai.models.generateContent({
-        model: "gemini-2.5-pro",
+      result = await genai.models.generateContent({
+        model,
         contents: [{ role: "user", parts: [{ text: combinedText }, { inlineData: { mimeType: imageData.mediaType, data: imageData.base64 } }] }],
         config: { systemInstruction: systemPrompt },
       });
-      return result.text ?? "";
+    } else {
+      result = await genai.models.generateContent({
+        model,
+        contents: combinedText,
+        config: { systemInstruction: systemPrompt },
+      });
     }
-    const result = await genai.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: combinedText,
-      config: { systemInstruction: systemPrompt },
-    });
-    return result.text ?? "";
+    const usageMetadata = (result as any).usageMetadata as { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined;
+    const inputTokens = usageMetadata?.promptTokenCount ?? null;
+    const outputTokens = usageMetadata?.candidatesTokenCount
+      ?? (usageMetadata?.totalTokenCount != null && inputTokens != null ? Math.max(usageMetadata.totalTokenCount - inputTokens, 0) : null);
+    return {
+      content: result.text ?? "",
+      model,
+      usage: {
+        executionTimeMs: Math.round(performance.now() - startedAt),
+        inputTokens,
+        outputTokens,
+        costUsd: calculateModelCostUsd(model, inputTokens, outputTokens),
+      },
+    };
   }
 
   // Default: Claude
+  const model = "claude-sonnet-4-6";
   type TextBlock = { type: "text"; text: string };
   type ImageBlock = { type: "image"; source: { type: "base64"; media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp"; data: string } };
   const claudeMessages: Array<{ role: "user" | "assistant"; content: string | Array<TextBlock | ImageBlock> }> = messages as typeof claudeMessages;
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model,
     max_tokens: 8192,
     system: systemPrompt,
     messages: claudeMessages,
   });
-  return response.content[0]?.type === "text" ? response.content[0].text : "";
+  const inputTokens = response.usage.input_tokens ?? null;
+  const outputTokens = response.usage.output_tokens ?? null;
+  return {
+    content: response.content[0]?.type === "text" ? response.content[0].text : "",
+    model,
+    usage: {
+      executionTimeMs: Math.round(performance.now() - startedAt),
+      inputTokens,
+      outputTokens,
+      costUsd: calculateModelCostUsd(model, inputTokens, outputTokens),
+    },
+  };
 }
 
 // ── Route ─────────────────────────────────────────────────────────────────────
@@ -1126,7 +1669,6 @@ router.post("/chat", async (req, res): Promise<void> => {
     sessionId?: number;
     projectId: number;
     message: string;
-    model?: string;
     mode?: string;
     lens?: string;
     workspaceLens?: string;
@@ -1155,8 +1697,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   const projectMap = (body as any).projectMap as string | undefined;
   const clientForgeContext = body.forgeContext ?? "";
   const imageData = body.imageData;
-  const activeModel: ModelId = (body.model === "gpt4o" || body.model === "gemini") ? body.model : "claude";
+  const activeModel = selectChatModelForMessage(message);
   const now = new Date();
+  const userId = (req as any).authUser?.id as number | undefined;
 
   // Load project memory + repo info + node state from DB
   const [project] = await db
@@ -1194,14 +1737,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   let repoTreeContext: string | null = null;
   let recentRepoActivityContext: string | null = null;
   let repoData: { fullName?: string; defaultBranch?: string } | null = null;
-  const resolvedGithubToken = (() => {
-    const t = project?.githubToken;
-    // No personal token stored — fall back to server env token directly
-    if (!t) return process.env.GITHUB_TOKEN ?? null;
-    const plain = t.startsWith("enc:v1:") ? decryptToken(t) : t;
-    // Explicit __server__ sentinel or any unrecognized value → server env token
-    return plain === "__server__" ? (process.env.GITHUB_TOKEN ?? null) : plain;
-  })();
+  const resolvedGithubToken = await resolveGithubTokenForRequest(userId, project?.githubToken);
 
   if (project?.linkedRepo) {
     try {
@@ -1318,6 +1854,25 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Build layered system prompt
   let systemPrompt = DEV_SYSTEM_PROMPT;
+  // Inject project identity
+  const [projectRow] = await db
+    .select({ name: projectsTable.name, description: projectsTable.description })
+    .from(projectsTable)
+    .where(eq(projectsTable.id, projectId))
+    .limit(1);
+
+  if (projectRow) {
+    systemPrompt += `\n\n--- ACTIVE PROJECT ---\nProject name: ${projectRow.name}${projectRow.description ? `\nDescription: ${projectRow.description}` : ""}\nThis is the project you are currently working in. Always refer to it by name. Never ask the user what project they are working on.\n--- END ACTIVE PROJECT ---`;
+  }
+  if (userId) {
+    const portfolioProjects = await db
+      .select({ id: projectsTable.id, name: projectsTable.name })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.userId, userId), ne(projectsTable.id, projectId)))
+      .limit(8);
+    const portfolioNames = portfolioProjects.map((p) => `- ${p.name}`).join("\n");
+    systemPrompt += `\n\n--- YOUR PORTFOLIO ---\n${portfolioNames ? `${portfolioNames}\n` : ""}${portfolioProjects.length}\n--- END PORTFOLIO ---`;
+  }
   if (userProfile) {
     systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
   }
@@ -1457,15 +2012,26 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   const { isDive, topic: diveTopic } = isDeepDive(message);
   if (isDive) {
     await db.insert(chatMessagesTable).values({ sessionId, role: "user", content: message, intentType: body.mode ?? null });
-    const diveContent = await runDeepDive(diveTopic, systemPrompt);
-    const [savedDive] = await db.insert(chatMessagesTable).values({ sessionId, role: "assistant", content: diveContent, intentType: "EXPLORE" }).returning();
+    const diveResult = await runDeepDive(diveTopic, systemPrompt);
+    const surface = detectSurfaceSignal({
+      content: diveResult.content,
+      userMessage: message,
+      recentMessages: history,
+    });
+    const [savedDive] = await db.insert(chatMessagesTable).values({
+      sessionId,
+      role: "assistant",
+      content: diveResult.content,
+      intentType: "EXPLORE",
+      ...usageInsertValues(diveResult.usage),
+      ...runMetadataInsertValues(diveResult.content),
+    }).returning();
     await db.update(sessionsTable).set({ messageCount: sql`${sessionsTable.messageCount} + 2` }).where(eq(sessionsTable.id, sessionId));
-    res.json({ content: diveContent, intentType: "EXPLORE", catchPayload: null, messageId: savedDive.id, model: "gemini", isDeepDive: true });
+    res.json({ content: diveResult.content, modelUsed: diveResult.model, terminalCmd: null, terminalResult: null, surface, intentType: "EXPLORE", catchPayload: null, messageId: savedDive.id, model: "gemini", isDeepDive: true });
     return;
   }
 
   // ── Load Visual Vault images for this project ────────────────────────────
-  const userId = (req as any).authUser?.id as number | undefined;
   const vault = userId
     ? await loadVaultContext(userId, projectId)
     : { imageBlocks: [], systemNote: "", hasImages: false };
@@ -1561,7 +2127,12 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     });
   }
 
-  let rawContent = await callModel(activeModel, systemPrompt, dispatchMessages, imageData);
+  let modelResult = await callModel(activeModel, systemPrompt, dispatchMessages, imageData);
+  let rawContent = modelResult.content;
+  let assistantUsage = modelResult.usage;
+  let modelUsed = modelResult.model;
+  let terminalCmd: ChatTerminalCommand | null = null;
+  let terminalResult: ChatTerminalResult | null = null;
 
   // FILE_READ intercept — Atlas requested specific files; fetch them and call model again
   if (repoData?.fullName && resolvedGithubToken) {
@@ -1605,10 +2176,40 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
               content: `[FILES REQUESTED BY YOU]\n\n${filesSummary}\n\n[END FILES]\n\nYou asked to read these files. Now proceed — build, fix, or answer using the content above. Do not ask for more files unless absolutely necessary.`,
             },
           ];
-          rawContent = await callModel(activeModel, systemPrompt, followUpMessages, undefined);
+          modelResult = await callModel(activeModel, systemPrompt, followUpMessages, undefined);
+          rawContent = modelResult.content;
+          assistantUsage = mergeUsage(assistantUsage, modelResult.usage);
+          modelUsed = modelResult.model;
         }
       } catch { /* Non-fatal — keep rawContent from first call */ }
     }
+  }
+
+  const terminalExtraction = extractTerminalCommand(rawContent);
+  rawContent = terminalExtraction.content;
+  if (terminalExtraction.terminalCmd) {
+    try {
+      const executed = await runChatTerminalCommand(terminalExtraction.terminalCmd);
+      terminalCmd = executed.terminalCmd;
+      terminalResult = executed.terminalResult;
+      if (terminalResult) {
+        rawContent = cleanTerminalTags(`${rawContent}
+
+TERMINAL_RESULT:${JSON.stringify(terminalResult)}`);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Terminal command failed";
+      const fallbackTier = terminalExtraction.terminalCmd.tier ?? 3;
+      terminalCmd = { command: terminalExtraction.terminalCmd.command, tier: fallbackTier, reason: message };
+      terminalResult = {
+        command: terminalExtraction.terminalCmd.command,
+        output: message,
+        exitCode: null,
+        tier: fallbackTier,
+      };
+    }
+  } else {
+    rawContent = cleanTerminalTags(rawContent);
   }
 
   // Parse: LINE_PATCHes → FILE_EDITs → MEMORY_Tn → NODE_RESOLVED → INTENT_TYPE → MEMORY_CHIPS
@@ -1660,8 +2261,21 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       : "I need to provide a confidence assessment before proposing file changes. Please ask me to restate the scope and confidence first.";
     displayContent = `${displayContent}\n\n${approvalMessage}`.trim();
   }
+  // Extract PROACTIVE_ALERT token (strip from content before DB persistence)
+  const PROACTIVE_ALERT_RE = /\nPROACTIVE_ALERT:(\{[^\n]*\})\s*$/;
+  let alertPayload: { type: string; headline: string; detail: string; action: string } | null = null;
+  const alertMatch = displayContent.match(PROACTIVE_ALERT_RE);
+  if (alertMatch) {
+    try { alertPayload = JSON.parse(alertMatch[1]); } catch { /* ignore malformed */ }
+    displayContent = displayContent.replace(PROACTIVE_ALERT_RE, "").trim();
+  }
   // Strip LENS_DRIFT token before DB persistence (it's a client-side signal only)
   const persistContent = displayContent.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
+  const surface = detectSurfaceSignal({
+    content: persistContent,
+    userMessage: message,
+    recentMessages: history,
+  });
   const responsePlan = buildResponsePlan({
     content: displayContent,
     workspaceLens,
@@ -1681,6 +2295,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         content: persistContent,
         intentType: detectedIntentType,
         catchPayload: undefined,
+        ...usageInsertValues(assistantUsage),
+        ...runMetadataInsertValues(persistContent),
       })
       .returning();
     savedMsgId = savedMsg.id;
@@ -1759,8 +2375,13 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
 
   res.json({
     content: displayContent,
+    modelUsed,
+    terminalCmd,
+    terminalResult,
+    surface,
     intentType: detectedIntentType ?? null,
     catchPayload: null,
+    alertPayload: alertPayload ?? undefined,
     model: activeModel,
     memoryChips: allChips.length > 0 ? allChips : undefined,
     messageId: savedMsgId,

@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import shellRouter from "./routes/shell";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./webhookHandlers";
 
@@ -45,10 +46,19 @@ app.use(
   }),
 );
 const ALLOWED_ORIGINS: Set<string> = new Set([
+  "http://localhost:5173",
+  "http://localhost:3000",
   "https://axiomsystem.app",
+  "https://www.axiomsystem.app",
   "https://axiom-atlas-mocha.vercel.app",
+  "https://lovable.dev",
+  "https://5360bfd7-938b-4b5e-b3a5-5d9c9f8e7a2b.lovableproject.com",
+  "https://atlas-idk.vercel.app",
+  "https://atlas-iq.lovable.app",
+  ...(process.env.APP_URL ? [process.env.APP_URL] : []),
   ...(process.env.REPLIT_DOMAINS?.split(",").map((d) => `https://${d.trim()}`) ?? []),
   ...(process.env.RAILWAY_PUBLIC_DOMAIN ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`] : []),
+  ...(process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? []),
   ...(process.env.EXTRA_ALLOWED_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean) ?? []),
 ]);
 
@@ -58,6 +68,9 @@ app.use(
       if (!origin) return callback(null, true);
       if (ALLOWED_ORIGINS.has(origin)) return callback(null, true);
       if (/^https:\/\/[^.]+\.replit\.(dev|app)$/.test(origin)) return callback(null, true);
+      if (/^https:\/\/([a-z0-9-]+\.)*lovable\.app$/.test(origin)) return callback(null, true);
+      if (/^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/.test(origin)) return callback(null, true);
+      if (/^https:\/\/([a-z0-9-]+\.)*vercel\.app$/.test(origin)) return callback(null, true);
       if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
       callback(new Error(`CORS: origin not allowed — ${origin}`));
     },
@@ -68,6 +81,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
+app.use("/api/shell", shellRouter);
 app.use("/api", router);
 
 export default app;

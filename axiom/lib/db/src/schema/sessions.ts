@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
@@ -9,7 +9,16 @@ export const sessionsTable = pgTable("sessions", {
   title: text("title").notNull(),
   mode: text("mode"),
   status: text("status").notNull().default("active"),
+  reflectionMode: boolean("reflection_mode").notNull().default(false),
+  ideaMode: boolean("idea_mode").notNull().default(false),
   messageCount: integer("message_count").notNull().default(0),
+  totalInputTokens: integer("total_input_tokens").default(0),
+  totalOutputTokens: integer("total_output_tokens").default(0),
+  totalCostUsd: numeric("total_cost_usd").default("0"),
+  totalExecutionMs: integer("total_execution_ms").default(0),
+  runSummary: text("run_summary"),
+  runActions: jsonb("run_actions"),
+  runArtifacts: jsonb("run_artifacts"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

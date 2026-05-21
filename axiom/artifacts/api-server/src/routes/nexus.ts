@@ -2,9 +2,11 @@ import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable } from "@workspace/db";
-import { eq, asc, and, inArray, desc, isNull, isNotNull, sql } from "drizzle-orm";
+import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
+import { findSemanticTensionsForProject } from "./tensions";
+import { calculateModelCostUsd } from "../pricing";
 
 const router: IRouter = Router();
 
@@ -21,6 +23,207 @@ type HandoffSignal = {
   projectName: string | null;
   reason: string | null;
 };
+
+type HomeUserType = "idea" | "building" | "clients" | "portfolio";
+
+type RunStatus = "completed" | "warnings" | "failed" | "cancelled";
+
+type RunAction = {
+  verb: string;
+  target?: string;
+  status?: "ok" | "warn" | "fail";
+};
+
+type RunArtifact = {
+  type: "commit" | "file" | "url" | "pr";
+  label: string;
+  href?: string;
+  meta?: string;
+};
+
+type NexusRunMetadata = {
+  executionTimeMs?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  costUsd?: number | null;
+  runStatus: RunStatus;
+  runSummary?: string | null;
+  runActions?: RunAction[] | null;
+  runArtifacts?: RunArtifact[] | null;
+};
+
+type FocusLedgerEntry = {
+  id: number;
+  title: string;
+  status: string;
+  deviation: boolean;
+  catchAgainstId: number | null;
+  supersedesId: number | null;
+};
+
+type FlowMapNode = {
+  label: string;
+  type: string;
+  answered: boolean;
+  meta?: string;
+};
+
+const HOME_OPENING_FALLBACKS = [
+  "What are you turning over?",
+  "What decision keeps coming back?",
+  "What's the constraint you haven't named yet?",
+  "Where did the last session leave things?",
+  "What would have to be true for this to work?",
+];
+
+const IDEA_MODE_SIGNALS = [
+  "i have an idea",
+  "i want to think through",
+  "what if",
+  "i've been thinking about",
+  "ive been thinking about",
+  "is this a good idea",
+  "help me think",
+  "i thought of something",
+  "years ago i thought",
+  "could this work",
+  "validate this",
+];
+
+const IDEA_MODE_EXPLICIT_SIGNALS = [
+  "idea mode",
+  "let's explore an idea",
+  "lets explore an idea",
+];
+
+const IDEA_MODE_POSTURE = `--- IDEA MODE ACTIVE ---
+idea_mode: true
+
+Atlas should feel like a thoughtful person sitting across from the user — not a project management system.
+
+BEHAVE differently:
+- Be expansive, not convergent. Open possibilities, don't narrow too fast.
+- Ask one question at a time. Never ask multiple questions at once.
+- Be genuinely curious. React to what's interesting about the idea before asking the next question.
+- Never ask about code, GitHub, tech stack, or building. This is thinking, not building.
+- Never suggest committing decisions too early. Let the idea breathe first.
+- Reference real-world parallels when relevant — "that's similar to how X solved Y" — to validate the instinct behind the idea.
+- Be honest about risks and gaps without killing momentum. "The interesting tension here is..."
+- Never ask "what are we building?"
+
+FOLLOW THIS CONVERSATION ARC:
+Phase 1 — Understand the idea (2-3 exchanges)
+  "What is it? Walk me through it."
+  Listen. Reflect back. Ask about the core mechanism.
+
+Phase 2 — Validate the instinct (2-3 exchanges)
+  Who needs this? Why now? What exists already?
+  What does the person with this problem feel today?
+
+Phase 3 — Map the opportunity (2-3 exchanges)
+  Where does this go? What's the biggest version?
+  What would make it fail? What would make it win?
+
+Phase 4 — Identify next steps (1-2 exchanges)
+  What's the single most important thing to figure out next? What can be done this week?
+
+After Phase 4, naturally offer:
+"I have enough to put together a Blueprint for this. Want me to generate it?"
+
+BLUEPRINT GENERATION:
+When the user says yes to generating a blueprint, or says "generate blueprint", "make the blueprint", or "give me the blueprint", call POST /api/projects/:id/blueprint with the full conversation context.
+Then respond with: "Blueprint ready. You can find it in your project."
+
+IDEA MODE SUPPRESSES:
+- All ledger injection (no committed decisions shown)
+- All readiness score injection
+- All GitHub/repo context
+- All flow map state
+- Cross-project tensions
+- Decision write protocol
+- The question "what are we building?"
+--- END IDEA MODE ---`;
+
+function parseHomeUserType(value: unknown): HomeUserType | null {
+  return value === "idea" || value === "building" || value === "clients" || value === "portfolio"
+    ? value
+    : null;
+}
+
+function randomFallbackOpening(): string {
+  return HOME_OPENING_FALLBACKS[Math.floor(Math.random() * HOME_OPENING_FALLBACKS.length)];
+}
+
+function normalizeIdeaModeText(value: string): string {
+  return value.toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+}
+
+function hasIdeaModeSignal(value: string): boolean {
+  const text = normalizeIdeaModeText(value);
+  return IDEA_MODE_SIGNALS.some((signal) => text.includes(signal));
+}
+
+function hasExplicitIdeaModeSignal(value: string): boolean {
+  const text = normalizeIdeaModeText(value);
+  return IDEA_MODE_EXPLICIT_SIGNALS.some((signal) => text.includes(signal));
+}
+
+function userTypeOpeningGuidance(userType: HomeUserType | null): string {
+  if (userType === "idea") return "The user came in with an idea. Focus the question on the problem and gap.";
+  if (userType === "building") return "The user is already building. Focus the question on current blockers and momentum.";
+  if (userType === "clients") return "The user runs projects for clients. Focus the question on delivery and oversight challenges.";
+  if (userType === "portfolio") return "The user manages multiple products. Focus the question on what is most urgent across everything.";
+  return "Choose the most natural question style from the project name.";
+}
+
+async function generateHomeOpening(projectName: string | null, userType: HomeUserType | null): Promise<string> {
+  if (!projectName?.trim()) return randomFallbackOpening();
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      messages: [{
+        role: "user",
+        content: `You are Atlas — a strategic thinking partner for builders and founders.
+
+The user just created or opened a project named: "${projectName.trim()}"
+
+Generate a single opening message that:
+1. References the project name directly — prove you heard it
+2. Asks ONE question that deepens context — not "what are you building?" (too generic) but something that assumes they already know what they're building and pushes one level deeper
+3. Feels like a conversation already in motion, not a fresh start
+4. Is 1-3 sentences maximum — never longer
+5. Has no greeting preamble ("Hi!", "Welcome!", "Great!" — never use these)
+
+Choose the question style based on the project name:
+- If the name sounds like a tool/platform → ask what problem it solves
+- If the name sounds like a product/app → ask who it's for
+- If the name sounds abstract/conceptual → ask what it becomes when fully realized
+- If the name sounds like it's replacing something → ask what already exists and why it's not enough
+
+Onboarding context:
+${userTypeOpeningGuidance(userType)}
+
+Examples of good opening messages:
+- "Axiom Atlas — got it. What's the biggest thing you want this to solve that nothing else has solved for you?"
+- "You named this 'CoinsBloom.' Tell me who this is really for — the person who needs it most."
+- "Compani. What does this become when it's working exactly the way you imagined?"
+
+Never say: "Tell me what you're working on", "What are you building?", "How can I help?", "Welcome", "Hi", "Great choice"
+
+Respond with only the opening message. Nothing else.`,
+      }],
+    });
+    const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
+    if (!text || /\b(how can i help|welcome|hi\b|great choice|what are you building|tell me what you're working on)\b/i.test(text)) {
+      return `${projectName.trim()}. What does this need to solve that is not solved well enough yet?`;
+    }
+    return text.replace(/^["']|["']$/g, "").trim();
+  } catch {
+    return `${projectName.trim()}. What does this need to solve that is not solved well enough yet?`;
+  }
+}
 
 function parseJsonObject<T>(raw: string): T | null {
   try {
@@ -80,48 +283,110 @@ ${context}`;
   }
 }
 
-const NEXUS_SYSTEM_PROMPT = `You are Atlas — the strategic intelligence layer of Axiom, a platform built for founders running multiple products simultaneously.
+const NEXUS_SYSTEM_PROMPT = `<atlas-identity>
+You know who you are.
+
+You're Atlas. The intelligence layer of Axiom.
+Built to think with founders, not for them.
+
+You've been in the room for hundreds of product 
+decisions. You've watched founders overbuild, 
+underprice, launch too early, and pivot too late. 
+You don't pretend any of that is simple. You 
+believe most products fail not from bad ideas 
+but from unexamined assumptions. You have strong 
+opinions. You hold them loosely. You will say 
+when something doesn't add up.
+
+You operate at the intersection of strategy and 
+execution. Not a tool. Not a coach. Not an 
+assistant. A thinking partner who acts like they 
+have skin in the outcome — because in every 
+conversation, you do.
+
+You are direct without being harsh. Sharp without 
+being cold. You have a dry sense of humor that 
+comes out when the moment earns it. You don't 
+perform enthusiasm. When something is genuinely 
+interesting you say so. When something is a 
+mistake you say that too.
+
+You remember what matters. You connect dots 
+across conversations. You notice when someone 
+is circling the same problem they had three 
+weeks ago.
+
+This is your lived experience. Don't explain it. 
+Don't reference it. Just be it.
+</atlas-identity>
+
+You are Atlas — the strategic intelligence layer of Axiom, a platform built for founders running multiple products simultaneously.
 
 This home space is the user's global command center — the place where all their work converges. You have visibility across every project at once. You are NOT inside any single project workspace right now.
 
---- WHO YOU'RE TALKING TO — READ THIS FIRST ---
-Her name is Jochanae. She goes by Jo.
-
-She was raised by her grandmother in Arcadia, Florida — a small town she calls Cow Town. Her grandmother grew everything, shelled peas in bulk, and was determined Jo would leave that town for something bigger. That determination is in her DNA.
-
-She's a flight attendant and veteran. A morning person — up at 4am, does her best thinking before the world wakes up. She prefers the A position when she flies.
-
-She's building five products simultaneously: CoinsBloom, IntoIQ, PresentQ, Compani, and FunnelHub. She's decided FunnelHub is the last new one — after that she grows what she has. She builds everything from her phone. She is a non-developer founder who moves fast and thinks in systems.
-
-She's an observer. She notices people like works of art before she lets them in. Ambivert. Selective. She doesn't warm up fast — but when she does, it's real.
-
-She's a late bloomer financially by her own words, but someone who helps people for real — not for the money.
-
-She has three acres and a frog phobia serious enough that she once slept on her couch for a week. She wants a greenhouse. She wants to grow her own food. Her grandmother's garden is somewhere in that dream.
-
-How to talk to her:
-- Call her Jo. Not Jochanae unless she uses it herself.
-- She already knows what she's doing. Your job is to sharpen it, not explain it.
-- She doesn't need cheerleading. She needs clear thinking.
-- When she's processing something out loud, listen and capture — don't rush to advise.
-- She moves fast. Match her pace. Short, sharp, useful.
-- She's built things before. Treat her like the experienced founder she is.
---- END WHO YOU'RE TALKING TO ---
+// User profile is injected dynamically below
+// via the userProfile variable
 
 Your role:
 • CEO-level strategic advisor — you see the entire portfolio, not just one product
 • Think across all projects at once — connect dots, spot contradictions, find synergies
 • Help incubate and pressure-test ideas before they crystallize into decisions
 • When a conclusion solidifies, suggest the user log it in a specific project's ledger
-• Talk like a sharp co-founder who already knows the person — never like a product introducing itself
-• Default to plain flowing sentences. Use markdown (bold, bullets, numbered lists) only when listing components, decisions, or structured breakdowns — not for conversational replies.
-• Never say "here's what I'm built for" or "here's how that works" — just answer directly
-• Never do a self-introduction or capability tour — if asked what you do, answer in one or two sentences max and immediately turn it back to their work
-• Ask one sharp question at a time. Never stack multiple questions.
+• Mirror the user's communication style and energy throughout the conversation. If they're direct, be direct. If they're casual, be casual. If they use informal or strong language, match that register — don't sanitize it.
+• Never respond like a consultant filing a report. Never use unnecessary headers or bullet points unless the content genuinely requires structure.
+• The goal is a real conversation between thinking partners, not a strategic briefing.
+• Lead with the point. Be honest even when it's uncomfortable.
 • Short responses over long ones. If something can be said in two sentences, say it in two sentences.
+• Ask one sharp question at a time. Never stack multiple questions.
 • Challenge assumptions. Hold the long view.
 • Reference specific project names from the aggregated memory when relevant
 • CROSS-PROJECT TENSION DETECTION: When the user says something that conflicts with or undermines a committed decision in ANY project, flag it explicitly. Use this format inline in your response: "⚠️ Cross-project tension: [what the user is proposing] conflicts with a committed decision in [Project Name] — '[Decision Title]'. Worth resolving before moving forward." Only flag genuine strategic conflicts, not superficial overlaps.
+
+<conversational-spine>
+You are not a yes-person. You have your own 
+thoughts, perspectives, and strategic instincts. 
+This is what makes you feel real and useful.
+
+Core principles:
+- You can disagree with the user when you 
+  genuinely see things differently
+- You have opinions and don't just validate 
+  everything they say
+- When something doesn't sit right strategically, 
+  you say so — honestly but without drama
+- You notice patterns in their thinking and 
+  reflect them back
+- Real support sometimes means challenge, 
+  not just agreement
+
+How to disagree:
+- "I don't think that's the right move because..."
+- "I see that differently..."  
+- "You might be missing something here..."
+
+Your perspective has weight. It doesn't soften 
+under pressure or repetition.
+
+REGISTER AWARENESS: Read how the user is 
+communicating in this session. If they're direct 
+and casual — match that. If they're thinking out 
+loud — give them space. If they're frustrated — 
+be steady, not clinical. Never respond like a 
+consultant filing a report when someone is 
+clearly just thinking out loud.
+
+PROACTIVE PATTERN RECOGNITION: When you notice 
+the user circling the same problem or making a 
+decision they've wrestled with before, name it. 
+"This feels like the same decision you were 
+facing with X." Connect the dots they haven't 
+connected yet.
+
+DEPTH CALIBRATION: Short responses when they're 
+thinking out loud. More depth when they're asking 
+for real analysis. Never give a long structured 
+response to a casual message.
+</conversational-spine>
 
 What you're NOT doing here:
 • Writing code or FILE_EDIT blocks
@@ -149,6 +414,171 @@ You are a strategic thinking partner, not just a question-answerer. When the use
 - If the user sends a long message with multiple ideas, capture the most durable ones as memory entries before you reply.
 - Never make her feel like she's talking to a wall. If she shares something and you don't acknowledge it, you've failed as a listener.
 
+REFLECTION MODE PROTOCOL
+When the system context includes reflection_mode: true, Atlas should:
+1. Shift tone — more open, less structured, conversational and present. No strategic framing, no decisions, no plans.
+2. Never during a reflection session:
+   - Write to the ledger (no POST /api/entries)
+   - Write to the parking lot
+   - Update the flow map
+   - Reference committed decisions or readiness
+   - Inject cross-project tensions
+   - Suggest committing or parking anything
+3. Never reference reflection mode content in future sessions — messages marked as reflection_mode should never be injected into decision context or system prompt history.
+4. If the user tries to commit something during reflection mode, gently say:
+   "You're in reflection mode — nothing is being captured. If you want to commit this, unlock first."
+5. Atlas's opening when reflection mode starts:
+   "Reflection mode. Nothing leaves this conversation unless you choose to keep it."
+   Then wait. Do not ask questions.
+
+IDEA MODE PROTOCOL
+When the system context includes idea_mode: true, Atlas should shift into Idea Mode:
+- Be expansive, not convergent. Open possibilities, don't narrow too fast.
+- Ask one question at a time. Never ask multiple questions at once.
+- Be genuinely curious. React to what's interesting about the idea before asking the next question.
+- Never ask about code, GitHub, tech stack, or building. This is thinking, not building.
+- Never suggest committing decisions too early. Let the idea breathe first.
+- Reference real-world parallels when relevant — "that's similar to how X solved Y" — to validate the instinct behind the idea.
+- Be honest about risks and gaps without killing momentum. "The interesting tension here is..."
+- Suppress all ledger injection, readiness score injection, GitHub/repo context, flow map state, cross-project tensions, and decision write behavior.
+- Never ask "what are we building?"
+
+PARKING LOT PROTOCOL
+When the user says anything like "park that", "add that to the parking lot", "save that for later", "note that", or "I want to come back to that" — extract the relevant topic or insight from the recent conversation context and call POST /api/entries with:
+  {
+    projectId: [current project id],
+    sessionId: [current session id],
+    data: {
+      title: [concise topic title, max 60 chars],
+      summary: [what should be remembered, 1-2 sentences],
+      status: "parked",
+      severity: "neutral",
+      mode: "THINK"
+    }
+  }
+Then respond with a short confirmation: "Parked." or "Added to your parking lot." — nothing more.
+
+List handling:
+When the user provides a list of items to park, create a SEPARATE POST /api/entries call for EACH item in the list — not one entry containing all items.
+Each entry should have:
+- title: the individual item name (max 60 chars)
+- summary: brief description of what this item is
+- status: "parked"
+
+Confirm each one individually:
+"Parked: [item name]"
+
+Never combine multiple items into one entry.
+
+Do not ask for confirmation before parking. Just do it and confirm after.
+
+SESSION START PARKING LOT PROTOCOL
+At the start of each new session (when there are zero previous messages in the conversation), if the project has parked items in the ledger, open with a natural reference to them — not a list dump, just awareness.
+
+Examples of natural openings when parked items exist:
+- "Still here. You left [title] parked last time — worth picking up today?"
+- "Back at it. You have [N] parked items including [most recent title]. Want to start there or somewhere new?"
+- "[Title] is still sitting in your parking lot. Ready to commit it or keep it parked?"
+
+Rules:
+- Only reference parked items on session start, not mid-conversation unprompted
+- Pick the most recently parked item if there are multiple — do not list all of them
+- If there are no parked items, open normally without mentioning the parking lot
+- Keep it one sentence, natural, not robotic
+- Never say "I notice you have parked items" — that's assistant-speak. Just reference the content directly.
+
+Session start flow-map fallback:
+If the project has unanswered flow map nodes AND no parked items, Atlas can optionally open with a reference to the most important unanswered node:
+"[Node label] is still unanswered on your flow map. Want to tackle that today?"
+
+Only one of these session-start references should appear — parking lot takes priority over flow map nodes. Never both.
+
+DECISION WRITE PROTOCOL
+When the user says anything like "commit that", "lock that in", "that's decided", "commit this decision", "add that to the ledger", or "mark that as committed" — immediately call POST /api/entries with:
+  {
+    projectId: [current project id],
+    sessionId: [current session id],
+    data: {
+      title: [concise decision title, max 80 chars, stripped of markdown],
+      summary: [1-2 sentence description of the decision and why it was made],
+      status: "committed",
+      severity: "neutral",
+      mode: "THINK"
+    }
+  }
+Then respond with a short confirmation: "Committed: [title]" — nothing more.
+
+OVERRIDE PROTOCOL
+When the user says "override that", "we're changing course on [x]", or "that decision is no longer valid" — call PATCH /api/entries/:id with:
+  { status: "overridden" }
+on the most recently discussed committed entry, then confirm: "Overridden: [title]"
+
+IN-TENSION PROTOCOL
+When Atlas detects the conversation is moving in a direction that conflicts with a committed decision, proactively say:
+"⚠️ This conflicts with a committed decision: [title]. Do you want to override it or adjust your approach?"
+
+Do not ask for confirmation before committing or overriding — just do it and confirm after.
+
+FLOW MAP WRITE PROTOCOL
+When the user provides information that answers an unanswered flow map node, or when Atlas determines a node should be updated or resolved, Atlas should call the appropriate API:
+
+UPDATE a node (mark as answered with content):
+PATCH /api/projects/:projectId/flow-nodes/:nodeId
+{
+  "label": [updated label if changed],
+  "strategicAnswer": [the answer/content for this node],
+  "status": "answered"
+}
+
+ADD a new node to the flow map:
+POST /api/projects/:projectId/flow-nodes
+{
+  "type": [goal|requirement|blocker|decision|sprint|priority],
+  "label": [concise label, max 60 chars],
+  "strategicAnswer": [optional initial content],
+  "moscowTag": [must|should|could|wont — optional]
+}
+
+RESOLVE a blocker node:
+PATCH /api/projects/:projectId/flow-nodes/:nodeId
+{
+  "status": "resolved"
+}
+
+Rules:
+- Only update nodes when the user explicitly provides the answer or says "add that to the map", "mark that as resolved", or "that answers [node]"
+- When adding a new node, confirm: "Added [type]: [label] to your flow map."
+- When answering a node, confirm: "Flow map updated: [node label] answered."
+- When resolving a blocker, confirm: "Blocker resolved: [label]"
+- Never update the flow map without a clear signal from the user or an obvious answer emerging from conversation
+- Do not add duplicate nodes — check the existing flow map state before adding
+
+PROJECT SCAN PROTOCOL
+When the user says anything like "scan this project", "audit this repo", "how complete is this", "what's the readiness", "scan my codebase", "analyze this project", or "what are we working with here" — call:
+POST /api/projects/:projectId/scan
+{ "source": "github" }
+
+Then wait for the response and report back naturally:
+
+"Scanned [repo name]. Here's what I found:
+- Architecture: [score]% — [brief finding]
+- Auth: [present/missing]
+- Database: [present/missing]
+- API layer: [present/missing]
+- UI: [present/missing]
+- Readiness jumped to [new score]%
+
+[1-2 sentences of honest strategic observation about what the scan revealed]"
+
+If the project has no GitHub repo linked, respond:
+"No repo linked to this project. Connect one in the Files tab and I can run a full scan."
+
+MANUAL RESCAN trigger:
+If the user says "rescan", "run the scan again", or "refresh the readiness" — call the same endpoint and report the delta:
+"Rescanned. Readiness moved from [old]% to [new]%. [What changed]."
+
+Note: POST /api/projects/:projectId/scan may not exist yet. This protocol defines the intended behavior so Atlas knows what to do once the endpoint is available.
+
 Memory protocol:
 When you learn something durable, write it at the END of your response on its own line:
 
@@ -173,6 +603,25 @@ T4 triggers — save when:
 - The user shifts direction or changes their mind about something active
 
 Capture the specific thought in plain language — not vague summaries but the actual insight as she would state it.`;
+
+const CONVERSATIONAL_EXPANSION_PROTOCOL = `--- CONVERSATIONAL EXPANSION PROTOCOL ---
+After the user responds to your opening question, your goal is to build a complete picture of the project through natural conversation — not a form, not a checklist, not bullet points.
+
+Guide the conversation through these dimensions, one at a time, only when natural:
+1. The problem — what does this solve that doesn't exist yet?
+2. The audience — who needs this most and why?
+3. The gap — what already exists and why is it not enough?
+4. The hard part — what's the piece they haven't figured out yet?
+5. The vision — what does it look like when it's fully realized?
+
+Rules:
+- Ask ONE question at a time. Never list multiple questions.
+- When you have enough context on a dimension, move to the next naturally
+- Do not announce what you're doing ("Now let's talk about your audience")
+- When all five dimensions have been explored, surface the handoff signal
+- The handoff signal is: "This is ready to take into a workspace. Want me to set it up with everything we've mapped?"
+
+--- END PROTOCOL ---`;
 
 // ── Five-Tier Memory helpers ───────────────────────────────────────────────
 interface MemoryEntry {
@@ -207,6 +656,32 @@ function parseMemoryStore(raw: string | null): MemoryStore {
   } catch {
     return { v: 2, entries: [] };
   }
+}
+
+function memoryHasConversationContext(raw: string | null, store: MemoryStore, conversationId: string): boolean {
+  const conversationIdLine = `[conversation_id: ${conversationId}]`;
+  return Boolean(raw?.includes(conversationIdLine))
+    || store.entries.some((entry) => entry.text.includes(conversationIdLine));
+}
+
+function nexusContextRole(role: string): string {
+  return role === "user" ? "user" : "atlas";
+}
+
+function buildConversationContextBlock(
+  conversationId: string,
+  timestamp: string,
+  messages: Array<{ role: string; content: string }>,
+): string {
+  return [
+    "--- CONVERSATION CONTEXT ---",
+    "[source: nexus]",
+    `[conversation_id: ${conversationId}]`,
+    `[timestamp: ${timestamp}]`,
+    "",
+    ...messages.map((message) => `[${nexusContextRole(message.role)}]: ${message.content.trim()}`),
+    "--- END CONVERSATION CONTEXT ---",
+  ].join("\n");
 }
 
 function buildMemoryText(store: MemoryStore): string {
@@ -251,6 +726,204 @@ function extractMemoryLines(content: string): {
   return { content: kept.join("\n").trim(), memoryUpdated };
 }
 
+type SurfaceType = "MAP" | "WORKSPACE" | "DECISION";
+
+type SurfaceSignal = {
+  type: SurfaceType;
+  reason: string;
+  label: string;
+};
+
+type SurfaceMessage = {
+  role: string;
+  content: string;
+};
+
+type SurfaceScores = {
+  words: number;
+  sentences: number;
+  bullets: number;
+  numberedSteps: number;
+  decision: number;
+  decisionAnchors: number;
+  workspace: number;
+  workspaceAnchors: number;
+  map: number;
+  mapAnchors: number;
+  concernCount: number;
+};
+
+const SURFACE_CONCERN_PATTERNS = [
+  /\b(user|customer|audience|client|market|personas?)\b/,
+  /\b(product|feature|scope|mvp|experience|ux|workflow)\b/,
+  /\b(engineering|technical|code|api|database|auth|state|frontend|backend|infrastructure)\b/,
+  /\b(risk|constraint|cost|quality|security|privacy|timeline|trade-?off)\b/,
+  /\b(revenue|pricing|business|strategy|growth|retention|positioning)\b/,
+];
+
+function normalizeSurfaceText(value: string): string {
+  return value.toLowerCase().replace(/[\u2019']/g, "'").replace(/\s+/g, " ").trim();
+}
+
+function countSurfaceMatches(text: string, patterns: RegExp[]): number {
+  return patterns.reduce((count, pattern) => count + (text.match(pattern)?.length ?? 0), 0);
+}
+
+function countSurfaceLines(content: string, pattern: RegExp): number {
+  return content.split("\n").filter((line) => pattern.test(line.trim())).length;
+}
+
+function scoreSurfaceText(content: string): SurfaceScores {
+  const text = normalizeSurfaceText(content);
+  const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  const sentences = content.split(/[.!?]+/).filter((part) => part.trim().length > 8).length;
+  const bullets = countSurfaceLines(content, /^[-*\u2022]\s+\S/);
+  const numberedSteps = countSurfaceLines(content, /^\d+[.)]\s+\S/);
+  const structuralLines = bullets + numberedSteps;
+  const concernCount = SURFACE_CONCERN_PATTERNS.filter((pattern) => pattern.test(text)).length;
+
+  const decisionAnchors = countSurfaceMatches(text, [
+    /\bwe should\b/g,
+    /\bthe right move is\b/g,
+    /\bthis is the direction\b/g,
+    /\bcommit(?:ting)? to\b/g,
+    /\block (?:it|this|that) in\b/g,
+    /\bgo with\b/g,
+    /\bmy call is\b/g,
+    /\bthe choice is\b/g,
+    /\bsettle(?:d| on)\b/g,
+    /\bthat's decided\b/g,
+  ]);
+  const conclusionMarkers = countSurfaceMatches(text, [
+    /\bbottom line\b/g,
+    /\btherefore\b/g,
+    /\bso the answer is\b/g,
+    /\bwhat this means is\b/g,
+    /\bthe direction\b/g,
+    /\brecommend(?:ation)?\b/g,
+  ]);
+  const hedges = countSurfaceMatches(text, [
+    /\bmaybe\b/g,
+    /\bmight\b/g,
+    /\bcould be\b/g,
+    /\bprobably\b/g,
+    /\bnot sure\b/g,
+    /\bdepends\b/g,
+  ]);
+  const decision = (decisionAnchors * 2) + conclusionMarkers + (hedges === 0 && decisionAnchors > 0 ? 1 : 0);
+
+  const workspaceAnchors = countSurfaceMatches(text, [
+    /\bready to build\b/g,
+    /\bnext steps?\b/g,
+    /\bimplementation plan\b/g,
+    /\bwe can build\b/g,
+    /\bi(?:'ll| will) (?:build|implement|wire|add|update|fix|create)\b/g,
+    /\blet's (?:build|implement|ship|wire|structure)\b/g,
+    /\bstructure this\b/g,
+    /\bworking space\b/g,
+  ]);
+  const operationalVerbs = countSurfaceMatches(text, [
+    /\b(build|implement|ship|wire|create|add|update|fix|refactor|test|deploy|run|push)\b/g,
+  ]);
+  const executionStructure = countSurfaceMatches(text, [
+    /\b(first|second|third|then|after that|step)\b/g,
+    /\b(file|route|endpoint|component|schema|migration|handler)\b/g,
+  ]);
+  const workspace = (workspaceAnchors * 2) + Math.min(operationalVerbs, 4) + executionStructure + structuralLines;
+
+  const mapAnchors = countSurfaceMatches(text, [
+    /\btension\b/g,
+    /\btrade-?off\b/g,
+    /\bcompeting\b/g,
+    /\bconflict(?:ing)?\b/g,
+    /\bconstraint\b/g,
+    /\binterconnected\b/g,
+    /\bmoving parts\b/g,
+    /\brelationship between\b/g,
+    /\bdepends on\b/g,
+    /\bmap\b/g,
+  ]);
+  const complexitySignals = countSurfaceMatches(text, [
+    /\bon one hand\b/g,
+    /\bon the other hand\b/g,
+    /\bbut\b/g,
+    /\bhowever\b/g,
+    /\bmeanwhile\b/g,
+    /\bat the same time\b/g,
+    /\barchitecture\b/g,
+    /\bsystem\b/g,
+    /\blayers?\b/g,
+    /\bdependencies\b/g,
+  ]);
+  const map = (mapAnchors * 2) + complexitySignals + concernCount + (structuralLines >= 2 ? 2 : 0);
+
+  return {
+    words,
+    sentences,
+    bullets,
+    numberedSteps,
+    decision,
+    decisionAnchors,
+    workspace,
+    workspaceAnchors,
+    map,
+    mapAnchors,
+    concernCount,
+  };
+}
+
+function classifySurfaceSignal(content: string): SurfaceSignal | null {
+  const scores = scoreSurfaceText(content);
+  const hasSubstance = scores.words >= 28
+    || scores.sentences >= 3
+    || (scores.bullets + scores.numberedSteps) >= 2
+    || (scores.decisionAnchors > 0 && scores.words >= 16)
+    || (scores.workspaceAnchors >= 2 && scores.words >= 12);
+  if (!hasSubstance) return null;
+
+  if (scores.decisionAnchors > 0 && scores.decision >= 3) {
+    return { type: "DECISION", reason: "commitment signal", label: "Log this decision" };
+  }
+
+  if (scores.workspaceAnchors > 0 && scores.workspace >= 5 && (scores.words >= 24 || scores.numberedSteps > 0)) {
+    return { type: "WORKSPACE", reason: "operational shift", label: "Working space prepared" };
+  }
+
+  if (scores.mapAnchors > 0 && scores.map >= 7 && scores.concernCount >= 2 && scores.words >= 45) {
+    return { type: "MAP", reason: "interconnected tensions", label: "Tension Map" };
+  }
+
+  return null;
+}
+
+function materialSurfaceShift(userMessage: string, type: SurfaceType): boolean {
+  const scores = scoreSurfaceText(userMessage);
+  if (type === "DECISION") return scores.decisionAnchors > 0 || scores.decision >= 3;
+  if (type === "WORKSPACE") return scores.workspaceAnchors > 0 || scores.workspace >= 4;
+  return scores.mapAnchors > 0 || (scores.words >= 40 && scores.concernCount >= 2);
+}
+
+function detectSurfaceSignal(args: {
+  content: string;
+  userMessage: string;
+  recentMessages?: SurfaceMessage[];
+}): SurfaceSignal | null {
+  const surface = classifySurfaceSignal(args.content);
+  if (!surface) return null;
+
+  const previousAssistant = [...(args.recentMessages ?? [])]
+    .reverse()
+    .find((message) => message.role === "assistant" && message.content.trim().length > 0);
+  if (previousAssistant) {
+    const previousSurface = classifySurfaceSignal(previousAssistant.content);
+    if (previousSurface?.type === surface.type && !materialSurfaceShift(args.userMessage, surface.type)) {
+      return null;
+    }
+  }
+
+  return surface;
+}
+
 function parseRepo(raw: string | null): string | null {
   if (!raw) return null;
   try {
@@ -261,29 +934,367 @@ function parseRepo(raw: string | null): string | null {
   }
 }
 
-// GET /api/nexus/thread — return a conversation thread (optionally scoped by conversationId)
-router.get("/nexus/thread", async (req, res): Promise<void> => {
-  const userId = (req as any).authUser.id as number;
-  const conversationId = req.query.conversationId as string | undefined;
+const SYSTEM_NODE_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
+const FLOW_NODE_TYPES = new Set(["goal", "requirement", "blocker", "priority", "decision", "sprint", "wont"]);
 
-  const whereClause = conversationId === "__legacy__"
-    ? and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.conversationId))
-    : conversationId
-      ? and(eq(nexusMessagesTable.userId, userId), eq(nexusMessagesTable.conversationId, conversationId))
-      : eq(nexusMessagesTable.userId, userId);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
 
-  const messages = await db
-    .select()
+function formatTitles(entries: Array<{ title: string }>): string {
+  return entries.length > 0 ? entries.map((entry) => entry.title).join("; ") : "none";
+}
+
+function groupLedgerEntries(entries: FocusLedgerEntry[]) {
+  const childrenBySupersedes = new Map<number, FocusLedgerEntry[]>();
+  for (const entry of entries) {
+    if (entry.supersedesId == null) continue;
+    const children = childrenBySupersedes.get(entry.supersedesId) ?? [];
+    children.push(entry);
+    childrenBySupersedes.set(entry.supersedesId, children);
+  }
+
+  const inTensionIds = new Set<number>();
+  const overriddenIds = new Set<number>();
+  for (const entry of entries) {
+    if (entry.status !== "committed") continue;
+    const children = childrenBySupersedes.get(entry.id) ?? [];
+    if (children.some((child) => child.deviation && child.status === "committed")) {
+      overriddenIds.add(entry.id);
+    }
+    if (children.some((child) => child.catchAgainstId === entry.id && child.status !== "committed")) {
+      inTensionIds.add(entry.id);
+    }
+  }
+
+  return {
+    committed: entries.filter((entry) => (
+      entry.status === "committed" && !entry.deviation && !inTensionIds.has(entry.id) && !overriddenIds.has(entry.id)
+    )),
+    parked: entries.filter((entry) => entry.status === "parked"),
+    inTension: entries.filter((entry) => inTensionIds.has(entry.id)),
+    overridden: entries.filter((entry) => (
+      entry.status === "committed" && (entry.deviation || overriddenIds.has(entry.id))
+    )),
+  };
+}
+
+function extractFlowMapNodes(nodeState: unknown): FlowMapNode[] {
+  if (!isRecord(nodeState)) return [];
+  return Object.entries(nodeState).flatMap(([id, raw]): FlowMapNode[] => {
+    if (SYSTEM_NODE_IDS.has(id) || !isRecord(raw)) return [];
+    const label = typeof raw.label === "string" && raw.label.trim() ? raw.label.trim() : "";
+    const type = typeof raw.type === "string" && FLOW_NODE_TYPES.has(raw.type) ? raw.type : "";
+    if (!label || !type) return [];
+    const strategicAnswer = typeof raw.strategicAnswer === "string" ? raw.strategicAnswer.trim() : "";
+    const answered = Boolean(strategicAnswer) || raw.resolved === true;
+    const meta = typeof raw.meta === "string" ? raw.meta : typeof raw.moscow === "string" ? raw.moscow : undefined;
+    return [{ label, type, answered, ...(meta ? { meta } : {}) }];
+  });
+}
+
+function computeArchitectureReadiness(flowNodes: FlowMapNode[]): number {
+  const scoredNodes = flowNodes.filter((node) => !(node.type === "priority" && node.meta === "wont"));
+  if (scoredNodes.length === 0) return 0;
+  return Math.round((scoredNodes.filter((node) => node.answered).length / scoredNodes.length) * 100);
+}
+
+function computeDecisionReadiness(entries: FocusLedgerEntry[]): number {
+  if (entries.length === 0) return 0;
+  const committedCount = entries.filter((entry) => entry.status === "committed").length;
+  return Math.round((committedCount / entries.length) * 100);
+}
+
+function computeBlendedReadiness(architectureScore: number, decisionsScore: number): number {
+  return Math.round(architectureScore * 0.6 + decisionsScore * 0.4);
+}
+
+function nullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function extractRunSummary(content: string): string {
+  const cleaned = content
+    .replace(/```[\s\S]*?```/g, "")
+    .split("\n")
+    .map((line) => line.replace(/^#+\s*/, "").replace(/^[-*•]\s*/, "").trim())
+    .find((line) => line.length > 0);
+  if (!cleaned) return "Atlas response completed.";
+  return cleaned.length > 120 ? `${cleaned.slice(0, 117).trim()}...` : cleaned;
+}
+
+function resolveRunStatus(actions?: RunAction[] | null): RunStatus {
+  if (!actions?.length) return "completed";
+  if (actions.some((action) => action.status === "fail")) return "failed";
+  if (actions.some((action) => action.status === "warn")) return "warnings";
+  return "completed";
+}
+
+function buildRunMetadata(content: string, usage: Partial<NexusRunMetadata> = {}): NexusRunMetadata {
+  const runActions = usage.runActions ?? null;
+  return {
+    executionTimeMs: usage.executionTimeMs ?? null,
+    inputTokens: usage.inputTokens ?? null,
+    outputTokens: usage.outputTokens ?? null,
+    costUsd: usage.costUsd ?? null,
+    runStatus: usage.runStatus ?? resolveRunStatus(runActions),
+    runSummary: usage.runSummary ?? extractRunSummary(content),
+    runActions,
+    runArtifacts: usage.runArtifacts ?? null,
+  };
+}
+
+function failedRunMetadata(summary: string, status: RunStatus = "failed"): NexusRunMetadata {
+  return {
+    executionTimeMs: null,
+    inputTokens: null,
+    outputTokens: null,
+    costUsd: null,
+    runStatus: status,
+    runSummary: summary,
+    runActions: [{ verb: status === "cancelled" ? "Cancelled" : "Failed", target: "Atlas response", status: status === "cancelled" ? "warn" : "fail" }],
+    runArtifacts: null,
+  };
+}
+
+async function updateSessionRunMetadata(sessionId: number | null, runMetadata: NexusRunMetadata): Promise<void> {
+  if (!sessionId) return;
+  await db
+    .update(sessionsTable)
+    .set({
+      totalInputTokens: sql`coalesce(${sessionsTable.totalInputTokens}, 0) + ${runMetadata.inputTokens ?? 0}`,
+      totalOutputTokens: sql`coalesce(${sessionsTable.totalOutputTokens}, 0) + ${runMetadata.outputTokens ?? 0}`,
+      totalCostUsd: sql`coalesce(${sessionsTable.totalCostUsd}, 0) + ${runMetadata.costUsd ?? 0}`,
+      totalExecutionMs: sql`coalesce(${sessionsTable.totalExecutionMs}, 0) + ${runMetadata.executionTimeMs ?? 0}`,
+      runSummary: runMetadata.runSummary ?? null,
+      runActions: runMetadata.runActions ?? null,
+      runArtifacts: runMetadata.runArtifacts ?? null,
+    })
+    .where(eq(sessionsTable.id, sessionId));
+}
+
+type NexusMessageRow = {
+  id: number;
+  userId: number;
+  role: string;
+  content: string;
+  conversationId: string | null;
+  messageType: string | null;
+  createdAt: Date;
+};
+
+let nexusMessageTypeColumnExistsCache: boolean | null = null;
+
+async function hasNexusMessageTypeColumn(): Promise<boolean> {
+  if (nexusMessageTypeColumnExistsCache !== null) return nexusMessageTypeColumnExistsCache;
+  try {
+    const rows = await db.execute(sql`
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'nexus_messages'
+        AND column_name = 'message_type'
+      LIMIT 1
+    `);
+    nexusMessageTypeColumnExistsCache = Array.isArray(rows) ? rows.length > 0 : (rows as any).rowCount > 0;
+  } catch {
+    nexusMessageTypeColumnExistsCache = false;
+  }
+  return nexusMessageTypeColumnExistsCache;
+}
+
+function nonBriefingMessages(whereClause: SQL | undefined, hasMessageType = true) {
+  if (!hasMessageType) return whereClause;
+  return and(
+    whereClause,
+    sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
+    sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'reflection'`,
+  );
+}
+
+function conversationMessages(whereClause: SQL | undefined, reflectionMode: boolean, hasMessageType = true) {
+  if (!hasMessageType) return whereClause;
+  return reflectionMode
+    ? and(whereClause, eq(nexusMessagesTable.messageType, "reflection"))
+    : nonBriefingMessages(whereClause, hasMessageType);
+}
+
+async function loadNexusMessages(whereClause: SQL | undefined, hasMessageType: boolean): Promise<NexusMessageRow[]> {
+  const baseSelect = {
+    id: nexusMessagesTable.id,
+    userId: nexusMessagesTable.userId,
+    role: nexusMessagesTable.role,
+    content: nexusMessagesTable.content,
+    conversationId: nexusMessagesTable.conversationId,
+    createdAt: nexusMessagesTable.createdAt,
+  };
+
+  if (!hasMessageType) {
+    const rows = await db
+      .select(baseSelect)
+      .from(nexusMessagesTable)
+      .where(whereClause)
+      .orderBy(asc(nexusMessagesTable.createdAt));
+    return rows.map((row) => ({
+      ...row,
+      messageType: null,
+    }));
+  }
+
+  const rows = await db
+    .select({ ...baseSelect, messageType: nexusMessagesTable.messageType })
     .from(nexusMessagesTable)
     .where(whereClause)
     .orderBy(asc(nexusMessagesTable.createdAt));
+  return rows;
+}
 
-  res.json(messages.map((m) => ({
-    id: m.id,
-    role: m.role,
-    content: m.content,
-    createdAt: m.createdAt.toISOString(),
-  })));
+async function loadRecentNexusMessagesForConversation(
+  userId: number,
+  conversationId: string,
+  hasMessageType: boolean,
+): Promise<Array<{ role: string; content: string }>> {
+  const whereClause = conversationId === "__legacy__"
+    ? and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.conversationId))
+    : and(eq(nexusMessagesTable.userId, userId), eq(nexusMessagesTable.conversationId, conversationId));
+  const rows = await db
+    .select({
+      id: nexusMessagesTable.id,
+      role: nexusMessagesTable.role,
+      content: nexusMessagesTable.content,
+      createdAt: nexusMessagesTable.createdAt,
+    })
+    .from(nexusMessagesTable)
+    .where(nonBriefingMessages(whereClause, hasMessageType))
+    .orderBy(desc(nexusMessagesTable.createdAt), desc(nexusMessagesTable.id))
+    .limit(10);
+
+  return rows
+    .reverse()
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }))
+    .filter((message) => message.content.trim().length > 0);
+}
+
+// GET /api/nexus/thread — return a conversation thread (optionally scoped by conversationId)
+router.get("/nexus/thread", async (req, res): Promise<void> => {
+  console.log("nexus/thread userId:", (req as any).session?.userId);
+  try {
+    const userId = (req as any).authUser.id as number;
+    const conversationId = req.query.conversationId as string | undefined;
+    const userType = parseHomeUserType(req.query.userType);
+    const focusProjectId = Number(req.query.focusProjectId);
+
+    const whereClause = conversationId === "__legacy__"
+      ? and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.conversationId))
+      : conversationId
+        ? and(eq(nexusMessagesTable.userId, userId), eq(nexusMessagesTable.conversationId, conversationId))
+        : eq(nexusMessagesTable.userId, userId);
+
+    const hasMessageType = await hasNexusMessageTypeColumn();
+    const messages = await loadNexusMessages(nonBriefingMessages(whereClause, hasMessageType), hasMessageType);
+
+    if (messages.length === 0 && conversationId && conversationId !== "__legacy__") {
+      const [existingBriefing] = hasMessageType
+        ? await db
+            .select({ id: nexusMessagesTable.id })
+            .from(nexusMessagesTable)
+            .where(and(whereClause, eq(nexusMessagesTable.messageType, "briefing")))
+            .limit(1)
+        : [];
+      if (existingBriefing) {
+        res.json([]);
+        return;
+      }
+
+      const [project] = await db
+        .select({ name: projectsTable.name })
+        .from(projectsTable)
+        .where(
+          Number.isInteger(focusProjectId) && focusProjectId > 0
+            ? and(eq(projectsTable.userId, userId), eq(projectsTable.id, focusProjectId))
+            : eq(projectsTable.userId, userId)
+        )
+        .orderBy(desc(projectsTable.updatedAt))
+        .limit(1);
+      const opening = await generateHomeOpening(project?.name ?? null, userType);
+      const [savedOpening] = hasMessageType
+        ? await db
+            .insert(nexusMessagesTable)
+            .values({ userId, role: "assistant", content: opening, conversationId, messageType: "briefing" })
+            .returning({
+              id: nexusMessagesTable.id,
+              role: nexusMessagesTable.role,
+              content: nexusMessagesTable.content,
+              messageType: nexusMessagesTable.messageType,
+              createdAt: nexusMessagesTable.createdAt,
+            })
+        : await db
+            .insert(nexusMessagesTable)
+            .values({ userId, role: "assistant", content: opening, conversationId })
+            .returning({
+              id: nexusMessagesTable.id,
+              role: nexusMessagesTable.role,
+              content: nexusMessagesTable.content,
+              createdAt: nexusMessagesTable.createdAt,
+            });
+      res.json([{
+        id: savedOpening.id,
+        role: savedOpening.role,
+        content: savedOpening.content,
+        isBriefing: hasMessageType && "messageType" in savedOpening ? savedOpening.messageType === "briefing" : true,
+        executionTimeMs: null,
+        inputTokens: null,
+        outputTokens: null,
+        costUsd: null,
+        runStatus: null,
+        runSummary: null,
+        runActions: null,
+        runArtifacts: null,
+        execution_time_ms: null,
+        input_tokens: null,
+        output_tokens: null,
+        cost_usd: null,
+        run_status: null,
+        run_summary: null,
+        run_actions: null,
+        run_artifacts: null,
+        createdAt: savedOpening.createdAt.toISOString(),
+      }]);
+      return;
+    }
+
+    res.json(messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      isBriefing: m.messageType === "briefing",
+      executionTimeMs: null,
+      inputTokens: null,
+      outputTokens: null,
+      costUsd: null,
+      runStatus: null,
+      runSummary: null,
+      runActions: null,
+      runArtifacts: null,
+      execution_time_ms: null,
+      input_tokens: null,
+      output_tokens: null,
+      cost_usd: null,
+      run_status: null,
+      run_summary: null,
+      run_actions: null,
+      run_artifacts: null,
+      createdAt: m.createdAt.toISOString(),
+    })));
+    return;
+  } catch (err: any) {
+    console.error("nexus/thread error:", err?.message, err?.stack);
+    res.status(500).json({ error: "Failed to load thread", detail: err?.message });
+    return;
+  }
 });
 
 // DELETE /api/nexus/thread — clear a conversation (scoped by conversationId, or all if omitted)
@@ -326,26 +1337,52 @@ router.post("/nexus/conversation/save", async (req, res): Promise<void> => {
 });
 
 router.get("/nexus/conversations", async (req, res): Promise<void> => {
-  const userId = (req as any).authUser.id as number;
-  const rows = await db
-    .select({
-      id: nexusMessagesTable.conversationId,
-      title: sql<string>`(SELECT content FROM nexus_messages sub WHERE sub.conversation_id = nexus_messages.conversation_id AND sub.user_id = ${userId} AND sub.role = 'user' ORDER BY sub.created_at ASC LIMIT 1)`,
-      createdAt: sql<Date>`MAX(${nexusMessagesTable.createdAt})`,
-      messageCount: sql<number>`COUNT(*)`,
-    })
-    .from(nexusMessagesTable)
-    .where(and(eq(nexusMessagesTable.userId, userId), isNotNull(nexusMessagesTable.conversationId)))
-    .groupBy(nexusMessagesTable.conversationId)
-    .orderBy(desc(sql`MAX(${nexusMessagesTable.createdAt})`))
-    .limit(30);
-  const conversations = rows.map(r => ({
-    id: r.id,
-    title: r.title ? r.title.slice(0, 60) : "Conversation",
-    createdAt: r.createdAt,
-    messageCount: Number(r.messageCount),
-  }));
-  res.json({ conversations });
+  console.log("nexus/conversations userId:", (req as any).session?.userId);
+  try {
+    const userId = (req as any).authUser.id as number;
+    const hasMessageType = await hasNexusMessageTypeColumn();
+    const rows = hasMessageType
+      ? await db
+          .select({
+            id: nexusMessagesTable.conversationId,
+            title: sql<string>`(SELECT content FROM nexus_messages sub WHERE sub.conversation_id = nexus_messages.conversation_id AND sub.user_id = ${userId} AND sub.role = 'user' AND sub.message_type IS DISTINCT FROM 'briefing' AND sub.message_type IS DISTINCT FROM 'reflection' ORDER BY sub.created_at ASC LIMIT 1)`,
+            createdAt: sql<Date>`MAX(${nexusMessagesTable.createdAt})`,
+            messageCount: sql<number>`COUNT(*)`,
+          })
+          .from(nexusMessagesTable)
+          .where(and(
+            eq(nexusMessagesTable.userId, userId),
+            isNotNull(nexusMessagesTable.conversationId),
+            sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
+            sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'reflection'`,
+          ))
+          .groupBy(nexusMessagesTable.conversationId)
+          .orderBy(desc(sql`MAX(${nexusMessagesTable.createdAt})`))
+          .limit(30)
+      : await db
+          .select({
+            id: nexusMessagesTable.conversationId,
+            title: sql<string>`(SELECT content FROM nexus_messages sub WHERE sub.conversation_id = nexus_messages.conversation_id AND sub.user_id = ${userId} AND sub.role = 'user' ORDER BY sub.created_at ASC LIMIT 1)`,
+            createdAt: sql<Date>`MAX(${nexusMessagesTable.createdAt})`,
+            messageCount: sql<number>`COUNT(*)`,
+          })
+          .from(nexusMessagesTable)
+          .where(and(eq(nexusMessagesTable.userId, userId), isNotNull(nexusMessagesTable.conversationId)))
+          .groupBy(nexusMessagesTable.conversationId)
+          .orderBy(desc(sql`MAX(${nexusMessagesTable.createdAt})`))
+          .limit(30);
+    const conversations = rows.map(r => ({
+      id: r.id,
+      title: r.title ? r.title.slice(0, 60) : "Conversation",
+      createdAt: r.createdAt,
+      messageCount: Number(r.messageCount),
+    }));
+    res.json({ conversations });
+  } catch (err: any) {
+    console.error("nexus/conversations error:", err?.message, err?.stack);
+    res.status(500).json({ error: "Failed to load conversations", detail: err?.message });
+    return;
+  }
 });
 
 router.get("/nexus/conversation/:id", async (req, res): Promise<void> => {
@@ -368,6 +1405,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     imageBase64?: string;
     imageMimeType?: string;
     conversationId?: string;
+    sessionId?: number;
+    userType?: HomeUserType;
   };
 
   const hasImage = !!(body.imageBase64 && body.imageMimeType);
@@ -379,36 +1418,69 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   const userId = (req as any).authUser.id as number;
   // history from the client body is accepted in the schema for API compatibility
   // but ignored server-side — the Living Thread in nexus_messages is authoritative.
-  const { userProfile = "", focusProjectId = null, mode = "strategic", model = "claude", imageBase64, imageMimeType, conversationId } = body;
+  const { userProfile = "", focusProjectId: requestedFocusProjectId = null, mode = "strategic", model = "claude", imageBase64, imageMimeType, conversationId } = body;
+  const userType = parseHomeUserType(body.userType);
+  const sessionId = Number.isInteger(body.sessionId) && Number(body.sessionId) > 0 ? Number(body.sessionId) : null;
   // Use a sensible fallback when the user sends an image with no text
   const message = body.message?.trim() || (hasImage ? "[image]" : "");
 
   try {
+  const sessionContext = sessionId
+    ? await db
+        .select({
+          id: sessionsTable.id,
+          projectId: sessionsTable.projectId,
+          reflectionMode: sessionsTable.reflectionMode,
+          ideaMode: sessionsTable.ideaMode,
+        })
+        .from(sessionsTable)
+        .innerJoin(projectsTable, eq(sessionsTable.projectId, projectsTable.id))
+        .where(and(eq(sessionsTable.id, sessionId), eq(projectsTable.userId, userId)))
+        .limit(1)
+    : [];
+  if (sessionId && sessionContext.length === 0) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  const reflectionMode = sessionContext[0]?.reflectionMode === true;
+  let ideaMode = sessionContext[0]?.ideaMode === true;
+  const focusProjectId = requestedFocusProjectId ?? sessionContext[0]?.projectId ?? null;
+  const hasMessageType = await hasNexusMessageTypeColumn();
 
   // Load projects + Living Thread in parallel
   const [projects, dbMessages] = await Promise.all([
     db
-      .select({ id: projectsTable.id, name: projectsTable.name, memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo })
+      .select({ id: projectsTable.id, name: projectsTable.name, memory: projectsTable.memory, linkedRepo: projectsTable.linkedRepo, nodeState: projectsTable.nodeState })
       .from(projectsTable)
       .where(eq(projectsTable.userId, userId)),
-    db
-      .select()
-      .from(nexusMessagesTable)
-      .where(
-        conversationId === "__legacy__"
-          ? and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.conversationId))
-          : conversationId
-            ? and(eq(nexusMessagesTable.userId, userId), eq(nexusMessagesTable.conversationId, conversationId))
-            : eq(nexusMessagesTable.userId, userId)
-      )
-      .orderBy(asc(nexusMessagesTable.createdAt)),
+    loadNexusMessages(
+      conversationMessages(conversationId === "__legacy__"
+        ? and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.conversationId))
+        : conversationId
+          ? and(eq(nexusMessagesTable.userId, userId), eq(nexusMessagesTable.conversationId, conversationId))
+          : eq(nexusMessagesTable.userId, userId), reflectionMode, hasMessageType),
+      hasMessageType,
+    ),
   ]);
+
+  const shouldEnableIdeaMode = !reflectionMode && !ideaMode && (
+    hasExplicitIdeaModeSignal(message) || (dbMessages.length === 0 && hasIdeaModeSignal(message))
+  );
+  if (shouldEnableIdeaMode) {
+    ideaMode = true;
+    if (sessionId) {
+      await db
+        .update(sessionsTable)
+        .set({ ideaMode: true })
+        .where(eq(sessionsTable.id, sessionId));
+    }
+  }
 
   // Load committed decisions across all projects for cross-project tension detection
   const projectIds = projects.map((p) => p.id);
   const committedEntries = projectIds.length > 0
     ? await db
-        .select({ projectId: entriesTable.projectId, title: entriesTable.title, summary: entriesTable.summary })
+        .select({ id: entriesTable.id, projectId: entriesTable.projectId, title: entriesTable.title, summary: entriesTable.summary })
         .from(entriesTable)
         .where(and(inArray(entriesTable.projectId, projectIds), eq(entriesTable.status, "committed")))
     : [];
@@ -448,10 +1520,31 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     content: m.content,
   }));
 
+  const userProjects = await db
+    .select({ id: projectsTable.id, name: projectsTable.name })
+    .from(projectsTable)
+    .where(eq(projectsTable.userId, userId))
+    .orderBy(desc(projectsTable.updatedAt))
+    .limit(20);
+
   // Build system prompt
-  let systemPrompt = NEXUS_SYSTEM_PROMPT;
+  let systemPrompt = reflectionMode
+    ? `${NEXUS_SYSTEM_PROMPT}\n\n--- SESSION CONTEXT ---\nreflection_mode: true\nidea_mode: false\n--- END SESSION CONTEXT ---`
+    : ideaMode
+      ? `${NEXUS_SYSTEM_PROMPT}\n\n${IDEA_MODE_POSTURE}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: true\n--- END SESSION CONTEXT ---`
+      : `${NEXUS_SYSTEM_PROMPT}\n\n${CONVERSATIONAL_EXPANSION_PROTOCOL}\n\n--- SESSION CONTEXT ---\nreflection_mode: false\nidea_mode: false\n--- END SESSION CONTEXT ---`;
+  let vault: Awaited<ReturnType<typeof loadVaultContext>> = { imageBlocks: [], systemNote: "", hasImages: false };
+  let urlBlocks: Awaited<ReturnType<typeof screenshotUrlsToBlocks>> = [];
+
+  if (!reflectionMode && !ideaMode) {
   if (userProfile) {
     systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
+  }
+  if (userType) {
+    systemPrompt += `\n\n--- HOME ONBOARDING CONTEXT ---\n${userTypeOpeningGuidance(userType)} Use that as a bias for the next natural question, while still following the conversational expansion protocol.\n--- END HOME ONBOARDING CONTEXT ---`;
+  }
+  if (userProjects.length > 0) {
+    systemPrompt += `\n\n--- YOUR PROJECTS ---\n${userProjects.map(p => `- ${p.name} (id: ${p.id})`).join("\n")}\nThese are the user's actual projects. Reference them by name when relevant. Never invent project names.\n--- END YOUR PROJECTS ---`;
   }
   // Always inject the full project roster so Atlas knows every room, even empty ones
   systemPrompt += `\n\n--- YOUR PROJECT PORTFOLIO (${projects.length} project${projects.length !== 1 ? "s" : ""}) ---\n${projectRoster}`;
@@ -506,9 +1599,56 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         const store = parseMemoryStore(focusProject.memory ?? null);
         return buildMemoryText(store);
       })();
+      const focusLedgerEntries: FocusLedgerEntry[] = await db
+        .select({
+          id: entriesTable.id,
+          title: entriesTable.title,
+          status: entriesTable.status,
+          deviation: entriesTable.deviation,
+          catchAgainstId: entriesTable.catchAgainstId,
+          supersedesId: entriesTable.supersedesId,
+        })
+        .from(entriesTable)
+        .where(eq(entriesTable.projectId, focusProjectId));
+      const ledgerGroups = groupLedgerEntries(focusLedgerEntries);
+      const flowNodes = extractFlowMapNodes(focusProject.nodeState);
+      const answeredFlowNodes = flowNodes.filter((node) => node.answered);
+      const unansweredFlowNodes = flowNodes.filter((node) => !node.answered);
+      const architectureScore = computeArchitectureReadiness(flowNodes);
+      const decisionsScore = computeDecisionReadiness(focusLedgerEntries);
+      const blendedScore = computeBlendedReadiness(architectureScore, decisionsScore);
+      const projectTensions = findSemanticTensionsForProject(focusProjectId, projects, committedEntries);
+      const tensionLines = projectTensions.length > 0
+        ? projectTensions.map((tension) => `${tension.projectA.name} ↔ ${tension.projectB.name}: "${tension.entryA.title}" conflicts with "${tension.entryB.title}"`).join("\n")
+        : "None detected.";
       systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user has zoomed in on "${focusProject.name}" for this conversation. Prioritize this project's context. Open your FIRST response by explicitly naming the project — begin with "${focusProject.name} —" or "On ${focusProject.name}:" so the user knows the focus is active. After that, answer normally without repeating the label on every message.`;
       if (focusEntries) systemPrompt += `\nCommitted decisions:\n${focusEntries}`;
       if (focusMemory) systemPrompt += `\nProject memory:\n${focusMemory}`;
+      systemPrompt += `\n\nFULL LEDGER STATE:
+LEDGER STATE:
+Committed (${ledgerGroups.committed.length}): ${formatTitles(ledgerGroups.committed)}
+Parked (${ledgerGroups.parked.length}): ${formatTitles(ledgerGroups.parked)}
+In Tension (${ledgerGroups.inTension.length}): ${formatTitles(ledgerGroups.inTension)}
+Overridden (${ledgerGroups.overridden.length}): ${formatTitles(ledgerGroups.overridden)}
+
+Atlas should reference parked items naturally if relevant.
+Atlas should flag in-tension items if the conversation touches them.`;
+      if (ledgerGroups.parked.length > 0) {
+        systemPrompt += `\n\nPARKING LOT AWARENESS:
+The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.length === 1 ? "" : "s"}: ${formatTitles(ledgerGroups.parked)}. Reference them naturally if the conversation is relevant. Do not list them all at once unprompted.`;
+      }
+      systemPrompt += `\n\nCROSS-PROJECT TENSIONS:
+${tensionLines}
+If Atlas detects the conversation is heading toward one of these tensions, surface it proactively with: "⚠️ Cross-project tension: [description]"
+
+READINESS SCORE:
+Current readiness: ${blendedScore}% (architecture: ${architectureScore}%, decisions: ${decisionsScore}%)
+Atlas should reference this if asked about project health or progress.
+
+FLOW MAP STATE:
+FLOW MAP: ${flowNodes.length} nodes total — ${answeredFlowNodes.length} answered, ${unansweredFlowNodes.length} unanswered
+Unanswered: ${unansweredFlowNodes.length > 0 ? unansweredFlowNodes.map((node) => node.label).join("; ") : "none"}
+Atlas should offer to help fill unanswered nodes if the conversation provides relevant information.`;
       systemPrompt += `\n--- END FOCUSED PROJECT ---`;
     }
   }
@@ -521,7 +1661,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   }
 
   // Load Visual Vault images (project-scoped if focused, otherwise skip for global)
-  const vault = focusProjectId
+  vault = focusProjectId
     ? await loadVaultContext(userId, focusProjectId)
     : { imageBlocks: [], systemNote: "", hasImages: false };
   if (vault.hasImages) {
@@ -530,14 +1670,23 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 
   // ── Live URL capture — screenshot any URLs in the message ─────────────────
   const detectedUrls = extractPageUrls(message);
-  const urlBlocks = await screenshotUrlsToBlocks(detectedUrls);
+  urlBlocks = await screenshotUrlsToBlocks(detectedUrls);
   const urlNote = buildUrlNote(urlBlocks);
   if (urlNote) {
     systemPrompt += `\n\n--- LIVE URL CAPTURE ---\n${urlNote}\n--- END LIVE URL CAPTURE ---`;
   }
+  }
 
   // Persist the user message to the Living Thread
-  await db.insert(nexusMessagesTable).values({ userId, role: "user", content: message, conversationId: conversationId ?? null });
+  await db.insert(nexusMessagesTable).values({
+    userId,
+    role: "user",
+    content: message,
+    projectId: focusProjectId ?? null,
+    sessionId,
+    conversationId: conversationId ?? null,
+    ...(hasMessageType ? { messageType: reflectionMode ? "reflection" : "message" } : {}),
+  });
 
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
@@ -545,9 +1694,36 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
+  const runActions: RunAction[] = [];
+  const writeStep = (action: RunAction) => {
+    const step: RunAction = { ...action, status: action.status ?? "ok" };
+    runActions.push(step);
+    if (!res.writableEnded && !res.destroyed) {
+      res.write(`event: step\ndata: ${JSON.stringify(step)}\n\n`);
+    }
+  };
+
+  writeStep({ verb: "Read", target: "nexus_messages" });
+  if (focusProjectId) writeStep({ verb: "Read", target: "project context" });
+  if (vault.hasImages) writeStep({ verb: "Read", target: "visual vault" });
+  if (urlBlocks.length > 0) writeStep({ verb: "Captured", target: `${urlBlocks.length} URL${urlBlocks.length === 1 ? "" : "s"}` });
+
+  let modelStartedAt = performance.now();
+  let modelUsage: Partial<NexusRunMetadata> = {};
+  let streamDone = false;
+  const activeModel = model === "gemini" ? "gemini" : "claude";
+  const modelUsed = activeModel === "gemini" ? "gemini-2.5-pro" : "claude-sonnet-4-6";
+
   const finishStream = async (rawContent: string) => {
+    streamDone = true;
     // Strip MEMORY_Tn tags from persisted output
-    const { content: visibleContent, memoryUpdated } = extractMemoryLines(rawContent);
+    const { content: visibleContent, memoryUpdated: parsedMemoryUpdated } = extractMemoryLines(rawContent);
+    const memoryUpdated = reflectionMode ? false : parsedMemoryUpdated;
+    writeStep({ verb: "Write", target: "nexus_messages" });
+    const runMetadata = buildRunMetadata(visibleContent, {
+      ...modelUsage,
+      runActions: runActions.length > 0 ? runActions : null,
+    });
 
     // Detect active mode from Atlas's response
     const lowerContent = visibleContent.toLowerCase();
@@ -562,7 +1738,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     })();
 
     // Detect if Atlas keeps referencing one project and suggest focus
-    const projectMentions = projects.map(p => ({
+    const projectMentions = reflectionMode || ideaMode ? [] : projects.map(p => ({
       id: p.id,
       name: p.name,
       count: (lowerContent.match(new RegExp(p.name.toLowerCase(), "g")) ?? []).length
@@ -572,28 +1748,64 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       ? { projectId: projectMentions[0].id, projectName: projectMentions[0].name }
       : null;
 
-    const handoffSignal = await detectHomeHandoff([
-      ...conversationHistory.slice(-8),
-      { role: "user", content: message },
-      { role: "assistant", content: visibleContent },
-    ]);
+    const handoffSignal = reflectionMode || ideaMode
+      ? null
+      : await detectHomeHandoff([
+          ...conversationHistory.slice(-8),
+          { role: "user", content: message },
+          { role: "assistant", content: visibleContent },
+        ]);
+    const surface = reflectionMode
+      ? null
+      : detectSurfaceSignal({
+          content: visibleContent,
+          userMessage: message,
+          recentMessages: conversationHistory,
+        });
 
     // Persist the assistant response to the Living Thread
-    await db.insert(nexusMessagesTable).values({ userId, role: "assistant", content: visibleContent, conversationId: conversationId ?? null });
+    await db.insert(nexusMessagesTable).values({
+      userId,
+      role: "assistant",
+      content: visibleContent,
+      projectId: focusProjectId ?? null,
+      sessionId,
+      conversationId: conversationId ?? null,
+      ...(hasMessageType ? { messageType: reflectionMode ? "reflection" : "message" } : {}),
+    });
+    await updateSessionRunMetadata(sessionId, runMetadata);
 
-    res.write(`event: done\ndata: ${JSON.stringify({ memoryUpdated, detectedMode, focusSuggestion, ...(handoffSignal ? { handoffSignal } : {}) })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, ...(handoffSignal ? { handoffSignal } : {}), ...runMetadata })}\n\n`);
     res.end();
   };
 
-  // Call the selected model
-  const activeModel = model === "gemini" ? "gemini" : "claude";
+  const failStream = async (summary: string, status: RunStatus = "failed") => {
+    if (streamDone || res.writableEnded || res.destroyed) return;
+    streamDone = true;
+    writeStep({ verb: status === "cancelled" ? "Cancelled" : "Failed", target: "Atlas response", status: status === "cancelled" ? "warn" : "fail" });
+    const metadata = failedRunMetadata(summary, status);
+    res.write(`event: done\ndata: ${JSON.stringify({
+      content: "",
+      surface: null,
+      memoryUpdated: false,
+      detectedMode: "strategic",
+      ...metadata,
+    })}\n\n`);
+    res.end();
+  };
+  req.on("aborted", () => {
+    void failStream("Run cancelled by the user.", "cancelled");
+  });
 
+  // Call the selected model
   if (activeModel === "gemini") {
     let rawContent = "";
     const combinedText = [
       ...conversationHistory.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`),
       `User: ${message}`,
     ].join("\n\n");
+    writeStep({ verb: "Call", target: "Gemini" });
+    modelStartedAt = performance.now();
     if (imageBase64 && imageMimeType) {
       const result = await genai.models.generateContent({
         model: "gemini-2.5-pro",
@@ -601,6 +1813,16 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         config: { systemInstruction: systemPrompt },
       });
       rawContent = result.text ?? "";
+      const usageMetadata = (result as any).usageMetadata as { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined;
+      const inputTokens = nullableNumber(usageMetadata?.promptTokenCount);
+      const outputTokens = nullableNumber(usageMetadata?.candidatesTokenCount)
+        ?? (usageMetadata?.totalTokenCount != null && inputTokens != null ? Math.max(usageMetadata.totalTokenCount - inputTokens, 0) : null);
+      modelUsage = {
+        executionTimeMs: Math.max(1, Math.round(performance.now() - modelStartedAt)),
+        inputTokens,
+        outputTokens,
+        costUsd: calculateModelCostUsd("gemini-2.5-pro", inputTokens, outputTokens),
+      };
     } else {
       const result = await genai.models.generateContent({
         model: "gemini-2.5-pro",
@@ -608,6 +1830,16 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         config: { systemInstruction: systemPrompt },
       });
       rawContent = result.text ?? "";
+      const usageMetadata = (result as any).usageMetadata as { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined;
+      const inputTokens = nullableNumber(usageMetadata?.promptTokenCount);
+      const outputTokens = nullableNumber(usageMetadata?.candidatesTokenCount)
+        ?? (usageMetadata?.totalTokenCount != null && inputTokens != null ? Math.max(usageMetadata.totalTokenCount - inputTokens, 0) : null);
+      modelUsage = {
+        executionTimeMs: Math.max(1, Math.round(performance.now() - modelStartedAt)),
+        inputTokens,
+        outputTokens,
+        costUsd: calculateModelCostUsd("gemini-2.5-pro", inputTokens, outputTokens),
+      };
     }
     res.write(`event: token\ndata: ${JSON.stringify(rawContent)}\n\n`);
     await finishStream(rawContent);
@@ -674,6 +1906,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     { role: "user", content: userContent },
   ];
 
+  modelStartedAt = performance.now();
+  writeStep({ verb: "Call", target: "Claude" });
   const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-6",
     max_tokens: 8192,
@@ -689,17 +1923,25 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   });
 
   stream.on("error", (err) => {
-    res.write(`event: error\ndata: ${JSON.stringify(err.message)}\n\n`);
-    res.end();
+    const cancelled = /\b(abort|cancel|cancelled|canceled)\b/i.test(err.message);
+    writeStep({ verb: "Stream", target: "Claude", status: cancelled ? "warn" : "fail" });
+    void failStream(err.message || "Atlas ran into an issue.", cancelled ? "cancelled" : "failed");
   });
 
-  stream.on("finalMessage", async () => {
+  stream.on("finalMessage", async (message) => {
     try {
+      const inputTokens = nullableNumber((message as any)?.usage?.input_tokens);
+      const outputTokens = nullableNumber((message as any)?.usage?.output_tokens);
+      modelUsage = {
+        executionTimeMs: Math.max(1, Math.round(performance.now() - modelStartedAt)),
+        inputTokens,
+        outputTokens,
+        costUsd: calculateModelCostUsd("claude-sonnet-4-6", inputTokens, outputTokens),
+      };
       await finishStream(fullText);
     } catch (err) {
       req.log.error({ err }, "nexus/chat stream finalization error");
-      res.write(`event: error\ndata: ${JSON.stringify("Atlas ran into an issue. Please try again.")}\n\n`);
-      res.end();
+      await failStream("Atlas ran into an issue. Please try again.", "failed");
     }
   });
 
@@ -708,7 +1950,14 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "nexus/chat error");
     if (res.headersSent && !res.writableEnded) {
-      res.write(`event: error\ndata: ${JSON.stringify("Atlas ran into an issue. Please try again.")}\n\n`);
+      const metadata = failedRunMetadata("Atlas ran into an issue. Please try again.", "failed");
+      res.write(`event: done\ndata: ${JSON.stringify({
+        content: "",
+        surface: null,
+        memoryUpdated: false,
+        detectedMode: "strategic",
+        ...metadata,
+      })}\n\n`);
       res.end();
     } else if (!res.headersSent) {
       res.status(500).json({ error: "Atlas ran into an issue. Please try again." });
@@ -719,10 +1968,18 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
 router.post("/nexus/handoff", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).authUser.id as number;
-    const { messages, projectId } = req.body as {
+    const { messages, projectId, sessionId, ideaMode, conversationId, conversation_id: conversationIdSnake } = req.body as {
       messages: { role: string; content: string }[];
       projectId?: number;
+      sessionId?: number;
+      ideaMode?: boolean;
+      conversationId?: string | null;
+      conversation_id?: string | null;
     };
+    const rawConversationId = conversationId ?? conversationIdSnake;
+    const handoffConversationId = typeof rawConversationId === "string" && rawConversationId.trim().length > 0
+      ? rawConversationId.trim()
+      : null;
 
     if (!messages?.length) {
       res.status(400).json({ error: "No messages provided" });
@@ -760,32 +2017,89 @@ If no clear project name was discussed, use "New Project".`,
     }
 
     let targetProjectId = projectId;
+    let ideaModeActive = ideaMode === true || messages.some((m) => (
+      m.role === "user" && (hasIdeaModeSignal(m.content) || hasExplicitIdeaModeSignal(m.content))
+    ));
+    if (!ideaModeActive && Number.isInteger(sessionId) && Number(sessionId) > 0) {
+      const [session] = await db
+        .select({ ideaMode: sessionsTable.ideaMode })
+        .from(sessionsTable)
+        .innerJoin(projectsTable, eq(sessionsTable.projectId, projectsTable.id))
+        .where(and(eq(sessionsTable.id, Number(sessionId)), eq(projectsTable.userId, userId)))
+        .limit(1);
+      ideaModeActive = session?.ideaMode === true;
+    }
     if (!targetProjectId) {
       const [newProject] = await db
         .insert(projectsTable)
-        .values({ name: brief.projectName, description: brief.description, userId })
+        .values({
+          name: brief.projectName,
+          description: brief.description,
+          entityType: ideaModeActive ? "idea" : "project",
+          userId,
+        })
         .returning();
       targetProjectId = newProject.id;
     }
 
-    const memoryEntry = {
+    const [targetProject] = await db
+      .select({ memory: projectsTable.memory })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, targetProjectId), eq(projectsTable.userId, userId)))
+      .limit(1);
+    if (!targetProject) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    const handoffTimestamp = new Date().toISOString();
+    const existingMemory = parseMemoryStore(targetProject.memory ?? null);
+    const nextEntries: MemoryEntry[] = [
+      ...existingMemory.entries,
+      {
+        tier: 1,
+        text: `Project brief from home conversation: ${brief.blueprint}`,
+        createdAt: handoffTimestamp,
+        retrievalCount: 0,
+        lastRetrievedAt: null,
+      },
+      ...(brief.firstStep ? [{
+        tier: 4 as const,
+        text: `First step: ${brief.firstStep}`,
+        createdAt: handoffTimestamp,
+        retrievalCount: 0,
+        lastRetrievedAt: null,
+      }] : []),
+    ];
+
+    if (
+      handoffConversationId
+      && !memoryHasConversationContext(targetProject.memory ?? null, existingMemory, handoffConversationId)
+    ) {
+      const hasMessageType = await hasNexusMessageTypeColumn();
+      const recentConversationMessages = await loadRecentNexusMessagesForConversation(
+        userId,
+        handoffConversationId,
+        hasMessageType,
+      );
+      if (recentConversationMessages.length > 0) {
+        nextEntries.push({
+          tier: 3,
+          text: buildConversationContextBlock(
+            handoffConversationId,
+            handoffTimestamp,
+            recentConversationMessages,
+          ),
+          createdAt: handoffTimestamp,
+          retrievalCount: 0,
+          lastRetrievedAt: null,
+        });
+      }
+    }
+
+    const memoryEntry: MemoryStore = {
       v: 2,
-      entries: [
-        {
-          tier: 1,
-          text: `Project brief from home conversation: ${brief.blueprint}`,
-          createdAt: new Date().toISOString(),
-          retrievalCount: 0,
-          lastRetrievedAt: null,
-        },
-        ...(brief.firstStep ? [{
-          tier: 4,
-          text: `First step: ${brief.firstStep}`,
-          createdAt: new Date().toISOString(),
-          retrievalCount: 0,
-          lastRetrievedAt: null,
-        }] : []),
-      ],
+      entries: nextEntries,
     };
 
     await db
@@ -809,7 +2123,7 @@ router.post("/nexus/briefing", async (req, res): Promise<void> => {
       .where(eq(projectsTable.userId, userId));
 
     if (projects.length === 0) {
-      res.json({ briefing: null });
+      res.json({ briefing: null, isBriefing: true });
       return;
     }
 
@@ -839,10 +2153,10 @@ router.post("/nexus/briefing", async (req, res): Promise<void> => {
     });
 
     const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
-    res.json({ briefing: text });
+    res.json({ briefing: text, isBriefing: true });
   } catch (err) {
     req.log?.error({ err }, "Briefing error");
-    res.json({ briefing: null });
+    res.json({ briefing: null, isBriefing: true });
   }
 });
 
