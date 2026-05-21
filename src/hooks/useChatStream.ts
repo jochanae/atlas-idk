@@ -262,11 +262,47 @@ export function useChatStream(
         body: JSON.stringify(body),
         signal: controller.signal,
       })
-        .then((r) => {
+        .then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
+
+          const reader = r.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let finalPayload: any = null;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const blocks = buffer.split("\n\n");
+            buffer = blocks.pop() ?? "";
+
+            for (const block of blocks) {
+              let evtName = "";
+              let evtData = "";
+              for (const line of block.split("\n")) {
+                if (line.startsWith("event: ")) evtName = line.slice(7).trim();
+                else if (line.startsWith("data: ")) evtData = line.slice(6);
+              }
+              if (!evtData) continue;
+
+              if (evtName === "narration") {
+                try {
+                  const text = JSON.parse(evtData) as string;
+                  setActivityStream({ active: true, content: text });
+                } catch {}
+              } else if (evtName === "done") {
+                try {
+                  finalPayload = JSON.parse(evtData);
+                } catch {}
+              }
+            }
+          }
+
+          return finalPayload;
         })
         .then((res) => {
+          if (!res) return;
           if (res.content && typeof res.content === "string") {
             const driftMatch = res.content.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
             if (driftMatch) {
