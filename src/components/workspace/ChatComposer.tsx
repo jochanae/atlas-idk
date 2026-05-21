@@ -1,10 +1,76 @@
 import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ZipPanel } from "../ZipImport";
 import type { ZipEntry } from "../ZipImport";
 import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
+
+const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
+  flow: [
+    "What are you turning over…",
+    "What's the constraint you haven't named…",
+    "What would have to be true for this to work…",
+    "Where did the last session leave things…",
+  ],
+  build: [
+    "What needs to be built or fixed…",
+    "What's the smallest next step…",
+    "Where does this slot into the system…",
+  ],
+  look: [
+    "What visual change do you need…",
+    "What feels off in the UI…",
+    "Describe the vibe you're chasing…",
+  ],
+  scenario: [
+    "What if…",
+    "What changes if this assumption flips…",
+    "Walk a scenario forward — what breaks first…",
+  ],
+};
+
+function useComposerTypewriter(phrases: string[], paused: boolean) {
+  const [display, setDisplay] = useState("");
+  const state = useRef({ phraseIdx: 0, charIdx: 0, phase: "typing" as "typing" | "erasing" });
+  const phrasesRef = useRef(phrases);
+  phrasesRef.current = phrases;
+
+  useEffect(() => {
+    if (paused || phrases.length === 0) { setDisplay(""); return; }
+    state.current = { phraseIdx: 0, charIdx: 0, phase: "typing" };
+    let timer: ReturnType<typeof setTimeout>;
+    function tick() {
+      const s = state.current;
+      const phrase = phrasesRef.current[s.phraseIdx] ?? "";
+      if (s.phase === "typing") {
+        if (s.charIdx < phrase.length) {
+          s.charIdx++;
+          setDisplay(phrase.slice(0, s.charIdx));
+          timer = setTimeout(tick, 38);
+        } else {
+          timer = setTimeout(() => { s.phase = "erasing"; tick(); }, 2200);
+        }
+      } else {
+        if (s.charIdx > 0) {
+          s.charIdx--;
+          setDisplay(phrase.slice(0, s.charIdx));
+          timer = setTimeout(tick, 22);
+        } else {
+          s.phraseIdx = (s.phraseIdx + 1) % phrasesRef.current.length;
+          s.phase = "typing";
+          timer = setTimeout(tick, 220);
+        }
+      }
+    }
+    timer = setTimeout(tick, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused, phrases.join("|")]);
+
+  return display;
+}
 
 type AtlasSrcFile = { label: string; path: string; hint: string };
 
