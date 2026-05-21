@@ -1231,13 +1231,19 @@ export default function Home() {
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
-  const [homeLens, setHomeLens] = useState<"flow" | "build" | "look" | "scenario">(() => {
-    try { return (localStorage.getItem("atlas-home-lens") as "flow" | "build" | "look" | "scenario") || "flow"; } catch { return "flow"; }
-  });
+  const [homeLens, setHomeLens] = useState<"flow" | "build" | "look" | "scenario">("flow");
+  useEffect(() => {
+    const key = authUser?.id ? `atlas-home-lens-${authUser.id}` : "atlas-home-lens";
+    try {
+      const saved = localStorage.getItem(key) as "flow" | "build" | "look" | "scenario" | null;
+      if (saved) setHomeLens(saved);
+    } catch {}
+  }, [authUser?.id]);
   const updateHomeLens = useCallback((next: "flow" | "build" | "look" | "scenario") => {
     setHomeLens(next);
-    try { localStorage.setItem("atlas-home-lens", next); } catch {}
-  }, []);
+    const key = authUser?.id ? `atlas-home-lens-${authUser.id}` : "atlas-home-lens";
+    try { localStorage.setItem(key, next); } catch {}
+  }, [authUser?.id]);
   const [threadLoading, setThreadLoading] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string>(() => {
     const newId = crypto.randomUUID();
