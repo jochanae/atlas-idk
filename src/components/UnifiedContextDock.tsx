@@ -372,7 +372,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       <style>{`
         .udock-slot:active { transform: scale(0.92); }
         .udock-slot:hover { color: rgba(212,175,55,0.75) !important; }
+        .udock-slot:focus-visible { outline: 2px solid rgba(212,175,55,0.85); outline-offset: 2px; border-radius: 8px; color: rgba(212,175,55,0.95) !important; }
         .udock-center:active { transform: translateY(0) scale(0.94); }
+        .udock-center:focus-visible { outline: 2px solid rgba(212,175,55,0.95); outline-offset: 4px; }
+        .udock-center:hover { box-shadow: 0 0 0 6px rgba(212,175,55,0.12), 0 0 28px rgba(212,175,55,0.55), 0 4px 12px rgba(0,0,0,0.5) !important; }
         @keyframes udockCenterPulse {
           0%   { box-shadow: 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
           35%  { box-shadow: 0 0 0 10px rgba(212,175,55,0.35), 0 0 36px rgba(212,175,55,0.75), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1.06); }
@@ -442,8 +445,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core — hold for surfaces"
-            aria-label="Return to Atlas Core. Long-press to switch surface."
+            title="Atlas Core — Enter to focus chat, hold or Shift+Enter to switch surface"
+            aria-label="Atlas Core. Press Enter to focus chat. Hold or press Shift+Enter to switch surface."
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
             className="udock-center"
             onClick={handleAtlasClick}
             onPointerDown={startLongPress}
@@ -451,6 +456,29 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             onPointerLeave={cancelLongPress}
             onPointerCancel={cancelLongPress}
             onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; setSheetOpen(true); }}
+            onKeyDown={(e) => {
+              if (e.repeat) return;
+              if (e.key === "Enter" && e.shiftKey) {
+                e.preventDefault();
+                longPressFired.current = true;
+                setSheetOpen(true);
+              } else if (e.key === " " || e.key === "Spacebar") {
+                e.preventDefault();
+                startLongPress();
+              }
+            }}
+            onKeyUp={(e) => {
+              if (e.key === " " || e.key === "Spacebar") {
+                e.preventDefault();
+                const fired = longPressFired.current;
+                cancelLongPress();
+                if (!fired) fireTap();
+                longPressFired.current = false;
+              } else if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                fireTap();
+              }
+            }}
             style={{
               width: 56,
               height: 56,
