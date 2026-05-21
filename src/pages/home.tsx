@@ -1328,6 +1328,7 @@ export default function Home() {
 
   // ── Reflection mode ────────────────────────────────────────────────────────
   const [reflectionLocked, setReflectionLocked] = useState(false);
+  const { collapsed: subheaderCollapsed, toggle: toggleSubheader } = useCollapsibleSubheader("home");
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
