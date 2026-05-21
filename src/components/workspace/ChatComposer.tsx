@@ -90,6 +90,9 @@ function RotatingPlaceholder({ wsLens, hasInput, inputFocused, hasMessages }: { 
       {typed || pool[0]}
     </div>
   );
+}
+
+
 
 type AtlasSrcFile = { label: string; path: string; hint: string };
 
