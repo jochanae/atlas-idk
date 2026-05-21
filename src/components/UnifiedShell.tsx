@@ -66,6 +66,7 @@ function projectIdFromPath(pathname: string): number | null {
 }
 
 function ShellWordmark() {
+  const [, setLocation] = useLocation();
   const openProjects = useCallback((e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -102,26 +103,32 @@ function ShellWordmark() {
           <path d="M3 7.2c0-.9.7-1.6 1.6-1.6h4.3c.4 0 .8.2 1.1.5l1.3 1.4c.3.3.7.5 1.1.5h6c.9 0 1.6.7 1.6 1.6v8.8c0 .9-.7 1.6-1.6 1.6H4.6C3.7 20 3 19.3 3 18.4V7.2z" />
         </svg>
       </button>
-      <img
-        src="/axiom-logo.svg"
-        alt="Axiom"
-        width={26}
-        height={26}
-        style={{ borderRadius: "20%", flexShrink: 0 }}
-      />
-      <span
-        style={{
-          fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-          fontSize: "var(--ts-label)",
-          fontWeight: 700,
-          letterSpacing: "0.18em",
-          lineHeight: "var(--lh-tight)",
-          color: "var(--atlas-gold)",
-          textTransform: "uppercase",
-        }}
+      <button
+        type="button"
+        onClick={() => setLocation("/home")}
+        style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}
       >
-        AXIOM
-      </span>
+        <img
+          src="/axiom-logo.svg"
+          alt="Axiom"
+          width={26}
+          height={26}
+          style={{ borderRadius: "20%", flexShrink: 0 }}
+        />
+        <span
+          style={{
+            fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
+            fontSize: "var(--ts-label)",
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            lineHeight: "var(--lh-tight)",
+            color: "var(--atlas-gold)",
+            textTransform: "uppercase",
+          }}
+        >
+          AXIOM
+        </span>
+      </button>
     </div>
   );
 }
