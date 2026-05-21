@@ -50,6 +50,7 @@ export interface UseChatStreamOptions {
   getGetProjectQueryKey: (projectId: number) => QueryKey;
   getListProjectsQueryKey: () => QueryKey;
   reportError: (err: unknown, ctx?: { projectId?: number }) => void;
+  onFlowNodes?: (nodes: Array<{ id: string; type: string; label: string; question?: string; x: number; y: number }>) => void;
 }
 
 export interface ActivityStreamState {
@@ -114,6 +115,7 @@ export function useChatStream(
     getGetProjectQueryKey,
     getListProjectsQueryKey,
     reportError,
+    onFlowNodes,
   } = opts;
 
   // ---- message state ----
@@ -366,6 +368,9 @@ export function useChatStream(
               return merged;
             });
           }
+          if (res.flowNodes && res.flowNodes.length > 0 && onFlowNodes) {
+            onFlowNodes(res.flowNodes);
+          }
           if (res.autoName) {
             setAutoNameKey((k) => k + 1);
             queryClient.setQueryData(getGetProjectQueryKey(projectId), (old: unknown) => {
@@ -386,7 +391,7 @@ export function useChatStream(
         })
         .finally(() => { setChatPending(false); abortControllerRef.current = null; });
     },
-    [entries, projectId, fileContext, forgeContext, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError],
+    [entries, projectId, fileContext, forgeContext, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onFlowNodes],
   );
 
   const handleRegenerate = useCallback(
