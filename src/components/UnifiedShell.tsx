@@ -66,9 +66,13 @@ function projectIdFromPath(pathname: string): number | null {
 }
 
 function ShellWordmark() {
-  const openProjects = useCallback(() => {
-    // Folder icon opens the global navigation drawer (Atlas / Projects / Navigate),
-    // NOT the per-project menu. The project-name chevron handles project actions.
+  const openProjects = useCallback((e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    // Folder icon ALWAYS opens the side navigation drawer (Atlas / Projects),
+    // in every context (home AND workspace). It is never tied to the per-project
+    // dropdown menu. The project-name chevron handles per-project actions.
+    window.dispatchEvent(new CustomEvent("axiom:close-project-menu"));
     window.dispatchEvent(new CustomEvent("axiom:open-nav-drawer"));
   }, []);
   return (
@@ -76,8 +80,8 @@ function ShellWordmark() {
       <button
         type="button"
         onClick={openProjects}
-        title="Open projects"
-        aria-label="Open projects"
+        title="Open navigation"
+        aria-label="Open navigation"
         style={{
           background: "transparent",
           border: "none",
