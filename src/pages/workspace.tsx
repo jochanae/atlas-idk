@@ -3351,7 +3351,10 @@ export default function Workspace() {
   });
   const [showDrawer, setShowDrawer] = useState(false);
   useEffect(() => {
-    const open = () => setShowDrawer(true);
+    // The shell's project chevron dispatches this event. The workspace shows
+    // the full project dropdown (switch / rename / settings / clone / ledger /
+    // dashboard / archive / delete) — NOT the generic ProjectsDrawer.
+    const open = () => setShowProjectMenu(true);
     window.addEventListener("axiom:open-projects-drawer", open);
     return () => window.removeEventListener("axiom:open-projects-drawer", open);
   }, []);
