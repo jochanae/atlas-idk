@@ -2256,7 +2256,7 @@ function RightPanel({
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
-      {tab === "terminal" && (wsLens === "build" || wsLens === "scenario") && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} />}
+      {tab === "terminal" && (wsLens === "build" || wsLens === "scenario") && <TerminalPanel currentProjectId={projectId} pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} />}
     </div>
   );
 }
@@ -2289,11 +2289,13 @@ function getTerminalSuccessExplanation(command: string) {
 }
 
 function TerminalPanel({
+  currentProjectId,
   pendingCommand,
   onCommandConsumed,
   onCommandComplete,
   scenarioLens,
 }: {
+  currentProjectId: number;
   pendingCommand?: string | null;
   onCommandConsumed?: () => void;
   onCommandComplete?: (command: string, output: string, exitCode: number | null) => void;
@@ -2458,7 +2460,7 @@ function TerminalPanel({
       const res = await fetch("/api/terminal/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: trimmed }),
+        body: JSON.stringify({ command: trimmed, projectId: currentProjectId }),
         credentials: "include",
         signal: abortCtrl.signal,
       });
@@ -2524,7 +2526,7 @@ function TerminalPanel({
       }
     }
     fromAtlasRef.current = false;
-  }, [running, addLine, onCommandComplete, scenarioLens, welcomeLines]);
+  }, [running, addLine, onCommandComplete, scenarioLens, welcomeLines, currentProjectId]);
 
   useEffect(() => {
     if (pendingCommand) {
@@ -3659,7 +3661,7 @@ export default function Workspace() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ command: autoRunCmd }),
+            body: JSON.stringify({ command: autoRunCmd, projectId: id }),
           });
           const reader = termRes.body?.getReader();
           const decoder = new TextDecoder();
@@ -5538,7 +5540,7 @@ export default function Workspace() {
                     })()}
             </div>
           ) : leftTab === "terminal" ? (
-            <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} />
+            <TerminalPanel currentProjectId={id} pendingCommand={pendingTerminalCommand} onCommandConsumed={() => setPendingTerminalCommand(null)} onCommandComplete={handleTerminalComplete} scenarioLens={wsLens === "scenario"} />
           ) : leftTab === "blueprints" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <BlueprintsTab
