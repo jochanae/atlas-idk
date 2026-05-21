@@ -256,7 +256,20 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           {activeProjectId && onOpenLedger && (
             <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decision Ledger" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
           )}
-          <NavRow icon={<Inbox size={14} strokeWidth={1.6} />} label="Parking Lot" onClick={() => { onOpenParking?.(); onClose(); }} />
+          {activeProjectId && onOpenParking && (
+            <NavRow
+              icon={<Inbox size={14} strokeWidth={1.6} />}
+              label="Parking Lot"
+              sublabel={projects?.find(p => p.id === activeProjectId)?.name ?? "This project"}
+              onClick={() => { onOpenParking(); onClose(); }}
+            />
+          )}
+          <NavRow
+            icon={<Inbox size={14} strokeWidth={1.6} />}
+            label="Parking Lot"
+            sublabel="All projects"
+            onClick={() => { navigate("/parking"); onClose(); }}
+          />
           
 
           <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
@@ -317,7 +330,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function NavRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+function NavRow({ icon, label, sublabel, onClick }: { icon: React.ReactNode; label: string; sublabel?: string; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} style={{
       display: "flex", alignItems: "center", gap: 10,
@@ -332,6 +345,11 @@ function NavRow({ icon, label, onClick }: { icon: React.ReactNode; label: string
     >
       <span style={{ color: "var(--atlas-muted)", opacity: 0.7, display: "flex", flexShrink: 0 }}>{icon}</span>
       <span style={{ fontSize: 12.5, fontWeight: 400, fontFamily: "var(--app-font-sans)", color: "var(--atlas-fg)" }}>{label}</span>
+      {sublabel && (
+        <span style={{ fontSize: 9, color: "var(--atlas-muted)", opacity: 0.55, marginLeft: 4, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
+          · {sublabel}
+        </span>
+      )}
     </button>
   );
 }
