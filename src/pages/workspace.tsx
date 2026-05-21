@@ -4425,19 +4425,11 @@ export default function Workspace() {
   // messagesRef + summarize effect owned by useChatStream.
 
 
-  const handleTerminalComplete = useCallback((command: string, output: string, exitCode: number | null) => {
-    if (!sessionId) return;
-    const truncated = output.length > 3500 ? output.slice(0, 3500) + "\n[...output truncated]" : output;
-    const formattedText = [
-      `TERMINAL_RESULT: ${command}`,
-      `Exit code: ${exitCode ?? "unknown"}`,
-      "```",
-      truncated,
-      "```",
-    ].join("\n");
-    doSend(formattedText, sessionId, messagesRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  const handleTerminalComplete = useCallback((_command: string, _output: string, _exitCode: number | null) => {
+    // Keep terminal execution local to the terminal panel. Sending command output
+    // back through chat was causing unsolicited assistant follow-ups that could
+    // switch the right panel into other views.
+  }, []);
 
   // ── Readiness Snapshots ───────────────────────────────────────────────────
   const { data: readinessSnapshots } = useListReadinessSnapshots(
