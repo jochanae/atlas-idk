@@ -289,45 +289,90 @@ function ShellAvatar() {
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   const name = ps.project?.name?.trim() || "Untitled project";
+  const hasActive = Boolean(ps.activeSession);
 
   const openSwitcher = useCallback(() => {
     window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer"));
   }, []);
 
+  const openRename = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("axiom:rename-project"));
+  }, []);
+
   if (projectId == null) return null;
 
   return (
-    <button
-      type="button"
-      onClick={openSwitcher}
-      title="Switch project"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        maxWidth: "min(240px, 100%)",
-        minWidth: 0,
-        background: "transparent",
-        border: "none",
-        padding: "0 8px",
-        cursor: "pointer",
-        color: "var(--atlas-fg)",
-        fontFamily: "var(--app-font-sans)",
-        fontSize: "var(--ts-body)",
-        fontWeight: 500,
-        lineHeight: "var(--lh-snug)",
-        letterSpacing: "var(--ls-tight)",
-        opacity: 0.92,
-        pointerEvents: "auto",
-      }}
-    >
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </button>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
+      <span
+        aria-hidden
+        title={hasActive ? "Session active" : "No active session"}
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          flexShrink: 0,
+          background: hasActive ? "var(--atlas-accent, #4ade80)" : "transparent",
+          border: hasActive ? "none" : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
+          boxShadow: hasActive ? "0 0 6px rgba(74,222,128,0.6)" : "none",
+        }}
+      />
+      <button
+        type="button"
+        onClick={openSwitcher}
+        title="Switch project"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          minWidth: 0,
+          background: "transparent",
+          border: "none",
+          padding: "0 4px 0 6px",
+          cursor: "pointer",
+          color: "var(--atlas-fg)",
+          fontFamily: "var(--app-font-sans)",
+          fontSize: "var(--ts-body)",
+          fontWeight: 500,
+          lineHeight: "var(--lh-snug)",
+          letterSpacing: "var(--ls-tight)",
+          opacity: 0.92,
+          pointerEvents: "auto",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={openRename}
+        title="Rename project"
+        aria-label="Rename project"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 22,
+          height: 22,
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          color: "var(--atlas-fg)",
+          opacity: 0.55,
+          flexShrink: 0,
+        }}
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M11 2l3 3-8 8H3v-3l8-8z" />
+        </svg>
+      </button>
+    </div>
   );
 }
+
 
 function ShellStatusChip({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
