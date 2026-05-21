@@ -4984,7 +4984,18 @@ export default function Workspace() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-            <span className={sessionId ? "atlas-pulse-dot" : undefined} style={{ width: 6, height: 6, borderRadius: "50%", background: sessionId ? "#4ade80" : "rgba(var(--atlas-muted-rgb),0.4)", flexShrink: 0, display: "inline-block" }} />
+            <span
+              className={sessionId ? "atlas-pulse-dot" : undefined}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: sessionId ? "#4ade80" : "transparent",
+                border: sessionId ? undefined : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
+                flexShrink: 0,
+                display: "inline-block",
+              }}
+            />
             {renaming ? (
               <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
                 <input
