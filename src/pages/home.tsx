@@ -2347,6 +2347,58 @@ export default function Home() {
         );
       })()}
 
+      {/* Lens chips — Flow / Build / Look / Scenario */}
+      {homeMessages.length > 0 && (
+        <div
+          role="group"
+          aria-label="Conversation lens"
+          style={{
+            position: "sticky",
+            top: 86,
+            zIndex: 19,
+            display: "flex",
+            justifyContent: "center",
+            gap: 4,
+            padding: "6px 12px",
+            background: "rgba(14,12,10,0.88)",
+            borderBottom: "1px solid var(--atlas-border)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
+        >
+          {([
+            ["flow", "Flow"],
+            ["build", "Build"],
+            ["look", "Look"],
+            ["scenario", "Scenario"],
+          ] as Array<["flow" | "build" | "look" | "scenario", string]>).map(([id, label]) => {
+            const active = homeLens === id;
+            return (
+              <button
+                key={id}
+                onClick={() => updateHomeLens(id)}
+                aria-pressed={active}
+                style={{
+                  background: active ? "rgba(201,162,76,0.16)" : "transparent",
+                  border: `1px solid ${active ? "rgba(201,162,76,0.45)" : "rgba(var(--atlas-muted-rgb),0.18)"}`,
+                  color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  padding: "4px 11px",
+                  borderRadius: 999,
+                  fontSize: "var(--ts-micro)",
+                  fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "all 140ms",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Conversation search bar + results — slides below subheader */}
       {showConvSearch && homeMessages.length > 0 && (
         <div data-conv-search-root style={{ position: "sticky", top: 86, zIndex: 30, padding: "10px 14px 0", background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)" }}>
