@@ -3243,6 +3243,23 @@ export default function Workspace() {
     getGetProjectQueryKey,
     getListProjectsQueryKey,
     reportError,
+    onFlowNodes: (nodes) => {
+      const archNodes: ArchNode[] = nodes.map((n) => ({
+        id: n.id,
+        label: n.label,
+        type: (["goal","requirement","blocker","priority","decision","sprint","wont"].includes(n.type)
+          ? n.type : "goal") as ArchNode["type"],
+        resolved: false,
+        x: n.x,
+        y: n.y,
+        question: n.question,
+      }));
+      setExternalForgeNodes((prev) => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const newNodes = archNodes.filter(n => !existingIds.has(n.id));
+        return newNodes.length > 0 ? [...prev, ...newNodes] : prev;
+      });
+    },
   });
 
   // Reset workspace-owned chat state when the project changes.
