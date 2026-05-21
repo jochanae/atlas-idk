@@ -173,6 +173,10 @@ export interface ChatMessage {
   isDeepDive?: boolean;
   autoPushed?: boolean;
   surface?: AmbientSurface;
+  executionTimeMs?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  costUsd?: number | null;
 }
 
 export type MemoryChip = { label: string; insight?: string };
