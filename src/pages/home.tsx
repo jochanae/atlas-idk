@@ -2324,6 +2324,16 @@ export default function Home() {
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <button
+                  onClick={toggleSubheader}
+                  title="Hide header"
+                  aria-label="Hide header"
+                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
+                >
+                  <ChevronUp size={13} strokeWidth={2} />
+                </button>
+                <button
                   onClick={() => setShowVault(true)}
                   title="Visual Vault"
                   aria-label="Open visual vault"
