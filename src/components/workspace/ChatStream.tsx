@@ -138,10 +138,10 @@ export function ChatStream(props: ChatStreamProps) {
               </div>
           ) : (
             <>
-              <div style={{ fontSize: 30, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 24, marginBottom: 6, letterSpacing: "-0.025em", lineHeight: 1.2, textAlign: "center" }}>
+              <div style={{ fontSize: 26, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 4, marginBottom: 6, letterSpacing: "-0.025em", lineHeight: 1.25, textAlign: "center" }}>
                 {project ? project.name : "Ready."}
               </div>
-              <div style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.4)", marginBottom: 28, textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.4)", marginBottom: 18, textAlign: "center" }}>
                 What are we working through today?
               </div>
             </>
