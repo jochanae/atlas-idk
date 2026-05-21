@@ -4684,7 +4684,7 @@ export default function Workspace() {
           <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
             {(["chat", "diff", "blueprints", ...((wsLens === "build" || wsLens === "scenario") ? ["terminal"] : [])] as Array<"chat" | "diff" | "blueprints" | "terminal">).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? "Blueprints" : "Terminal";
+              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : (isTinyScreen ? "" : "Terminal");
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
               return (
                 <button
