@@ -5780,6 +5780,7 @@ export default function Workspace() {
               activityStream,
               liveGeneration,
               historyMsgCountRef,
+              priorLoaded: priorLoaded.current,
               isHomeHandoff,
               homeHandoffMeta,
               isBrandNewProject,
