@@ -2388,8 +2388,7 @@ export default function Home() {
             )}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
