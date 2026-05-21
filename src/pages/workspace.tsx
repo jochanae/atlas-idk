@@ -2466,22 +2466,73 @@ function TerminalPanel({
         signal: abortCtrl.signal,
       });
 
-      const data = await res.json() as { output?: unknown; exitCode?: unknown; exit_code?: unknown; code?: unknown };
-      const output = typeof data.output === "string" ? data.output : "";
-      if (output) {
-        outputChunks.push(output);
-        addLine(output, "output");
+      if (!res.body) {
+        const text = await res.text().catch(() => "");
+        if (text) {
+          outputChunks.push(text);
+          addLine(text, res.ok ? "output" : "error");
+        }
+        finalExitCode = res.ok ? 0 : res.status;
+      } else {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        const processSseBlock = (block: string) => {
+          let evtName = "output";
+          let evtData = "";
+          for (const line of block.split("\n")) {
+            const normalizedLine = line.endsWith("\r") ? line.slice(0, -1) : line;
+            if (normalizedLine.startsWith("event: ")) evtName = normalizedLine.slice(7).trim();
+            else if (normalizedLine.startsWith("data: ")) evtData = normalizedLine.slice(6);
+          }
+          if (!evtData) return;
+
+          let payload: unknown = evtData;
+          try { payload = JSON.parse(evtData); } catch {}
+
+          if (evtName === "done") {
+            let meta: unknown = payload;
+            if (typeof payload === "string") {
+              try { meta = JSON.parse(payload); } catch {}
+            }
+            if (meta && typeof meta === "object") {
+              const doneMeta = meta as { exitCode?: unknown; exit_code?: unknown; code?: unknown };
+              const rawExitCode = doneMeta.exitCode ?? doneMeta.exit_code ?? doneMeta.code;
+              const parsedExitCode = typeof rawExitCode === "number"
+                ? rawExitCode
+                : typeof rawExitCode === "string" && rawExitCode.trim() !== ""
+                  ? Number(rawExitCode)
+                  : 0;
+              finalExitCode = Number.isFinite(parsedExitCode) ? parsedExitCode : 0;
+            } else {
+              finalExitCode = 0;
+            }
+          } else if (evtName === "error") {
+            const text = typeof payload === "string" ? payload : String(payload);
+            outputChunks.push(text);
+            addLine(text, "error");
+            finalExitCode = finalExitCode ?? 1;
+          } else if (typeof payload === "string") {
+            outputChunks.push(payload);
+            addLine(payload, evtName === "stderr" ? "stderr" : "output");
+          }
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+          for (const block of blocks) processSseBlock(block);
+        }
+
+        buffer += decoder.decode();
+        if (buffer.trim()) processSseBlock(buffer);
+        finalExitCode = finalExitCode ?? (res.ok ? 0 : res.status);
       }
 
-      const rawExitCode = data.exitCode ?? data.exit_code ?? data.code;
-      const parsedExitCode = typeof rawExitCode === "number"
-        ? rawExitCode
-        : typeof rawExitCode === "string" && rawExitCode.trim() !== ""
-          ? Number(rawExitCode)
-          : res.ok
-            ? 0
-            : res.status;
-      finalExitCode = Number.isFinite(parsedExitCode) ? parsedExitCode : (res.ok ? 0 : res.status);
       addLine(
         finalExitCode === 0 ? "✔ Exit code 0" : `✕ Exit code ${finalExitCode}`,
         finalExitCode === 0 ? "system" : "error"
