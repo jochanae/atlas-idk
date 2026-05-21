@@ -125,6 +125,7 @@ export function ReadinessRing({
   onClick,
   trend,
   hideModePill,
+  compact,
 }: {
   archScore: number;
   decisionsScore: number;
@@ -133,6 +134,7 @@ export function ReadinessRing({
   onClick?: () => void;
   trend?: ReadinessTrend;
   hideModePill?: boolean;
+  compact?: boolean;
 }) {
   const score =
     mode === "arch"      ? archScore :
@@ -157,10 +159,18 @@ export function ReadinessRing({
   const deltaText = hasTrend
     ? ` ${trend!.delta > 0 ? "↑" : "↓"}${Math.abs(trend!.delta)}`
     : "";
+  const ringSize = compact ? 14 : 16;
+  const ringRadius = compact ? 5 : 6;
+  const pillPadding = compact ? "2px 5px" : "2px 7px";
+  const pillTextSize = compact ? 9 : 10;
+  const pillGap = compact ? 3 : 4;
+  const wrapperGap = compact ? 4 : 5;
+  const modePadding = compact ? "1px 2px" : "1px 3px";
+  const modeFontSize = compact ? 6 : 6.5;
 
   return (
     <div
-      style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, position: "relative" }}
+      style={{ display: "flex", alignItems: "center", gap: wrapperGap, flexShrink: 0, position: "relative" }}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
@@ -172,11 +182,11 @@ export function ReadinessRing({
           aria-label={`Readiness ${score}%${hasTrend ? ` (${trend!.delta > 0 ? "+" : ""}${trend!.delta})` : ""}. Click to open System Map.`}
           className="atlas-readiness-pill"
           style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
+            display: "inline-flex", alignItems: "center", gap: pillGap,
             background: "rgba(201,162,76,0.08)",
             border: "1px solid rgba(201,162,76,0.22)",
             borderRadius: 999,
-            padding: "2px 7px",
+            padding: pillPadding,
             cursor: onClick ? "pointer" : "default",
             transition: "background 160ms ease, border-color 160ms ease",
             flexShrink: 0,
@@ -184,17 +194,17 @@ export function ReadinessRing({
           onMouseEnter={(e) => { if (onClick) e.currentTarget.style.background = "rgba(201,162,76,0.14)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
         >
-          <RingSvg score={score} size={16} radius={6} strokeWidth={2} pulse />
+          <RingSvg score={score} size={ringSize} radius={ringRadius} strokeWidth={2} pulse />
           <span
             style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
+              fontFamily: "var(--app-font-mono)", fontSize: pillTextSize, fontWeight: 700,
               letterSpacing: "0.02em", lineHeight: 1,
               color: score > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)",
               userSelect: "none", whiteSpace: "nowrap",
             }}
           >
             {score}%
-            {hasTrend && (
+            {hasTrend && !compact && (
               <span style={{ color: trendColor, marginLeft: 3 }}>{deltaText.trim()}</span>
             )}
           </span>
@@ -210,8 +220,8 @@ export function ReadinessRing({
           className="atlas-mix-btn"
           style={{
             background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.18)",
-            borderRadius: 3, cursor: "pointer", padding: "1px 3px",
-            fontFamily: "var(--app-font-mono)", fontSize: 6.5, fontWeight: 700, letterSpacing: "0.08em",
+            borderRadius: 3, cursor: "pointer", padding: modePadding,
+            fontFamily: "var(--app-font-mono)", fontSize: modeFontSize, fontWeight: 700, letterSpacing: "0.08em",
             color: "var(--atlas-muted)", lineHeight: 1, userSelect: "none", flexShrink: 0,
             transition: "color 150ms ease, border-color 150ms ease",
           }}

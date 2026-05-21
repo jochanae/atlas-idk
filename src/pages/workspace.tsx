@@ -4724,9 +4724,16 @@ export default function Workspace() {
             })}
           </nav>
 
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 4 : 7, minWidth: 0 }}>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 3 : 7, minWidth: 0 }}>
             {(() => {
               const lensCfg = LENS_CONFIG[wsLens];
+              const lensLabel = isTinyScreen
+                ? wsLens === "scenario"
+                  ? "SCN"
+                  : wsLens === "build"
+                    ? "BLD"
+                    : lensCfg.label
+                : lensCfg.label;
               return (
                 <button
                   type="button"
@@ -4741,8 +4748,8 @@ export default function Workspace() {
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 5,
-                    padding: isTinyScreen ? "4px 7px" : "5px 10px",
+                    gap: isTinyScreen ? 4 : 5,
+                    padding: isTinyScreen ? "4px 6px" : "5px 10px",
                     borderRadius: 999,
                     background: lensCfg.glowColor,
                     border: `1px solid ${lensCfg.borderColor}`,
@@ -4758,7 +4765,7 @@ export default function Workspace() {
                   }}
                 >
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: lensCfg.color, display: "inline-block" }} />
-                  {lensCfg.label}
+                  {lensLabel}
                   <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden style={{ opacity: 0.7 }}>
                     <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -4826,7 +4833,7 @@ export default function Workspace() {
                   border: "1px solid rgba(201,162,76,0.22)",
                   borderRadius: 4,
                   cursor: "pointer",
-                  padding: isTinyScreen ? "3px 5px" : "3px 7px",
+                  padding: isTinyScreen ? "2px 4px" : "3px 7px",
                   fontFamily: "var(--app-font-mono)",
                   fontSize: "var(--ts-xs)",
                   fontWeight: 700,
@@ -4851,6 +4858,7 @@ export default function Workspace() {
               onClick={focusSystemMap}
               trend={readinessTrend}
               hideModePill
+              compact={isTinyScreen}
             />
 
             {!isMobile && (
@@ -4926,8 +4934,8 @@ export default function Workspace() {
                   title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
                   aria-label="Rescan readiness"
                   style={{
-                    width: 22,
-                    height: 22,
+                    width: isTinyScreen ? 20 : 22,
+                    height: isTinyScreen ? 20 : 22,
                     padding: 0,
                     display: "flex",
                     alignItems: "center",
@@ -4943,7 +4951,7 @@ export default function Workspace() {
                   }}
                 >
                   <RefreshCw
-                    size={11}
+                    size={isTinyScreen ? 10 : 11}
                     style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }}
                   />
                 </button>
