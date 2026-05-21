@@ -1197,6 +1197,11 @@ export default function Home() {
     window.addEventListener("axiom:open-account-hub", open);
     return () => window.removeEventListener("axiom:open-account-hub", open);
   }, []);
+  useEffect(() => {
+    const open = () => setShowInvite(true);
+    window.addEventListener("axiom:open-invite", open);
+    return () => window.removeEventListener("axiom:open-invite", open);
+  }, []);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
   const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
