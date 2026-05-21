@@ -41,6 +41,7 @@ export interface ChatStreamProps {
   activityStream: { active: boolean; content: string };
   liveGeneration: LiveGenerationLike;
   historyMsgCountRef: RefObject<number> | { current: number };
+  priorLoaded?: boolean;
 
   // empty state
   isHomeHandoff: boolean;
