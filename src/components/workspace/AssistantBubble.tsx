@@ -807,11 +807,11 @@ export function AssistantBubble({
   return (
     <div
       className="atlas-bubble-in"
-      style={{ display: "flex", justifyContent: "flex-start", marginBottom: 24 }}
+      style={{ display: "flex", justifyContent: "flex-start", marginBottom: 32 }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
     >
-      <div style={{ maxWidth: "80%" }}>
+      <div style={{ maxWidth: "min(100%, 74ch)", width: "100%" }}>
         <div
           style={{
             display: "flex", alignItems: "center", gap: 6,
