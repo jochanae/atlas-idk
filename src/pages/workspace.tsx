@@ -4428,7 +4428,13 @@ export default function Workspace() {
   const handleTerminalComplete = useCallback((command: string, output: string, exitCode: number | null) => {
     if (!sessionId) return;
     const truncated = output.length > 3500 ? output.slice(0, 3500) + "\n[...output truncated]" : output;
-    const formattedText = `Terminal output for \`${command}\`:\n\`\`\`\n${truncated}\n\`\`\`\nExit code: ${exitCode ?? "unknown"}`;
+    const formattedText = [
+      `TERMINAL_RESULT: ${command}`,
+      `Exit code: ${exitCode ?? "unknown"}`,
+      "```",
+      truncated,
+      "```",
+    ].join("\n");
     doSend(formattedText, sessionId, messagesRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
