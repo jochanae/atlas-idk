@@ -3364,6 +3364,11 @@ export default function Workspace() {
     flow: false,
   });
   const [showDrawer, setShowDrawer] = useState(false);
+  useEffect(() => {
+    const open = () => setShowDrawer(true);
+    window.addEventListener("axiom:open-projects-drawer", open);
+    return () => window.removeEventListener("axiom:open-projects-drawer", open);
+  }, []);
   const [showVault, setShowVault] = useState(false);
   const [showForgeExternal, setShowForgeExternal] = useState(false);
   const [forgePreloadContent, setForgePreloadContent] = useState<string | undefined>(undefined);
