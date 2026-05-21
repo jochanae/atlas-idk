@@ -451,49 +451,36 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         )}
       </div>
 
-      {/* Toggle bar — map / chat fullscreen controls */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "4px 12px",
-        background: "var(--atlas-flow-pane-bg)",
-        borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.08)",
-        flexShrink: 0,
-      }}>
-        <span style={{
-          color: "rgba(var(--atlas-gold-rgb),0.35)", fontSize: 10,
-          fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
-          userSelect: "none",
+      {/* Slim toggle — chat fullscreen only (Show both moved to map header) */}
+      {showChat && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "4px 12px",
+          background: "var(--atlas-flow-pane-bg)",
+          borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.08)",
+          flexShrink: 0,
         }}>
-          {chatFullscreen ? "flow chat" : showChat ? "intent capture" : "map fullscreen"}
-        </span>
-        <div style={{ display: "flex", gap: 4 }}>
-          {/* Map fullscreen button */}
+          <span style={{
+            color: "rgba(var(--atlas-gold-rgb),0.35)", fontSize: 10,
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
+            userSelect: "none",
+          }}>
+            {chatFullscreen ? "flow chat" : "intent capture"}
+          </span>
           <button
-            onClick={() => { setChatFullscreen(false); setShowChat(v => !v); }}
+            onClick={() => setChatFullscreen(v => !v)}
             style={{
-              background: "rgba(var(--atlas-gold-rgb),0.07)", border: "1px solid rgba(var(--atlas-gold-rgb),0.28)",
+              background: chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.14)" : "rgba(var(--atlas-gold-rgb),0.07)",
+              border: `1px solid ${chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.5)" : "rgba(var(--atlas-gold-rgb),0.28)"}`,
               borderRadius: 5, padding: "2px 9px", cursor: "pointer",
               color: "rgba(var(--atlas-gold-rgb),0.78)", fontSize: 9,
               fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
             }}>
-            {showChat ? "⛶ Map full" : "⊠ Show both"}
+            {chatFullscreen ? "⊠ Show map" : "⛶ Chat full"}
           </button>
-          {/* Chat fullscreen button — only when chat is visible */}
-          {showChat && (
-            <button
-              onClick={() => setChatFullscreen(v => !v)}
-              style={{
-                background: chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.14)" : "rgba(var(--atlas-gold-rgb),0.07)",
-                border: `1px solid ${chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.5)" : "rgba(var(--atlas-gold-rgb),0.28)"}`,
-                borderRadius: 5, padding: "2px 9px", cursor: "pointer",
-                color: "rgba(var(--atlas-gold-rgb),0.78)", fontSize: 9,
-                fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
-              }}>
-              {chatFullscreen ? "⊠ Show map" : "⛶ Chat full"}
-            </button>
-          )}
         </div>
-      </div>
+      )}
+
 
       {/* INTENT CAPTURE */}
       {showChat && (
