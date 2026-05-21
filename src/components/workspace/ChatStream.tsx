@@ -125,14 +125,14 @@ export function ChatStream(props: ChatStreamProps) {
       style={containerStyle}
       className="scrollbar-none atlas-chat-timeline"
     >
-      {messages.length === 0 && !chatPending && isHomeHandoff && homeHandoffMeta && (
+      {messages.length === 0 && !chatPending && priorLoaded !== false && isHomeHandoff && homeHandoffMeta && (
         <div style={{ padding: "52px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={{ maxWidth: 520, color: "var(--atlas-fg)", fontSize: 15, lineHeight: 1.75, textAlign: "center", opacity: 0.88 }}>
             Picked up where we left off. Your flow map has {homeHandoffMeta.flowNodeCount} nodes — {homeHandoffMeta.goalLabel} is the center. What do you want to tackle first?
           </div>
         </div>
       )}
-      {messages.length === 0 && !chatPending && !(isHomeHandoff && homeHandoffMeta) && (
+      {messages.length === 0 && !chatPending && priorLoaded !== false && !(isHomeHandoff && homeHandoffMeta) && (
         <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {isBrandNewProject ? (
               <div style={{ fontSize: 26, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 4, marginBottom: 18, letterSpacing: "-0.025em", lineHeight: 1.25, textAlign: "center", maxWidth: 520 }}>
