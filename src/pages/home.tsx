@@ -2187,7 +2187,7 @@ export default function Home() {
           ? (rawTitle.length > 38 ? rawTitle.slice(0, 36).trimEnd() + "…" : rawTitle)
           : "New conversation";
         return (
-        <div className="atlas-chat-card-top" style={{ borderRadius: 0, padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, boxSizing: "border-box" }}>
+        <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
           {/* Centered: conversation title + caret (opens thread menu) + lock */}
           <div style={{
             position: "absolute", left: "50%", top: "50%",
