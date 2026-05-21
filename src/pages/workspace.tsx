@@ -3609,7 +3609,7 @@ export default function Workspace() {
   const hasForgeNodes = forgeContext !== null ||
     Object.keys((project?.nodeState ?? {}) as Record<string, unknown>)
       .some(k => !["auth", "db", "api", "state", "ui", "logic"].includes(k));
-  const isBrandNewProject = messages.length === 0 && !hasForgeNodes;
+  const isBrandNewProject = messages.length === 0 && !chatPending && priorLoaded.current && !hasForgeNodes;
 
   useEffect(() => {
     const handler = () => {
