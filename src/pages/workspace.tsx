@@ -6007,6 +6007,156 @@ export default function Workspace() {
         />
       )}
 
+      {/* ── Project dropdown menu — restored from pre-shell-refactor version.
+            Opened by the project chevron in UnifiedShell (via the
+            axiom:open-projects-drawer event). Anchored top-center beneath
+            the shell header since the trigger lives in the shell. ── */}
+      {showProjectMenu && createPortal(
+        <>
+          <div onClick={() => setShowProjectMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+          <div
+            className="atlas-popover"
+            style={{
+              position: "fixed",
+              top: 56,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9999,
+              minWidth: 240,
+              maxWidth: "calc(100vw - 24px)",
+              maxHeight: "calc(100vh - 80px)",
+              overflowY: "auto",
+            }}
+          >
+            {(allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived").length > 0 && (() => {
+              const others = (allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived");
+              return (
+                <>
+                  <button
+                    onClick={() => setSwitchToExpanded(x => !x)}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      width: "calc(100% - 12px)", margin: "6px",
+                      background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                      padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)" }}>
+                        <path d="M3 6h10M3 6l3-3M3 6l3 3M13 10H3M13 10l-3-3M13 10l-3 3" />
+                      </svg>
+                      <span style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
+                        Switch project
+                      </span>
+                    </span>
+                    <svg width="11" height="11" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-gold)", transform: switchToExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 150ms ease" }}>
+                      <path d="M1 1l4 4 4-4" />
+                    </svg>
+                  </button>
+                  {switchToExpanded && (
+                    <div style={{ padding: "0 6px 6px", display: "flex", flexDirection: "column", gap: 2 }}>
+                      {others.map((p: any) => (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <button
+                            onClick={() => { setLocation(`/project/${p.id}`); setShowProjectMenu(false); }}
+                            style={{ flex: 1, textAlign: "left", padding: "8px 10px", borderRadius: 6, background: "transparent", border: "1px solid transparent", color: "var(--atlas-fg)", fontSize: 12.5, cursor: "pointer", fontFamily: "var(--app-font-sans)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--atlas-glass-bg)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            {p.name}
+                          </button>
+                          {switchProjectDeleteId === p.id ? (
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <button onClick={() => setSwitchProjectDeleteId(null)} style={{ padding: "4px 8px", borderRadius: 4, fontSize: 10, background: "var(--atlas-surface-alt)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer" }}>Cancel</button>
+                              <button onClick={() => handleDeleteProjectFromSwitcher(p.id)} style={{ padding: "4px 8px", borderRadius: 4, fontSize: 10, background: "rgba(239,68,68,0.18)", border: "1px solid rgba(239,68,68,0.4)", color: "rgba(252,165,165,0.95)", cursor: "pointer", fontWeight: 600 }}>Delete</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setSwitchProjectDeleteId(p.id)}
+                              title="Delete project"
+                              style={{ width: 24, height: 24, borderRadius: 4, background: "transparent", border: "1px solid transparent", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.12)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)"; e.currentTarget.style.color = "rgba(252,165,165,0.95)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+                            >×</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 6px", opacity: 0.5 }} />
+                </>
+              );
+            })()}
+            <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 2l3 3-8 8H3v-3l8-8z" /></svg>} label="Rename project" onClick={() => { setRenameDraft(project?.name ?? ""); setRenaming(true); setShowProjectMenu(false); }} />
+            <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="2" /><path d="M13.7 9.4a1 1 0 010-2.8l.5-.2a1 1 0 00.6-1.5l-.7-1.2a1 1 0 00-1.5-.3l-.4.3a1 1 0 01-1.4-.6l-.1-.5a1 1 0 00-1-.8H8.3a1 1 0 00-1 .8l-.1.5a1 1 0 01-1.4.6l-.4-.3a1 1 0 00-1.5.3l-.7 1.2a1 1 0 00.6 1.5l.5.2a1 1 0 010 2.8l-.5.2a1 1 0 00-.6 1.5l.7 1.2a1 1 0 001.5.3l.4-.3a1 1 0 011.4.6l.1.5a1 1 0 001 .8h1.4a1 1 0 001-.8l.1-.5a1 1 0 011.4-.6l.4.3a1 1 0 001.5-.3l.7-1.2a1 1 0 00-.6-1.5l-.5-.2z" /></svg>} label="Project settings" onClick={() => { setShowProjectMenu(false); setShowProjectSettings(true); }} />
+            <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="12" height="12" rx="1.5" /><path d="M5 6h6M5 9h4" /></svg>} label="Parking Lot" onClick={() => { setLocation(`/parking?project=${id}`); setShowProjectMenu(false); }} />
+            <MenuBtn
+              icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="9" height="9" rx="1.5" /><path d="M11 4V3a1 1 0 00-1-1H4a1 1 0 00-1 1v6a1 1 0 001 1h1" /></svg>}
+              label={cloningProject ? "Cloning…" : "Clone project"}
+              onClick={async () => {
+                if (cloningProject) return;
+                setShowProjectMenu(false);
+                setCloningProject(true);
+                try {
+                  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+                  const res = await fetch(`${base}/api/projects/${id}/clone`, { method: "POST" });
+                  if (res.ok) {
+                    const clone = await res.json();
+                    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                    setLocation(`/project/${clone.id}`);
+                  }
+                } finally { setCloningProject(false); }
+              }}
+            />
+            <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 6px", opacity: 0.5 }} />
+            <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 4h12M2 8h8M2 12h6" /></svg>} label="View ledger" onClick={() => { setLocation(`/ledger/${id}`); setShowProjectMenu(false); }} />
+            <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="14" height="10" rx="1.5" /><path d="M1 6h14" /><circle cx="3.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} /><circle cx="5.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} /></svg>} label="Dashboard" onClick={() => { setLocation("/dashboard"); setShowProjectMenu(false); }} />
+            <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 6px", opacity: 0.5 }} />
+            <MenuBtn
+              icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="12" height="3" rx="1" /><path d="M3 6v7a1 1 0 001 1h8a1 1 0 001-1V6" /><path d="M6 10h4" /></svg>}
+              label="Archive project"
+              onClick={() => {
+                updateProjectHeader.mutate({ id, data: { status: "archived" } }, {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                    setShowProjectMenu(false);
+                    setLocation("/projects");
+                  },
+                });
+              }}
+            />
+            {confirmDeleteProject ? (
+              <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 11.5, color: "rgba(252,165,165,0.9)", fontFamily: "var(--app-font-mono)" }}>Delete "{project?.name}"?</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => { setConfirmDeleteProject(false); }} style={{ flex: 1, padding: "5px 0", borderRadius: 5, fontSize: 11, background: "var(--atlas-surface-alt)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={() => {
+                    deleteProjectMutation.mutate({ id }, {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                        setShowProjectMenu(false);
+                        setConfirmDeleteProject(false);
+                        setLocation("/home");
+                      },
+                    });
+                  }} style={{ flex: 1, padding: "5px 0", borderRadius: 5, fontSize: 11, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)", color: "rgba(252,165,165,0.9)", cursor: "pointer", fontWeight: 600 }}>
+                    {deleteProjectMutation.isPending ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <MenuBtn
+                icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 4 13 12 13 13 6" /><path d="M1 6h14" /><path d="M6 6V4a1 1 0 011-1h2a1 1 0 011 1v2" /></svg>}
+                label="Delete project"
+                onClick={() => setConfirmDeleteProject(true)}
+              />
+            )}
+          </div>
+        </>,
+        document.body
+      )}
+
       {/* Projects Drawer */}
       <ProjectsDrawer
         open={showDrawer}
