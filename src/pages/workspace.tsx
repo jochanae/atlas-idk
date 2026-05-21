@@ -4411,7 +4411,10 @@ export default function Workspace() {
   const handleRunCommand = useCallback((command: string) => {
     setPendingTerminalCommand(command);
     setLeftTab("terminal");
-  }, []);
+    if (wsLens !== "build" && wsLens !== "scenario") {
+      setWsLensRaw("build");
+    }
+  }, [wsLens]);
 
   // messagesRef + summarize effect owned by useChatStream.
 
