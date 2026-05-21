@@ -253,28 +253,25 @@ function ShellAvatar() {
         title="Invite collaborators"
         aria-label="Invite collaborators"
         style={{
-          marginLeft: -10,
-          width: 24,
-          height: 24,
-          borderRadius: "50%",
-          border: "2px solid var(--atlas-bg)",
-          background: "linear-gradient(135deg, rgba(212,175,55,0.22), rgba(160,120,32,0.28))",
-          color: "rgba(212,175,55,0.95)",
+          marginLeft: 6,
+          width: 36,
+          height: 36,
+          borderRadius: "22%",
+          border: "1.5px dashed rgba(212,175,55,0.55)",
+          background: "transparent",
+          color: "rgba(212,175,55,0.75)",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
           padding: 0,
-          boxShadow: "0 0 0 1px rgba(212,175,55,0.35)",
-          transition: "transform 140ms ease, background 140ms ease",
+          transition: "border-color 140ms ease, color 140ms ease, background 140ms ease",
           flexShrink: 0,
-          zIndex: 2,
-          position: "relative",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(212,175,55,0.4), rgba(160,120,32,0.45))"; e.currentTarget.style.transform = "scale(1.08)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(212,175,55,0.22), rgba(160,120,32,0.28))"; e.currentTarget.style.transform = "scale(1)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.9)"; e.currentTarget.style.color = "rgba(212,175,55,1)"; e.currentTarget.style.background = "rgba(212,175,55,0.06)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; e.currentTarget.style.color = "rgba(212,175,55,0.75)"; e.currentTarget.style.background = "transparent"; }}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
