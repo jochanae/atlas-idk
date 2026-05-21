@@ -1015,6 +1015,19 @@ export function AssistantBubble({
           )}
         </div>
 
+        {cleanContent.trim() && !message.catchPayload && !commitPayload && (
+          <div style={{ marginTop: 6 }}>
+            <ThoughtForBadge
+              metrics={{
+                executionTimeMs: message.executionTimeMs,
+                inputTokens: message.inputTokens,
+                outputTokens: message.outputTokens,
+                costUsd: message.costUsd,
+              }}
+            />
+          </div>
+        )}
+
         <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
 
         {message.plan && planState !== "skipped" && (
