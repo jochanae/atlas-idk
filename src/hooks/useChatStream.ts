@@ -262,57 +262,173 @@ export function useChatStream(
         body: JSON.stringify(body),
         signal: controller.signal,
       })
-        .then((r) => {
+        .then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
+
+          const contentType = r.headers.get("content-type") ?? "";
+          if (!contentType.includes("text/event-stream")) {
+            // Non-streaming fallback (GPT-4o, Gemini)
+            return r.json();
+          }
+
+          // SSE streaming — show tokens as they arrive
+          const reader = r.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let streamedContent = "";
+
+          // Add a placeholder assistant message to update in place
+          const placeholderMsg: ChatMessage = {
+            role: "assistant",
+            content: "",
+            sentAt: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, placeholderMsg]);
+          const placeholderIndex = messagesRef.current.length; // will be last
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const blocks = buffer.split("\n\n");
+            buffer = blocks.pop() ?? "";
+
+            for (const block of blocks) {
+              let evtName = "delta";
+              let evtData = "";
+              for (const line of block.split("\n")) {
+                if (line.startsWith("event: ")) evtName = line.slice(7).trim();
+                else if (line.startsWith("data: ")) evtData = line.slice(6);
+              }
+              if (!evtData) continue;
+
+              if (evtName === "delta") {
+                try {
+                  const text = JSON.parse(evtData) as string;
+                  streamedContent += text;
+                  // Update the placeholder message in place
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastAssistantIdx = updated.map((m, i) => m.role === "assistant" ? i : -1).reduce((a, b) => b > a ? b : a, -1);
+                    if (lastAssistantIdx >= 0) {
+                      updated[lastAssistantIdx] = { ...updated[lastAssistantIdx], content: streamedContent };
+                    }
+                    return updated;
+                  });
+                  setActivityStream({ active: true, content: streamedContent });
+                } catch { /* ignore parse errors */ }
+              } else if (evtName === "done") {
+                try {
+                  const res = JSON.parse(evtData);
+                  // Replace placeholder with full resolved message
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastAssistantIdx = updated.map((m, i) => m.role === "assistant" ? i : -1).reduce((a, b) => b > a ? b : a, -1);
+                    if (lastAssistantIdx >= 0) {
+                      updated[lastAssistantIdx] = {
+                        ...updated[lastAssistantIdx],
+                        id: res.messageId,
+                        content: res.content ?? streamedContent,
+                        intentType: res.intentType,
+                        catchPayload: res.catchPayload ?? null,
+                        terminalCmd: res.terminalCmd ?? res.terminal_cmd,
+                        terminalResult: res.terminalResult ?? res.terminal_result,
+                        modelUsed: res.modelUsed ?? res.model_used ?? null,
+                        model: res.model ?? sendCtxRef.current.wsModel,
+                        isDeepDive: !!res.isDeepDive,
+                        ...(res.plan ? { plan: res.plan } : {}),
+                        ...(res.fileEdits?.length ? { fileEdits: res.fileEdits, fileEdit: res.fileEdits[0] } : {}),
+                        ...(res.linePatches?.length ? { linePatches: res.linePatches } : {}),
+                        ...(res.memoryChips?.length ? { memoryChips: res.memoryChips } : {}),
+                        ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
+                        ...(res.autoFetchedFiles?.length ? { autoFetchedFiles: res.autoFetchedFiles } : {}),
+                        surface: res.surface ?? null,
+                        executionTimeMs: res.executionTimeMs ?? null,
+                        inputTokens: res.inputTokens ?? null,
+                        outputTokens: res.outputTokens ?? null,
+                        costUsd: res.costUsd != null ? Number(res.costUsd) : null,
+                      };
+                    }
+                    return updated;
+                  });
+                  // Handle side effects same as before
+                  if (res.content) {
+                    const driftMatch = res.content.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
+                    if (driftMatch) {
+                      const drifted = driftMatch[1].toLowerCase();
+                      if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted as any);
+                    } else {
+                      setDetectedLens(null);
+                    }
+                  }
+                  if (res.fileEdits?.length) { setLeftTab("diff"); setMobileTab("preview"); }
+                  if (res.catchPayload) { playCatch(); setActiveCatch(res.catchPayload); }
+                  if (res.memoryChips?.length) {
+                    const chips = res.memoryChips.map((c: any) => typeof c === "string" ? { label: c } : c);
+                    setMemoryChips((prev) => {
+                      const merged = [...prev];
+                      for (const c of chips) {
+                        if (!merged.some((m) => m.label === c.label)) merged.push(c);
+                      }
+                      return merged.slice(-12);
+                    });
+                  }
+                  if (res.resolvedNodes?.length) {
+                    setPendingResolvedNodeIds((prev) => {
+                      const merged = [...prev];
+                      for (const nodeId of res.resolvedNodes) {
+                        if (!merged.includes(nodeId)) merged.push(nodeId);
+                      }
+                      return merged;
+                    });
+                  }
+                  if (res.autoName) {
+                    setAutoNameKey((k) => k + 1);
+                    queryClient.setQueryData(getGetProjectQueryKey(projectId), (old: unknown) => {
+                      if (old && typeof old === "object" && "name" in old) return { ...(old as object), name: res.autoName };
+                      return old;
+                    });
+                    queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                  }
+                  if (res.isScenario) {
+                    setScenarioBuffer((prev) => [
+                      ...prev,
+                      { role: "user", content: text },
+                      { role: "assistant", content: res.content ?? "" },
+                    ]);
+                  }
+                } catch { /* ignore */ }
+              }
+            }
+          }
+          return null; // already handled above
         })
         .then((res) => {
+          if (!res) return; // streaming already handled
+          // Non-streaming path (GPT-4o, Gemini) — same as before
           if (res.content && typeof res.content === "string") {
             const driftMatch = res.content.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
             if (driftMatch) {
-              const drifted = driftMatch[1].toLowerCase() as WorkspaceLens;
-              if (drifted !== sendCtxRef.current.wsLens) {
-                setDetectedLens(drifted);
-              }
+              const drifted = driftMatch[1].toLowerCase();
+              if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted as any);
               res.content = res.content.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
             } else {
               setDetectedLens(null);
             }
           }
-          const cp = res.catchPayload as CatchPayload | null;
-          const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : [])) as FileEdit[];
-          const lps = (res.linePatches ?? []) as LinePatch[];
-          const aff = (res.autoFetchedFiles ?? []) as string[];
-          setActivityStream({
-            active: true,
-            content: [
-              res.content ?? "",
-              res.plan?.mode === "blueprint" ? "BLUEPRINT" : res.plan ? "PLAN" : "",
-              aff.length > 0 ? "FILE_READ" : "",
-              fes.length > 0 ? "FILE_EDIT" : "",
-              lps.length > 0 ? "LINE_PATCH" : "",
-            ].filter(Boolean).join("\n"),
-          });
-          const rawChips = (res.memoryChips ?? []) as Array<string | MemoryChip>;
-          const normalizedChips: MemoryChip[] = rawChips.map((c) =>
-            typeof c === "string" ? { label: c } : c
-          );
-          const meta = res as typeof res & {
-            terminalCmd?: unknown; terminal_cmd?: unknown;
-            terminalResult?: unknown; terminal_result?: unknown;
-            modelUsed?: string | null; model_used?: string | null;
-            executionTimeMs?: number; execution_time_ms?: number;
-            inputTokens?: number; input_tokens?: number;
-            outputTokens?: number; output_tokens?: number;
-            costUsd?: number | string; cost_usd?: number | string;
-          };
+          const cp = res.catchPayload ?? null;
+          const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
+          const lps = res.linePatches ?? [];
+          const aff = res.autoFetchedFiles ?? [];
+          const rawChips = res.memoryChips ?? [];
+          const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
           setMessages((prev) => [...prev, {
             id: res.messageId, role: "assistant",
             content: res.content, intentType: res.intentType, catchPayload: cp,
-            terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
-            terminalResult: meta.terminalResult ?? meta.terminal_result,
-            modelUsed: meta.modelUsed ?? meta.model_used ?? null,
-            ...(res.plan ? { plan: res.plan as Plan } : {}),
+            terminalCmd: res.terminalCmd ?? res.terminal_cmd,
+            terminalResult: res.terminalResult ?? res.terminal_result,
+            modelUsed: res.modelUsed ?? res.model_used ?? null,
+            ...(res.plan ? { plan: res.plan } : {}),
             sentAt: new Date().toISOString(),
             model: res.model ?? sendCtxRef.current.wsModel,
             isDeepDive: !!res.isDeepDive,
@@ -321,11 +437,11 @@ export function useChatStream(
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
             ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
             ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
-            surface: (res.surface ?? null) as AmbientSurface,
-            executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
-            inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
-            outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
-            costUsd: meta.costUsd != null ? Number(meta.costUsd) : meta.cost_usd != null ? Number(meta.cost_usd) : null,
+            surface: res.surface ?? null,
+            executionTimeMs: res.executionTimeMs ?? null,
+            inputTokens: res.inputTokens ?? null,
+            outputTokens: res.outputTokens ?? null,
+            costUsd: res.costUsd != null ? Number(res.costUsd) : null,
           }]);
           if (isScenario) {
             setScenarioBuffer((prev) => [
@@ -348,16 +464,16 @@ export function useChatStream(
               return merged.slice(-12);
             });
           }
-          if (res.resolvedNodes && res.resolvedNodes.length > 0) {
+          if (res.resolvedNodes?.length) {
             setPendingResolvedNodeIds((prev) => {
               const merged = [...prev];
-              for (const nodeId of res.resolvedNodes as string[]) {
+              for (const nodeId of res.resolvedNodes) {
                 if (!merged.includes(nodeId)) merged.push(nodeId);
               }
               return merged;
             });
           }
-          if (res.autoName && typeof res.autoName === "string") {
+          if (res.autoName) {
             setAutoNameKey((k) => k + 1);
             queryClient.setQueryData(getGetProjectQueryKey(projectId), (old: unknown) => {
               if (old && typeof old === "object" && "name" in old) return { ...(old as object), name: res.autoName };
