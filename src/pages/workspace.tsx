@@ -3561,6 +3561,17 @@ export default function Workspace() {
   const isBrandNewProject = messages.length === 0 && !hasForgeNodes;
 
   useEffect(() => {
+    const handler = () => {
+      setRenameDraft(project?.name ?? "");
+      setRenaming(true);
+      setTimeout(() => renameInputRef.current?.focus(), 50);
+    };
+    window.addEventListener("axiom:rename-project", handler);
+    return () => window.removeEventListener("axiom:rename-project", handler);
+  }, [project?.name]);
+
+
+  useEffect(() => {
     if (projectState.forgeState) {
       setForgeState({
         forged: !!projectState.forgeState.forged,
