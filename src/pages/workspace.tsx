@@ -4733,6 +4733,49 @@ export default function Workspace() {
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
       {/* ── Workspace header restored below the unified shell ── */}
+      {subheaderCollapsed && (
+        <div
+          style={{
+            marginTop: 50,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "2px 12px",
+            minHeight: 22,
+            background: "rgba(var(--atlas-bg-rgb),0.85)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.10)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={toggleSubheader}
+            title="Show header"
+            aria-label="Show header"
+            style={{ background: "transparent", border: "none", padding: "2px 4px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.65, lineHeight: 0, display: "inline-flex" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.65")}
+          >
+            <ChevronDown size={12} strokeWidth={2} />
+          </button>
+          <div style={{ transform: "scale(0.78)", transformOrigin: "right center" }}>
+            <ReadinessRing
+              archScore={mapReadiness}
+              decisionsScore={healthPct}
+              mode={readinessMode}
+              onModeChange={handleReadinessModeChange}
+              onClick={focusSystemMap}
+              trend={readinessTrend}
+              hideModePill
+              compact
+            />
+          </div>
+        </div>
+      )}
+      {!subheaderCollapsed && (
       <div
         className="atlas-workspace-header"
         style={{
