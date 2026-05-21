@@ -3107,6 +3107,8 @@ export default function Workspace() {
   const isMobile = useIsMobile() && !isDesktop;
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
+  const { collapsed: subheaderCollapsed, toggle: toggleSubheader } = useCollapsibleSubheader("workspace");
+
 
   const {
     input, setInput,
