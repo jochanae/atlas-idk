@@ -297,6 +297,12 @@ export function useChatStream(
           const normalizedChips: MemoryChip[] = rawChips.map((c) =>
             typeof c === "string" ? { label: c } : c
           );
+          const meta = res as typeof res & {
+            executionTimeMs?: number; execution_time_ms?: number;
+            inputTokens?: number; input_tokens?: number;
+            outputTokens?: number; output_tokens?: number;
+            costUsd?: number | string; cost_usd?: number | string;
+          };
           setMessages((prev) => [...prev, {
             id: res.messageId, role: "assistant",
             content: res.content, intentType: res.intentType, catchPayload: cp,
@@ -310,6 +316,10 @@ export function useChatStream(
             ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
             ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
             surface: (res.surface ?? null) as AmbientSurface,
+            executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
+            inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
+            outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
+            costUsd: meta.costUsd != null ? Number(meta.costUsd) : meta.cost_usd != null ? Number(meta.cost_usd) : null,
           }]);
           if (isScenario) {
             setScenarioBuffer((prev) => [
