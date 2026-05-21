@@ -347,10 +347,6 @@ export function useChatStream(
               { role: "assistant", content: res.content ?? "" },
             ]);
           }
-          if (fes && fes.length > 0) {
-            setLeftTab("diff");
-            setMobileTab("preview");
-          }
           if (cp) { playCatch(); setActiveCatch(cp); }
           if (normalizedChips.length > 0) {
             setMemoryChips((prev) => {
