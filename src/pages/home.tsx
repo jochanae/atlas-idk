@@ -3181,9 +3181,10 @@ export default function Home() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 10,
+                  flexWrap: "wrap",
+                  gap: 8,
                   margin: "14px calc(50% - 50vw) 0",
-                  padding: "7px 0",
+                  padding: "7px 16px",
                   background: isParchment ? "rgba(220,210,195,0.55)" : "rgba(28,25,23,0.35)",
                   border: "none",
                   borderTop: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",
@@ -3191,17 +3192,19 @@ export default function Home() {
                   backdropFilter: "blur(8px)",
                   font: "inherit",
                   cursor: "pointer",
+                  boxSizing: "border-box",
                 }}
               >
                 <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
                   <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.45)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
                   <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "var(--atlas-ember)" : "var(--atlas-gold)", opacity: 0.9 }} />
                 </span>
-                <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(80,50,25,0.7)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
                   {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
                   &nbsp;·&nbsp; {activeProjects.length} open
                   &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.8)" : "rgba(201,162,76,0.65)" }}>↓ pick up below</span>
                 </span>
+
               </button>
             );
           })()}
