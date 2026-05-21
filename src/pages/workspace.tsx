@@ -2465,43 +2465,26 @@ function TerminalPanel({
         signal: abortCtrl.signal,
       });
 
-      if (!res.ok || !res.body) {
-        addLine(`HTTP error: ${res.status}`, "error");
-        setRunning(false);
-        return;
+      const data = await res.json() as { output?: unknown; exitCode?: unknown; exit_code?: unknown; code?: unknown };
+      const output = typeof data.output === "string" ? data.output : "";
+      if (output) {
+        outputChunks.push(output);
+        addLine(output, "output");
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const blocks = buf.split("\n\n");
-        buf = blocks.pop() ?? "";
-        for (const block of blocks) {
-          let evtName = "output";
-          let evtData = "";
-          for (const line of block.split("\n")) {
-            if (line.startsWith("event: ")) evtName = line.slice(7).trim();
-            else if (line.startsWith("data: ")) evtData = line.slice(6);
-          }
-          if (!evtData) continue;
-          try {
-            const payload = JSON.parse(evtData) as string;
-            if (evtName === "output") { outputChunks.push(payload); addLine(payload, "output"); }
-            else if (evtName === "stderr") { outputChunks.push(payload); addLine(payload, "stderr"); }
-            else if (evtName === "error") { outputChunks.push(payload); addLine(payload, "error"); }
-            else if (evtName === "done") {
-              const meta = JSON.parse(payload) as { exitCode: number | null; durationMs: number };
-              finalExitCode = meta.exitCode;
-              addLine(`[exit ${meta.exitCode ?? "?"} · ${meta.durationMs}ms]`, "system");
-            }
-          } catch {}
-        }
-      }
+      const rawExitCode = data.exitCode ?? data.exit_code ?? data.code;
+      const parsedExitCode = typeof rawExitCode === "number"
+        ? rawExitCode
+        : typeof rawExitCode === "string" && rawExitCode.trim() !== ""
+          ? Number(rawExitCode)
+          : res.ok
+            ? 0
+            : res.status;
+      finalExitCode = Number.isFinite(parsedExitCode) ? parsedExitCode : (res.ok ? 0 : res.status);
+      addLine(
+        finalExitCode === 0 ? "✔ Exit code 0" : `✕ Exit code ${finalExitCode}`,
+        finalExitCode === 0 ? "system" : "error"
+      );
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         // user killed it — already handled by killCommand
