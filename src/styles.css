@@ -464,14 +464,18 @@ body[data-axiom-thread="empty"] * { scrollbar-width: none; }
 
 /* ── App header (workspace top bar — theme-aware) ── */
 .atlas-app-header {
-  background: #171410;
+  background: color-mix(in oklab, #171410 70%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   position: relative;
   z-index: 60;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
   /* Safe-area padding — respects iOS notch / Dynamic Island / Android status bar */
   padding-top: env(safe-area-inset-top, 0px);
 }
 [data-theme="parchment"] .atlas-app-header {
-  background: var(--atlas-bg);
+  background: color-mix(in oklab, var(--atlas-bg) 75%, transparent);
   border-bottom: 1px solid rgba(180, 83, 9, 0.14);
 }
 [data-theme="parchment"] .atlas-app-header * {
@@ -480,6 +484,16 @@ body[data-axiom-thread="empty"] * { scrollbar-width: none; }
 [data-theme="parchment"] .atlas-app-header-row {
   box-shadow: 0 1px 6px rgba(0,0,0,0.08) !important;
   border-bottom-color: rgba(180, 83, 9, 0.14) !important;
+}
+
+/* Composer — glass top with rounded shoulders */
+.atlas-composer-glass {
+  background: color-mix(in oklab, var(--atlas-bg) 68%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  box-shadow: 0 -4px 24px -8px rgba(0,0,0,0.35);
 }
 
 /* ── Side drawer mobile sizing ──
