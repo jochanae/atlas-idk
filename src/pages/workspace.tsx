@@ -34,7 +34,8 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
-import { Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
@@ -3106,6 +3107,8 @@ export default function Workspace() {
   const isMobile = useIsMobile() && !isDesktop;
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
+  const { collapsed: subheaderCollapsed, toggle: toggleSubheader } = useCollapsibleSubheader("workspace");
+
 
   const {
     input, setInput,
@@ -4730,6 +4733,49 @@ export default function Workspace() {
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
       {/* ── Workspace header restored below the unified shell ── */}
+      {subheaderCollapsed && (
+        <div
+          style={{
+            marginTop: 50,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "2px 12px",
+            minHeight: 22,
+            background: "rgba(var(--atlas-bg-rgb),0.85)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.10)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={toggleSubheader}
+            title="Show header"
+            aria-label="Show header"
+            style={{ background: "transparent", border: "none", padding: "2px 4px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.65, lineHeight: 0, display: "inline-flex" }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.65")}
+          >
+            <ChevronDown size={12} strokeWidth={2} />
+          </button>
+          <div style={{ transform: "scale(0.78)", transformOrigin: "right center" }}>
+            <ReadinessRing
+              archScore={mapReadiness}
+              decisionsScore={healthPct}
+              mode={readinessMode}
+              onModeChange={handleReadinessModeChange}
+              onClick={focusSystemMap}
+              trend={readinessTrend}
+              hideModePill
+              compact
+            />
+          </div>
+        </div>
+      )}
+      {!subheaderCollapsed && (
       <div
         className="atlas-workspace-header"
         style={{
@@ -5030,6 +5076,17 @@ export default function Workspace() {
                 </button>
               </LongPressTip>
             )}
+            <button
+              type="button"
+              onClick={toggleSubheader}
+              title="Hide header"
+              aria-label="Hide header"
+              style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.55, lineHeight: 0, display: "inline-flex", flexShrink: 0 }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
+            >
+              <ChevronUp size={13} strokeWidth={2} />
+            </button>
           </div>
         </div>
 
@@ -5226,6 +5283,7 @@ export default function Workspace() {
         </div>
         )}
       </div>
+      )}
 
       {/* ── Spec → Build handoff modal ── */}
       {showHandoffModal && (() => {

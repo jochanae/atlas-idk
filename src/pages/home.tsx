@@ -33,7 +33,8 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, Lock, LockOpen, MoreVertical, Search } from "lucide-react";
+import { Briefcase, ChevronDown, ChevronUp, Lock, LockOpen, MoreVertical, Search } from "lucide-react";
+import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 
@@ -1327,6 +1328,7 @@ export default function Home() {
 
   // ── Reflection mode ────────────────────────────────────────────────────────
   const [reflectionLocked, setReflectionLocked] = useState(false);
+  const { collapsed: subheaderCollapsed, toggle: toggleSubheader } = useCollapsibleSubheader("home");
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -2245,7 +2247,24 @@ export default function Home() {
     >
       {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
           Home is never Operational, so no green pulsing dot here. */}
-      {homeMessages.length > 0 && (
+      {homeMessages.length > 0 && subheaderCollapsed && (
+        <div
+          style={{
+            position: "sticky", top: 50, zIndex: 20, height: 16, width: "100%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(14, 12, 10, 0.85)",
+            backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            borderBottom: "1px solid rgba(212, 175, 55, 0.08)",
+            cursor: "pointer",
+          }}
+          onClick={toggleSubheader}
+          title="Show header"
+          aria-label="Show header"
+        >
+          <ChevronDown size={11} strokeWidth={2} style={{ color: "var(--atlas-gold)", opacity: 0.6 }} />
+        </div>
+      )}
+      {homeMessages.length > 0 && !subheaderCollapsed && (
         <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
           {/* Centered identity zone — title (when earned) + reflection lock. No menu trigger here. */}
           <div style={{
@@ -2304,6 +2323,16 @@ export default function Home() {
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <button
+                  onClick={toggleSubheader}
+                  title="Hide header"
+                  aria-label="Hide header"
+                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
+                >
+                  <ChevronUp size={13} strokeWidth={2} />
+                </button>
                 <button
                   onClick={() => setShowVault(true)}
                   title="Visual Vault"

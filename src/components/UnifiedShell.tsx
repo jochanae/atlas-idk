@@ -767,7 +767,6 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             alignItems: "center",
             gap: 12,
             padding: "0 clamp(14px, 4vw, 24px)",
-            background: "transparent",
             borderBottom: "none",
             boxShadow: "var(--atlas-home-header-shadow)",
             opacity: 1,
