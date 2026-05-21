@@ -5090,7 +5090,11 @@ export default function Workspace() {
             return (
               <button
                 type="button"
-                onClick={() => setShowLensPicker(true)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setShowLensPicker(true);
+                }}
                 aria-label={`${cfg.label} lens — tap to change`}
                 aria-haspopup="dialog"
                 style={{
