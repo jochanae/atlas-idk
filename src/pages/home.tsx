@@ -2101,7 +2101,36 @@ export default function Home() {
     setHomeMessages([]);
     setReviewingPlanIds(new Set());
     setShowHistory(false);
+    setEarnedTitle(null);
   }, []);
+
+  // Hydrate earned title when the active conversation changes.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`atlas-thread-title:${activeConversationId}`);
+      setEarnedTitle(stored && stored.trim() ? stored : null);
+    } catch {
+      setEarnedTitle(null);
+    }
+  }, [activeConversationId]);
+
+  const persistEarnedTitle = useCallback((title: string | null) => {
+    setEarnedTitle(title);
+    try {
+      if (title && title.trim()) {
+        localStorage.setItem(`atlas-thread-title:${activeConversationId}`, title.trim());
+      } else {
+        localStorage.removeItem(`atlas-thread-title:${activeConversationId}`);
+      }
+    } catch {}
+  }, [activeConversationId]);
+
+  const handleRenameThread = useCallback(() => {
+    const next = window.prompt("Name this thread", earnedTitle ?? "");
+    if (next === null) return; // cancelled
+    const trimmed = next.trim();
+    persistEarnedTitle(trimmed ? trimmed : null);
+  }, [earnedTitle, persistEarnedTitle]);
 
   const handleOpenHistory = useCallback(async () => {
     setShowHistory(true);
