@@ -362,7 +362,8 @@ function ShellStatusChip({ projectId }: { projectId: number | null }) {
           width: 6,
           height: 6,
           borderRadius: "50%",
-          background: active ? "#4ade80" : "rgba(var(--atlas-muted-rgb),0.5)",
+          background: active ? "#4ade80" : "transparent",
+          border: active ? undefined : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
           display: "inline-block",
         }}
       />
