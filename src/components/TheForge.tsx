@@ -451,7 +451,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   // ── Tab: Forge ─────────────────────────────────────────────────────────────
   const forgeContent = (
     <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ borderRadius: 10, background: "rgba(var(--atlas-gold-rgb),0.05)", border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", padding: "12px 14px" }}>
+      <div style={{ borderRadius: 10, background: "rgba(var(--atlas-gold-rgb),0.02)", border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", padding: "12px 14px" }}>
         <p style={{ fontSize: 12, color: "rgba(var(--atlas-gold-rgb),0.75)", lineHeight: 1.6, margin: 0 }}>
           Paste a raw transcript, voice note, brain dump, or strategy doc. The Forge reads intent, extracts goals, requirements, and <GlossaryTip term="blockers">{BLOCKER_EXPLANATION}</GlossaryTip> — then places them on your Axiom Flow.
         </p>
@@ -627,7 +627,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
       {/* Context badge — shows when project map loaded */}
       {projectMap && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(var(--atlas-gold-rgb),0.06)", border: "1px solid rgba(var(--atlas-gold-rgb),0.14)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(var(--atlas-gold-rgb),0.02)", border: "1px solid rgba(var(--atlas-gold-rgb),0.14)" }}>
           <span style={{ fontSize: 9, color: "rgba(var(--atlas-gold-rgb),0.6)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase" }}>⬡ Codebase context loaded</span>
         </div>
       )}
@@ -719,7 +719,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             ? `File: ${filePath.split("/").pop()}`
             : isCursor ? "Add file — makes prompt surgical (recommended)" : "Add file context (optional)"}
           {!showFilePane && !filePath && zipName && (
-            <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(var(--atlas-gold-rgb),0.55)", fontFamily: "var(--app-font-mono)", background: "rgba(var(--atlas-gold-rgb),0.08)", border: "1px solid rgba(var(--atlas-gold-rgb),0.18)", borderRadius: 4, padding: "1px 5px" }}>
+            <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(var(--atlas-gold-rgb),0.55)", fontFamily: "var(--app-font-mono)", background: "rgba(var(--atlas-gold-rgb),0.02)", border: "1px solid rgba(var(--atlas-gold-rgb),0.18)", borderRadius: 4, padding: "1px 5px" }}>
               ZIP stored
             </span>
           )}
@@ -843,7 +843,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
                 {/* ZIP status bar */}
                 {zipName ? (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 8, background: "rgba(var(--atlas-gold-rgb),0.07)", border: "1px solid rgba(var(--atlas-gold-rgb),0.18)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 8, background: "rgba(var(--atlas-gold-rgb),0.02)", border: "1px solid rgba(var(--atlas-gold-rgb),0.18)" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <span style={{ fontSize: 11, color: "rgba(var(--atlas-gold-rgb),0.85)", fontFamily: "var(--app-font-mono)", fontWeight: 600 }}>{zipName}</span>
                       <span style={{ fontSize: 9, color: "rgba(var(--atlas-muted-rgb),0.55)", fontFamily: "var(--app-font-mono)" }}>{Object.keys(zipFiles).length} files stored · tap Update to replace</span>
@@ -1057,7 +1057,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
           Define your core persona, vision, and strategic context
         </p>
-        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.08)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
           + Add Identity
         </button>
       </div>
@@ -1071,7 +1071,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
           Add financial, stylistic, or technical constraints
         </p>
-        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.08)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
           + Add Constraint
         </button>
       </div>
@@ -1085,7 +1085,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
           Define your preferred output structure and style
         </p>
-        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.08)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
           + Add Format
         </button>
       </div>
