@@ -427,6 +427,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
             handoverOpen={handoverOpen}
             onHandoverOpenChange={onHandoverOpenChange}
             isMobile={isMobile}
+            projectName={activeProjectName}
           />
         </div>
         {/* System Map — architecture layer readiness (auth/db/api/state/ui/logic)
