@@ -48,21 +48,21 @@ const corpus: FileBlob[] = allFiles.map((p) => ({
   body: readFileSync(p, "utf8"),
 }));
 
-function moduleNamesFor(file: string): string[] {
-  // Module name = filename without extension. Also produce the @/ alias path.
+function importMatchers(file: string): RegExp[] {
+  // Match any import/from/require that resolves to this file's basename
+  // via @/ alias, relative path, or absolute. Covers .ts/.tsx/.js/.jsx and
+  // the no-extension form.
   const rel = relative(SRC, file).replaceAll(sep, "/");
   const noExt = rel.replace(/\.(tsx?|jsx?)$/, "");
   const base = noExt.split("/").pop()!;
-  return [
-    `from "@/${noExt}"`,
-    `from '@/${noExt}'`,
-    `from "../${base}"`,
-    `from './${base}"`.replace('"', "'"),
-    `from "./${base}"`,
-    `import("@/${noExt}")`,
-    `import('@/${noExt}')`,
-  ];
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // (a) any import string ending in /<base> or /<base>.ext
+  const tailRe = new RegExp(`["'][^"']*\\/${esc(base)}(?:\\.[tj]sx?)?["']`);
+  // (b) bare alias: "@/<noExt>" exactly
+  const aliasRe = new RegExp(`["']@\\/${esc(noExt)}(?:\\.[tj]sx?)?["']`);
+  return [tailRe, aliasRe];
 }
+
 
 type Row = { file: string; importers: number; status: "wired" | "orphan" };
 const rows: Row[] = [];
