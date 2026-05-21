@@ -880,7 +880,7 @@ html.atlas-landing-active,
   background: radial-gradient(ellipse 70% 60% at 50% 50%, oklch(0.30 0.15 300 / 35%) 0%, transparent 70%);
 }
 [data-theme="parchment"] .system-map-glow::before {
-  background: radial-gradient(ellipse 70% 60% at 50% 50%, oklch(0.70 0.10 300 / 10%) 0%, transparent 70%);
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, oklch(0.75 0.08 75 / 8%) 0%, transparent 70%);
 }
 .pulse-lovable { box-shadow: 0 0 30px oklch(0.55 0.25 300 / 50%); }
 .pulse-cursor  { box-shadow: 0 0 30px oklch(0.55 0.20 240 / 50%); }
