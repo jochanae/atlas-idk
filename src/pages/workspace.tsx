@@ -2432,7 +2432,7 @@ function TerminalPanel({
         const r = await fetch("/api/terminal/explain", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ command: trimmed }),
+          body: JSON.stringify({ command: trimmed, ...(projectId != null ? { projectId } : {}) }),
           credentials: "include",
         });
         const data = await r.json() as { explanation?: string; error?: string };
