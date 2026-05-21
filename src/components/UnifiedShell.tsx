@@ -14,6 +14,9 @@ import { useProjectState } from "@/hooks/useProjectState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
+import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+
 
 type ShellDepth = "ambient" | "active" | "operational";
 
