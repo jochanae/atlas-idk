@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CommitCard } from "../CommitCard";
 import { PlanCard } from "../PlanCard";
 import { StreamingMarkdown, MarkdownProse } from "../MessageRenderer";
+import { ThoughtForBadge } from "../ThoughtForBadge";
 
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
@@ -1013,6 +1014,19 @@ export function AssistantBubble({
             <MarkdownProse content={cleanContent} />
           )}
         </div>
+
+        {cleanContent.trim() && !message.catchPayload && !commitPayload && (
+          <div style={{ marginTop: 6 }}>
+            <ThoughtForBadge
+              metrics={{
+                executionTimeMs: message.executionTimeMs,
+                inputTokens: message.inputTokens,
+                outputTokens: message.outputTokens,
+                costUsd: message.costUsd,
+              }}
+            />
+          </div>
+        )}
 
         <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
 

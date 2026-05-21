@@ -173,6 +173,10 @@ export interface ChatMessage {
   isDeepDive?: boolean;
   autoPushed?: boolean;
   surface?: AmbientSurface;
+  executionTimeMs?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  costUsd?: number | null;
 }
 
 export type MemoryChip = { label: string; insight?: string };
@@ -3157,13 +3161,25 @@ export default function Workspace() {
     createSession,
     queryClient,
     getListSessionsQueryKey,
-    mapPriorMessage: (m) => ({
-      id: m.id,
-      role: m.role as "user" | "assistant",
-      content: m.content,
-      intentType: m.intentType,
-      sentAt: m.createdAt,
-    }),
+    mapPriorMessage: (m) => {
+      const raw = m as typeof m & {
+        executionTimeMs?: number | null; execution_time_ms?: number | null;
+        inputTokens?: number | null; input_tokens?: number | null;
+        outputTokens?: number | null; output_tokens?: number | null;
+        costUsd?: number | string | null; cost_usd?: number | string | null;
+      };
+      return {
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        intentType: m.intentType,
+        sentAt: m.createdAt,
+        executionTimeMs: raw.executionTimeMs ?? raw.execution_time_ms ?? null,
+        inputTokens: raw.inputTokens ?? raw.input_tokens ?? null,
+        outputTokens: raw.outputTokens ?? raw.output_tokens ?? null,
+        costUsd: raw.costUsd != null ? Number(raw.costUsd) : raw.cost_usd != null ? Number(raw.cost_usd) : null,
+      };
+    },
     entries,
     fileContext,
     forgeContext,
