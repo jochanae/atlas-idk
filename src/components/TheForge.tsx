@@ -26,6 +26,12 @@ const FORGE_GAP_NODE_TYPES: Array<ArchNode["type"]> = ["goal", "blocker", "decis
 const BLOCKER_EXPLANATION = "Something actively preventing progress right now — not hypothetical, real.";
 const DECISION_EXPLANATION = "A choice that's already been made and now constrains everything else.";
 const SPRINT_EXPLANATION = "A bounded chunk of work with a defined end point.";
+const FORGE_ATMOSPHERE_BACKGROUND = "radial-gradient(ellipse at 50% 30%, rgba(88, 28, 135, 0.18) 0%, transparent 70%)";
+const FORGE_FIELD_STYLE = {
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 8,
+};
 
 function ForgeStageLabel({ stage }: { stage: string }) {
   if (stage === "Identifying blockers...") {
@@ -461,16 +467,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           placeholder={`Paste anything — a voice note transcript, a product spec, a messy doc, a Notion page dump...\n\nThe Forge will extract what matters and map it to your strategic flow.`}
           rows={isMobile ? 6 : 8}
           style={{
-            width: "100%", borderRadius: 12,
-            border: `1px solid ${transcript.length > 10 ? "rgba(212,175,55,0.35)" : "rgba(212,175,55,0.18)"}`,
-            background: "oklch(0.14 0.01 60)",
+            width: "100%", ...FORGE_FIELD_STYLE,
             padding: "12px 14px",
             color: "var(--atlas-fg)", fontSize: 13, lineHeight: 1.65,
             outline: "none", resize: "none", transition: "border-color 180ms",
             boxSizing: "border-box" as const, fontFamily: "inherit",
           }}
-          onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; }}
-          onBlur={e => { e.currentTarget.style.borderColor = transcript.length > 10 ? "rgba(212,175,55,0.35)" : "rgba(212,175,55,0.18)"; }}
+          onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+          onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
         />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
           <span style={{ fontSize: 10, color: "rgba(120,113,108,0.4)", fontFamily: "var(--app-font-mono)" }}>
@@ -508,16 +512,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
               placeholder="e.g. We're building a founder OS in React/Express/Postgres. Current committed decisions: auth via Clerk, no mobile for v1, must ship by end of month..."
               rows={4}
               style={{
-                width: "100%", borderRadius: 10,
-                border: "1px solid rgba(212,175,55,0.18)",
-                background: "oklch(0.13 0.01 60)",
+                width: "100%", ...FORGE_FIELD_STYLE,
                 padding: "10px 12px",
                 color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.6,
                 outline: "none", resize: "none", transition: "border-color 180ms",
                 boxSizing: "border-box" as const, fontFamily: "inherit",
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.35)"; }}
-              onBlur={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.18)"; }}
+              onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
             />
           </div>
         )}
@@ -683,16 +685,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             : "e.g. Add a settings panel to the workspace that lets users update their name and avatar. It should slide in from the right and auto-save on blur."}
           rows={isMobile ? 4 : 5}
           style={{
-            width: "100%", borderRadius: 12,
-            border: `1px solid ${promptDesc.length > 5 ? "rgba(212,175,55,0.35)" : "rgba(212,175,55,0.18)"}`,
-            background: "oklch(0.14 0.01 60)",
+            width: "100%", ...FORGE_FIELD_STYLE,
             padding: "12px 14px",
             color: "var(--atlas-fg)", fontSize: 13, lineHeight: 1.65,
             outline: "none", resize: "none", transition: "border-color 180ms",
             boxSizing: "border-box" as const, fontFamily: "inherit",
           }}
-          onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; }}
-          onBlur={e => { e.currentTarget.style.borderColor = promptDesc.length > 5 ? "rgba(212,175,55,0.35)" : "rgba(212,175,55,0.18)"; }}
+          onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+          onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
           onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate(); }}
         />
       </div>
@@ -775,8 +775,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                           if (proj) handleGhRepoSelect(proj.githubRepo, proj.defaultBranch);
                         }}
                         style={{
-                          width: "100%", borderRadius: 8, padding: "8px 10px",
-                          border: "1px solid rgba(212,175,55,0.2)", background: "oklch(0.13 0.01 60)",
+                          width: "100%", ...FORGE_FIELD_STYLE, padding: "8px 10px",
                           color: ghRepo ? "var(--atlas-fg)" : "rgba(120,113,108,0.5)",
                           fontSize: 12, fontFamily: "var(--app-font-mono)", outline: "none",
                         }}
@@ -798,8 +797,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                           value={ghSelectedFile}
                           onChange={e => { if (e.target.value) handleGhFileSelect(e.target.value); }}
                           style={{
-                            width: "100%", borderRadius: 8, padding: "8px 10px",
-                            border: "1px solid rgba(212,175,55,0.2)", background: "oklch(0.13 0.01 60)",
+                            width: "100%", ...FORGE_FIELD_STYLE, padding: "8px 10px",
                             color: ghSelectedFile ? "var(--atlas-fg)" : "rgba(120,113,108,0.5)",
                             fontSize: 11, fontFamily: "var(--app-font-mono)", outline: "none",
                           }}
@@ -890,8 +888,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                       value={zipSelectedFile}
                       onChange={e => { if (e.target.value) handleZipFileSelect(e.target.value); }}
                       style={{
-                        width: "100%", borderRadius: 8, padding: "8px 10px",
-                        border: "1px solid rgba(212,175,55,0.2)", background: "oklch(0.13 0.01 60)",
+                        width: "100%", ...FORGE_FIELD_STYLE, padding: "8px 10px",
                         color: zipSelectedFile ? "var(--atlas-fg)" : "rgba(120,113,108,0.5)",
                         fontSize: 11, fontFamily: "var(--app-font-mono)", outline: "none",
                       }}
@@ -927,16 +924,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     onChange={e => setFilePath(e.target.value)}
                     placeholder="e.g. artifacts/atlas/src/components/DecisionLogCard.tsx"
                     style={{
-                      width: "100%", borderRadius: 8,
-                      border: "1px solid rgba(212,175,55,0.18)",
-                      background: "oklch(0.13 0.01 60)",
+                      width: "100%", ...FORGE_FIELD_STYLE,
                       padding: "8px 12px",
                       color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.5,
                       outline: "none", fontFamily: "var(--app-font-mono)",
                       boxSizing: "border-box" as const,
                     }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.4)"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.18)"; }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
                   />
                 </div>
 
@@ -958,16 +953,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     placeholder="Paste the full file here. Atlas will quote exact lines so Cursor knows precisely where to edit."
                     rows={isMobile ? 5 : 7}
                     style={{
-                      width: "100%", borderRadius: 10,
-                      border: `1px solid ${fileContent ? "rgba(212,175,55,0.28)" : "rgba(212,175,55,0.15)"}`,
-                      background: "oklch(0.12 0.01 60)",
+                      width: "100%", ...FORGE_FIELD_STYLE,
                       padding: "10px 12px",
                       color: "var(--atlas-fg)", fontSize: 11, lineHeight: 1.6,
                       outline: "none", resize: "none", transition: "border-color 180ms",
                       boxSizing: "border-box" as const, fontFamily: "var(--app-font-mono)",
                     }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = fileContent ? "rgba(212,175,55,0.28)" : "rgba(212,175,55,0.15)"; }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
                   />
                   {isCursor && (
                     <p style={{ fontSize: 9.5, color: "rgba(120,113,108,0.45)", fontFamily: "var(--app-font-mono)", marginTop: 5, lineHeight: 1.5 }}>
@@ -1144,7 +1137,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     return (
       <>
         <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
-        <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-surface)", border: "1px solid rgba(212,175,55,0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(212,175,55,0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
           {headerBlock}
           {tabContent}
         </div>
@@ -1156,7 +1149,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     <>
       <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 350, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose} />
-      <div style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0, zIndex: 360, background: "var(--atlas-surface)", border: "1px solid rgba(212,175,55,0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(212,175,55,0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 2px" }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(212,175,55,0.18)" }} />
         </div>

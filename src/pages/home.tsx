@@ -2561,12 +2561,14 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
-                    maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    flex: 1, maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    minHeight: 0,
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 4, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
                     borderRadius: reflectionLocked ? 8 : undefined,
                     padding: reflectionLocked ? "10px 12px" : undefined,
+                    paddingTop: 56, scrollPaddingTop: 56,
                     transition: "border-color 200ms",
                   }}
                 >
@@ -3175,13 +3177,13 @@ export default function Home() {
                 aria-label="Pick up below"
                 onClick={openOverviewSheet}
                 style={{
-                  width: "100%",
+                  width: "100vw",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 10,
-                  margin: "14px 0 0",
-                  padding: "7px 12px",
+                  margin: "14px calc(50% - 50vw) 0",
+                  padding: "7px 0",
                   background: isParchment ? "rgba(220,210,195,0.55)" : "rgba(28,25,23,0.35)",
                   border: "none",
                   borderTop: isParchment ? "1px solid rgba(160,130,90,0.2)" : "1px solid rgba(201,162,76,0.08)",

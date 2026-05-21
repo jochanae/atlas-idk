@@ -4629,6 +4629,15 @@ export default function Workspace() {
         if (file && file.name.toLowerCase().endsWith(".zip")) await processZip(file);
       }}
     >
+      <style>{`
+        .atlas-chat-timeline {
+          flex: 1 !important;
+          min-height: 0 !important;
+          overflow-y: auto !important;
+          padding-top: 56px !important;
+          scroll-padding-top: 56px;
+        }
+      `}</style>
       <div
         aria-hidden
         style={{
