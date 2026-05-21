@@ -2247,7 +2247,24 @@ export default function Home() {
     >
       {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
           Home is never Operational, so no green pulsing dot here. */}
-      {homeMessages.length > 0 && (
+      {homeMessages.length > 0 && subheaderCollapsed && (
+        <div
+          style={{
+            position: "sticky", top: 50, zIndex: 20, height: 16, width: "100%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(14, 12, 10, 0.85)",
+            backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            borderBottom: "1px solid rgba(212, 175, 55, 0.08)",
+            cursor: "pointer",
+          }}
+          onClick={toggleSubheader}
+          title="Show header"
+          aria-label="Show header"
+        >
+          <ChevronDown size={11} strokeWidth={2} style={{ color: "var(--atlas-gold)", opacity: 0.6 }} />
+        </div>
+      )}
+      {homeMessages.length > 0 && !subheaderCollapsed && (
         <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
           {/* Centered identity zone — title (when earned) + reflection lock. No menu trigger here. */}
           <div style={{
