@@ -2242,7 +2242,7 @@ export default function Home() {
               style={{
                 background: "transparent", border: "none", padding: 0, cursor: "pointer",
                 color: "var(--atlas-gold)",
-                opacity: reflectionLocked ? 1 : 0.55,
+                opacity: reflectionLocked ? 1 : 0.85,
                 lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
                 flexShrink: 0,
               }}
