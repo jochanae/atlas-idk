@@ -173,14 +173,26 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
 
   if (result) {
     const ok = result.exitCode === 0;
+    const outputText = result.output.trim() || "(no output)";
+    const fullText = `$ ${result.command}\n${outputText}\nExit code ${result.exitCode ?? "unknown"} · ${result.durationMs}ms`;
     return (
       <div style={baseStyle}>
         <div style={{ color: "var(--atlas-fg)", marginBottom: 8 }}>○ Atlas ran <code>{result.command}</code></div>
         <pre style={{ margin: "0 0 8px", whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--atlas-fg)", fontFamily: "var(--app-font-mono)" }}>
-          {result.output.trim() || "(no output)"}
+          {outputText}
         </pre>
-        <div style={{ color: ok ? "var(--atlas-phosphor)" : "var(--atlas-ember)" }}>
-          {ok ? "✔" : "✕"} Exit code {result.exitCode ?? "unknown"} · {result.durationMs}ms
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ color: ok ? "var(--atlas-phosphor)" : "var(--atlas-ember)" }}>
+            {ok ? "✔" : "✕"} Exit code {result.exitCode ?? "unknown"} · {result.durationMs}ms
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button type="button" onClick={() => copyToClipboard(outputText, "output")} style={buttonStyle}>
+              {copied === "output" ? "Copied" : "Copy output"}
+            </button>
+            <button type="button" onClick={() => copyToClipboard(fullText, "all")} style={buttonStyle}>
+              {copied === "all" ? "Copied" : "Copy all"}
+            </button>
+          </div>
         </div>
       </div>
     );
