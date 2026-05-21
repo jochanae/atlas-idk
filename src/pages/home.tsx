@@ -2211,6 +2211,7 @@ export default function Home() {
             display: "flex", alignItems: "center", gap: 6,
             pointerEvents: "auto", maxWidth: "60%",
           }}>
+            <span className="atlas-pulse-dot" aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", flexShrink: 0, display: "inline-block" }} />
             <button
               onClick={() => setShowChatMenu(v => !v)}
               title="Conversation actions"
