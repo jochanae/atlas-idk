@@ -3056,13 +3056,6 @@ export default function Workspace() {
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
 
-  // Record this project as the user's most recently touched project.
-  // Best-effort; backend may 404 transiently.
-  useEffect(() => {
-    if (!Number.isFinite(id) || id <= 0) return;
-    void import("@/lib/projectRecent").then(({ touchProject }) => touchProject(id));
-  }, [id]);
-
   const {
     input, setInput,
     attachedFiles, setAttachedFiles,
@@ -3363,12 +3356,19 @@ export default function Workspace() {
     // dashboard / archive / delete). The folder icon dispatches the separate
     // `open-nav-drawer` event and opens the global navigation drawer.
     const openProjectMenu = () => setShowProjectMenu(true);
-    const openNavDrawer = () => setShowDrawer(true);
+    const openNavDrawer = () => {
+      // Folder icon ALWAYS opens the side nav drawer — never the per-project menu.
+      setShowProjectMenu(false);
+      setShowDrawer(true);
+    };
+    const closeProjectMenu = () => setShowProjectMenu(false);
     window.addEventListener("axiom:open-projects-drawer", openProjectMenu);
     window.addEventListener("axiom:open-nav-drawer", openNavDrawer);
+    window.addEventListener("axiom:close-project-menu", closeProjectMenu);
     return () => {
       window.removeEventListener("axiom:open-projects-drawer", openProjectMenu);
       window.removeEventListener("axiom:open-nav-drawer", openNavDrawer);
+      window.removeEventListener("axiom:close-project-menu", closeProjectMenu);
     };
   }, []);
   const [showVault, setShowVault] = useState(false);
