@@ -249,8 +249,48 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     }, 1000);
   }, [projectId, updateProject, activeProject]);
 
+  // Export Blueprint — copy / download the current map
+  const [exportFlash, setExportFlash] = useState<null | "copied" | "downloaded">(null);
+  const buildBlueprintText = useCallback(() => {
+    const score = displayedReadinessScore ?? readinessScore;
+    return [
+      "# Axiom Blueprint",
+      `Generated: ${new Date().toLocaleString()}`,
+      `Readiness: ${score}%`,
+      "",
+      ...nodes.map(n => `- ${n.label} [${n.type}${n.meta ? `/${n.meta}` : ""}]: ${n.resolved ? "Resolved" : "Unresolved"}`),
+    ].join("\n");
+  }, [nodes, displayedReadinessScore, readinessScore]);
+  const handleExportCopy = useCallback(async () => {
+    const text = buildBlueprintText();
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setExportFlash("copied");
+    setTimeout(() => setExportFlash(null), 1600);
+  }, [buildBlueprintText]);
+  const handleExportDownload = useCallback(() => {
+    const blob = new Blob([buildBlueprintText()], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `axiom-blueprint-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setExportFlash("downloaded");
+    setTimeout(() => setExportFlash(null), 1600);
+  }, [buildBlueprintText]);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", paddingBottom: 64 }}>
       <div style={{
         height: 1, flexShrink: 0,
         background: "linear-gradient(to right, transparent 0%, rgba(var(--atlas-gold-rgb),0.18) 20%, rgba(var(--atlas-gold-rgb),0.38) 50%, rgba(var(--atlas-gold-rgb),0.18) 80%, transparent 100%)",
@@ -260,6 +300,85 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           When intent capture is visible, cap at 54% so the input section always
           has enough room on every phone size. */}
       <div style={{ position: "relative", flex: chatFullscreen ? "0 0 0" : showChat ? "0 0 auto" : 1, height: chatFullscreen ? 0 : showChat ? "min(54%, calc(100% - 316px))" : undefined, minHeight: chatFullscreen ? 0 : showChat ? 200 : 0, overflow: "hidden", display: "flex", flexDirection: "column", transition: "flex 350ms ease" }}>
+        {/* Map header — Show both toggle + Export icons (replaces the old bottom toggle bar) */}
+        <div style={{
+          position: "absolute", top: 8, right: 8, zIndex: 12,
+          display: "flex", gap: 4, alignItems: "center",
+          background: "rgba(var(--atlas-bg-rgb),0.72)",
+          backdropFilter: "blur(6px)",
+          border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+          borderRadius: 8, padding: 3,
+        }}>
+          <button
+            onClick={() => { setChatFullscreen(false); setShowChat(v => !v); }}
+            title={showChat ? "Map fullscreen" : "Show both (map + intent)"}
+            aria-label={showChat ? "Map fullscreen" : "Show split view"}
+            style={{
+              minWidth: 28, height: 24, padding: "0 6px", borderRadius: 5,
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "rgba(var(--atlas-gold-rgb),0.78)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {showChat ? (
+                <>
+                  <path d="M4 4h7v7H4z" />
+                  <path d="M13 13h7v7h-7z" />
+                </>
+              ) : (
+                <>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                </>
+              )}
+            </svg>
+          </button>
+          <span style={{ width: 1, height: 14, background: "rgba(var(--atlas-gold-rgb),0.18)" }} aria-hidden />
+          <button
+            onClick={handleExportCopy}
+            title="Copy blueprint to clipboard"
+            aria-label="Copy blueprint"
+            style={{
+              minWidth: 28, height: 24, padding: "0 6px", borderRadius: 5,
+              background: exportFlash === "copied" ? "rgba(var(--atlas-gold-rgb),0.18)" : "transparent",
+              border: "none", cursor: "pointer",
+              color: "rgba(var(--atlas-gold-rgb),0.78)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {exportFlash === "copied" ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={handleExportDownload}
+            title="Download blueprint as TXT"
+            aria-label="Download blueprint"
+            style={{
+              minWidth: 28, height: 24, padding: "0 6px", borderRadius: 5,
+              background: exportFlash === "downloaded" ? "rgba(var(--atlas-gold-rgb),0.18)" : "transparent",
+              border: "none", cursor: "pointer",
+              color: "rgba(var(--atlas-gold-rgb),0.78)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {exportFlash === "downloaded" ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            )}
+          </button>
+        </div>
         {/* Axiom Flow canvas */}
         <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
           {/* Empty map nudge — show Forge prompt when canvas has no nodes yet */}
