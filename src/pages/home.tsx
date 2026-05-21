@@ -1233,6 +1233,11 @@ export default function Home() {
   const [showChatMenu, setShowChatMenu] = useState(false);
   // Home lens state removed — lenses live in workspace only
 
+  // Earned title: identity emerges, never derived from latest message.
+  // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
+  // Persisted per conversation id under `atlas-thread-title:<id>`.
+  const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
+
   const [threadLoading, setThreadLoading] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string>(() => {
     const newId = crypto.randomUUID();
@@ -2096,7 +2101,36 @@ export default function Home() {
     setHomeMessages([]);
     setReviewingPlanIds(new Set());
     setShowHistory(false);
+    setEarnedTitle(null);
   }, []);
+
+  // Hydrate earned title when the active conversation changes.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`atlas-thread-title:${activeConversationId}`);
+      setEarnedTitle(stored && stored.trim() ? stored : null);
+    } catch {
+      setEarnedTitle(null);
+    }
+  }, [activeConversationId]);
+
+  const persistEarnedTitle = useCallback((title: string | null) => {
+    setEarnedTitle(title);
+    try {
+      if (title && title.trim()) {
+        localStorage.setItem(`atlas-thread-title:${activeConversationId}`, title.trim());
+      } else {
+        localStorage.removeItem(`atlas-thread-title:${activeConversationId}`);
+      }
+    } catch {}
+  }, [activeConversationId]);
+
+  const handleRenameThread = useCallback(() => {
+    const next = window.prompt("Name this thread", earnedTitle ?? "");
+    if (next === null) return; // cancelled
+    const trimmed = next.trim();
+    persistEarnedTitle(trimmed ? trimmed : null);
+  }, [earnedTitle, persistEarnedTitle]);
 
   const handleOpenHistory = useCallback(async () => {
     setShowHistory(true);
@@ -2190,48 +2224,44 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {/* ATLAS subheader — always-visible bar beneath main header */}
-      {homeMessages.length > 0 && (() => {
-        const firstUserMsg = homeMessages.find(m => m.role === "user");
-        const rawTitle = (firstUserMsg?.content ?? "").trim().replace(/\s+/g, " ");
-        const conversationTitle = rawTitle
-          ? (rawTitle.length > 38 ? rawTitle.slice(0, 36).trimEnd() + "…" : rawTitle)
-          : "New conversation";
-        return (
+      {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
+          Home is never Operational, so no green pulsing dot here. */}
+      {homeMessages.length > 0 && (
         <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
-          {/* Centered: conversation title + caret (opens thread menu) + lock */}
+          {/* Centered identity zone — empty until a title is earned. */}
           <div style={{
             position: "absolute", left: "50%", top: "50%",
             transform: "translate(-50%, -50%)",
             display: "flex", alignItems: "center", gap: 6,
             pointerEvents: "auto", maxWidth: "60%",
           }}>
-            <span className="atlas-pulse-dot" aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", flexShrink: 0, display: "inline-block" }} />
-            <button
-              onClick={() => setShowChatMenu(v => !v)}
-              title="Conversation actions"
-              aria-label="Conversation actions"
-              style={{
-                background: showChatMenu ? "rgba(201,162,76,0.10)" : "transparent",
-                border: "none", padding: "3px 8px", cursor: "pointer",
-                display: "inline-flex", alignItems: "center", gap: 5,
-                borderRadius: 6, transition: "background 140ms",
-                maxWidth: "100%", overflow: "hidden",
-              }}
-            >
-              <span style={{
-                fontSize: "var(--ts-label)", fontFamily: "var(--app-font-sans)",
-                color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 400,
-                letterSpacing: "-0.005em",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                maxWidth: "100%",
-              }}>
-                {conversationTitle}
-              </span>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-muted)", opacity: 0.7, flexShrink: 0 }}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
+            {earnedTitle && (
+              <button
+                onClick={() => setShowChatMenu(v => !v)}
+                title="Conversation actions"
+                aria-label="Conversation actions"
+                style={{
+                  background: showChatMenu ? "rgba(201,162,76,0.10)" : "transparent",
+                  border: "none", padding: "3px 8px", cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  borderRadius: 6, transition: "background 140ms",
+                  maxWidth: "100%", overflow: "hidden",
+                }}
+              >
+                <span style={{
+                  fontSize: "var(--ts-label)", fontFamily: "var(--app-font-sans)",
+                  color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 400,
+                  letterSpacing: "-0.005em",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  maxWidth: "100%",
+                }}>
+                  {earnedTitle.length > 38 ? earnedTitle.slice(0, 36).trimEnd() + "…" : earnedTitle}
+                </span>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--atlas-muted)", opacity: 0.7, flexShrink: 0 }}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={handleLockTap}
               title={reflectionLocked ? "Reflection mode (locked)" : "Enter reflection mode"}
@@ -2250,13 +2280,31 @@ export default function Home() {
                 <LockOpen size={10} strokeWidth={2} />
               )}
             </button>
-            {/* Thread menu — drops from title */}
+            {/* Thread menu — anchored to centered zone; opens via title (when earned) or via a small caret affordance when no title yet. */}
+            {!earnedTitle && (
+              <button
+                onClick={() => setShowChatMenu(v => !v)}
+                title="Conversation actions"
+                aria-label="Conversation actions"
+                style={{
+                  background: showChatMenu ? "rgba(201,162,76,0.10)" : "transparent",
+                  border: "none", padding: "3px 6px", cursor: "pointer",
+                  display: "inline-flex", alignItems: "center",
+                  borderRadius: 6, transition: "background 140ms",
+                  color: "var(--atlas-muted)", opacity: 0.55,
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            )}
             {showChatMenu && (
               <>
                 <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
                 <div style={{ position: "absolute", top: "calc(100% + 4px)", left: "50%", transform: "translateX(-50%)", zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
                   {([
-                    { label: "Rename", action: () => { setShowChatMenu(false); /* TODO: open rename */ } },
+                    { label: earnedTitle ? "Rename" : "Name this thread", action: () => { setShowChatMenu(false); handleRenameThread(); } },
                     { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
                     { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
                     { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
@@ -2340,8 +2388,7 @@ export default function Home() {
             )}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
