@@ -19,7 +19,7 @@ import { TheForge } from "../components/TheForge";
 import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { BlueprintsTab, GenerateBlueprintPill } from "../components/BlueprintsTab";
-import { CockpitBar } from "../components/CockpitBar";
+
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
