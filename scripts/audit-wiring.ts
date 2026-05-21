@@ -68,11 +68,11 @@ type Row = { file: string; importers: number; status: "wired" | "orphan" };
 const rows: Row[] = [];
 
 for (const file of targets) {
-  const needles = moduleNamesFor(file);
+  const res = importMatchers(file);
   let count = 0;
   for (const f of corpus) {
     if (f.path === file) continue;
-    if (needles.some((n) => f.body.includes(n))) count++;
+    if (res.some((re) => re.test(f.body))) count++;
   }
   rows.push({
     file: relative(ROOT, file),
