@@ -19,16 +19,18 @@ const SCAN_DIRS = ["components", "hooks", "lib"].map((d) => join(SRC, d));
 const SEARCH_DIRS = [SRC]; // who imports from anywhere under src
 
 const CODE_EXT = new Set([".ts", ".tsx", ".js", ".jsx"]);
-const IGNORE_DIRS = new Set(["node_modules", ".git", "dist", "build", "ui"]); // ui = shadcn, mostly noise
+const IGNORE_ALWAYS = new Set(["node_modules", ".git", "dist", "build"]);
+const IGNORE_AS_TARGET = new Set(["ui"]); // shadcn — noisy, skip as scan target
 
-function walk(dir: string, out: string[] = []): string[] {
+function walk(dir: string, out: string[] = [], skipTargets = false): string[] {
   let entries: string[] = [];
   try { entries = readdirSync(dir); } catch { return out; }
   for (const name of entries) {
-    if (IGNORE_DIRS.has(name)) continue;
+    if (IGNORE_ALWAYS.has(name)) continue;
+    if (skipTargets && IGNORE_AS_TARGET.has(name)) continue;
     const full = join(dir, name);
     const st = statSync(full);
-    if (st.isDirectory()) walk(full, out);
+    if (st.isDirectory()) walk(full, out, skipTargets);
     else {
       const dot = name.lastIndexOf(".");
       const ext = dot >= 0 ? name.slice(dot) : "";
@@ -38,8 +40,8 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const targets = SCAN_DIRS.flatMap((d) => walk(d));
-const allFiles = SEARCH_DIRS.flatMap((d) => walk(d));
+const targets = SCAN_DIRS.flatMap((d) => walk(d, [], true));
+const allFiles = SEARCH_DIRS.flatMap((d) => walk(d, [], false));
 
 // Build a single concatenated corpus once for fast substring scan.
 type FileBlob = { path: string; body: string };
