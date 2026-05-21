@@ -172,7 +172,13 @@ function ShellAvatar() {
     window.dispatchEvent(new CustomEvent("axiom:open-account-hub"));
   }, []);
 
+  const openInvite = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("axiom:open-invite"));
+  }, []);
+
   return (
+    <div style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
     <div
       style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}
       role="button"
