@@ -72,6 +72,25 @@ function useComposerTypewriter(phrases: string[], paused: boolean) {
   return display;
 }
 
+function RotatingPlaceholder({ wsLens, hasInput, inputFocused, hasMessages }: { wsLens: WorkspaceLens; hasInput: boolean; inputFocused: boolean; hasMessages: boolean }) {
+  const pool = LENS_PLACEHOLDERS[wsLens] ?? LENS_PLACEHOLDERS.flow;
+  const paused = hasInput || inputFocused || hasMessages;
+  const typed = useComposerTypewriter(pool, paused);
+  if (paused) return null;
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute", top: 0, left: 2,
+        color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1.6,
+        opacity: 0.6, pointerEvents: "none",
+        fontFamily: "var(--app-font-sans)",
+      }}
+    >
+      {typed || pool[0]}
+    </div>
+  );
+
 type AtlasSrcFile = { label: string; path: string; hint: string };
 
 export interface ChatComposerProps {
