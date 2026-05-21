@@ -1231,6 +1231,13 @@ export default function Home() {
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [homeLens, setHomeLens] = useState<"flow" | "build" | "look" | "scenario">(() => {
+    try { return (localStorage.getItem("atlas-home-lens") as "flow" | "build" | "look" | "scenario") || "flow"; } catch { return "flow"; }
+  });
+  const updateHomeLens = useCallback((next: "flow" | "build" | "look" | "scenario") => {
+    setHomeLens(next);
+    try { localStorage.setItem("atlas-home-lens", next); } catch {}
+  }, []);
   const [threadLoading, setThreadLoading] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<string>(() => {
     const newId = crypto.randomUUID();
