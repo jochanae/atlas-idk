@@ -267,28 +267,30 @@ export function ChatStream(props: ChatStreamProps) {
       {showScrollBtn && (
         <button
           onClick={onScrollToLatest}
+          aria-label="Scroll to latest"
           style={{
             position: "sticky",
             bottom: 12,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
+            left: "100%",
+            transform: "translateX(-100%)",
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
             background: "var(--atlas-surface)",
             border: "1px solid var(--atlas-gold)",
-            borderRadius: 20,
-            padding: "6px 16px",
             color: "var(--atlas-gold)",
-            fontSize: 12,
-            fontFamily: "var(--app-font-mono)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
             boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-            letterSpacing: "0.04em",
             zIndex: 20,
+            flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>↓</span> latest
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3v10M4 9l4 4 4-4"/>
+          </svg>
         </button>
       )}
     </div>
