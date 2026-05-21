@@ -160,7 +160,7 @@ export function useChatStream(
     query: { enabled: !!sessionId, queryKey: ["messages", sessionId] },
   });
   useEffect(() => {
-    if (!priorMessages || priorMessages.length === 0 || priorLoadedRef.current || messages.length > 0) return;
+    if (!priorMessages || priorMessages.length === 0 || priorLoadedRef.current) return;
     priorLoadedRef.current = true;
     historyMsgCountRef.current = priorMessages.length;
     setMessages(priorMessages.map(mapPriorMessage));
