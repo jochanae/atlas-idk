@@ -1404,16 +1404,74 @@ export default function MasterMap() {
               <div style={{
                 fontSize: 15, fontWeight: 600, color: palette.goldTextStrong,
                 fontFamily: "var(--app-font-sans)", letterSpacing: "0.01em",
+                marginBottom: 8,
               }}>
                 {context.projectName ?? "Project"}
               </div>
-              <div style={{
-                marginTop: 10, fontSize: 11, color: palette.mutedText,
-                fontFamily: "var(--app-font-sans)", lineHeight: 1.55,
-              }}>
-                No decisions committed yet.<br />
-                Start a conversation to build this map.
-              </div>
+              {(() => {
+                const proj = projects.find(p => p.id === context.projectId);
+                const score = proj?.latestSnapshotScore;
+                const updated = proj?.updatedAt ? new Date(proj.updatedAt) : null;
+                const daysAgo = updated ? Math.floor((Date.now() - updated.getTime()) / 86400000) : null;
+                const lastActive = daysAgo === 0 ? "Active today" : daysAgo === 1 ? "Yesterday" : daysAgo != null ? `${daysAgo}d ago` : null;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    {(score != null || lastActive) && (
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        {score != null && (
+                          <span style={{
+                            fontSize: 10, fontFamily: "var(--app-font-mono)",
+                            color: palette.goldText, letterSpacing: "0.08em",
+                            background: "rgba(201,162,76,0.08)",
+                            border: "1px solid rgba(201,162,76,0.2)",
+                            borderRadius: 4, padding: "2px 6px",
+                          }}>
+                            {Math.round(score)}% ready
+                          </span>
+                        )}
+                        {lastActive && (
+                          <span style={{
+                            fontSize: 10, fontFamily: "var(--app-font-mono)",
+                            color: palette.mutedText, letterSpacing: "0.06em",
+                          }}>
+                            {lastActive}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div style={{
+                      fontSize: 11, color: palette.mutedText,
+                      fontFamily: "var(--app-font-sans)", lineHeight: 1.55,
+                    }}>
+                      No decisions committed yet.<br />
+                      Start a conversation to build this map.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (context.projectId) {
+                          window.location.href = `/project/${context.projectId}`;
+                        }
+                      }}
+                      style={{
+                        marginTop: 4,
+                        padding: "6px 16px",
+                        background: "transparent",
+                        border: `1px solid ${palette.panelBorder}`,
+                        borderRadius: 6,
+                        color: palette.goldText,
+                        fontSize: 11,
+                        fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.06em",
+                        cursor: "pointer",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Open workspace →
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
