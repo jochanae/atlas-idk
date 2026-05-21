@@ -3,7 +3,7 @@ import { AxiomFlow } from "../AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../AxiomFlow";
 import { SystemMap } from "../SystemMap";
 import type { ArchNode as SystemMapNode } from "../SystemMap";
-import { CockpitBar } from "../CockpitBar";
+import { UnifiedContextDock } from "../UnifiedContextDock";
 import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
 import {
@@ -82,7 +82,7 @@ function detectPlatform(): string {
   return "WEB";
 }
 
-export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, onBackToChat, onMapReadinessChange, displayedReadinessScore, onSystemNodeMessage, onHandover, handoverPending, lastHandoverHash, resolvedNodeIds, onResolvedConsumed, onSnapshotChange, handoverOpen, onHandoverOpenChange, isMobile, onOpenForge, externalForgeNodes, onForgeNodesConsumed, onForgeCompleted }: { projectId?: number; onHomeNav: () => void; onSendIntent?: (text: string) => void; onFillIntent?: (text: string) => void; onBackToChat?: () => void; onMapReadinessChange?: (score: number) => void; displayedReadinessScore?: number; onSystemNodeMessage?: (text: string) => void; onHandover?: (payload: { snapshot: HandoverSnapshot; title: string }) => void; handoverPending?: boolean; lastHandoverHash?: string | null; resolvedNodeIds?: string[]; onResolvedConsumed?: () => void; onSnapshotChange?: (s: HandoverSnapshot | null) => void; handoverOpen?: boolean; onHandoverOpenChange?: (open: boolean) => void; isMobile?: boolean; onOpenForge?: () => void; externalForgeNodes?: ArchNode[]; onForgeNodesConsumed?: () => void; onForgeCompleted?: () => void }) {
+export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, onBackToChat, onNavLedger, onNavPreview, onMapReadinessChange, displayedReadinessScore, onSystemNodeMessage, onHandover, handoverPending, lastHandoverHash, resolvedNodeIds, onResolvedConsumed, onSnapshotChange, handoverOpen, onHandoverOpenChange, isMobile, onOpenForge, externalForgeNodes, onForgeNodesConsumed, onForgeCompleted, entryCount, activeCatch }: { projectId?: number; onHomeNav: () => void; onSendIntent?: (text: string) => void; onFillIntent?: (text: string) => void; onBackToChat?: () => void; onNavLedger?: () => void; onNavPreview?: () => void; onMapReadinessChange?: (score: number) => void; displayedReadinessScore?: number; onSystemNodeMessage?: (text: string) => void; onHandover?: (payload: { snapshot: HandoverSnapshot; title: string }) => void; handoverPending?: boolean; lastHandoverHash?: string | null; resolvedNodeIds?: string[]; onResolvedConsumed?: () => void; onSnapshotChange?: (s: HandoverSnapshot | null) => void; handoverOpen?: boolean; onHandoverOpenChange?: (open: boolean) => void; isMobile?: boolean; onOpenForge?: () => void; externalForgeNodes?: ArchNode[]; onForgeNodesConsumed?: () => void; onForgeCompleted?: () => void; entryCount?: number; activeCatch?: boolean }) {
   const [readinessScore, setReadinessScore] = useState(0);
   useEffect(() => { onMapReadinessChange?.(readinessScore); }, [readinessScore, onMapReadinessChange]);
 
@@ -249,8 +249,48 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     }, 1000);
   }, [projectId, updateProject, activeProject]);
 
+  // Export Blueprint — copy / download the current map
+  const [exportFlash, setExportFlash] = useState<null | "copied" | "downloaded">(null);
+  const buildBlueprintText = useCallback(() => {
+    const score = displayedReadinessScore ?? readinessScore;
+    return [
+      "# Axiom Blueprint",
+      `Generated: ${new Date().toLocaleString()}`,
+      `Readiness: ${score}%`,
+      "",
+      ...nodes.map(n => `- ${n.label} [${n.type}${n.meta ? `/${n.meta}` : ""}]: ${n.resolved ? "Resolved" : "Unresolved"}`),
+    ].join("\n");
+  }, [nodes, displayedReadinessScore, readinessScore]);
+  const handleExportCopy = useCallback(async () => {
+    const text = buildBlueprintText();
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setExportFlash("copied");
+    setTimeout(() => setExportFlash(null), 1600);
+  }, [buildBlueprintText]);
+  const handleExportDownload = useCallback(() => {
+    const blob = new Blob([buildBlueprintText()], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `axiom-blueprint-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setExportFlash("downloaded");
+    setTimeout(() => setExportFlash(null), 1600);
+  }, [buildBlueprintText]);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", paddingBottom: 64 }}>
       <div style={{
         height: 1, flexShrink: 0,
         background: "linear-gradient(to right, transparent 0%, rgba(var(--atlas-gold-rgb),0.18) 20%, rgba(var(--atlas-gold-rgb),0.38) 50%, rgba(var(--atlas-gold-rgb),0.18) 80%, transparent 100%)",
@@ -260,6 +300,85 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           When intent capture is visible, cap at 54% so the input section always
           has enough room on every phone size. */}
       <div style={{ position: "relative", flex: chatFullscreen ? "0 0 0" : showChat ? "0 0 auto" : 1, height: chatFullscreen ? 0 : showChat ? "min(54%, calc(100% - 316px))" : undefined, minHeight: chatFullscreen ? 0 : showChat ? 200 : 0, overflow: "hidden", display: "flex", flexDirection: "column", transition: "flex 350ms ease" }}>
+        {/* Map header — Show both toggle + Export icons (replaces the old bottom toggle bar) */}
+        <div style={{
+          position: "absolute", top: 8, right: 8, zIndex: 12,
+          display: "flex", gap: 4, alignItems: "center",
+          background: "rgba(var(--atlas-bg-rgb),0.72)",
+          backdropFilter: "blur(6px)",
+          border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+          borderRadius: 8, padding: 3,
+        }}>
+          <button
+            onClick={() => { setChatFullscreen(false); setShowChat(v => !v); }}
+            title={showChat ? "Map fullscreen" : "Show both (map + intent)"}
+            aria-label={showChat ? "Map fullscreen" : "Show split view"}
+            style={{
+              minWidth: 28, height: 24, padding: "0 6px", borderRadius: 5,
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "rgba(var(--atlas-gold-rgb),0.78)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {showChat ? (
+                <>
+                  <path d="M4 4h7v7H4z" />
+                  <path d="M13 13h7v7h-7z" />
+                </>
+              ) : (
+                <>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                </>
+              )}
+            </svg>
+          </button>
+          <span style={{ width: 1, height: 14, background: "rgba(var(--atlas-gold-rgb),0.18)" }} aria-hidden />
+          <button
+            onClick={handleExportCopy}
+            title="Copy blueprint to clipboard"
+            aria-label="Copy blueprint"
+            style={{
+              minWidth: 28, height: 24, padding: "0 6px", borderRadius: 5,
+              background: exportFlash === "copied" ? "rgba(var(--atlas-gold-rgb),0.18)" : "transparent",
+              border: "none", cursor: "pointer",
+              color: "rgba(var(--atlas-gold-rgb),0.78)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {exportFlash === "copied" ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={handleExportDownload}
+            title="Download blueprint as TXT"
+            aria-label="Download blueprint"
+            style={{
+              minWidth: 28, height: 24, padding: "0 6px", borderRadius: 5,
+              background: exportFlash === "downloaded" ? "rgba(var(--atlas-gold-rgb),0.18)" : "transparent",
+              border: "none", cursor: "pointer",
+              color: "rgba(var(--atlas-gold-rgb),0.78)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {exportFlash === "downloaded" ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            )}
+          </button>
+        </div>
         {/* Axiom Flow canvas */}
         <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
           {/* Empty map nudge — show Forge prompt when canvas has no nodes yet */}
@@ -332,49 +451,36 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         )}
       </div>
 
-      {/* Toggle bar — map / chat fullscreen controls */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "4px 12px",
-        background: "var(--atlas-flow-pane-bg)",
-        borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.08)",
-        flexShrink: 0,
-      }}>
-        <span style={{
-          color: "rgba(var(--atlas-gold-rgb),0.35)", fontSize: 10,
-          fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
-          userSelect: "none",
+      {/* Slim toggle — chat fullscreen only (Show both moved to map header) */}
+      {showChat && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "4px 12px",
+          background: "var(--atlas-flow-pane-bg)",
+          borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.08)",
+          flexShrink: 0,
         }}>
-          {chatFullscreen ? "flow chat" : showChat ? "intent capture" : "map fullscreen"}
-        </span>
-        <div style={{ display: "flex", gap: 4 }}>
-          {/* Map fullscreen button */}
+          <span style={{
+            color: "rgba(var(--atlas-gold-rgb),0.35)", fontSize: 10,
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
+            userSelect: "none",
+          }}>
+            {chatFullscreen ? "flow chat" : "intent capture"}
+          </span>
           <button
-            onClick={() => { setChatFullscreen(false); setShowChat(v => !v); }}
+            onClick={() => setChatFullscreen(v => !v)}
             style={{
-              background: "rgba(var(--atlas-gold-rgb),0.07)", border: "1px solid rgba(var(--atlas-gold-rgb),0.28)",
+              background: chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.14)" : "rgba(var(--atlas-gold-rgb),0.07)",
+              border: `1px solid ${chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.5)" : "rgba(var(--atlas-gold-rgb),0.28)"}`,
               borderRadius: 5, padding: "2px 9px", cursor: "pointer",
               color: "rgba(var(--atlas-gold-rgb),0.78)", fontSize: 9,
               fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
             }}>
-            {showChat ? "⛶ Map full" : "⊠ Show both"}
+            {chatFullscreen ? "⊠ Show map" : "⛶ Chat full"}
           </button>
-          {/* Chat fullscreen button — only when chat is visible */}
-          {showChat && (
-            <button
-              onClick={() => setChatFullscreen(v => !v)}
-              style={{
-                background: chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.14)" : "rgba(var(--atlas-gold-rgb),0.07)",
-                border: `1px solid ${chatFullscreen ? "rgba(var(--atlas-gold-rgb),0.5)" : "rgba(var(--atlas-gold-rgb),0.28)"}`,
-                borderRadius: 5, padding: "2px 9px", cursor: "pointer",
-                color: "rgba(var(--atlas-gold-rgb),0.78)", fontSize: 9,
-                fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
-              }}>
-              {chatFullscreen ? "⊠ Show map" : "⛶ Chat full"}
-            </button>
-          )}
         </div>
-      </div>
+      )}
+
 
       {/* INTENT CAPTURE */}
       {showChat && (
@@ -732,40 +838,20 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         />
       )}
 
-      <CockpitBar
-        readinessScore={displayedReadinessScore ?? readinessScore}
-        nodes={nodes}
-        onHomeNav={onHomeNav}
-        onAxiomOpen={() => setShowQuickPrompt(true)}
-        navLeft={undefined}
-        navRight={isMobile && onHandover ? (
-          // On mobile the handover trigger lives here, in the cockpit bar footer,
-          // rather than as a floating pill inside the canvas.
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
-              onClick={() => onHandoverOpenChange?.(true)}
-              disabled={handoverPending}
-              title="Send Flow snapshot to Atlas as a new chat"
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "8px 12px", borderRadius: 10,
-                background: handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.1)"
-                  : "rgba(146,64,14,0.22)",
-                border: `1px solid ${handoverPending ? "rgba(var(--atlas-muted-rgb),0.35)" : "rgba(146,64,14,0.65)"}`,
-                color: handoverPending ? "rgba(var(--atlas-muted-rgb),0.7)" : "rgba(230,150,90,0.95)",
-                fontSize: 11, fontWeight: 700,
-                letterSpacing: "0.06em",
-                fontFamily: "var(--app-font-mono)",
-                cursor: handoverPending ? "not-allowed" : "pointer",
-                transition: "all 160ms ease",
-              }}
-            >
-              {handoverPending ? "Sending…" : "→ Atlas"}
-            </button>
-          </div>
-        ) : undefined}
+      {/* Unified operational dock — replaces CockpitBar.
+          Modes: CHAT | LEDGER | A (→ chat) | PREVIEW | FLOW. */}
+      <UnifiedContextDock
+        mode="operational"
+        activeOperationalTab="map"
+        onAtlasCore={() => { onBackToChat?.(); }}
+        onChat={() => { onBackToChat?.(); }}
+        onLedger={onNavLedger}
+        onPreview={onNavPreview}
+        onFlow={() => { /* already on flow */ }}
+        entryCount={entryCount}
+        activeCatch={activeCatch}
       />
+
     </div>
   );
 }

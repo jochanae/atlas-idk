@@ -19,7 +19,7 @@ import { TheForge } from "../components/TheForge";
 import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { BlueprintsTab, GenerateBlueprintPill } from "../components/BlueprintsTab";
-import { CockpitBar } from "../components/CockpitBar";
+
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
@@ -1898,6 +1898,8 @@ function RightPanel({
   onForgeNodesConsumed,
   onForgeCompleted,
   onContinueSession,
+  onNavLedger,
+  onNavPreview,
 }: {
   projectId: number;
   entries: Entry[];
@@ -1939,6 +1941,8 @@ function RightPanel({
   onForgeNodesConsumed?: () => void;
   onForgeCompleted?: () => void;
   onContinueSession?: (sessionId: number | string) => void;
+  onNavLedger?: () => void;
+  onNavPreview?: () => void;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
@@ -2245,7 +2249,7 @@ function RightPanel({
       {tab === "files" && <FilesPanel projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} />}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
-      {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} />}
+      {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
       {tab === "terminal" && (wsLens === "build" || wsLens === "scenario") && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} />}
     </div>
   );
@@ -5847,6 +5851,8 @@ export default function Workspace() {
                 onForgeNodesConsumed={() => setExternalForgeNodes([])}
                 onForgeCompleted={() => void updateForgeState("forged")}
                 onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
+                onNavLedger={() => setMobileTab("ledger")}
+                onNavPreview={() => setMobileTab("preview")}
               />
             </div>
           </div>
