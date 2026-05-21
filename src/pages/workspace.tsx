@@ -5076,6 +5076,17 @@ export default function Workspace() {
                 </button>
               </LongPressTip>
             )}
+            <button
+              type="button"
+              onClick={toggleSubheader}
+              title="Hide header"
+              aria-label="Hide header"
+              style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.55, lineHeight: 0, display: "inline-flex", flexShrink: 0 }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
+            >
+              <ChevronUp size={13} strokeWidth={2} />
+            </button>
           </div>
         </div>
 
