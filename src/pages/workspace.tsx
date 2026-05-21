@@ -4727,6 +4727,13 @@ export default function Workspace() {
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 3 : 7, minWidth: 0 }}>
             {(() => {
               const lensCfg = LENS_CONFIG[wsLens];
+              const lensLabel = isTinyScreen
+                ? wsLens === "scenario"
+                  ? "SCN"
+                  : wsLens === "build"
+                    ? "BLD"
+                    : lensCfg.label
+                : lensCfg.label;
               return (
                 <button
                   type="button"
@@ -4741,7 +4748,7 @@ export default function Workspace() {
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 5,
+                    gap: isTinyScreen ? 4 : 5,
                     padding: isTinyScreen ? "4px 6px" : "5px 10px",
                     borderRadius: 999,
                     background: lensCfg.glowColor,
@@ -4758,7 +4765,7 @@ export default function Workspace() {
                   }}
                 >
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: lensCfg.color, display: "inline-block" }} />
-                  {lensCfg.label}
+                  {lensLabel}
                   <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden style={{ opacity: 0.7 }}>
                     <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
