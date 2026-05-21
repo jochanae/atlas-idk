@@ -300,6 +300,7 @@ export function useChatStream(
           const meta = res as typeof res & {
             terminalCmd?: unknown; terminal_cmd?: unknown;
             terminalResult?: unknown; terminal_result?: unknown;
+            modelUsed?: string | null; model_used?: string | null;
             executionTimeMs?: number; execution_time_ms?: number;
             inputTokens?: number; input_tokens?: number;
             outputTokens?: number; output_tokens?: number;
@@ -310,6 +311,7 @@ export function useChatStream(
             content: res.content, intentType: res.intentType, catchPayload: cp,
             terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
             terminalResult: meta.terminalResult ?? meta.terminal_result,
+            modelUsed: meta.modelUsed ?? meta.model_used ?? null,
             ...(res.plan ? { plan: res.plan as Plan } : {}),
             sentAt: new Date().toISOString(),
             model: res.model ?? sendCtxRef.current.wsModel,

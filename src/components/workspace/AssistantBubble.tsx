@@ -40,6 +40,17 @@ import type {
   AlertPayload,
 } from "@/pages/workspace";
 
+function formatModelUsedLabel(modelUsed?: string | null): string | null {
+  if (!modelUsed) return null;
+  const normalized = modelUsed.toLowerCase().replace(/[\s_.]+/g, "-");
+  if (normalized.includes("haiku")) return "Claude Haiku";
+  if (normalized.includes("sonnet") || normalized === "claude") return "Claude Sonnet";
+  if (normalized.includes("gpt-4o") || normalized.includes("gpt4o")) return "GPT-4o";
+  if (normalized.includes("gemini") && normalized.includes("flash")) return "Gemini Flash";
+  if (normalized.includes("gemini") && (normalized.includes("pro") || normalized === "gemini")) return "Gemini Pro";
+  return null;
+}
+
 // ── DecisionLogCard ────────────────────────────────────────────────────────
 function DecisionLogCard({
   payload,
@@ -620,6 +631,7 @@ export function AssistantBubble({
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const planGithubToken = useGithubPushToken(planProject?.githubToken);
   const imageSrc = message.imageB64 ? `data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}` : "";
+  const modelUsedLabel = formatModelUsedLabel(message.modelUsed);
 
   // Parse CMD_EXEC block from Atlas response
   const { cmdExec, cleanContent } = useMemo(() => {
@@ -873,6 +885,11 @@ export function AssistantBubble({
             </span>
           )}
         </div>
+        {modelUsedLabel && (
+          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: -4, marginBottom: 7 }}>
+            {modelUsedLabel}
+          </div>
+        )}
         {/* Memory chips — click to expand insight and park */}
         {message.memoryChips && message.memoryChips.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 5, marginBottom: 8 }}>

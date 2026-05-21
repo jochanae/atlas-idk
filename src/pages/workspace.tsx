@@ -172,6 +172,7 @@ export interface ChatMessage {
   imageMimeType?: string;
   autoFetchedFiles?: string[];
   model?: string;
+  modelUsed?: string | null;
   isDeepDive?: boolean;
   autoPushed?: boolean;
   surface?: AmbientSurface;
@@ -3152,6 +3153,7 @@ export default function Workspace() {
       const raw = m as typeof m & {
         terminalCmd?: unknown; terminal_cmd?: unknown;
         terminalResult?: unknown; terminal_result?: unknown;
+        modelUsed?: string | null; model_used?: string | null;
         executionTimeMs?: number | null; execution_time_ms?: number | null;
         inputTokens?: number | null; input_tokens?: number | null;
         outputTokens?: number | null; output_tokens?: number | null;
@@ -3163,6 +3165,7 @@ export default function Workspace() {
         content: m.content,
         terminalCmd: raw.terminalCmd ?? raw.terminal_cmd,
         terminalResult: raw.terminalResult ?? raw.terminal_result,
+        modelUsed: raw.modelUsed ?? raw.model_used ?? null,
         intentType: m.intentType,
         sentAt: m.createdAt,
         executionTimeMs: raw.executionTimeMs ?? raw.execution_time_ms ?? null,

@@ -77,6 +77,7 @@ type HomeMessage = {
   terminalResult?: unknown;
   imageUrl?: string;
   model?: string;
+  modelUsed?: string | null;
   intentType?: string | null;
   isNew?: boolean;
   id?: string;
@@ -106,6 +107,17 @@ function formatMessageTime(iso?: string): string {
   if (sameDay) return time;
   const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${date} · ${time}`;
+}
+
+function formatModelUsedLabel(modelUsed?: string | null): string | null {
+  if (!modelUsed) return null;
+  const normalized = modelUsed.toLowerCase().replace(/[\s_.]+/g, "-");
+  if (normalized.includes("haiku")) return "Claude Haiku";
+  if (normalized.includes("sonnet") || normalized === "claude") return "Claude Sonnet";
+  if (normalized.includes("gpt-4o") || normalized.includes("gpt4o")) return "GPT-4o";
+  if (normalized.includes("gemini") && normalized.includes("flash")) return "Gemini Flash";
+  if (normalized.includes("gemini") && (normalized.includes("pro") || normalized === "gemini")) return "Gemini Pro";
+  return null;
 }
 
 function normalizeLoadedHomeMessages(
@@ -161,6 +173,7 @@ function normalizeLoadedHomeMessages(
         : runArtifacts,
       terminalCmd: m.terminalCmd ?? m.terminal_cmd,
       terminalResult: m.terminalResult ?? m.terminal_result,
+      modelUsed: m.modelUsed ?? m.model_used ?? null,
       errorMessage: m.errorMessage ?? m.error_message ?? null,
       surface: m.surface ?? null,
     };
@@ -1865,6 +1878,7 @@ export default function Home() {
                 runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
                 terminalCmd?: unknown; terminal_cmd?: unknown;
                 terminalResult?: unknown; terminal_result?: unknown;
+                modelUsed?: string | null; model_used?: string | null;
                 surface?: AmbientSurface;
               };
               const plan = detectPlanFromText(streamedText);
@@ -1881,6 +1895,7 @@ export default function Home() {
                 runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
                 terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
                 terminalResult: meta.terminalResult ?? meta.terminal_result,
+                modelUsed: meta.modelUsed ?? meta.model_used ?? null,
               };
               setHomeMessages(prev => prev.map(m =>
                 (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
@@ -2736,6 +2751,11 @@ export default function Home() {
                           {msg.createdAt && !msg.streaming && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
                               {formatMessageTime(msg.createdAt)}
+                            </div>
+                          )}
+                          {!msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
+                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: 2 }}>
+                              {formatModelUsedLabel(msg.modelUsed)}
                             </div>
                           )}
                         </div>
