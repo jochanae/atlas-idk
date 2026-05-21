@@ -208,18 +208,19 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
 
-  const goVariant = (target: "ambient" | "active" | "operational") => {
+  const goVariant = async (target: "ambient" | "active" | "operational") => {
     setSheetOpen(false);
     try { (navigator as any).vibrate?.(10); } catch {}
     if (typeof window === "undefined") return;
     const path = window.location.pathname;
     const projectMatch = path.match(/^\/project\/([^/]+)/);
-    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
     if (projectMatch) localStorage.setItem("atlas:lastProjectId", projectMatch[1]);
 
     if (target === "ambient") {
       window.location.assign("/home");
-    } else if (target === "active") {
+      return;
+    }
+    if (target === "active") {
       // Active = Home with composer focused
       if (path === "/home" || path === "/") {
         window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
@@ -227,17 +228,38 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         sessionStorage.setItem("atlas:focusComposerOnLoad", "1");
         window.location.assign("/home");
       }
-    } else {
-      // Operational = workspace chat
-      if (lastProject) {
-        if (projectMatch) {
-          window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
-        } else {
-          window.location.assign(`/project/${lastProject}`);
-        }
-      } else {
-        window.location.assign("/projects");
+      return;
+    }
+
+    // Operational: ask backend for recent projects → branch.
+    //   1 recent → auto-resume
+    //   2+ recent → projects picker
+    //   0 recent (or backend down) → fall back to localStorage / projects page
+    try {
+      const { fetchRecentProjects } = await import("@/lib/projectRecent");
+      const recent = await fetchRecentProjects(48);
+      if (recent && recent.length === 1) {
+        window.location.assign(`/project/${recent[0].id}`);
+        return;
       }
+      if (recent && recent.length > 1) {
+        window.location.assign("/projects");
+        return;
+      }
+      // Empty list → no recent projects
+      if (recent && recent.length === 0) {
+        window.location.assign("/projects");
+        return;
+      }
+    } catch {
+      // fall through to legacy behavior
+    }
+
+    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
+    if (lastProject) {
+      window.location.assign(`/project/${lastProject}`);
+    } else {
+      window.location.assign("/projects");
     }
   };
 
