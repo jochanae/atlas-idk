@@ -182,7 +182,7 @@ export function MarkdownProse({ content }: { content: string }) {
       className="atlas-prose"
       style={{
         color: "var(--atlas-fg)",
-        maxWidth: "68ch",
+        maxWidth: "74ch",
         fontSize: 16,
         lineHeight: 1.85,
         letterSpacing: "-0.005em",
@@ -196,7 +196,7 @@ export function MarkdownProse({ content }: { content: string }) {
               style={{
                 color: "var(--atlas-fg)",
                 lineHeight: 1.85,
-                marginBottom: "1em",
+                marginBottom: "1.25em",
               }}
             >
               {renderMarkdownChildren(children)}
