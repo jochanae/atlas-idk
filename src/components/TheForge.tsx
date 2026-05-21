@@ -437,8 +437,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     padding: "7px 0",
     borderRadius: 7,
     border: "none",
-    background: active ? "rgba(212,175,55,0.14)" : "transparent",
-    color: active ? "#D4AF37" : "rgba(120,113,108,0.6)",
+    background: active ? "rgba(var(--atlas-gold-rgb),0.14)" : "transparent",
+    color: active ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.6)",
     fontSize: 10,
     fontWeight: 700,
     letterSpacing: "0.12em",
@@ -451,14 +451,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   // ── Tab: Forge ─────────────────────────────────────────────────────────────
   const forgeContent = (
     <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ borderRadius: 10, background: "rgba(212,175,55,0.05)", border: "1px solid rgba(212,175,55,0.12)", padding: "12px 14px" }}>
-        <p style={{ fontSize: 12, color: "rgba(212,175,55,0.75)", lineHeight: 1.6, margin: 0 }}>
+      <div style={{ borderRadius: 10, background: "rgba(var(--atlas-gold-rgb),0.05)", border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", padding: "12px 14px" }}>
+        <p style={{ fontSize: 12, color: "rgba(var(--atlas-gold-rgb),0.75)", lineHeight: 1.6, margin: 0 }}>
           Paste a raw transcript, voice note, brain dump, or strategy doc. The Forge reads intent, extracts goals, requirements, and <GlossaryTip term="blockers">{BLOCKER_EXPLANATION}</GlossaryTip> — then places them on your Axiom Flow.
         </p>
       </div>
 
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(120,113,108,0.75)", textTransform: "uppercase", marginBottom: 8, fontFamily: "var(--app-font-mono)" }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 8, fontFamily: "var(--app-font-mono)" }}>
           Transcript / Brain Dump
         </p>
         <textarea
@@ -477,7 +477,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
         />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-          <span style={{ fontSize: 10, color: "rgba(120,113,108,0.4)", fontFamily: "var(--app-font-mono)" }}>
+          <span style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.4)", fontFamily: "var(--app-font-mono)" }}>
             {transcript.length} chars
           </span>
         </div>
@@ -489,7 +489,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: "none", border: "none", cursor: "pointer",
-            color: showContext ? "rgba(212,175,55,0.75)" : "rgba(120,113,108,0.55)",
+            color: showContext ? "rgba(var(--atlas-gold-rgb),0.75)" : "rgba(var(--atlas-muted-rgb),0.55)",
             fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
             fontFamily: "var(--app-font-mono)", textTransform: "uppercase",
             padding: 0, transition: "color 180ms",
@@ -501,10 +501,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
         {showContext && (
           <div style={{ marginTop: 10 }}>
-            <p style={{ fontSize: 11, color: "rgba(120,113,108,0.55)", marginBottom: 8, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.55)", marginBottom: 8, lineHeight: 1.5 }}>
               Give The Forge more signal — paste your current <GlossaryTip term="decisions">{DECISION_EXPLANATION}</GlossaryTip>, tech stack, or project goals so nodes are more precisely typed and prioritized.
-              {activeProjectName && <span style={{ color: "rgba(212,175,55,0.55)" }}> Project: <strong>{activeProjectName}</strong></span>}
-              {platform && <span style={{ color: "rgba(212,175,55,0.45)" }}> · Stack: <strong>{platform}</strong></span>}
+              {activeProjectName && <span style={{ color: "rgba(var(--atlas-gold-rgb),0.55)" }}> Project: <strong>{activeProjectName}</strong></span>}
+              {platform && <span style={{ color: "rgba(var(--atlas-gold-rgb),0.45)" }}> · Stack: <strong>{platform}</strong></span>}
             </p>
             <textarea
               value={projectContext}
@@ -527,7 +527,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
       {repoScanStatus === "done" && repoDocsFound.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ fontSize: 9, color: "rgba(120,113,108,0.45)", fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
+          <span style={{ fontSize: 9, color: "rgba(var(--atlas-muted-rgb),0.45)", fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
             ⬡ Repo context: {repoDocsFound.map(p => p.split("/").pop()).join(", ")} loaded
           </span>
         </div>
@@ -537,10 +537,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         onClick={isForging ? handleAbort : handleForge}
         style={{
           width: "100%", borderRadius: 12,
-          background: isForging ? "rgba(212,175,55,0.08)" : canForge ? "#D4AF37" : "rgba(212,175,55,0.10)",
+          background: isForging ? "rgba(var(--atlas-gold-rgb),0.08)" : canForge ? "var(--atlas-gold)" : "rgba(var(--atlas-gold-rgb),0.10)",
           padding: "14px", fontSize: 14, fontWeight: 700,
-          color: isForging ? "rgba(212,175,55,0.65)" : canForge ? "#0D0B09" : "rgba(212,175,55,0.35)",
-          border: isForging ? "1px solid rgba(212,175,55,0.25)" : "none",
+          color: isForging ? "rgba(var(--atlas-gold-rgb),0.65)" : canForge ? "#0D0B09" : "rgba(var(--atlas-gold-rgb),0.35)",
+          border: isForging ? "1px solid rgba(var(--atlas-gold-rgb),0.25)" : "none",
           cursor: isForging || canForge ? "pointer" : "not-allowed",
           transition: "all 180ms",
           boxShadow: canForge && !isForging ? "0 0 20px oklch(0.76 0.12 85 / 15%)" : "none",
@@ -548,7 +548,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       >
         {isForging ? (
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#D4AF37", animation: "forge-pulse 1.4s ease-in-out infinite" }} />
+            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", animation: "forge-pulse 1.4s ease-in-out infinite" }} />
             <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 12, letterSpacing: "0.04em" }}><ForgeStageLabel stage={FORGE_STAGES[stageIdx]} /></span>
           </span>
         ) : "Run The Forge →"}
@@ -613,7 +613,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       {forgeError && (
         <div style={{ borderRadius: 10, border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)", padding: "12px 14px", fontSize: 12, color: "rgba(239,100,100,0.9)", lineHeight: 1.5 }}>
           {forgeError}
-          <button onClick={handleForge} style={{ display: "block", marginTop: 8, background: "none", border: "none", color: "rgba(212,175,55,0.75)", fontSize: 11, cursor: "pointer", padding: 0, fontWeight: 600 }}>Try again →</button>
+          <button onClick={handleForge} style={{ display: "block", marginTop: 8, background: "none", border: "none", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 11, cursor: "pointer", padding: 0, fontWeight: 600 }}>Try again →</button>
         </div>
       )}
     </div>
@@ -627,14 +627,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
       {/* Context badge — shows when project map loaded */}
       {projectMap && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.14)" }}>
-          <span style={{ fontSize: 9, color: "rgba(212,175,55,0.6)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase" }}>⬡ Codebase context loaded</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(var(--atlas-gold-rgb),0.06)", border: "1px solid rgba(var(--atlas-gold-rgb),0.14)" }}>
+          <span style={{ fontSize: 9, color: "rgba(var(--atlas-gold-rgb),0.6)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase" }}>⬡ Codebase context loaded</span>
         </div>
       )}
 
       {/* Platform picker */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(120,113,108,0.75)", textTransform: "uppercase", marginBottom: 10, fontFamily: "var(--app-font-mono)" }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 10, fontFamily: "var(--app-font-mono)" }}>
           Platform
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
@@ -647,12 +647,12 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                 onClick={() => setSelectedPlatform(p.id)}
                 style={{
                   padding: "6px 14px", borderRadius: 20,
-                  border: `1px solid ${isSelected ? "rgba(212,175,55,0.65)" : isDetected ? "rgba(212,175,55,0.32)" : "rgba(212,175,55,0.18)"}`,
-                  background: isSelected ? "rgba(212,175,55,0.14)" : "transparent",
-                  color: isSelected ? "#D4AF37" : isDetected ? "rgba(212,175,55,0.55)" : "rgba(120,113,108,0.65)",
+                  border: `1px solid ${isSelected ? "rgba(var(--atlas-gold-rgb),0.65)" : isDetected ? "rgba(var(--atlas-gold-rgb),0.32)" : "rgba(var(--atlas-gold-rgb),0.18)"}`,
+                  background: isSelected ? "rgba(var(--atlas-gold-rgb),0.14)" : "transparent",
+                  color: isSelected ? "var(--atlas-gold)" : isDetected ? "rgba(var(--atlas-gold-rgb),0.55)" : "rgba(var(--atlas-muted-rgb),0.65)",
                   fontSize: 11, fontWeight: 600, fontFamily: "var(--app-font-mono)",
                   cursor: "pointer", transition: "all 150ms",
-                  boxShadow: isDetected && isSelected ? "0 0 10px rgba(212,175,55,0.25)" : isDetected ? "0 0 6px rgba(212,175,55,0.12)" : "none",
+                  boxShadow: isDetected && isSelected ? "0 0 10px rgba(var(--atlas-gold-rgb),0.25)" : isDetected ? "0 0 6px rgba(var(--atlas-gold-rgb),0.12)" : "none",
                   display: "flex", alignItems: "center", gap: 5,
                 }}
               >
@@ -661,8 +661,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                   <span style={{
                     fontSize: 7, fontWeight: 700, letterSpacing: "0.1em",
                     padding: "1px 4px", borderRadius: 3,
-                    background: isSelected ? "rgba(212,175,55,0.25)" : "rgba(212,175,55,0.12)",
-                    color: isSelected ? "#D4AF37" : "rgba(212,175,55,0.6)",
+                    background: isSelected ? "rgba(var(--atlas-gold-rgb),0.25)" : "rgba(var(--atlas-gold-rgb),0.12)",
+                    color: isSelected ? "var(--atlas-gold)" : "rgba(var(--atlas-gold-rgb),0.6)",
                     textTransform: "uppercase",
                   }}>AUTO</span>
                 )}
@@ -674,7 +674,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
       {/* Intent */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(120,113,108,0.75)", textTransform: "uppercase", marginBottom: 8, fontFamily: "var(--app-font-mono)" }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 8, fontFamily: "var(--app-font-mono)" }}>
           What do you want to build?
         </p>
         <textarea
@@ -708,7 +708,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: "none", border: "none", cursor: "pointer",
-            color: showFilePane ? "rgba(212,175,55,0.8)" : "rgba(120,113,108,0.55)",
+            color: showFilePane ? "rgba(var(--atlas-gold-rgb),0.8)" : "rgba(var(--atlas-muted-rgb),0.55)",
             fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
             fontFamily: "var(--app-font-mono)", textTransform: "uppercase",
             padding: 0, transition: "color 180ms",
@@ -719,7 +719,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             ? `File: ${filePath.split("/").pop()}`
             : isCursor ? "Add file — makes prompt surgical (recommended)" : "Add file context (optional)"}
           {!showFilePane && !filePath && zipName && (
-            <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(212,175,55,0.55)", fontFamily: "var(--app-font-mono)", background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 4, padding: "1px 5px" }}>
+            <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(var(--atlas-gold-rgb),0.55)", fontFamily: "var(--app-font-mono)", background: "rgba(var(--atlas-gold-rgb),0.08)", border: "1px solid rgba(var(--atlas-gold-rgb),0.18)", borderRadius: 4, padding: "1px 5px" }}>
               ZIP stored
             </span>
           )}
@@ -729,7 +729,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
 
             {/* Source mode tabs */}
-            <div style={{ display: "flex", gap: 5, padding: "3px", background: "oklch(0.13 0.01 60)", borderRadius: 9, border: "1px solid rgba(212,175,55,0.12)" }}>
+            <div style={{ display: "flex", gap: 5, padding: "3px", background: "var(--atlas-flow-pane-bg)", borderRadius: 9, border: "1px solid rgba(var(--atlas-gold-rgb),0.12)" }}>
               {(["github", "zip", "manual"] as FileSource[]).map(src => {
                 const labels = { github: "GitHub", zip: "ZIP", manual: "File name" };
                 const active = fileSource === src;
@@ -744,8 +744,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     style={{
                       flex: 1, padding: "6px 4px", borderRadius: 6,
                       border: "none", cursor: "pointer",
-                      background: active ? "rgba(212,175,55,0.16)" : "transparent",
-                      color: active ? "#D4AF37" : "rgba(120,113,108,0.55)",
+                      background: active ? "rgba(var(--atlas-gold-rgb),0.16)" : "transparent",
+                      color: active ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.55)",
                       fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)",
                       letterSpacing: "0.08em", transition: "all 150ms",
                     }}
@@ -760,14 +760,14 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             {fileSource === "github" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                 {ghProjects.length === 0 ? (
-                  <p style={{ fontSize: 11, color: "rgba(120,113,108,0.55)", fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.55)", fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
                     No linked repos found. Link a GitHub repo inside a project workspace first.
                   </p>
                 ) : (
                   <>
                     {/* Repo picker */}
                     <div>
-                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(120,113,108,0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>Repository</p>
+                      <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(var(--atlas-muted-rgb),0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>Repository</p>
                       <select
                         value={ghRepo}
                         onChange={e => {
@@ -776,7 +776,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                         }}
                         style={{
                           width: "100%", ...FORGE_FIELD_STYLE, padding: "8px 10px",
-                          color: ghRepo ? "var(--atlas-fg)" : "rgba(120,113,108,0.5)",
+                          color: ghRepo ? "var(--atlas-fg)" : "rgba(var(--atlas-muted-rgb),0.5)",
                           fontSize: 12, fontFamily: "var(--app-font-mono)", outline: "none",
                         }}
                       >
@@ -790,7 +790,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     {/* File picker — shown once tree is loaded */}
                     {ghTree.length > 0 && (
                       <div>
-                        <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(120,113,108,0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
+                        <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(var(--atlas-muted-rgb),0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
                           File ({ghTree.length} files)
                         </p>
                         <select
@@ -798,7 +798,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                           onChange={e => { if (e.target.value) handleGhFileSelect(e.target.value); }}
                           style={{
                             width: "100%", ...FORGE_FIELD_STYLE, padding: "8px 10px",
-                            color: ghSelectedFile ? "var(--atlas-fg)" : "rgba(120,113,108,0.5)",
+                            color: ghSelectedFile ? "var(--atlas-fg)" : "rgba(var(--atlas-muted-rgb),0.5)",
                             fontSize: 11, fontFamily: "var(--app-font-mono)", outline: "none",
                           }}
                         >
@@ -810,10 +810,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
                     {/* Status / error */}
                     {ghStatus === "loading-tree" && (
-                      <p style={{ fontSize: 10, color: "rgba(212,175,55,0.5)", fontFamily: "var(--app-font-mono)" }}>Loading file tree…</p>
+                      <p style={{ fontSize: 10, color: "rgba(var(--atlas-gold-rgb),0.5)", fontFamily: "var(--app-font-mono)" }}>Loading file tree…</p>
                     )}
                     {ghStatus === "loading-file" && (
-                      <p style={{ fontSize: 10, color: "rgba(212,175,55,0.5)", fontFamily: "var(--app-font-mono)" }}>Fetching file content…</p>
+                      <p style={{ fontSize: 10, color: "rgba(var(--atlas-gold-rgb),0.5)", fontFamily: "var(--app-font-mono)" }}>Fetching file content…</p>
                     )}
                     {ghStatus === "done" && filePath && (
                       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.07)", border: "1px solid rgba(34,197,94,0.18)" }}>
@@ -843,21 +843,21 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
                 {/* ZIP status bar */}
                 {zipName ? (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 8, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.18)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 8, background: "rgba(var(--atlas-gold-rgb),0.07)", border: "1px solid rgba(var(--atlas-gold-rgb),0.18)" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <span style={{ fontSize: 11, color: "rgba(212,175,55,0.85)", fontFamily: "var(--app-font-mono)", fontWeight: 600 }}>{zipName}</span>
-                      <span style={{ fontSize: 9, color: "rgba(120,113,108,0.55)", fontFamily: "var(--app-font-mono)" }}>{Object.keys(zipFiles).length} files stored · tap Update to replace</span>
+                      <span style={{ fontSize: 11, color: "rgba(var(--atlas-gold-rgb),0.85)", fontFamily: "var(--app-font-mono)", fontWeight: 600 }}>{zipName}</span>
+                      <span style={{ fontSize: 9, color: "rgba(var(--atlas-muted-rgb),0.55)", fontFamily: "var(--app-font-mono)" }}>{Object.keys(zipFiles).length} files stored · tap Update to replace</span>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
                       <label
                         htmlFor="forge-zip-input"
-                        style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(212,175,55,0.3)", background: "transparent", color: "rgba(212,175,55,0.7)", fontSize: 9, fontFamily: "var(--app-font-mono)", cursor: "pointer", display: "inline-block" }}
+                        style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(var(--atlas-gold-rgb),0.3)", background: "transparent", color: "rgba(var(--atlas-gold-rgb),0.7)", fontSize: 9, fontFamily: "var(--app-font-mono)", cursor: "pointer", display: "inline-block" }}
                       >
                         Update
                       </label>
                       <button
                         onClick={clearZip}
-                        style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(120,113,108,0.25)", background: "transparent", color: "rgba(120,113,108,0.55)", fontSize: 9, fontFamily: "var(--app-font-mono)", cursor: "pointer" }}
+                        style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid rgba(var(--atlas-muted-rgb),0.25)", background: "transparent", color: "rgba(var(--atlas-muted-rgb),0.55)", fontSize: 9, fontFamily: "var(--app-font-mono)", cursor: "pointer" }}
                       >
                         Clear
                       </button>
@@ -868,8 +868,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     htmlFor="forge-zip-input"
                     style={{
                       display: "block", padding: "12px", borderRadius: 10, cursor: zipLoading ? "default" : "pointer",
-                      border: "1px dashed rgba(212,175,55,0.28)", background: "oklch(0.13 0.01 60)",
-                      color: zipLoading ? "rgba(212,175,55,0.35)" : "rgba(212,175,55,0.65)",
+                      border: "1px dashed rgba(var(--atlas-gold-rgb),0.28)", background: "var(--atlas-flow-pane-bg)",
+                      color: zipLoading ? "rgba(var(--atlas-gold-rgb),0.35)" : "rgba(var(--atlas-gold-rgb),0.65)",
                       fontSize: 12, fontFamily: "var(--app-font-mono)", fontWeight: 600,
                       textAlign: "center" as const,
                     }}
@@ -881,7 +881,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                 {/* File picker from ZIP */}
                 {Object.keys(zipFiles).length > 0 && (
                   <div>
-                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(120,113,108,0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
+                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(var(--atlas-muted-rgb),0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
                       Pick file from ZIP
                     </p>
                     <select
@@ -889,7 +889,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                       onChange={e => { if (e.target.value) handleZipFileSelect(e.target.value); }}
                       style={{
                         width: "100%", ...FORGE_FIELD_STYLE, padding: "8px 10px",
-                        color: zipSelectedFile ? "var(--atlas-fg)" : "rgba(120,113,108,0.5)",
+                        color: zipSelectedFile ? "var(--atlas-fg)" : "rgba(var(--atlas-muted-rgb),0.5)",
                         fontSize: 11, fontFamily: "var(--app-font-mono)", outline: "none",
                       }}
                     >
@@ -904,7 +904,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                   </div>
                 )}
 
-                <p style={{ fontSize: 9.5, color: "rgba(120,113,108,0.4)", fontFamily: "var(--app-font-mono)", lineHeight: 1.55 }}>
+                <p style={{ fontSize: 9.5, color: "rgba(var(--atlas-muted-rgb),0.4)", fontFamily: "var(--app-font-mono)", lineHeight: 1.55 }}>
                   ZIP is stored until you clear it — upload once, reuse across prompts.
                 </p>
               </div>
@@ -915,7 +915,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {/* File path */}
                 <div>
-                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(120,113,108,0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(var(--atlas-muted-rgb),0.55)", textTransform: "uppercase", marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
                     File path
                   </p>
                   <input
@@ -938,11 +938,11 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                 {/* File content paste */}
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(120,113,108,0.55)", textTransform: "uppercase", margin: 0, fontFamily: "var(--app-font-mono)" }}>
+                    <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(var(--atlas-muted-rgb),0.55)", textTransform: "uppercase", margin: 0, fontFamily: "var(--app-font-mono)" }}>
                       Paste file content (optional)
                     </p>
                     {fileContent && (
-                      <span style={{ fontSize: 9, color: "rgba(212,175,55,0.5)", fontFamily: "var(--app-font-mono)" }}>
+                      <span style={{ fontSize: 9, color: "rgba(var(--atlas-gold-rgb),0.5)", fontFamily: "var(--app-font-mono)" }}>
                         {fileContent.length.toLocaleString()} chars
                       </span>
                     )}
@@ -963,7 +963,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
                   />
                   {isCursor && (
-                    <p style={{ fontSize: 9.5, color: "rgba(120,113,108,0.45)", fontFamily: "var(--app-font-mono)", marginTop: 5, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 9.5, color: "rgba(var(--atlas-muted-rgb),0.45)", fontFamily: "var(--app-font-mono)", marginTop: 5, lineHeight: 1.5 }}>
                       With content, Atlas quotes exact lines — Cursor needs zero clarification.
                     </p>
                   )}
@@ -981,10 +981,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         disabled={!canGenerate}
         style={{
           width: "100%", borderRadius: 12,
-          background: isGenerating ? "rgba(212,175,55,0.08)" : canGenerate ? "#D4AF37" : "rgba(212,175,55,0.10)",
+          background: isGenerating ? "rgba(var(--atlas-gold-rgb),0.08)" : canGenerate ? "var(--atlas-gold)" : "rgba(var(--atlas-gold-rgb),0.10)",
           padding: "14px", fontSize: 14, fontWeight: 700,
-          color: isGenerating ? "rgba(212,175,55,0.65)" : canGenerate ? "#0D0B09" : "rgba(212,175,55,0.35)",
-          border: isGenerating ? "1px solid rgba(212,175,55,0.25)" : "none",
+          color: isGenerating ? "rgba(var(--atlas-gold-rgb),0.65)" : canGenerate ? "#0D0B09" : "rgba(var(--atlas-gold-rgb),0.35)",
+          border: isGenerating ? "1px solid rgba(var(--atlas-gold-rgb),0.25)" : "none",
           cursor: canGenerate ? "pointer" : "not-allowed",
           transition: "all 180ms",
           boxShadow: canGenerate && !isGenerating ? "0 0 20px oklch(0.76 0.12 85 / 15%)" : "none",
@@ -992,7 +992,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       >
         {isGenerating ? (
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "#D4AF37", animation: "forge-pulse 1.4s ease-in-out infinite" }} />
+            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", animation: "forge-pulse 1.4s ease-in-out infinite" }} />
             <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 12, letterSpacing: "0.04em" }}>
               {isAxiom ? "Generating & sending to chat…" : isCursor && fileContent ? "Reading file & writing prompt…" : `Generating for ${selectedPlatform}…`}
             </span>
@@ -1010,16 +1010,16 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       {generatedPrompt && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(120,113,108,0.75)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>
               {selectedPlatform} Prompt
             </span>
             <button
               onClick={handleCopy}
               style={{
                 padding: "4px 12px", borderRadius: 6,
-                border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "rgba(212,175,55,0.3)"}`,
-                background: copied ? "rgba(34,197,94,0.1)" : "rgba(212,175,55,0.08)",
-                color: copied ? "rgba(134,239,172,0.9)" : "rgba(212,175,55,0.8)",
+                border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "rgba(var(--atlas-gold-rgb),0.3)"}`,
+                background: copied ? "rgba(34,197,94,0.1)" : "rgba(var(--atlas-gold-rgb),0.08)",
+                color: copied ? "rgba(134,239,172,0.9)" : "rgba(var(--atlas-gold-rgb),0.8)",
                 fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)",
                 cursor: "pointer", transition: "all 180ms", letterSpacing: "0.08em",
               }}
@@ -1031,7 +1031,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             style={{
               margin: 0, padding: "14px", borderRadius: 10,
               background: "oklch(0.12 0.01 60)",
-              border: "1px solid rgba(212,175,55,0.22)",
+              border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
               color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.75,
               whiteSpace: "pre-wrap", wordBreak: "break-word",
               fontFamily: "var(--app-font-mono)",
@@ -1049,50 +1049,50 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   const dnaContent = (
     <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 14 }}>
       {/* IDENTITY */}
-      <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ borderRadius: 12, border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "#D4AF37", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Identity</span>
-          <span style={{ fontSize: 11, color: "rgba(120,113,108,0.6)", lineHeight: 1.4 }}>Who you are and what you&apos;re building</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Identity</span>
+          <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>Who you are and what you&apos;re building</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(120,113,108,0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
           Define your core persona, vision, and strategic context
         </p>
-        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.25)", background: "rgba(212,175,55,0.08)", color: "rgba(212,175,55,0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.08)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
           + Add Identity
         </button>
       </div>
 
       {/* CONSTRAINTS */}
-      <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ borderRadius: 12, border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "#D4AF37", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Constraints</span>
-          <span style={{ fontSize: 11, color: "rgba(120,113,108,0.6)", lineHeight: 1.4 }}>The boundaries the AI must respect</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Constraints</span>
+          <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>The boundaries the AI must respect</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(120,113,108,0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
           Add financial, stylistic, or technical constraints
         </p>
-        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.25)", background: "rgba(212,175,55,0.08)", color: "rgba(212,175,55,0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.08)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
           + Add Constraint
         </button>
       </div>
 
       {/* FORMAT */}
-      <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ borderRadius: 12, border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "#D4AF37", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Format</span>
-          <span style={{ fontSize: 11, color: "rgba(120,113,108,0.6)", lineHeight: 1.4 }}>How you want intelligence packaged</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Format</span>
+          <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>How you want intelligence packaged</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(120,113,108,0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
           Define your preferred output structure and style
         </p>
-        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(212,175,55,0.25)", background: "rgba(212,175,55,0.08)", color: "rgba(212,175,55,0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
+        <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.08)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
           + Add Format
         </button>
       </div>
 
       {/* Bottom pill */}
       <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
-        <button style={{ padding: "7px 18px", borderRadius: 20, border: "1px solid rgba(120,113,108,0.2)", background: "rgba(120,113,108,0.08)", color: "rgba(120,113,108,0.55)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase", transition: "all 180ms" }}>
+        <button style={{ padding: "7px 18px", borderRadius: 20, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", background: "rgba(var(--atlas-muted-rgb),0.08)", color: "rgba(var(--atlas-muted-rgb),0.55)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase", transition: "all 180ms" }}>
           Copy Strategic Payload →
         </button>
       </div>
@@ -1107,10 +1107,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         padding: "12px 16px 10px",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#D4AF37", letterSpacing: "0.06em", fontFamily: "var(--app-font-mono)" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.06em", fontFamily: "var(--app-font-mono)" }}>
             {tab === "forge" ? "THE FORGE" : tab === "dna" ? "PROJECT DNA" : "QUICK PROMPT"}
           </span>
-          <span style={{ fontSize: 10, color: "rgba(120,113,108,0.6)" }}>
+          <span style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.6)" }}>
             {tab === "forge"
               ? `Decompose your thinking into a strategic map${activeProjectName ? ` · ${activeProjectName}` : ""}${readinessScore > 0 ? ` · ${readinessScore}% ready` : ""}`
               : tab === "dna"
@@ -1118,11 +1118,11 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
               : "Generate a ready-to-paste prompt for any AI builder"}
           </span>
         </div>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(120,113,108,0.55)", fontSize: 22, lineHeight: 1, padding: "2px 0 2px 4px" }}>×</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(var(--atlas-muted-rgb),0.55)", fontSize: 22, lineHeight: 1, padding: "2px 0 2px 4px" }}>×</button>
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: "flex", gap: 4, padding: "0 16px 12px", borderBottom: "1px solid rgba(212,175,55,0.10)" }}>
+      <div style={{ display: "flex", gap: 4, padding: "0 16px 12px", borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.10)" }}>
         <button style={tabBtn(tab === "forge")} onClick={() => setTab("forge")}>The Forge</button>
         <button style={tabBtn(tab === "prompt")} onClick={() => setTab("prompt")}>Quick Prompt</button>
         <button style={tabBtn(tab === "dna")} onClick={() => setTab("dna")}>Project DNA</button>
@@ -1137,7 +1137,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     return (
       <>
         <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
-        <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(212,175,55,0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
           {headerBlock}
           {tabContent}
         </div>
@@ -1149,15 +1149,15 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     <>
       <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 350, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose} />
-      <div style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(212,175,55,0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 2px" }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(212,175,55,0.18)" }} />
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(var(--atlas-gold-rgb),0.18)" }} />
         </div>
         {headerBlock}
         {tabContent}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid rgba(212,175,55,0.07)", flexShrink: 0 }}>
-          <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 20, background: "rgba(120,113,108,0.09)", border: "1px solid rgba(120,113,108,0.2)", color: "rgba(120,113,108,0.75)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-mono)" }}>‹ Back</button>
-          <span style={{ fontSize: 10, color: "rgba(120,113,108,0.35)", fontFamily: "var(--app-font-mono)" }}>AXIOM // {tabLabel}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.07)", flexShrink: 0 }}>
+          <button onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 20, background: "rgba(var(--atlas-muted-rgb),0.09)", border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", color: "rgba(var(--atlas-muted-rgb),0.75)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-mono)" }}>‹ Back</button>
+          <span style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.35)", fontFamily: "var(--app-font-mono)" }}>AXIOM // {tabLabel}</span>
         </div>
       </div>
     </>
