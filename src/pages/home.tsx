@@ -2327,6 +2327,38 @@ export default function Home() {
                 >
                   <Briefcase size={13} strokeWidth={1.75} />
                 </button>
+                <button
+                  onClick={() => setShowChatMenu(v => !v)}
+                  title="Conversation actions"
+                  aria-label="Conversation actions"
+                  style={{ background: showChatMenu ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showChatMenu ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = showChatMenu ? "1" : "0.7")}
+                >
+                  <MoreVertical size={14} strokeWidth={1.85} />
+                </button>
+                {showChatMenu && (
+                  <>
+                    <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
+                    <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
+                      {([
+                        { label: earnedTitle ? "Rename" : "Name this thread", action: () => { setShowChatMenu(false); handleRenameThread(); } },
+                        { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
+                        { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
+                        { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
+                        { label: "Clear conversation", action: () => { setShowClearConfirm(true); setShowChatMenu(false); }, danger: true },
+                      ] as Array<{ label: string; action: () => void; danger?: boolean }>).map(item => (
+                        <button
+                          key={item.label}
+                          onClick={item.action}
+                          style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
