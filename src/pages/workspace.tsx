@@ -1898,6 +1898,8 @@ function RightPanel({
   onForgeNodesConsumed,
   onForgeCompleted,
   onContinueSession,
+  onNavLedger,
+  onNavPreview,
 }: {
   projectId: number;
   entries: Entry[];
