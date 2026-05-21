@@ -409,26 +409,8 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         >
           <div style={{ position: "relative" }}>
-            {(() => {
-              const lensPool = LENS_PLACEHOLDERS[wsLens] ?? LENS_PLACEHOLDERS.flow;
-              const paused = hasInput || inputFocused || messages.length > 0;
-              // eslint-disable-next-line react-hooks/rules-of-hooks
-              const typed = useComposerTypewriter(lensPool, paused);
-              if (paused || messages.length > 0) return null;
-              return (
-                <div
-                  aria-hidden
-                  style={{
-                    position: "absolute", top: 0, left: 2,
-                    color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1.6,
-                    opacity: 0.6, pointerEvents: "none",
-                    fontFamily: "var(--app-font-sans)",
-                  }}
-                >
-                  {typed || lensPool[0]}
-                </div>
-              );
-            })()}
+            <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+
             <textarea
               ref={textareaRef}
               aria-label="Message Atlas"
