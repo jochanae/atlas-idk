@@ -100,6 +100,7 @@ export function ChatStream(props: ChatStreamProps) {
   const {
     scrollRef, bottomRef, onScroll, showScrollBtn, onScrollToLatest,
     messages, chatPending, activityStream, liveGeneration, historyMsgCountRef,
+    priorLoaded,
     isHomeHandoff, homeHandoffMeta, isBrandNewProject, project, onStarterPrompt,
     wsModel, onSwitchToGemini,
     onEditUserMessage,
