@@ -188,8 +188,8 @@ export function UserMenuDropdown({ openSignal, onOpenProfile }: Props) {
       <ShortcutsModal onClose={() => setShowShortcuts(false)} />,
       document.body
     )}
-    <div ref={wrapRef} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 6 }}>
-      {/* Outer wrapper: overflow visible so crown badge isn't clipped */}
+    <div ref={wrapRef} style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      {/* Outer wrapper: overflow visible so crown badge + invite chip aren't clipped */}
       <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
         <button
           ref={btnRef}
@@ -243,30 +243,33 @@ export function UserMenuDropdown({ openSignal, onOpenProfile }: Props) {
             </svg>
           </div>
         )}
+        {/* Invite "+" chip — small dashed pill that slightly overlaps the top-right of the avatar */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axiom:open-invite")); }}
+          title="Invite collaborators"
+          aria-label="Invite collaborators"
+          style={{
+            position: "absolute", top: -5, right: -13,
+            width: 22, height: 26, borderRadius: 6,
+            border: "1px dashed rgba(212,175,55,0.55)",
+            background: "transparent",
+            color: "rgba(212,175,55,0.8)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", padding: 0,
+            transition: "border-color 140ms ease, color 140ms ease, background 140ms ease",
+            zIndex: 2,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.95)"; e.currentTarget.style.color = "rgba(212,175,55,1)"; e.currentTarget.style.background = "rgba(212,175,55,0.06)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; e.currentTarget.style.color = "rgba(212,175,55,0.8)"; e.currentTarget.style.background = "transparent"; }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
       </div>
-      {/* Invite collaborators "+" — always shown so the team-invite affordance is discoverable even when it's just you */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axiom:open-invite")); }}
-        title="Invite collaborators"
-        aria-label="Invite collaborators"
-        style={{
-          width: 36, height: 36, borderRadius: "22%",
-          border: "1.5px dashed rgba(212,175,55,0.55)",
-          background: "transparent",
-          color: "rgba(212,175,55,0.75)",
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", padding: 0, flexShrink: 0,
-          transition: "border-color 140ms ease, color 140ms ease, background 140ms ease",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.9)"; e.currentTarget.style.color = "rgba(212,175,55,1)"; e.currentTarget.style.background = "rgba(212,175,55,0.06)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; e.currentTarget.style.color = "rgba(212,175,55,0.75)"; e.currentTarget.style.background = "transparent"; }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-      </button>
+
 
       <style>{`
         @keyframes atlas-menu-in {
