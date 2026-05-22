@@ -6618,6 +6618,59 @@ export default function Workspace() {
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><path d="M2 4h12M2 8h8M2 12h6" /></svg>} label="View ledger" onClick={() => { setLocation(`/ledger/${id}`); setShowProjectMenu(false); }} />
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="14" height="10" rx="1.5" /><path d="M1 6h14" /><circle cx="3.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} /><circle cx="5.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} /></svg>} label="Dashboard" onClick={() => { setLocation("/dashboard"); setShowProjectMenu(false); }} />
             <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 6px", opacity: 0.5 }} />
+            <div style={{ padding: "6px 12px 2px", fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.7 }}>Conversation</div>
+            <MenuBtn
+              icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v9M4 7l4 4 4-4M2 14h12" /></svg>}
+              label="Download as Markdown"
+              disabled={messages.length === 0}
+              onClick={() => { downloadConversation("md"); setShowProjectMenu(false); }}
+            />
+            <MenuBtn
+              icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v9M4 7l4 4 4-4M2 14h12" /></svg>}
+              label="Download as JSON"
+              disabled={messages.length === 0}
+              onClick={() => { downloadConversation("json"); setShowProjectMenu(false); }}
+            />
+            <MenuBtn
+              icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v10M3 8h10" /></svg>}
+              label={sessionActionBusy ? "Working…" : "New session"}
+              disabled={sessionActionBusy}
+              onClick={() => { void handleNewSession(); }}
+            />
+            {archiveReasonDraft === null ? (
+              <MenuBtn
+                icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="12" height="3" rx="1" /><path d="M3 6v7a1 1 0 001 1h8a1 1 0 001-1V6" /><path d="M6 10h4" /></svg>}
+                label="Archive & start new"
+                disabled={!sessionId || messages.length === 0 || sessionActionBusy}
+                onClick={() => setArchiveReasonDraft("")}
+              />
+            ) : (
+              <div style={{ padding: "6px 8px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Why archive?</div>
+                <input
+                  autoFocus
+                  type="text"
+                  value={archiveReasonDraft}
+                  onChange={(e) => setArchiveReasonDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && archiveReasonDraft.trim()) { e.preventDefault(); void handleArchiveAndNew(archiveReasonDraft); }
+                    else if (e.key === "Escape") { setArchiveReasonDraft(null); }
+                  }}
+                  placeholder="e.g. Pivoted from B2C to B2B"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface-alt)", color: "var(--atlas-fg)", fontSize: 12, fontFamily: "var(--app-font-sans)", outline: "none", boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => setArchiveReasonDraft(null)} style={{ flex: 1, padding: "6px 0", borderRadius: 5, fontSize: 11, background: "var(--atlas-surface-alt)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer" }}>Cancel</button>
+                  <button
+                    onClick={() => { if (archiveReasonDraft && archiveReasonDraft.trim()) void handleArchiveAndNew(archiveReasonDraft); }}
+                    disabled={!archiveReasonDraft.trim() || sessionActionBusy}
+                    style={{ flex: 1, padding: "6px 0", borderRadius: 5, fontSize: 11, background: "color-mix(in oklab, var(--atlas-gold) 18%, transparent)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)", color: "var(--atlas-gold)", cursor: archiveReasonDraft.trim() ? "pointer" : "not-allowed", fontWeight: 600, opacity: archiveReasonDraft.trim() ? 1 : 0.5 }}
+                  >{sessionActionBusy ? "Archiving…" : "Archive"}</button>
+                </div>
+              </div>
+            )}
+            <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 6px", opacity: 0.5 }} />
+
             <MenuBtn
               icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="12" height="3" rx="1" /><path d="M3 6v7a1 1 0 001 1h8a1 1 0 001-1V6" /><path d="M6 10h4" /></svg>}
               label="Archive project"
