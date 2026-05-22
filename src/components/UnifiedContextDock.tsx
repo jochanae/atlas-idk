@@ -469,13 +469,13 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             onPointerUp={cancelLongPress}
             onPointerLeave={cancelLongPress}
             onPointerCancel={cancelLongPress}
-            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; setSheetOpen(true); }}
+            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; goToLastConversation(); }}
             onKeyDown={(e) => {
               if (e.repeat) return;
               if (e.key === "Enter" && e.shiftKey) {
                 e.preventDefault();
                 longPressFired.current = true;
-                setSheetOpen(true);
+                goToLastConversation();
               } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 startLongPress();
