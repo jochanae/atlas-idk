@@ -3358,7 +3358,13 @@ export default function Workspace() {
   });
   const sessions = projectState.activeSession
     ? [projectState.activeSession]
-    : fallbackSessions;
+    : (fallbackSessions
+        ? [...fallbackSessions].sort((a, b) => {
+            const at = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bt = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bt - at;
+          })
+        : fallbackSessions);
   const sessionsLoading = projectState.loading && !projectState.activeSession
     ? true
     : (useProjectStateFallback ? fallbackSessionsLoading : false);
