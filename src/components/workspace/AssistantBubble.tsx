@@ -670,7 +670,16 @@ export function AssistantBubble({
   const planMessageId = message.id ?? 0;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const planGithubToken = useGithubPushToken(planProject?.githubToken);
-  const imageSrc = message.imageB64 ? `data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}` : "";
+  // Extract image URL from markdown image syntax in content if no base64
+  const inlineImageUrl = !message.imageB64
+    ? (() => {
+        const match = message.content?.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
+        return match?.[1] ?? "";
+      })()
+    : "";
+  const imageSrc = message.imageB64
+    ? `data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}`
+    : inlineImageUrl;
   const modelUsedLabel = formatModelUsedLabel(message.modelUsed);
 
   // Parse CMD_EXEC block from Atlas response
@@ -689,6 +698,9 @@ export function AssistantBubble({
     }
     return { cmdExec: null, cleanContent: message.content };
   }, [message.content]);
+  const displayContent = (cleanContent ?? message.content ?? "")
+    .replace(/!\[.*?\]\(https?:\/\/[^\s)]+\)/g, "")
+    .trim();
 
   // Detect previewable code block (html, jsx, tsx, css, or untagged with HTML tags)
   const previewableCode = useMemo(() => {
@@ -943,7 +955,7 @@ export function AssistantBubble({
           </div>
         )}
 
-        {message.imageB64 && (
+        {(message.imageB64 || inlineImageUrl) && (
           <div style={{ marginBottom: 12 }}>
             <button
               type="button"
@@ -1064,7 +1076,7 @@ export function AssistantBubble({
         <div style={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85 }}>
           {message.streaming ? (
             <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
-              {cleanContent}
+              {displayContent}
               <span
                 aria-hidden
                 style={{
@@ -1080,15 +1092,15 @@ export function AssistantBubble({
             </span>
           ) : isNew ? (
             <StreamingMarkdown
-              content={cleanContent}
+              content={displayContent}
               onComplete={onStreamActivityComplete}
             />
           ) : (
-            <MarkdownProse content={cleanContent} />
+            <MarkdownProse content={displayContent} />
           )}
         </div>
 
-        {cleanContent.trim() && !message.streaming && !message.catchPayload && !commitPayload && (
+        {displayContent.trim() && !message.streaming && !message.catchPayload && !commitPayload && (
           <div style={{ marginTop: 6 }}>
             <ThoughtForBadge
               metrics={{
