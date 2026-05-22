@@ -74,7 +74,8 @@ window.fetch = async (...args) => {
     if (url.includes("/api/") && !url.includes("/api/auth/")) {
       // Skip silent/polling endpoints — they shouldn't boot the user
       const isSilent = SILENT_401_PATTERNS.some((p) => url.includes(p));
-      if (!isSilent && !_401redirectPending) {
+      const alreadyOnLogin = window.location.pathname.includes("/login");
+      if (!isSilent && !alreadyOnLogin && !_401redirectPending) {
         _401redirectPending = true;
         // Wait 1.5 s and confirm the session is still gone before redirecting.
         // This prevents transient server hiccups (restart, slow DB) from kicking
