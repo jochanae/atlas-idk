@@ -2120,6 +2120,9 @@ function RightPanel({
   onContinueSession,
   onNavLedger,
   onNavPreview,
+  onZipTrigger,
+  zipLoaded,
+  zipFileName,
 }: {
   projectId: number;
   entries: Entry[];
