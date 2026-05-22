@@ -1,4 +1,7 @@
 function atlasActivityStatus(content: string): string {
+  const narration = content.match(/^NARRATION:(.+)/)?.[1]?.trim();
+  if (narration) return narration;
+
   const planStep = content.match(/PLAN_STEP:\s*(.+)/i)?.[1]?.trim();
   if (planStep) return planStep;
   if (/LINE_PATCH/i.test(content)) return "Patching code...";
