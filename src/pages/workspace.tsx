@@ -3589,6 +3589,10 @@ export default function Workspace() {
   // null = panel closed; string = open with current draft
   const [archiveReasonDraft, setArchiveReasonDraft] = useState<string | null>(null);
   const [sessionActionBusy, setSessionActionBusy] = useState(false);
+  const [threadSearchDraft, setThreadSearchDraft] = useState<string | null>(null);
+  const [threadSearchStatus, setThreadSearchStatus] = useState<string>("");
+  const threadSearchCursorRef = useRef<{ q: string; matches: number[]; idx: number }>({ q: "", matches: [], idx: -1 });
+
   const projectBtnRef = useRef<HTMLButtonElement>(null);
   const [showViewMenu, setShowViewMenu] = useState(false);
 
