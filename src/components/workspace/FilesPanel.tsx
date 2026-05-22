@@ -138,12 +138,18 @@ export function FilesPanel({
   onLinkedRepoChange,
   dbUrl,
   onDbUrlChange,
+  onZipTrigger,
+  zipLoaded,
+  zipFileName,
 }: {
   projectId: number;
   onFileContext: (ctx: string | null) => void;
   onLinkedRepoChange: (repo: LinkedRepo | null) => void;
   dbUrl: string | null;
   onDbUrlChange: (url: string | null) => void;
+  onZipTrigger?: () => void;
+  zipLoaded?: boolean;
+  zipFileName?: string;
 }) {
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
