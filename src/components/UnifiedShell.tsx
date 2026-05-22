@@ -827,7 +827,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             gap: 12,
             padding: "0 clamp(14px, 4vw, 24px)",
             borderBottom: "none",
-            boxShadow: "var(--atlas-home-header-shadow)",
+            boxShadow: "none",
             opacity: 1,
             transition: "opacity var(--motion-deliberate) var(--ease-out-soft)",
           }}
