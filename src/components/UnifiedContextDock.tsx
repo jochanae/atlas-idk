@@ -389,7 +389,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           <path
             d="M0,0.5 C15,0.5 24,22 47,22 C70,22 79,0.5 94,0.5"
             fill="none"
-            stroke="rgba(212,175,55,0.2)"
+            stroke="var(--atlas-gold-border)"
             strokeWidth="1"
           />
         </svg>
