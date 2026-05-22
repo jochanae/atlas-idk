@@ -343,15 +343,15 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     >
       <style>{`
         .udock-slot:active { transform: scale(0.92); }
-        .udock-slot:hover { color: rgba(212,175,55,0.75) !important; }
-        .udock-slot:focus-visible { outline: 2px solid rgba(212,175,55,0.85); outline-offset: 2px; border-radius: 8px; color: rgba(212,175,55,0.95) !important; }
+        .udock-slot:hover { color: var(--atlas-gold) !important; opacity: 1 !important; }
+        .udock-slot:focus-visible { outline: 2px solid var(--atlas-gold); outline-offset: 2px; border-radius: 8px; color: var(--atlas-gold) !important; }
         .udock-center:active { transform: translateY(0) scale(0.94); }
-        .udock-center:focus-visible { outline: 2px solid rgba(212,175,55,0.95); outline-offset: 4px; }
-        .udock-center:hover { box-shadow: 0 0 0 6px rgba(212,175,55,0.12), 0 0 28px rgba(212,175,55,0.55), 0 4px 12px rgba(0,0,0,0.5) !important; }
+        .udock-center:focus-visible { outline: 2px solid var(--atlas-gold); outline-offset: 4px; }
+        .udock-center:hover { box-shadow: 1px 1px 0 1px color-mix(in srgb, var(--atlas-gold) 12%, transparent), 0 0 28px color-mix(in srgb, var(--atlas-gold) 55%, transparent), 0 4px 12px rgba(0,0,0,0.5) !important; }
         @keyframes udockCenterPulse {
           0%   { box-shadow: 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
-          35%  { box-shadow: 0 0 0 10px rgba(212,175,55,0.35), 0 0 36px rgba(212,175,55,0.75), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1.06); }
-          100% { box-shadow: 0 0 0 0 rgba(212,175,55,0), 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
+          35%  { box-shadow: 0 0 0 10px rgba(var(--atlas-gold-rgb),0.35), 0 0 36px rgba(var(--atlas-gold-rgb),0.75), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1.06); }
+          100% { box-shadow: 0 0 0 0 rgba(var(--atlas-gold-rgb),0), 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
         }
         .udock-center-pulse { animation: udockCenterPulse 520ms var(--ease-standard); }
       `}</style>
