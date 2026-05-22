@@ -3671,7 +3671,7 @@ export default function Workspace() {
       const { error: updErr } = await supabase
         .from("sessions")
         .update({ status: "archived", title: newTitle })
-        .eq("id", sessionId);
+        .eq("id", String(sessionId));
       if (updErr) throw updErr;
       // Create fresh session and switch to it.
       const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
