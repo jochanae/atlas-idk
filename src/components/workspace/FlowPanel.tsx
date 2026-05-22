@@ -151,7 +151,37 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           mode: "plan",
           ...(imageFile ? await fileToBase64Safe(imageFile).then(r => ({ imageBase64: r.base64, imageMediaType: r.mediaType })).catch(() => ({ imageBase64: "", imageMediaType: "" })) : {}),
         }),
-      }).then(r => r.ok ? r.json() : Promise.reject(r.status));
+      }).then(async (r) => {
+        if (!r.ok) return Promise.reject(r.status);
+        const contentType = r.headers.get("content-type") ?? "";
+        if (!contentType.includes("text/event-stream")) {
+          return r.json();
+        }
+        const reader = r.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalPayload: any = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() ?? "";
+          for (const block of blocks) {
+            let evtName = "";
+            let evtData = "";
+            for (const line of block.split("\n")) {
+              if (line.startsWith("event: ")) evtName = line.slice(7).trim();
+              else if (line.startsWith("data: ")) evtData = line.slice(6);
+            }
+            if (!evtData) continue;
+            if (evtName === "done") {
+              try { finalPayload = JSON.parse(evtData); } catch {}
+            }
+          }
+        }
+        return finalPayload;
+      });
       const incoming = (res.flowNodes ?? []) as ArchNode[];
       setFlowMessages(prev => [...prev, { role: "assistant", content: res.content ?? "" }]);
       if (incoming.length > 0) setPendingNodes(incoming);
