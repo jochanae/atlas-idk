@@ -2480,7 +2480,21 @@ function RightPanel({
         </div>
       )}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
-      {tab === "files" && <FilesPanel projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />}
+      {tab === "files" && (
+        <FilesPanel
+          projectId={projectId}
+          onFileContext={onFileContext}
+          onLinkedRepoChange={onLinkedRepoChange}
+          dbUrl={dbUrl}
+          onDbUrlChange={onDbUrlChange}
+          onZipTrigger={() => {
+            const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
+            input?.click();
+          }}
+          zipLoaded={zipFiles.length > 0}
+          zipFileName={zipName}
+        />
+      )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} />}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
