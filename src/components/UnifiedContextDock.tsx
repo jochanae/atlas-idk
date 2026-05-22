@@ -260,9 +260,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   }
 
   const renderSlot = (s: Slot) => {
-    const color = s.active
-      ? "rgba(212,175,55,0.9)"
-      : "rgba(120,113,108,0.55)";
+    const color = s.active ? "var(--atlas-gold)" : "var(--atlas-muted)";
     return (
       <button
         key={s.id}
