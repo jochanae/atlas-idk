@@ -595,6 +595,94 @@ function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; 
   );
 }
 
+function MigrationCard({ sql }: { sql: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(sql).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        borderRadius: 8,
+        border: "1px solid rgba(201,162,76,0.28)",
+        background: "rgba(201,162,76,0.04)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "7px 12px",
+          borderBottom: "1px solid rgba(201,162,76,0.15)",
+          background: "rgba(201,162,76,0.06)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          {/* DB icon */}
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+            <ellipse cx="8" cy="4" rx="6" ry="2.2" stroke="rgba(201,162,76,0.8)" strokeWidth="1.3" />
+            <path d="M2 4v4c0 1.21 2.69 2.2 6 2.2s6-.99 6-2.2V4" stroke="rgba(201,162,76,0.8)" strokeWidth="1.3" />
+            <path d="M2 8v4c0 1.21 2.69 2.2 6 2.2s6-.99 6-2.2V8" stroke="rgba(201,162,76,0.8)" strokeWidth="1.3" />
+          </svg>
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.13em",
+              textTransform: "uppercase" as const,
+              color: "rgba(201,162,76,0.85)",
+            }}
+          >
+            Schema Change
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          style={{
+            padding: "4px 10px",
+            borderRadius: 5,
+            border: "1px solid rgba(201,162,76,0.35)",
+            background: copied ? "rgba(201,162,76,0.18)" : "transparent",
+            color: copied ? "rgba(201,162,76,1)" : "rgba(201,162,76,0.7)",
+            fontSize: 10,
+            fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.08em",
+            cursor: "pointer",
+            transition: "all 140ms ease",
+          }}
+        >
+          {copied ? "Copied ✓" : "Copy SQL"}
+        </button>
+      </div>
+
+      {/* SQL body */}
+      <pre
+        style={{
+          margin: 0,
+          padding: "10px 12px",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 11.5,
+          lineHeight: 1.7,
+          color: "rgba(231,229,228,0.85)",
+          overflowX: "auto",
+          whiteSpace: "pre",
+        }}
+      >
+        {sql}
+      </pre>
+    </div>
+  );
+}
+
 // ── AssistantBubble ───────────────────────────────────────────────────────────
 export function AssistantBubble({
   message,
@@ -700,7 +788,24 @@ export function AssistantBubble({
     }
     return { cmdExec: null, cleanContent: message.content };
   }, [message.content]);
-  const displayContent = (cleanContent ?? message.content ?? "")
+
+  // Parse DB_MIGRATION_START...DB_MIGRATION_END blocks from Atlas response
+  const { migrationBlocks, displayContent: migrationDisplayContent } = useMemo(() => {
+    const blocks: string[] = [];
+    const pattern = /DB_MIGRATION_START\s*([\s\S]*?)\s*DB_MIGRATION_END/g;
+    let match: RegExpExecArray | null;
+    let stripped = cleanContent;
+    while ((match = pattern.exec(cleanContent)) !== null) {
+      const sql = match[1]?.trim();
+      if (sql) blocks.push(sql);
+    }
+    if (blocks.length > 0) {
+      stripped = cleanContent.replace(/\n?DB_MIGRATION_START[\s\S]*?DB_MIGRATION_END\n?/g, "").trim();
+    }
+    return { migrationBlocks: blocks, displayContent: stripped };
+  }, [cleanContent]);
+
+  const displayContent = (migrationDisplayContent ?? message.content ?? "")
     .replace(/!\[.*?\]\(https?:\/\/[^\s)]+\)/g, "")
     .trim();
   const hasImageClarify = (displayContent ?? "").includes("IMAGE_CLARIFY:");
@@ -1107,6 +1212,10 @@ export function AssistantBubble({
             <MarkdownProse content={cleanedContent} />
           )}
         </div>
+
+        {migrationBlocks.map((sql, i) => (
+          <MigrationCard key={i} sql={sql} />
+        ))}
 
         {hasImageClarify && (
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
