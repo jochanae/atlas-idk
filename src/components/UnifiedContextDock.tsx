@@ -177,13 +177,27 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     onAtlasCore();
   };
 
+  const goToLastConversation = () => {
+    try { (navigator as any).vibrate?.(28); } catch {}
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    const projectMatch = path.match(/^\/project\/([^/]+)/);
+    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
+    if (lastProject && !projectMatch) {
+      // Jump back into the last active conversation
+      window.location.assign(`/project/${lastProject}`);
+    } else {
+      // Already in the active conversation, or none exists — open the conversations panel
+      window.location.assign("/projects");
+    }
+  };
+
   const startLongPress = () => {
     longPressFired.current = false;
     if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
     longPressTimer.current = window.setTimeout(() => {
       longPressFired.current = true;
-      try { (navigator as any).vibrate?.(28); } catch {}
-      setSheetOpen(true);
+      goToLastConversation();
     }, 480);
   };
   const cancelLongPress = () => {
