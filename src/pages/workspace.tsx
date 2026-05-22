@@ -6762,6 +6762,123 @@ export default function Workspace() {
         />
       )}
 
+      {isMobile && showMoreSheet && (
+        <>
+          <div
+            onClick={() => setShowMoreSheet(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 290,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+          />
+          <div
+            role="dialog"
+            aria-label="More tools"
+            style={{
+              position: "fixed",
+              bottom: "calc(var(--atlas-dock-height, 64px) + env(safe-area-inset-bottom, 0px))",
+              left: 0, right: 0,
+              zIndex: 300,
+              background: "var(--atlas-surface)",
+              borderTop: "1px solid rgba(201,162,76,0.18)",
+              borderRadius: "14px 14px 0 0",
+              padding: "12px 0 10px",
+              boxShadow: "0 -10px 30px rgba(0,0,0,0.45)",
+            }}
+          >
+            <div style={{
+              width: 36, height: 3, borderRadius: 2,
+              background: "rgba(201,162,76,0.25)",
+              margin: "0 auto 10px",
+            }} />
+            {([
+              {
+                id: "memory" as const,
+                label: "Memory",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z"/>
+                    <path d="M8 9h8M8 13h8M8 17h5"/>
+                  </svg>
+                ),
+                onSelect: () => { setMobileTab("memory"); setShowMoreSheet(false); },
+              },
+              {
+                id: "blueprints" as const,
+                label: "Blueprints",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                  </svg>
+                ),
+                onSelect: () => { setMobileTab("blueprints"); setShowMoreSheet(false); },
+              },
+              {
+                id: "connections" as const,
+                label: "Connections",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="6" cy="12" r="2"/>
+                    <circle cx="18" cy="6" r="2"/>
+                    <circle cx="18" cy="18" r="2"/>
+                    <path d="M8 11l8-4M8 13l8 4"/>
+                  </svg>
+                ),
+                onSelect: () => { setMobileTab("connections"); setShowMoreSheet(false); },
+              },
+              {
+                id: "forge" as const,
+                label: "Forge",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                ),
+                onSelect: () => { setShowMoreSheet(false); setShowForgeExternal(true); },
+              },
+            ]).map(({ id, label, icon, onSelect }) => {
+              const active = mobileTab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={onSelect}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "13px 22px",
+                    background: active ? "rgba(201,162,76,0.07)" : "transparent",
+                    border: "none",
+                    borderLeft: `3px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
+                    cursor: "pointer",
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 12,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    textAlign: "left",
+                    WebkitTapHighlightColor: "transparent",
+                    transition: "all 160ms ease",
+                  }}
+                >
+                  {icon}
+                  {label}
+                  {active && (
+                    <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--atlas-gold)", opacity: 0.7 }}>
+                      ACTIVE
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {onboardingCoachVisible && (
         <WorkspaceOnboardingCoach
           isMobile={isMobile}
