@@ -3589,8 +3589,44 @@ export default function Workspace() {
   // null = panel closed; string = open with current draft
   const [archiveReasonDraft, setArchiveReasonDraft] = useState<string | null>(null);
   const [sessionActionBusy, setSessionActionBusy] = useState(false);
+  const [threadSearchDraft, setThreadSearchDraft] = useState<string | null>(null);
+  const [threadSearchStatus, setThreadSearchStatus] = useState<string>("");
+  const threadSearchCursorRef = useRef<{ q: string; matches: number[]; idx: number }>({ q: "", matches: [], idx: -1 });
+
   const projectBtnRef = useRef<HTMLButtonElement>(null);
   const [showViewMenu, setShowViewMenu] = useState(false);
+
+  const runThreadSearch = useCallback((query: string, direction: 1 | -1 = 1) => {
+    const q = query.trim().toLowerCase();
+    if (!q) { setThreadSearchStatus(""); return; }
+    const cur = threadSearchCursorRef.current;
+    if (cur.q !== q) {
+      const matches: number[] = [];
+      messages.forEach((m, i) => {
+        if ((m.content ?? "").toLowerCase().includes(q)) matches.push(i);
+      });
+      threadSearchCursorRef.current = { q, matches, idx: -1 };
+    }
+    const ref = threadSearchCursorRef.current;
+    if (ref.matches.length === 0) { setThreadSearchStatus("No matches"); return; }
+    ref.idx = (ref.idx + direction + ref.matches.length) % ref.matches.length;
+    const targetIdx = ref.matches[ref.idx];
+    setThreadSearchStatus(`${ref.idx + 1} of ${ref.matches.length}`);
+    requestAnimationFrame(() => {
+      const root = chatPanelScrollRef.current;
+      if (!root) return;
+      const el = root.querySelector<HTMLElement>(`[data-atlas-msg-idx="${targetIdx}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const prev = el.style.boxShadow;
+      const prevT = el.style.transition;
+      el.style.transition = "box-shadow 200ms ease";
+      el.style.boxShadow = "0 0 0 2px color-mix(in oklab, var(--atlas-gold) 65%, transparent)";
+      window.setTimeout(() => { el.style.boxShadow = prev; el.style.transition = prevT; }, 1400);
+    });
+  }, [messages]);
+
+
 
   const downloadConversation = useCallback((format: "md" | "json") => {
     const pname = projectState.project?.name ?? "atlas";
@@ -6619,6 +6655,38 @@ export default function Workspace() {
             <MenuBtn icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="14" height="10" rx="1.5" /><path d="M1 6h14" /><circle cx="3.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} /><circle cx="5.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} /></svg>} label="Dashboard" onClick={() => { setLocation("/dashboard"); setShowProjectMenu(false); }} />
             <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 6px", opacity: 0.5 }} />
             <div style={{ padding: "6px 12px 2px", fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.14em", textTransform: "uppercase", opacity: 0.7 }}>Conversation</div>
+            {threadSearchDraft === null ? (
+              <MenuBtn
+                icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>}
+                label="Search in thread"
+                disabled={messages.length === 0}
+                onClick={() => { threadSearchCursorRef.current = { q: "", matches: [], idx: -1 }; setThreadSearchStatus(""); setThreadSearchDraft(""); }}
+              />
+            ) : (
+              <div style={{ padding: "6px 8px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", display: "flex", justifyContent: "space-between" }}>
+                  <span>Search thread</span>
+                  {threadSearchStatus && <span style={{ opacity: 0.7 }}>{threadSearchStatus}</span>}
+                </div>
+                <input
+                  autoFocus
+                  type="text"
+                  value={threadSearchDraft}
+                  onChange={(e) => { setThreadSearchDraft(e.target.value); threadSearchCursorRef.current = { q: "", matches: [], idx: -1 }; setThreadSearchStatus(""); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); runThreadSearch(threadSearchDraft, e.shiftKey ? -1 : 1); }
+                    else if (e.key === "Escape") { setThreadSearchDraft(null); setThreadSearchStatus(""); }
+                  }}
+                  placeholder="Find in conversation…"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface-alt)", color: "var(--atlas-fg)", fontSize: 12, fontFamily: "var(--app-font-sans)", outline: "none", boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => { setThreadSearchDraft(null); setThreadSearchStatus(""); }} style={{ flex: 1, padding: "6px 0", borderRadius: 5, fontSize: 11, background: "var(--atlas-surface-alt)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer" }}>Close</button>
+                  <button onClick={() => runThreadSearch(threadSearchDraft, -1)} disabled={!threadSearchDraft.trim()} style={{ flex: 1, padding: "6px 0", borderRadius: 5, fontSize: 11, background: "var(--atlas-surface-alt)", border: "1px solid var(--atlas-border)", color: "var(--atlas-fg)", cursor: threadSearchDraft.trim() ? "pointer" : "not-allowed", opacity: threadSearchDraft.trim() ? 1 : 0.5 }}>Prev</button>
+                  <button onClick={() => runThreadSearch(threadSearchDraft, 1)} disabled={!threadSearchDraft.trim()} style={{ flex: 1, padding: "6px 0", borderRadius: 5, fontSize: 11, background: "color-mix(in oklab, var(--atlas-gold) 18%, transparent)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)", color: "var(--atlas-gold)", cursor: threadSearchDraft.trim() ? "pointer" : "not-allowed", fontWeight: 600, opacity: threadSearchDraft.trim() ? 1 : 0.5 }}>Next</button>
+                </div>
+              </div>
+            )}
             <MenuBtn
               icon={<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v9M4 7l4 4 4-4M2 14h12" /></svg>}
               label="Download as Markdown"

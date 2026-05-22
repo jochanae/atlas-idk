@@ -179,15 +179,17 @@ export function ChatStream(props: ChatStreamProps) {
 
       {messages.map((msg, i) =>
         msg.role === "user" ? (
-          <UserBubble
-            key={i}
-            content={msg.content}
-            sentAt={msg.sentAt}
-            onCopy={() => {}}
-            onEdit={() => onEditUserMessage(msg.content)}
-          />
+          <div key={i} data-atlas-msg-idx={i}>
+            <UserBubble
+              content={msg.content}
+              sentAt={msg.sentAt}
+              onCopy={() => {}}
+              onEdit={() => onEditUserMessage(msg.content)}
+            />
+          </div>
         ) : (
-          <div key={i}>
+          <div key={i} data-atlas-msg-idx={i}>
+
             <AssistantBubble
               message={msg}
               isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
