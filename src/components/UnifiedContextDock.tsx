@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 /**
  * UnifiedContextDock
@@ -155,7 +155,7 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  
   const longPressTimer = useRef<number | null>(null);
   const longPressFired = useRef(false);
 
@@ -177,13 +177,27 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     onAtlasCore();
   };
 
+  const goToLastConversation = () => {
+    try { (navigator as any).vibrate?.(28); } catch {}
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    const projectMatch = path.match(/^\/project\/([^/]+)/);
+    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
+    if (lastProject && !projectMatch) {
+      // Jump back into the last active conversation
+      window.location.assign(`/project/${lastProject}`);
+    } else {
+      // Already in the active conversation, or none exists — open the conversations panel
+      window.location.assign("/projects");
+    }
+  };
+
   const startLongPress = () => {
     longPressFired.current = false;
     if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
     longPressTimer.current = window.setTimeout(() => {
       longPressFired.current = true;
-      try { (navigator as any).vibrate?.(28); } catch {}
-      setSheetOpen(true);
+      goToLastConversation();
     }, 480);
   };
   const cancelLongPress = () => {
@@ -200,46 +214,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     fireTap();
   };
 
-  // Close sheet on Escape
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOpen]);
-
-  const goVariant = (target: "ambient" | "active" | "operational") => {
-    setSheetOpen(false);
-    try { (navigator as any).vibrate?.(10); } catch {}
-    if (typeof window === "undefined") return;
-    const path = window.location.pathname;
-    const projectMatch = path.match(/^\/project\/([^/]+)/);
-    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
-    if (projectMatch) localStorage.setItem("atlas:lastProjectId", projectMatch[1]);
-
-    if (target === "ambient") {
-      window.location.assign("/home");
-    } else if (target === "active") {
-      // Active = Home with composer focused
-      if (path === "/home" || path === "/") {
-        window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
-      } else {
-        sessionStorage.setItem("atlas:focusComposerOnLoad", "1");
-        window.location.assign("/home");
-      }
-    } else {
-      // Operational = workspace chat
-      if (lastProject) {
-        if (projectMatch) {
-          window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
-        } else {
-          window.location.assign(`/project/${lastProject}`);
-        }
-      } else {
-        window.location.assign("/projects");
-      }
-    }
-  };
 
 
 
@@ -445,23 +419,21 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core — Enter to focus chat, hold or Shift+Enter to switch surface"
-            aria-label="Atlas Core. Press Enter to focus chat. Hold or press Shift+Enter to switch surface."
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
+            title="Atlas Core — tap to focus chat, hold to open last conversation"
+            aria-label="Atlas Core. Tap to focus chat. Hold or press Shift+Enter to open last conversation."
             className="udock-center"
             onClick={handleAtlasClick}
             onPointerDown={startLongPress}
             onPointerUp={cancelLongPress}
             onPointerLeave={cancelLongPress}
             onPointerCancel={cancelLongPress}
-            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; setSheetOpen(true); }}
+            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; goToLastConversation(); }}
             onKeyDown={(e) => {
               if (e.repeat) return;
               if (e.key === "Enter" && e.shiftKey) {
                 e.preventDefault();
                 longPressFired.current = true;
-                setSheetOpen(true);
+                goToLastConversation();
               } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 startLongPress();
@@ -506,118 +478,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {right.map(renderSlot)}
       </div>
 
-      {sheetOpen && (
-        <>
-          <div
-            onClick={() => setSheetOpen(false)}
-            style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(4px)", zIndex: 250,
-              animation: "udockFade 180ms var(--ease-standard) both",
-            }}
-            aria-hidden
-          />
-          <div
-            role="dialog"
-            aria-label="Switch surface"
-            style={{
-              position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 260,
-              padding: "16px 16px calc(env(safe-area-inset-bottom) + 88px)",
-              animation: "udockSlideUp 220ms var(--ease-standard) both",
-            }}
-          >
-            <div
-              style={{
-                maxWidth: 480, margin: "0 auto",
-                background: "var(--atlas-bg)",
-                border: "1px solid rgba(212,175,55,0.25)",
-                borderRadius: 18,
-                boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4)",
-                overflow: "hidden",
-              }}
-            >
-              <div style={{
-                padding: "14px 18px 6px",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: "var(--ts-micro)",
-                letterSpacing: "var(--ls-mono-cap)",
-                textTransform: "uppercase",
-                color: "rgba(212,175,55,0.7)",
-              }}>Switch surface</div>
-              {(() => {
-                const hasLastProject = typeof window !== "undefined" && !!localStorage.getItem("atlas:lastProjectId");
-                const rows = [
-                  { id: "ambient", title: "Ambient", subtitle: "Home · open thinking field", action: "Return to home" },
-                  { id: "active", title: "Active", subtitle: "A conversation in motion", action: "Open a focused thread" },
-                  { id: "operational", title: "Operational", subtitle: "Project workspace · build & ledger", action: hasLastProject ? "Open last project" : "Choose a project" },
-                ];
-                return rows.map((opt) => {
-                  const isCurrent = opt.id === mode;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => !isCurrent && goVariant(opt.id as "ambient" | "active" | "operational")}
-                      disabled={isCurrent}
-                      aria-current={isCurrent ? "true" : undefined}
-                      style={{
-                        display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
-                        gap: 12, padding: "14px 18px",
-                        background: "none", border: "none", textAlign: "left",
-                        cursor: isCurrent ? "default" : "pointer",
-                        borderTop: "1px solid rgba(212,175,55,0.08)",
-                        color: "var(--atlas-text, #E8E4DD)",
-                        WebkitTapHighlightColor: "transparent",
-                        opacity: isCurrent ? 0.65 : 1,
-                      }}
-                    >
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{opt.title}</div>
-                        <div style={{ fontSize: 12, color: "rgba(168,162,158,0.85)", marginTop: 2 }}>{opt.subtitle}</div>
-                        {!isCurrent && (
-                          <div style={{
-                            fontFamily: "var(--app-font-mono)", fontSize: 10,
-                            letterSpacing: "var(--ls-mono-cap)", textTransform: "uppercase",
-                            color: "rgba(212,175,55,0.75)", marginTop: 6,
-                          }}>{opt.action} →</div>
-                        )}
-                      </div>
-                      {isCurrent ? (
-                        <span style={{
-                          fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "var(--ls-mono-cap)",
-                          textTransform: "uppercase", color: "rgba(212,175,55,0.9)",
-                          padding: "3px 8px", border: "1px solid rgba(212,175,55,0.35)", borderRadius: 999,
-                          flexShrink: 0,
-                        }}>You're here</span>
-                      ) : (
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                          stroke="rgba(212,175,55,0.7)" strokeWidth="1.75"
-                          strokeLinecap="round" strokeLinejoin="round"
-                          style={{ flexShrink: 0 }} aria-hidden>
-                          <polyline points="9 6 15 12 9 18" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                });
-              })()}
-              <button
-                onClick={() => setSheetOpen(false)}
-                style={{
-                  display: "block", width: "100%", padding: "14px 18px",
-                  background: "rgba(0,0,0,0.25)", border: "none", borderTop: "1px solid rgba(212,175,55,0.12)",
-                  color: "rgba(168,162,158,0.85)", cursor: "pointer",
-                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)",
-                  letterSpacing: "var(--ls-mono-cap)", textTransform: "uppercase",
-                }}
-              >Cancel</button>
-            </div>
-          </div>
-          <style>{`
-            @keyframes udockFade { from { opacity: 0; } to { opacity: 1; } }
-            @keyframes udockSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-          `}</style>
-        </>
-      )}
     </div>
   );
 }
