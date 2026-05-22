@@ -274,13 +274,13 @@ html, body {
   --atlas-fg:           #111111;
   --atlas-muted:        #767676;
 
-  /* Brand Gold — isolated to Obsidian Shield containers */
-  --atlas-ember:        #b45309;
-  --atlas-ember-glow:   rgba(180, 83, 9, 0.20);
-  --atlas-gold:         #f3b05a;
-  --atlas-gold-glow:    rgba(243, 176, 90, 0.20);
-  --atlas-gold-dim:     rgba(243, 176, 90, 0.10);
-  --atlas-gold-border:  rgba(243, 176, 90, 0.30);
+  /* Deep amber-brown — editorial parchment accent */
+  --atlas-ember:        #6f4a30;
+  --atlas-ember-glow:   rgba(139, 94, 60, 0.20);
+  --atlas-gold:         #8B5E3C;
+  --atlas-gold-glow:    rgba(139, 94, 60, 0.20);
+  --atlas-gold-dim:     rgba(139, 94, 60, 0.10);
+  --atlas-gold-border:  rgba(139, 94, 60, 0.30);
   --atlas-phosphor:     #0284C7;
 
   /* Ice Plate Glassmorphism */
@@ -301,10 +301,10 @@ html, body {
   --foreground: 0 0% 7%;
   --border: 0 0% 90%;
   --card: 210 17% 98%;
-  --primary: 24 70% 31%;
+  --primary: 26 40% 39%;
   --muted: 210 17% 95%;
   --muted-foreground: 0 0% 46%;
-  --accent: 32 60% 36%;
+  --accent: 26 40% 39%;
 }
 
 @layer base {
