@@ -155,7 +155,7 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
-  const sheetOpen = false;
+  
   const longPressTimer = useRef<number | null>(null);
   const longPressFired = useRef(false);
 
