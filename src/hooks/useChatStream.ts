@@ -270,12 +270,13 @@ export function useChatStream(
           });
           if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`);
 
-          streamingId = -Date.now();
+          const placeholderId = -Date.now();
+          streamingId = placeholderId;
           let streamedText = "";
           setMessages((prev) => [
             ...prev,
             {
-              id: streamingId,
+              id: placeholderId,
               role: "assistant",
               content: "",
               streaming: true,
@@ -310,7 +311,7 @@ export function useChatStream(
                   streamedText += chunk;
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === streamingId
+                      m.id === placeholderId
                         ? { ...m, content: streamedText }
                         : m
                     )
@@ -321,7 +322,7 @@ export function useChatStream(
                 } else if (evtName === "done") {
                   const res = JSON.parse(evtData);
                   streamingFinished = true;
-                  setMessages((prev) => prev.filter((m) => m.id !== streamingId));
+                  setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
                   streamingId = null;
                   if (!res) return;
           if (res.content && typeof res.content === "string") {
