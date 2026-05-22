@@ -3612,9 +3612,10 @@ export default function Workspace() {
     scenarioStartIdxRef,
   } = useChatLens(id);
   const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal">("chat");
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
