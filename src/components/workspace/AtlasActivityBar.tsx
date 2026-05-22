@@ -1,17 +1,82 @@
+import { useEffect, useRef, useState } from "react";
+
+const FALLBACK_BY_LENS: Record<string, string[]> = {
+  build: [
+    "Inspecting codebase...",
+    "Tracing dependencies...",
+    "Reviewing architecture...",
+    "Preparing implementation...",
+    "Analyzing file structure...",
+  ],
+  think: [
+    "Exploring strategic direction...",
+    "Reviewing previous decisions...",
+    "Connecting related concepts...",
+    "Considering implications...",
+    "Building context...",
+  ],
+  flow: [
+    "Mapping relationships...",
+    "Organizing project structure...",
+    "Updating operational context...",
+    "Tracing flow dependencies...",
+    "Reviewing node states...",
+  ],
+  default: [
+    "Atlas is thinking...",
+    "Reviewing context...",
+    "Processing your request...",
+    "Preparing response...",
+    "Analyzing...",
+  ],
+};
+
 function atlasActivityStatus(content: string): string {
   const narration = content.match(/^NARRATION:(.+)/)?.[1]?.trim();
   if (narration) return narration;
-
   const planStep = content.match(/PLAN_STEP:\s*(.+)/i)?.[1]?.trim();
   if (planStep) return planStep;
   if (/LINE_PATCH/i.test(content)) return "Patching code...";
   if (/FILE_EDIT/i.test(content)) return "Preparing changes...";
   if (/FILE_READ/i.test(content)) return "Reading files...";
   if (/\b(git|push)\b/i.test(content)) return "Pushing to GitHub...";
-  return "Atlas is thinking...";
+  return "";
 }
 
-export function AtlasActivityBar({ content }: { content: string }) {
+export function AtlasActivityBar({
+  content,
+  lens,
+}: {
+  content: string;
+  lens?: string;
+}) {
+  const resolved = atlasActivityStatus(content);
+  const fallbacks = FALLBACK_BY_LENS[lens ?? "default"] ?? FALLBACK_BY_LENS.default;
+
+  const [displayed, setDisplayed] = useState(resolved || fallbacks[0]);
+  const [visible, setVisible] = useState(true);
+  const fallbackIdx = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (resolved) {
+      setVisible(false);
+      setTimeout(() => { setDisplayed(resolved); setVisible(true); }, 180);
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+    // Rotate fallback phrases every 3 seconds
+    timerRef.current = setInterval(() => {
+      fallbackIdx.current = (fallbackIdx.current + 1) % fallbacks.length;
+      setVisible(false);
+      setTimeout(() => {
+        setDisplayed(fallbacks[fallbackIdx.current]);
+        setVisible(true);
+      }, 180);
+    }, 3000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [resolved, fallbacks]);
+
   return (
     <div
       style={{
@@ -38,17 +103,17 @@ export function AtlasActivityBar({ content }: { content: string }) {
         }}
       />
       <span
-        className="atlas-label-shimmer"
         style={{
           fontFamily: "var(--app-font-mono)",
           fontSize: 10,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
+          opacity: visible ? 1 : 0,
+          transition: "opacity 0.18s ease",
         }}
       >
-        {atlasActivityStatus(content)}
+        {displayed}
       </span>
-
     </div>
   );
 }
