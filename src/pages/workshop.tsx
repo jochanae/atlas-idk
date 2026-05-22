@@ -15,7 +15,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-type Tool = "decision-editor" | "context-builder" | "diff-review" | "session-exporter" | "bulk-import";
+type Tool = "decision-editor" | "context-builder" | "diff-review" | "session-exporter" | "bulk-import" | "atlas-selfmap";
 
 export default function Workshop() {
   const [, setLocation] = useLocation();
@@ -53,6 +53,17 @@ export default function Workshop() {
       label: "Bulk Import",
       desc: "Seed a project's ledger from a doc, spec, or prior decisions list.",
     },
+    {
+      id: "atlas-selfmap",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+        </svg>
+      ),
+      label: "Atlas Selfmap",
+      desc: "Rebuild Atlas's structural index of the entire codebase — files, exports, and relationships.",
+    },
   ];
 
   if (activeTool === "decision-editor") return <DecisionEditor projects={projects} onBack={() => setActiveTool(null)} />;
@@ -60,6 +71,7 @@ export default function Workshop() {
   if (activeTool === "diff-review") return <DiffReview projects={projects} onBack={() => setActiveTool(null)} />;
   if (activeTool === "session-exporter") return <SessionExporter projects={projects} onBack={() => setActiveTool(null)} />;
   if (activeTool === "bulk-import") return <BulkImport projects={projects} onBack={() => setActiveTool(null)} />;
+  if (activeTool === "atlas-selfmap") return <AtlasSelfmap onBack={() => setActiveTool(null)} />;
 
   return (
     <div style={{ height: "100dvh", overflowY: "auto", background: "transparent", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", paddingBottom: 80 }}>
@@ -680,6 +692,92 @@ function BulkImport({ projects, onBack }: { projects: { id: number; name: string
             {loading ? `Importing ${preview.length} decisions…` : `Import ${preview.length > 0 ? preview.length + " " : ""}Decision${preview.length !== 1 ? "s" : ""}`}
           </button>
         </>
+      )}
+    </ToolShell>
+  );
+}
+
+/* ─── Tool 6: Atlas Selfmap ─── */
+function AtlasSelfmap({ onBack }: { onBack: () => void }) {
+  const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [result, setResult] = useState<{ file_count: number; created_at: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setStatus("running");
+    setError(null);
+    try {
+      const res = await fetch("/api/selfmap/refresh", { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = await res.json() as { file_count: number; created_at: string };
+      setResult(data);
+      setStatus("done");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+      setStatus("error");
+    }
+  };
+
+  const monoLabel: React.CSSProperties = {
+    fontFamily: "var(--app-font-mono)",
+    fontSize: 9,
+    letterSpacing: "0.12em",
+    color: "var(--atlas-muted)",
+    opacity: 0.7,
+    textTransform: "uppercase",
+    display: "block",
+    marginBottom: 4,
+  };
+
+  return (
+    <ToolShell
+      title="Atlas Selfmap"
+      desc="Structural index of the entire codebase"
+      onBack={onBack}
+    >
+      <div style={{ marginBottom: 20, padding: "14px", borderRadius: 10, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)" }}>
+        <div style={{ fontSize: 12.5, color: "var(--atlas-muted)", lineHeight: 1.7, marginBottom: 16, opacity: 0.8 }}>
+          Atlas will walk every <code style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, background: "rgba(201,162,76,0.08)", padding: "1px 5px", borderRadius: 3 }}>.ts</code> and <code style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, background: "rgba(201,162,76,0.08)", padding: "1px 5px", borderRadius: 3 }}>.tsx</code> file in the frontend and backend, extract all exports and import relationships, and store the result in the database. This is used to give Atlas deeper structural awareness of the codebase when answering architecture questions.
+        </div>
+
+        <button
+          type="button"
+          onClick={run}
+          disabled={status === "running"}
+          style={{
+            width: "100%",
+            padding: "11px",
+            borderRadius: 8,
+            background: status === "running" ? "var(--atlas-border)" : "var(--atlas-gold)",
+            color: status === "running" ? "var(--atlas-muted)" : "#0D0B09",
+            fontSize: 13,
+            fontWeight: 700,
+            border: "none",
+            cursor: status === "running" ? "default" : "pointer",
+            transition: "background 140ms",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {status === "running" ? "Indexing codebase…" : "Run Selfmap"}
+        </button>
+      </div>
+
+      {status === "done" && result && (
+        <div style={{ padding: "14px", borderRadius: 10, background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)", border: "1px solid rgba(201,162,76,0.25)" }}>
+          <span style={monoLabel}>Last run</span>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 6 }}>
+            {result.file_count} files indexed
+          </div>
+          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.65 }}>
+            {new Date(result.created_at).toLocaleString()}
+          </div>
+        </div>
+      )}
+
+      {status === "error" && error && (
+        <div style={{ padding: "12px 14px", borderRadius: 8, background: "color-mix(in oklab, var(--atlas-ember) 8%, transparent)", border: "1px solid rgba(146,64,14,0.3)" }}>
+          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-ember)", opacity: 0.9 }}>{error}</div>
+        </div>
       )}
     </ToolShell>
   );
