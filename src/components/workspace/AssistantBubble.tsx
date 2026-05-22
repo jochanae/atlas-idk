@@ -607,6 +607,7 @@ export function AssistantBubble({
   onPark,
   onCommit,
   onRegenerate,
+  onSend,
   onPushSuccess,
   onPreviewCode,
   onPrCreated,
@@ -636,6 +637,7 @@ export function AssistantBubble({
   onPark: (content: string) => void;
   onCommit: (content: string) => void;
   onRegenerate: () => void;
+  onSend?: (message: string) => void;
   onPushSuccess: (records: PushRecord[]) => void;
   onPreviewCode?: (code: string) => void;
   onPrCreated?: (prUrl: string) => void;
@@ -700,6 +702,12 @@ export function AssistantBubble({
   }, [message.content]);
   const displayContent = (cleanContent ?? message.content ?? "")
     .replace(/!\[.*?\]\(https?:\/\/[^\s)]+\)/g, "")
+    .trim();
+  const hasImageClarify = (displayContent ?? "").includes("IMAGE_CLARIFY:");
+  const cleanedContent = (displayContent ?? "")
+    .replace(/\n\nIMAGE_CLARIFY:[^\n]*/g, "")
+    .replace(/- \*\*Cinematic\*\*[^\n]*/g, "")
+    .replace(/- \*\*Blueprint\*\*[^\n]*/g, "")
     .trim();
 
   // Detect previewable code block (html, jsx, tsx, css, or untagged with HTML tags)
@@ -1076,7 +1084,7 @@ export function AssistantBubble({
         <div style={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85 }}>
           {message.streaming ? (
             <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
-              {displayContent}
+              {cleanedContent}
               <span
                 aria-hidden
                 style={{
@@ -1092,15 +1100,56 @@ export function AssistantBubble({
             </span>
           ) : isNew ? (
             <StreamingMarkdown
-              content={displayContent}
+              content={cleanedContent}
               onComplete={onStreamActivityComplete}
             />
           ) : (
-            <MarkdownProse content={displayContent} />
+            <MarkdownProse content={cleanedContent} />
           )}
         </div>
 
-        {displayContent.trim() && !message.streaming && !message.catchPayload && !commitPayload && (
+        {hasImageClarify && (
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => onSend?.("Cinematic — single hero shot")}
+              style={{
+                padding: "8px 16px",
+                background: "transparent",
+                border: "1px solid var(--atlas-gold)",
+                borderRadius: 8,
+                color: "var(--atlas-gold)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.06em",
+                cursor: "pointer",
+                textTransform: "uppercase",
+              }}
+            >
+              ◈ Cinematic
+            </button>
+            <button
+              type="button"
+              onClick={() => onSend?.("Blueprint — multi-panel breakdown sheet")}
+              style={{
+                padding: "8px 16px",
+                background: "transparent",
+                border: "1px solid var(--atlas-border)",
+                borderRadius: 8,
+                color: "var(--atlas-fg)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.06em",
+                cursor: "pointer",
+                textTransform: "uppercase",
+              }}
+            >
+              ◫ Blueprint
+            </button>
+          </div>
+        )}
+
+        {cleanedContent.trim() && !message.streaming && !message.catchPayload && !commitPayload && (
           <div style={{ marginTop: 6 }}>
             <ThoughtForBadge
               metrics={{
