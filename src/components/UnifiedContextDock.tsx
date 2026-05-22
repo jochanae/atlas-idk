@@ -397,7 +397,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           style={{
             flex: 1,
             background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
-            borderTop: "1px solid rgba(212,175,55,0.18)",
+            borderTop: "1px solid var(--atlas-gold-border)",
           }}
         />
       </div>
