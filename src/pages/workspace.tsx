@@ -5699,6 +5699,36 @@ export default function Workspace() {
                 </button>
               </LongPressTip>
             )}
+            {isMobile && (() => {
+              const moreActive = ["memory","blueprints","connections"].includes(mobileTab);
+              return (
+                <button
+                  type="button"
+                  onClick={() => setShowMoreSheet(true)}
+                  title="More tools"
+                  aria-label="More tools"
+                  style={{
+                    background: moreActive ? "rgba(201,162,76,0.10)" : "transparent",
+                    border: moreActive ? "1px solid rgba(201,162,76,0.32)" : "1px solid transparent",
+                    borderRadius: 6,
+                    padding: "4px 4px",
+                    cursor: "pointer",
+                    color: moreActive ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    opacity: moreActive ? 1 : 0.7,
+                    lineHeight: 0,
+                    display: "inline-flex",
+                    flexShrink: 0,
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <circle cx="12" cy="5" r="1.8" />
+                    <circle cx="12" cy="12" r="1.8" />
+                    <circle cx="12" cy="19" r="1.8" />
+                  </svg>
+                </button>
+              );
+            })()}
             <button
               type="button"
               onClick={toggleSubheader}
