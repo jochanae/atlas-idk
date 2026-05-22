@@ -1876,6 +1876,8 @@ function RightPanel({
   onToggleFullscreen,
   onFileContext,
   onLinkedRepoChange,
+  dbUrl,
+  onDbUrlChange,
   pushHistory,
   onRollbackPush,
   onHomeNav,
@@ -1919,6 +1921,8 @@ function RightPanel({
   onToggleFullscreen?: () => void;
   onFileContext: (ctx: string | null) => void;
   onLinkedRepoChange: (repo: LinkedRepo | null) => void;
+  dbUrl: string | null;
+  onDbUrlChange: (url: string | null) => void;
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
   onHomeNav: () => void;
@@ -2255,7 +2259,7 @@ function RightPanel({
         </div>
       )}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
-      {tab === "files" && <FilesPanel projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} />}
+      {tab === "files" && <FilesPanel projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
@@ -3392,11 +3396,17 @@ export default function Workspace() {
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
+  const [dbUrl, setDbUrl] = useState<string | null>(() => {
+    try { return localStorage.getItem(`atlas-db-url-${id}`) ?? null; } catch { return null; }
+  });
   const [forgeContext, setForgeContext] = useState<string | null>(() => {
     try { return sessionStorage.getItem(`atlas-forge-ctx-${id}`) ?? null; } catch { return null; }
   });
   useEffect(() => {
     try { setForgeContext(sessionStorage.getItem(`atlas-forge-ctx-${id}`) ?? null); } catch { setForgeContext(null); }
+  }, [id]);
+  useEffect(() => {
+    try { setDbUrl(localStorage.getItem(`atlas-db-url-${id}`) ?? null); } catch { setDbUrl(null); }
   }, [id]);
   const { data: fallbackEntries } = useListEntries(id, {}, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getListEntriesQueryKey(id, {}) },
@@ -3463,6 +3473,7 @@ export default function Workspace() {
     entries,
     fileContext,
     forgeContext,
+    dbUrl,
     sendCtxRef,
     setDetectedLens,
     setScenarioBuffer,
@@ -5996,6 +6007,8 @@ export default function Workspace() {
             activeCatch={activeCatch}
             onFileContext={setFileContext}
             onLinkedRepoChange={setLinkedRepo}
+            dbUrl={dbUrl}
+            onDbUrlChange={setDbUrl}
             pushHistory={pushHistory}
             onRollbackPush={handleRollbackPush}
             onHomeNav={() => setLocation("/home")}
@@ -6437,6 +6450,8 @@ export default function Workspace() {
                 onToggleFullscreen={() => setRightFullscreen((f) => !f)}
                 onFileContext={setFileContext}
                 onLinkedRepoChange={setLinkedRepo}
+                dbUrl={dbUrl}
+                onDbUrlChange={setDbUrl}
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 onHomeNav={() => setLocation("/home")}

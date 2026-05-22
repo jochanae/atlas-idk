@@ -22,14 +22,128 @@ import {
   buildTree,
 } from "../../pages/workspace";
 
+function DbUrlInput({ projectId, onSave }: { projectId: number; onSave: (url: string) => void }) {
+  const [value, setValue] = useState("");
+
+  const save = () => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    try { localStorage.setItem(`atlas-db-url-${projectId}`, trimmed); } catch {}
+    onSave(trimmed);
+    setValue("");
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+        placeholder="postgres://user:pass@host/db"
+        autoComplete="off"
+        style={{
+          width: "100%",
+          padding: "8px 10px",
+          borderRadius: 6,
+          background: "var(--atlas-surface)",
+          border: "1px solid var(--atlas-border)",
+          color: "var(--atlas-fg)",
+          fontSize: 11,
+          fontFamily: "var(--app-font-mono)",
+          outline: "none",
+          boxSizing: "border-box",
+        }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
+      />
+      <button
+        type="button"
+        disabled={!value.trim()}
+        onClick={save}
+        style={{
+          padding: "7px",
+          borderRadius: 6,
+          background: value.trim() ? "var(--atlas-gold)" : "var(--atlas-surface)",
+          border: "none",
+          color: value.trim() ? "#0D0B09" : "var(--atlas-muted)",
+          fontSize: 10,
+          fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          cursor: value.trim() ? "pointer" : "not-allowed",
+        }}
+      >
+        Connect
+      </button>
+    </div>
+  );
+}
+
+function DatabaseConnectionSection({
+  projectId,
+  dbUrl,
+  onDbUrlChange,
+}: {
+  projectId: number;
+  dbUrl: string | null;
+  onDbUrlChange: (url: string | null) => void;
+}) {
+  return (
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--atlas-border)" }}>
+      <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.13em", color: "var(--atlas-muted)", opacity: 0.65, textTransform: "uppercase", marginBottom: 8 }}>
+        Database Connection
+      </div>
+      {dbUrl ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", flexShrink: 0, display: "inline-block" }} />
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-fg)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+              {dbUrl.replace(/:[^:@]*@/, ":***@")}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const newUrl = prompt("Paste new PostgreSQL connection string (or leave blank to remove):");
+              if (newUrl === null) return;
+              if (!newUrl.trim()) {
+                try { localStorage.removeItem(`atlas-db-url-${projectId}`); } catch {}
+                onDbUrlChange(null);
+              } else {
+                try { localStorage.setItem(`atlas-db-url-${projectId}`, newUrl.trim()); } catch {}
+                onDbUrlChange(newUrl.trim());
+              }
+            }}
+            style={{ fontSize: 10, color: "var(--atlas-muted)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 5, padding: "3px 8px", cursor: "pointer", alignSelf: "flex-start", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}
+          >
+            Change
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.6, lineHeight: 1.6 }}>
+            Paste your project's Postgres connection string so Atlas can inspect its schema.
+          </div>
+          <DbUrlInput projectId={projectId} onSave={(url) => { onDbUrlChange(url); }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function FilesPanel({
   projectId,
   onFileContext,
   onLinkedRepoChange,
+  dbUrl,
+  onDbUrlChange,
 }: {
   projectId: number;
   onFileContext: (ctx: string | null) => void;
   onLinkedRepoChange: (repo: LinkedRepo | null) => void;
+  dbUrl: string | null;
+  onDbUrlChange: (url: string | null) => void;
 }) {
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
@@ -484,6 +598,9 @@ export function FilesPanel({
         >
           Create token on GitHub →
         </a>
+        <div style={{ width: "100%" }}>
+          <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
+        </div>
       </div>
     );
   }
@@ -1011,6 +1128,9 @@ export function FilesPanel({
           )}
         </div>
       )}
+      <div style={{ flexShrink: 0, padding: "0 10px 12px" }}>
+        <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
+      </div>
     </div>
   );
 }

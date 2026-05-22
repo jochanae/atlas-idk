@@ -38,6 +38,7 @@ export interface UseChatStreamOptions {
   entries: LedgerEntryLike[] | undefined;
   fileContext: string | null;
   forgeContext: string | null;
+  dbUrl: string | null;
   sendCtxRef: MutableRefObject<{ wsLens: WorkspaceLens; wsModel: string }>;
   setDetectedLens: Dispatch<SetStateAction<WorkspaceLens | null>>;
   setScenarioBuffer: Dispatch<SetStateAction<Array<{ role: string; content: string }>>>;
@@ -103,6 +104,7 @@ export function useChatStream(
     entries,
     fileContext,
     forgeContext,
+    dbUrl,
     sendCtxRef,
     setDetectedLens,
     setScenarioBuffer,
@@ -252,6 +254,7 @@ export function useChatStream(
         ...(projectMap ? { projectMap } : {}),
         ...(imageData ? { imageData } : {}),
         ...(forgeContext ? { forgeContext } : {}),
+        ...(dbUrl ? { dbUrl } : {}),
       };
 
       const controller = new AbortController();
@@ -425,7 +428,7 @@ export function useChatStream(
         }
       })();
     },
-    [entries, projectId, fileContext, forgeContext, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onFlowNodes],
+    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onFlowNodes],
   );
 
   const handleRegenerate = useCallback(
