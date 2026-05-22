@@ -295,7 +295,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 minWidth: 14,
                 height: 14,
                 borderRadius: 7,
-                background: s.alert ? "var(--atlas-ember)" : "rgba(201,162,76,0.85)",
+                background: s.alert ? "var(--atlas-ember)" : "color-mix(in srgb, var(--atlas-gold) 85%, transparent)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
