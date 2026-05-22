@@ -253,44 +253,57 @@ html, body {
 [data-theme="parchment"] {
   color-scheme: light;
   --atlas-gold-rgb: 180, 83, 9;
-  --atlas-bg-rgb: 245, 241, 232;
-  --atlas-surface-rgb: 237, 233, 223;
-  --atlas-muted-rgb: 107, 94, 82;
-  --atlas-flow-pane-bg: #EDE9DF;
+  --atlas-bg-rgb: 255, 255, 255;
+  --atlas-surface-rgb: 248, 249, 250;
+  --atlas-muted-rgb: 118, 118, 118;
+  --atlas-flow-pane-bg: #fdfdfd;
 
   /* Home page theme overrides */
-  --atlas-home-atmosphere: radial-gradient(circle, rgba(180,83,9,0.10) 0%, rgba(201,162,76,0.04) 45%, transparent 70%);
+  --atlas-home-atmosphere: none;
   --atlas-home-bg-gradient: none;
-  --atlas-home-header-shadow: 0 1px 0 0 rgba(180,83,9,0.12), 0 2px 8px rgba(0,0,0,0.06);
-  --atlas-nav-arch-fill: rgba(245,241,232,0.97);
-  --atlas-home-btn-bg: #F5F1E8;
+  --atlas-home-header-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.05);
+  --atlas-nav-arch-fill: rgba(255,255,255,0.97);
+  --atlas-home-btn-bg: #ffffff;
 
-  --atlas-bg:           #F5F1E8;
-  --atlas-surface:      #EDE9DF;
-  --atlas-surface-alt:  #E4E0D6;
-  --atlas-fg:           #1A1714;
-  --atlas-muted:        #6B5E52;
-  --atlas-ember:        #8B4513;
-  --atlas-ember-glow:   rgba(139, 69, 19, 0.30);
-  --atlas-gold:         #B45309;
-  --atlas-gold-glow:    rgba(180, 83, 9, 0.25);
-  --atlas-gold-dim:     rgba(180, 83, 9, 0.10);
-  --atlas-gold-border:  rgba(180, 83, 9, 0.20);
+  /* Pristine Surface */
+  --atlas-bg:           #ffffff;
+  --atlas-surface:      #f8f9fa;
+  --atlas-surface-alt:  #f1f3f5;
+
+  /* Biting Ink Typography */
+  --atlas-fg:           #111111;
+  --atlas-muted:        #767676;
+
+  /* Brand Gold — isolated to Obsidian Shield containers */
+  --atlas-ember:        #b45309;
+  --atlas-ember-glow:   rgba(180, 83, 9, 0.20);
+  --atlas-gold:         #f3b05a;
+  --atlas-gold-glow:    rgba(243, 176, 90, 0.20);
+  --atlas-gold-dim:     rgba(243, 176, 90, 0.10);
+  --atlas-gold-border:  rgba(243, 176, 90, 0.30);
   --atlas-phosphor:     #0284C7;
-  --atlas-border:       #D6CFBF;
-  --atlas-glass-bg:     rgba(245, 241, 232, 0.90);
-  --atlas-glass-border: rgba(26, 23, 20, 0.08);
-  --atlas-shadow-sm:    rgba(0,0,0,0.05);
-  --atlas-shadow-md:    rgba(0,0,0,0.08);
-  --atlas-shadow-lg:    rgba(0,0,0,0.12);
 
-  --background: 38 38% 93%;
-  --foreground: 20 12% 10%;
-  --border: 38 15% 80%;
-  --card: 38 25% 90%;
+  /* Ice Plate Glassmorphism */
+  --atlas-border:       rgba(17, 17, 17, 0.10);
+  --atlas-glass-bg:     rgba(255, 255, 255, 0.65);
+  --atlas-glass-border: rgba(255, 255, 255, 0.85);
+
+  /* Multi-layered Occlusion Shadows */
+  --atlas-shadow-sm:    rgba(0,0,0,0.03);
+  --atlas-shadow-md:    rgba(0,0,0,0.06);
+  --atlas-shadow-lg:    rgba(0,0,0,0.10);
+
+  /* Obsidian Shield — gold isolation container */
+  --atlas-brand-shield-bg:     #111111;
+  --atlas-brand-shield-border: rgba(255, 255, 255, 0.15);
+
+  --background: 0 0% 100%;
+  --foreground: 0 0% 7%;
+  --border: 0 0% 90%;
+  --card: 210 17% 98%;
   --primary: 24 70% 31%;
-  --muted: 38 15% 83%;
-  --muted-foreground: 20 12% 42%;
+  --muted: 210 17% 95%;
+  --muted-foreground: 0 0% 46%;
   --accent: 32 60% 36%;
 }
 
