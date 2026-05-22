@@ -1416,8 +1416,13 @@ export default function MasterMap() {
                 const updated = proj?.updatedAt ? new Date(proj.updatedAt) : null;
                 const daysAgo = updated ? Math.floor((Date.now() - updated.getTime()) / 86400000) : null;
                 const lastActive = daysAgo === 0 ? "Active today" : daysAgo === 1 ? "Yesterday" : daysAgo != null ? `${daysAgo}d ago` : null;
+                const stats = context.projectId ? statsRef.current.get(context.projectId) : undefined;
+                const committed = stats?.committed ?? 0;
+                const tension = stats?.tension ?? 0;
+                const entryCount = proj?.entryCount ?? 0;
+                const projectId = context.projectId;
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                     {(score != null || lastActive) && (
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                         {score != null && (
@@ -1441,37 +1446,74 @@ export default function MasterMap() {
                         )}
                       </div>
                     )}
+
+                    {/* Ledger counts */}
+                    <div style={{
+                      display: "flex", gap: 14, alignItems: "center",
+                      fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: palette.mutedText,
+                    }}>
+                      <span><strong style={{ color: palette.goldTextStrong, fontWeight: 600 }}>{committed}</strong> committed</span>
+                      <span style={{ opacity: 0.4 }}>·</span>
+                      <span><strong style={{ color: palette.goldTextStrong, fontWeight: 600 }}>{tension}</strong> in tension</span>
+                      <span style={{ opacity: 0.4 }}>·</span>
+                      <span><strong style={{ color: palette.goldTextStrong, fontWeight: 600 }}>{entryCount}</strong> entries</span>
+                    </div>
+
                     <div style={{
                       fontSize: 11, color: palette.mutedText,
                       fontFamily: "var(--app-font-sans)", lineHeight: 1.55,
+                      textAlign: "center",
                     }}>
-                      No decisions committed yet.<br />
-                      Start a conversation to build this map.
+                      {committed === 0
+                        ? <>No decisions committed yet.<br />Name the first thing worth deciding.</>
+                        : <>Drill deeper or keep building from where you left off.</>}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (context.projectId) {
-                          window.location.href = `/project/${context.projectId}`;
-                        }
-                      }}
-                      style={{
-                        marginTop: 4,
-                        padding: "6px 16px",
-                        background: "transparent",
-                        border: `1px solid ${palette.panelBorder}`,
-                        borderRadius: 6,
-                        color: palette.goldText,
-                        fontSize: 11,
-                        fontFamily: "var(--app-font-mono)",
-                        letterSpacing: "0.06em",
-                        cursor: "pointer",
-                        textTransform: "uppercase",
-                        pointerEvents: "auto",
-                      }}
-                    >
-                      Open workspace →
-                    </button>
+
+                    {/* Quick actions */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 2, flexWrap: "wrap", justifyContent: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => { if (projectId) window.location.href = `/project/${projectId}`; }}
+                        style={{
+                          padding: "6px 14px",
+                          background: "rgba(201,162,76,0.12)",
+                          border: `1px solid ${palette.goldText}`,
+                          borderRadius: 6,
+                          color: palette.goldTextStrong,
+                          fontSize: 10.5,
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          pointerEvents: "auto",
+                        }}
+                      >
+                        {committed === 0 ? "Start first decision →" : "Open workspace →"}
+                      </button>
+                      {committed > 0 && projectId && (
+                        <button
+                          type="button"
+                          onClick={() => { window.location.href = `/ledger/${projectId}`; }}
+                          style={{
+                            padding: "6px 14px",
+                            background: "transparent",
+                            border: `1px solid ${palette.panelBorder}`,
+                            borderRadius: 6,
+                            color: palette.goldText,
+                            fontSize: 10.5,
+                            fontFamily: "var(--app-font-mono)",
+                            letterSpacing: "0.06em",
+                            cursor: "pointer",
+                            textTransform: "uppercase",
+                            pointerEvents: "auto",
+                          }}
+                        >
+                          Ledger →
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })()}
