@@ -39,7 +39,7 @@ export interface UseChatStreamOptions {
   fileContext: string | null;
   forgeContext: string | null;
   dbUrl: string | null;
-  sendCtxRef: MutableRefObject<{ wsLens: WorkspaceLens; wsModel: string }>;
+  sendCtxRef: MutableRefObject<{ wsLens: WorkspaceLens; wsModel: string; githubToken: string | null }>;
   setDetectedLens: Dispatch<SetStateAction<WorkspaceLens | null>>;
   setScenarioBuffer: Dispatch<SetStateAction<Array<{ role: string; content: string }>>>;
   setLeftTab: Dispatch<SetStateAction<"chat" | "diff" | "blueprints" | "terminal">>;
@@ -264,7 +264,7 @@ export function useChatStream(
         let streamingId: number | null = null;
         let streamingFinished = false;
         try {
-          const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
+          const ghToken = lensCtx.githubToken;
           const r = await fetch("/api/chat", {
             method: "POST",
             headers: {
