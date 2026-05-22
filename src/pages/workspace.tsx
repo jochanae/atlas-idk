@@ -3593,13 +3593,14 @@ export default function Workspace() {
   const [showViewMenu, setShowViewMenu] = useState(false);
 
   const downloadConversation = useCallback((format: "md" | "json") => {
-    const projectName = (project?.name ?? "atlas").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
+    const pname = projectState.project?.name ?? "atlas";
+    const projectName = pname.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
     const stamp = new Date().toISOString().slice(0, 10);
     const filename = `${projectName}-conversation-${stamp}.${format}`;
     let blob: Blob;
     if (format === "json") {
       blob = new Blob([JSON.stringify({
-        project: project?.name ?? null,
+        project: pname,
         sessionId,
         exportedAt: new Date().toISOString(),
         messages: messages.map((m) => ({
@@ -3611,7 +3612,7 @@ export default function Workspace() {
       }, null, 2)], { type: "application/json" });
     } else {
       const lines: string[] = [
-        `# ${project?.name ?? "Atlas"} — Conversation`,
+        `# ${pname} — Conversation`,
         `_Exported ${new Date().toLocaleString()}_`,
         "",
       ];
@@ -3635,7 +3636,8 @@ export default function Workspace() {
     a.remove();
     URL.revokeObjectURL(url);
     toast.success(`Downloaded ${filename}`);
-  }, [messages, project, sessionId]);
+  }, [messages, projectState.project, sessionId]);
+
 
   const handleNewSession = useCallback(async () => {
     if (sessionActionBusy) return;
