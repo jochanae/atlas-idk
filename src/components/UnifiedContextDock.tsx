@@ -419,10 +419,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core — Enter to focus chat, hold or Shift+Enter to switch surface"
-            aria-label="Atlas Core. Press Enter to focus chat. Hold or press Shift+Enter to switch surface."
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
+            title="Atlas Core — tap to focus chat, hold to open last conversation"
+            aria-label="Atlas Core. Tap to focus chat. Hold or press Shift+Enter to open last conversation."
             className="udock-center"
             onClick={handleAtlasClick}
             onPointerDown={startLongPress}
