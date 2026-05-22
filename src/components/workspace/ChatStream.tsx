@@ -69,6 +69,7 @@ export interface ChatStreamProps {
   onPark: AssistantBubbleProp<"onPark">;
   onCommit: AssistantBubbleProp<"onCommit">;
   onRegenerate: (index: number) => void;
+  onSend?: (message: string) => void;
   onPreviewCode: AssistantBubbleProp<"onPreviewCode">;
   onRunCommand: AssistantBubbleProp<"onRunCommand">;
   onPrCreated: (url: string) => void;
@@ -105,7 +106,7 @@ export function ChatStream(props: ChatStreamProps) {
     wsModel, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo, trustMode,
-    onCatchProceed, onCatchAdjust, onPark, onCommit, onRegenerate,
+    onCatchProceed, onCatchAdjust, onPark, onCommit, onRegenerate, onSend,
     onPreviewCode, onRunCommand, onPrCreated, onExtractToForge, onReviewDiff,
     onEditDeclined, onAlertDismiss, onStreamActivityUpdate, onStreamActivityComplete,
     onCommitCardDone, onSurfaceAction,
@@ -201,6 +202,7 @@ export function ChatStream(props: ChatStreamProps) {
               onPark={onPark}
               onCommit={onCommit}
               onRegenerate={() => onRegenerate(i)}
+              onSend={onSend}
               onPreviewCode={onPreviewCode}
               onRunCommand={onRunCommand}
               onPrCreated={onPrCreated}

@@ -6174,6 +6174,7 @@ export default function Workspace() {
               onPark: handlePark,
               onCommit: handleCommit,
               onRegenerate: (i) => handleRegenerate(i),
+              onSend: (msg) => sendFromIntentCapture(msg),
               onPreviewCode: handlePreviewCode,
               onRunCommand: handleRunCommand,
               onPrCreated: (url) => { setSessionPrUrl(url); setLeftTab("diff"); },
