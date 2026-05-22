@@ -3596,6 +3596,38 @@ export default function Workspace() {
   const projectBtnRef = useRef<HTMLButtonElement>(null);
   const [showViewMenu, setShowViewMenu] = useState(false);
 
+  const runThreadSearch = useCallback((query: string, direction: 1 | -1 = 1) => {
+    const q = query.trim().toLowerCase();
+    if (!q) { setThreadSearchStatus(""); return; }
+    const cur = threadSearchCursorRef.current;
+    if (cur.q !== q) {
+      const matches: number[] = [];
+      messages.forEach((m, i) => {
+        if ((m.content ?? "").toLowerCase().includes(q)) matches.push(i);
+      });
+      threadSearchCursorRef.current = { q, matches, idx: -1 };
+    }
+    const ref = threadSearchCursorRef.current;
+    if (ref.matches.length === 0) { setThreadSearchStatus("No matches"); return; }
+    ref.idx = (ref.idx + direction + ref.matches.length) % ref.matches.length;
+    const targetIdx = ref.matches[ref.idx];
+    setThreadSearchStatus(`${ref.idx + 1} of ${ref.matches.length}`);
+    requestAnimationFrame(() => {
+      const root = chatPanelScrollRef.current;
+      if (!root) return;
+      const el = root.querySelector<HTMLElement>(`[data-atlas-msg-idx="${targetIdx}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const prev = el.style.boxShadow;
+      const prevT = el.style.transition;
+      el.style.transition = "box-shadow 200ms ease";
+      el.style.boxShadow = "0 0 0 2px color-mix(in oklab, var(--atlas-gold) 65%, transparent)";
+      window.setTimeout(() => { el.style.boxShadow = prev; el.style.transition = prevT; }, 1400);
+    });
+  }, [messages]);
+
+
+
   const downloadConversation = useCallback((format: "md" | "json") => {
     const pname = projectState.project?.name ?? "atlas";
     const projectName = pname.replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
