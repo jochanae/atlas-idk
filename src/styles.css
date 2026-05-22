@@ -252,7 +252,7 @@ html, body {
 
 [data-theme="parchment"] {
   color-scheme: light;
-  --atlas-gold-rgb: 180, 83, 9;
+  --atlas-gold-rgb: 139, 94, 60;
   --atlas-bg-rgb: 255, 255, 255;
   --atlas-surface-rgb: 248, 249, 250;
   --atlas-muted-rgb: 118, 118, 118;
