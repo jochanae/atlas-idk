@@ -1062,7 +1062,23 @@ export function AssistantBubble({
         )}
 
         <div style={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85 }}>
-          {isNew ? (
+          {message.streaming ? (
+            <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
+              {cleanContent}
+              <span
+                aria-hidden
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: "1em",
+                  background: "currentColor",
+                  marginLeft: 2,
+                  verticalAlign: "text-bottom",
+                  animation: "atlas-cursor-blink 1s step-end infinite",
+                }}
+              />
+            </span>
+          ) : isNew ? (
             <StreamingMarkdown
               content={cleanContent}
               onComplete={onStreamActivityComplete}
@@ -1072,7 +1088,7 @@ export function AssistantBubble({
           )}
         </div>
 
-        {cleanContent.trim() && !message.catchPayload && !commitPayload && (
+        {cleanContent.trim() && !message.streaming && !message.catchPayload && !commitPayload && (
           <div style={{ marginTop: 6 }}>
             <ThoughtForBadge
               metrics={{
@@ -1085,9 +1101,11 @@ export function AssistantBubble({
           </div>
         )}
 
-        <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
+        {!message.streaming && (
+          <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
+        )}
 
-        {message.plan && planState !== "skipped" && (
+        {!message.streaming && message.plan && planState !== "skipped" && (
           <PlanCard
             plan={message.plan}
             messageId={planMessageId}
@@ -1130,7 +1148,7 @@ export function AssistantBubble({
         )}
 
         {/* Code ready card — self-repair paths */}
-        {selfEdits.length > 0 && (
+        {!message.streaming && selfEdits.length > 0 && (
           <div
             style={{
               marginTop: 12, padding: "11px 14px", borderRadius: 8,
@@ -1185,7 +1203,7 @@ export function AssistantBubble({
           </div>
         )}
 
-        {(userEdits.length > 0 || (message.linePatches && message.linePatches.length > 0)) && (
+        {!message.streaming && (userEdits.length > 0 || (message.linePatches && message.linePatches.length > 0)) && (
           <InlineDiffCard
             fileEdits={userEdits}
             linePatches={message.linePatches ?? []}
@@ -1199,7 +1217,7 @@ export function AssistantBubble({
           />
         )}
 
-        {commitPayload && !commitCardDone && (
+        {!message.streaming && commitPayload && !commitCardDone && (
           <CommitCard
             payload={commitPayload}
             projectId={projectId}
@@ -1212,7 +1230,7 @@ export function AssistantBubble({
           />
         )}
 
-        {message.catchPayload && !message.catchResolved && (
+        {!message.streaming && message.catchPayload && !message.catchResolved && (
           <DecisionLogCard
             payload={message.catchPayload}
             projectId={projectId}
@@ -1222,7 +1240,7 @@ export function AssistantBubble({
           />
         )}
 
-        {message.alertPayload && !message.alertResolved && (
+        {!message.streaming && message.alertPayload && !message.alertResolved && (
           <ProactiveAlertCard
             payload={message.alertPayload}
             projectId={projectId}
@@ -1234,7 +1252,7 @@ export function AssistantBubble({
 
 
         {/* CMD_EXEC — runnable command card suggested by Atlas */}
-        {cmdExec && (
+        {!message.streaming && cmdExec && (
           <div
             style={{
               marginTop: 12, padding: "10px 14px",
@@ -1276,6 +1294,7 @@ export function AssistantBubble({
         )}
 
         {/* Action row — icon-only cockpit buttons */}
+        {!message.streaming && (
         <div style={{ display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
 
           {/* Copy */}
@@ -1367,6 +1386,7 @@ export function AssistantBubble({
             </button>
           )}
         </div>
+        )}
       </div>
 
       {showPushModal && activeEdits.length > 0 && (

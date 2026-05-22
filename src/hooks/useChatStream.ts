@@ -257,20 +257,37 @@ export function useChatStream(
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-        .then(async (r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      void (async () => {
+        let streamingId: number | null = null;
+        let streamingFinished = false;
+        try {
+          const r = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
+          if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`);
 
-          const reader = r.body!.getReader();
+          const placeholderId = -Date.now();
+          streamingId = placeholderId;
+          let streamedText = "";
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: placeholderId,
+              role: "assistant",
+              content: "",
+              streaming: true,
+              sentAt: new Date().toISOString(),
+              model: sendCtxRef.current.wsModel,
+            },
+          ]);
+
+          const reader = r.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
-          let finalPayload: any = null;
 
           while (true) {
             const { done, value } = await reader.read();
@@ -288,23 +305,26 @@ export function useChatStream(
               }
               if (!evtData) continue;
 
-              if (evtName === "narration") {
-                try {
+              try {
+                if (evtName === "token") {
+                  const chunk = JSON.parse(evtData) as string;
+                  streamedText += chunk;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === placeholderId
+                        ? { ...m, content: streamedText }
+                        : m
+                    )
+                  );
+                } else if (evtName === "narration") {
                   const text = JSON.parse(evtData) as string;
                   setActivityStream({ active: true, content: text });
-                } catch {}
-              } else if (evtName === "done") {
-                try {
-                  finalPayload = JSON.parse(evtData);
-                } catch {}
-              }
-            }
-          }
-
-          return finalPayload;
-        })
-        .then((res) => {
-          if (!res) return;
+                } else if (evtName === "done") {
+                  const res = JSON.parse(evtData);
+                  streamingFinished = true;
+                  setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
+                  streamingId = null;
+                  if (!res) return;
           if (res.content && typeof res.content === "string") {
             const driftMatch = res.content.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
             if (driftMatch) {
@@ -379,8 +399,16 @@ export function useChatStream(
             });
             queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           }
-        })
-        .catch((err: unknown) => {
+                }
+              } catch {
+                // malformed event — skip
+              }
+            }
+          }
+        } catch (err: unknown) {
+          if (streamingId !== null) {
+            setMessages((prev) => prev.filter((m) => m.id !== streamingId));
+          }
           if (err instanceof Error && err.name === "AbortError") {
             setActivityStream({ active: false, content: "" });
             return;
@@ -388,8 +416,14 @@ export function useChatStream(
           void reportError(err, { projectId });
           setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", sentAt: new Date().toISOString() }]);
           setActivityStream({ active: false, content: "" });
-        })
-        .finally(() => { setChatPending(false); abortControllerRef.current = null; });
+        } finally {
+          if (!streamingFinished && streamingId !== null) {
+            setMessages((prev) => prev.filter((m) => m.id !== streamingId));
+          }
+          setChatPending(false);
+          abortControllerRef.current = null;
+        }
+      })();
     },
     [entries, projectId, fileContext, forgeContext, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onFlowNodes],
   );

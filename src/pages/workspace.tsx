@@ -155,6 +155,7 @@ export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
   content: string;
+  streaming?: boolean;
   terminalCmd?: unknown;
   terminalResult?: unknown;
   intentType?: string | null;
