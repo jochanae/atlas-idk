@@ -453,7 +453,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               width: 56,
               height: 56,
               borderRadius: "50%",
-              border: "2px solid #D4AF37",
+              border: "2px solid var(--atlas-gold)",
               background: "var(--atlas-bg)",
               display: "flex",
               alignItems: "center",
