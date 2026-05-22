@@ -39,7 +39,7 @@ export interface UseChatStreamOptions {
   fileContext: string | null;
   forgeContext: string | null;
   dbUrl: string | null;
-  sendCtxRef: MutableRefObject<{ wsLens: WorkspaceLens; wsModel: string }>;
+  sendCtxRef: MutableRefObject<{ wsLens: WorkspaceLens; wsModel: string; githubToken: string | null }>;
   setDetectedLens: Dispatch<SetStateAction<WorkspaceLens | null>>;
   setScenarioBuffer: Dispatch<SetStateAction<Array<{ role: string; content: string }>>>;
   setLeftTab: Dispatch<SetStateAction<"chat" | "diff" | "blueprints" | "terminal">>;
