@@ -323,7 +323,7 @@ export function useChatStream(
           const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
           setMessages((prev) => [...prev, {
             id: res.messageId, role: "assistant",
-            content: res.content, intentType: res.intentType, catchPayload: cp,
+            content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType, catchPayload: cp,
             terminalCmd: res.terminalCmd ?? res.terminal_cmd,
             terminalResult: res.terminalResult ?? res.terminal_result,
             modelUsed: res.modelUsed ?? res.model_used ?? null,
