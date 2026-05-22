@@ -1467,6 +1467,7 @@ export default function MasterMap() {
                         letterSpacing: "0.06em",
                         cursor: "pointer",
                         textTransform: "uppercase",
+                        pointerEvents: "auto",
                       }}
                     >
                       Open workspace →
