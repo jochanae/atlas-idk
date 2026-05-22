@@ -214,46 +214,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     fireTap();
   };
 
-  // Close sheet on Escape
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOpen]);
-
-  const goVariant = (target: "ambient" | "active" | "operational") => {
-    setSheetOpen(false);
-    try { (navigator as any).vibrate?.(10); } catch {}
-    if (typeof window === "undefined") return;
-    const path = window.location.pathname;
-    const projectMatch = path.match(/^\/project\/([^/]+)/);
-    const lastProject = projectMatch?.[1] || localStorage.getItem("atlas:lastProjectId");
-    if (projectMatch) localStorage.setItem("atlas:lastProjectId", projectMatch[1]);
-
-    if (target === "ambient") {
-      window.location.assign("/home");
-    } else if (target === "active") {
-      // Active = Home with composer focused
-      if (path === "/home" || path === "/") {
-        window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
-      } else {
-        sessionStorage.setItem("atlas:focusComposerOnLoad", "1");
-        window.location.assign("/home");
-      }
-    } else {
-      // Operational = workspace chat
-      if (lastProject) {
-        if (projectMatch) {
-          window.dispatchEvent(new CustomEvent("atlas:focus-composer"));
-        } else {
-          window.location.assign(`/project/${lastProject}`);
-        }
-      } else {
-        window.location.assign("/projects");
-      }
-    }
-  };
 
 
 
