@@ -6763,6 +6763,12 @@ export default function Workspace() {
                 onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
                 onNavLedger={() => setMobileTab("ledger")}
                 onNavPreview={() => setMobileTab("preview")}
+                onZipTrigger={() => {
+                  const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
+                  input?.click();
+                }}
+                zipLoaded={zipFiles.length > 0}
+                zipFileName={zipName}
               />
             </div>
           </div>
