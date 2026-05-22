@@ -19,7 +19,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * decisions live here.
  */
 export type DockMode = "ambient" | "active" | "operational";
-export type OperationalTab = "chat" | "ledger" | "preview" | "map" | "files";
+export type OperationalTab = "chat" | "ledger" | "preview" | "map" | "files" | "memory" | "blueprints" | "connections" | "forge";
 
 export interface UnifiedContextDockProps {
   mode: DockMode;
@@ -42,6 +42,9 @@ export interface UnifiedContextDockProps {
   onLedger?: () => void;
   onPreview?: () => void;
   onFlow?: () => void;
+  onMemory?: () => void;
+  onBlueprints?: () => void;
+  onConnections?: () => void;
   activeOperationalTab?: OperationalTab;
 
   // badges (operational ledger)
@@ -127,6 +130,33 @@ const ICONS = {
       <path d="M8 22h8M12 18v4" />
     </svg>
   ),
+  memory: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
+    </svg>
+  ),
+  blueprints: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M9 21V9" />
+    </svg>
+  ),
+  connections: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="12" r="2" />
+      <circle cx="18" cy="6" r="2" />
+      <circle cx="18" cy="18" r="2" />
+      <path d="M8 11l8-4M8 13l8 4" />
+    </svg>
+  ),
+  more: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="19" cy="12" r="2" />
+    </svg>
+  ),
 };
 
 function AxiomCenterSVG({ size = 52 }: { size?: number }) {
@@ -156,6 +186,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
 
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const longPressTimer = useRef<number | null>(null);
   const longPressFired = useRef(false);
 
@@ -200,13 +231,18 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     fireTap();
   };
 
-  // Close sheet on Escape
+  // Close sheets on Escape
   useEffect(() => {
-    if (!sheetOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
+    if (!sheetOpen && !moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSheetOpen(false);
+        setMoreOpen(false);
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sheetOpen]);
+  }, [sheetOpen, moreOpen]);
 
   const goVariant = (target: "ambient" | "active" | "operational") => {
     setSheetOpen(false);
@@ -267,6 +303,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     ];
   } else {
     const at = props.activeOperationalTab;
+    const moreActive = at === "memory" || at === "blueprints" || at === "connections" || at === "forge";
     left = [
       { id: "chat", label: "Chat", icon: ICONS.chat, onClick: props.onChat, active: at === "chat" },
       {
@@ -278,10 +315,12 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         badge: props.entryCount && props.entryCount > 0 ? props.entryCount : undefined,
         alert: props.activeCatch,
       },
+      { id: "files", label: "Files", icon: ICONS.files, onClick: props.onFiles, active: at === "files" },
     ];
     right = [
       { id: "preview", label: "Preview", icon: ICONS.preview, onClick: props.onPreview, active: at === "preview" },
       { id: "flow", label: "Flow", icon: ICONS.map, onClick: props.onFlow, active: at === "map" },
+      { id: "more", label: "More", icon: ICONS.more, onClick: () => setMoreOpen(true), active: moreActive },
     ];
   }
 
@@ -616,6 +655,92 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             @keyframes udockFade { from { opacity: 0; } to { opacity: 1; } }
             @keyframes udockSlideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
           `}</style>
+        </>
+      )}
+
+      {mode === "operational" && moreOpen && (
+        <>
+          <div
+            onClick={() => setMoreOpen(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 290,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+            aria-hidden
+          />
+          <div
+            role="dialog"
+            aria-label="More workspace tabs"
+            style={{
+              position: "fixed",
+              bottom: 64,
+              left: 0,
+              right: 0,
+              zIndex: 300,
+              background: "var(--atlas-surface)",
+              borderTop: "1px solid rgba(201,162,76,0.18)",
+              borderRadius: "14px 14px 0 0",
+              padding: "16px 0 12px",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 3,
+                borderRadius: 2,
+                background: "rgba(201,162,76,0.25)",
+                margin: "0 auto 16px",
+              }}
+            />
+            {(
+              [
+                { id: "memory" as const, label: "Memory", icon: ICONS.memory, onClick: props.onMemory },
+                { id: "blueprints" as const, label: "Blueprints", icon: ICONS.blueprints, onClick: props.onBlueprints },
+                { id: "connections" as const, label: "Connections", icon: ICONS.connections, onClick: props.onConnections },
+                { id: "forge" as const, label: "Forge", icon: ICONS.forge, onClick: props.onForge },
+              ] as Array<{ id: "memory" | "blueprints" | "connections" | "forge"; label: string; icon: ReactNode; onClick?: () => void }>
+            ).map(({ id, label, icon, onClick }) => {
+              const active = props.activeOperationalTab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    onClick?.();
+                    setMoreOpen(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "13px 24px",
+                    background: active ? "rgba(201,162,76,0.07)" : "transparent",
+                    border: "none",
+                    borderLeft: `3px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
+                    cursor: onClick ? "pointer" : "default",
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 12,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    textAlign: "left",
+                    WebkitTapHighlightColor: "transparent",
+                    transition: "all 160ms ease",
+                  }}
+                >
+                  {icon}
+                  {label}
+                  {active && (
+                    <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--atlas-gold)", opacity: 0.7 }}>
+                      ACTIVE
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </>
       )}
     </div>

@@ -20,7 +20,7 @@ import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 
-import { UnifiedContextDock } from "../components/UnifiedContextDock";
+import { UnifiedContextDock, type OperationalTab } from "../components/UnifiedContextDock";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
@@ -194,6 +194,7 @@ export interface LinkedRepo {
 }
 
 type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections";
+type MobileWorkspaceTab = "chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "forge";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
@@ -3060,13 +3061,14 @@ function MobileTabBar({
   entryCount,
   activeCatch,
 }: {
-  activeTab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview";
-  onTabChange: (tab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview") => void;
+  activeTab: MobileWorkspaceTab;
+  onTabChange: (tab: MobileWorkspaceTab) => void;
   entryCount: number;
   activeCatch: boolean;
 }) {
   const [, navTo] = useLocation();
-  const tabs: { id: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
+  const [showMore, setShowMore] = useState(false);
+  const tabs: { id: "chat" | "ledger" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
     {
       id: "chat",
       label: "Chat",
@@ -3225,6 +3227,168 @@ function MobileTabBar({
           </button>
         );
       })}
+      <button
+        onClick={() => setShowMore(true)}
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          color: ["memory", "blueprints", "connections", "forge"].includes(activeTab)
+            ? "var(--atlas-gold)"
+            : "var(--atlas-muted)",
+          transition: "color 180ms ease",
+          position: "relative",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "20%",
+            right: "20%",
+            height: 2,
+            borderRadius: "0 0 2px 2px",
+            background: ["memory", "blueprints", "connections", "forge"].includes(activeTab)
+              ? "var(--atlas-gold)"
+              : "transparent",
+            transition: "background 180ms ease",
+          }}
+        />
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="19" cy="12" r="2" />
+        </svg>
+        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1 }}>
+          More
+        </span>
+      </button>
+
+      {showMore && (
+        <>
+          <div
+            onClick={() => setShowMore(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 290,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              bottom: 64,
+              left: 0,
+              right: 0,
+              zIndex: 300,
+              background: "var(--atlas-surface)",
+              borderTop: "1px solid rgba(201,162,76,0.18)",
+              borderRadius: "14px 14px 0 0",
+              padding: "16px 0 12px",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 3,
+                borderRadius: 2,
+                background: "rgba(201,162,76,0.25)",
+                margin: "0 auto 16px",
+              }}
+            />
+            {(
+              [
+                {
+                  id: "memory" as const,
+                  label: "Memory",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
+                      <path d="M8 9h8M8 13h8M8 17h5" />
+                    </svg>
+                  ),
+                },
+                {
+                  id: "blueprints" as const,
+                  label: "Blueprints",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M3 9h18M9 21V9" />
+                    </svg>
+                  ),
+                },
+                {
+                  id: "connections" as const,
+                  label: "Connections",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6" cy="12" r="2" />
+                      <circle cx="18" cy="6" r="2" />
+                      <circle cx="18" cy="18" r="2" />
+                      <path d="M8 11l8-4M8 13l8 4" />
+                    </svg>
+                  ),
+                },
+                {
+                  id: "forge" as const,
+                  label: "Forge",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  ),
+                },
+              ] as { id: "memory" | "blueprints" | "connections" | "forge"; label: string; icon: React.ReactNode }[]
+            ).map(({ id, label, icon }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => { onTabChange(id); setShowMore(false); }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "13px 24px",
+                    background: active ? "rgba(201,162,76,0.07)" : "transparent",
+                    border: "none",
+                    borderLeft: `3px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
+                    cursor: "pointer",
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 12,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    textAlign: "left",
+                    WebkitTapHighlightColor: "transparent",
+                    transition: "all 160ms ease",
+                  }}
+                >
+                  {icon}
+                  {label}
+                  {active && (
+                    <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--atlas-gold)", opacity: 0.7 }}>
+                      ACTIVE
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -3612,7 +3776,7 @@ export default function Workspace() {
     scenarioStartIdxRef,
   } = useChatLens(id);
   const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal">("chat");
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview">(() =>
+  const [mobileTab, setMobileTab] = useState<MobileWorkspaceTab>(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [autoNameKey, setAutoNameKey] = useState(0);
@@ -6634,7 +6798,7 @@ export default function Workspace() {
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
           <div
-            style={{ position: "fixed", top: 46, left: 0, right: 0, bottom: mobileTab === "map" ? 0 : 64, zIndex: 50, display: "flex", justifyContent: "flex-end" }}
+            style={{ position: "fixed", top: 46, left: 0, right: 0, bottom: mobileTab === "map" || mobileTab === "forge" ? 0 : 64, zIndex: 50, display: "flex", justifyContent: "flex-end" }}
           >
             {/* Backdrop — hidden in fullscreen */}
             {!rightFullscreen && (
@@ -6678,10 +6842,10 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 onHomeNav={() => setLocation("/home")}
-                forceTab={mobileTab === "map" ? "map" : mobileTab === "files" ? "files" : mobileTab === "preview" ? "preview" : mobileTab === "blueprints" ? "blueprints" : undefined}
+                forceTab={mobileTab === "forge" ? "map" : mobileTab === "map" ? "map" : mobileTab === "files" ? "files" : mobileTab === "preview" ? "preview" : mobileTab === "blueprints" ? "blueprints" : mobileTab === "memory" ? "memory" : mobileTab === "connections" ? "connections" : undefined}
                 onSendIntent={sendFromIntentCapture}
                 onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
-                onBackToChat={mobileTab === "map" ? () => { setMobileTab("chat"); setRightOpen(false); } : undefined}
+                onBackToChat={mobileTab === "map" || mobileTab === "forge" ? () => { setMobileTab("chat"); setRightOpen(false); } : undefined}
                 onMapReadinessChange={setMapReadiness}
                 displayedReadinessScore={displayedReadinessScore}
                 onSystemNodeMessage={pushSystemNodeMessage}
@@ -6717,15 +6881,20 @@ export default function Workspace() {
       </UnifiedConversationSurface>
 
 
-      {isMobile && mobileTab !== "map" && (
+      {isMobile && mobileTab !== "map" && mobileTab !== "forge" && (
         <UnifiedContextDock
           mode="operational"
-          activeOperationalTab={mobileTab as "chat" | "ledger" | "preview" | "map" | "files"}
+          activeOperationalTab={mobileTab as OperationalTab}
           onAtlasCore={() => { setMobileTab("chat"); setRightOpen(false); }}
           onChat={() => setMobileTab("chat")}
           onLedger={() => setMobileTab("ledger")}
+          onFiles={() => setMobileTab("files")}
           onPreview={() => setMobileTab("preview")}
           onFlow={() => setLocation("/map")}
+          onMemory={() => setMobileTab("memory")}
+          onBlueprints={() => setMobileTab("blueprints")}
+          onConnections={() => setMobileTab("connections")}
+          onForge={() => { setMobileTab("forge"); setHandoverOpen(true); }}
           entryCount={entryCount}
           activeCatch={!!activeCatch}
         />
