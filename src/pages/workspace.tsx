@@ -2165,6 +2165,9 @@ function RightPanel({
   onContinueSession?: (sessionId: number | string) => void;
   onNavLedger?: () => void;
   onNavPreview?: () => void;
+  onZipTrigger?: () => void;
+  zipLoaded?: boolean;
+  zipFileName?: string;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
