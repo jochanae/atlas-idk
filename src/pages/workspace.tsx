@@ -2493,12 +2493,9 @@ function RightPanel({
           onLinkedRepoChange={onLinkedRepoChange}
           dbUrl={dbUrl}
           onDbUrlChange={onDbUrlChange}
-          onZipTrigger={() => {
-            const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
-            input?.click();
-          }}
-          zipLoaded={zipFiles.length > 0}
-          zipFileName={zipName}
+          onZipTrigger={onZipTrigger}
+          zipLoaded={zipLoaded}
+          zipFileName={zipFileName}
         />
       )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} />}
