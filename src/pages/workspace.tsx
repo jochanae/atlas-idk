@@ -2120,6 +2120,9 @@ function RightPanel({
   onContinueSession,
   onNavLedger,
   onNavPreview,
+  onZipTrigger,
+  zipLoaded,
+  zipFileName,
 }: {
   projectId: number;
   entries: Entry[];
@@ -2165,6 +2168,9 @@ function RightPanel({
   onContinueSession?: (sessionId: number | string) => void;
   onNavLedger?: () => void;
   onNavPreview?: () => void;
+  onZipTrigger?: () => void;
+  zipLoaded?: boolean;
+  zipFileName?: string;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
@@ -2480,7 +2486,18 @@ function RightPanel({
         </div>
       )}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
-      {tab === "files" && <FilesPanel projectId={projectId} onFileContext={onFileContext} onLinkedRepoChange={onLinkedRepoChange} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />}
+      {tab === "files" && (
+        <FilesPanel
+          projectId={projectId}
+          onFileContext={onFileContext}
+          onLinkedRepoChange={onLinkedRepoChange}
+          dbUrl={dbUrl}
+          onDbUrlChange={onDbUrlChange}
+          onZipTrigger={onZipTrigger}
+          zipLoaded={zipLoaded}
+          zipFileName={zipFileName}
+        />
+      )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} />}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
@@ -6295,6 +6312,12 @@ export default function Workspace() {
             onForgeNodesConsumed={() => setExternalForgeNodes([])}
             onForgeCompleted={() => void updateForgeState("forged")}
             onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
+            onZipTrigger={() => {
+              const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
+              input?.click();
+            }}
+            zipLoaded={zipFiles.length > 0}
+            zipFileName={zipName}
           />
         ) : undefined}
         showFlow={!isMobile}
@@ -6740,6 +6763,12 @@ export default function Workspace() {
                 onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
                 onNavLedger={() => setMobileTab("ledger")}
                 onNavPreview={() => setMobileTab("preview")}
+                onZipTrigger={() => {
+                  const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
+                  input?.click();
+                }}
+                zipLoaded={zipFiles.length > 0}
+                zipFileName={zipName}
               />
             </div>
           </div>

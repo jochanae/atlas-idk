@@ -138,12 +138,18 @@ export function FilesPanel({
   onLinkedRepoChange,
   dbUrl,
   onDbUrlChange,
+  onZipTrigger,
+  zipLoaded,
+  zipFileName,
 }: {
   projectId: number;
   onFileContext: (ctx: string | null) => void;
   onLinkedRepoChange: (repo: LinkedRepo | null) => void;
   dbUrl: string | null;
   onDbUrlChange: (url: string | null) => void;
+  onZipTrigger?: () => void;
+  zipLoaded?: boolean;
+  zipFileName?: string;
 }) {
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
@@ -542,6 +548,99 @@ export function FilesPanel({
     }
     return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 18px", gap: 14 }}>
+        {/* —— ZIP Upload —— */}
+        <div style={{ width: "100%", marginBottom: 4 }}>
+          <div style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "var(--atlas-muted)", marginBottom: 8,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <span>Upload ZIP</span>
+            {zipLoaded && (
+              <span style={{
+                fontSize: 9, color: "rgba(134,239,172,0.8)",
+                background: "rgba(134,239,172,0.08)",
+                border: "1px solid rgba(134,239,172,0.2)",
+                padding: "2px 7px", borderRadius: 10,
+              }}>
+                ACTIVE
+              </span>
+            )}
+          </div>
+
+          {zipLoaded ? (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 12px", borderRadius: 7,
+              background: "rgba(201,162,76,0.05)",
+              border: "1px solid rgba(201,162,76,0.2)",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+              </svg>
+              <span style={{
+                flex: 1, fontSize: 11, fontFamily: "var(--app-font-mono)",
+                color: "rgba(201,162,76,0.85)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {zipFileName || "ZIP loaded"}
+              </span>
+              <button
+                onClick={() => onZipTrigger?.()}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(201,162,76,0.2)",
+                  borderRadius: 5, padding: "3px 9px",
+                  fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                  color: "rgba(201,162,76,0.6)",
+                  cursor: "pointer", letterSpacing: "0.06em",
+                }}
+              >
+                Replace
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onZipTrigger?.()}
+              style={{
+                width: "100%", padding: "11px 14px",
+                background: "rgba(201,162,76,0.04)",
+                border: "1px dashed rgba(201,162,76,0.25)",
+                borderRadius: 7, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+                color: "rgba(201,162,76,0.7)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11, letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                transition: "all 160ms ease",
+                WebkitTapHighlightColor: "transparent",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "rgba(201,162,76,0.08)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "rgba(201,162,76,0.04)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.25)";
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Upload ZIP — no GitHub needed
+            </button>
+          )}
+
+          <div style={{
+            marginTop: 6, fontSize: 10, color: "rgba(120,113,108,0.5)",
+            fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
+          }}>
+            Drop a ZIP of your project and Atlas reads the code directly. No repo required.
+          </div>
+        </div>
+        {/* —— GitHub connect —— */}
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" opacity={0.25}>
           <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.8c.85.004 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z" fill="var(--atlas-fg)" />
         </svg>
