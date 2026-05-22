@@ -22,7 +22,7 @@ export function useChatLens(projectId: number | string | undefined) {
   const [detectedLens, setDetectedLens] = useState<WorkspaceLens | null>(null);
   const scenarioStartIdxRef = useRef<number>(-1);
   const [showScenarioPrompt, setShowScenarioPrompt] = useState(false);
-  const sendCtxRef = useRef({ wsLens: "flow" as WorkspaceLens, wsModel: "claude" });
+  const sendCtxRef = useRef({ wsLens: "flow" as WorkspaceLens, wsModel: "claude", githubToken: null as string | null });
   const [pendingLensSwitch, setPendingLensSwitch] = useState<WorkspaceLens | null>(null);
   const [scenarioBuffer, setScenarioBuffer] = useState<Array<{ role: string; content: string }>>([]);
   const [showWsModelSheet, setShowWsModelSheet] = useState(false);
