@@ -3586,8 +3586,110 @@ export default function Workspace() {
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [switchToExpanded, setSwitchToExpanded] = useState(false);
   const [switchProjectDeleteId, setSwitchProjectDeleteId] = useState<number | null>(null);
+  // null = panel closed; string = open with current draft
+  const [archiveReasonDraft, setArchiveReasonDraft] = useState<string | null>(null);
+  const [sessionActionBusy, setSessionActionBusy] = useState(false);
   const projectBtnRef = useRef<HTMLButtonElement>(null);
   const [showViewMenu, setShowViewMenu] = useState(false);
+
+  const downloadConversation = useCallback((format: "md" | "json") => {
+    const projectName = (project?.name ?? "atlas").replace(/[^a-z0-9-_]+/gi, "-").toLowerCase();
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `${projectName}-conversation-${stamp}.${format}`;
+    let blob: Blob;
+    if (format === "json") {
+      blob = new Blob([JSON.stringify({
+        project: project?.name ?? null,
+        sessionId,
+        exportedAt: new Date().toISOString(),
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          sentAt: m.sentAt ?? null,
+          model: (m as any).model ?? null,
+        })),
+      }, null, 2)], { type: "application/json" });
+    } else {
+      const lines: string[] = [
+        `# ${project?.name ?? "Atlas"} — Conversation`,
+        `_Exported ${new Date().toLocaleString()}_`,
+        "",
+      ];
+      for (const m of messages) {
+        const who = m.role === "user" ? "You" : "Atlas";
+        lines.push(`## ${who}`);
+        lines.push("");
+        lines.push((m.content ?? "").trim());
+        lines.push("");
+        lines.push("---");
+        lines.push("");
+      }
+      blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`Downloaded ${filename}`);
+  }, [messages, project, sessionId]);
+
+  const handleNewSession = useCallback(async () => {
+    if (sessionActionBusy) return;
+    setSessionActionBusy(true);
+    try {
+      const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
+      setMessages([]);
+      priorLoaded.current = false;
+      historyMsgCountRef.current = 0;
+      setSessionId(s.id);
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
+      setShowProjectMenu(false);
+      toast.success("Started a new session");
+    } catch (e) {
+      reportError(e, { projectId: id });
+      toast.error("Could not start new session");
+    } finally {
+      setSessionActionBusy(false);
+    }
+  }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
+
+  const handleArchiveAndNew = useCallback(async (reason: string) => {
+    const trimmed = reason.trim();
+    if (!trimmed || !sessionId || sessionActionBusy) return;
+    setSessionActionBusy(true);
+    try {
+      // Archive current session: status='archived' + reason appended to title.
+      // RLS (sessions_owner_all) allows the owning user to update directly.
+      const existingTitle = (sessions?.find((s) => s.id === sessionId)?.title) ?? "Session";
+      const newTitle = `${existingTitle} — archived: ${trimmed}`.slice(0, 240);
+      const { error: updErr } = await supabase
+        .from("sessions")
+        .update({ status: "archived", title: newTitle })
+        .eq("id", sessionId);
+      if (updErr) throw updErr;
+      // Create fresh session and switch to it.
+      const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
+      setMessages([]);
+      priorLoaded.current = false;
+      historyMsgCountRef.current = 0;
+      setSessionId(s.id);
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
+      setArchiveReasonDraft(null);
+      setShowProjectMenu(false);
+      toast.success("Session archived. Started a new one.");
+    } catch (e) {
+      reportError(e, { projectId: id });
+      toast.error("Could not archive session");
+    } finally {
+      setSessionActionBusy(false);
+    }
+  }, [sessionId, sessions, createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
+
+
   // Close portaled header dropdowns on scroll/resize so they don't float off their anchors.
   useEffect(() => {
     if (!showProjectMenu) return;
