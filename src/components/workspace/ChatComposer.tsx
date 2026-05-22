@@ -590,6 +590,8 @@ export function ChatComposer(props: ChatComposerProps) {
 
               {/* Source picker dropdown */}
               {showSrcPicker && (
+                <>
+                <div onClick={() => setShowSrcPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
                 <div
                   className="atlas-popover"
                   style={{
@@ -623,6 +625,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     File loads into context · next message only
                   </div>
                 </div>
+                </>
               )}
             </div>
 

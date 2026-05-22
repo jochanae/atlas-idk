@@ -1882,10 +1882,10 @@ function ViewKey({ allProjects, palette, onRecenter, onDive, onNewIdea }: {
       }
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFlowOpen(false); };
-    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("pointerdown", onPointer, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("pointerdown", onPointer, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [flowOpen]);
