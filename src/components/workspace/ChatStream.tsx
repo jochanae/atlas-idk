@@ -52,6 +52,7 @@ export interface ChatStreamProps {
 
   // long-thread banner
   wsModel: string;
+  wsLens?: string;
   onSwitchToGemini: () => void;
 
   // user bubble
@@ -102,7 +103,7 @@ export function ChatStream(props: ChatStreamProps) {
     messages, chatPending, activityStream, liveGeneration, historyMsgCountRef,
     priorLoaded,
     isHomeHandoff, homeHandoffMeta, isBrandNewProject, project, onStarterPrompt,
-    wsModel, onSwitchToGemini,
+    wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo, trustMode,
     onCatchProceed, onCatchAdjust, onPark, onCommit, onRegenerate,
@@ -261,7 +262,7 @@ export function ChatStream(props: ChatStreamProps) {
           isComplete={false}
         />
       ) : activityStream.active ? (
-        <AtlasActivityBar content={activityStream.content} />
+        <AtlasActivityBar content={activityStream.content} lens={wsLens} />
       ) : null}
 
       <div ref={bottomRef} />

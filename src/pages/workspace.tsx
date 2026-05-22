@@ -6004,6 +6004,7 @@ export default function Workspace() {
                 setTimeout(() => textareaRef.current?.focus(), 0);
               },
               wsModel,
+              wsLens,
               onSwitchToGemini: () => { setWsModel("gemini"); },
               onEditUserMessage: (content) => {
                 setInput(content);
