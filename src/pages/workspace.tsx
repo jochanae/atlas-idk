@@ -6312,6 +6312,12 @@ export default function Workspace() {
             onForgeNodesConsumed={() => setExternalForgeNodes([])}
             onForgeCompleted={() => void updateForgeState("forged")}
             onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
+            onZipTrigger={() => {
+              const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
+              input?.click();
+            }}
+            zipLoaded={zipFiles.length > 0}
+            zipFileName={zipName}
           />
         ) : undefined}
         showFlow={!isMobile}
