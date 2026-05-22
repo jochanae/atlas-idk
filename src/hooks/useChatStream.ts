@@ -264,9 +264,13 @@ export function useChatStream(
         let streamingId: number | null = null;
         let streamingFinished = false;
         try {
+          const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
           const r = await fetch("/api/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(ghToken ? { "x-github-token": ghToken } : {}),
+            },
             credentials: "include",
             body: JSON.stringify(body),
             signal: controller.signal,
