@@ -3345,14 +3345,29 @@ export default function Workspace() {
   // can own sessionId/ensureSessionId. project/projectLoading/hasForgeNodes etc.
   // still live in their original spot below.
   const projectState = useProjectState(Number.isFinite(id) ? id : null);
-  const useProjectStateFallback = !!projectState.error;
+  // Run the session list whenever projectState errored OR finished loading
+  // without an activeSession. Previously this was gated on error only, which
+  // meant a successful `/state` response with `activeSession: null` never
+  // triggered a fallback — so the chat bootstrap created a brand-new session
+  // every visit and orphaned prior conversations. Now we always recover the
+  // most recent existing session before falling through to creation.
+  const useProjectStateFallback =
+    !!projectState.error || (!projectState.loading && !projectState.activeSession);
   const { data: fallbackSessions, isLoading: fallbackSessionsLoading } = useListSessions(id, {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getListSessionsQueryKey(id) },
   });
-  const sessions = projectState.activeSession ? [projectState.activeSession] : fallbackSessions;
-  const sessionsLoading = projectState.loading && !projectState.activeSession && !useProjectStateFallback
+  const sessions = projectState.activeSession
+    ? [projectState.activeSession]
+    : (fallbackSessions
+        ? [...fallbackSessions].sort((a, b) => {
+            const at = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bt = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bt - at;
+          })
+        : fallbackSessions);
+  const sessionsLoading = projectState.loading && !projectState.activeSession
     ? true
-    : fallbackSessionsLoading;
+    : (useProjectStateFallback ? fallbackSessionsLoading : false);
   const createSession = useCreateSession();
 
   // ── Hoisted deps for useChatStream (B2c) ────────────────────────────────────
