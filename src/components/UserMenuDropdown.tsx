@@ -243,27 +243,28 @@ export function UserMenuDropdown({ openSignal, onOpenProfile }: Props) {
             </svg>
           </div>
         )}
-        {/* Invite "+" chip — small dashed pill that slightly overlaps the top-right of the avatar */}
+        {/* Invite "+" chip — dashed gold square, avatar-sized, sits behind/right of avatar with slight overlap */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("axiom:open-invite")); }}
           title="Invite collaborators"
           aria-label="Invite collaborators"
           style={{
-            position: "absolute", top: -5, right: -13,
-            width: 22, height: 26, borderRadius: 6,
-            border: "1px dashed rgba(212,175,55,0.55)",
+            position: "absolute", top: -4, right: -22,
+            width: 32, height: 36, borderRadius: 8,
+            border: "1.5px dashed rgba(212,175,55,0.6)",
             background: "transparent",
-            color: "rgba(212,175,55,0.8)",
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", padding: 0,
+            color: "rgba(212,175,55,0.85)",
+            display: "inline-flex", alignItems: "center", justifyContent: "flex-end",
+            paddingRight: 4,
+            cursor: "pointer",
             transition: "border-color 140ms ease, color 140ms ease, background 140ms ease",
-            zIndex: 2,
+            zIndex: 1,
           }}
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.95)"; e.currentTarget.style.color = "rgba(212,175,55,1)"; e.currentTarget.style.background = "rgba(212,175,55,0.06)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; e.currentTarget.style.color = "rgba(212,175,55,0.8)"; e.currentTarget.style.background = "transparent"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.6)"; e.currentTarget.style.color = "rgba(212,175,55,0.85)"; e.currentTarget.style.background = "transparent"; }}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
