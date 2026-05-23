@@ -1276,7 +1276,7 @@ export function AssistantBubble({
           <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
         )}
 
-        {!message.streaming && message.plan && planState !== "skipped" && (
+        {!message.streaming && message.plan && /FILE_EDIT_START/i.test(message.content) && planState !== "skipped" && (
           <PlanCard
             plan={message.plan}
             messageId={planMessageId}
