@@ -88,7 +88,7 @@ export interface UseChatStreamReturn {
 }
 
 const GITHUB_AUTO_LINK_TOOL_CALL_LINE_RE = /^TOOL_CALL:\s*github\/auto-link$/;
-const GITHUB_AUTO_LINK_SUCCESS = "GitHub sync complete — repos linked.";
+const GITHUB_AUTO_LINK_SUCCESS = "GitHub sync complete.";
 const GITHUB_AUTO_LINK_FAILURE = "GitHub sync failed — add token in Connections.";
 
 function stripGithubAutoLinkToolCall(content: string): { content: string; found: boolean } {
