@@ -400,11 +400,10 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <div style={{ flex: 1, height: 1, background: "var(--atlas-gold-border)" }} />
       </div>
 
-      {/* 0. CONNECTIONS DOCK — live wired */}
+      {/* 0. STAT TILES + SESSIONS CHART (was the dashboard hero) */}
       <RevealOnScroll delayMs={0}>
-        <ConnectionsDock />
+        <StatsHero />
       </RevealOnScroll>
-
 
       {/* 1. WHERE WERE WE */}
       <RevealOnScroll delayMs={40}>
@@ -472,28 +471,11 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <ActivityHubCard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
-      {/* 3. YOUR MOMENTUM */}
+      {/* 3. CONNECTIONS DOCK — live wired */}
       <RevealOnScroll delayMs={160}>
-        <div className="atlas-discovery-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-              Your Momentum
-            </h3>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {onOpenLedger && (
-                <button type="button" onClick={onOpenLedger} style={{ background: "transparent", border: "none", fontSize: 10, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", cursor: "pointer", letterSpacing: "0.05em", opacity: 0.75 }}>
-                  Ledger →
-                </button>
-              )}
-              <DashboardLink />
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <MetricCell value={actualCommitted} label="DECISIONS COMMITTED" />
-            <MetricCell value={projects.length} label="PROJECTS ACTIVE" />
-          </div>
-        </div>
+        <ConnectionsDock />
       </RevealOnScroll>
+
 
       {/* 4. COGNITIVE MOMENTUM (parking) */}
       <RevealOnScroll delayMs={240}>
