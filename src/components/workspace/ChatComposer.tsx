@@ -112,6 +112,12 @@ export interface ChatComposerProps {
   setAllZip: (selected: boolean) => void;
   clearZip: () => void;
 
+  // Server-side code-context upload
+  uploadCodeContextZip: (file: File) => Promise<void>;
+  codeContextStatus: { summary: string; fileCount: number } | null;
+  codeContextUploading: boolean;
+  clearCodeContext: () => void;
+
   // First-run overlay
   firstRunDismissed: boolean;
   setFirstRunDismissed: (v: boolean) => void;
@@ -202,6 +208,10 @@ export function ChatComposer(props: ChatComposerProps) {
     toggleZipFile,
     setAllZip,
     clearZip,
+    uploadCodeContextZip,
+    codeContextStatus,
+    codeContextUploading,
+    clearCodeContext,
     firstRunDismissed,
     setFirstRunDismissed,
     sessionsLoading,
@@ -275,6 +285,46 @@ export function ChatComposer(props: ChatComposerProps) {
             e.target.value = "";
           }}
         />
+
+        {/* Hidden input dedicated to server-side code-context zip upload */}
+        <input
+          id="ws-code-context-input"
+          type="file"
+          accept=".zip,application/zip"
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (f) await uploadCodeContextZip(f);
+            e.target.value = "";
+          }}
+        />
+
+        {/* Server code-context status badge */}
+        {codeContextStatus && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, marginBottom: 8,
+            padding: "6px 10px", borderRadius: 8,
+            background: "rgba(201,162,76,0.06)", border: "1px solid rgba(201,162,76,0.22)",
+            fontSize: 11, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.85)",
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+            </svg>
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {codeContextStatus.summary || `${codeContextStatus.fileCount} files loaded from zip`}
+            </span>
+            <button
+              onClick={clearCodeContext}
+              aria-label="Clear code context"
+              title="Clear code context"
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", color: "rgba(201,162,76,0.7)", display: "flex", alignItems: "center" }}
+            >
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M2 2l10 10M12 2L2 12" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* ZIP panel — shows when a ZIP is loaded */}
         {zipFiles.length > 0 && (
@@ -452,6 +502,30 @@ export function ChatComposer(props: ChatComposerProps) {
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </label>
+
+              <label
+                htmlFor="ws-code-context-input"
+                title="Upload project ZIP for code context"
+                aria-label="Upload code context"
+                style={{
+                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
+                  background: codeContextStatus ? "rgba(201,162,76,0.08)" : "transparent",
+                  border: codeContextStatus ? "1px solid rgba(201,162,76,0.2)" : "1px solid transparent",
+                  color: codeContextStatus ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  cursor: codeContextUploading ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  opacity: codeContextUploading ? 0.5 : (codeContextStatus ? 1 : 0.4),
+                  transition: "all var(--motion-fast) var(--ease-standard)",
+                  flexShrink: 0, userSelect: "none",
+                  pointerEvents: codeContextUploading ? "none" : "auto",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                  <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
                 </svg>
               </label>
 

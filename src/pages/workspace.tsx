@@ -3989,6 +3989,39 @@ export default function Workspace() {
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
+  const [codeContextStatus, setCodeContextStatus] = useState<{ summary: string; fileCount: number } | null>(null);
+  const [codeContextUploading, setCodeContextUploading] = useState(false);
+  const uploadCodeContextZip = useCallback(async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".zip")) {
+      toast.error("Please select a .zip file");
+      return;
+    }
+    setCodeContextUploading(true);
+    try {
+      const { API_BASE } = await import("@/lib/api");
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${API_BASE}/api/upload/code-context`, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      const data = await res.json() as { fileContext: string; summary: string; fileCount: number; filePaths: string[] };
+      setFileContext(data.fileContext);
+      setCodeContextStatus({ summary: data.summary, fileCount: data.fileCount });
+      toast.success(data.summary || `${data.fileCount} files loaded from zip`);
+    } catch (err) {
+      console.error("code-context upload failed", err);
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setCodeContextUploading(false);
+    }
+  }, []);
+  const clearCodeContext = useCallback(() => {
+    setFileContext(null);
+    setCodeContextStatus(null);
+  }, []);
   const [dbUrl, setDbUrl] = useState<string | null>(() => {
     try { return localStorage.getItem(`atlas-db-url-${id}`) ?? null; } catch { return null; }
   });
@@ -7043,6 +7076,10 @@ export default function Workspace() {
               toggleZipFile,
               setAllZip,
               clearZip,
+              uploadCodeContextZip,
+              codeContextStatus,
+              codeContextUploading,
+              clearCodeContext,
               firstRunDismissed,
               setFirstRunDismissed,
               sessionsLoading,
