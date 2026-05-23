@@ -1512,7 +1512,7 @@ export default function Home() {
     }, null);
     return latest?.id ?? null;
   }, [projects]);
-  const homeProjectState = useProjectState(mostRecentActiveProjectId);
+  const homeProjectState = useProjectState(homeFocus);
   const createProject = useCreateProject();
 
   useEffect(() => {
@@ -1829,11 +1829,11 @@ export default function Home() {
           imageBase64,
           imageMimeType,
           conversationId: activeConversationId,
-          projectContext: {
-            projectId: mostRecentActiveProjectId,
+          projectContext: homeFocus != null ? {
+            projectId: homeFocus,
             memorySummary: homeProjectState.memorySummary,
             decisions: homeProjectState.decisions,
-          },
+          } : null,
         }),
       });
       if (!res.ok) {
@@ -2753,7 +2753,7 @@ export default function Home() {
                             <HomeHandoffCard
                               signal={msg.handoffSignal}
                               projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
-                              projectId={msg.handoffSignal.projectId ?? mostRecentActiveProjectId}
+                              projectId={msg.handoffSignal.projectId ?? null}
                               onProjectNameChange={setHandoffProjectName}
                               loading={handoffLoading}
                               stage={handoffStage}
