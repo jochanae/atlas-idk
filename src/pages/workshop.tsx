@@ -847,6 +847,9 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [statuses, setStatuses] = useState<ConnectionStatus[]>([]);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ linked: string[]; tokenBackfilled: number } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const [formType, setFormType] = useState<"github" | "railway" | "lovable" | "cursor">("github");
   const [formLabel, setFormLabel] = useState("");
@@ -863,6 +866,25 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
   };
 
   useEffect(() => { void fetchConnections(); }, []);
+
+  const syncAllProjects = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/github/auto-link", { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        setSyncError("Sync failed. Try again.");
+        return;
+      }
+      const data = await res.json() as { linked: string[]; tokenBackfilled: number };
+      setSyncResult(data);
+    } catch {
+      setSyncError("Sync failed. Try again.");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const resetForm = () => { setFormType("github"); setFormLabel(""); setFormToken(""); setFormUrl(""); setSaveError(null); };
 
