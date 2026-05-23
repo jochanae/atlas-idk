@@ -5304,6 +5304,13 @@ export default function Workspace() {
     const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
 
+    if (fullText.includes("TERMINAL_CMD:") && leftTab !== "chat") {
+      setLeftTab("chat");
+    }
+    if (fullText.includes("TERMINAL_CMD:") && mobileTab !== "chat") {
+      setMobileTab("chat");
+    }
+
     if (imageFile) {
       fileToBase64Safe(imageFile)
         .then(({ base64, mediaType }) => doSend(fullText, sid, current, undefined, { base64, mediaType }))
