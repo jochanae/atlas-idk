@@ -4,7 +4,6 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "../LiveGenerationCard";
-import { GlossaryTip } from "@/components/GlossaryTip";
 import type {
   ChatMessage,
   AmbientSurface,
@@ -47,6 +46,8 @@ export interface ChatStreamProps {
   isHomeHandoff: boolean;
   homeHandoffMeta: HomeHandoffMetaLike;
   isBrandNewProject: boolean;
+  atlasGreeting?: string | null;
+  greetingLoading?: boolean;
   project: ProjectLike;
   onStarterPrompt: (label: string) => void;
 
@@ -103,7 +104,7 @@ export function ChatStream(props: ChatStreamProps) {
     scrollRef, bottomRef, onScroll, showScrollBtn, onScrollToLatest,
     messages, chatPending, activityStream, liveGeneration, historyMsgCountRef,
     priorLoaded,
-    isHomeHandoff, homeHandoffMeta, isBrandNewProject, project, onStarterPrompt,
+    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading,
     wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo, trustMode,
@@ -135,47 +136,35 @@ export function ChatStream(props: ChatStreamProps) {
         </div>
       )}
       {messages.length === 0 && !chatPending && priorLoaded !== false && !(isHomeHandoff && homeHandoffMeta) && (
-        <div style={{ padding: "16px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          {isBrandNewProject ? (
-              <div style={{ fontSize: 26, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 4, marginBottom: 18, letterSpacing: "-0.025em", lineHeight: 1.25, textAlign: "center", maxWidth: 520 }}>
-                New project. Before we build — do you have a <GlossaryTip term="north star">The one outcome that makes everything else worth building.</GlossaryTip> for this? Or should we start from what's in your head?
+        <div style={{
+          display: "flex", flexDirection: "column", alignItems: "flex-start",
+          flex: 1, padding: "28px 16px", gap: 8,
+        }}>
+          {greetingLoading ? (
+            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              Atlas is thinking…
+            </div>
+          ) : atlasGreeting ? (
+            <div style={{
+              maxWidth: 480, background: "var(--atlas-surface)",
+              border: "1px solid var(--atlas-border)", borderRadius: 12,
+              padding: "14px 16px", color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.65,
+            }}>
+              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.18em", color: "var(--atlas-gold)", textTransform: "uppercase", marginBottom: 8 }}>
+                Atlas
               </div>
+              {atlasGreeting}
+            </div>
           ) : (
-            <>
-              <div style={{ fontSize: 26, fontWeight: 300, color: "var(--atlas-fg)", opacity: 0.75, marginTop: 4, marginBottom: 6, letterSpacing: "-0.025em", lineHeight: 1.25, textAlign: "center" }}>
-                {project ? project.name : "Ready."}
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              flex: 1, padding: "40px 24px", gap: 12, textAlign: "center", width: "100%",
+            }}>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "var(--atlas-fg)", lineHeight: 1.4 }}>
+                What are we solving today?
               </div>
-              <div style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.4)", marginBottom: 18, textAlign: "center" }}>
-                What are we working through today?
-              </div>
-            </>
+            </div>
           )}
-          {/* Starter prompts */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 420 }}>
-            {[
-              { label: "I need to make a decision", sub: "Walk me through it and log it" },
-              { label: "I'm not sure which direction to take", sub: "Think out loud, I'll help you see the tension" },
-              { label: "Audit my recent decisions", sub: "Review what I've committed to" },
-              { label: "I want to map my architecture", sub: "System Map + layer-by-layer spec" },
-            ].map((p, i) => (
-              <button
-                key={i}
-                onClick={() => onStarterPrompt(p.label)}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "flex-start",
-                  padding: "11px 14px", borderRadius: 9, cursor: "pointer",
-                  background: "rgba(201,162,76,0.03)",
-                  border: "1px solid rgba(201,162,76,0.08)",
-                  textAlign: "left", transition: "all var(--motion-fast) var(--ease-standard)",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.03)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.08)"; }}
-              >
-                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", opacity: 0.8, fontWeight: 500, lineHeight: 1.3 }}>{p.label}</span>
-                <span style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.5, marginTop: 2 }}>{p.sub}</span>
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
