@@ -3780,7 +3780,7 @@ export default function Home() {
           onDecisions={() => setLocation("/ledger")}
           onYou={() => setShowProfile(true)}
           onMap={() => setLocation("/map")}
-          onFiles={() => setShowVault(true)}
+          onFiles={() => setShowDrawer(true)}
           onForge={() => setShowQuickPrompt(true)}
         />
       </div>
