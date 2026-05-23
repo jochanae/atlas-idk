@@ -3653,7 +3653,127 @@ const INTAKE_QUESTIONS = [
   { key: "thinkingStyle", label: "How do you like to think through problems?", hint: "Do you want pushback, or space to explore?",          required: false },
 ];
 
-function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete: () => void }) {
+type IntakeAnswerKey = (typeof INTAKE_QUESTIONS)[number]["key"];
+type IntakeAnswers = Partial<Record<IntakeAnswerKey, string>>;
+
+function cleanIntakeValue(value?: string): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function buildIntakeSeedNodes(answers: IntakeAnswers): ArchNode[] {
+  const what = cleanIntakeValue(answers.what);
+  const who = cleanIntakeValue(answers.who);
+  const stage = cleanIntakeValue(answers.stage);
+  const working = cleanIntakeValue(answers.working);
+  const openQuestion = cleanIntakeValue(answers.openQuestion);
+  const thinkingStyle = cleanIntakeValue(answers.thinkingStyle);
+
+  const nodes: ArchNode[] = [
+    {
+      id: "intake-goal",
+      label: "What we're building",
+      type: "goal",
+      resolved: Boolean(what),
+      strategicAnswer: what || undefined,
+      x: 300,
+      y: 120,
+      details: "Captured from Forge intake.",
+      question: "What are we actually building?",
+    },
+    {
+      id: "intake-audience",
+      label: "Who it's for",
+      type: "requirement",
+      resolved: Boolean(who),
+      strategicAnswer: who || undefined,
+      x: 525,
+      y: 205,
+      details: "Primary user and problem context from intake.",
+      question: "Who is this for, and what problem are they trying to solve?",
+    },
+    {
+      id: "intake-stage",
+      label: "Current stage",
+      type: "sprint",
+      resolved: Boolean(stage),
+      strategicAnswer: stage || undefined,
+      x: 470,
+      y: 390,
+      details: "Current build stage captured from intake.",
+      question: "What stage is this project in right now?",
+    },
+    {
+      id: "intake-working",
+      label: "What's already working",
+      type: "requirement",
+      resolved: Boolean(working),
+      strategicAnswer: working || undefined,
+      x: 130,
+      y: 390,
+      details: "Known strengths and confirmed signals from intake.",
+      question: "What is already working that we should preserve?",
+    },
+    {
+      id: "intake-open-question",
+      label: "Open question",
+      type: "decision",
+      resolved: Boolean(openQuestion),
+      strategicAnswer: openQuestion || undefined,
+      x: 75,
+      y: 205,
+      details: "The main unresolved tension captured from intake.",
+      question: "What is still unresolved or in tension?",
+    },
+    {
+      id: "intake-thinking-style",
+      label: "Thinking style",
+      type: "priority",
+      resolved: Boolean(thinkingStyle),
+      strategicAnswer: thinkingStyle || undefined,
+      x: 300,
+      y: 475,
+      details: "Preferred problem-solving style from intake.",
+      meta: "should",
+      question: "How should Atlas think with you as this project evolves?",
+    },
+  ];
+
+  return nodes.filter((node) => Boolean(node.strategicAnswer));
+}
+
+function buildIntakeGreeting(answers: IntakeAnswers): string {
+  const what = cleanIntakeValue(answers.what) || "the project";
+  const who = cleanIntakeValue(answers.who);
+  const stage = cleanIntakeValue(answers.stage);
+  const working = cleanIntakeValue(answers.working);
+  const openQuestion = cleanIntakeValue(answers.openQuestion);
+
+  const parts = [
+    `Got it — we're building ${what}`,
+    who ? `for ${who}` : "",
+    stage ? `and you're currently at ${stage}` : "",
+  ].filter(Boolean);
+
+  const lead = `${parts.join(" ")}.`.replace(/\s+\./g, ".");
+  const workingLine = working ? ` What's already working: ${working}.` : "";
+  const tensionLine = openQuestion ? ` The live tension is ${openQuestion}.` : "";
+  return `${lead}${workingLine}${tensionLine} Where do you want to push first?`;
+}
+
+function buildIntakeEntries(answers: IntakeAnswers): Array<{ title: string; summary: string }> {
+  const items = [
+    cleanIntakeValue(answers.what) ? { title: "What we're building", summary: cleanIntakeValue(answers.what) } : null,
+    cleanIntakeValue(answers.who) ? { title: "Who it's for", summary: cleanIntakeValue(answers.who) } : null,
+    cleanIntakeValue(answers.stage) ? { title: "Current stage", summary: cleanIntakeValue(answers.stage) } : null,
+    cleanIntakeValue(answers.working) ? { title: "What's already working", summary: cleanIntakeValue(answers.working) } : null,
+    cleanIntakeValue(answers.openQuestion) ? { title: "Open question", summary: cleanIntakeValue(answers.openQuestion) } : null,
+    cleanIntakeValue(answers.thinkingStyle) ? { title: "Thinking style", summary: cleanIntakeValue(answers.thinkingStyle) } : null,
+  ];
+
+  return items.filter((item): item is { title: string; summary: string } => Boolean(item));
+}
+
+function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete: (answers: IntakeAnswers) => Promise<void> | void }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [value, setValue] = useState("");
@@ -3685,7 +3805,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
         body: JSON.stringify({ projectId, answers: updated }),
       });
       if (!res.ok) throw new Error("Intake failed");
-      onComplete();
+      await Promise.resolve(onComplete(updated));
     } catch {
       setError("Something went wrong. Try again.");
       setSubmitting(false);
@@ -5525,6 +5645,65 @@ export default function Workspace() {
     );
   }, [id, handoverPending, createSession, updateProjectFromHandover, queryClient, isMobile]);
 
+  const hydrateWorkspaceFromIntake = useCallback(async (answers: IntakeAnswers) => {
+    const seededNodes = buildIntakeSeedNodes(answers);
+    const seededEntries = buildIntakeEntries(answers);
+    const nextForgeContext = seededNodes.map((node) => `[${node.type}] ${node.label}${node.strategicAnswer ? `: ${node.strategicAnswer}` : ""}`).join(" | ");
+    const greeting = buildIntakeGreeting(answers);
+
+    if (seededNodes.length > 0) {
+      setExternalForgeNodes(seededNodes);
+      setHomeHandoffMeta({
+        parkedCount: parkedEntries.length,
+        flowNodeCount: seededNodes.length,
+        goalLabel: seededNodes.find((node) => node.type === "goal")?.strategicAnswer ?? seededNodes[0]?.strategicAnswer ?? seededNodes[0]?.label ?? "your project",
+        parkedTitles: parkedEntries.slice(0, 6).map((entry) => entry.title),
+        nodes: seededNodes.map((node) => ({
+          id: node.id,
+          label: node.label,
+          type: node.type,
+          details: node.details,
+          meta: node.meta,
+          moscow: node.moscow,
+        })),
+      });
+    }
+
+    setForgeContext(nextForgeContext || null);
+    try { sessionStorage.setItem(`atlas-forge-ctx-${id}`, nextForgeContext); } catch {}
+    setAtlasGreeting(greeting);
+    setGreetingLoading(false);
+    void updateForgeState("forged");
+
+    if (seededEntries.length > 0) {
+      await Promise.all(seededEntries.map((entry) =>
+        createEntry.mutateAsync({
+          projectId: id,
+          data: {
+            title: entry.title,
+            summary: entry.summary.slice(0, 500),
+            status: "parked",
+            severity: "parked",
+            mode: "think",
+            verb: "forge_intake",
+          },
+        }).catch(() => null)
+      ));
+    }
+
+    queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+    queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+    void refreshParkedEntries();
+
+    if (isMobile) {
+      setMobileTab("map");
+      setRightOpen(true);
+    } else {
+      setDesktopForceTab("map");
+      setTimeout(() => setDesktopForceTab(undefined), 120);
+    }
+  }, [createEntry, id, isMobile, parkedEntries, queryClient, refreshParkedEntries, updateForgeState]);
+
   const focusSystemMap = useCallback(() => {
     if (isMobile) {
       setMobileTab("map");
@@ -5615,7 +5794,8 @@ export default function Workspace() {
       {showIntake && (
         <ForgeIntake
           projectId={id}
-          onComplete={() => {
+          onComplete={async (answers) => {
+            await hydrateWorkspaceFromIntake(answers);
             setShowIntake(false);
             const url = new URL(window.location.href);
             url.searchParams.delete("intake");
