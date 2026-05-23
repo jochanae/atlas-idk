@@ -3557,11 +3557,155 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
   );
 }
 
+const INTAKE_QUESTIONS = [
+  { key: "what",          label: "What are you building?",                    hint: "Describe it plainly — one paragraph is fine.",         required: true  },
+  { key: "who",           label: "Who is it for?",                            hint: "Who's the user and what problem does it solve?",       required: true  },
+  { key: "stage",         label: "What stage are you at?",                    hint: "Idea / Early build / Live / Scaling",                  required: true  },
+  { key: "working",       label: "What's already working?",                   hint: "What are you confident about? Skip if nothing yet.",   required: false },
+  { key: "openQuestion",  label: "What's the open question?",                 hint: "The thing you haven't resolved. The real tension.",    required: true  },
+  { key: "thinkingStyle", label: "How do you like to think through problems?", hint: "Do you want pushback, or space to explore?",          required: false },
+];
+
+function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete: () => void }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [value, setValue] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const q = INTAKE_QUESTIONS[step];
+  const isLast = step === INTAKE_QUESTIONS.length - 1;
+  const canSkip = !q.required;
+
+  const advance = async (val: string) => {
+    const updated = { ...answers, [q.key]: val };
+    setAnswers(updated);
+    setValue("");
+
+    if (!isLast) {
+      setStep(step + 1);
+      return;
+    }
+
+    // Final step — submit
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/forge/intake", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, answers: updated }),
+      });
+      if (!res.ok) throw new Error("Intake failed");
+      onComplete();
+    } catch {
+      setError("Something went wrong. Try again.");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "var(--atlas-bg)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: "24px 20px",
+    }}>
+      {/* Progress bar */}
+      <div style={{ width: "100%", maxWidth: 560, marginBottom: 32 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+          {INTAKE_QUESTIONS.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 2, borderRadius: 2, background: i <= step ? "var(--atlas-gold)" : "var(--atlas-border)", transition: "background 300ms" }} />
+          ))}
+        </div>
+        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.13em", color: "var(--atlas-muted)", textTransform: "uppercase" }}>
+          {step + 1} of {INTAKE_QUESTIONS.length}
+        </div>
+      </div>
+
+      {/* Question */}
+      <div style={{ width: "100%", maxWidth: 560, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ fontSize: 20, fontWeight: 600, color: "var(--atlas-fg)", lineHeight: 1.35 }}>
+          {q.label}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--atlas-muted)", lineHeight: 1.6 }}>
+          {q.hint}
+        </div>
+
+        <textarea
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && value.trim()) {
+              advance(value.trim());
+            }
+          }}
+          placeholder="Type your answer..."
+          rows={4}
+          style={{
+            width: "100%", padding: "12px 14px", borderRadius: 8,
+            background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
+            color: "var(--atlas-fg)", fontSize: 14, fontFamily: "inherit",
+            resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box",
+          }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
+        />
+
+        {error && <div style={{ fontSize: 12, color: "#f87171" }}>{error}</div>}
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            type="button"
+            disabled={!value.trim() || submitting}
+            onClick={() => value.trim() && advance(value.trim())}
+            style={{
+              flex: 1, padding: "12px", borderRadius: 8, border: "none",
+              background: value.trim() ? "var(--atlas-gold)" : "var(--atlas-surface)",
+              color: value.trim() ? "#0D0B09" : "var(--atlas-muted)",
+              fontSize: 13, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+              textTransform: "uppercase", cursor: value.trim() && !submitting ? "pointer" : "not-allowed",
+              fontWeight: 600,
+            }}
+          >
+            {submitting ? "Starting..." : isLast ? "Begin" : "Next →"}
+          </button>
+          {canSkip && (
+            <button
+              type="button"
+              onClick={() => advance("")}
+              style={{
+                padding: "12px 18px", borderRadius: 8,
+                border: "1px solid var(--atlas-border)", background: "transparent",
+                color: "var(--atlas-muted)", fontSize: 12, fontFamily: "var(--app-font-mono)",
+                cursor: "pointer", letterSpacing: "0.06em",
+              }}
+            >
+              Skip
+            </button>
+          )}
+        </div>
+
+        {step > 0 && (
+          <button type="button" onClick={() => { setStep(step - 1); setValue(answers[INTAKE_QUESTIONS[step - 1].key] ?? ""); }}
+            style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", fontSize: 12, cursor: "pointer", alignSelf: "flex-start", fontFamily: "var(--app-font-mono)", padding: 0 }}>
+            ← Back
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Workspace ────────────────────────────────────────────────────────────────
 export default function Workspace() {
   const { projectId } = useParams();
   const [, setLocation] = useLocation();
   const id = Number(projectId);
+  const searchParams = new URLSearchParams(window.location.search);
+  const [showIntake, setShowIntake] = useState(searchParams.get("intake") === "true");
   const queryClient = useQueryClient();
   const isDesktop = useIsDesktop();
   const isMobile = useIsMobile() && !isDesktop;
@@ -5346,6 +5490,19 @@ export default function Workspace() {
   }
 
   return (
+    <>
+      {showIntake && (
+        <ForgeIntake
+          projectId={id}
+          onComplete={() => {
+            setShowIntake(false);
+            const url = new URL(window.location.href);
+            url.searchParams.delete("intake");
+            window.history.replaceState({}, "", url.toString());
+          }}
+        />
+      )}
+      {!showIntake && (
     <div
       style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "var(--atlas-bg)", overflow: "hidden", zIndex: 0, paddingBottom: isMobile ? "calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px))" : 0 }}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
@@ -7218,7 +7375,7 @@ export default function Workspace() {
           createProjectMutation.mutate({ data: { name: "New Project" } }, {
             onSuccess: (p) => {
               queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-              setLocation(`/project/${p.id}`);
+              setLocation(`/project/${p.id}?intake=true`);
             },
           });
         }}
@@ -7457,5 +7614,7 @@ export default function Workspace() {
 
       </div>
     </div>
+      )}
+    </>
   );
 }
