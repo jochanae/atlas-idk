@@ -87,6 +87,31 @@ export interface UseChatStreamReturn {
   handleRegenerate: (assistantMsgIndex: number) => void;
 }
 
+const GITHUB_AUTO_LINK_TOOL_CALL_LINE_RE = /^TOOL_CALL:\s*github\/auto-link$/;
+const GITHUB_AUTO_LINK_SUCCESS = "GitHub sync complete — repos linked.";
+const GITHUB_AUTO_LINK_FAILURE = "GitHub sync failed — add token in Connections.";
+
+function stripGithubAutoLinkToolCall(content: string): { content: string; found: boolean } {
+  let found = false;
+  const stripped = content
+    .split("\n")
+    .filter((line) => {
+      if (GITHUB_AUTO_LINK_TOOL_CALL_LINE_RE.test(line.trim())) {
+        found = true;
+        return false;
+      }
+      return true;
+    })
+    .join("\n");
+  return { content: stripped, found };
+}
+
+function appendGithubAutoLinkStatus(content: string, status: string | null): string {
+  if (!status) return content;
+  const trimmed = content.trimEnd();
+  return trimmed ? `${trimmed}\n\n${status}` : status;
+}
+
 /**
  * Chat-stream hook — owns message state, session, pending/activity, memory chips,
  * doSend, handleRegenerate, and the per-session summarize effect.
@@ -283,6 +308,8 @@ export function useChatStream(
           const placeholderId = -Date.now();
           streamingId = placeholderId;
           let streamedText = "";
+          let githubAutoLinkStatus: string | null = null;
+          let githubAutoLinkPromise: Promise<string> | null = null;
           setMessages((prev) => [
             ...prev,
             {
@@ -298,6 +325,36 @@ export function useChatStream(
           const reader = r.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
+          const renderStreamedText = () => {
+            const { content } = stripGithubAutoLinkToolCall(streamedText);
+            return appendGithubAutoLinkStatus(content, githubAutoLinkStatus);
+          };
+          const triggerGithubAutoLink = (content: string) => {
+            if (githubAutoLinkPromise) return;
+            const { found } = stripGithubAutoLinkToolCall(content);
+            if (!found) return;
+            githubAutoLinkPromise = (async () => {
+              let status = GITHUB_AUTO_LINK_FAILURE;
+              try {
+                const res = await fetch("/api/github/auto-link", {
+                  method: "POST",
+                  credentials: "include",
+                });
+                if (res.ok) status = GITHUB_AUTO_LINK_SUCCESS;
+              } catch {
+                status = GITHUB_AUTO_LINK_FAILURE;
+              }
+              githubAutoLinkStatus = status;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === placeholderId
+                    ? { ...m, content: renderStreamedText() }
+                    : m
+                )
+              );
+              return status;
+            })();
+          };
 
           while (true) {
             const { done, value } = await reader.read();
@@ -319,10 +376,11 @@ export function useChatStream(
                 if (evtName === "token") {
                   const chunk = JSON.parse(evtData) as string;
                   streamedText += chunk;
+                  triggerGithubAutoLink(streamedText);
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === placeholderId
-                        ? { ...m, content: streamedText }
+                        ? { ...m, content: renderStreamedText() }
                         : m
                     )
                   );
@@ -335,15 +393,22 @@ export function useChatStream(
                   setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
                   streamingId = null;
                   if (!res) return;
+          if (typeof res.content === "string") triggerGithubAutoLink(res.content);
+          if (githubAutoLinkPromise) await githubAutoLinkPromise;
           if (res.content && typeof res.content === "string") {
-            const driftMatch = res.content.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
+            const { content: contentWithoutToolCall } = stripGithubAutoLinkToolCall(res.content);
+            const driftMatch = contentWithoutToolCall.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
             if (driftMatch) {
               const drifted = driftMatch[1].toLowerCase();
               if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted as any);
-              res.content = res.content.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
+              res.content = contentWithoutToolCall.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
             } else {
               setDetectedLens(null);
+              res.content = contentWithoutToolCall;
             }
+            res.content = appendGithubAutoLinkStatus(res.content, githubAutoLinkStatus);
+          } else if (githubAutoLinkStatus) {
+            res.content = githubAutoLinkStatus;
           }
           const cp = res.catchPayload ?? null;
           const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
