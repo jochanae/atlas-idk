@@ -3567,7 +3567,112 @@ const INTAKE_QUESTIONS = [
   { key: "thinkingStyle", label: "How do you like to think through problems?", hint: "Do you want pushback, or space to explore?",          required: false },
 ];
 
-function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete: () => void }) {
+type IntakeAnswerKey = (typeof INTAKE_QUESTIONS)[number]["key"];
+type IntakeAnswers = Partial<Record<IntakeAnswerKey, string>>;
+
+function cleanIntakeValue(value?: string): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function buildIntakeSeedNodes(answers: IntakeAnswers): ArchNode[] {
+  const what = cleanIntakeValue(answers.what);
+  const who = cleanIntakeValue(answers.who);
+  const stage = cleanIntakeValue(answers.stage);
+  const working = cleanIntakeValue(answers.working);
+  const openQuestion = cleanIntakeValue(answers.openQuestion);
+  const thinkingStyle = cleanIntakeValue(answers.thinkingStyle);
+
+  return [
+    {
+      id: "intake-goal",
+      label: "What we're building",
+      type: "goal",
+      resolved: Boolean(what),
+      strategicAnswer: what || undefined,
+      x: 300,
+      y: 120,
+      details: "Captured from Forge intake.",
+      question: "What are we actually building?",
+    },
+    {
+      id: "intake-audience",
+      label: "Who it's for",
+      type: "requirement",
+      resolved: Boolean(who),
+      strategicAnswer: who || undefined,
+      x: 525,
+      y: 205,
+      details: "Primary user and problem context from intake.",
+      question: "Who is this for, and what problem are they trying to solve?",
+    },
+    {
+      id: "intake-stage",
+      label: "Current stage",
+      type: "sprint",
+      resolved: Boolean(stage),
+      strategicAnswer: stage || undefined,
+      x: 470,
+      y: 390,
+      details: "Current build stage captured from intake.",
+      question: "What stage is this project in right now?",
+    },
+    {
+      id: "intake-working",
+      label: "What's already working",
+      type: "requirement",
+      resolved: Boolean(working),
+      strategicAnswer: working || undefined,
+      x: 130,
+      y: 390,
+      details: "Known strengths and confirmed signals from intake.",
+      question: "What is already working that we should preserve?",
+    },
+    {
+      id: "intake-open-question",
+      label: "Open question",
+      type: "decision",
+      resolved: Boolean(openQuestion),
+      strategicAnswer: openQuestion || undefined,
+      x: 75,
+      y: 205,
+      details: "The main unresolved tension captured from intake.",
+      question: "What is still unresolved or in tension?",
+    },
+    {
+      id: "intake-thinking-style",
+      label: "Thinking style",
+      type: "priority",
+      resolved: Boolean(thinkingStyle),
+      strategicAnswer: thinkingStyle || undefined,
+      x: 300,
+      y: 475,
+      details: "Preferred problem-solving style from intake.",
+      meta: "should",
+      question: "How should Atlas think with you as this project evolves?",
+    },
+  ].filter((node) => Boolean(node.strategicAnswer));
+}
+
+function buildIntakeGreeting(answers: IntakeAnswers): string {
+  const what = cleanIntakeValue(answers.what) || "the project";
+  const who = cleanIntakeValue(answers.who);
+  const stage = cleanIntakeValue(answers.stage);
+  const working = cleanIntakeValue(answers.working);
+  const openQuestion = cleanIntakeValue(answers.openQuestion);
+
+  const parts = [
+    `Got it — we're building ${what}`,
+    who ? `for ${who}` : "",
+    stage ? `and you're currently at ${stage}` : "",
+  ].filter(Boolean);
+
+  const lead = `${parts.join(" ")}.`.replace(/\s+\./g, ".");
+  const workingLine = working ? ` What's already working: ${working}.` : "";
+  const tensionLine = openQuestion ? ` The live tension is ${openQuestion}.` : "";
+  return `${lead}${workingLine}${tensionLine} Where do you want to push first?`;
+}
+
+function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete: (answers: IntakeAnswers) => Promise<void> | void }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [value, setValue] = useState("");
@@ -3599,7 +3704,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
         body: JSON.stringify({ projectId, answers: updated }),
       });
       if (!res.ok) throw new Error("Intake failed");
-      onComplete();
+      await Promise.resolve(onComplete(updated));
     } catch {
       setError("Something went wrong. Try again.");
       setSubmitting(false);
