@@ -60,7 +60,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           position: "fixed", top: 0, left: 0,
           width: "min(88vw, 300px)",
           height: "100dvh",
-          background: "var(--atlas-bg, #0c0a09)",
+          backgroundColor: "#0D0B09",
           borderRight: "1px solid var(--atlas-gold-border)",
           boxShadow: "8px 0 40px -8px rgba(0,0,0,0.7), 1px 0 0 rgba(201,162,76,0.08)",
           zIndex: 2001,
@@ -69,19 +69,25 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           maxHeight: "100dvh",
           overflowY: "hidden",
           overscrollBehavior: "contain",
-          isolation: "isolate",
         }}
       >
-        {/* Header — isolated container with safe-area top inset */}
+        {/* Safe-area top band — always opaque, prevents status-bar bleed */}
+        <div aria-hidden style={{
+          height: "env(safe-area-inset-top, 0px)",
+          backgroundColor: "#0D0B09",
+          flexShrink: 0,
+          position: "relative",
+          zIndex: 2,
+        }} />
+        {/* Header — opaque, sits above body */}
         <header style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "14px 14px 14px 16px",
-          paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
           borderBottom: "1px solid var(--atlas-gold-border)",
-          background: "var(--atlas-bg, #0c0a09)",
+          backgroundColor: "#0D0B09",
           flexShrink: 0,
           position: "relative",
-          zIndex: 1,
+          zIndex: 2,
         }}>
 
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -320,8 +326,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
 
       <style>{`
         @keyframes atlas-drawer-in {
-          from { transform: translateX(-14px); opacity: 0; }
-          to   { transform: translateX(0); opacity: 1; }
+          from { transform: translateX(-14px); }
+          to   { transform: translateX(0); }
         }
       `}</style>
     </>
