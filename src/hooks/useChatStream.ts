@@ -264,7 +264,8 @@ export function useChatStream(
         let streamingId: number | null = null;
         let streamingFinished = false;
         try {
-          const ghToken = lensCtx.githubToken;
+          const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
+
           const r = await fetch("/api/chat", {
             method: "POST",
             headers: {
