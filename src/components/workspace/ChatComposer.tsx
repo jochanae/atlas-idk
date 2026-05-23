@@ -505,6 +505,30 @@ export function ChatComposer(props: ChatComposerProps) {
                 </svg>
               </label>
 
+              <label
+                htmlFor="ws-code-context-input"
+                title="Upload project ZIP for code context"
+                aria-label="Upload code context"
+                style={{
+                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
+                  background: codeContextStatus ? "rgba(201,162,76,0.08)" : "transparent",
+                  border: codeContextStatus ? "1px solid rgba(201,162,76,0.2)" : "1px solid transparent",
+                  color: codeContextStatus ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  cursor: codeContextUploading ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  opacity: codeContextUploading ? 0.5 : (codeContextStatus ? 1 : 0.4),
+                  transition: "all var(--motion-fast) var(--ease-standard)",
+                  flexShrink: 0, userSelect: "none",
+                  pointerEvents: codeContextUploading ? "none" : "auto",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                  <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+              </label>
+
               {/* Vault — shown in input bar only on tiny screens */}
               {isTinyScreen && (
                 <button
