@@ -5665,7 +5665,8 @@ export default function Workspace() {
       {showIntake && (
         <ForgeIntake
           projectId={id}
-          onComplete={() => {
+          onComplete={async (answers) => {
+            await hydrateWorkspaceFromIntake(answers);
             setShowIntake(false);
             const url = new URL(window.location.href);
             url.searchParams.delete("intake");
