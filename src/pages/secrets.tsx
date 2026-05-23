@@ -346,8 +346,7 @@ export default function SecretsPage() {
                           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                             <button
                               type="button"
-                              onClick={() => handleReveal(s.id)}
-                              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleReveal(s.id); }}
+                              onClick={(e) => { e.stopPropagation(); handleReveal(s.id); }}
                               style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${isRevealed ? "rgba(201,162,76,0.3)" : "rgba(120,113,108,0.2)"}`, background: isRevealed ? "rgba(201,162,76,0.08)" : "transparent", color: isRevealed ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: revealLoading === s.id ? 0.5 : 1, touchAction: "manipulation", WebkitTapHighlightColor: "transparent", pointerEvents: "auto" }}
                               title={isRevealed ? "Hide" : "Reveal"}
                             >
@@ -362,8 +361,7 @@ export default function SecretsPage() {
                             {isRevealed && revealedValue && (
                               <button
                                 type="button"
-                                onClick={() => handleCopy(s.id, revealedValue)}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCopy(s.id, revealedValue); }}
+                                onClick={(e) => { e.stopPropagation(); handleCopy(s.id, revealedValue); }}
                                 style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${copiedId === s.id ? "rgba(34,197,94,0.4)" : "rgba(201,162,76,0.2)"}`, background: copiedId === s.id ? "rgba(34,197,94,0.08)" : "rgba(201,162,76,0.06)", color: copiedId === s.id ? "rgba(134,239,172,0.9)" : "var(--atlas-gold)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", WebkitTapHighlightColor: "transparent", pointerEvents: "auto" }}
                                 title="Copy"
                               >
