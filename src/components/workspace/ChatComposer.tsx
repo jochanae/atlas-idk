@@ -267,7 +267,7 @@ export function ChatComposer(props: ChatComposerProps) {
   return (
     <>
       {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
-      {leftTab !== "terminal" && leftTab !== "blueprints" && <div className="atlas-composer-glass" style={{ padding: "12px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30 }}>
+      {leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" && <div className="atlas-composer-glass" style={{ padding: "12px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30 }}>
         {/* Hidden file input — handles both images and ZIP files */}
         <input
           ref={fileInputRef}
