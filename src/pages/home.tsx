@@ -1300,17 +1300,22 @@ export default function Home() {
             : ["Still at it.", "Night owl mode."];
     greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
 
-    // Name prefix: always use first name when available
     try {
       const visitedKey = "atlas-home-visited";
       if (typeof localStorage !== "undefined") localStorage.setItem(visitedKey, "1");
-      const fullName = (authUser?.name ?? "").trim();
-      const first = fullName.split(/\s+/)[0] ?? "";
-      if (first) {
-        greetingNameRef.current = first;
-      }
     } catch {}
+  }
 
+  // Always derive greeting name from current auth user (updates when /me resolves)
+  {
+    const fullName = (authUser?.name ?? "").trim();
+    const emailLocal = (authUser?.email ?? "").split("@")[0] ?? "";
+    const raw = fullName || emailLocal;
+    const first = raw.split(/[\s._-]+/)[0] ?? "";
+    if (first) {
+      const pretty = first.charAt(0).toUpperCase() + first.slice(1);
+      if (greetingNameRef.current !== pretty) greetingNameRef.current = pretty;
+    }
   }
 
   // ── Home context: repo / branch / model ────────────────────────────────────
