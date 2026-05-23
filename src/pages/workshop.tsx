@@ -991,7 +991,31 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
             {checkingStatus ? "Checking…" : "Check Status"}
           </button>
         )}
+        {connections.some((c) => c.type === "github") && (
+          <button
+            type="button"
+            onClick={() => void syncAllProjects()}
+            disabled={syncing}
+            style={{ padding: "9px 14px", borderRadius: 7, background: "transparent", border: "1px solid var(--atlas-border)", color: syncing ? "var(--atlas-muted)" : "var(--atlas-fg)", fontSize: 12, cursor: syncing ? "default" : "pointer", flexShrink: 0 }}
+          >
+            {syncing ? "Syncing…" : "Sync All Projects"}
+          </button>
+        )}
       </div>
+
+      {syncResult && (
+        <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 7, background: "color-mix(in oklab, #4ade80 8%, transparent)", border: "1px solid rgba(74,222,128,0.25)" }}>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10.5, color: "#4ade80", opacity: 1 }}>
+            {syncResult.linked.length} projects linked · {syncResult.tokenBackfilled} tokens synced
+          </span>
+        </div>
+      )}
+
+      {syncError && (
+        <div style={{ marginBottom: 14, padding: "10px 12px", borderRadius: 7, background: "color-mix(in oklab, var(--atlas-ember) 8%, transparent)", border: "1px solid rgba(146,64,14,0.25)" }}>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10.5, color: "var(--atlas-ember)", opacity: 0.9 }}>{syncError}</span>
+        </div>
+      )}
 
       {/* Add form */}
       {adding && (
