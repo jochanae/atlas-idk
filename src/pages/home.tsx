@@ -243,8 +243,9 @@ function HomeStreamingText({ text, animate, style }: { text: string; animate: bo
 }
 
 function splitHomeChunks(text: string): string[] {
-  if (text.length < 200) return [text];
-  return text.split(/\n{2,}/).reduce((acc: string[], chunk) => {
+  const cleaned = text.replace(/^INTENT_TYPE:\s*\S+$/gm, "").trim();
+  if (cleaned.length < 200) return [cleaned];
+  return cleaned.split(/\n{2,}/).reduce((acc: string[], chunk) => {
     if (chunk.trim()) acc.push(chunk);
     return acc;
   }, []);

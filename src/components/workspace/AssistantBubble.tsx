@@ -810,6 +810,7 @@ export function AssistantBubble({
     .trim();
   const hasImageClarify = (displayContent ?? "").includes("IMAGE_CLARIFY:");
   const cleanedContent = (displayContent ?? "")
+    .replace(/^INTENT_TYPE:\s*\S+$/gm, "")
     .replace(/\n\nIMAGE_CLARIFY:[^\n]*/g, "")
     .replace(/- \*\*Cinematic\*\*[^\n]*/g, "")
     .replace(/- \*\*Blueprint\*\*[^\n]*/g, "")
