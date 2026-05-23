@@ -1300,17 +1300,17 @@ export default function Home() {
             : ["Still at it.", "Night owl mode."];
     greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
 
-    // Name prefix: 30% chance, return sessions only, first name only
+    // Name prefix: always use first name when available
     try {
       const visitedKey = "atlas-home-visited";
-      const isReturn = typeof localStorage !== "undefined" && localStorage.getItem(visitedKey) === "1";
       if (typeof localStorage !== "undefined") localStorage.setItem(visitedKey, "1");
       const fullName = (authUser?.name ?? "").trim();
       const first = fullName.split(/\s+/)[0] ?? "";
-      if (isReturn && first && Math.random() < 0.3) {
+      if (first) {
         greetingNameRef.current = first;
       }
     } catch {}
+
   }
 
   // ── Home context: repo / branch / model ────────────────────────────────────
