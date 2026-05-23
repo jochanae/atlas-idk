@@ -5533,6 +5533,48 @@ export default function Workspace() {
     );
   }, [id, handoverPending, createSession, updateProjectFromHandover, queryClient, isMobile]);
 
+  const hydrateWorkspaceFromIntake = useCallback(async (answers: IntakeAnswers) => {
+    const seededNodes = buildIntakeSeedNodes(answers);
+    const nextForgeContext = seededNodes.map((node) => `[${node.type}] ${node.label}${node.strategicAnswer ? `: ${node.strategicAnswer}` : ""}`).join(" | ");
+    const greeting = buildIntakeGreeting(answers);
+
+    if (seededNodes.length > 0) {
+      setExternalForgeNodes(seededNodes);
+      setHomeHandoffMeta({
+        parkedCount: parkedEntries.length,
+        flowNodeCount: seededNodes.length,
+        goalLabel: seededNodes.find((node) => node.type === "goal")?.strategicAnswer ?? seededNodes[0]?.strategicAnswer ?? seededNodes[0]?.label ?? "your project",
+        parkedTitles: parkedEntries.slice(0, 6).map((entry) => entry.title),
+        nodes: seededNodes.map((node) => ({
+          id: node.id,
+          label: node.label,
+          type: node.type,
+          details: node.details,
+          meta: node.meta,
+          moscow: node.moscow,
+        })),
+      });
+    }
+
+    setForgeContext(nextForgeContext || null);
+    try { sessionStorage.setItem(`atlas-forge-ctx-${id}`, nextForgeContext); } catch {}
+    setAtlasGreeting(greeting);
+    setGreetingLoading(false);
+    void updateForgeState("forged");
+
+    queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+    queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
+    void refreshParkedEntries();
+
+    if (isMobile) {
+      setMobileTab("map");
+      setRightOpen(true);
+    } else {
+      setDesktopForceTab("map");
+      setTimeout(() => setDesktopForceTab(undefined), 120);
+    }
+  }, [id, isMobile, parkedEntries, queryClient, refreshParkedEntries, updateForgeState]);
+
   const focusSystemMap = useCallback(() => {
     if (isMobile) {
       setMobileTab("map");
