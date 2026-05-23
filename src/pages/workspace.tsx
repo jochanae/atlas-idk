@@ -1206,10 +1206,43 @@ function formatCommitTimeAgo(timestamp: string): string {
   return `${months} month${months === 1 ? "" : "s"} ago`;
 }
 
-export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
+export function CommitHistoryCard({ commit, projectId, canRevert }: { commit: GhCommitSummary; projectId: number; canRevert: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const [revertHover, setRevertHover] = useState(false);
   const firstLine = commit.message.split("\n")[0] || "(no commit message)";
   const displayMessage = expanded || firstLine.length <= 80 ? firstLine : `${firstLine.slice(0, 77)}...`;
+
+  const handleRevert = async () => {
+    setReverting(true);
+    try {
+      const res = await fetch("/api/github/revert", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, sha: commit.sha, branch: "main" }),
+      });
+      if (!res.ok) {
+        let msg = `Revert failed (${res.status})`;
+        try { const j = await res.json(); msg = j.error || j.message || msg; } catch { try { msg = (await res.text()) || msg; } catch {} }
+        toast.error(msg);
+        return;
+      }
+      toast.success("Reverted — build is clean");
+      try {
+        window.dispatchEvent(new CustomEvent("atlas:workspace-send", {
+          detail: { text: `[ROLLBACK_COMPLETE] Reverted commit ${commit.sha.slice(0, 7)}. Run typecheck to confirm the build is clean.` },
+        }));
+      } catch {}
+      setConfirmOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Revert failed");
+    } finally {
+      setReverting(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -1248,6 +1281,33 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
             <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.65 }}>{commit.sha.slice(0, 7)}</span>
           </div>
         </button>
+        {canRevert && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setConfirmOpen(true); }}
+            onMouseEnter={() => setRevertHover(true)}
+            onMouseLeave={() => setRevertHover(false)}
+            disabled={reverting}
+            style={{
+              alignSelf: "center",
+              marginRight: 6,
+              padding: "4px 9px",
+              borderRadius: 5,
+              background: "transparent",
+              border: `1px solid ${revertHover ? "rgba(201,162,76,0.6)" : "rgba(201,162,76,0.3)"}`,
+              color: "var(--atlas-muted)",
+              fontSize: "var(--ts-xs)",
+              fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.04em",
+              cursor: reverting ? "wait" : "pointer",
+              flexShrink: 0,
+              transition: "border-color 140ms ease",
+            }}
+            aria-label="Revert this commit"
+          >
+            ↩ Revert
+          </button>
+        )}
         <a
           href={commit.url}
           target="_blank"
@@ -1300,6 +1360,22 @@ export function CommitHistoryCard({ commit }: { commit: GhCommitSummary }) {
           </a>
         </div>
       )}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert to before this commit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This creates a new commit that undoes these changes — nothing is deleted from history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reverting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleRevert(); }} disabled={reverting}>
+              {reverting ? "Reverting…" : "Revert"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
