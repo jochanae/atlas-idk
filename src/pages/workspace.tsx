@@ -5953,16 +5953,16 @@ export default function Workspace() {
           }}
         >
           <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
-            {(["chat", "diff", "blueprints", ...((wsLens === "build" || wsLens === "scenario") ? ["terminal"] : [])] as Array<"chat" | "diff" | "blueprints" | "terminal">).map((tab) => {
+            {(["chat", "diff", "blueprints", "artifacts", ...((wsLens === "build" || wsLens === "scenario") ? ["terminal"] : [])] as Array<"chat" | "diff" | "blueprints" | "artifacts" | "terminal">).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : (isTinyScreen ? "" : "Terminal");
+              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Terminal");
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
               return (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setLeftTab(tab)}
-                  aria-label={tab === "terminal" ? "Open terminal" : tab === "diff" ? "View diff" : tab === "blueprints" ? "Open blueprints" : "Open chat"}
+                  aria-label={tab === "terminal" ? "Open terminal" : tab === "diff" ? "View diff" : tab === "blueprints" ? "Open blueprints" : tab === "artifacts" ? "Open artifacts" : "Open chat"}
                   style={{
                     padding: isTinyScreen ? "7px 8px" : "8px 12px",
                     background: active ? "rgba(var(--atlas-gold-rgb),0.08)" : "transparent",
