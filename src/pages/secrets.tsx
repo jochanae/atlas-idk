@@ -361,8 +361,7 @@ export default function SecretsPage() {
                             {isRevealed && revealedValue && (
                               <button
                                 type="button"
-                                onClick={() => handleCopy(s.id, revealedValue)}
-                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCopy(s.id, revealedValue); }}
+                                onClick={(e) => { e.stopPropagation(); handleCopy(s.id, revealedValue); }}
                                 style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${copiedId === s.id ? "rgba(34,197,94,0.4)" : "rgba(201,162,76,0.2)"}`, background: copiedId === s.id ? "rgba(34,197,94,0.08)" : "rgba(201,162,76,0.06)", color: copiedId === s.id ? "rgba(134,239,172,0.9)" : "var(--atlas-gold)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", WebkitTapHighlightColor: "transparent", pointerEvents: "auto" }}
                                 title="Copy"
                               >
