@@ -93,17 +93,8 @@ export function AtlasActivityBar({
         pointerEvents: "none",
       }}
     >
-      <span
-        className="atlas-pulse-dot"
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: "var(--atlas-gold)",
-          display: "inline-block",
-          flexShrink: 0,
-        }}
-      />
+      <LoadingSpinner size="sm" color="atlas" />
+
       <span
         style={{
           fontFamily: "var(--app-font-mono)",
