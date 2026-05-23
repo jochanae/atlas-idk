@@ -2615,13 +2615,10 @@ export default function Home() {
             {homeMessages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
                 <h1 style={{ fontSize: "var(--ts-display-xl)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
-                  {greetingNameRef.current && (
-                    <><span style={{ fontWeight: 300 }}>{greetingNameRef.current}.</span><br /></>
-                  )}
-                  {greetingPhraseRef.current}
+                  {greetingRef.current?.head}
                 </h1>
                 <p style={{ fontSize: "var(--ts-body)", color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
-                  I'm here. What's on your mind?
+                  {greetingRef.current?.sub}
                 </p>
               </div>
             )}
