@@ -49,7 +49,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   return (
     <>
       {/* Scrim */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", backdropFilter: "blur(3px)", zIndex: 90 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.56)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 100 }} />
 
       {/* Panel */}
       <aside
@@ -60,24 +60,30 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           position: "fixed", top: 0, left: 0,
           width: "min(88vw, 300px)",
           height: "100dvh",
-          background: "var(--atlas-surface)",
+          background: "var(--atlas-bg, #0c0a09)",
           borderRight: "1px solid var(--atlas-gold-border)",
-          boxShadow: "8px 0 40px -8px rgba(0,0,0,0.6)",
-          zIndex: 91,
+          boxShadow: "8px 0 40px -8px rgba(0,0,0,0.7), 1px 0 0 rgba(201,162,76,0.08)",
+          zIndex: 101,
           display: "flex", flexDirection: "column",
           animation: "atlas-drawer-in 220ms cubic-bezier(.2,.8,.2,1)",
           maxHeight: "100dvh",
           overflowY: "hidden",
           overscrollBehavior: "contain",
+          isolation: "isolate",
         }}
       >
-        {/* Header */}
+        {/* Header — isolated container with safe-area top inset */}
         <header style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "14px 14px 14px 16px",
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
           borderBottom: "1px solid var(--atlas-gold-border)",
+          background: "var(--atlas-bg, #0c0a09)",
           flexShrink: 0,
+          position: "relative",
+          zIndex: 1,
         }}>
+
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden>
               <circle cx="10" cy="10" r="8" stroke="var(--atlas-gold)" strokeWidth="1.2" opacity="0.8" />

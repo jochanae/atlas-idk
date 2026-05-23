@@ -477,9 +477,9 @@ body[data-axiom-thread="empty"] * { scrollbar-width: none; }
 
 /* ── App header (workspace top bar — theme-aware, frosted glass) ── */
 .atlas-app-header {
-  background: rgba(12, 10, 9, 0.72);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   position: sticky;
   top: 0;
@@ -491,9 +491,9 @@ body[data-axiom-thread="empty"] * { scrollbar-width: none; }
 }
 
 [data-theme="parchment"] .atlas-app-header {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   border-bottom: 1px solid rgba(17, 17, 17, 0.05);
 }
 [data-theme="parchment"] .atlas-app-header * {
