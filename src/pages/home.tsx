@@ -2271,6 +2271,18 @@ export default function Home() {
       )}
       {homeMessages.length > 0 && !subheaderCollapsed && (
         <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
+          {/* Left-side collapse toggle */}
+          <button
+            onClick={toggleSubheader}
+            title="Hide header"
+            aria-label="Hide header"
+            style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
+          >
+            <ChevronUp size={13} strokeWidth={2} />
+          </button>
+
           {/* Centered identity zone — title (when earned) + reflection lock. No menu trigger here. */}
           <div style={{
             position: "absolute", left: "50%", top: "50%",
