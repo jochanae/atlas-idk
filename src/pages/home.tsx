@@ -268,7 +268,7 @@ function HomeChunkedBubbles({ text, isNew }: { text: string; isNew: boolean }) {
           key={i}
           text={chunk}
           animate={isNew && i === revealed && revealed < chunks.length}
-          style={i < visible.length - 1 ? { marginBottom: 10 } : undefined}
+          style={i < visible.length - 1 ? { marginBottom: 14 } : undefined}
         />
       ))}
     </>
@@ -2256,9 +2256,11 @@ export default function Home() {
           style={{
             position: "sticky", top: 50, zIndex: 20, height: 16, width: "100%",
             display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(14, 12, 10, 0.85)",
-            backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-            borderBottom: "1px solid rgba(212, 175, 55, 0.08)",
+            background: "rgba(10, 9, 8, 0.96)",
+            backdropFilter: "blur(18px) saturate(140%)",
+            WebkitBackdropFilter: "blur(18px) saturate(140%)",
+            borderBottom: "1px solid rgba(212, 175, 55, 0.12)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
             cursor: "pointer",
           }}
           onClick={toggleSubheader}
@@ -2268,6 +2270,7 @@ export default function Home() {
           <ChevronDown size={11} strokeWidth={2} style={{ color: "var(--atlas-gold)", opacity: 0.6 }} />
         </div>
       )}
+
       {homeMessages.length > 0 && !subheaderCollapsed && (
         <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
           {/* Left-side collapse toggle */}
@@ -2702,11 +2705,12 @@ export default function Home() {
                             padding: "4px 0",
                             background: "transparent",
                             border: "none",
-                            fontSize: "var(--ts-body)", lineHeight: 1.65, color: "var(--atlas-fg)",
+                            fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85,
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+
                           {!msg.streaming && (
                             <AmbientEmergenceCard
                               surface={msg.surface ?? null}
