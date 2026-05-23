@@ -3582,7 +3582,7 @@ function buildIntakeSeedNodes(answers: IntakeAnswers): ArchNode[] {
   const openQuestion = cleanIntakeValue(answers.openQuestion);
   const thinkingStyle = cleanIntakeValue(answers.thinkingStyle);
 
-  return [
+  const nodes: ArchNode[] = [
     {
       id: "intake-goal",
       label: "What we're building",
@@ -3650,7 +3650,9 @@ function buildIntakeSeedNodes(answers: IntakeAnswers): ArchNode[] {
       meta: "should",
       question: "How should Atlas think with you as this project evolves?",
     },
-  ].filter((node) => Boolean(node.strategicAnswer));
+  ];
+
+  return nodes.filter((node) => Boolean(node.strategicAnswer));
 }
 
 function buildIntakeGreeting(answers: IntakeAnswers): string {
