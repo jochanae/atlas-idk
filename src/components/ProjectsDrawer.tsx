@@ -320,8 +320,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
 
       <style>{`
         @keyframes atlas-drawer-in {
-          from { transform: translateX(-14px); opacity: 0; }
-          to   { transform: translateX(0); opacity: 1; }
+          from { transform: translateX(-14px); }
+          to   { transform: translateX(0); }
         }
       `}</style>
     </>
