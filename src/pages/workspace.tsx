@@ -3728,6 +3728,8 @@ export default function Workspace() {
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
   const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
+  const [atlasGreeting, setAtlasGreeting] = useState<string | null>(null);
+  const [greetingLoading, setGreetingLoading] = useState(false);
 
   // Session bootstrap deps for useChatStream — moved up from below so the hook
   // can own sessionId/ensureSessionId. project/projectLoading/hasForgeNodes etc.
@@ -3888,6 +3890,18 @@ export default function Workspace() {
       });
     },
   });
+
+  useEffect(() => {
+    if (messages.length > 0 || greetingLoading || atlasGreeting) return;
+    setGreetingLoading(true);
+    fetch(`/api/projects/${id}/greeting`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.message) setAtlasGreeting(data.message);
+      })
+      .catch(() => {})
+      .finally(() => setGreetingLoading(false));
+  }, [id, messages.length]);
 
   // Reset workspace-owned chat state when the project changes.
   // (messages / sessionId / priorLoaded / historyMsgCountRef portion lives in useChatStream)
@@ -4916,8 +4930,9 @@ export default function Workspace() {
 
   const sendFromIntentCapture = useCallback((text: string) => {
     if (!text.trim() || !sessionId || chatPending) return;
+    if (atlasGreeting) setAtlasGreeting(null);
     doSend(text.trim(), sessionId, messages);
-  }, [sessionId, chatPending, messages, doSend]);
+  }, [sessionId, chatPending, messages, doSend, atlasGreeting]);
 
   // Mirror an unanswered Intel Panel question into the chat as an assistant
   // message — does not call the AI, just appends to the visible thread.
@@ -5015,6 +5030,7 @@ export default function Workspace() {
     if (!text || chatPending) return;
     const sid = sessionId ?? await ensureSessionId().catch(() => null);
     if (!sid) return;
+    if (atlasGreeting) setAtlasGreeting(null);
     setShowHomeHandoffBanner(false);
     // Auto-dismiss any active catch — user chose to keep moving
     if (activeCatch) {
@@ -5043,6 +5059,11 @@ export default function Workspace() {
       doSend(fullText, sid, current);
     }
   };
+
+  const doSendFromComposer = useCallback((...args: Parameters<typeof doSend>) => {
+    if (atlasGreeting) setAtlasGreeting(null);
+    doSend(...args);
+  }, [atlasGreeting, doSend]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -6607,6 +6628,8 @@ export default function Workspace() {
               isHomeHandoff,
               homeHandoffMeta,
               isBrandNewProject,
+              atlasGreeting,
+              greetingLoading,
               project,
               onStarterPrompt: (label) => {
                 setInput(label);
@@ -6748,7 +6771,7 @@ export default function Workspace() {
               firstRunInput,
               setFirstRunInput,
               sessionId,
-              doSend,
+              doSend: doSendFromComposer,
               projectId: id,
               isMobile,
               setMobileTab,
