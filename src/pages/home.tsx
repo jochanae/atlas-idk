@@ -2705,11 +2705,12 @@ export default function Home() {
                             padding: "4px 0",
                             background: "transparent",
                             border: "none",
-                            fontSize: "var(--ts-body)", lineHeight: 1.65, color: "var(--atlas-fg)",
+                            fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85,
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+
                           {!msg.streaming && (
                             <AmbientEmergenceCard
                               surface={msg.surface ?? null}
