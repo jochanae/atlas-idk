@@ -43,13 +43,13 @@ function normalizeTerminalResult(value: unknown, fallbackCommand?: string): Pars
   };
 }
 
-async function execTerminalCommand(command: string, projectId?: number): Promise<ParsedTerminalResult> {
+async function execTerminalCommand(command: string, projectId?: number, tier?: TerminalTier): Promise<ParsedTerminalResult> {
   const started = Date.now();
   const res = await fetch("/api/terminal/exec", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ command, projectId }),
+    body: JSON.stringify({ command, tier, projectId }),
   });
   const outputChunks: string[] = [];
   let exitCode: number | null = res.ok ? null : res.status;
@@ -127,7 +127,7 @@ export function InlineTerminalBlock({ terminalCmd, terminalResult, projectId }: 
     setRunning(true);
     setError(null);
     try {
-      setResult(await execTerminalCommand(command, projectId));
+      setResult(await execTerminalCommand(command, projectId, cmd?.tier ?? 1));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Command failed.");
     } finally {
