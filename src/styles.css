@@ -345,20 +345,14 @@ html, body {
   }
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+/* ── Scrollbar ──
+   The branded TimelineRail is the single vertical rail. Hide native
+   scrollbars globally across browsers so they don't render as a second
+   gold/visible rail (especially on mobile WebKit). */
+* { scrollbar-width: none; -ms-overflow-style: none; }
+::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: rgba(201, 162, 76, 0.2);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 162, 76, 0.4);
-}
-/* Empty-thread state: hide the gold rail until a conversation begins */
-body[data-axiom-thread="empty"] ::-webkit-scrollbar { width: 0; height: 0; }
-body[data-axiom-thread="empty"] { scrollbar-width: none; }
-body[data-axiom-thread="empty"] * { scrollbar-width: none; }
+::-webkit-scrollbar-thumb { background: transparent; }
 
 /* Hide scrollbar for single-row chip carousel */
 .suggestion-chips-row::-webkit-scrollbar { display: none; }
