@@ -80,6 +80,28 @@ function DbUrlInput({ projectId, onSave }: { projectId: number; onSave: (url: st
   );
 }
 
+type AccountConnection = {
+  id: number | string;
+  type?: string | null;
+  token?: string | null;
+  accessToken?: string | null;
+  githubToken?: string | null;
+  meta?: {
+    token?: string | null;
+    accessToken?: string | null;
+    githubToken?: string | null;
+  } | null;
+};
+
+function githubTokenFromConnection(connection: AccountConnection): string | null {
+  return connection.token ?? connection.accessToken ?? connection.githubToken ??
+    connection.meta?.token ?? connection.meta?.accessToken ?? connection.meta?.githubToken ?? null;
+}
+
+function githubHeaders(token: string | null): HeadersInit {
+  return token && token !== "__account__" ? { "x-github-token": token } : {};
+}
+
 function DatabaseConnectionSection({
   projectId,
   dbUrl,
@@ -160,15 +182,30 @@ export function FilesPanel({
   });
   const { data: allProjects } = useListProjects();
 
-  const getGlobalToken = () => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } };
-  const setGlobalToken = (t: string | null) => { try { if (t) localStorage.setItem("atlas-github-token", t); else localStorage.removeItem("atlas-github-token"); } catch {} };
-
-  const [tokenState, setTokenState] = useState<string | null>(() => getGlobalToken());
+  const [tokenState, setTokenState] = useState<string | null>(null);
+  const [githubConnection, setGithubConnection] = useState<AccountConnection | null>(null);
   const [serverTokenAvailable, setServerTokenAvailable] = useState(false);
   const [serverTokenChecked, setServerTokenChecked] = useState(false);
   const tokenSynced = useRef(false);
   const [autoLinkStatus, setAutoLinkStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [autoLinkResult, setAutoLinkResult] = useState<{ linked: Array<{ projectName: string; repoFullName: string }>; skipped: string[] } | null>(null);
+  const loadGithubConnection = useCallback(async () => {
+    const res = await fetch("/api/connections");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
+    const github = connections.find((c) => c.type === "github") ?? null;
+    setGithubConnection(github);
+    setTokenState(github ? githubTokenFromConnection(github) ?? "__account__" : null);
+    return github;
+  }, []);
+
+  useEffect(() => {
+    loadGithubConnection().catch(() => {
+      setGithubConnection(null);
+      setTokenState(null);
+    });
+  }, [loadGithubConnection]);
 
   // Check if server has a GITHUB_TOKEN configured — auto-connect if no manual token exists
   useEffect(() => {
@@ -178,42 +215,27 @@ export function FilesPanel({
         const avail = !!d.available;
         setServerTokenAvailable(avail);
         setServerTokenChecked(true);
-        if (avail && !getGlobalToken()) {
+        if (avail && !githubConnection) {
           setTokenState("__server__");
         }
       })
       .catch(() => setServerTokenChecked(true));
-  }, []);
+  }, [githubConnection]);
+
+  useEffect(() => {
+    if (!githubConnection && serverTokenAvailable) setTokenState("__server__");
+  }, [githubConnection, serverTokenAvailable]);
 
   useEffect(() => {
     if (!filesProject) return;
-    const globalToken = getGlobalToken();
-    const dbToken = filesProject.githubToken ?? null;
-
-    if (globalToken || dbToken) {
+    if (githubConnection) {
       if (tokenSynced.current) return;
       tokenSynced.current = true;
-      const t = globalToken ?? dbToken!;
-      setTokenState(t);
-      setGlobalToken(t);
-      // Back-fill this project if it only had the token in localStorage
-      // Never write the __server__ sentinel to the DB — it's not a real token
-      if (!dbToken && t !== "__server__") updateProject.mutate({ id: projectId, data: { githubToken: t } });
       return;
     }
 
-    // No token in localStorage or this project's DB — check sibling projects
-    if (!allProjects) return;
-    if (tokenSynced.current) return;
-    tokenSynced.current = true;
-    const sibling = allProjects.find((p) => p.id !== projectId && p.githubToken);
-    if (sibling?.githubToken) {
-      const t = sibling.githubToken;
-      setTokenState(t);
-      setGlobalToken(t);
-      if (t !== "__server__") updateProject.mutate({ id: projectId, data: { githubToken: t } });
-    }
-  }, [filesProject, allProjects]);
+    if (!serverTokenAvailable) setTokenState(null);
+  }, [filesProject, githubConnection, serverTokenAvailable]);
   const [tokenInput, setTokenInput] = useState("");
   const [tokenSaveError, setTokenSaveError] = useState<string | null>(null);
   const [repos, setRepos] = useState<GhRepo[]>([]);
@@ -250,7 +272,7 @@ export function FilesPanel({
     setScanStatus("scanning");
     fetch("/api/github/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-github-token": token },
+      headers: { "Content-Type": "application/json", ...githubHeaders(token) },
       body: JSON.stringify({ repo: repo.fullName, branch: repo.defaultBranch }),
     })
       .then((r) => (r.ok ? r.json() : null))
@@ -317,7 +339,7 @@ export function FilesPanel({
     try {
       const res = await fetch("/api/github/auto-link", {
         method: "POST",
-        headers: { "x-github-token": tokenState },
+        headers: githubHeaders(tokenState),
       });
       const data = await res.json() as any;
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -330,61 +352,52 @@ export function FilesPanel({
     }
   };
 
-  const saveToken = (t: string) => {
+  const saveToken = async (t: string) => {
     setTokenSaveError(null);
-    setGlobalToken(t);
-    updateProject.mutate(
-      { id: projectId, data: { githubToken: t } },
-      {
-        onSuccess: () => {
-          setTokenState(t);
-          // Propagate token to every other project that doesn't have one yet
-          (allProjects ?? [])
-            .filter((p) => p.id !== projectId && !p.githubToken)
-            .forEach((p) => {
-              fetch(`/api/projects/${p.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ githubToken: t }),
-              }).catch(() => {});
-            });
-        },
-        onError: (err: any) => {
-          const msg = err?.response?.data?.error ?? err?.message ?? "Failed to save token";
-          setTokenSaveError(msg);
-        },
+    try {
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "github", token: t.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
       }
-    );
+      setTokenState(t.trim());
+      setTokenInput("");
+      await loadGithubConnection();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? err?.message ?? "Failed to save token";
+      setTokenSaveError(msg);
+    }
   };
 
-  const clearToken = () => {
+  const clearToken = async () => {
     setClearTokenError(null);
     setIsDisconnecting(true);
-    setGlobalToken(null); // clear globally
-    updateProject.mutate(
-      { id: projectId, data: { githubToken: null } },
-      {
-        onSuccess: () => {
-          setIsDisconnecting(false);
-          setDisconnectConfirm(false);
-          setTokenState(null);
-          setRepos([]); setSelectedRepo(null); setTree([]);
-          setSelectedPath(null); setFileContent(null);
-          setView("repos");
-          onFileContext(null);
-        },
-        onError: (err: any) => {
-          setIsDisconnecting(false);
-          const msg = err?.response?.data?.error ?? err?.message ?? "Failed to disconnect GitHub";
-          setClearTokenError(msg);
-          setDisconnectConfirm(false);
-        },
+    try {
+      if (githubConnection) {
+        const res = await fetch(`/api/connections/${githubConnection.id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       }
-    );
+      setGithubConnection(null);
+      setTokenState(serverTokenAvailable ? "__server__" : null);
+      setRepos([]); setSelectedRepo(null); setTree([]);
+      setSelectedPath(null); setFileContent(null);
+      setView("repos");
+      onFileContext(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? err?.message ?? "Failed to disconnect GitHub";
+      setClearTokenError(msg);
+    } finally {
+      setIsDisconnecting(false);
+      setDisconnectConfirm(false);
+    }
   };
 
   const ghFetch = useCallback(async (path: string) => {
-    const res = await fetch(path, { headers: { "x-github-token": tokenState! } });
+    const res = await fetch(path, { headers: githubHeaders(tokenState) });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error || `HTTP ${res.status}`);
@@ -655,7 +668,7 @@ export function FilesPanel({
             type="password"
             value={tokenInput}
             onChange={(e) => { setTokenInput(e.target.value); setTokenSaveError(null); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim()) saveToken(tokenInput.trim()); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim()) void saveToken(tokenInput.trim()); }}
             placeholder="ghp_…"
             autoComplete="off"
             style={{
@@ -675,7 +688,7 @@ export function FilesPanel({
             </div>
           )}
           <button
-            onClick={() => tokenInput.trim() && saveToken(tokenInput.trim())}
+            onClick={() => { if (tokenInput.trim()) void saveToken(tokenInput.trim()); }}
             disabled={!tokenInput.trim()}
             style={{
               padding: "7px", borderRadius: 6, width: "100%",
@@ -794,7 +807,7 @@ export function FilesPanel({
                 style={{ background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 5, cursor: isDisconnecting ? "default" : "pointer", color: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", padding: "3px 8px", opacity: isDisconnecting ? 0.35 : 0.8, minHeight: 28 }}
               >Cancel</button>
               <button
-                onClick={clearToken}
+                onClick={() => { void clearToken(); }}
                 disabled={isDisconnecting}
                 style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", borderRadius: 5, cursor: isDisconnecting ? "default" : "pointer", color: "rgba(252,165,165,0.95)", fontSize: 10, fontFamily: "var(--app-font-mono)", padding: "3px 8px", opacity: isDisconnecting ? 0.55 : 1, minHeight: 28 }}
               >{isDisconnecting ? "removing…" : "Remove"}</button>
@@ -802,7 +815,7 @@ export function FilesPanel({
           ) : (
             <button
               onClick={() => setDisconnectConfirm(true)}
-              title="Change GitHub token"
+              title={tokenState === "__account__" ? "GitHub Connected" : "Change GitHub token"}
               style={{
                 display: "flex", alignItems: "center", gap: 4,
                 background: "rgba(var(--atlas-gold-rgb),0.06)",
@@ -820,7 +833,7 @@ export function FilesPanel({
                 <circle cx="5" cy="8" r="2.5" /><path d="M7.5 8h4M10 6v4" />
                 <path d="M3 5.5L5.5 3 8 5.5" />
               </svg>
-              token
+              {tokenState === "__account__" ? "GitHub Connected" : "token"}
             </button>
           )}
         </div>
@@ -1042,10 +1055,9 @@ export function FilesPanel({
                       { data: { name: repo.name } },
                       {
                         onSuccess: (newProject) => {
-                          const token = localStorage.getItem("atlas-github-token") || null;
                           const repoJson = JSON.stringify(repo);
                           updateProject.mutate(
-                            { id: newProject.id, data: { linkedRepo: repoJson, ...(token ? { githubToken: token } : {}) } },
+                            { id: newProject.id, data: { linkedRepo: repoJson } },
                             {
                               onSuccess: () => {
                                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
