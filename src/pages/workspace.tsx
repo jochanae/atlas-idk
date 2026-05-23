@@ -5021,6 +5021,19 @@ export default function Workspace() {
     doSend(text.trim(), sessionId, messages);
   }, [sessionId, chatPending, messages, doSend, atlasGreeting]);
 
+  // Bridge: CommitHistoryCard (and other detached UI) dispatches
+  // "atlas:workspace-send" with { text } — route it into the chat.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { text?: string } | undefined;
+      const text = detail?.text?.trim();
+      if (!text || !sessionId) return;
+      doSend(text, sessionId, messagesRef.current);
+    };
+    window.addEventListener("atlas:workspace-send", handler);
+    return () => window.removeEventListener("atlas:workspace-send", handler);
+  }, [sessionId, doSend]);
+
   // Mirror an unanswered Intel Panel question into the chat as an assistant
   // message — does not call the AI, just appends to the visible thread.
   const lastNodeMirrorRef = useRef<string | null>(null);
