@@ -409,13 +409,12 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
-        {/* Generate Blueprint pill — surfaces when Atlas hints at it or chat has depth */}
+        {/* Generate Blueprint pill — only surfaces when Atlas explicitly offers it */}
         {(() => {
           const assistantMsgs = messages.filter(m => m.role === "assistant");
           const last = assistantMsgs[assistantMsgs.length - 1]?.content ?? "";
-          const phraseHit = /Want me to generate|Blueprint ready/i.test(last);
-          const depthHit = messages.length > 8;
-          if (!phraseHit && !depthHit) return null;
+          const phraseHit = /Want me to generate a blueprint|Blueprint ready|Shall I generate a blueprint/i.test(last);
+          if (!phraseHit) return null;
           return (
             <GenerateBlueprintPill
               projectId={projectId}
