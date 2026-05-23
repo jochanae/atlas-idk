@@ -361,8 +361,10 @@ export default function SecretsPage() {
                             </button>
                             {isRevealed && revealedValue && (
                               <button
+                                type="button"
                                 onClick={() => handleCopy(s.id, revealedValue)}
-                                style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${copiedId === s.id ? "rgba(34,197,94,0.4)" : "rgba(201,162,76,0.2)"}`, background: copiedId === s.id ? "rgba(34,197,94,0.08)" : "rgba(201,162,76,0.06)", color: copiedId === s.id ? "rgba(134,239,172,0.9)" : "var(--atlas-gold)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleCopy(s.id, revealedValue); }}
+                                style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${copiedId === s.id ? "rgba(34,197,94,0.4)" : "rgba(201,162,76,0.2)"}`, background: copiedId === s.id ? "rgba(34,197,94,0.08)" : "rgba(201,162,76,0.06)", color: copiedId === s.id ? "rgba(134,239,172,0.9)" : "var(--atlas-gold)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation", WebkitTapHighlightColor: "transparent", pointerEvents: "auto" }}
                                 title="Copy"
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
