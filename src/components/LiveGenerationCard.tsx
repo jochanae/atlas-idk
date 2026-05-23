@@ -57,17 +57,14 @@ export function LiveGenerationCard({ mode, steps, isComplete }: LiveGenerationCa
       `}</style>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: steps.length > 0 ? 9 : 0 }}>
-        <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background: "var(--atlas-gold)",
-            display: "inline-block",
-            flexShrink: 0,
-            animation: isComplete ? "none" : "atlas-live-generation-pulse 1.2s ease-in-out infinite",
-          }}
-        />
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, flexShrink: 0 }}>
+          {isComplete ? (
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block" }} />
+          ) : (
+            <LoadingSpinner size="sm" color="atlas" />
+          )}
+        </span>
+
         <span
           style={{
             fontFamily: "var(--app-font-mono)",
