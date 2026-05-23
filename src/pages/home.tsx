@@ -268,7 +268,7 @@ function HomeChunkedBubbles({ text, isNew }: { text: string; isNew: boolean }) {
           key={i}
           text={chunk}
           animate={isNew && i === revealed && revealed < chunks.length}
-          style={i < visible.length - 1 ? { marginBottom: 10 } : undefined}
+          style={i < visible.length - 1 ? { marginBottom: 14 } : undefined}
         />
       ))}
     </>
