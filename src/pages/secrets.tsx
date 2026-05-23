@@ -345,8 +345,10 @@ export default function SecretsPage() {
                           </div>
                           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                             <button
+                              type="button"
                               onClick={() => handleReveal(s.id)}
-                              style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${isRevealed ? "rgba(201,162,76,0.3)" : "rgba(120,113,108,0.2)"}`, background: isRevealed ? "rgba(201,162,76,0.08)" : "transparent", color: isRevealed ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: revealLoading === s.id ? 0.5 : 1 }}
+                              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleReveal(s.id); }}
+                              style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${isRevealed ? "rgba(201,162,76,0.3)" : "rgba(120,113,108,0.2)"}`, background: isRevealed ? "rgba(201,162,76,0.08)" : "transparent", color: isRevealed ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: revealLoading === s.id ? 0.5 : 1, touchAction: "manipulation", WebkitTapHighlightColor: "transparent", pointerEvents: "auto" }}
                               title={isRevealed ? "Hide" : "Reveal"}
                             >
                               {revealLoading === s.id ? (
