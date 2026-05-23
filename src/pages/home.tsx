@@ -21,6 +21,7 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
+import { chooseGreeting, readLastActive, markActiveNow } from "../lib/atlas-voice";
 import { fileToBase64Safe } from "../lib/image-resize";
 import { useRequireAuth } from "../hooks/useAuth";
 import { useThemeMode } from "../lib/theme";
@@ -1269,7 +1270,8 @@ export default function Home() {
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const greetingPhraseRef = useRef<string | null>(null);
+  const greetingRef = useRef<{ head: string; sub: string } | null>(null);
+  const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
   const { setDepth, setActiveProjectId } = useShellState();
   const previousHomeMessageCountRef = useRef(0);
@@ -1284,29 +1286,7 @@ export default function Home() {
     previousHomeMessageCountRef.current = homeMessages.length;
   }, [homeMessages.length, setDepth]);
 
-  // Compute greeting phrase once on mount and never change it
-  const greetingNameRef = useRef<string | null>(null);
-  if (greetingPhraseRef.current === null) {
-    const hasHistory = conversations.length > 0;
-    const hour = new Date().getHours();
-    const pool = hasHistory
-      ? ["Where were we?", "Picking something back up?", "Still untangling it?"]
-      : hour >= 5 && hour < 11
-        ? ["Good morning.", "Morning."]
-        : hour >= 11 && hour < 17
-          ? ["Good afternoon.", "Afternoon."]
-          : hour >= 17 && hour < 21
-            ? ["Good evening.", "Still thinking about it?"]
-            : ["Still at it.", "Night owl mode."];
-    greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
-
-    try {
-      const visitedKey = "atlas-home-visited";
-      if (typeof localStorage !== "undefined") localStorage.setItem(visitedKey, "1");
-    } catch {}
-  }
-
-  // Always derive greeting name from current auth user (updates when /me resolves)
+  // Derive first name from auth (updates when /me resolves)
   {
     const fullName = (authUser?.name ?? "").trim();
     const emailLocal = (authUser?.email ?? "").split("@")[0] ?? "";
@@ -1317,6 +1297,8 @@ export default function Home() {
       if (greetingNameRef.current !== pretty) greetingNameRef.current = pretty;
     }
   }
+
+  // Greeting is computed below, after `projects` is available.
 
   // ── Home context: repo / branch / model ────────────────────────────────────
   const [homeFocus] = useState<number | null>(null);
@@ -1514,6 +1496,22 @@ export default function Home() {
   }, [projects]);
   const homeProjectState = useProjectState(homeFocus);
   const createProject = useCreateProject();
+
+  // Compute greeting once on mount with full micro-state context
+  if (greetingRef.current === null) {
+    const lastActive = readLastActive();
+    greetingRef.current = chooseGreeting({
+      hour: new Date().getHours(),
+      projectCount: projects?.length ?? 0,
+      hasHistory: conversations.length > 0,
+      msSinceLastActive: lastActive ? Date.now() - lastActive : null,
+      name: greetingNameRef.current,
+    });
+    markActiveNow();
+    try {
+      if (typeof localStorage !== "undefined") localStorage.setItem("atlas-home-visited", "1");
+    } catch {}
+  }
 
   useEffect(() => {
     setBriefingLoading(true);
@@ -2617,13 +2615,10 @@ export default function Home() {
             {homeMessages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
                 <h1 style={{ fontSize: "var(--ts-display-xl)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
-                  {greetingNameRef.current && (
-                    <><span style={{ fontWeight: 300 }}>{greetingNameRef.current}.</span><br /></>
-                  )}
-                  {greetingPhraseRef.current}
+                  {greetingRef.current?.head}
                 </h1>
                 <p style={{ fontSize: "var(--ts-body)", color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
-                  I'm here. What's on your mind?
+                  {greetingRef.current?.sub}
                 </p>
               </div>
             )}
