@@ -5169,10 +5169,17 @@ export default function Workspace() {
   }, [sessionId, messages.length, project?.memory, doSend]);
 
   const sendFromIntentCapture = useCallback((text: string) => {
-    if (!text.trim() || !sessionId || chatPending) return;
+    const trimmed = text.trim();
+    if (!trimmed || !sessionId || chatPending) return;
     if (atlasGreeting) setAtlasGreeting(null);
-    doSend(text.trim(), sessionId, messages);
-  }, [sessionId, chatPending, messages, doSend, atlasGreeting]);
+    if (trimmed.includes("TERMINAL_CMD:") && leftTab !== "chat") {
+      setLeftTab("chat");
+    }
+    if (trimmed.includes("TERMINAL_CMD:") && mobileTab !== "chat") {
+      setMobileTab("chat");
+    }
+    doSend(trimmed, sessionId, messages);
+  }, [sessionId, chatPending, messages, doSend, atlasGreeting, leftTab, mobileTab]);
 
   // Bridge: CommitHistoryCard (and other detached UI) dispatches
   // "atlas:workspace-send" with { text } — route it into the chat.
