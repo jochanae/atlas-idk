@@ -3674,6 +3674,19 @@ function buildIntakeGreeting(answers: IntakeAnswers): string {
   return `${lead}${workingLine}${tensionLine} Where do you want to push first?`;
 }
 
+function buildIntakeEntries(answers: IntakeAnswers): Array<{ title: string; summary: string }> {
+  const items = [
+    cleanIntakeValue(answers.what) ? { title: "What we're building", summary: cleanIntakeValue(answers.what) } : null,
+    cleanIntakeValue(answers.who) ? { title: "Who it's for", summary: cleanIntakeValue(answers.who) } : null,
+    cleanIntakeValue(answers.stage) ? { title: "Current stage", summary: cleanIntakeValue(answers.stage) } : null,
+    cleanIntakeValue(answers.working) ? { title: "What's already working", summary: cleanIntakeValue(answers.working) } : null,
+    cleanIntakeValue(answers.openQuestion) ? { title: "Open question", summary: cleanIntakeValue(answers.openQuestion) } : null,
+    cleanIntakeValue(answers.thinkingStyle) ? { title: "Thinking style", summary: cleanIntakeValue(answers.thinkingStyle) } : null,
+  ];
+
+  return items.filter((item): item is { title: string; summary: string } => Boolean(item));
+}
+
 function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete: (answers: IntakeAnswers) => Promise<void> | void }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
