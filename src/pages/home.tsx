@@ -1269,7 +1269,8 @@ export default function Home() {
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const greetingPhraseRef = useRef<string | null>(null);
+  const greetingRef = useRef<{ head: string; sub: string } | null>(null);
+  const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
   const { setDepth, setActiveProjectId } = useShellState();
   const previousHomeMessageCountRef = useRef(0);
@@ -1284,29 +1285,7 @@ export default function Home() {
     previousHomeMessageCountRef.current = homeMessages.length;
   }, [homeMessages.length, setDepth]);
 
-  // Compute greeting phrase once on mount and never change it
-  const greetingNameRef = useRef<string | null>(null);
-  if (greetingPhraseRef.current === null) {
-    const hasHistory = conversations.length > 0;
-    const hour = new Date().getHours();
-    const pool = hasHistory
-      ? ["Where were we?", "Picking something back up?", "Still untangling it?"]
-      : hour >= 5 && hour < 11
-        ? ["Good morning.", "Morning."]
-        : hour >= 11 && hour < 17
-          ? ["Good afternoon.", "Afternoon."]
-          : hour >= 17 && hour < 21
-            ? ["Good evening.", "Still thinking about it?"]
-            : ["Still at it.", "Night owl mode."];
-    greetingPhraseRef.current = pool[Math.floor(Math.random() * pool.length)];
-
-    try {
-      const visitedKey = "atlas-home-visited";
-      if (typeof localStorage !== "undefined") localStorage.setItem(visitedKey, "1");
-    } catch {}
-  }
-
-  // Always derive greeting name from current auth user (updates when /me resolves)
+  // Derive first name from auth (updates when /me resolves)
   {
     const fullName = (authUser?.name ?? "").trim();
     const emailLocal = (authUser?.email ?? "").split("@")[0] ?? "";
@@ -1316,6 +1295,22 @@ export default function Home() {
       const pretty = first.charAt(0).toUpperCase() + first.slice(1);
       if (greetingNameRef.current !== pretty) greetingNameRef.current = pretty;
     }
+  }
+
+  // Compute greeting once on mount with full micro-state context
+  if (greetingRef.current === null) {
+    const lastActive = readLastActive();
+    greetingRef.current = chooseGreeting({
+      hour: new Date().getHours(),
+      projectCount: projects?.length ?? 0,
+      hasHistory: conversations.length > 0,
+      msSinceLastActive: lastActive ? Date.now() - lastActive : null,
+      name: greetingNameRef.current,
+    });
+    markActiveNow();
+    try {
+      if (typeof localStorage !== "undefined") localStorage.setItem("atlas-home-visited", "1");
+    } catch {}
   }
 
   // ── Home context: repo / branch / model ────────────────────────────────────
