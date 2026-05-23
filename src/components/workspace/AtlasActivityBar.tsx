@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
 
 const FALLBACK_BY_LENS: Record<string, string[]> = {
   build: [
