@@ -49,7 +49,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   return (
     <>
       {/* Scrim */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.56)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 100 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.56)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 2000 }} />
 
       {/* Panel */}
       <aside
