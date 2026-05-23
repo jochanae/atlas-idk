@@ -49,7 +49,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   return (
     <>
       {/* Scrim */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.56)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 100 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.56)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 2000 }} />
 
       {/* Panel */}
       <aside
@@ -63,7 +63,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           background: "var(--atlas-bg, #0c0a09)",
           borderRight: "1px solid var(--atlas-gold-border)",
           boxShadow: "8px 0 40px -8px rgba(0,0,0,0.7), 1px 0 0 rgba(201,162,76,0.08)",
-          zIndex: 101,
+          zIndex: 2001,
           display: "flex", flexDirection: "column",
           animation: "atlas-drawer-in 220ms cubic-bezier(.2,.8,.2,1)",
           maxHeight: "100dvh",
