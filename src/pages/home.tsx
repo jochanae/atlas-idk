@@ -2894,28 +2894,32 @@ export default function Home() {
                   {showScrollBtn && (
                     <button
                       onClick={() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" })}
+                      aria-label="Scroll to latest"
                       style={{
                         position: "sticky",
-                        bottom: 8,
-                        alignSelf: "center",
-                        zIndex: 10,
+                        bottom: 12,
+                        left: "100%",
+                        transform: "translateX(-100%)",
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
                         background: "var(--atlas-surface)",
                         border: "1px solid var(--atlas-gold)",
-                        borderRadius: 20,
-                        padding: "6px 16px",
+                        color: "var(--atlas-gold)",
                         display: "flex",
                         alignItems: "center",
-                        gap: 6,
-                        color: "var(--atlas-gold)",
-                        fontSize: "var(--ts-label)",
-                        fontFamily: "var(--app-font-mono)",
+                        justifyContent: "center",
                         cursor: "pointer",
                         boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                        letterSpacing: "0.04em",
+                        zIndex: 10,
+                        flexShrink: 0,
                       }}
                     >
-                      <span style={{ fontSize: "var(--ts-md)", lineHeight: 1 }}>↓</span> latest
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3v10M4 9l4 4 4-4"/>
+                      </svg>
                     </button>
+
                   )}
                   <div ref={messagesEndRef} />
 
@@ -3780,7 +3784,7 @@ export default function Home() {
           onDecisions={() => setLocation("/ledger")}
           onYou={() => setShowProfile(true)}
           onMap={() => setLocation("/map")}
-          onFiles={() => setShowVault(true)}
+          onFiles={() => setShowDrawer(true)}
           onForge={() => setShowQuickPrompt(true)}
         />
       </div>

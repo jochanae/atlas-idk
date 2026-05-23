@@ -7302,8 +7302,9 @@ export default function Workspace() {
         <UnifiedContextDock
           mode="operational"
           activeOperationalTab={(["chat","ledger","preview","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "preview" | "map" | "files" | undefined}
-          onAtlasCore={() => { setMobileTab("chat"); setRightOpen(false); }}
-          onChat={() => setMobileTab("chat")}
+          onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
+          onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
+
           onLedger={() => setMobileTab("ledger")}
           onPreview={() => setMobileTab("preview")}
           onFlow={() => setLocation("/map")}
