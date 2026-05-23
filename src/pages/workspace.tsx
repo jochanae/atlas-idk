@@ -5359,6 +5359,56 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:workspace-send", handler);
   }, [sessionId, doSend]);
 
+  // ARTIFACT protocol — intercept ARTIFACT: <json> lines in assistant responses.
+  // Strips the line from display and POSTs the artifact to /api/artifacts.
+  const processedArtifactRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ARTIFACT_RE = /^ARTIFACT:\s*(\{.*\})\s*$/m;
+    messages.forEach((m, idx) => {
+      if (m.role !== "assistant" || m.streaming) return;
+      if (typeof m.content !== "string") return;
+      const match = m.content.match(ARTIFACT_RE);
+      if (!match) return;
+      const key = `${m.id ?? `i${idx}`}`;
+      if (processedArtifactRef.current.has(key)) return;
+      processedArtifactRef.current.add(key);
+
+      let parsed: { type?: string; title?: string; content?: string } | null = null;
+      try { parsed = JSON.parse(match[1]); } catch { parsed = null; }
+
+      // Strip the line from displayed message
+      const cleaned = m.content.replace(ARTIFACT_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+      setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned } : pm)));
+
+      if (!parsed || !parsed.type || !parsed.title || typeof parsed.content !== "string") {
+        toast("Failed to save artifact.");
+        return;
+      }
+
+      const title = parsed.title;
+      void (async () => {
+        try {
+          const res = await fetch("/api/artifacts", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              projectId: id,
+              ...(sessionId ? { sessionId } : {}),
+              type: parsed!.type,
+              title,
+              content: parsed!.content,
+            }),
+          });
+          if (!res.ok) throw new Error();
+          toast(`${title} saved to Artifacts.`);
+        } catch {
+          toast("Failed to save artifact.");
+        }
+      })();
+    });
+  }, [messages, setMessages, id, sessionId]);
+
   // Mirror an unanswered Intel Panel question into the chat as an assistant
   // message — does not call the AI, just appends to the visible thread.
   const lastNodeMirrorRef = useRef<string | null>(null);
