@@ -209,7 +209,7 @@ export default function OnboardingPage() {
       setForging(true);
       // Hand off after the camera has nearly finished its pull-back
       setTimeout(() => {
-        setLocation(`/project/${data.id}?onboarding=true`);
+        setLocation(`/map?projectId=${data.id}&onboarding=true`);
       }, 1150);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Project creation failed.");
