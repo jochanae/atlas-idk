@@ -409,20 +409,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
-        {/* Generate Blueprint pill — surfaces when Atlas hints at it or chat has depth */}
-        {(() => {
-          const assistantMsgs = messages.filter(m => m.role === "assistant");
-          const last = assistantMsgs[assistantMsgs.length - 1]?.content ?? "";
-          const phraseHit = /Want me to generate|Blueprint ready/i.test(last);
-          const depthHit = messages.length > 8;
-          if (!phraseHit && !depthHit) return null;
-          return (
-            <GenerateBlueprintPill
-              projectId={projectId}
-              onCreated={() => { if (isMobile) setMobileTab("blueprints"); else setDesktopForceTab("blueprints"); }}
-            />
-          );
-        })()}
+        {/* Generate Blueprint pill removed from composer — lives in the Blueprints tab. */}
 
         {/* Attachment preview strip */}
         {attachedFiles.length > 0 && (
