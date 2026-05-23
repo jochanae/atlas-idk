@@ -1496,6 +1496,22 @@ export default function Home() {
   const homeProjectState = useProjectState(homeFocus);
   const createProject = useCreateProject();
 
+  // Compute greeting once on mount with full micro-state context
+  if (greetingRef.current === null) {
+    const lastActive = readLastActive();
+    greetingRef.current = chooseGreeting({
+      hour: new Date().getHours(),
+      projectCount: projects?.length ?? 0,
+      hasHistory: conversations.length > 0,
+      msSinceLastActive: lastActive ? Date.now() - lastActive : null,
+      name: greetingNameRef.current,
+    });
+    markActiveNow();
+    try {
+      if (typeof localStorage !== "undefined") localStorage.setItem("atlas-home-visited", "1");
+    } catch {}
+  }
+
   useEffect(() => {
     setBriefingLoading(true);
     fetch("/api/nexus/briefing", {
