@@ -112,6 +112,12 @@ export interface ChatComposerProps {
   setAllZip: (selected: boolean) => void;
   clearZip: () => void;
 
+  // Server-side code-context upload
+  uploadCodeContextZip: (file: File) => Promise<void>;
+  codeContextStatus: { summary: string; fileCount: number } | null;
+  codeContextUploading: boolean;
+  clearCodeContext: () => void;
+
   // First-run overlay
   firstRunDismissed: boolean;
   setFirstRunDismissed: (v: boolean) => void;
