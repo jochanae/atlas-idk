@@ -3981,7 +3981,7 @@ export default function Workspace() {
     sendCtxRef,
     scenarioStartIdxRef,
   } = useChatLens(id);
-  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal">("chat");
+  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal" | "artifacts">("chat");
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
