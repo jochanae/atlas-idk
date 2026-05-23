@@ -26,6 +26,39 @@ type LiveGenerationLike = {
 };
 type PlanExecutionLike = PlanExecution;
 
+function isAutoVerifyMessage(msg: ChatMessage): boolean {
+  return msg.displayAs === "autoVerify" || msg.content.startsWith("[FILE_COMMITTED]");
+}
+
+function AutoVerifyMessage({ content }: { content: string }) {
+  return (
+    <div
+      style={{
+        maxWidth: "82%",
+        margin: "4px 0 18px",
+        padding: "7px 0 7px 11px",
+        borderLeft: "2px solid rgba(201,162,76,0.4)",
+        color: "rgba(var(--atlas-muted-rgb),0.9)",
+        fontSize: "var(--ts-caption)",
+        lineHeight: 1.55,
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      <div
+        style={{
+          color: "rgba(201,162,76,0.55)",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: "var(--ts-micro)",
+          marginBottom: 4,
+        }}
+      >
+        Auto-verify
+      </div>
+      {content}
+    </div>
+  );
+}
+
 export interface ChatStreamProps {
   // scroll container
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -171,12 +204,16 @@ export function ChatStream(props: ChatStreamProps) {
       {messages.map((msg, i) =>
         msg.role === "user" ? (
           <div key={i} data-atlas-msg-idx={i}>
-            <UserBubble
-              content={msg.content}
-              sentAt={msg.sentAt}
-              onCopy={() => {}}
-              onEdit={() => onEditUserMessage(msg.content)}
-            />
+            {isAutoVerifyMessage(msg) ? (
+              <AutoVerifyMessage content={msg.content} />
+            ) : (
+              <UserBubble
+                content={msg.content}
+                sentAt={msg.sentAt}
+                onCopy={() => {}}
+                onEdit={() => onEditUserMessage(msg.content)}
+              />
+            )}
           </div>
         ) : (
           <div key={i} data-atlas-msg-idx={i}>

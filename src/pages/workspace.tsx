@@ -156,6 +156,7 @@ export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
   content: string;
+  displayAs?: "autoVerify";
   streaming?: boolean;
   terminalCmd?: unknown;
   terminalResult?: unknown;
@@ -6724,13 +6725,16 @@ export default function Workspace() {
                   if (agenticMode && agenticIterCount >= 8) {
                     // hard-stop at 8 iterations
                   } else {
-                    const plural = records.length > 1 ? `${records.length} files` : `"${records[0]?.filename}"`;
-                    const confirmNote = commitUrl ? ` Commit: ${commitUrl}` : "";
+                    const repoName = linkedRepo?.fullName ?? "unknown repo";
+                    const filePaths = records.map((r) => r.path).join(", ");
                     if (agenticMode) setAgenticIterCount((n) => n + 1);
                     doSend(
-                      `FILE_EDIT_CONFIRMED: ${plural} pushed to ${branch}.${confirmNote} Continue.`,
+                      `[FILE_COMMITTED] ${records.length} file(s) committed to ${repoName}: ${filePaths}. Verify the build.`,
                       sessionId,
                       messagesRef.current,
+                      undefined,
+                      undefined,
+                      { displayAs: "autoVerify" },
                     );
                   }
                 }
