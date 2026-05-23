@@ -24,7 +24,7 @@ import Help from "./pages/help";
 import Vault from "./pages/vault";
 import Secrets from "./pages/secrets";
 import Admin from "./pages/admin";
-import Dashboard from "./pages/dashboard";
+
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import MasterMap from "./pages/master-map";
