@@ -1,5 +1,11 @@
 {
   "framework": null,
   "buildCommand": "vite build",
-  "outputDirectory": ".vercel/output"
+  "outputDirectory": ".vercel/output",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://axiom-atlas-689827072865.us-east1.run.app/api/:path*"
+    }
+  ]
 }
