@@ -6932,12 +6932,16 @@ export default function Workspace() {
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <BlueprintsTab projectId={id} />
             </div>
+          ) : leftTab === "artifacts" ? (
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <ArtifactsPanel projectId={id} />
+            </div>
           ) : null}
 
           <UnifiedConversationSurface
             mode="operational"
             projectId={id}
-            chatStreamProps={leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" ? {
+            chatStreamProps={leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
               scrollRef: chatPanelScrollRef,
               bottomRef: bottomRef,
               onScroll: (e) => {
