@@ -5548,6 +5548,7 @@ export default function Workspace() {
 
   const hydrateWorkspaceFromIntake = useCallback(async (answers: IntakeAnswers) => {
     const seededNodes = buildIntakeSeedNodes(answers);
+    const seededEntries = buildIntakeEntries(answers);
     const nextForgeContext = seededNodes.map((node) => `[${node.type}] ${node.label}${node.strategicAnswer ? `: ${node.strategicAnswer}` : ""}`).join(" | ");
     const greeting = buildIntakeGreeting(answers);
 
@@ -5575,6 +5576,22 @@ export default function Workspace() {
     setGreetingLoading(false);
     void updateForgeState("forged");
 
+    if (seededEntries.length > 0) {
+      await Promise.all(seededEntries.map((entry) =>
+        createEntry.mutateAsync({
+          projectId: id,
+          data: {
+            title: entry.title,
+            summary: entry.summary.slice(0, 500),
+            status: "parked",
+            severity: "parked",
+            mode: "think",
+            verb: "forge_intake",
+          },
+        }).catch(() => null)
+      ));
+    }
+
     queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
     queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
     void refreshParkedEntries();
@@ -5586,7 +5603,7 @@ export default function Workspace() {
       setDesktopForceTab("map");
       setTimeout(() => setDesktopForceTab(undefined), 120);
     }
-  }, [id, isMobile, parkedEntries, queryClient, refreshParkedEntries, updateForgeState]);
+  }, [createEntry, id, isMobile, parkedEntries, queryClient, refreshParkedEntries, updateForgeState]);
 
   const focusSystemMap = useCallback(() => {
     if (isMobile) {
