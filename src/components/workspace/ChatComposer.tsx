@@ -286,6 +286,46 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         />
 
+        {/* Hidden input dedicated to server-side code-context zip upload */}
+        <input
+          id="ws-code-context-input"
+          type="file"
+          accept=".zip,application/zip"
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (f) await uploadCodeContextZip(f);
+            e.target.value = "";
+          }}
+        />
+
+        {/* Server code-context status badge */}
+        {codeContextStatus && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, marginBottom: 8,
+            padding: "6px 10px", borderRadius: 8,
+            background: "rgba(201,162,76,0.06)", border: "1px solid rgba(201,162,76,0.22)",
+            fontSize: 11, fontFamily: "var(--app-font-mono)", color: "rgba(201,162,76,0.85)",
+          }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+            </svg>
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {codeContextStatus.summary || `${codeContextStatus.fileCount} files loaded from zip`}
+            </span>
+            <button
+              onClick={clearCodeContext}
+              aria-label="Clear code context"
+              title="Clear code context"
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", color: "rgba(201,162,76,0.7)", display: "flex", alignItems: "center" }}
+            >
+              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M2 2l10 10M12 2L2 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* ZIP panel — shows when a ZIP is loaded */}
         {zipFiles.length > 0 && (
           <ZipPanel
