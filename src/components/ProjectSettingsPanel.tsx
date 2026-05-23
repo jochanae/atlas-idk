@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useUpdateProject } from "@workspace/api-client-react";
-import type { Project } from "@workspace/api-client-react";
+import type { Project, UpdateProjectBody } from "@workspace/api-client-react";
 
 interface Props {
   project: Project;
@@ -9,10 +9,81 @@ interface Props {
   onSaved?: () => void;
 }
 
+type ProjectWithLinkedRepos = Project & { linkedRepos?: string | null };
+type UpdateProjectBodyWithLinkedRepos = UpdateProjectBody & { linkedRepos: string };
+
+const REPO_NAME_PATTERN = /^[^/]+\/[^/]+$/;
+
+function repoNameFromValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  if (value && typeof value === "object" && "fullName" in value) {
+    const fullName = (value as { fullName?: unknown }).fullName;
+    return typeof fullName === "string" && fullName.trim() ? fullName.trim() : null;
+  }
+
+  return null;
+}
+
+function parseLinkedRepoValue(linkedRepo?: string | null): string | null {
+  if (!linkedRepo) return null;
+
+  try {
+    return repoNameFromValue(JSON.parse(linkedRepo));
+  } catch {
+    return repoNameFromValue(linkedRepo);
+  }
+}
+
+function parseLinkedRepos(project: Project): string[] {
+  const projectWithRepos = project as ProjectWithLinkedRepos;
+  const repos: string[] = [];
+
+  const addRepo = (repo: string | null) => {
+    if (!repo || repos.includes(repo)) return;
+    repos.push(repo);
+  };
+
+  if (projectWithRepos.linkedRepos) {
+    try {
+      const parsed = JSON.parse(projectWithRepos.linkedRepos);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((repo) => addRepo(repoNameFromValue(repo)));
+      } else {
+        addRepo(repoNameFromValue(parsed));
+      }
+    } catch {}
+  }
+
+  if (repos.length === 0) {
+    addRepo(parseLinkedRepoValue(project.linkedRepo));
+  }
+
+  return repos;
+}
+
+function linkedRepoPayloadFor(repoName: string, project: Project): string {
+  if (parseLinkedRepoValue(project.linkedRepo) === repoName && project.linkedRepo) {
+    return project.linkedRepo;
+  }
+
+  return JSON.stringify({
+    fullName: repoName,
+    defaultBranch: "main",
+    name: repoName.split("/")[1] ?? repoName,
+  });
+}
+
 export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
   const [name, setName] = useState(project.name ?? "");
   const [description, setDescription] = useState(project.description ?? "");
   const [previewUrl, setPreviewUrl] = useState(project.previewUrl ?? "");
+  const [linkedRepos, setLinkedRepos] = useState(() => parseLinkedRepos(project));
+  const [repoInput, setRepoInput] = useState("");
+  const [repoError, setRepoError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const updateProject = useUpdateProject();
 
@@ -20,11 +91,46 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
     setName(project.name ?? "");
     setDescription(project.description ?? "");
     setPreviewUrl(project.previewUrl ?? "");
+    setLinkedRepos(parseLinkedRepos(project));
+    setRepoInput("");
+    setRepoError(null);
   }, [project.id]);
 
+  const handleAddRepo = () => {
+    const nextRepo = repoInput.trim();
+
+    if (!REPO_NAME_PATTERN.test(nextRepo)) {
+      setRepoError("Use owner/repo-name format.");
+      return;
+    }
+
+    if (linkedRepos.includes(nextRepo)) {
+      setRepoError("Repo already added.");
+      return;
+    }
+
+    setLinkedRepos((repos) => [...repos, nextRepo]);
+    setRepoInput("");
+    setRepoError(null);
+  };
+
+  const handleRemoveRepo = (repo: string) => {
+    setLinkedRepos((repos) => repos.filter((currentRepo) => currentRepo !== repo));
+    setRepoError(null);
+  };
+
   const handleSave = () => {
+    const primaryRepo = linkedRepos[0] ?? null;
+    const data: UpdateProjectBodyWithLinkedRepos = {
+      name: name.trim() || project.name,
+      description: description || undefined,
+      previewUrl: previewUrl.trim() || null,
+      linkedRepos: JSON.stringify(linkedRepos),
+      linkedRepo: primaryRepo ? linkedRepoPayloadFor(primaryRepo, project) : null,
+    };
+
     updateProject.mutate(
-      { id: project.id, data: { name: name.trim() || project.name, description: description || undefined, previewUrl: previewUrl.trim() || null } },
+      { id: project.id, data },
       {
         onSuccess: () => {
           setSaved(true);
@@ -146,19 +252,61 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
                   {new Date(project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 </span>
               </div>
-              {project.linkedRepo && (
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", flexShrink: 0 }}>Repo</span>
-                  <span style={{ fontSize: 11, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", opacity: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {(() => {
-                      try {
-                        const r = JSON.parse(project.linkedRepo);
-                        return typeof r === "string" ? r : (r.fullName ?? project.linkedRepo);
-                      } catch { return project.linkedRepo; }
-                    })()}
-                  </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>Repos</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {linkedRepos.length > 0 ? (
+                    linkedRepos.map((repo, index) => (
+                      <div key={repo} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", opacity: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {repo}
+                        </span>
+                        {index === 0 && (
+                          <span style={{ fontSize: 9, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", opacity: 0.55 }}>
+                            PRIMARY
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRepo(repo)}
+                          aria-label={`Remove ${repo}`}
+                          style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "transparent", color: "var(--atlas-muted)", cursor: "pointer", flexShrink: 0 }}
+                        >
+                          <X size={11} strokeWidth={1.8} />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.55 }}>
+                      No repos linked.
+                    </span>
+                  )}
                 </div>
-              )}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    value={repoInput}
+                    onChange={(e) => { setRepoInput(e.target.value); setRepoError(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddRepo(); } }}
+                    style={{ ...field, padding: "8px 10px", fontSize: 11 }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(201,162,76,0.5)")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
+                    placeholder="owner/repo-name"
+                    aria-label="Add repo"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddRepo}
+                    style={{ padding: "0 12px", borderRadius: 8, border: "1px solid rgba(201,162,76,0.35)", background: "rgba(201,162,76,0.15)", color: "var(--atlas-gold)", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "var(--app-font-sans)" }}
+                  >
+                    Add
+                  </button>
+                </div>
+                {repoError && (
+                  <span style={{ fontSize: 10, color: "#fca5a5", fontFamily: "var(--app-font-mono)", opacity: 0.85 }}>
+                    {repoError}
+                  </span>
+                )}
+              </div>
             </div>
 
           </div>
