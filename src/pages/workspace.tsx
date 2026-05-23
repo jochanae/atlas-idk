@@ -1609,6 +1609,64 @@ function ArtifactsPanel({ projectId }: { projectId: number }) {
     document.body.removeChild(link); URL.revokeObjectURL(url);
   }, []);
 
+  const handleExportPDF = useCallback((a: ArtifactRecord) => {
+    const win = window.open("", "_blank");
+    if (!win) { toast("Pop-up blocked — allow pop-ups to export PDF."); return; }
+    const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const bodyHtml = renderArtifactMarkdown(a.content);
+    const titleEsc = escapeHtml(a.title);
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${titleEsc}</title>
+<style>
+  @page { size: Letter; margin: 0.75in; }
+  html, body { background: #ffffff; color: #111827; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0.25in 0.35in;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 24pt; line-height: 1.25; margin: 0 0 0.4em; font-weight: 700; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; }
+  h2 { font-size: 18pt; line-height: 1.3; margin: 1.2em 0 0.4em; font-weight: 600; }
+  h3 { font-size: 14pt; margin: 1em 0 0.35em; font-weight: 600; }
+  h4, h5, h6 { font-size: 12pt; margin: 0.9em 0 0.3em; font-weight: 600; }
+  p { margin: 0 0 0.75em; }
+  ul, ol { margin: 0 0 0.85em 1.4em; padding: 0; }
+  li { margin: 0.2em 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10.5pt; background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
+  pre { background: #f3f4f6; padding: 12px 14px; border-radius: 6px; overflow: auto; page-break-inside: avoid; }
+  pre code { background: transparent; padding: 0; font-size: 10pt; }
+  a { color: #2563eb; text-decoration: underline; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+  h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
+</style>
+</head>
+<body>
+  <h1>${titleEsc}</h1>
+  ${bodyHtml}
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 50);
+    });
+    window.addEventListener('afterprint', function () { window.close(); });
+  </script>
+</body>
+</html>`;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }, []);
+
+
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
       {loading ? (
@@ -1657,6 +1715,7 @@ function ArtifactsPanel({ projectId }: { projectId: number }) {
                     />
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       <button type="button" onClick={() => handleExport(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export MD</button>
+                      <button type="button" onClick={() => handleExportPDF(a)} style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-fg)", background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Export PDF</button>
                       <button type="button" onClick={() => void handleDelete(a.id)} style={{ fontSize: "var(--ts-xs)", color: "rgb(229,115,115)", background: "transparent", border: "1px solid rgba(229,115,115,0.3)", borderRadius: 8, padding: "5px 10px", cursor: "pointer" }}>Delete</button>
                     </div>
                   </div>
