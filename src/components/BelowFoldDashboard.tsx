@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { StatCard } from "./stat-card";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 
@@ -234,6 +245,122 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
   );
 }
 
+type HeroStats = {
+  sessionsThisWeek: number;
+  totalDecisions: number;
+  activeProjects: number;
+  violations: number;
+  dailySessions: { day: string; sessions: number }[];
+};
+
+function HeroChartTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: "var(--atlas-surface)",
+      border: "1px solid rgba(201,162,76,0.3)",
+      borderRadius: 10, padding: "10px 14px",
+      backdropFilter: "blur(12px)",
+    }}>
+      <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginBottom: 4, fontFamily: "var(--app-font-mono)" }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--atlas-gold)", lineHeight: 1 }}>
+        {payload[0]?.value}
+      </div>
+      <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 2, opacity: 0.7 }}>
+        {payload[0]?.value === 1 ? "session" : "sessions"}
+      </div>
+    </div>
+  );
+}
+
+function StatsHero() {
+  const [stats, setStats] = useState<HeroStats | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/stats/dashboard", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setStats(data);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!stats) return null;
+
+  return (
+    <>
+      {/* Stat tiles */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+        gap: 12,
+      }}>
+        <StatCard index={0} label="Sessions This Week" value={stats.sessionsThisWeek} sub="thinking sessions" accent="var(--atlas-gold)" />
+        <StatCard index={1} label="Committed Decisions" value={stats.totalDecisions} sub="in the ledger" accent="#6EE7B7" />
+        <StatCard index={2} label="Active Projects" value={stats.activeProjects} sub="sessions this week" accent="#818CF8" />
+        <StatCard
+          index={3}
+          label="Overrides"
+          value={stats.violations}
+          sub={stats.violations === 0 ? "clean ledger" : "direction shifted"}
+          accent={stats.violations > 0 ? "var(--atlas-ember)" : "#6EE7B7"}
+        />
+      </div>
+
+      {/* Sessions chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 26, delay: 0.18 }}
+        className="atlas-discovery-card"
+        style={{ padding: "22px 18px 14px" }}
+      >
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--atlas-fg)" }}>Sessions This Week</div>
+          <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", marginTop: 2, letterSpacing: "0.08em", opacity: 0.6 }}>
+            THINKING SESSIONS / DAY
+          </div>
+        </div>
+        {stats.dailySessions.every((d) => d.sessions === 0) ? (
+          <div style={{
+            height: 140, display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 11, opacity: 0.45,
+          }}>
+            No sessions this week yet
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={160}>
+            <AreaChart data={stats.dailySessions} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+              <defs>
+                <linearGradient id="bfdHeroGold" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#C9A24C" stopOpacity={0.22} />
+                  <stop offset="100%" stopColor="#C9A24C" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 6" stroke="var(--atlas-border)" vertical={false} />
+              <XAxis dataKey="day" tick={{ fill: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)" }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<HeroChartTooltip />} cursor={{ stroke: "rgba(201,162,76,0.15)", strokeWidth: 1 }} />
+              <Area
+                type="monotone" dataKey="sessions"
+                stroke="var(--atlas-gold)" strokeWidth={2}
+                fill="url(#bfdHeroGold)"
+                dot={{ r: 3, fill: "var(--atlas-gold)", strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: "var(--atlas-gold)" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </motion.div>
+    </>
+  );
+}
+
 export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
   const mostRecentProjectId = projects.reduce<number | null>((latestId, project) => {
     if (latestId == null) return project.id;
@@ -246,6 +373,7 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
   const projectState = useProjectState(mostRecentProjectId);
 
   if (projects.length === 0) return null;
+
 
   const recent = projects.slice(0, 5);
   const actualCommitted = projectState.state ? projectState.decisions.length : committedCount;
@@ -272,11 +400,10 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <div style={{ flex: 1, height: 1, background: "var(--atlas-gold-border)" }} />
       </div>
 
-      {/* 0. CONNECTIONS DOCK — live wired */}
+      {/* 0. STAT TILES + SESSIONS CHART (was the dashboard hero) */}
       <RevealOnScroll delayMs={0}>
-        <ConnectionsDock />
+        <StatsHero />
       </RevealOnScroll>
-
 
       {/* 1. WHERE WERE WE */}
       <RevealOnScroll delayMs={40}>
@@ -344,28 +471,11 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <ActivityHubCard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
-      {/* 3. YOUR MOMENTUM */}
+      {/* 3. CONNECTIONS DOCK — live wired */}
       <RevealOnScroll delayMs={160}>
-        <div className="atlas-discovery-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-              Your Momentum
-            </h3>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {onOpenLedger && (
-                <button type="button" onClick={onOpenLedger} style={{ background: "transparent", border: "none", fontSize: 10, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", cursor: "pointer", letterSpacing: "0.05em", opacity: 0.75 }}>
-                  Ledger →
-                </button>
-              )}
-              <DashboardLink />
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <MetricCell value={actualCommitted} label="DECISIONS COMMITTED" />
-            <MetricCell value={projects.length} label="PROJECTS ACTIVE" />
-          </div>
-        </div>
+        <ConnectionsDock />
       </RevealOnScroll>
+
 
       {/* 4. COGNITIVE MOMENTUM (parking) */}
       <RevealOnScroll delayMs={240}>

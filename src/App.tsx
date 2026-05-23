@@ -24,7 +24,7 @@ import Help from "./pages/help";
 import Vault from "./pages/vault";
 import Secrets from "./pages/secrets";
 import Admin from "./pages/admin";
-import Dashboard from "./pages/dashboard";
+
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import MasterMap from "./pages/master-map";
@@ -289,7 +289,7 @@ function Router() {
           <Route path="/parking" component={ParkingLot} />
           <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/compass", { replace: true }), []); return null; }} />
           <Route path="/entry/:id" component={EntryDetail} />
-          <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/dashboard", { replace: true }), []); return null; }} />
+          <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           
           <Route path="/workshop" component={Workshop} />
           <Route path="/compass" component={ProjectCompass} />
@@ -299,7 +299,7 @@ function Router() {
           <Route path="/vault" component={Vault} />
           <Route path="/secrets" component={Secrets} />
           <Route path="/admin" component={Admin} />
-          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
