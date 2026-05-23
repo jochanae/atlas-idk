@@ -907,7 +907,7 @@ export function FilesPanel({
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {commits.map((commit) => <CommitHistoryCard key={commit.sha} commit={commit} />)}
+              {commits.map((commit, i) => <CommitHistoryCard key={commit.sha} commit={commit} projectId={projectId} canRevert={i !== commits.length - 1} />)}
             </div>
           )}
         </div>
