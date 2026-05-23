@@ -1657,7 +1657,7 @@ export default function Home() {
         onSuccess: (p) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          setLocation(`/project/${p.id}`);
+          setLocation(`/project/${p.id}?intake=true`);
         },
         onError: (err: any) => {
           const msg = extractApiErrorMessage(err);
@@ -2558,7 +2558,7 @@ export default function Home() {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 sessionStorage.setItem("atlas-open-tab", "map");
-                setLocation(`/project/${p.id}`);
+                setLocation(`/project/${p.id}?intake=true`);
               },
             });
           }}
@@ -2567,7 +2567,7 @@ export default function Home() {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-                setLocation(`/project/${p.id}`);
+                setLocation(`/project/${p.id}?intake=true`);
               },
             });
           }}

@@ -182,7 +182,7 @@ export default function Projects() {
         onSuccess: (created) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          if (created?.id) setLocation(`/project/${created.id}`);
+          if (created?.id) setLocation(`/project/${created.id}?intake=true`);
         },
         onError: (err) => {
           setCreateError(extractApiErrorMessage(err));
