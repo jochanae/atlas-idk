@@ -6,6 +6,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://axiom-atlas-689827072865.us-east1.run.app/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
