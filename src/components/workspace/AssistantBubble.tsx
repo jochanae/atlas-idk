@@ -278,6 +278,7 @@ function InlineDiffCard({
   onPrCreated?: (prUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"unified" | "split">("unified");
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [patchedEdits, setPatchedEdits] = useState<FileEdit[] | null>(null);
