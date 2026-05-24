@@ -255,6 +255,18 @@ function UnifiedShellRoutes() {
   );
 }
 
+function TokenBridge() {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (token) {
+      localStorage.setItem("atlas-token", token);
+    }
+    navigate("/home", { replace: true });
+  }, [navigate]);
+  return null;
+}
+
 function Router() {
   const [location] = useLocation();
 
@@ -281,6 +293,7 @@ function Router() {
           <Route path="/landing" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/auth/token-bridge" component={TokenBridge} />
           <Route path="/reset-password" component={ResetPassword} />
           <Route path="/onboarding" component={OnboardingPage} />
           <Route path="/projects" component={Projects} />

@@ -14,7 +14,7 @@ async function apiPost(path: string, body: Record<string, string>) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await res.json() as { error?: string; message?: string };
+  const data = await res.json() as { error?: string; message?: string; token?: string };
   if (!res.ok) throw new Error(data.error ?? "Something went wrong");
   return data;
 }
@@ -76,7 +76,10 @@ export default function Login() {
       const path = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
       const body: Record<string, string> = { email, password };
       if (mode === "signup" && name.trim()) body.name = name.trim();
-      await apiPost(path, body);
+      const data = await apiPost(path, body);
+      if (data.token) {
+        localStorage.setItem("atlas-token", data.token);
+      }
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       sessionStorage.setItem("atlas-just-authed", "1");
       navigate("/home");

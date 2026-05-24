@@ -21,6 +21,7 @@ import type {
 import type { Plan } from "@/lib/plan";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
+import { getAuthHeaders } from "@/lib/api";
 
 type PriorMessage = Message;
 
@@ -297,6 +298,7 @@ export function useChatStream(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...getAuthHeaders(),
               ...(ghToken ? { "x-github-token": ghToken } : {}),
             },
             credentials: "include",
@@ -339,6 +341,7 @@ export function useChatStream(
                 const res = await fetch("/api/github/auto-link", {
                   method: "POST",
                   credentials: "include",
+                  headers: getAuthHeaders(),
                 });
                 if (res.ok) status = GITHUB_AUTO_LINK_SUCCESS;
               } catch {
@@ -529,6 +532,7 @@ export function useChatStream(
       void fetch(`/api/sessions/${sessionId}/summarize`, {
         method: "POST",
         credentials: "include",
+        headers: getAuthHeaders(),
       });
     };
     document.addEventListener("visibilitychange", onHide);
