@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { getAuthHeaders } from "@/lib/api";
 
 export interface AuthUser {
   id: number;
@@ -14,7 +15,10 @@ export interface AuthUser {
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
-  const res = await fetch("/api/auth/me", { credentials: "include" });
+  const res = await fetch("/api/auth/me", {
+    credentials: "include",
+    headers: getAuthHeaders(),
+  });
   if (res.status === 401) return null;
   if (!res.ok) throw new Error("Auth check failed");
   return res.json() as Promise<AuthUser>;
