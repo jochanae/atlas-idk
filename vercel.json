@@ -1,7 +1,7 @@
 {
-  "buildCommand": "vite build",
-  "outputDirectory": ".output",
   "framework": null,
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
   "routes": [
     {
       "src": "/api/(.*)",
