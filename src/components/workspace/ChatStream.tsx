@@ -204,7 +204,7 @@ export function ChatStream(props: ChatStreamProps) {
 
       {messages.map((msg, i) =>
         msg.role === "user" ? (
-          <div key={i} data-atlas-msg-idx={i}>
+          <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
             {isAutoVerifyMessage(msg) ? (
               <AutoVerifyMessage content={msg.content} />
             ) : (
@@ -217,7 +217,7 @@ export function ChatStream(props: ChatStreamProps) {
             )}
           </div>
         ) : (
-          <div key={i} data-atlas-msg-idx={i}>
+          <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
 
             <AssistantBubble
               message={msg}
