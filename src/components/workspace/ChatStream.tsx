@@ -4,6 +4,7 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "../LiveGenerationCard";
+import { TimelineRail } from "../TimelineRail";
 import type {
   ChatMessage,
   AmbientSurface,
@@ -203,7 +204,7 @@ export function ChatStream(props: ChatStreamProps) {
 
       {messages.map((msg, i) =>
         msg.role === "user" ? (
-          <div key={i} data-atlas-msg-idx={i}>
+          <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
             {isAutoVerifyMessage(msg) ? (
               <AutoVerifyMessage content={msg.content} />
             ) : (
@@ -216,7 +217,7 @@ export function ChatStream(props: ChatStreamProps) {
             )}
           </div>
         ) : (
-          <div key={i} data-atlas-msg-idx={i}>
+          <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
 
             <AssistantBubble
               message={msg}
@@ -326,6 +327,8 @@ export function ChatStream(props: ChatStreamProps) {
           </svg>
         </button>
       )}
+
+      <TimelineRail messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt }))} />
     </div>
   );
 }
