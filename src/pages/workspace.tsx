@@ -48,6 +48,7 @@ import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
+import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
 import { loadProfile } from "@/lib/userProfile";
@@ -630,7 +631,7 @@ function LinePatchReviewCard({
       for (const [filePath, patches] of Object.entries(pathGroups)) {
         const r = await fetch(
           `/api/github/file?repo=${encodeURIComponent(linkedRepo.fullName)}&path=${encodeURIComponent(filePath)}&branch=${encodeURIComponent(linkedRepo.defaultBranch)}`,
-          { headers: { "x-github-token": token } }
+          { headers: { ...getAuthHeaders(), "x-github-token": token } }
         );
         if (!r.ok) throw new Error(`Could not fetch ${filePath.split("/").pop()} (${r.status})`);
         const data = await r.json() as { content: string };
@@ -1231,7 +1232,7 @@ export function CommitHistoryCard({ commit, projectId, canRevert }: { commit: Gh
       const res = await fetch("/api/github/revert", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ projectId, sha: commit.sha, branch: "main" }),
       });
       if (!res.ok) {
@@ -1576,7 +1577,10 @@ function ArtifactsPanel({ projectId }: { projectId: number }) {
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const r = await fetch(`/api/artifacts?projectId=${projectId}`, { credentials: "include" });
+      const r = await fetch(`/api/artifacts?projectId=${projectId}`, {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       const arr: ArtifactRecord[] = Array.isArray(data) ? data : (data.artifacts ?? []);
@@ -1591,7 +1595,11 @@ function ArtifactsPanel({ projectId }: { projectId: number }) {
 
   const handleDelete = useCallback(async (id: string | number) => {
     try {
-      const r = await fetch(`/api/artifacts/${id}`, { method: "DELETE", credentials: "include" });
+      const r = await fetch(`/api/artifacts/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (!r.ok) throw new Error();
       setItems((prev) => (prev ?? []).filter((a) => a.id !== id));
       toast("Artifact deleted.");
@@ -1992,7 +2000,7 @@ function MapTab({ projectId }: { projectId: number }) {
     try {
       const res = await fetch("/api/github/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-github-token": token },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
         body: JSON.stringify({ repo: linkedRepo.fullName, branch: linkedRepo.defaultBranch }),
       });
       if (!res.ok) {
@@ -2202,7 +2210,7 @@ function ConnectionsTab({
     setGithubLoading(true);
     setGithubError(null);
     try {
-      const res = await fetch("/api/connections");
+      const res = await fetch("/api/connections", { headers: getAuthHeaders() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
@@ -2228,7 +2236,7 @@ function ConnectionsTab({
     try {
       const res = await fetch("/api/connections", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ type: "github", token: tokenValue.trim() }),
       });
       if (!res.ok) {
@@ -2248,7 +2256,10 @@ function ConnectionsTab({
     setGithubSaving(true);
     setGithubError(null);
     try {
-      const res = await fetch(`/api/connections/${githubConnection.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/connections/${githubConnection.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setGithubConnection(null);
     } catch (error) {
@@ -2944,7 +2955,10 @@ function TerminalPanel({
 
   useEffect(() => {
     const poll = () => {
-      fetch("/api/self/modified", { credentials: "include" })
+      fetch("/api/self/modified", {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      })
         .then(r => r.ok ? r.json() : { files: [] })
         .then((d: any) => setSyncFiles(d.files ?? []))
         .catch(() => {});
@@ -2962,7 +2976,7 @@ function TerminalPanel({
     try {
       const r = await fetch("/api/self/push", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({ message: syncMsg.trim() || "feat: atlas self-update", files: syncFiles.length > 0 ? syncFiles : undefined }),
       });
@@ -3060,7 +3074,7 @@ function TerminalPanel({
       try {
         const r = await fetch("/api/terminal/explain", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
           body: JSON.stringify({ command: trimmed, ...(projectId != null ? { projectId } : {}) }),
           credentials: "include",
         });
@@ -3089,7 +3103,7 @@ function TerminalPanel({
     try {
       const res = await fetch("/api/terminal/exec", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ command: trimmed, ...(projectId != null ? { projectId } : {}) }),
         credentials: "include",
         signal: abortCtrl.signal,
@@ -3884,7 +3898,10 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
   const fetchBlueprints = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/blueprints`, { credentials: "include" });
+      const res = await fetch(`/api/projects/${projectId}/blueprints`, {
+        credentials: "include",
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json() as Blueprint[];
         setBlueprints(data);
@@ -3902,7 +3919,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
     try {
       const res = await fetch(`/api/projects/${projectId}/blueprint`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({}),
       });
@@ -4227,7 +4244,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
       const res = await fetch("/api/forge/intake", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ projectId, answers: updated }),
       });
       if (!res.ok) throw new Error("Intake failed");
@@ -4431,6 +4448,7 @@ export default function Workspace() {
         method: "POST",
         body: fd,
         credentials: "include",
+        headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error(`Upload failed (${res.status})`);
       const data = await res.json() as { fileContext: string; summary: string; fileCount: number; filePaths: string[] };
@@ -4560,7 +4578,10 @@ export default function Workspace() {
   useEffect(() => {
     if (messages.length > 0 || greetingLoading || atlasGreeting) return;
     setGreetingLoading(true);
-    fetch(`/api/projects/${id}/greeting`, { credentials: "include" })
+    fetch(`/api/projects/${id}/greeting`, {
+      credentials: "include",
+      headers: getAuthHeaders(),
+    })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.message) setAtlasGreeting(data.message);
@@ -5019,7 +5040,9 @@ export default function Workspace() {
     setShowSrcPicker(false);
     setSrcReadLoading(true);
     try {
-      const res = await fetch(`/api/self/read?path=${encodeURIComponent(filePath)}`);
+      const res = await fetch(`/api/self/read?path=${encodeURIComponent(filePath)}`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json() as { content: string; lines: number };
       const label = filePath.split("/").pop() ?? filePath;
@@ -5105,7 +5128,7 @@ export default function Workspace() {
     try {
       const res = await fetch(`/api/projects/${id}/forge-state`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({ action }),
       });
@@ -5174,14 +5197,14 @@ export default function Workspace() {
     try {
       await fetch("/api/github/branch", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-github-token": token },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
         body: JSON.stringify({ repo: linkedRepo.fullName, branch, baseBranch: linkedRepo.defaultBranch }),
       });
       for (let i = 0; i < fileEdits.length; i++) {
         const fe = fileEdits[i];
         await fetch("/api/github/commit", {
           method: "PUT",
-          headers: { "Content-Type": "application/json", "x-github-token": token },
+          headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
           body: JSON.stringify({
             repo: linkedRepo.fullName, branch, path: fe.path, content: fe.content,
             message: fileEdits.length === 1
@@ -5195,7 +5218,7 @@ export default function Workspace() {
         try {
           const termRes = await fetch("/api/terminal/exec", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
             credentials: "include",
             body: JSON.stringify({ command: autoRunCmd, projectId: id }),
           });
@@ -5313,7 +5336,7 @@ export default function Workspace() {
         // 1. Fetch flat tree
         const treeRes = await fetch(
           `/api/github/tree?repo=${encodeURIComponent(parsedRepo.fullName)}&branch=${encodeURIComponent(branch)}`,
-          { headers: { "x-github-token": token } }
+          { headers: { ...getAuthHeaders(), "x-github-token": token } }
         );
         if (!treeRes.ok || cancelled) return;
         const treeData = await treeRes.json() as { branch: string; tree: Array<{ path: string; type: string }> };
@@ -5330,7 +5353,7 @@ export default function Workspace() {
           toFetch.map(p =>
             fetch(
               `/api/github/file?repo=${encodeURIComponent(parsedRepo.fullName)}&path=${encodeURIComponent(p)}&branch=${encodeURIComponent(resolvedBranch)}`,
-              { headers: { "x-github-token": token } }
+              { headers: { ...getAuthHeaders(), "x-github-token": token } }
             ).then(r => r.ok ? r.json() as Promise<{ path: string; content: string; lines: number }> : null)
           )
         );
@@ -5399,7 +5422,7 @@ export default function Workspace() {
 
     fetch("/api/github/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-github-token": token },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
       body: JSON.stringify({ repo: parsedRepo.fullName, branch: parsedRepo.defaultBranch ?? "main" }),
     })
       .then(r => r.ok ? r.json() : null)
@@ -5463,7 +5486,7 @@ export default function Workspace() {
       try {
         const res = await fetch(`/api/projects/${targetProjectId}/entries`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
           credentials: "include",
           body: JSON.stringify({
             title: surface.label,
@@ -5652,7 +5675,7 @@ export default function Workspace() {
           const res = await fetch("/api/artifacts", {
             method: "POST",
             credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...getAuthHeaders() },
             body: JSON.stringify({
               projectId: id,
               ...(sessionId ? { sessionId } : {}),
@@ -5852,7 +5875,7 @@ export default function Workspace() {
     if (!linkedRepo || !token || !record.originalContent) return;
     await fetch("/api/github/commit", {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "x-github-token": token },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
       body: JSON.stringify({
         repo: linkedRepo.fullName, branch: record.branch,
         path: record.path, content: record.originalContent,
@@ -5919,7 +5942,7 @@ export default function Workspace() {
       const r = await fetch(`/api/projects/${id}/scan`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ source: "github" }),
       });
       if (!r.ok) {
@@ -5992,7 +6015,11 @@ export default function Workspace() {
     const controller = new AbortController();
     void (async () => {
       try {
-        const res = await fetch(`/api/projects/${id}`, { credentials: "include", signal: controller.signal });
+        const res = await fetch(`/api/projects/${id}`, {
+          credentials: "include",
+          headers: getAuthHeaders(),
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const data = await res.json() as { nodeState?: unknown };
         const persistedNodes = extractPersistedFlowNodes(data.nodeState);
@@ -8059,7 +8086,10 @@ export default function Workspace() {
                 setCloningProject(true);
                 try {
                   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-                  const res = await fetch(`${base}/api/projects/${id}/clone`, { method: "POST" });
+                  const res = await fetch(`${base}/api/projects/${id}/clone`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                  });
                   if (res.ok) {
                     const clone = await res.json();
                     queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
@@ -8386,7 +8416,7 @@ export default function Workspace() {
                     try {
                       await fetch("/api/chat/scenario-keep", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                         body: JSON.stringify({ sessionId, messages: scenarioBuffer }),
                       });
                     } catch { /* non-fatal — messages stay in client state */ }
