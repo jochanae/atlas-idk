@@ -278,6 +278,7 @@ function InlineDiffCard({
   onPrCreated?: (prUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"unified" | "split">("unified");
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [patchedEdits, setPatchedEdits] = useState<FileEdit[] | null>(null);
@@ -427,10 +428,35 @@ function InlineDiffCard({
           <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-muted)", opacity: 0.7 }}>
             {changedCount} line{changedCount === 1 ? "" : "s"} changed
           </span>
+          <span
+            role="group"
+            aria-label="Diff view mode"
+            onClick={(e) => e.stopPropagation()}
+            style={{ display: "inline-flex", marginLeft: 8, border: "0.5px solid var(--atlas-border)", borderRadius: 4, overflow: "hidden" }}
+          >
+            {(["unified", "split"] as const).map((mode) => {
+              const active = viewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setViewMode(mode); }}
+                  style={{
+                    padding: "2px 7px", fontSize: 9, fontWeight: 600, fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.08em", textTransform: "uppercase" as const, cursor: "pointer",
+                    background: active ? "color-mix(in oklab, var(--atlas-fg) 10%, transparent)" : "transparent",
+                    color: active ? "var(--atlas-fg)" : "var(--atlas-muted)", border: "none",
+                  }}
+                >
+                  {mode}
+                </button>
+              );
+            })}
+          </span>
         </button>
 
         <div style={{ background: "var(--atlas-bg)", fontFamily: "var(--app-font-mono)", fontSize: 10.5, lineHeight: 1.55 }}>
-          {visibleLines.map((line, idx) => {
+          {viewMode === "unified" ? visibleLines.map((line, idx) => {
             const added = line.type === "added";
             return (
               <div
@@ -452,7 +478,45 @@ function InlineDiffCard({
                 </span>
               </div>
             );
-          })}
+          }) : (() => {
+            // Split view: pair adjacent removed/added runs side-by-side
+            type Row = { left: string | null; right: string | null };
+            const rows: Row[] = [];
+            let i = 0;
+            while (i < visibleLines.length) {
+              const removed: string[] = [];
+              const added: string[] = [];
+              while (i < visibleLines.length && visibleLines[i].type === "removed") { removed.push(visibleLines[i].line); i++; }
+              while (i < visibleLines.length && visibleLines[i].type === "added") { added.push(visibleLines[i].line); i++; }
+              const len = Math.max(removed.length, added.length);
+              if (len === 0) { i++; continue; }
+              for (let k = 0; k < len; k++) {
+                rows.push({ left: k < removed.length ? removed[k] : null, right: k < added.length ? added[k] : null });
+              }
+            }
+            const cell = (text: string | null, kind: "removed" | "added") => (
+              <div style={{
+                flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start",
+                background: text === null ? "transparent"
+                  : kind === "added" ? "color-mix(in oklab, var(--atlas-phosphor) 8%, transparent)"
+                  : "color-mix(in oklab, var(--atlas-ember) 8%, transparent)",
+                borderLeft: text === null ? "2px solid transparent" : `2px solid ${kind === "added" ? "var(--atlas-phosphor)" : "var(--atlas-ember)"}`,
+              }}>
+                <span style={{ width: 18, flexShrink: 0, textAlign: "center", color: kind === "added" ? "var(--atlas-phosphor)" : "var(--atlas-ember)", userSelect: "none" as const }}>
+                  {text === null ? " " : kind === "added" ? "+" : "-"}
+                </span>
+                <span style={{ flex: 1, minWidth: 0, padding: "1px 8px 1px 0", color: "var(--atlas-muted)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {text === null ? " " : (text || " ")}
+                </span>
+              </div>
+            );
+            return rows.map((row, idx) => (
+              <div key={`split-${idx}`} style={{ display: "flex", gap: 1, borderBottom: "1px solid color-mix(in oklab, var(--atlas-border) 40%, transparent)" }}>
+                {cell(row.left, "removed")}
+                {cell(row.right, "added")}
+              </div>
+            ));
+          })()}
           {!open && previewLines.length > 3 && (
             <div style={{ padding: "4px 12px", color: "var(--atlas-muted)", opacity: 0.45 }}>
               + {previewLines.length - 3} more changed line{previewLines.length - 3 === 1 ? "" : "s"}
