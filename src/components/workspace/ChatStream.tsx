@@ -327,6 +327,8 @@ export function ChatStream(props: ChatStreamProps) {
           </svg>
         </button>
       )}
+
+      <TimelineRail messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt }))} />
     </div>
   );
 }
