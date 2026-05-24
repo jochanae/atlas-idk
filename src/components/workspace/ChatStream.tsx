@@ -4,6 +4,7 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "../LiveGenerationCard";
+import { TimelineRail } from "../TimelineRail";
 import type {
   ChatMessage,
   AmbientSurface,
