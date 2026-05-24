@@ -39,6 +39,7 @@ import { PreviewPanel } from "../components/workspace/PreviewPanel";
 import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
+import { WorkbenchPanel } from "../components/workspace/WorkbenchPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
@@ -7337,7 +7338,7 @@ export default function Workspace() {
             </div>
           ) : leftTab === "artifacts" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <ArtifactsPanel projectId={id} />
+              <WorkbenchPanel projectId={id} sessionId={sessionId} />
             </div>
           ) : null}
 
