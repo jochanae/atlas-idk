@@ -3388,13 +3388,30 @@ function MobileTabBar({
   entryCount,
   activeCatch,
 }: {
-  activeTab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview";
-  onTabChange: (tab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview") => void;
+  activeTab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "workbench";
+  onTabChange: (tab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "workbench") => void;
   entryCount: number;
   activeCatch: boolean;
 }) {
-  const [, navTo] = useLocation();
-  const tabs: { id: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!overflowOpen) return;
+    const close = (e: MouseEvent | TouchEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("touchstart", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("touchstart", close);
+    };
+  }, [overflowOpen]);
+
+  const mainTabs: { id: "chat" | "ledger" | "files" | "map"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
     {
       id: "chat",
       label: "Chat",
@@ -3428,19 +3445,6 @@ function MobileTabBar({
       ),
     },
     {
-      id: "preview",
-      label: "Preview",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="15" rx="2" />
-          <path d="M2 8h20" />
-          <circle cx="5" cy="5.5" r="0.9" fill="currentColor" opacity={0.5} />
-          <circle cx="8" cy="5.5" r="0.9" fill="currentColor" opacity={0.5} />
-          <path d="M8 22h8M12 18v4" />
-        </svg>
-      ),
-    },
-    {
       id: "map",
       label: "Flow",
       icon: (
@@ -3454,6 +3458,34 @@ function MobileTabBar({
           <line x1="18.5" y1="5.5" x2="13.5" y2="10.5" />
           <line x1="5.5" y1="18.5" x2="10.5" y2="13.5" />
           <line x1="18.5" y1="18.5" x2="13.5" y2="13.5" />
+        </svg>
+      ),
+    },
+  ];
+
+  const overflowTabs: { id: "preview" | "workbench"; label: string; icon: React.ReactNode }[] = [
+    {
+      id: "preview",
+      label: "Preview",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="15" rx="2" />
+          <path d="M2 8h20" />
+          <circle cx="5" cy="5.5" r="0.9" fill="currentColor" opacity={0.5} />
+          <circle cx="8" cy="5.5" r="0.9" fill="currentColor" opacity={0.5} />
+          <path d="M8 22h8M12 18v4" />
+        </svg>
+      ),
+    },
+    {
+      id: "workbench",
+      label: "Workbench",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
       ),
     },
@@ -3477,13 +3509,13 @@ function MobileTabBar({
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      {tabs.map(({ id, label, icon, badge, alert }) => {
+      {mainTabs.map(({ id, label, icon, badge, alert }) => {
         const active = activeTab === id;
         return (
           <button
             key={id}
-            onClick={() => { if (id === "map") { navTo("/map"); } else { onTabChange(id); } }}
-            aria-label={id === "chat" ? "Open chat" : id === "ledger" ? "Open ledger" : id === "files" ? "Open files" : id === "preview" ? "Toggle preview" : "Open map"}
+            onClick={() => onTabChange(id)}
+            aria-label={id === "chat" ? "Open chat" : id === "ledger" ? "Open ledger" : id === "files" ? "Open files" : "Open map"}
             style={{
               flex: 1,
               display: "flex",
@@ -3553,6 +3585,103 @@ function MobileTabBar({
           </button>
         );
       })}
+      <div ref={overflowRef} style={{ flex: 1, position: "relative", display: "flex" }}>
+        {overflowOpen && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 8px)",
+              right: 8,
+              minWidth: 150,
+              borderRadius: 12,
+              border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+              background: "var(--atlas-surface)",
+              boxShadow: "0 18px 48px rgba(0,0,0,0.42)",
+              padding: 6,
+              zIndex: 1,
+            }}
+          >
+            {overflowTabs.map(({ id, label, icon }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { onTabChange(id); setOverflowOpen(false); }}
+                  aria-label={id === "preview" ? "Toggle preview" : "Open workbench"}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    padding: "9px 10px",
+                    borderRadius: 8,
+                    background: active ? "rgba(var(--atlas-gold-rgb),0.1)" : "transparent",
+                    border: "none",
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  {icon}
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setOverflowOpen((open) => !open)}
+          aria-label="More workspace tabs"
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 3,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: overflowOpen || activeTab === "preview" || activeTab === "workbench" ? "var(--atlas-gold)" : "var(--atlas-muted)",
+            transition: "color 180ms ease",
+            position: "relative",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: "20%",
+              right: "20%",
+              height: 2,
+              borderRadius: "0 0 2px 2px",
+              background: overflowOpen || activeTab === "preview" || activeTab === "workbench" ? "var(--atlas-gold)" : "transparent",
+              transition: "background 180ms ease",
+            }}
+          />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <circle cx="12" cy="5" r="1.8" />
+            <circle cx="12" cy="12" r="1.8" />
+            <circle cx="12" cy="19" r="1.8" />
+          </svg>
+          <span
+            style={{
+              fontSize: "var(--ts-xs)",
+              fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              lineHeight: 1,
+            }}
+          >
+            More
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
