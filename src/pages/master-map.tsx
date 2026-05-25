@@ -1175,7 +1175,7 @@ export default function MasterMap() {
         el.style.top = `${sp.y + NODE_R * (baseScales[i] ?? 1) + 7}px`;
       });
 
-      // ── Peek panel positioning (anchors above node; flips to side & clamps to viewport) ──
+      // ── Peek panel positioning (smart anchor: above/below/side, always clamped) ──
       const pk = peekRef.current;
       const pkEl = peekElRef.current;
       if (pk && pkEl && nodeMeshes[pk.nodeIdx]) {
@@ -1186,37 +1186,43 @@ export default function MasterMap() {
         const rect = pkEl.getBoundingClientRect();
         const cardW = rect.width || 240;
         const cardH = rect.height || 200;
-        const margin = 8;
-        const flipLeft = sp.x > vw * 0.6;
-        const flipRight = sp.x < vw * 0.4;
-        let left: number;
-        let top: number;
-        let transform: string;
-        if (flipLeft) {
-          // anchor to LEFT of node, vertically centered
-          left = sp.x - NODE_R * bs - 12;
-          top = sp.y;
-          transform = "translate(-100%, -50%)";
-        } else if (flipRight) {
-          // anchor to RIGHT of node, vertically centered
-          left = sp.x + NODE_R * bs + 12;
-          top = sp.y;
-          transform = "translate(0, -50%)";
-        } else {
-          // default: above node, horizontally centered
-          left = sp.x;
-          top = sp.y - NODE_R * bs - 14;
-          transform = "translate(-50%, -100%)";
-        }
-        // Compute the card's projected bounding box and clamp into viewport
-        // Effective top-left after transform:
-        const tx = transform.includes("-100%, -50%") ? left - cardW : transform.includes("-50%, -100%") ? left - cardW / 2 : transform.includes("0, -50%") ? left : left;
-        const ty = transform.includes("-50%") && !transform.includes("-100%)") ? top - cardH / 2 : top - cardH;
-        const dx = Math.max(margin - tx, Math.min(0, vw - margin - (tx + cardW)));
-        const dy = Math.max(margin - ty, Math.min(0, vh - margin - (ty + cardH)));
-        pkEl.style.left = `${left + dx}px`;
-        pkEl.style.top = `${top + dy}px`;
-        pkEl.style.transform = transform;
+        const margin = 12;
+        const gap = 12 + NODE_R * bs;
+
+        // Score each of 4 placements by how much the card would overflow the viewport.
+        // The placement with least overflow wins. Preference order on ties: above, below, right, left.
+        type Placement = { name: "above" | "below" | "right" | "left"; tx: number; ty: number; transform: string };
+        const candidates: Placement[] = [
+          { name: "above", tx: sp.x - cardW / 2, ty: sp.y - gap - cardH, transform: "translate(-50%, -100%)" },
+          { name: "below", tx: sp.x - cardW / 2, ty: sp.y + gap,         transform: "translate(-50%, 0)" },
+          { name: "right", tx: sp.x + gap,       ty: sp.y - cardH / 2,   transform: "translate(0, -50%)" },
+          { name: "left",  tx: sp.x - gap - cardW, ty: sp.y - cardH / 2, transform: "translate(-100%, -50%)" },
+        ];
+        const overflow = (p: Placement) =>
+          Math.max(0, margin - p.tx) +
+          Math.max(0, p.tx + cardW - (vw - margin)) +
+          Math.max(0, margin - p.ty) +
+          Math.max(0, p.ty + cardH - (vh - margin));
+        const best = candidates.reduce((a, b) => (overflow(b) < overflow(a) ? b : a));
+
+        // Clamp into viewport as a final safety net (handles cards larger than viewport).
+        const dx =
+          Math.max(margin - best.tx, 0) +
+          Math.min(0, vw - margin - (best.tx + cardW));
+        const dy =
+          Math.max(margin - best.ty, 0) +
+          Math.min(0, vh - margin - (best.ty + cardH));
+
+        // Anchor pos is the pre-transform reference point; reconstruct from tx/ty + transform.
+        const anchorX = best.transform.includes("-50%,") ? best.tx + cardW / 2
+          : best.transform.includes("-100%,") ? best.tx + cardW : best.tx;
+        const anchorY = best.transform.includes(", -50%)") ? best.ty + cardH / 2
+          : best.transform.includes(", -100%)") ? best.ty + cardH : best.ty;
+
+        pkEl.style.left = `${anchorX + dx}px`;
+        pkEl.style.top = `${anchorY + dy}px`;
+        pkEl.style.transform = best.transform;
+        pkEl.dataset.placement = best.name;
       }
 
       // ── Tension tooltip positioning (anchored at curve midpoint) ──
