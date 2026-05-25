@@ -2510,12 +2510,15 @@ export default function Home() {
       {showOverlay && (
         <FirstRunOverlay
           loading={isLoading}
+          repoUrl={overlayRepoUrl}
+          setRepoUrl={setOverlayRepoUrl}
           onSpecMode={() => {
             createProject.mutate({ data: { name: "My Project" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 logProjectInitialized(p.id);
+                runRepoScan(p.id, overlayRepoUrl);
                 sessionStorage.setItem("atlas-open-tab", "map");
                 setLocation(`/project/${p.id}?intake=true`);
               },
@@ -2527,6 +2530,7 @@ export default function Home() {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 logProjectInitialized(p.id);
+                runRepoScan(p.id, overlayRepoUrl);
                 setLocation(`/project/${p.id}?intake=true`);
               },
             });
