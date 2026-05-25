@@ -8115,17 +8115,21 @@ export default function Workspace() {
         onOpenProject={(projectId) => { setLocation(`/project/${projectId}`); setShowDrawer(false); }}
         onNewProject={() => {
           setShowDrawer(false);
-          createProjectMutation.mutate({ data: { name: "New Project" } }, {
-            onSuccess: (p) => {
-              queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-              setLocation(`/project/${p.id}?intake=true`);
-            },
-          });
+          setCreateProjectError(null);
+          setShowNewProjectModal(true);
         }}
         onOpenLedger={(projectId) => { setLocation(`/ledger/${projectId}`); setShowDrawer(false); }}
         onOpenParking={() => { setLocation(`/parking?project=${id}`); setShowDrawer(false); }}
         onOpenQuickPrompt={() => { setShowDrawer(false); setShowForgeExternal(true); }}
         userLabel={loadProfile().name || null}
+      />
+
+      <NewProjectModal
+        open={showNewProjectModal}
+        onClose={() => { setShowNewProjectModal(false); setCreateProjectError(null); }}
+        onCreate={(name) => handleCreateProjectFromWorkspace(name)}
+        creating={createProjectMutation.isPending}
+        error={createProjectError}
       />
 
 
