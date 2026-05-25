@@ -7779,6 +7779,53 @@ export default function Workspace() {
             const ctx = nodes.map(n => `[${n.type}] ${n.label}`).join(" | ");
             setForgeContext(ctx);
             try { sessionStorage.setItem(`atlas-forge-ctx-${id}`, ctx); } catch {}
+
+            // ── Fix 1: Persist Forge nodes into project.nodeState (unified spine) ──
+            // Without this, readiness score / MIX / phases stay at 0 even after a Forge run.
+            const targetProjectId = forgeActiveProjectId ?? id;
+            if (Number.isFinite(targetProjectId) && nodes.length > 0) {
+              const currentNodeState = ((project?.nodeState ?? {}) as Record<string, unknown>);
+              const forgedState: Record<string, unknown> = {};
+              nodes.forEach((n) => {
+                forgedState[n.id] = {
+                  resolved: n.resolved,
+                  label: n.label,
+                  type: n.type,
+                  x: n.x,
+                  y: n.y,
+                  ...(n.details ? { details: n.details } : {}),
+                  ...(n.meta ? { meta: n.meta } : {}),
+                  ...(n.moscow ? { moscow: n.moscow } : {}),
+                  ...(n.question ? { question: n.question } : {}),
+                  ...(n.strategicAnswer ? { strategicAnswer: n.strategicAnswer } : {}),
+                };
+              });
+              updateProjectHeader.mutate(
+                { id: targetProjectId, data: { nodeState: { ...currentNodeState, ...forgedState } } },
+                { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }); } }
+              );
+
+              // ── Fix 3: Auto-stamp a Sovereign Ledger entry for this Forge run ──
+              const resolvedCount = nodes.filter(n => n.resolved).length;
+              const summary = nodes.slice(0, 6).map(n => `[${n.type}] ${n.label}`).join(" · ");
+              createEntry.mutate(
+                {
+                  projectId: targetProjectId,
+                  data: {
+                    title: `Forge run · ${nodes.length} node${nodes.length === 1 ? "" : "s"} mapped`,
+                    summary: summary.slice(0, 500),
+                    details: `Forge committed ${nodes.length} node${nodes.length === 1 ? "" : "s"} into the system map (${resolvedCount} resolved).`,
+                    status: "committed",
+                    severity: "committed",
+                    verb: "new",
+                    mode: "build",
+                    sessionId: sessionId ?? null,
+                  },
+                },
+                { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); } }
+              );
+            }
+
             void updateForgeState("forged");
             // Also switch right panel to the map tab so nodes are visible
             setDesktopForceTab("map");

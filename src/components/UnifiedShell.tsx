@@ -453,6 +453,7 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
           score={score}
           projectName={proj?.name ?? null}
           decisionsCount={decisionsCount}
+          nodeState={proj?.nodeState ?? null}
           onClose={() => setOpen(false)}
         />
       )}
@@ -461,8 +462,8 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
 }
 
 function SovereignReadinessSheet({
-  score, projectName, decisionsCount, onClose,
-}: { score: number; projectName: string | null; decisionsCount: number; onClose: () => void }) {
+  score, projectName, decisionsCount, nodeState, onClose,
+}: { score: number; projectName: string | null; decisionsCount: number; nodeState: ProjectNodeState | null; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -471,27 +472,109 @@ function SovereignReadinessSheet({
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [onClose]);
 
-  // Derive a simple Frontend/Backend/Context mix from score + decision count.
-  // Real wiring to file-system stats can land later; values here are deterministic
-  // from project state so the panel never lies about being "live".
-  const frontend = 45;
-  const backend = 32;
-  const context = 23;
+  // ── Derive real Frontend / Backend / Context mix from project.nodeState. ──
+  // Arch-layer ids (SystemMap): auth/db/api/state/ui/logic — value is boolean.
+  // Flow-layer ids (AxiomFlow / Forge): { resolved, type, ... } objects.
+  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
+  const FRONTEND_ARCH = new Set(["ui", "state"]);
+  const BACKEND_ARCH = new Set(["auth", "db", "api"]);
+  // Flow node types → category buckets.
+  const FRONTEND_FLOW = new Set(["goal", "requirement"]);
+  const BACKEND_FLOW = new Set(["decision"]);
+  // remaining flow types (blocker / priority / sprint / wont / logic) → context
+
+  type Bucket = { total: number; resolved: number };
+  const buckets: Record<"frontend" | "backend" | "context", Bucket> = {
+    frontend: { total: 0, resolved: 0 },
+    backend: { total: 0, resolved: 0 },
+    context: { total: 0, resolved: 0 },
+  };
+
+  const ns = (nodeState ?? {}) as Record<string, unknown>;
+  Object.entries(ns).forEach(([nid, raw]) => {
+    let category: "frontend" | "backend" | "context" = "context";
+    let resolved = false;
+    if (ARCH_IDS.has(nid)) {
+      resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
+      if (FRONTEND_ARCH.has(nid)) category = "frontend";
+      else if (BACKEND_ARCH.has(nid)) category = "backend";
+      else category = "context";
+    } else if (typeof raw === "object" && raw !== null) {
+      const obj = raw as { resolved?: unknown; type?: unknown };
+      resolved = obj.resolved === true;
+      const t = typeof obj.type === "string" ? obj.type : "";
+      if (FRONTEND_FLOW.has(t)) category = "frontend";
+      else if (BACKEND_FLOW.has(t)) category = "backend";
+      else category = "context";
+    } else {
+      return;
+    }
+    buckets[category].total += 1;
+    if (resolved) buckets[category].resolved += 1;
+  });
+
+  const totalNodes = buckets.frontend.total + buckets.backend.total + buckets.context.total;
+  const sharePct = (n: number) => totalNodes === 0 ? 0 : Math.round((n / totalNodes) * 100);
+  const frontend = sharePct(buckets.frontend.total);
+  const backend = sharePct(buckets.backend.total);
+  // Force the three shares to sum to 100 even after rounding.
+  const context = totalNodes === 0 ? 0 : Math.max(0, 100 - frontend - backend);
+
+  const readinessPct = (b: Bucket) => b.total === 0 ? 0 : Math.round((b.resolved / b.total) * 100);
+
+  // Phases derived from the same nodeState — no mock math.
+  // Foundational = arch core (auth/db/api/state) resolved share.
+  // Core Lead Funnel = flow nodes (Forge-produced) resolved share.
+  // Multi-Repo Sync = currently no signal in nodeState → 0% with honest empty note.
+  const archCoreIds = ["auth", "db", "api", "state"];
+  const archCoreTotal = archCoreIds.filter(k => k in ns).length;
+  const archCoreResolved = archCoreIds.filter(k => {
+    const v = ns[k];
+    return v === true || (typeof v === "object" && v !== null && (v as { resolved?: unknown }).resolved === true);
+  }).length;
+  const foundationalPct = archCoreTotal === 0 ? 0 : Math.round((archCoreResolved / archCoreTotal) * 100);
+
+  let flowTotal = 0, flowResolved = 0;
+  Object.entries(ns).forEach(([nid, raw]) => {
+    if (ARCH_IDS.has(nid)) return;
+    if (typeof raw !== "object" || raw === null) return;
+    flowTotal += 1;
+    if ((raw as { resolved?: unknown }).resolved === true) flowResolved += 1;
+  });
+  const funnelPct = flowTotal === 0 ? 0 : Math.round((flowResolved / flowTotal) * 100);
 
   const phases = [
-    { label: "Foundational Data Layer", pct: Math.min(100, score + 15), tone: "ok" as const,
-      note: "Database + local state verified." },
-    { label: "Core Lead Funnel System", pct: Math.max(0, Math.min(100, score)), tone: "warn" as const,
-      note: "Live, awaiting final domain sync." },
-    { label: "Multi-Repo Synchronization", pct: Math.max(0, score - 30), tone: "block" as const,
-      note: "Secondary repo links pending." },
+    {
+      label: "Foundational Data Layer",
+      pct: foundationalPct,
+      tone: (foundationalPct >= 80 ? "ok" : foundationalPct >= 40 ? "warn" : "block") as "ok" | "warn" | "block",
+      note: archCoreTotal === 0
+        ? "No core architecture nodes mapped yet."
+        : `${archCoreResolved}/${archCoreTotal} core nodes resolved.`,
+    },
+    {
+      label: "Core Lead Funnel System",
+      pct: funnelPct,
+      tone: (funnelPct >= 80 ? "ok" : funnelPct >= 40 ? "warn" : "block") as "ok" | "warn" | "block",
+      note: flowTotal === 0
+        ? "No flow nodes mapped — run The Forge to seed."
+        : `${flowResolved}/${flowTotal} flow nodes resolved.`,
+    },
+    {
+      label: "Multi-Repo Synchronization",
+      pct: 0,
+      tone: "block" as const,
+      note: "Repository connection not linked yet.",
+    },
   ];
 
-  const guidance = score >= 90
+  const guidance = totalNodes === 0
+    ? `Unscored — no architecture nodes mapped yet. Run The Forge or open the System Map to seed the spine, then commit decisions in the Ledger (${decisionsCount} so far).`
+    : score >= 90
     ? "You're in the green. The remaining gap is polish — wire any uncommitted decisions into the ledger and ship."
     : score >= 60
-    ? `Core mechanics are production-ready. The primary blocker lowering readiness to ${score}% is missing repository connection in backend settings. Link your API repo to close code gaps.`
-    : `Foundations are still forming. Commit the open architectural decisions in the ledger (${decisionsCount} so far) before adding more surface area.`;
+    ? `Core mechanics are production-ready. ${flowTotal - flowResolved} flow node${(flowTotal - flowResolved) === 1 ? "" : "s"} still unresolved — close them to push past ${score}%.`
+    : `Foundations are still forming. ${totalNodes} node${totalNodes === 1 ? "" : "s"} mapped, ${decisionsCount} decision${decisionsCount === 1 ? "" : "s"} committed. Resolve the open architectural nodes before adding more surface area.`;
 
   const toneColor = (t: "ok" | "warn" | "block") =>
     t === "ok" ? "#4ade80" : t === "warn" ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)";
