@@ -32,7 +32,9 @@ const FRAGMENTS: Fragment[] = [
 ];
 
 export function InterrogationFragments() {
-  const [lit, setLit] = useState<boolean[]>(() => FRAGMENTS.map(() => false));
+  // First fragment lit by default so the section is never a blank black block
+  // on initial render, SSR, or Lovable's static build snapshot (no scroll fired yet).
+  const [lit, setLit] = useState<boolean[]>(() => FRAGMENTS.map((_, i) => i === 0));
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -41,6 +43,19 @@ export function InterrogationFragments() {
       setLit(FRAGMENTS.map(() => true));
       return;
     }
+
+    // Sync pass on mount: light up anything already on screen before the first scroll event fires.
+    const vh = window.innerHeight;
+    setLit((prev) => {
+      const next = [...prev];
+      itemRefs.current.forEach((el, i) => {
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        if (r.top < vh * 0.6) next[i] = true;
+      });
+      return next;
+    });
+
     const observers: IntersectionObserver[] = [];
     itemRefs.current.forEach((el, i) => {
       if (!el) return;
@@ -56,8 +71,7 @@ export function InterrogationFragments() {
             obs.disconnect();
           }
         },
-        // Trigger when the fragment crosses ~45% from the top of viewport
-        { threshold: 0, rootMargin: "0px 0px -45% 0px" },
+        { threshold: 0, rootMargin: "0px 0px -40% 0px" },
       );
       obs.observe(el);
       observers.push(obs);
@@ -102,7 +116,7 @@ export function InterrogationFragments() {
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className="relative"
                 style={{
-                  opacity: on ? 1 : 0.08,
+                  opacity: on ? 1 : 0.22,
                   transform: on ? "translateY(0)" : "translateY(14px)",
                   transition: "opacity 900ms cubic-bezier(0.16,1,0.3,1), transform 900ms cubic-bezier(0.16,1,0.3,1)",
                 }}
