@@ -91,32 +91,35 @@ export function ChatTrayHeader({
           <div style={{ flex: 1 }} />
         )}
 
-        {/* Quiet sovereignty shield — no text, no pulse, no glow */}
-        <button
-          type="button"
-          onClick={onTrustClick}
-          aria-label={active ? "Zero-trace session active" : "Zero-trace session paused"}
-          title={active ? "Zero-trace · sovereign session" : "Reflection paused"}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 22,
-            height: 22,
-            padding: 0,
-            background: "transparent",
-            border: "none",
-            color: active ? "var(--atlas-muted)" : "rgba(255,255,255,0.25)",
-            cursor: onTrustClick ? "pointer" : "default",
-            opacity: 0.7,
-            transition: "opacity 160ms ease, color 160ms ease",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
-        >
-          <Shield size={13} strokeWidth={1.6} />
-        </button>
+        {/* Quiet sovereignty shield — Nexus home only */}
+        {showTrust && (
+          <button
+            type="button"
+            onClick={onTrustClick}
+            aria-label={active ? "Zero-trace session active" : "Zero-trace session paused"}
+            title={active ? "Zero-trace · sovereign session" : "Reflection paused"}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 22,
+              height: 22,
+              padding: 0,
+              background: "transparent",
+              border: "none",
+              color: active ? "var(--atlas-muted)" : "rgba(255,255,255,0.25)",
+              cursor: onTrustClick ? "pointer" : "default",
+              opacity: 0.7,
+              transition: "opacity 160ms ease, color 160ms ease",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+          >
+            <Shield size={13} strokeWidth={1.6} />
+          </button>
+        )}
+
 
         {/* Readiness pill — neutral, single source of truth per view */}
         {readinessScore !== undefined && (
