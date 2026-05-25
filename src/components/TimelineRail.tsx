@@ -313,11 +313,12 @@ export function TimelineRail({
               <span
                 style={{
                   display: "block",
-                  width: 6,
+                  width: isMatch ? 12 : 6,
                   height: 2,
-                  background: "rgba(201,162,76,0.7)",
+                  background: isMatch ? "rgba(245,200,110,1)" : "rgba(201,162,76,0.7)",
                   borderRadius: 1,
-                  transition: "width 140ms ease, background 140ms ease",
+                  boxShadow: isMatch ? "0 0 10px rgba(245,200,110,0.7)" : "none",
+                  transition: "width 140ms ease, background 140ms ease, box-shadow 140ms ease",
                 }}
               />
             </button>
