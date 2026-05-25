@@ -2994,9 +2994,7 @@ function TerminalPanel({
 
   const [input, setInput] = useState("");
   const [lines, setLines] = useState<TerminalLine[]>([
-    { text: scenarioLens ? "SCENARIO Terminal  —  explain mode (no execution)" : "Atlas Terminal  —  ready", kind: "system" },
-    { text: scenarioLens ? "Commands are NOT executed. Atlas will explain what each command would do." : "Type a command or ask Atlas in Chat to run one for you.", kind: "system" },
-    ...(scenarioLens ? [] : [{ text: "Type  help  or  clear  to get started.", kind: "system" as const }]),
+    { text: "~/workspace$", kind: "system" },
   ]);
   const [running, setRunning] = useState(false);
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
@@ -3024,10 +3022,8 @@ function TerminalPanel({
   }, []);
 
   const welcomeLines = useCallback((): TerminalLine[] => [
-    { text: scenarioLens ? "SCENARIO Terminal  —  explain mode (no execution)" : "Atlas Terminal  —  ready", kind: "system" },
-    { text: scenarioLens ? "Commands are NOT executed. Atlas will explain what each command would do." : "Type a command or ask Atlas in Chat to run one for you.", kind: "system" },
-    ...(scenarioLens ? [] : [{ text: "Type  help  or  clear  to get started.", kind: "system" as const }]),
-  ], [scenarioLens]);
+    { text: "~/workspace$", kind: "system" },
+  ], []);
 
   const runCommand = useCallback(async (cmd: string) => {
     const trimmed = cmd.trim();
