@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useListProjects, useListSessions } from "@workspace/api-client-react";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { relativeTime } from "../lib/atlas-utils";

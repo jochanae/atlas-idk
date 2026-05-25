@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useListProjects, useListEntries } from "@workspace/api-client-react";
 import type { Entry } from "@workspace/api-client-react";
 import { LoadingSpinner } from "../components/ui/loading-spinner";

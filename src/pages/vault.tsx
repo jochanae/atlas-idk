@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import type { CSSProperties } from "react";
 import { LoadingSpinner } from "../components/ui/loading-spinner";

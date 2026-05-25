@@ -1,4 +1,5 @@
 import type React from "react";
+import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useGetEntry, useListEntries, getGetEntryQueryKey, getListEntriesQueryKey } from "@workspace/api-client-react";
