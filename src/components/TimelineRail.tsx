@@ -322,7 +322,8 @@ export function TimelineRail({
               />
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {showOverlay && (
