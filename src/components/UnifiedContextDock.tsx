@@ -67,8 +67,9 @@ const ICONS = {
     </svg>
   ),
   projects: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.75">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <line x1="9" y1="5" x2="9" y2="19" />
     </svg>
   ),
   decisions: (
