@@ -566,7 +566,7 @@ export function TimelineRail({
             border: "1px solid rgba(201,162,76,0.32)",
             borderRadius: 10,
             boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            minWidth: 240,
+            minWidth: 280,
             animation: "fadeIn 140ms ease",
           }}
         >
@@ -583,8 +583,11 @@ export function TimelineRail({
                 setShowSearch(false);
                 setQuery("");
               } else if (e.key === "Enter") {
-                const first = Array.from(matchingIdx)[0];
-                if (typeof first === "number") scrollTo(first);
+                if (matchList.length === 0) return;
+                const dir = e.shiftKey ? -1 : 1;
+                const next = (cursor + dir + matchList.length) % matchList.length;
+                setCursor(next);
+                scrollTo(matchList[next]);
               }
             }}
             placeholder="Search this thread"
@@ -602,13 +605,42 @@ export function TimelineRail({
             style={{
               fontFamily: "var(--app-font-mono)",
               fontSize: 10,
-              color: "rgba(201,162,76,0.6)",
-              minWidth: 18,
+              color: matchList.length ? "rgba(201,162,76,0.85)" : "rgba(201,162,76,0.4)",
+              minWidth: 36,
               textAlign: "right",
+              whiteSpace: "nowrap",
             }}
           >
-            {query ? matchingIdx.size : ""}
+            {query.trim() ? (matchList.length ? `${cursor + 1} / ${matchList.length}` : "0 / 0") : ""}
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (matchList.length === 0) return;
+              const next = (cursor - 1 + matchList.length) % matchList.length;
+              setCursor(next);
+              scrollTo(matchList[next]);
+            }}
+            aria-label="Previous match"
+            disabled={matchList.length === 0}
+            style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: matchList.length ? "pointer" : "not-allowed", padding: "0 2px", opacity: matchList.length ? 1 : 0.4 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 8L6 5 3 8" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (matchList.length === 0) return;
+              const next = (cursor + 1) % matchList.length;
+              setCursor(next);
+              scrollTo(matchList[next]);
+            }}
+            aria-label="Next match"
+            disabled={matchList.length === 0}
+            style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: matchList.length ? "pointer" : "not-allowed", padding: "0 2px", opacity: matchList.length ? 1 : 0.4 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4l3 3 3-3" /></svg>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -629,6 +661,7 @@ export function TimelineRail({
           </button>
         </div>
       )}
+
     </>
   );
 }
