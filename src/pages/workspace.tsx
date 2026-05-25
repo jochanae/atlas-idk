@@ -47,6 +47,7 @@ import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { Archive, ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
@@ -2195,9 +2196,13 @@ function MapTab({ projectId }: { projectId: number }) {
 function ConnectionsTab({
   projectId,
   onSwitchToFiles,
+  showModelPicker,
+  onShowModelPickerChange,
 }: {
   projectId: number;
   onSwitchToFiles: () => void;
+  showModelPicker: boolean;
+  onShowModelPickerChange: (v: boolean) => void;
 }) {
   type AccountConnection = { id: number | string; type?: string | null };
 
@@ -2429,6 +2434,19 @@ function ConnectionsTab({
           </div>
         </div>
 
+        <div style={rowStyle}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div>
+              <div style={labelStyle}>Manual model selection</div>
+              <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.55, marginTop: 2 }}>Show model picker in message bar</div>
+            </div>
+            <Switch
+              checked={showModelPicker}
+              onCheckedChange={onShowModelPickerChange}
+            />
+          </div>
+        </div>
+
         <div
           style={{
             padding: "12px 14px",
@@ -2523,6 +2541,8 @@ function RightPanel({
   onZipTrigger,
   zipLoaded,
   zipFileName,
+  showModelPicker,
+  onShowModelPickerChange,
 }: {
   projectId: number;
   entries: Entry[];
@@ -2571,6 +2591,8 @@ function RightPanel({
   onZipTrigger?: () => void;
   zipLoaded?: boolean;
   zipFileName?: string;
+  showModelPicker: boolean;
+  onShowModelPickerChange: (v: boolean) => void;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
@@ -2900,7 +2922,7 @@ function RightPanel({
           zipFileName={zipFileName}
         />
       )}
-      {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} />}
+      {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
@@ -4435,6 +4457,9 @@ export default function Workspace() {
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [showModelPicker, setShowModelPicker] = useState(() => {
+    try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
+  });
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -7164,6 +7189,8 @@ export default function Workspace() {
             }}
             zipLoaded={zipFiles.length > 0}
             zipFileName={zipName}
+            showModelPicker={showModelPicker}
+            onShowModelPickerChange={setShowModelPicker}
           />
         ) : undefined}
         showFlow={!isMobile}
@@ -7470,6 +7497,7 @@ export default function Workspace() {
               setDeepDiveCopied,
               setShowWsModelSheet,
               wsModel,
+              showModelPicker,
               voiceSupported,
               voiceListening,
               toggleVoice,
@@ -7628,6 +7656,8 @@ export default function Workspace() {
                 }}
                 zipLoaded={zipFiles.length > 0}
                 zipFileName={zipName}
+                showModelPicker={showModelPicker}
+                onShowModelPickerChange={setShowModelPicker}
               />
             </div>
           </div>
