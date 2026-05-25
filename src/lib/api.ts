@@ -1,4 +1,4 @@
-export const API_BASE = "https://axiom-atlas-689827072865.us-east1.run.app";
+export const API_BASE = "";
 
 export function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
