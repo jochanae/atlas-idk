@@ -66,6 +66,7 @@ export function TimelineRail({
   const [showOverlay, setShowOverlay] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
+  const [focusIdx, setFocusIdx] = useState<number>(-1);
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
