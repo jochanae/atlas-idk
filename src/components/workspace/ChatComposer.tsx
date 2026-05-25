@@ -175,6 +175,8 @@ export interface ChatComposerProps {
   // Model
   setShowWsModelSheet: (v: boolean) => void;
   wsModel: string;
+  showModelPicker?: boolean;
+
 
   // Voice
   voiceSupported: boolean;
@@ -184,8 +186,9 @@ export interface ChatComposerProps {
   // Send / stop
   chatPending: boolean;
   handleStop: () => void;
-  handleSend: () => void;
+  handleSend: (opts?: { planMode?: boolean }) => void;
   createSessionPending: boolean;
+
   sendPreparingSession: boolean;
 
   // Parking trigger
@@ -248,9 +251,11 @@ export function ChatComposer(props: ChatComposerProps) {
     setShowDeepDiveMenu,
     deepDiveCopied,
     setDeepDiveCopied,
-    setShowWsModelSheet,
-    wsModel,
-    voiceSupported,
+  setShowWsModelSheet,
+  wsModel,
+  showModelPicker = false,
+  voiceSupported,
+
     voiceListening,
     toggleVoice,
     chatPending,
@@ -264,7 +269,10 @@ export function ChatComposer(props: ChatComposerProps) {
     refreshParkedEntries,
   } = props;
 
+  const [planMode, setPlanMode] = useState(false);
+
   return (
+
     <>
       {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
       {leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" && <div className="atlas-composer-glass" style={{ padding: "12px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30 }}>
@@ -457,28 +465,63 @@ export function ChatComposer(props: ChatComposerProps) {
             transition: "none",
           }}
         >
-          <div style={{ position: "relative" }}>
-            <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
-
-            <textarea
-              ref={textareaRef}
-              aria-label="Message Atlas"
-              value={input}
-              onChange={(e) => { setInput(e.target.value); autoResize(); }}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              onKeyDown={handleKeyDown}
-              rows={1}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+            <button
+              onClick={() => setPlanMode(v => !v)}
+              title={planMode ? "Plan mode on" : "Plan mode off"}
+              aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
               style={{
-                width: "100%", background: "transparent", border: "none", outline: "none",
-                color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
-                resize: "none", fontFamily: "var(--app-font-sans)",
-                position: "relative", zIndex: 1,
-                minHeight: 24, maxHeight: 180, overflowY: "hidden", display: "block",
-                padding: "2px 2px",
+                marginTop: 2,
+                padding: "3px 10px",
+                borderRadius: 999,
+                background: planMode ? "rgba(201,162,76,0.08)" : "transparent",
+                border: planMode ? "1px solid rgba(201,162,76,0.35)" : "1px solid transparent",
+                color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                fontSize: 11,
+                fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                opacity: planMode ? 1 : 0.4,
+                transition: "all var(--motion-fast) var(--ease-standard)",
+                flexShrink: 1,
+                whiteSpace: "nowrap",
+                lineHeight: 1.4,
               }}
-            />
+            >
+              Plan
+            </button>
+            <div style={{ position: "relative", flex: 1 }}>
+              <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+
+              <textarea
+                ref={textareaRef}
+                aria-label="Message Atlas"
+                value={input}
+                onChange={(e) => { setInput(e.target.value); autoResize(); }}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend({ planMode });
+                  } else {
+                    handleKeyDown(e);
+                  }
+                }}
+                rows={1}
+                style={{
+                  width: "100%", background: "transparent", border: "none", outline: "none",
+                  color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
+                  resize: "none", fontFamily: "var(--app-font-sans)",
+                  position: "relative", zIndex: 1,
+                  minHeight: 24, maxHeight: 180, overflowY: "hidden", display: "block",
+                  padding: "2px 2px",
+                }}
+              />
+            </div>
           </div>
+
 
           <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "nowrap", gap: 4 }}>
 
@@ -714,32 +757,35 @@ export function ChatComposer(props: ChatComposerProps) {
 
             {/* Right: model chip + mic + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
-              {/* Model selector — tappable chip, reserved slot for future model switching */}
-              <button
-                onClick={() => setShowWsModelSheet(true)}
-                title="Switch model"
-                aria-label="Switch model"
-                style={{
-                  display: "flex", alignItems: "center", gap: 4,
-                  padding: "4px 8px", borderRadius: 20,
-                  background: "var(--atlas-surface)",
-                  border: "1px solid var(--atlas-surface)",
-                  cursor: "pointer", transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.32)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "var(--atlas-surface)"; e.currentTarget.style.borderColor = "var(--atlas-surface)"; }}
-              >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="rgba(var(--atlas-muted-rgb),0.7)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="8" cy="8" r="6" />
-                  <path d="M5.5 8.5L7 10l3-4" />
-                </svg>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-fg)", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>
-                  {wsModel === "claude" ? "Claude" : wsModel === "gpt4o" ? "GPT-4o" : wsModel === "gemini" ? "Gemini" : wsModel}
-                </span>
-                <svg width="7" height="7" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.35, flexShrink: 0 }}>
-                  <path d="M1.5 3L4 5.5L6.5 3" stroke="var(--atlas-fg)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
+              {showModelPicker && (
+                {/* Model selector — tappable chip, reserved slot for future model switching */}
+                <button
+                  onClick={() => setShowWsModelSheet(true)}
+                  title="Switch model"
+                  aria-label="Switch model"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    padding: "4px 8px", borderRadius: 20,
+                    background: "var(--atlas-surface)",
+                    border: "1px solid var(--atlas-surface)",
+                    cursor: "pointer", transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,162,76,0.07)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.32)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "var(--atlas-surface)"; e.currentTarget.style.borderColor = "var(--atlas-surface)"; }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="rgba(var(--atlas-muted-rgb),0.7)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="8" cy="8" r="6" />
+                    <path d="M5.5 8.5L7 10l3-4" />
+                  </svg>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-fg)", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>
+                    {wsModel === "claude" ? "Claude" : wsModel === "gpt4o" ? "GPT-4o" : wsModel === "gemini" ? "Gemini" : wsModel}
+                  </span>
+                  <svg width="7" height="7" viewBox="0 0 8 8" fill="none" style={{ opacity: 0.35, flexShrink: 0 }}>
+                    <path d="M1.5 3L4 5.5L6.5 3" stroke="var(--atlas-fg)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+
               {voiceSupported && (
                 <button
                   onClick={toggleVoice}
@@ -782,8 +828,9 @@ export function ChatComposer(props: ChatComposerProps) {
               ) : (
                 <button
                   className="atlas-send-btn"
-                  onClick={handleSend}
+                  onClick={() => handleSend({ planMode })}
                   disabled={!hasInput || createSessionPending}
+
                   aria-label={sendPreparingSession ? "Preparing session" : "Send message"}
                   style={{
                     minWidth: 44, minHeight: 44, padding: 3,
