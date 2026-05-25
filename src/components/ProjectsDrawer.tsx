@@ -61,7 +61,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           position: "fixed", top: 0, left: 0,
           width: "min(88vw, 300px)",
           height: "100dvh",
-          backgroundColor: "#0D0B09",
+          backgroundColor: "var(--atlas-bg)",
           borderRight: "1px solid var(--atlas-gold-border)",
           boxShadow: "8px 0 40px -8px rgba(0,0,0,0.7), 1px 0 0 rgba(201,162,76,0.08)",
           zIndex: 12001,
@@ -76,7 +76,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
         {/* Safe-area top band — always opaque, prevents status-bar bleed */}
         <div aria-hidden style={{
           height: "env(safe-area-inset-top, 0px)",
-          backgroundColor: "#0D0B09",
+          backgroundColor: "var(--atlas-bg)",
           flexShrink: 0,
           position: "relative",
           zIndex: 2,
@@ -86,7 +86,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "14px 14px 14px 16px",
           borderBottom: "1px solid var(--atlas-gold-border)",
-          backgroundColor: "#0D0B09",
+          backgroundColor: "var(--atlas-bg)",
           flexShrink: 0,
           position: "relative",
           zIndex: 2,
