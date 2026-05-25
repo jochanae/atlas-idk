@@ -1458,7 +1458,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       borderStyle: "solid",
       borderColor: `rgba(${E},0.65)`,
       bgColor: `rgba(${E},0.07)`,
-      textColor: palette.emberText,
+      textColor: emberLabel,
       textDecoration: "none",
       shadow: `0 0 10px rgba(${E},0.20)`,
       opacity: 1,
