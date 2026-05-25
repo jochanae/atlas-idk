@@ -53,10 +53,10 @@ export default function LandingPage() {
         backgroundSize: "128px 128px",
       }} />
 
-      {/* 1px gold architectural grid */}
+      {/* 1px architectural grid — neutral, no warm tint */}
       <div className="fixed inset-0 z-[2] pointer-events-none" style={{
-        opacity: 0.06,
-        backgroundImage: "linear-gradient(#D4AF37 1px, transparent 1px), linear-gradient(90deg, #D4AF37 1px, transparent 1px)",
+        opacity: 0.04,
+        backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
         backgroundSize: "60px 60px",
       }} />
 
