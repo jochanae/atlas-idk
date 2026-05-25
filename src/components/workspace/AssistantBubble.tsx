@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { CommitCard } from "../CommitCard";
 import { PlanCard } from "../PlanCard";
-import { StreamingMarkdown, MarkdownProse } from "../MessageRenderer";
+import { MarkdownProse } from "../MessageRenderer";
 import { ThoughtForBadge } from "../ThoughtForBadge";
 
 import { InsightChip } from "@/components/workspace/InsightChip";
@@ -1268,11 +1268,6 @@ export function AssistantBubble({
                 }}
               />
             </span>
-          ) : isNew ? (
-            <StreamingMarkdown
-              content={cleanedContent}
-              onComplete={onStreamActivityComplete}
-            />
           ) : (
             <MarkdownProse content={cleanedContent} />
           )}
