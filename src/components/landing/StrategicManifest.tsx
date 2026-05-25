@@ -442,11 +442,6 @@ function BuilderView() {
   );
 }
 
-// Re-export the finalized Storyteller view under the name LensPanel uses.
-// We swap by re-assigning the original name to the final implementation.
-// (Done inline below.)
-const _replaceStoryteller = () => StorytellerViewFinal;
-void _replaceStoryteller;
 
 /* ──────────────────────────────────────────────────────────
    04 — STRUCTURAL OUTPUTS
