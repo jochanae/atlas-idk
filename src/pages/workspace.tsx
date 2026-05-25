@@ -6401,9 +6401,9 @@ export default function Workspace() {
           boxShadow: "none",
         }}
       >
-        {leftTab === "chat" && (
-          <ChatTrayHeader active />
-        )}
+        {/* ChatTrayHeader removed from workspace — the zero-trace shield
+            and quiet header live only on Nexus home. This also closes the
+            extra vertical gap above the tabs row. */}
         <div
           className="atlas-app-header-row"
           style={{
