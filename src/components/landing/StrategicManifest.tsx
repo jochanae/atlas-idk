@@ -22,115 +22,181 @@ function useReveal(threshold = 0.15) {
 /* ──────────────────────────────────────────────────────────
    02 — INTERROGATION (fragment cadence)
    ────────────────────────────────────────────────────────── */
+type Fragment = { text: string; tone: "bright" | "dim" | "gold" };
+
+const FRAGMENTS: Fragment[] = [
+  { text: "You had the idea.", tone: "bright" },
+  { text: "You had momentum.", tone: "dim" },
+  { text: "Then the architecture shifted.", tone: "dim" },
+  { text: "Most ideas don't fail. They drift.", tone: "gold" },
+];
+
 export function InterrogationFragments() {
-  const { ref, visible } = useReveal(0.1);
-
-  const fragments = [
-    { text: "You had the idea.", tone: "bright", delay: 0 },
-    { text: "You had momentum.", tone: "dim", delay: 600 },
-    { text: "Then the architecture shifted.", tone: "dim", delay: 1200 },
-    { text: "Most ideas don't fail. They drift.", tone: "gold", delay: 1800 },
-  ];
-
-  const [revealed, setRevealed] = useState<boolean[]>(fragments.map(() => false));
+  const containerRef = useRef<HTMLDivElement>(null);
+  // 0 → 1 scroll progress through the pinned container
+  const [progress, setProgress] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
-    const timers = fragments.map((f, i) =>
-      window.setTimeout(() => {
-        setRevealed((r) => {
-          const next = [...r];
-          next[i] = true;
-          return next;
-        });
-      }, f.delay),
-    );
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [visible]);
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReducedMotion(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setProgress(1);
+      return;
+    }
+    let raf = 0;
+    const compute = () => {
+      raf = 0;
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // Scrollable distance = total height - viewport (the sticky window)
+      const scrollable = rect.height - vh;
+      if (scrollable <= 0) return;
+      // How far we've scrolled into the pinned region
+      const scrolled = Math.min(Math.max(-rect.top, 0), scrollable);
+      setProgress(scrolled / scrollable);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(compute);
+    };
+    compute();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [reducedMotion]);
+
+  // Map progress (0..1) → per-fragment opacity. Each fragment owns a 0.25 slot,
+  // with a soft 0.08 ramp on either side so the fade is interpolated, not snapped.
+  const n = FRAGMENTS.length;
+  const slot = 1 / n;
+  const ramp = 0.08;
+  const opacityFor = (i: number) => {
+    const start = i * slot;
+    // Fade in from start - ramp → start
+    const fadeIn = Math.min(Math.max((progress - (start - ramp)) / ramp, 0), 1);
+    // Last fragment stays lit; earlier ones dim slightly as the next takes focus
+    if (i === n - 1) return fadeIn;
+    const nextStart = (i + 1) * slot;
+    const dim = Math.min(Math.max((progress - (nextStart - ramp)) / ramp, 0), 1);
+    return fadeIn * (1 - dim * 0.55);
+  };
 
   return (
-    <section ref={ref} className="relative z-10 py-32 md:py-44 px-6">
-      <div className="max-w-3xl mx-auto relative" style={{ paddingLeft: 28 }}>
-        {/* Gold tracer rail */}
-        <div
-          className="absolute left-0 top-12 bottom-12 w-px transition-all duration-[1.4s] ease-out"
-          style={{
-            background: "linear-gradient(180deg, transparent, rgba(212,175,55,0.55) 18%, rgba(212,175,55,0.55) 82%, transparent)",
-            opacity: visible ? 1 : 0,
-            transform: visible ? "scaleY(1)" : "scaleY(0)",
-            transformOrigin: "top",
-          }}
-        />
+    <section ref={containerRef} className="relative z-10" style={{ height: "360vh" }}>
+      <div className="sticky top-0 h-screen flex items-center px-6">
+        <div className="max-w-3xl mx-auto w-full relative" style={{ paddingLeft: 28 }}>
+          {/* Gold tracer rail — fills with scroll progress */}
+          <div
+            className="absolute left-0 top-12 bottom-12 w-px"
+            style={{
+              background: "rgba(212,175,55,0.12)",
+            }}
+          />
+          <div
+            className="absolute left-0 top-12 w-px"
+            style={{
+              height: `calc((100% - 96px) * ${progress})`,
+              background: "linear-gradient(180deg, rgba(212,175,55,0.7), rgba(212,175,55,0.35))",
+              transition: "height 120ms linear",
+            }}
+          />
 
-        <p
-          className="uppercase tracking-[0.35em] mb-14"
-          style={{
-            ...mono,
-            fontSize: "0.65rem",
-            color: "#6b5f50",
-            opacity: visible ? 1 : 0,
-            transition: "opacity 700ms ease-out",
-          }}
-        >
-          02 // The Interrogation
-        </p>
+          <p
+            className="uppercase tracking-[0.35em] mb-12"
+            style={{
+              ...mono,
+              fontSize: "0.65rem",
+              color: "#6b5f50",
+            }}
+          >
+            02 // The Interrogation
+          </p>
 
-        <div className="space-y-16 md:space-y-20">
-          {fragments.map((f, i) => {
-            const isRevealed = revealed[i];
-            const color =
-              f.tone === "gold"
-                ? "#e8dcc8"
-                : f.tone === "dim"
-                ? "rgba(232,220,200,0.55)"
-                : "#e8dcc8";
-            return (
-              <div
-                key={i}
-                className="relative"
-                style={{
-                  opacity: isRevealed ? 1 : 0,
-                  transform: isRevealed ? "translateY(0)" : "translateY(14px)",
-                  transition: "opacity 900ms cubic-bezier(0.16,1,0.3,1), transform 900ms cubic-bezier(0.16,1,0.3,1)",
-                }}
-              >
-                {/* Dot on rail */}
+          <div className="space-y-10 md:space-y-14">
+            {FRAGMENTS.map((f, i) => {
+              const op = opacityFor(i);
+              const lit = op > 0.05;
+              const baseColor =
+                f.tone === "dim" ? "rgba(232,220,200,0.55)" : "#e8dcc8";
+              return (
                 <div
-                  className="absolute"
+                  key={i}
+                  className="relative"
                   style={{
-                    left: -32,
-                    top: 18,
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: "#D4AF37",
-                    boxShadow: isRevealed ? "0 0 14px rgba(212,175,55,0.55)" : "none",
-                    transition: "box-shadow 800ms ease-out",
-                  }}
-                />
-                <p
-                  style={{
-                    ...serif,
-                    fontWeight: 400,
-                    fontSize: "clamp(1.6rem, 4.5vw, 2.6rem)",
-                    lineHeight: 1.25,
-                    color,
-                    margin: 0,
-                    letterSpacing: "-0.005em",
+                    opacity: Math.max(op, 0.06),
+                    transform: `translateY(${(1 - Math.min(op, 1)) * 10}px)`,
+                    transition: "opacity 200ms linear, transform 200ms linear",
                   }}
                 >
-                  {f.tone === "gold" ? (
-                    <>
-                      Most ideas don't fail. They{" "}
-                      <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>drift.</span>
-                    </>
-                  ) : (
-                    f.text
-                  )}
-                </p>
-              </div>
-            );
-          })}
+                  <div
+                    className="absolute"
+                    style={{
+                      left: -32,
+                      top: 18,
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#D4AF37",
+                      opacity: 0.25 + op * 0.75,
+                      boxShadow: lit ? `0 0 ${6 + op * 12}px rgba(212,175,55,${0.3 + op * 0.4})` : "none",
+                      transition: "box-shadow 240ms ease-out, opacity 240ms linear",
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...serif,
+                      fontWeight: 400,
+                      fontSize: "clamp(1.6rem, 4.5vw, 2.6rem)",
+                      lineHeight: 1.25,
+                      color: baseColor,
+                      margin: 0,
+                      letterSpacing: "-0.005em",
+                    }}
+                  >
+                    {f.tone === "gold" ? (
+                      <>
+                        Most ideas don't fail. They{" "}
+                        <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>drift.</span>
+                      </>
+                    ) : (
+                      f.text
+                    )}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Scroll progress ticks */}
+          <div className="mt-10 flex gap-2" aria-hidden="true">
+            {FRAGMENTS.map((_, i) => {
+              const op = opacityFor(i);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    height: 1,
+                    flex: 1,
+                    background: `rgba(212,175,55,${0.08 + op * 0.5})`,
+                    transition: "background 200ms linear",
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
