@@ -40,8 +40,8 @@ type FlowPalette = {
 function flowPaletteFor(theme: ThemeMode): FlowPalette {
   if (theme === "parchment") {
     return {
-      rootBg: "#F5F1E8",
-      dotGrid: "rgba(146,64,14,0.18)",
+      rootBg: "#FAFAF7",
+      dotGrid: "rgba(11,11,11,0.08)",
       goldText: "#92400E",
       goldSoft: "rgba(146,64,14,0.7)",
       goldRgb: "180,83,9",
@@ -54,14 +54,14 @@ function flowPaletteFor(theme: ThemeMode): FlowPalette {
       fgText: "#1A1714",
       mutedRgb: "107,94,82",
       mutedText: "rgba(107,94,82,0.85)",
-      panelBg: "rgba(245,241,232,0.97)",
-      panelBorder: "rgba(180,83,9,0.40)",
-      panelShadow: "0 10px 32px rgba(146,64,14,0.18)",
-      inputBg: "#EDE9DF",
-      edgeDim: "rgba(107,94,82,0.45)",
-      edgeGold: "rgba(180,83,9,0.65)",
-      toastBg: "#F5F1E8",
-      toastBorder: "rgba(180,83,9,0.45)",
+      panelBg: "#FFFFFF",
+      panelBorder: "rgba(17,17,17,0.10)",
+      panelShadow: "0 10px 32px rgba(17,17,17,0.06)",
+      inputBg: "#FFFFFF",
+      edgeDim: "rgba(17,17,17,0.18)",
+      edgeGold: "rgba(180,83,9,0.75)",
+      toastBg: "#FFFFFF",
+      toastBorder: "rgba(17,17,17,0.10)",
       toastText: "#92400E",
     };
   }
