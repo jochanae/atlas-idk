@@ -4,6 +4,7 @@ type RailMessage = {
   role: "user" | "assistant";
   createdAt?: string;
   hasSurfacedMemory?: boolean;
+  text?: string;
 };
 
 type Bucket = {
@@ -63,8 +64,28 @@ export function TimelineRail({
   bottomOffset?: number;
 }) {
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [query, setQuery] = useState("");
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const matchingIdx = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return new Set<number>();
+    const s = new Set<number>();
+    messages.forEach((m, i) => {
+      if (m.text && m.text.toLowerCase().includes(q)) s.add(i);
+    });
+    return s;
+  }, [messages, query]);
+
+  useEffect(() => {
+    if (showSearch) {
+      const t = window.setTimeout(() => searchInputRef.current?.focus(), 40);
+      return () => window.clearTimeout(t);
+    }
+  }, [showSearch]);
 
   // Each tick carries the day label of its message + a boolean for "first of this day".
   const ticks = useMemo(() => {
@@ -161,7 +182,54 @@ export function TimelineRail({
             pointerEvents: "none",
           }}
         />
-        {ticks.map((t) => (
+        {/* Search affordance — minimalist trigger pinned at the top of the rail */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSearch((v) => !v);
+          }}
+          title="Search this thread"
+          aria-label="Search this thread"
+          style={{
+            position: "absolute",
+            top: -2,
+            right: 0,
+            width: 28,
+            height: 28,
+            borderRadius: 999,
+            background: "rgba(20,17,14,0.72)",
+            border: "1px solid rgba(201,162,76,0.28)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
+            zIndex: 2,
+            padding: 0,
+            color: "rgba(201,162,76,0.85)",
+            transition: "transform 140ms ease, background 140ms ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.06)";
+            e.currentTarget.style.background = "rgba(201,162,76,0.18)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.background = "rgba(20,17,14,0.72)";
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20" y1="20" x2="16.2" y2="16.2" />
+          </svg>
+        </button>
+
+        {ticks.map((t) => {
+          const isMatch = matchingIdx.has(t.idx);
+          return (
           <div
             key={t.idx}
             style={{
@@ -172,6 +240,8 @@ export function TimelineRail({
               justifyContent: "flex-end",
               gap: 6,
               padding: "2px 0",
+              transform: isMatch ? "scale(1.25)" : "scale(1)",
+              transition: "transform 180ms ease",
             }}
           >
             {/* Day chip — only on the first tick of a new day, inline to the LEFT of the spine */}
@@ -243,16 +313,18 @@ export function TimelineRail({
               <span
                 style={{
                   display: "block",
-                  width: 6,
+                  width: isMatch ? 12 : 6,
                   height: 2,
-                  background: "rgba(201,162,76,0.7)",
+                  background: isMatch ? "rgba(245,200,110,1)" : "rgba(201,162,76,0.7)",
                   borderRadius: 1,
-                  transition: "width 140ms ease, background 140ms ease",
+                  boxShadow: isMatch ? "0 0 10px rgba(245,200,110,0.7)" : "none",
+                  transition: "width 140ms ease, background 140ms ease, box-shadow 140ms ease",
                 }}
               />
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {showOverlay && (
@@ -337,6 +409,85 @@ export function TimelineRail({
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {showSearch && (
+        <div
+          style={{
+            position: "fixed",
+            top: topOffset - 6,
+            right: 40,
+            zIndex: 210,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 10px",
+            background: "rgba(20,17,14,0.96)",
+            border: "1px solid rgba(201,162,76,0.32)",
+            borderRadius: 10,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+            minWidth: 240,
+            animation: "fadeIn 140ms ease",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.7)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20" y1="20" x2="16.2" y2="16.2" />
+          </svg>
+          <input
+            ref={searchInputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowSearch(false);
+                setQuery("");
+              } else if (e.key === "Enter") {
+                const first = Array.from(matchingIdx)[0];
+                if (typeof first === "number") scrollTo(first);
+              }
+            }}
+            placeholder="Search this thread"
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "var(--atlas-fg)",
+              fontFamily: "var(--app-font-sans)",
+              fontSize: 13,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              color: "rgba(201,162,76,0.6)",
+              minWidth: 18,
+              textAlign: "right",
+            }}
+          >
+            {query ? matchingIdx.size : ""}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSearch(false);
+              setQuery("");
+            }}
+            aria-label="Close search"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--atlas-muted)",
+              cursor: "pointer",
+              fontSize: 14,
+              padding: "0 2px",
+            }}
+          >
+            ×
+          </button>
         </div>
       )}
     </>
