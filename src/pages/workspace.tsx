@@ -6435,11 +6435,11 @@ export default function Workspace() {
           flexShrink: 0,
           display: "flex",
           flexDirection: "column",
-          background: "rgba(var(--atlas-bg-rgb),0.78)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.12)",
-          boxShadow: "0 8px 28px rgba(0,0,0,0.22)",
+          background: "transparent",
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
+          borderBottom: "none",
+          boxShadow: "none",
         }}
       >
         <div
