@@ -20,15 +20,16 @@ export default function ProjectCompass() {
         backdropFilter: "blur(12px)", flexShrink: 0,
       }}>
         <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" onClick={() => setLocation("/home")}
+          <button type="button" onClick={() => goBack()}
             style={{
               fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em",
               textTransform: "uppercase", color: "var(--atlas-muted)",
               background: "transparent", border: "none", padding: 0, cursor: "pointer", opacity: 0.7,
             }}
           >
-            ← Home
+            ← Back
           </button>
+
           <span style={{ color: "var(--atlas-border)", fontSize: 12, opacity: 0.5 }}>·</span>
           <button type="button" onClick={() => setLocation("/dashboard")}
             style={{

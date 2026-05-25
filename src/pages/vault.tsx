@@ -144,8 +144,9 @@ export default function Vault() {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => setLocation("/")}
+          onClick={() => goBack()}
           style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", display: "flex", alignItems: "center", gap: 6, padding: 0 }}
+
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />

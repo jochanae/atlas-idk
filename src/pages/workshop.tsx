@@ -89,10 +89,11 @@ export default function Workshop() {
     <div style={{ height: "100dvh", overflowY: "auto", background: "transparent", color: "var(--atlas-fg)", display: "flex", flexDirection: "column", paddingBottom: 80 }}>
       <header style={{ position: "sticky", top: 0, zIndex: 20, background: "var(--atlas-bg)", borderBottom: "1px solid var(--atlas-border)", backdropFilter: "blur(12px)", flexShrink: 0 }}>
         <div style={{ padding: "10px 16px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" onClick={() => setLocation("/home")} style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", background: "transparent", border: "none", padding: 0, cursor: "pointer", opacity: 0.7 }}>
-            ← Home
+          <button type="button" onClick={() => goBack()} style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", background: "transparent", border: "none", padding: 0, cursor: "pointer", opacity: 0.7 }}>
+            ← Back
           </button>
         </div>
+
         <div style={{ padding: "0 16px 14px" }}>
           <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", margin: 0, color: "var(--atlas-fg)" }}>Workshop</h1>
           <p style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", margin: "4px 0 0", letterSpacing: "0.06em", opacity: 0.6 }}>Power tools for working outside the chat</p>

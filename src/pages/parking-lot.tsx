@@ -154,7 +154,8 @@ export default function ParkingLot() {
         {/* Back */}
         <button
           type="button"
-          onClick={() => window.history.back()}
+          onClick={() => goBack()}
+
           style={{
             background: "transparent", border: "none", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 6,

@@ -188,8 +188,9 @@ export default function EntryDetail() {
       }}>
         <button
           type="button"
-          onClick={() => window.history.length > 1 ? window.history.back() : setLocation(`/ledger/${entry.projectId}`)}
+          onClick={() => goBack(`/ledger/${entry.projectId}`)}
           style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--muted-text)" }}
+
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />

@@ -1714,7 +1714,7 @@ export default function MasterMap() {
         borderBottom: `1px solid ${palette.headerBorder}`,
         background: palette.headerBg, backdropFilter: "blur(16px)",
       }}>
-        <button onClick={() => setLocation("/nexus")} style={{
+        <button onClick={() => goBack("/home")} style={{
           width: 32, height: 32, borderRadius: 8, border: `1px solid ${palette.panelBorder}`,
           background: theme === "parchment" ? "rgba(180,83,9,0.08)" : "rgba(201,162,76,0.06)", display: "flex", alignItems: "center",
           justifyContent: "center", cursor: "pointer", color: palette.goldText, flexShrink: 0,
