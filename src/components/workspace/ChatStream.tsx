@@ -150,7 +150,7 @@ export function ChatStream(props: ChatStreamProps) {
     onPushSuccess,
   } = props;
 
-  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", padding: "12px 22px 12px", position: "relative" };
+  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", padding: "12px 88px 12px 22px", position: "relative" };
 
   return (
     <div
