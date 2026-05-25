@@ -15,7 +15,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
+import type { ProjectNodeState } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { CompactReadinessRing, computeScoreFromNodeState } from "@/components/ReadinessRing";
+
 
 
 type ShellDepth = "ambient" | "active" | "operational";
@@ -407,7 +410,30 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 
 
 
+function ShellReadinessChip({ projectId }: { projectId: number | null }) {
+  const [, navigate] = useLocation();
+  const ps = useProjectState(projectId);
+  if (projectId == null) return null;
+  const proj = ps.project as { latestSnapshotScore?: number | null; nodeState?: ProjectNodeState | null } | null;
+  const score = proj?.latestSnapshotScore ?? computeScoreFromNodeState(proj?.nodeState ?? null);
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/project/${projectId}?view=flow`)}
+      title={score === 0 ? "Readiness unscored — tap to open System Map" : `Readiness ${score}% — tap to open System Map`}
+      aria-label={score === 0 ? "Readiness unscored" : `Readiness ${score} percent`}
+      style={{
+        background: "transparent", border: "none", padding: 0, cursor: "pointer",
+        display: "inline-flex", alignItems: "center", flexShrink: 0,
+      }}
+    >
+      <CompactReadinessRing score={score} />
+    </button>
+  );
+}
+
 function ShellStatusChip({ projectId }: { projectId: number | null }) {
+
   const ps = useProjectState(projectId);
   const [, navigate] = useLocation();
   const [open, setOpen] = useState(false);
@@ -911,9 +937,11 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             <ShellProjectSwitcher projectId={activeProjectId} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <ShellReadinessChip projectId={activeProjectId} />
             <ShellStatusChip projectId={activeProjectId} />
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
+
         </header>
         <div
           style={{
