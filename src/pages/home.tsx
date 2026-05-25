@@ -2182,6 +2182,18 @@ export default function Home() {
     setEarnedTitle(null);
   }, []);
 
+  // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
+  useEffect(() => {
+    const reset = () => {
+      handleNewConversation();
+      setDepth("ambient");
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+    };
+    window.addEventListener("axiom:home-reset", reset);
+    return () => window.removeEventListener("axiom:home-reset", reset);
+  }, [handleNewConversation]);
+
+
   // Hydrate earned title when the active conversation changes.
   useEffect(() => {
     try {
