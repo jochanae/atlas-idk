@@ -1,6 +1,13 @@
-import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { LandingHeader } from "@/components/landing/LandingHeader";
+import {
+  InterrogationFragments,
+  StrategicManifest,
+  StructuralOutputs,
+  ParchmentAside,
+  BridgeSection,
+} from "@/components/landing/StrategicManifest";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -59,9 +66,11 @@ export default function LandingPage() {
       }} />
 
       <HeroSection onEnter={handleEnter} />
-      <InterrogationSection />
-      <HandoffSection />
-      <WallOfGoldSection onEnter={handleEnter} />
+      <InterrogationFragments />
+      <StrategicManifest />
+      <StructuralOutputs />
+      <ParchmentAside />
+      <BridgeSection onEnter={handleEnter} />
       <PricingSection onEnter={handleEnter} />
       <LandingFooter />
     </div>
@@ -88,62 +97,54 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
       <LogicCore />
 
       <div className="relative z-10 max-w-4xl text-center">
-        <h1 className="leading-[0.92] mb-6" style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontWeight: 500,
-          color: "#e8dcc8",
-          fontSize: "clamp(2.5rem, 8vw, 7rem)",
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-        }}>
-          Every great thing
-          <br />
-          begins as a
-          <br />
-          <span style={{ fontStyle: "italic", color: "#D4AF37" }}>
-            Conversation.
-          </span>
-        </h1>
-
-        <p className="mb-3 tracking-[0.3em] uppercase" style={{
+        <p className="mb-8 tracking-[0.3em] uppercase" style={{
           fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-          fontSize: "clamp(0.6rem, 1.2vw, 0.75rem)",
-          color: "#6b5f50",
+          fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
+          color: "rgba(232,220,200,0.32)",
         }}>
           Axiom // Where ideas become decisions become reality
         </p>
 
+        <h1 className="leading-[0.95] mb-8" style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontWeight: 400,
+          color: "#e8dcc8",
+          fontSize: "clamp(2.2rem, 7vw, 5.6rem)",
+          letterSpacing: "-0.01em",
+        }}>
+          Every great thing
+          <br />
+          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>started</span>{" "}
+          as a conversation.
+        </h1>
+
+        <p className="mb-10 italic mx-auto" style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontWeight: 400,
+          color: "rgba(232,220,200,0.55)",
+          fontSize: "clamp(1rem, 2vw, 1.25rem)",
+          maxWidth: 480,
+          lineHeight: 1.55,
+        }}>
+          A workspace where ideas hold their shape long enough to become real.
+        </p>
+
         {/* Mode pills */}
-        <div className="flex items-center justify-center gap-3 mb-10 flex-wrap">
-          <span style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: "0.6rem",
-            letterSpacing: "0.2em",
-            color: "#D4AF37",
-            border: "1px solid rgba(212,175,55,0.3)",
-            padding: "4px 10px",
-            textTransform: "uppercase",
-          }}>Think it through</span>
-          <span style={{ color: "#3d3529", fontSize: "0.7rem" }}>→</span>
-          <span style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: "0.6rem",
-            letterSpacing: "0.2em",
-            color: "#D4AF37",
-            border: "1px solid rgba(212,175,55,0.3)",
-            padding: "4px 10px",
-            textTransform: "uppercase",
-          }}>Map it out</span>
-          <span style={{ color: "#3d3529", fontSize: "0.7rem" }}>→</span>
-          <span style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: "0.6rem",
-            letterSpacing: "0.2em",
-            color: "rgba(212,175,55,0.5)",
-            border: "1px solid rgba(212,175,55,0.15)",
-            padding: "4px 10px",
-            textTransform: "uppercase",
-          }}>Build it</span>
+        <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
+          {["Think it through", "Map it out", "Build it"].map((label) => (
+            <span key={label} style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: "0.62rem",
+              letterSpacing: "0.2em",
+              color: "rgba(232,220,200,0.55)",
+              border: "1px solid rgba(232,220,200,0.14)",
+              padding: "6px 12px",
+              borderRadius: 999,
+              textTransform: "uppercase",
+            }}>
+              {label}
+            </span>
+          ))}
         </div>
 
         <button
@@ -151,49 +152,30 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           className="group relative uppercase"
           style={{
             fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-            fontSize: "clamp(0.7rem, 1.5vw, 0.85rem)",
-            fontWeight: 600,
-            letterSpacing: "0.3em",
-            color: "#D4AF37",
-            border: "1px solid rgba(212,175,55,0.45)",
+            fontSize: "clamp(0.7rem, 1.5vw, 0.8rem)",
+            fontWeight: 500,
+            letterSpacing: "0.28em",
+            color: "#e8dcc8",
+            border: "1px solid rgba(212,175,55,0.5)",
             background: "transparent",
-            width: "100%",
-            maxWidth: 420,
-            padding: "18px 24px",
-            display: "block",
-            margin: "0 auto",
+            padding: "14px 32px",
+            display: "inline-block",
             opacity: btnOpacity,
             transform: `scale(${btnScale})`,
             transition: "background 200ms, border-color 200ms",
             pointerEvents: btnOpacity < 0.05 ? "none" : "auto",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(212,175,55,0.07)"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.75)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(212,175,55,0.45)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(212,175,55,0.07)";
+            e.currentTarget.style.borderColor = "rgba(212,175,55,0.85)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "rgba(212,175,55,0.5)";
+          }}
         >
-          Start the conversation →
+          Enter Axiom →
         </button>
-
-        <p className="mt-6 mx-auto text-center uppercase" style={{
-          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-          fontSize: "0.6rem",
-          letterSpacing: "0.2em",
-          color: "#e8dcc8",
-          opacity: 0.45,
-          maxWidth: 420,
-          lineHeight: 1.7,
-        }}>
-          For the builder with a codebase. For the thinker with an idea. For anyone who needs to decide what comes next.
-        </p>
-      </div>
-
-      {/* Bottom-left system readout */}
-      <div className="absolute bottom-8 left-8 hidden md:block" style={{
-        fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-        fontSize: "0.65rem", color: "#3d3529", letterSpacing: "0.15em", lineHeight: 1.8,
-      }}>
-        SYSTEM: AXIOM_01<br />
-        ORIGIN: CLARITY_ENGINE<br />
-        STATUS: FORCING_STRUCTURE
       </div>
 
       {/* Scroll hint */}
@@ -207,532 +189,20 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
   );
 }
 
-/* ─── Section 2: The Problem ─── */
-function InterrogationSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setVisible(true); }, { threshold: 0.15 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
-  const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
-
-  const stats = [
-    { value: "62%", label: "of builds get re-scoped mid-sprint", delay: "0.15s" },
-    { value: "3.2×", label: "longer to ship without a structural spec", delay: "0.35s" },
-    { value: "$41K", label: "average do-over tax per failed feature", delay: "0.55s" },
-    { value: "2.4", label: "avg years an idea sits before someone acts on it", delay: "0.55s" },
-  ];
-
-  return (
-    <section id="how-it-works" ref={sectionRef} className="relative z-10 py-28 md:py-40 px-6">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-[1.2s] ease-out" style={{
-        width: visible ? "80%" : "0%",
-        background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)",
-      }} />
-
-      <div className="max-w-4xl mx-auto">
-        <p className="uppercase tracking-[0.35em] mb-12 transition-all duration-700" style={{
-          ...mono, fontSize: "0.65rem", color: "#6b5f50",
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(12px)",
-        }}>
-          02 // The_Interrogation
-        </p>
-
-        <h2 className="uppercase leading-[1.0] mb-8 transition-all duration-[0.9s] ease-out" style={{
-          ...serif, fontWeight: 600, fontSize: "clamp(1.8rem, 5vw, 4rem)", letterSpacing: "0.03em", color: "#e8dcc8",
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)",
-        }}>
-          How many times have you
-          <br />
-          <span style={{ color: "#D4AF37", fontStyle: "italic" }}>built the wrong thing?</span>
-        </h2>
-
-        <p className="leading-[1.8] mb-16 max-w-2xl transition-all duration-700 delay-200" style={{
-          ...mono, fontSize: "clamp(0.75rem, 1.4vw, 0.9rem)", color: "#8a7e6e",
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(16px)",
-        }}>
-          You had the idea. You had the energy. You started building.
-          <br /><br />
-          Then three sprints in, someone asks a question you should have
-          answered on day one. The architecture cracks. The scope shifts.
-          The timeline doubles.
-          <br /><br />
-          That's the <span style={{ color: "#D4AF37" }}>do-over tax</span>.
-          Axiom makes it much harder to fall into.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
-          {stats.map((stat) => (
-            <div key={stat.value} className="relative p-6 transition-all duration-700 ease-out" style={{
-              background: "rgba(212,175,55,0.03)", border: "1px solid rgba(212,175,55,0.12)",
-              opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(24px)",
-              transitionDelay: stat.delay,
-            }}>
-              <div className="absolute top-0 left-0 w-3 h-px" style={{ background: "#D4AF37" }} />
-              <div className="absolute top-0 left-0 h-3 w-px" style={{ background: "#D4AF37" }} />
-              <div className="absolute bottom-0 right-0 w-3 h-px" style={{ background: "#D4AF37" }} />
-              <div className="absolute bottom-0 right-0 h-3 w-px" style={{ background: "#D4AF37" }} />
-              <p className="mb-2" style={{ ...mono, fontSize: "clamp(1.8rem, 3vw, 2.5rem)", fontWeight: 600, color: "#D4AF37", letterSpacing: "-0.02em" }}>
-                {stat.value}
-              </p>
-              <p style={{ ...mono, fontSize: "0.7rem", color: "#6b5f50", letterSpacing: "0.05em", lineHeight: 1.5 }}>
-                {stat.label}
-              </p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 transition-all duration-700" style={{
-          ...mono, fontSize: "0.55rem", color: "#3d3529", letterSpacing: "0.08em",
-          opacity: visible ? 0.6 : 0, transitionDelay: "0.8s",
-        }}>
-          * Based on industry research and aggregate builder estimates.
-        </p>
-
-        <p className="mt-16 text-center uppercase tracking-[0.25em] transition-all duration-700" style={{
-          ...serif, fontSize: "clamp(1rem, 2.5vw, 1.5rem)", fontWeight: 500, color: "#e8dcc8",
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(12px)",
-          transitionDelay: "0.7s",
-        }}>
-          Axiom makes that{" "}
-          <span style={{ color: "#D4AF37", fontStyle: "italic" }}>a lot harder to do.</span>
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Section 3: The Handoff ─── */
-function HandoffSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [activeStep, setActiveStep] = useState(-1);
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setVisible(true);
-        setTimeout(() => setActiveStep(0), 300);
-        setTimeout(() => setActiveStep(1), 1000);
-        setTimeout(() => setActiveStep(2), 1700);
-      }
-    }, { threshold: 0.12 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
-  const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
-
-  const steps = [
-    {
-      phase: "THE SPARK",
-      title: "The Idea",
-      description: "Some things start as a half-formed thought at 2am. Atlas sits with you in that space — asks the right questions, maps what you know, surfaces what you don't. By the end of the conversation, you have a blueprint. Something real you can act on.",
-      visual: "scatter",
-      color: "#8a7e6e",
-      goldAccent: false,
-    },
-    {
-      phase: "SPEC MODE",
-      title: "Structure",
-      description: "Three sprints interrogate every layer — auth, data, logic, UI. Axiom asks the questions you haven't thought to ask yet. The system map fills with gold as each decision resolves.",
-      visual: "scatter",
-      color: "#8a7e6e",
-      goldAccent: false,
-    },
-    {
-      phase: "THE HANDOFF",
-      title: "The Bridge",
-      description: "Tap → Build Mode. Your Technical Manifest flows into the workspace. Every resolved node becomes a committed decision in the ledger. Your workspace already knows everything you decided — before a single line is written.",
-      visual: "funnel",
-      color: "#D4AF37",
-      goldAccent: true,
-      hero: true,
-    },
-    {
-      phase: "BUILD MODE",
-      title: "Grounded",
-      description: "Every decision you make gets tracked against the spec. The moment something pulls in a different direction, Atlas notices — surfaces what you committed to, and quietly asks if you want to log the shift or adjust course.",
-      visual: "grid",
-      color: "#D4AF37",
-      goldAccent: true,
-    },
-  ];
-
-  return (
-    <section id="spec" ref={sectionRef} className="relative z-10 py-28 md:py-40 px-6">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-[1.2s] ease-out" style={{
-        width: visible ? "80%" : "0%",
-        background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)",
-      }} />
-
-      <div className="max-w-5xl mx-auto">
-        <p className="uppercase tracking-[0.35em] mb-6 transition-all duration-700" style={{
-          ...mono, fontSize: "0.65rem", color: "#6b5f50",
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(12px)",
-        }}>
-          03 // Spec_it → Build_it → Ship_it
-        </p>
-
-        <h2 className="uppercase leading-[1.0] mb-6 transition-all duration-[0.9s] ease-out" style={{
-          ...serif, fontWeight: 600, fontSize: "clamp(1.6rem, 4.5vw, 3.5rem)", letterSpacing: "0.03em", color: "#e8dcc8",
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)",
-        }}>
-          Finish speccing. Walk in{" "}
-          <span style={{ color: "#D4AF37", fontStyle: "italic" }}>ready.</span>
-        </h2>
-
-        <p className="mb-20 max-w-xl transition-all duration-700 delay-200" style={{
-          ...mono, fontSize: "clamp(0.7rem, 1.2vw, 0.85rem)", color: "#6b5f50", lineHeight: 1.7,
-          opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(12px)",
-        }}>
-          The handoff is the moment that changes everything. Your spec doesn't stay behind in a doc.
-          It walks into the workspace with you — committed, permanent, alive.
-        </p>
-
-        <div className="relative">
-          {/* Connecting line */}
-          <div className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px transition-all duration-[2s] ease-out" style={{
-            background: visible ? "linear-gradient(to bottom, #6b5f50, #D4AF37, #D4AF37)" : "transparent",
-            opacity: visible ? 0.3 : 0, transform: "translateX(-50%)",
-          }} />
-
-          <div className="space-y-16 md:space-y-24">
-            {steps.map((step, i) => {
-              const isActive = activeStep >= i;
-              const isRight = i % 2 === 1;
-
-              return (
-                <div
-                  key={step.phase}
-                  className={`relative flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-12 transition-all duration-700 ease-out ${isRight ? "md:flex-row-reverse" : ""}`}
-                  style={{ opacity: isActive ? 1 : 0, transform: isActive ? "translateY(0)" : "translateY(30px)" }}
-                >
-                  {/* Phase node */}
-                  <div className="absolute left-6 md:left-1/2 w-3 h-3 rounded-full transition-all duration-500 z-10" style={{
-                    background: isActive ? step.color : "#2a2520",
-                    border: `1px solid ${isActive ? step.color : "#3d3529"}`,
-                    transform: "translate(-50%, 0)",
-                    boxShadow: isActive && step.goldAccent ? `0 0 12px ${step.color}40` : "none",
-                  }} />
-
-                  {/* Visual */}
-                  <div className="flex-shrink-0 ml-14 md:ml-0 md:w-[45%] flex justify-center">
-                    {(step as any).hero ? (
-                      <HandoffVisual active={isActive} />
-                    ) : (
-                      <FlowVisual type={step.visual} active={isActive} />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="ml-14 md:ml-0 md:w-[45%]">
-                    {/* Hero badge */}
-                    {(step as any).hero && isActive && (
-                      <div style={{
-                        display: "inline-block", marginBottom: 8,
-                        ...mono, fontSize: "0.55rem", letterSpacing: "0.25em",
-                        color: "#0D0B09", background: "#D4AF37",
-                        padding: "3px 8px", textTransform: "uppercase",
-                      }}>
-                        THE HANDOFF
-                      </div>
-                    )}
-                    <p className="uppercase tracking-[0.3em] mb-2" style={{
-                      ...mono, fontSize: "0.6rem",
-                      color: step.goldAccent ? "#D4AF37" : "#6b5f50",
-                    }}>
-                      {!(step as any).hero && step.phase}
-                    </p>
-                    <h3 className="uppercase mb-3" style={{
-                      ...serif, fontSize: "clamp(1.4rem, 3vw, 2.2rem)", fontWeight: 600,
-                      color: step.goldAccent ? "#D4AF37" : "#e8dcc8", letterSpacing: "0.04em",
-                    }}>
-                      {step.title}
-                    </h3>
-                    <p style={{ ...mono, fontSize: "clamp(0.7rem, 1.1vw, 0.8rem)", color: "#8a7e6e", lineHeight: 1.7 }}>
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Handoff Visual ─── */
-function HandoffVisual({ active }: { active: boolean }) {
-  const size = 140;
-  const cx = size / 2;
-  const cy = size / 2;
-
-  // Three nodes on left, three nodes on right, all converging to center point
-  const leftNodes = [
-    { x: 15, y: 35 }, { x: 15, y: 70 }, { x: 15, y: 105 },
-  ];
-  const rightNodes = [
-    { x: 125, y: 35 }, { x: 125, y: 70 }, { x: 125, y: 105 },
-  ];
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-28 h-28 md:w-36 md:h-36" style={{ opacity: active ? 0.8 : 0.1 }}>
-      <defs>
-        <radialGradient id="handoffGlow" cx="50%" cy="50%" r="40%">
-          <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <circle cx={cx} cy={cy} r="50" fill="url(#handoffGlow)" />
-
-      {/* Lines from left nodes to center */}
-      {leftNodes.map((n, i) => (
-        <line key={`l${i}`} x1={n.x} y1={n.y} x2={cx} y2={cy}
-          stroke="#6b5f50" strokeWidth="0.7"
-          opacity={active ? 0.5 : 0.1}
-          style={{ transition: `all 0.5s ease-out ${i * 0.1}s` }}
-        />
-      ))}
-
-      {/* Lines from center to right nodes */}
-      {rightNodes.map((n, i) => (
-        <line key={`r${i}`} x1={cx} y1={cy} x2={n.x} y2={n.y}
-          stroke="#D4AF37" strokeWidth="0.7"
-          opacity={active ? 0.6 : 0.1}
-          style={{ transition: `all 0.5s ease-out ${0.3 + i * 0.1}s` }}
-        />
-      ))}
-
-      {/* Left nodes (spec) */}
-      {leftNodes.map((n, i) => (
-        <circle key={`ln${i}`} cx={n.x} cy={n.y} r="3"
-          fill="#3d3529" stroke="#6b5f50" strokeWidth="0.8"
-          opacity={active ? 0.7 : 0.1}
-          style={{ transition: `all 0.4s ease-out ${i * 0.08}s` }}
-        />
-      ))}
-
-      {/* Center node (the handoff) */}
-      <circle cx={cx} cy={cy} r="6" fill="#D4AF37"
-        opacity={active ? 1 : 0.1}
-        style={{ transition: "all 0.6s ease-out 0.2s", filter: active ? "drop-shadow(0 0 6px #D4AF3780)" : "none" }}
-      />
-
-      {/* Right nodes (ledger entries) */}
-      {rightNodes.map((n, i) => (
-        <circle key={`rn${i}`} cx={n.x} cy={n.y} r="3"
-          fill="#D4AF37" stroke="#D4AF37" strokeWidth="0.8"
-          opacity={active ? 0.7 : 0.1}
-          style={{ transition: `all 0.4s ease-out ${0.5 + i * 0.1}s` }}
-        />
-      ))}
-
-      {/* Arrow hint */}
-      <text x={cx - 3} y={cy + 22}
-        style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 7, fill: "#D4AF37", opacity: active ? 0.5 : 0, transition: "opacity 0.6s 0.4s" }}
-      >
-        →
-      </text>
-    </svg>
-  );
-}
-
-/* ─── Flow Visuals ─── */
-function FlowVisual({ type, active }: { type: string; active: boolean }) {
-  const size = 140;
-  const cx = size / 2;
-  const cy = size / 2;
-
-  if (type === "scatter") {
-    const dots = [
-      { x: 20, y: 35 }, { x: 95, y: 18 }, { x: 55, y: 72 },
-      { x: 110, y: 55 }, { x: 38, y: 105 }, { x: 82, y: 95 },
-      { x: 15, y: 70 }, { x: 120, y: 110 }, { x: 60, y: 25 },
-      { x: 100, y: 80 }, { x: 30, y: 60 }, { x: 75, y: 45 },
-    ];
-    return (
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-28 h-28 md:w-36 md:h-36" style={{ opacity: active ? 0.6 : 0.1 }}>
-        {dots.map((d, i) => (
-          <circle key={i} cx={d.x} cy={d.y} r={active ? 2.5 : 1} fill="#8a7e6e"
-            style={{ transition: `all 0.5s ease-out ${i * 0.05}s`, opacity: active ? 0.6 : 0.2 }}
-          />
-        ))}
-      </svg>
-    );
-  }
-
-  if (type === "funnel") {
-    return (
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-28 h-28 md:w-36 md:h-36" style={{ opacity: active ? 0.7 : 0.1 }}>
-        <defs>
-          <radialGradient id="funnelGlow2" cx="50%" cy="50%" r="40%">
-            <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx={cx} cy={cy} r="50" fill="url(#funnelGlow2)" />
-        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle) => {
-          const rad = (angle * Math.PI) / 180;
-          return (
-            <line key={angle}
-              x1={cx + Math.cos(rad) * 65} y1={cy + Math.sin(rad) * 65}
-              x2={cx + Math.cos(rad) * 8} y2={cy + Math.sin(rad) * 8}
-              stroke="#D4AF37" strokeWidth="0.6" opacity={active ? 0.5 : 0.1}
-              style={{ transition: "all 0.6s ease-out" }}
-            />
-          );
-        })}
-        <circle cx={cx} cy={cy} r="4" fill="#D4AF37" opacity={active ? 0.8 : 0.1} style={{ transition: "all 0.6s" }} />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-28 h-28 md:w-36 md:h-36" style={{ opacity: active ? 0.7 : 0.1 }}>
-      {Array.from({ length: 16 }).map((_, i) => {
-        const col = i % 4;
-        const row = Math.floor(i / 4);
-        return (
-          <rect key={i} x={20 + col * 28} y={20 + row * 28} width="20" height="20"
-            fill="none" stroke="#D4AF37" strokeWidth="0.6" opacity={active ? 0.5 : 0.1}
-            style={{ transition: `all 0.4s ease-out ${i * 0.04}s` }}
-          />
-        );
-      })}
-      <line x1="30" y1="30" x2="58" y2="30" stroke="#D4AF37" strokeWidth="0.4" opacity={active ? 0.3 : 0} />
-      <line x1="30" y1="30" x2="30" y2="58" stroke="#D4AF37" strokeWidth="0.4" opacity={active ? 0.3 : 0} />
-      <line x1="86" y1="58" x2="114" y2="58" stroke="#D4AF37" strokeWidth="0.4" opacity={active ? 0.3 : 0} />
-      <line x1="58" y1="86" x2="58" y2="114" stroke="#D4AF37" strokeWidth="0.4" opacity={active ? 0.3 : 0} />
-    </svg>
-  );
-}
-
-/* ─── Section 4: The Declaration ─── */
-function WallOfGoldSection({ onEnter }: { onEnter: () => void }) {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setVisible(true); }, { threshold: 0.15 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
-  const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
-
-  const principles = [
-    "Every dependency mapped before a single line is written.",
-    "Every assumption interrogated until it proves itself.",
-    "Every direction shift logged before it becomes invisible.",
-  ];
-
-  return (
-    <section id="build" ref={sectionRef} className="relative z-10">
-      <div className="relative overflow-hidden py-24 md:py-36 px-6" style={{ background: "#D4AF37" }}>
-        {/* Grain on gold */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.06]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          backgroundSize: "128px 128px", mixBlendMode: "multiply",
-        }} />
-        {/* Dark grid on gold */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          opacity: 0.06,
-          backgroundImage: "linear-gradient(#050505 1px, transparent 1px), linear-gradient(90deg, #050505 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }} />
-
-        <div className="relative max-w-4xl mx-auto">
-          <p className="uppercase tracking-[0.35em] mb-12 transition-all duration-700" style={{
-            ...mono, fontSize: "0.65rem", color: "#050505",
-            opacity: visible ? 0.5 : 0, transform: visible ? "translateY(0)" : "translateY(12px)",
-          }}>
-            04 // The_Declaration
-          </p>
-
-          <h2 className="uppercase leading-[0.95] mb-16 transition-all duration-[1s] ease-out" style={{
-            ...serif, fontWeight: 600, fontSize: "clamp(2rem, 6vw, 5rem)", letterSpacing: "0.02em", color: "#050505",
-            opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(24px)",
-          }}>
-            This is not
-            <br />a project
-            <br />management tool.
-          </h2>
-
-          <p className="leading-[1.6] mb-16 max-w-2xl transition-all duration-700" style={{
-            ...serif, fontWeight: 500, fontSize: "clamp(1.1rem, 2.5vw, 1.6rem)", color: "#050505",
-            opacity: visible ? 0.85 : 0, transform: visible ? "translateY(0)" : "translateY(16px)",
-            transitionDelay: "0.2s", fontStyle: "italic",
-          }}>
-            Axiom is thinking infrastructure. The spec that follows you
-            into every build decision — and holds you accountable to it.
-          </p>
-
-          <div className="space-y-6 mb-20">
-            {principles.map((p, i) => (
-              <div key={i} className="flex items-start gap-4 transition-all duration-700 ease-out" style={{
-                opacity: visible ? 1 : 0, transform: visible ? "translateX(0)" : "translateX(-20px)",
-                transitionDelay: `${0.3 + i * 0.15}s`,
-              }}>
-                <span className="mt-[0.6em] flex-shrink-0 w-4 h-px" style={{ background: "#050505", opacity: 0.4 }} />
-                <p style={{ ...mono, fontSize: "clamp(0.7rem, 1.3vw, 0.85rem)", color: "#050505", lineHeight: 1.7, letterSpacing: "0.02em" }}>
-                  {p}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center transition-all duration-700" style={{
-            opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(16px)", transitionDelay: "0.7s",
-          }}>
-            <button
-              onClick={onEnter}
-              className="group relative px-12 py-5 uppercase tracking-[0.25em] transition-all duration-500"
-              style={{ ...mono, fontSize: "0.75rem", fontWeight: 500, color: "#D4AF37", background: "#050505", border: "none" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#1a1a1a"; e.currentTarget.style.boxShadow = "0 0 40px rgba(5,5,5,0.4)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "#050505"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              Enter Axiom
-            </button>
-            <p className="mt-6 uppercase tracking-[0.2em]" style={{ ...mono, fontSize: "0.6rem", color: "#050505", opacity: 0.4 }}>
-              Spec it. Build it. Ship it.
-            </p>
-          </div>
-        </div>
-      </div>
-
-    </section>
-  );
-}
-
 /* ─── Pricing ─── */
 function PricingSection({ onEnter }: { onEnter: () => void }) {
   const [visRef, setVisRef] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useState<HTMLDivElement | null>(null);
   const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
   const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
   useEffect(() => {
-    const el = sectionRef.current;
+    const el = sectionRef[0];
     if (!el) return;
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisRef(true); }, { threshold: 0.1 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [sectionRef]);
 
   const tiers = [
     {
@@ -764,40 +234,37 @@ function PricingSection({ onEnter }: { onEnter: () => void }) {
   return (
     <section
       id="pricing"
-      ref={sectionRef}
+      ref={(el) => { sectionRef[1](el); }}
       className="relative z-10 py-28 md:py-36 px-6"
     >
-      {/* Top divider */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-[1.2s] ease-out" style={{
         width: visRef ? "80%" : "0%",
         background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)",
       }} />
 
       <div className="max-w-4xl mx-auto">
-        {/* Section label */}
-        <p className="uppercase tracking-[0.35em] mb-8 transition-all duration-700" style={{
+        <p className="uppercase tracking-[0.35em] mb-6 text-center" style={{
           ...mono, fontSize: "0.65rem", color: "#6b5f50",
           opacity: visRef ? 1 : 0, transform: visRef ? "translateY(0)" : "translateY(12px)",
         }}>
-          05 // Pricing
+          07 // Pricing
         </p>
 
-        {/* Headline */}
-        <h2 className="uppercase leading-[1.0] mb-4 transition-all duration-[0.9s] ease-out" style={{
-          ...serif, fontWeight: 600, fontSize: "clamp(1.8rem, 5vw, 4rem)", letterSpacing: "0.03em", color: "#e8dcc8",
-          opacity: visRef ? 1 : 0, transform: visRef ? "translateY(0)" : "translateY(20px)",
+        <h2 className="text-center mb-3" style={{
+          ...serif, fontWeight: 400, fontSize: "clamp(1.7rem, 4vw, 2.6rem)", letterSpacing: "-0.01em", color: "#e8dcc8",
+          opacity: visRef ? 1 : 0, transform: visRef ? "translateY(0)" : "translateY(16px)",
+          transition: "all 900ms ease-out",
         }}>
           Simple pricing.{" "}
-          <span style={{ color: "#D4AF37", fontStyle: "italic" }}>No surprises.</span>
+          <span style={{ color: "#D4AF37", fontStyle: "italic", fontWeight: 500 }}>No surprises.</span>
         </h2>
-        <p className="mb-16 transition-all duration-700 delay-200" style={{
-          ...mono, fontSize: "clamp(0.7rem, 1.2vw, 0.85rem)", color: "#6b5f50",
-          opacity: visRef ? 1 : 0, transform: visRef ? "translateY(0)" : "translateY(12px)",
+        <p className="mb-12 text-center italic" style={{
+          ...serif, fontSize: "1rem", color: "rgba(232,220,200,0.55)",
+          opacity: visRef ? 1 : 0, transition: "opacity 900ms ease-out 200ms",
         }}>
           Start free. Upgrade when it earns its keep.
         </p>
 
-        {/* Tier cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           {tiers.map((tier, i) => (
             <LandingTierCard key={tier.name} tier={tier} mono={mono} serif={serif} onEnter={onEnter}
@@ -805,7 +272,6 @@ function PricingSection({ onEnter }: { onEnter: () => void }) {
           ))}
         </div>
 
-        {/* Fine print */}
         <p className="mt-8 text-center transition-all duration-700" style={{
           ...mono, fontSize: "0.55rem", color: "#3d3529", letterSpacing: "0.1em",
           opacity: visRef ? 0.7 : 0, transitionDelay: "0.6s",
@@ -950,7 +416,7 @@ function LogicCore() {
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
-      <svg viewBox="0 0 400 400" className="w-[280px] h-[280px] md:w-[420px] md:h-[420px] lg:w-[500px] lg:h-[500px]" style={{ opacity: 0.25 }}>
+      <svg viewBox="0 0 400 400" className="w-[260px] h-[260px] md:w-[380px] md:h-[380px] lg:w-[460px] lg:h-[460px]" style={{ opacity: 0.22 }}>
         <defs>
           <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.15" />
