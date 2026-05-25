@@ -45,6 +45,7 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
+import { NewProjectModal } from "../components/NewProjectModal";
 import { Archive, ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
@@ -4357,6 +4358,8 @@ export default function Workspace() {
   const id = Number(projectId);
   const searchParams = new URLSearchParams(window.location.search);
   const [showIntake, setShowIntake] = useState(searchParams.get("intake") === "true");
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const isDesktop = useIsDesktop();
   const isMobile = useIsMobile() && !isDesktop;
@@ -5024,6 +5027,23 @@ export default function Workspace() {
       },
     });
   }, [deleteProjectMutation, id, queryClient, setLocation]);
+
+  const handleCreateProjectFromWorkspace = useCallback((name: string) => {
+    setCreateProjectError(null);
+    createProjectMutation.mutate(
+      { data: { name } },
+      {
+        onSuccess: (project) => {
+          setShowNewProjectModal(false);
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          setLocation(`/project/${project.id}?intake=true`);
+        },
+        onError: (error) => {
+          setCreateProjectError(error instanceof Error ? error.message : "Failed to create project");
+        },
+      },
+    );
+  }, [createProjectMutation, queryClient, setLocation]);
 
   const ATLAS_SRC_FILES = [
     { label: "workspace.tsx", path: "artifacts/atlas/src/pages/workspace.tsx", hint: "main UI · ~4k lines" },
@@ -8095,17 +8115,21 @@ export default function Workspace() {
         onOpenProject={(projectId) => { setLocation(`/project/${projectId}`); setShowDrawer(false); }}
         onNewProject={() => {
           setShowDrawer(false);
-          createProjectMutation.mutate({ data: { name: "New Project" } }, {
-            onSuccess: (p) => {
-              queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-              setLocation(`/project/${p.id}?intake=true`);
-            },
-          });
+          setCreateProjectError(null);
+          setShowNewProjectModal(true);
         }}
         onOpenLedger={(projectId) => { setLocation(`/ledger/${projectId}`); setShowDrawer(false); }}
         onOpenParking={() => { setLocation(`/parking?project=${id}`); setShowDrawer(false); }}
         onOpenQuickPrompt={() => { setShowDrawer(false); setShowForgeExternal(true); }}
         userLabel={loadProfile().name || null}
+      />
+
+      <NewProjectModal
+        open={showNewProjectModal}
+        onClose={() => { setShowNewProjectModal(false); setCreateProjectError(null); }}
+        onCreate={(name) => handleCreateProjectFromWorkspace(name)}
+        creating={createProjectMutation.isPending}
+        error={createProjectError}
       />
 
 

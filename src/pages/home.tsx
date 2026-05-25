@@ -1729,8 +1729,7 @@ export default function Home() {
       return;
     }
     setCreateError(null);
-    // Open the Forge onboarding flow instead of the plain modal
-    setShowQuickPrompt(true);
+    setShowNewProjectModal(true);
   }, [isFree, projects]);
 
   useEffect(() => {
