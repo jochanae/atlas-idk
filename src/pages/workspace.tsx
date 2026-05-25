@@ -2583,12 +2583,8 @@ function RightPanel({
     if (forceTab) setTab(forceTab);
   }, [forceTab]);
 
-  // Auto-fallback terminal tab when lens changes to one that hides it
-  useEffect(() => {
-    if (wsLens !== "build" && wsLens !== "scenario" && tab === "terminal") {
-      setTab("ledger");
-    }
-  }, [wsLens, tab]);
+  // Terminal is always available — no auto-fallback on lens change.
+
 
   const tabs: { id: RightTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     {
@@ -2897,7 +2893,7 @@ function RightPanel({
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
-      {tab === "terminal" && (wsLens === "build" || wsLens === "scenario") && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
+      {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
     </div>
   );
 }
@@ -6453,7 +6449,7 @@ export default function Workspace() {
           }}
         >
           <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0 }}>
-            {(["chat", "diff", "blueprints", "artifacts", ...((wsLens === "build" || wsLens === "scenario") ? ["terminal"] : [])] as Array<"chat" | "diff" | "blueprints" | "artifacts" | "terminal">).map((tab) => {
+            {(["chat", "diff", "blueprints", "artifacts", "terminal"] as Array<"chat" | "diff" | "blueprints" | "artifacts" | "terminal">).map((tab) => {
               const active = leftTab === tab;
               const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Terminal");
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
