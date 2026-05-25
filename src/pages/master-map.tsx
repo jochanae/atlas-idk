@@ -1191,6 +1191,10 @@ export default function MasterMap() {
         const cardH = rect.height || 200;
         const margin = 12;
         const gap = 12 + NODE_R * bs;
+        const safeRight = currentLayerRef.current === 1 ? 112 : 0;
+        const safeBottom = currentLayerRef.current === 1 ? 104 : 0;
+        const maxX = Math.max(margin, vw - margin - safeRight);
+        const maxY = Math.max(margin, vh - margin - safeBottom);
 
         // Score each of 4 placements by how much the card would overflow the viewport.
         // The placement with least overflow wins. Preference order on ties: above, below, right, left.
@@ -1211,10 +1215,10 @@ export default function MasterMap() {
         // Clamp into viewport as a final safety net (handles cards larger than viewport).
         const dx =
           Math.max(margin - best.tx, 0) +
-          Math.min(0, vw - margin - (best.tx + cardW));
+          Math.min(0, maxX - (best.tx + cardW));
         const dy =
           Math.max(margin - best.ty, 0) +
-          Math.min(0, vh - margin - (best.ty + cardH));
+          Math.min(0, maxY - (best.ty + cardH));
 
         // Anchor pos is the pre-transform reference point; reconstruct from tx/ty + transform.
         const anchorX = best.transform.includes("-50%,") ? best.tx + cardW / 2
