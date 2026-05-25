@@ -4,6 +4,7 @@ type RailMessage = {
   role: "user" | "assistant";
   createdAt?: string;
   hasSurfacedMemory?: boolean;
+  text?: string;
 };
 
 type Bucket = {
