@@ -45,6 +45,7 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
+import { NewProjectModal } from "../components/NewProjectModal";
 import { Archive, ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
@@ -4357,6 +4358,8 @@ export default function Workspace() {
   const id = Number(projectId);
   const searchParams = new URLSearchParams(window.location.search);
   const [showIntake, setShowIntake] = useState(searchParams.get("intake") === "true");
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [createProjectError, setCreateProjectError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const isDesktop = useIsDesktop();
   const isMobile = useIsMobile() && !isDesktop;
