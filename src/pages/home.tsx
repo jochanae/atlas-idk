@@ -2206,25 +2206,22 @@ export default function Home() {
       {homeMessages.length > 0 && subheaderCollapsed && (
         <div
           style={{
-            position: "sticky", top: 50, zIndex: 20, height: 16, width: "100%",
+            position: "sticky", top: 50, zIndex: 20, height: 14, width: "100%",
             display: "flex", alignItems: "center", justifyContent: "center",
-            background: "rgba(10, 9, 8, 0.96)",
-            backdropFilter: "blur(18px) saturate(140%)",
-            WebkitBackdropFilter: "blur(18px) saturate(140%)",
-            borderBottom: "1px solid rgba(212, 175, 55, 0.12)",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
+            background: "transparent",
             cursor: "pointer",
           }}
           onClick={toggleSubheader}
           title="Show header"
           aria-label="Show header"
         >
-          <ChevronDown size={11} strokeWidth={2} style={{ color: "var(--atlas-gold)", opacity: 0.6 }} />
+          <ChevronDown size={11} strokeWidth={2} style={{ color: "var(--atlas-gold)", opacity: 0.5 }} />
         </div>
       )}
 
       {homeMessages.length > 0 && !subheaderCollapsed && (
-        <div className="atlas-chat-card-top atlas-chat-card-top--fullbleed" style={{ borderRadius: 0, borderLeft: "none", borderRight: "none", padding: "5px 16px", zIndex: 20, position: "sticky", top: 50, height: 36, width: "100%", boxSizing: "border-box" }}>
+        <div style={{ position: "sticky", top: 50, zIndex: 20, height: 36, width: "100%", padding: "5px 16px", boxSizing: "border-box", background: "transparent", display: "flex", alignItems: "center" }}>
+
           {/* Left-side collapse toggle */}
           <button
             onClick={toggleSubheader}
