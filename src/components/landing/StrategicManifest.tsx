@@ -309,61 +309,6 @@ function LensPanel({ lens }: { lens: Lens }) {
 }
 
 function StorytellerView() {
-  return (
-    <div>
-      <p style={{ ...mono, fontSize: "0.7rem", letterSpacing: "0.14em", color: "rgba(232,220,200,0.35)", textTransform: "uppercase", marginBottom: 18 }}>
-        // S1·E1 — opening arc
-      </p>
-      <h3 style={{ ...serif, fontWeight: 400, fontSize: "1.9rem", lineHeight: 1.2, color: "#e8dcc8", margin: "0 0 18px", letterSpacing: "-0.005em" }}>
-        The Sound of Density.
-      </h3>
-      <ol style={{ listStyle: "none", padding: 0, margin: 0, counterReset: "s" }}>
-        {["Interview Jane Jacobs.", "Edit the “Density” segment.", "Publish to Spotify."].map((step) => (
-          <li
-            key={step}
-            style={{
-              ...serif,
-              fontSize: "1.25rem",
-              lineHeight: 1.5,
-              color: "#e8dcc8",
-              padding: "10px 0 10px 40px",
-              position: "relative",
-              counterIncrement: "s",
-            }}
-          >
-            <span
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 14,
-                width: 24,
-                height: 24,
-                borderRadius: "50%",
-                border: "1px solid rgba(212,175,55,0.55)",
-                color: "#D4AF37",
-                ...mono,
-                fontSize: "0.7rem",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CounterSpan />
-            </span>
-            {step}
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-// `content: counter(s)` is CSS-only; we render numbers via JS instead for SVG-free reliability:
-function CounterSpan() {
-  // unused — number rendering handled below via inline state
-  return null;
-}
-
-// Simpler ordered list with explicit numbers
-function StorytellerViewFinal() {
   const steps = ["Interview Jane Jacobs.", "Edit the “Density” segment.", "Publish to Spotify."];
   return (
     <div>
