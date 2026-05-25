@@ -140,7 +140,10 @@ export default function Login() {
       background: "var(--atlas-bg)",
       padding: "40px 16px calc(40px + env(safe-area-inset-bottom, 0px))",
       position: "relative",
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
     }}>
+
 
       {/* Background ambient glow */}
       <div style={{
