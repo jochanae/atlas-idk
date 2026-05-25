@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import {
