@@ -2434,6 +2434,19 @@ function ConnectionsTab({
           </div>
         </div>
 
+        <div style={rowStyle}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div>
+              <div style={labelStyle}>Manual model selection</div>
+              <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.55, marginTop: 2 }}>Show model picker in message bar</div>
+            </div>
+            <Switch
+              checked={showModelPicker}
+              onCheckedChange={onShowModelPickerChange}
+            />
+          </div>
+        </div>
+
         <div
           style={{
             padding: "12px 14px",
