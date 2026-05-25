@@ -67,6 +67,7 @@ export default function Projects() {
   }, [isLoadingData]);
   const isLoading = isLoadingData || showSpinner;
   const createProject = useCreateProject();
+  const createEntry = useCreateEntry();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [createError, setCreateError] = useState<string | null>(null);
