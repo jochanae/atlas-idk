@@ -2515,10 +2515,10 @@ export default function Home() {
                     flex: 1, maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
                     minHeight: 0,
                     scrollbarWidth: "none", msOverflowStyle: "none",
-                    paddingRight: 4, position: "relative",
+                    paddingRight: 80, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
                     borderRadius: reflectionLocked ? 8 : undefined,
-                    padding: reflectionLocked ? "10px 12px" : undefined,
+                    padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
                     paddingTop: 56, scrollPaddingTop: 56,
                     transition: "border-color 200ms",
                   }}
