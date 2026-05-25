@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useListProjects, useCreateProject, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { useListProjects, useCreateProject, useCreateEntry, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 
