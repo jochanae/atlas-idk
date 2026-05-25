@@ -1659,15 +1659,8 @@ export default function MasterMap() {
           >
             Explore →
           </button>
-          {/* Tail pointing down at the node */}
-          <div style={{
-            position: "absolute", left: "50%", bottom: -6,
-            transform: "translateX(-50%) rotate(45deg)",
-            width: 10, height: 10,
-            background: palette.panelBg,
-            borderRight: `1px solid ${palette.panelBorder}`,
-            borderBottom: `1px solid ${palette.panelBorder}`,
-          }} />
+          {/* Tail intentionally omitted — placement is dynamic (above/below/left/right);
+              a fixed-bottom tail would point into space when the card flips. */}
         </div>
       )}
 
