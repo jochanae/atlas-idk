@@ -758,8 +758,8 @@ export function ChatComposer(props: ChatComposerProps) {
             {/* Right: model chip + mic + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
               {showModelPicker && (
-                {/* Model selector — tappable chip, reserved slot for future model switching */}
                 <button
+
                   onClick={() => setShowWsModelSheet(true)}
                   title="Switch model"
                   aria-label="Switch model"
