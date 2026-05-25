@@ -32,171 +32,132 @@ const FRAGMENTS: Fragment[] = [
 ];
 
 export function InterrogationFragments() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  // 0 → 1 scroll progress through the pinned container
-  const [progress, setProgress] = useState(0);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [lit, setLit] = useState<boolean[]>(() => FRAGMENTS.map(() => false));
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReducedMotion(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      setProgress(1);
+    if (mq.matches) {
+      setLit(FRAGMENTS.map(() => true));
       return;
     }
-    let raf = 0;
-    const compute = () => {
-      raf = 0;
-      const el = containerRef.current;
+    const observers: IntersectionObserver[] = [];
+    itemRefs.current.forEach((el, i) => {
       if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      // Scrollable distance = total height - viewport (the sticky window)
-      const scrollable = rect.height - vh;
-      if (scrollable <= 0) return;
-      // How far we've scrolled into the pinned region
-      const scrolled = Math.min(Math.max(-rect.top, 0), scrollable);
-      setProgress(scrolled / scrollable);
-    };
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(compute);
-    };
-    compute();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [reducedMotion]);
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setLit((prev) => {
+              if (prev[i]) return prev;
+              const next = [...prev];
+              next[i] = true;
+              return next;
+            });
+            obs.disconnect();
+          }
+        },
+        // Trigger when the fragment crosses ~45% from the top of viewport
+        { threshold: 0, rootMargin: "0px 0px -45% 0px" },
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
 
-  // Map progress (0..1) → per-fragment opacity. Each fragment owns a 0.25 slot,
-  // with a soft 0.08 ramp on either side so the fade is interpolated, not snapped.
-  const n = FRAGMENTS.length;
-  const slot = 1 / n;
-  const ramp = 0.08;
-  const opacityFor = (i: number) => {
-    const start = i * slot;
-    // Fade in from start - ramp → start
-    const fadeIn = Math.min(Math.max((progress - (start - ramp)) / ramp, 0), 1);
-    // Last fragment stays lit; earlier ones dim slightly as the next takes focus
-    if (i === n - 1) return fadeIn;
-    const nextStart = (i + 1) * slot;
-    const dim = Math.min(Math.max((progress - (nextStart - ramp)) / ramp, 0), 1);
-    return fadeIn * (1 - dim * 0.55);
-  };
+  const litCount = lit.filter(Boolean).length;
+  const railFill = litCount / FRAGMENTS.length;
 
   return (
-    <section ref={containerRef} className="relative z-10" style={{ height: "360vh" }}>
-      <div className="sticky top-0 h-screen flex items-center px-6">
-        <div className="max-w-3xl mx-auto w-full relative" style={{ paddingLeft: 28 }}>
-          {/* Gold tracer rail — fills with scroll progress */}
-          <div
-            className="absolute left-0 top-12 bottom-12 w-px"
-            style={{
-              background: "rgba(212,175,55,0.12)",
-            }}
-          />
-          <div
-            className="absolute left-0 top-12 w-px"
-            style={{
-              height: `calc((100% - 96px) * ${progress})`,
-              background: "linear-gradient(180deg, rgba(212,175,55,0.7), rgba(212,175,55,0.35))",
-              transition: "height 120ms linear",
-            }}
-          />
+    <section className="relative z-10 py-24 md:py-32 px-6">
+      <div className="max-w-3xl mx-auto w-full relative" style={{ paddingLeft: 28 }}>
+        <div
+          className="absolute left-0 w-px"
+          style={{ top: 64, bottom: 48, background: "rgba(212,175,55,0.12)" }}
+        />
+        <div
+          className="absolute left-0 w-px"
+          style={{
+            top: 64,
+            height: `calc((100% - 112px) * ${railFill})`,
+            background: "linear-gradient(180deg, rgba(212,175,55,0.7), rgba(212,175,55,0.35))",
+            transition: "height 600ms cubic-bezier(0.16,1,0.3,1)",
+          }}
+        />
 
-          <p
-            className="uppercase tracking-[0.35em] mb-12"
-            style={{
-              ...mono,
-              fontSize: "0.65rem",
-              color: "#6b5f50",
-            }}
-          >
-            02 // The Interrogation
-          </p>
+        <p
+          className="uppercase tracking-[0.35em] mb-12"
+          style={{ ...mono, fontSize: "0.65rem", color: "#6b5f50" }}
+        >
+          02 // The Interrogation
+        </p>
 
-          <div className="space-y-10 md:space-y-14">
-            {FRAGMENTS.map((f, i) => {
-              const op = opacityFor(i);
-              const lit = op > 0.05;
-              const baseColor =
-                f.tone === "dim" ? "rgba(232,220,200,0.55)" : "#e8dcc8";
-              return (
+        <div className="space-y-16 md:space-y-24">
+          {FRAGMENTS.map((f, i) => {
+            const on = lit[i];
+            const baseColor = f.tone === "dim" ? "rgba(232,220,200,0.78)" : "#e8dcc8";
+            return (
+              <div
+                key={i}
+                ref={(el) => { itemRefs.current[i] = el; }}
+                className="relative"
+                style={{
+                  opacity: on ? 1 : 0.08,
+                  transform: on ? "translateY(0)" : "translateY(14px)",
+                  transition: "opacity 900ms cubic-bezier(0.16,1,0.3,1), transform 900ms cubic-bezier(0.16,1,0.3,1)",
+                }}
+              >
                 <div
-                  key={i}
-                  className="relative"
+                  className="absolute"
                   style={{
-                    opacity: Math.max(op, 0.06),
-                    transform: `translateY(${(1 - Math.min(op, 1)) * 10}px)`,
-                    transition: "opacity 200ms linear, transform 200ms linear",
-                  }}
-                >
-                  <div
-                    className="absolute"
-                    style={{
-                      left: -32,
-                      top: 18,
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: "#D4AF37",
-                      opacity: 0.25 + op * 0.75,
-                      boxShadow: lit ? `0 0 ${6 + op * 12}px rgba(212,175,55,${0.3 + op * 0.4})` : "none",
-                      transition: "box-shadow 240ms ease-out, opacity 240ms linear",
-                    }}
-                  />
-                  <p
-                    style={{
-                      ...serif,
-                      fontWeight: 400,
-                      fontSize: "clamp(1.6rem, 4.5vw, 2.6rem)",
-                      lineHeight: 1.25,
-                      color: baseColor,
-                      margin: 0,
-                      letterSpacing: "-0.005em",
-                    }}
-                  >
-                    {f.tone === "gold" ? (
-                      <>
-                        Most ideas don't fail. They{" "}
-                        <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>drift.</span>
-                      </>
-                    ) : (
-                      f.text
-                    )}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Scroll progress ticks */}
-          <div className="mt-10 flex gap-2" aria-hidden="true">
-            {FRAGMENTS.map((_, i) => {
-              const op = opacityFor(i);
-              return (
-                <div
-                  key={i}
-                  style={{
-                    height: 1,
-                    flex: 1,
-                    background: `rgba(212,175,55,${0.08 + op * 0.5})`,
-                    transition: "background 200ms linear",
+                    left: -32,
+                    top: 18,
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "#D4AF37",
+                    opacity: on ? 1 : 0.2,
+                    boxShadow: on ? "0 0 12px rgba(212,175,55,0.55)" : "none",
+                    transition: "opacity 600ms ease-out, box-shadow 600ms ease-out",
                   }}
                 />
-              );
-            })}
-          </div>
+                <p
+                  style={{
+                    ...serif,
+                    fontWeight: 400,
+                    fontSize: "clamp(1.6rem, 4.5vw, 2.6rem)",
+                    lineHeight: 1.25,
+                    color: baseColor,
+                    margin: 0,
+                    letterSpacing: "-0.005em",
+                  }}
+                >
+                  {f.tone === "gold" ? (
+                    <>
+                      Most ideas don't fail. They{" "}
+                      <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>drift.</span>
+                    </>
+                  ) : (
+                    f.text
+                  )}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-12 flex gap-2" aria-hidden="true">
+          {FRAGMENTS.map((_, i) => (
+            <div
+              key={i}
+              style={{
+                height: 1,
+                flex: 1,
+                background: `rgba(212,175,55,${lit[i] ? 0.55 : 0.08})`,
+                transition: "background 500ms ease-out",
+              }}
+            />
+          ))}
         </div>
       </div>
     </section>
