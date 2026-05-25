@@ -736,7 +736,3 @@ export function BridgeSection({ onEnter }: { onEnter: () => void }) {
   );
 }
 
-// Override Storyteller export at module scope: re-bind the function name used
-// inside LensPanel by assigning the final implementation to a hoisted const.
-// (Plain re-export rebinding for clarity.)
-export { StorytellerViewFinal as _StorytellerViewFinal };
