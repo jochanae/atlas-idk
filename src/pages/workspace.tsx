@@ -47,6 +47,7 @@ import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { Archive, ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
