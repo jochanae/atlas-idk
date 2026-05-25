@@ -34,7 +34,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, ChevronDown, ChevronUp, Lock, LockOpen, MoreVertical, Search } from "lucide-react";
+import { Briefcase, ChevronDown, ChevronUp, Lock, LockOpen, MoreVertical } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
