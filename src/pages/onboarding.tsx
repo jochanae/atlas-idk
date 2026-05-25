@@ -160,6 +160,7 @@ export default function OnboardingPage() {
     try { return localStorage.getItem("axiom_user_intent") ?? ""; } catch { return ""; }
   });
   const [projectName, setProjectName] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forging, setForging] = useState(false);
