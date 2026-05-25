@@ -623,9 +623,12 @@ export function ChatComposer(props: ChatComposerProps) {
                       <button
                         key={p.id}
                         onClick={() => {
-                          const recentMsgs = messages.slice(-5).map(m => `${m.role === "user" ? "Me" : "Atlas"}: ${m.content}`).join("\n\n");
+                          // If the user typed something, send ONLY that — don't leak prior turns.
+                          // If the input is empty, fall back to the last 5 messages as context.
                           const current = input.trim();
-                          const ctx = [current ? `My question: ${current}` : "", recentMsgs].filter(Boolean).join("\n\n---\n\n").slice(0, 2000);
+                          const ctx = current
+                            ? current
+                            : messages.slice(-5).map(m => `${m.role === "user" ? "Me" : "Atlas"}: ${m.content}`).join("\n\n").slice(0, 2000);
                           const encoded = encodeURIComponent(ctx);
                           setShowDeepDiveMenu(false);
                           if (p.id === "chatgpt") {
