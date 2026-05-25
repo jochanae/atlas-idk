@@ -97,6 +97,7 @@ type HomeMessage = {
   runArtifacts?: RunArtifact[] | null;
   errorMessage?: string | null;
   surface?: AmbientSurface;
+  surfacedMemoriesCount?: number;
 };
 
 function formatMessageTime(iso?: string): string {
