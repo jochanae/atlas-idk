@@ -4860,12 +4860,8 @@ export default function Workspace() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [wsLens]);
 
-  // Auto-fallback terminal tab when switching to lenses that don't support it
-  useEffect(() => {
-    if (wsLens !== "build" && wsLens !== "scenario" && leftTab === "terminal") {
-      setLeftTab("chat");
-    }
-  }, [wsLens, leftTab]);
+  // Terminal is always available — no auto-fallback on lens change.
+
 
   // mobileTab moved above (consumed by useChatStream).
   const [onboardingCoachVisible, setOnboardingCoachVisible] = useState(() => {
@@ -6511,53 +6507,8 @@ export default function Workspace() {
 
 
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 3 : 7, minWidth: 0 }}>
-            {(() => {
-              const lensCfg = LENS_CONFIG[wsLens];
-              const lensLabel = isTinyScreen
-                ? wsLens === "scenario"
-                  ? "SCN"
-                  : wsLens === "build"
-                    ? "BLD"
-                    : lensCfg.label
-                : lensCfg.label;
-              return (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setShowLensPicker(true);
-                  }}
-                  title={`${lensCfg.label} lens — tap to change`}
-                  aria-label={`${lensCfg.label} lens — tap to change`}
-                  aria-haspopup="dialog"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: isTinyScreen ? 4 : 5,
-                    padding: isTinyScreen ? "4px 6px" : "5px 10px",
-                    borderRadius: 999,
-                    background: lensCfg.glowColor,
-                    border: `1px solid ${lensCfg.borderColor}`,
-                    color: lensCfg.color,
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: "var(--ts-xs)",
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: lensCfg.color, display: "inline-block" }} />
-                  {lensLabel}
-                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden style={{ opacity: 0.7 }}>
-                    <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              );
-            })()}
+            {/* Lens chip removed */}
+
 
             {sessionPrUrl ? (
               <a
@@ -6899,84 +6850,8 @@ export default function Workspace() {
 
 
 
-          {!isMobile && (
-            <div role="group" aria-label="Workspace lens" style={{ display: "flex", alignItems: "center", gap: 2, padding: 2, borderRadius: 999, background: "rgba(var(--atlas-muted-rgb),0.05)", border: "1px solid rgba(var(--atlas-muted-rgb),0.14)", flexShrink: 0 }}>
-              {([
-                ["flow", "THINK"],
-                ["scenario", "PLAN"],
-                ["build", "BUILD"],
-                ["look", "LOOK"],
-              ] as Array<[WorkspaceLens, string]>).map(([lensId, label]) => {
-                const active = wsLens === lensId;
-                const detected = detectedLens === lensId;
-                const cfg = LENS_CONFIG[lensId];
-                return (
-                  <button
-                    key={lensId}
-                    type="button"
-                    onClick={() => setWsLens(lensId)}
-                    title={cfg.sub}
-                    aria-label={`${label} lens`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      padding: "4px 7px",
-                      borderRadius: 999,
-                      background: active ? cfg.glowColor : "transparent",
-                      border: `1px solid ${active || detected ? cfg.borderColor : "transparent"}`,
-                      color: active || detected ? cfg.color : "var(--atlas-muted)",
-                      cursor: "pointer",
-                      fontFamily: "var(--app-font-mono)",
-                      fontSize: "var(--ts-tiny)",
-                      fontWeight: 700,
-                      letterSpacing: "0.1em",
-                      transition: "all 160ms ease",
-                      opacity: active ? 1 : 0.72,
-                    }}
-                  >
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: active || detected ? cfg.color : "rgba(var(--atlas-muted-rgb),0.45)", display: "inline-block" }} />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {isMobile && (() => {
-            const cfg = LENS_CONFIG[wsLens];
-            return (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setShowLensPicker(true);
-                }}
-                aria-label={`${cfg.label} lens — tap to change`}
-                aria-haspopup="dialog"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "5px 10px", borderRadius: 999,
-                  background: cfg.glowColor,
-                  border: `1px solid ${cfg.borderColor}`,
-                  color: cfg.color,
-                  cursor: "pointer",
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: "var(--ts-tiny)",
-                  fontWeight: 700,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  flexShrink: 0,
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.color, display: "inline-block" }} />
-                {cfg.label}
-                <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden style={{ opacity: 0.7 }}>
-                  <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            );
-          })()}
+          {/* Lens UI removed — Atlas reads intent, no manual lens picker. */}
+
 
         </div>
         )}
