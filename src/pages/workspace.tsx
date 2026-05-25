@@ -7642,6 +7642,8 @@ export default function Workspace() {
                 }}
                 zipLoaded={zipFiles.length > 0}
                 zipFileName={zipName}
+                showModelPicker={showModelPicker}
+                onShowModelPickerChange={setShowModelPicker}
               />
             </div>
           </div>
