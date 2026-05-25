@@ -453,6 +453,7 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
           score={score}
           projectName={proj?.name ?? null}
           decisionsCount={decisionsCount}
+          nodeState={proj?.nodeState ?? null}
           onClose={() => setOpen(false)}
         />
       )}
