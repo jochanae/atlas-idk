@@ -34,6 +34,7 @@ export function ProjectsSheet({ onClose }: Props) {
   const [createError, setCreateError] = useState<string | null>(null);
   const { data: projects = [] } = useListProjects();
   const createProject = useCreateProject();
+  const createEntry = useCreateEntry();
   const queryClient = useQueryClient();
 
   const handleCreate = () => {
@@ -46,6 +47,16 @@ export function ProjectsSheet({ onClose }: Props) {
         setNewName("");
         setCreating(false);
         if (created?.id) {
+          createEntry.mutate({
+            projectId: created.id,
+            data: {
+              title: "Project initialized: Sovereign context anchored.",
+              summary: "Genesis anchor — the project exists; context is bound and ready for Forge.",
+              status: "committed",
+              severity: "committed",
+              mode: "decide",
+            },
+          });
           onClose();
           setLocation(`/project/${created.id}`);
         }
