@@ -82,8 +82,10 @@ import {
   ReadinessMode,
   READINESS_MODE_KEY,
   computeBlendedScore,
+  computeScoreFromNodeState,
   MODE_META,
 } from "../components/ReadinessRing";
+import { ChatTrayHeader } from "@/components/ChatTrayHeader";
 import { LongPressTip, haptic } from "@/lib/long-press-tip";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
