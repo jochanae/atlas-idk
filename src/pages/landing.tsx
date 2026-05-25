@@ -187,6 +187,8 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
       </div>
     </section>
   );
+}
+
 /* ─── Pricing ─── */
 function PricingSection({ onEnter }: { onEnter: () => void }) {
   const [visRef, setVisRef] = useState(false);
