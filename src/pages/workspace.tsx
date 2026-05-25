@@ -5028,6 +5028,23 @@ export default function Workspace() {
     });
   }, [deleteProjectMutation, id, queryClient, setLocation]);
 
+  const handleCreateProjectFromWorkspace = useCallback((name: string) => {
+    setCreateProjectError(null);
+    createProjectMutation.mutate(
+      { data: { name } },
+      {
+        onSuccess: (project) => {
+          setShowNewProjectModal(false);
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          setLocation(`/project/${project.id}?intake=true`);
+        },
+        onError: (error) => {
+          setCreateProjectError(error instanceof Error ? error.message : "Failed to create project");
+        },
+      },
+    );
+  }, [createProjectMutation, queryClient, setLocation]);
+
   const ATLAS_SRC_FILES = [
     { label: "workspace.tsx", path: "artifacts/atlas/src/pages/workspace.tsx", hint: "main UI · ~4k lines" },
     { label: "home.tsx", path: "artifacts/atlas/src/pages/home.tsx", hint: "home page" },
