@@ -6448,11 +6448,11 @@ export default function Workspace() {
             display: "flex",
             alignItems: "center",
             gap: 10,
-            minHeight: 42,
-            padding: isMobile ? "5px 10px" : "5px 14px",
+            minHeight: 44,
+            padding: isMobile ? "10px 16px 8px" : "12px 22px 10px",
           }}
         >
-          <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: 2, minWidth: 0 }}>
+          <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0 }}>
             {(["chat", "diff", "blueprints", "artifacts", ...((wsLens === "build" || wsLens === "scenario") ? ["terminal"] : [])] as Array<"chat" | "diff" | "blueprints" | "artifacts" | "terminal">).map((tab) => {
               const active = leftTab === tab;
               const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Terminal");
@@ -6464,36 +6464,55 @@ export default function Workspace() {
                   onClick={() => setLeftTab(tab)}
                   aria-label={tab === "terminal" ? "Open terminal" : tab === "diff" ? "View diff" : tab === "blueprints" ? "Open blueprints" : tab === "artifacts" ? "Open artifacts" : "Open chat"}
                   style={{
-                    padding: isTinyScreen ? "7px 8px" : "8px 12px",
-                    background: active ? "rgba(var(--atlas-gold-rgb),0.08)" : "transparent",
+                    position: "relative",
+                    padding: "6px 2px 10px",
+                    background: "transparent",
                     border: "none",
-                    borderBottom: `2px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
                     color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
-                    fontSize: isTinyScreen ? 11 : 12,
+                    fontSize: isTinyScreen ? 10 : 11,
                     fontFamily: "var(--app-font-sans)",
-                    fontWeight: active ? 600 : 400,
+                    fontWeight: active ? 700 : 500,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
                     cursor: "pointer",
-                    transition: "color 160ms ease, border-color 160ms ease, opacity 160ms ease",
+                    transition: "color 200ms ease, opacity 200ms ease",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    opacity: active ? 1 : 0.62,
+                    opacity: active ? 1 : 0.5,
                     whiteSpace: "nowrap",
                   }}
-                  onMouseEnter={(e) => { if (!active) e.currentTarget.style.opacity = "0.9"; }}
-                  onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = "0.62"; }}
+                  onMouseEnter={(e) => { if (!active) e.currentTarget.style.opacity = "0.82"; }}
+                  onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = "0.5"; }}
                 >
-                  {tab === "terminal" && <TerminalSquare size={13} strokeWidth={1.7} />}
+                  {tab === "terminal" && <TerminalSquare size={12} strokeWidth={1.7} />}
                   {label}
                   {badge !== undefined && (
-                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "rgba(201,162,76,0.15)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", padding: "0 4px", borderRadius: 8, lineHeight: "15px" }}>
+                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", color: "var(--atlas-gold)", padding: "0 2px", letterSpacing: "0.05em" }}>
                       {badge}
                     </span>
+                  )}
+                  {active && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        bottom: 2,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        width: 3,
+                        height: 3,
+                        borderRadius: "50%",
+                        background: "var(--atlas-gold)",
+                        boxShadow: "0 0 6px rgba(201,162,76,0.6)",
+                      }}
+                    />
                   )}
                 </button>
               );
             })}
           </nav>
+
 
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 3 : 7, minWidth: 0 }}>
             {(() => {
