@@ -420,6 +420,32 @@ export default function OnboardingPage() {
                   transition: "border-color 240ms ease",
                 }}
               />
+              <input
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="Optional: paste primary repository URL (GitHub)"
+                spellCheck={false}
+                style={{
+                  width: "100%",
+                  marginTop: 20,
+                  border: "1px solid var(--atlas-border)",
+                  borderRadius: 8,
+                  background: "transparent",
+                  color: "var(--atlas-fg)",
+                  outline: "none",
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontFamily: "var(--app-font-mono)",
+                  padding: "10px 12px",
+                  boxSizing: "border-box",
+                  transition: "border-color 200ms ease",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--intent-glow, var(--atlas-gold))"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--atlas-border)"; }}
+              />
+              <p style={{ margin: "10px 0 0", color: "var(--atlas-muted)", fontSize: 11.5, opacity: 0.75, lineHeight: 1.5 }}>
+                If provided, Atlas will autonomously derive your architecture nodes and stamp them into the system map.
+              </p>
               <p style={{ margin: "16px 0 0", color: "var(--atlas-muted)", fontSize: 12.5 }}>
                 You can add more projects anytime.
               </p>
