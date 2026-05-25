@@ -3230,13 +3230,13 @@ export default function Home() {
           {homeMessages.length === 0 && (() => {
             const pickStarter = (starter: string) => {
               setInput(starter);
+              // Do NOT focus the textarea — that opens the mobile keyboard.
+              // Let the user tap the input themselves when they've picked a line.
               setTimeout(() => {
-                textareaRef.current?.focus();
-                const el = textareaRef.current;
-                if (el) el.setSelectionRange(starter.length, starter.length);
                 autoResize();
               }, 0);
             };
+
             const intents: Array<{ label: string; action: () => void }> = [
               { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
               { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
