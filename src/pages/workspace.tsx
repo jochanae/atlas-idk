@@ -7497,6 +7497,7 @@ export default function Workspace() {
               setDeepDiveCopied,
               setShowWsModelSheet,
               wsModel,
+              showModelPicker,
               voiceSupported,
               voiceListening,
               toggleVoice,
