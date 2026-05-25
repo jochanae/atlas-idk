@@ -2196,9 +2196,13 @@ function MapTab({ projectId }: { projectId: number }) {
 function ConnectionsTab({
   projectId,
   onSwitchToFiles,
+  showModelPicker,
+  onShowModelPickerChange,
 }: {
   projectId: number;
   onSwitchToFiles: () => void;
+  showModelPicker: boolean;
+  onShowModelPickerChange: (v: boolean) => void;
 }) {
   type AccountConnection = { id: number | string; type?: string | null };
 
