@@ -48,10 +48,33 @@ export default function Login() {
     }
   }, [user, isLoading, navigate]);
 
-  // Allow page scrolling (global CSS sets overflow:hidden on html/body/root)
+  // Force-unlock page scrolling on /login (global CSS locks html/body/#root).
+  // Inline styles beat any stylesheet rule, including !important class overrides.
   useEffect(() => {
-    document.documentElement.classList.add("atlas-login-active");
-    return () => document.documentElement.classList.remove("atlas-login-active");
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+    const prev = {
+      htmlOverflow: html.style.overflow, bodyOverflow: body.style.overflow,
+      rootOverflow: root?.style.overflow ?? "",
+      htmlHeight: html.style.height, bodyHeight: body.style.height,
+      rootHeight: root?.style.height ?? "",
+      htmlTouch: html.style.touchAction, bodyTouch: body.style.touchAction,
+    };
+    html.style.overflow = "auto"; body.style.overflow = "auto";
+    if (root) root.style.overflow = "auto";
+    html.style.height = "auto"; body.style.height = "auto";
+    if (root) root.style.height = "auto";
+    html.style.touchAction = "pan-y"; body.style.touchAction = "pan-y";
+    html.classList.add("atlas-login-active");
+    return () => {
+      html.style.overflow = prev.htmlOverflow; body.style.overflow = prev.bodyOverflow;
+      if (root) root.style.overflow = prev.rootOverflow;
+      html.style.height = prev.htmlHeight; body.style.height = prev.bodyHeight;
+      if (root) root.style.height = prev.rootHeight;
+      html.style.touchAction = prev.htmlTouch; body.style.touchAction = prev.bodyTouch;
+      html.classList.remove("atlas-login-active");
+    };
   }, []);
 
   const handleForgot = async (e: React.FormEvent) => {
