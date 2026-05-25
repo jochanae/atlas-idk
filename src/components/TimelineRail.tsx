@@ -66,6 +66,7 @@ export function TimelineRail({
   const [showOverlay, setShowOverlay] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
+  const [focusIdx, setFocusIdx] = useState<number>(-1);
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -86,6 +87,42 @@ export function TimelineRail({
       return () => window.clearTimeout(t);
     }
   }, [showSearch]);
+
+  // Track which message is closest to vertical viewport center.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf = 0;
+    const compute = () => {
+      const centerY = window.innerHeight / 2;
+      let best = -1;
+      let bestDist = Infinity;
+      const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
+      nodes.forEach((n) => {
+        const r = n.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) return;
+        const mid = (r.top + r.bottom) / 2;
+        const d = Math.abs(mid - centerY);
+        if (d < bestDist) {
+          bestDist = d;
+          best = Number(n.getAttribute("data-msg-idx"));
+        }
+      });
+      setFocusIdx(best);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; compute(); });
+    };
+    compute();
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true } as any);
+      window.removeEventListener("resize", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [messages.length]);
+
 
   // Each tick carries the day label of its message + a boolean for "first of this day".
   const ticks = useMemo(() => {
@@ -229,6 +266,16 @@ export function TimelineRail({
 
         {ticks.map((t) => {
           const isMatch = matchingIdx.has(t.idx);
+          // Accordion: distance from currently-focused message governs presence.
+          const dist = focusIdx < 0 ? 99 : Math.abs(focusIdx - t.idx);
+          const isExactFocus = dist === 0;
+          const isNearFocus = dist <= 2;
+          const tickWidth = isMatch ? 12 : isExactFocus ? 14 : isNearFocus ? 8 : 4;
+          const tickHeight = isExactFocus ? 3 : 2;
+          const tickOpacity = isMatch ? 1 : isExactFocus ? 1 : isNearFocus ? 0.65 : 0.22;
+          const rowPaddingY = isExactFocus ? 4 : isNearFocus ? 2 : 0;
+          const chipOpacity = isExactFocus ? 1 : isNearFocus ? 0.55 : 0.18;
+          const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
           return (
           <div
             key={t.idx}
@@ -239,9 +286,10 @@ export function TimelineRail({
               alignItems: "center",
               justifyContent: "flex-end",
               gap: 6,
-              padding: "2px 0",
-              transform: isMatch ? "scale(1.25)" : "scale(1)",
-              transition: "transform 180ms ease",
+              padding: `${rowPaddingY}px 0`,
+              opacity: tickOpacity,
+              transform: isMatch ? "scale(1.2)" : "scale(1)",
+              transition: `padding 280ms ${ease}, opacity 280ms ${ease}, transform 220ms ${ease}`,
             }}
           >
             {/* Day chip — only on the first tick of a new day, inline to the LEFT of the spine */}
@@ -264,6 +312,9 @@ export function TimelineRail({
                   pointerEvents: "none",
                   userSelect: "none",
                   whiteSpace: "nowrap",
+                  opacity: chipOpacity,
+                  transform: isExactFocus ? "translateX(0)" : "translateX(-4px)",
+                  transition: `opacity 240ms ${ease}, transform 240ms ${ease}`,
                 }}
               >
                 {t.label}
@@ -281,6 +332,8 @@ export function TimelineRail({
                   pointerEvents: "none",
                   userSelect: "none",
                   textShadow: "0 0 6px rgba(201,162,76,0.5)",
+                  opacity: isNearFocus ? 1 : 0.4,
+                  transition: `opacity 240ms ${ease}`,
                 }}
               >
                 ✦
@@ -313,12 +366,20 @@ export function TimelineRail({
               <span
                 style={{
                   display: "block",
-                  width: isMatch ? 12 : 6,
-                  height: 2,
-                  background: isMatch ? "rgba(245,200,110,1)" : "rgba(201,162,76,0.7)",
+                  width: tickWidth,
+                  height: tickHeight,
+                  background: isMatch
+                    ? "rgba(245,200,110,1)"
+                    : isExactFocus
+                      ? "var(--atlas-gold, rgba(217,160,80,1))"
+                      : "rgba(201,162,76,0.7)",
                   borderRadius: 1,
-                  boxShadow: isMatch ? "0 0 10px rgba(245,200,110,0.7)" : "none",
-                  transition: "width 140ms ease, background 140ms ease, box-shadow 140ms ease",
+                  boxShadow: isMatch
+                    ? "0 0 10px rgba(245,200,110,0.7)"
+                    : isExactFocus
+                      ? "0 0 8px rgba(217,160,80,0.5)"
+                      : "none",
+                  transition: `width 280ms ${ease}, height 280ms ${ease}, background 220ms ${ease}, box-shadow 220ms ${ease}`,
                 }}
               />
             </button>
