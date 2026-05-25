@@ -826,13 +826,13 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             alignItems: "center",
             gap: 12,
             padding: "0 clamp(14px, 4vw, 24px)",
-            borderBottom: "none",
+            borderBottom: currentDepth === "ambient" ? "none" : undefined,
             boxShadow: "none",
             opacity: 1,
             background: currentDepth === "ambient" ? "transparent" : undefined,
             backdropFilter: currentDepth === "ambient" ? "none" : undefined,
             WebkitBackdropFilter: currentDepth === "ambient" ? "none" : undefined,
-            transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft)",
+            transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft), border-color var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
           <div style={{ flexShrink: 0, minWidth: 0 }}>
