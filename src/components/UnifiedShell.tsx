@@ -829,7 +829,10 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             borderBottom: "none",
             boxShadow: "none",
             opacity: 1,
-            transition: "opacity var(--motion-deliberate) var(--ease-out-soft)",
+            background: currentDepth === "ambient" ? "transparent" : undefined,
+            backdropFilter: currentDepth === "ambient" ? "none" : undefined,
+            WebkitBackdropFilter: currentDepth === "ambient" ? "none" : undefined,
+            transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
           <div style={{ flexShrink: 0, minWidth: 0 }}>

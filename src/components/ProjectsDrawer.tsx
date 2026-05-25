@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, Hammer, Compass, Archive, LayoutDashboard, Globe, Wand2, KeyRound, LayoutGrid } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
@@ -46,10 +47,10 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const visible = projects.slice(0, 6);
   const hasMore = projects.length > visible.length;
 
-  return (
+  return createPortal(
     <>
       {/* Scrim */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.56)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 2000 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 12000 }} />
 
       {/* Panel */}
       <aside
@@ -63,12 +64,13 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           backgroundColor: "#0D0B09",
           borderRight: "1px solid var(--atlas-gold-border)",
           boxShadow: "8px 0 40px -8px rgba(0,0,0,0.7), 1px 0 0 rgba(201,162,76,0.08)",
-          zIndex: 2001,
+          zIndex: 12001,
           display: "flex", flexDirection: "column",
           animation: "atlas-drawer-in 220ms cubic-bezier(.2,.8,.2,1)",
           maxHeight: "100dvh",
           overflowY: "hidden",
           overscrollBehavior: "contain",
+          isolation: "isolate",
         }}
       >
         {/* Safe-area top band — always opaque, prevents status-bar bleed */}
@@ -333,7 +335,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           to   { transform: translateX(0); }
         }
       `}</style>
-    </>
+    </>,
+    document.body
   );
 }
 
