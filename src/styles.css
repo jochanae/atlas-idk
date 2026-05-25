@@ -319,12 +319,12 @@ html, body {
     background-image:
       radial-gradient(
         ellipse 80% 60% at 50% 0%,
-        rgba(88, 28, 135, 0.25) 0%,
+        rgba(88, 28, 135, 0.10) 0%,
         transparent 70%
       ),
       radial-gradient(
         ellipse 60% 40% at 80% 100%,
-        rgba(88, 28, 135, 0.15) 0%,
+        rgba(88, 28, 135, 0.06) 0%,
         transparent 60%
       );
     background-attachment: fixed;
