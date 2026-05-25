@@ -299,6 +299,7 @@ function StatsHero() {
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
         gap: 12,
+        marginBottom: 28,
       }}>
         <StatCard index={0} label="Sessions This Week" value={stats.sessionsThisWeek} sub="thinking sessions" accent="var(--atlas-gold)" />
         <StatCard index={1} label="Committed Decisions" value={stats.totalDecisions} sub="in the ledger" accent="#6EE7B7" />
