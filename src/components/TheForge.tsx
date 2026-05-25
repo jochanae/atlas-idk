@@ -1149,7 +1149,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     <>
       <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 350, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose} />
-      <div style={{ position: "fixed", left: 0, right: 0, top: 0, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "fixed", left: 0, right: 0, top: 50, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column", paddingTop: "max(env(safe-area-inset-top), 4px)" }}>
         <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 2px" }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(var(--atlas-gold-rgb),0.18)" }} />
         </div>
