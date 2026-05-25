@@ -15,8 +15,8 @@ export function StatCard({ label, value, sub, accent = "#C9A24C", index = 0 }: S
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 22, delay: index * 0.08 }}
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: "color-mix(in oklab, var(--atlas-fg) 4%, transparent)",
+        border: "1px solid color-mix(in oklab, var(--atlas-fg) 10%, transparent)",
         borderRadius: 16,
         padding: "22px 24px",
         display: "flex",
@@ -43,7 +43,7 @@ export function StatCard({ label, value, sub, accent = "#C9A24C", index = 0 }: S
           fontWeight: 600,
           letterSpacing: "0.1em",
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.4)",
+          color: "var(--atlas-muted)",
           fontFamily: "var(--app-font-mono, monospace)",
         }}
       >
@@ -53,7 +53,7 @@ export function StatCard({ label, value, sub, accent = "#C9A24C", index = 0 }: S
         style={{
           fontSize: 36,
           fontWeight: 700,
-          color: "#fff",
+          color: "var(--atlas-fg)",
           lineHeight: 1,
           fontFamily: "var(--app-font-sans, sans-serif)",
         }}
@@ -61,7 +61,7 @@ export function StatCard({ label, value, sub, accent = "#C9A24C", index = 0 }: S
         {value}
       </span>
       {sub && (
-        <span style={{ fontSize: 12, color: accent, fontFamily: "var(--app-font-sans, sans-serif)", opacity: 0.8 }}>
+        <span style={{ fontSize: 12, color: accent, fontFamily: "var(--app-font-sans, sans-serif)", opacity: 0.85 }}>
           {sub}
         </span>
       )}
