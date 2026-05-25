@@ -70,42 +70,8 @@ function projectIdFromPath(pathname: string): number | null {
 
 function ShellWordmark() {
   const [, setLocation] = useLocation();
-  const openProjects = useCallback((e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    // Folder icon ALWAYS opens the side navigation drawer (Atlas / Projects),
-    // in every context (home AND workspace). It is never tied to the per-project
-    // dropdown menu. The project-name chevron handles per-project actions.
-    window.dispatchEvent(new CustomEvent("axiom:close-project-menu"));
-    window.dispatchEvent(new CustomEvent("axiom:open-nav-drawer"));
-  }, []);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <button
-        type="button"
-        onClick={openProjects}
-        title="Open navigation"
-        aria-label="Open navigation"
-        style={{
-          background: "transparent",
-          border: "none",
-          padding: 4,
-          margin: 0,
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "rgba(201,162,76,0.55)",
-          transition: "color var(--motion-fast) var(--ease-standard)",
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.95)")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M3 7.2c0-.9.7-1.6 1.6-1.6h4.3c.4 0 .8.2 1.1.5l1.3 1.4c.3.3.7.5 1.1.5h6c.9 0 1.6.7 1.6 1.6v8.8c0 .9-.7 1.6-1.6 1.6H4.6C3.7 20 3 19.3 3 18.4V7.2z" />
-        </svg>
-      </button>
       <button
         type="button"
         onClick={() => setLocation("/home")}
@@ -135,6 +101,7 @@ function ShellWordmark() {
     </div>
   );
 }
+
 
 function ShellClock() {
   const [now, setNow] = useState(() => new Date());
