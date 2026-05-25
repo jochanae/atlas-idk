@@ -42,6 +42,8 @@ function getTagColor(tag: string): CSSProperties {
 
 export default function Vault() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const [items, setItems] = useState<VaultSave[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

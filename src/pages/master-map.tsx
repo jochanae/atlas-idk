@@ -203,6 +203,8 @@ async function fetchAll(): Promise<{ nexus: Project | null; list: Project[] }> {
 
 export default function MasterMap() {
   const [location, setLocation] = useLocation();
+  const { goBack: exitToReferrer } = useEntryReferrer();
+
   const theme = useThemeMode();
   const palette = paletteFor(theme);
   const [projects, setProjects] = useState<Project[]>([]);

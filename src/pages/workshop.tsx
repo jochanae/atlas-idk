@@ -19,6 +19,8 @@ type Tool = "decision-editor" | "context-builder" | "diff-review" | "session-exp
 
 export default function Workshop() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
   const { data: projects = [] } = useListProjects();
 

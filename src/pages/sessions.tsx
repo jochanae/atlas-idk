@@ -5,6 +5,8 @@ import { relativeTime } from "../lib/atlas-utils";
 
 export default function Sessions() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const { data: projects = [], isLoading: projectsLoading } = useListProjects();
 
   return (

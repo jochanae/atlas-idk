@@ -22,6 +22,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export default function ParkingLot() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const qc = useQueryClient();
 
   const { data: projects = [] } = useListProjects();

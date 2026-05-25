@@ -5,6 +5,8 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 
 export default function ProjectCompass() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const { data: projects = [], isLoading } = useListProjects();
 
   return (
