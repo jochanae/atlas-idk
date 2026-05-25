@@ -1547,6 +1547,58 @@ export default function Home() {
     });
   }, [createEntry]);
 
+  // Optional GitHub URL captured in the FirstRunOverlay. Mirrors the
+  // onboarding wizard's repo-scan upgrade path so both entry doors gain
+  // the same autonomous architecture-ingest behavior.
+  const [overlayRepoUrl, setOverlayRepoUrl] = useState("");
+
+  // Silent, non-blocking repo scan: derive architecture nodes from a public
+  // GitHub URL, PATCH them straight into project.nodeState, and append a
+  // "Repo ingested" Ledger milestone. Failures never interrupt routing.
+  const runRepoScan = useCallback((projectId: number, rawUrl: string) => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return;
+    ingestRepository(trimmed)
+      .then(async (result) => {
+        if (result.nodes.length === 0) return;
+        const nodeState: Record<string, unknown> = {};
+        result.nodes.forEach((n) => {
+          nodeState[n.id] = {
+            resolved: n.resolved,
+            label: n.label,
+            type: n.type,
+            x: n.x,
+            y: n.y,
+            ...(n.details ? { details: n.details } : {}),
+            ...(n.strategicAnswer ? { strategicAnswer: n.strategicAnswer } : {}),
+          };
+        });
+        await fetch(`/api/projects/${projectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ nodeState }),
+        }).catch(() => {});
+        await fetch(`/api/projects/${projectId}/entries`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: `Repo ingested · ${result.nodes.length} nodes autonomously derived.`,
+            summary: result.summary,
+            status: "committed",
+            severity: "committed",
+            mode: "build",
+            verb: "new",
+          }),
+        }).catch(() => {});
+      })
+      .catch((scanErr) => {
+        console.warn("[home overlay] repo scan failed:", scanErr);
+      });
+  }, []);
+
+
   // Compute greeting once on mount with full micro-state context
   if (greetingRef.current === null) {
     const lastActive = readLastActive();
