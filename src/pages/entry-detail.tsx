@@ -106,6 +106,8 @@ function DraftSuccessors({ entryId, projectId }: { entryId: number; projectId: n
 export default function EntryDetail() {
   const { id: idStr } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const [copied, setCopied] = useState(false);
   const entryId = Number(idStr);
 
