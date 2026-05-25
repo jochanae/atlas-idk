@@ -20,6 +20,7 @@ import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
+import { ChatTrayHeader } from "../components/ChatTrayHeader";
 import { InviteModal } from "../components/InviteModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { ingestRepository } from "../lib/repoIngest";
@@ -36,7 +37,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, ChevronDown, ChevronUp, Lock, LockOpen, MoreVertical } from "lucide-react";
+import { Briefcase, ChevronDown, MoreVertical } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
@@ -2320,46 +2321,12 @@ export default function Home() {
       )}
 
       {homeMessages.length > 0 && !subheaderCollapsed && (
-        <div style={{ position: "sticky", top: 50, zIndex: 20, height: 36, width: "100%", padding: "5px 16px", boxSizing: "border-box", background: "transparent", display: "flex", alignItems: "center" }}>
-
-          {/* Left-side collapse toggle */}
-          <button
-            onClick={toggleSubheader}
-            title="Hide header"
-            aria-label="Hide header"
-            style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-            onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
-          >
-            <ChevronUp size={13} strokeWidth={2} />
-          </button>
-
-          {/* Centered identity zone — title (when earned) + reflection lock. No menu trigger here. */}
-          <div style={{
-            position: "absolute", left: "50%", top: "50%",
-            transform: "translate(-50%, -50%)",
-            display: "flex", alignItems: "center", gap: 8,
-            pointerEvents: "auto", maxWidth: "60%",
-          }}>
-            <button
-              onClick={handleLockTap}
-              title={reflectionLocked ? "Reflection mode (locked)" : "Enter reflection mode"}
-              aria-label="Toggle reflection mode"
-              style={{
-                background: "transparent", border: "none", padding: 0, cursor: "pointer",
-                color: "var(--atlas-gold)",
-                opacity: reflectionLocked ? 1 : 0.85,
-                lineHeight: 0, display: "inline-flex", transition: "opacity 160ms",
-                flexShrink: 0,
-              }}
-            >
-              {reflectionLocked ? (
-                <Lock size={14} strokeWidth={2} />
-              ) : (
-                <LockOpen size={14} strokeWidth={2} />
-              )}
-            </button>
-            {earnedTitle && (
+        <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
+          <ChatTrayHeader
+            active={reflectionLocked}
+            onTrustClick={handleLockTap}
+            onGrabHandleClick={toggleSubheader}
+            projectSlot={earnedTitle ? (
               <span style={{
                 fontSize: "var(--ts-label)", fontFamily: "var(--app-font-sans)",
                 color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 400,
@@ -2369,30 +2336,22 @@ export default function Home() {
               }}>
                 {earnedTitle.length > 38 ? earnedTitle.slice(0, 36).trimEnd() + "…" : earnedTitle}
               </span>
-            )}
-          </div>
-          {/* Right-side utility cluster */}
-          <div style={{ marginLeft: "auto", position: "relative" }}>
-            {showClearConfirm ? (
+            ) : null}
+            rightSlot={showClearConfirm ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "rgba(239,68,68,0.65)", letterSpacing: "0.04em" }}>Clear conversation?</span>
+                <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "rgba(239,68,68,0.65)", letterSpacing: "0.04em" }}>Clear?</span>
                 <button
                   onClick={handleClearThread}
                   style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 4, padding: "3px 9px", fontSize: "var(--ts-micro)", color: "rgba(252,165,165,0.9)", cursor: "pointer", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}
-                >
-                  Clear
-                </button>
+                >Clear</button>
                 <button
                   onClick={() => setShowClearConfirm(false)}
                   style={{ background: "transparent", border: "none", padding: "3px 6px", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
+                >Cancel</button>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <>
                 <button
-
                   onClick={() => setShowVault(true)}
                   title="Visual Vault"
                   aria-label="Open visual vault"
@@ -2417,41 +2376,43 @@ export default function Home() {
                 >
                   <Briefcase size={13} strokeWidth={1.75} />
                 </button>
-                <button
-                  onClick={() => setShowChatMenu(v => !v)}
-                  title="Conversation actions"
-                  aria-label="Conversation actions"
-                  style={{ background: showChatMenu ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showChatMenu ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = showChatMenu ? "1" : "0.7")}
-                >
-                  <MoreVertical size={14} strokeWidth={1.85} />
-                </button>
-                {showChatMenu && (
-                  <>
-                    <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
-                    <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
-                      {([
-                        { label: earnedTitle ? "Rename" : "Name this thread", action: () => { setShowChatMenu(false); handleRenameThread(); } },
-                        { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
-                        { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
-                        { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
-                        { label: "Clear conversation", action: () => { setShowClearConfirm(true); setShowChatMenu(false); }, danger: true },
-                      ] as Array<{ label: string; action: () => void; danger?: boolean }>).map(item => (
-                        <button
-                          key={item.label}
-                          onClick={item.action}
-                          style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setShowChatMenu(v => !v)}
+                    title="Conversation actions"
+                    aria-label="Conversation actions"
+                    style={{ background: showChatMenu ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showChatMenu ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = showChatMenu ? "1" : "0.7")}
+                  >
+                    <MoreVertical size={14} strokeWidth={1.85} />
+                  </button>
+                  {showChatMenu && (
+                    <>
+                      <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
+                      <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
+                        {([
+                          { label: earnedTitle ? "Rename" : "Name this thread", action: () => { setShowChatMenu(false); handleRenameThread(); } },
+                          { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
+                          { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
+                          { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
+                          { label: "Clear conversation", action: () => { setShowClearConfirm(true); setShowChatMenu(false); }, danger: true },
+                        ] as Array<{ label: string; action: () => void; danger?: boolean }>).map(item => (
+                          <button
+                            key={item.label}
+                            onClick={item.action}
+                            style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
             )}
-          </div>
+          />
         </div>
       )}
 
