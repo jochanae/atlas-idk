@@ -78,7 +78,7 @@ export default function Login() {
       if (mode === "signup" && name.trim()) body.name = name.trim();
       const data = await apiPost(path, body);
       if (data.token) {
-        localStorage.setItem("atlas-token", data.token);
+        localStorage.setItem("atlas-token", String(data.token));
       }
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       sessionStorage.setItem("atlas-just-authed", "1");
