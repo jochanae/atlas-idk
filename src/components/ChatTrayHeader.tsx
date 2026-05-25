@@ -18,6 +18,8 @@ export interface ChatTrayHeaderProps {
   active?: boolean;
   /** Optional click on the shield (e.g. toggle reflection mode). */
   onTrustClick?: () => void;
+  /** Show the sovereignty shield. Defaults to false — only Nexus home opts in. */
+  showTrust?: boolean;
   /** Project context slot — workspace passes a switcher, home leaves empty. */
   projectSlot?: ReactNode;
   /** Right-side utility cluster (vault, briefing, clear, etc.). */
@@ -31,11 +33,13 @@ export function ChatTrayHeader({
   readinessScore,
   active = true,
   onTrustClick,
+  showTrust = false,
   projectSlot,
   rightSlot,
   onGrabHandleClick,
   style,
 }: ChatTrayHeaderProps) {
+
   return (
     <div
       className="atlas-chat-tray-header"
