@@ -3403,66 +3403,67 @@ function TerminalPanel({
             running…
           </div>
         )}
+        {/* Inline active input row — lives inside the scroll feed so it stays directly under the last log line, above the mobile nav */}
+        <div style={{
+          marginTop: 10, paddingTop: 8,
+          borderTop: `1px dashed ${termBorder}`,
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-body)", color: termPrompt, flexShrink: 0 }}>$</span>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            disabled={running}
+            placeholder={running ? "running…" : "enter command"}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            style={{
+              flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none",
+              fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-label)",
+              color: termFgText,
+              caretColor: termCaret,
+            }}
+          />
+          {running ? (
+            <button
+              onClick={killCommand}
+              title="Kill running command"
+              style={{
+                flexShrink: 0, padding: "3px 10px", borderRadius: 4,
+                background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)",
+                color: "rgba(252,100,100,0.9)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
+                fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 5,
+              }}
+            >
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="rgba(252,100,100,0.9)">
+                <rect width="8" height="8" rx="1" />
+              </svg>
+              kill
+            </button>
+          ) : input.trim() && (
+            <button
+              onClick={() => { const cmd = input; setInput(""); runCommand(cmd); }}
+              style={{
+                flexShrink: 0, padding: "3px 10px", borderRadius: 4,
+                background: "rgba(146,64,14,0.22)", border: "1px solid rgba(146,64,14,0.4)",
+                color: "rgba(230,150,90,0.88)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
+                fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
+              }}
+            >
+              run
+            </button>
+          )}
+        </div>
         <div ref={bottomRef} />
-      </div>
-      {/* Input row */}
-      <div style={{
-        borderTop: `1px solid ${termBorder}`, padding: "9px 13px",
-        display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
-        background: termInputBg,
-      }}>
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-body)", color: termPrompt, flexShrink: 0 }}>$</span>
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          disabled={running}
-          placeholder={running ? "running…" : "enter command"}
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          style={{
-            flex: 1, background: "transparent", border: "none", outline: "none",
-            fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-label)",
-            color: termFgText,
-            caretColor: termCaret,
-          }}
-        />
-        {running ? (
-          <button
-            onClick={killCommand}
-            title="Kill running command"
-            style={{
-              flexShrink: 0, padding: "3px 10px", borderRadius: 4,
-              background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.4)",
-              color: "rgba(252,100,100,0.9)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
-              fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 5,
-            }}
-          >
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="rgba(252,100,100,0.9)">
-              <rect width="8" height="8" rx="1" />
-            </svg>
-            kill
-          </button>
-        ) : input.trim() && (
-          <button
-            onClick={() => { const cmd = input; setInput(""); runCommand(cmd); }}
-            style={{
-              flexShrink: 0, padding: "3px 10px", borderRadius: 4,
-              background: "rgba(146,64,14,0.22)", border: "1px solid rgba(146,64,14,0.4)",
-              color: "rgba(230,150,90,0.88)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
-              fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
-            }}
-          >
-            run
-          </button>
-        )}
       </div>
     </div>
   );
 }
+
 
 // ── MobileTabBar ─────────────────────────────────────────────────────────────
 function MobileTabBar({
