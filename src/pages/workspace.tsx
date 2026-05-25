@@ -45,7 +45,7 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
-import { ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { Archive, ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
@@ -208,7 +208,7 @@ export interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "artifacts" | "workbench";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
@@ -2650,6 +2650,11 @@ function RightPanel({
       ),
     },
     {
+      id: "artifacts" as RightTab,
+      label: "Artifacts",
+      icon: <Archive size={13} strokeWidth={1.6} />,
+    },
+    {
       id: "map" as RightTab,
       label: "Flow",
       icon: (
@@ -2879,6 +2884,7 @@ function RightPanel({
         </div>
       )}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
+      {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
       {tab === "files" && (
         <FilesPanel
           projectId={projectId}
@@ -4420,7 +4426,7 @@ export default function Workspace() {
     scenarioStartIdxRef,
   } = useChatLens(id);
   const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal" | "artifacts">("chat");
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [showMoreSheet, setShowMoreSheet] = useState(false);
