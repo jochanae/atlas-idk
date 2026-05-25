@@ -178,7 +178,9 @@ export interface ChatMessage {
   intentType?: string | null;
   plan?: Plan;
   planFromHome?: boolean;
+  planMode?: boolean;
   catchPayload?: CatchPayload | null;
+
   catchResolved?: boolean;
   alertPayload?: AlertPayload | null;
   alertResolved?: boolean;
@@ -5801,7 +5803,7 @@ export default function Workspace() {
 
   const sendPreparingSession = !sessionId && (sessionsLoading || createSession.isPending);
 
-  const handleSend = async () => {
+  const handleSend = async (opts?: { planMode?: boolean }) => {
     const text = input.trim();
     if (!text || chatPending) return;
     const sid = sessionId ?? await ensureSessionId().catch(() => null);
@@ -5834,12 +5836,13 @@ export default function Workspace() {
       setMobileTab("chat");
     }
 
+    const sendOpts = { planMode: opts?.planMode };
     if (imageFile) {
       fileToBase64Safe(imageFile)
-        .then(({ base64, mediaType }) => doSend(fullText, sid, current, undefined, { base64, mediaType }))
-        .catch(() => doSend(fullText, sid, current));
+        .then(({ base64, mediaType }) => doSend(fullText, sid, current, undefined, { base64, mediaType }, sendOpts))
+        .catch(() => doSend(fullText, sid, current, undefined, undefined, sendOpts));
     } else {
-      doSend(fullText, sid, current);
+      doSend(fullText, sid, current, undefined, undefined, sendOpts);
     }
   };
 

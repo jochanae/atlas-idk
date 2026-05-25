@@ -231,9 +231,9 @@ export function useChatStream(
       currentMessages: ChatMessage[],
       ctx?: string | null,
       imageData?: { base64: string; mediaType: string },
-      options?: { displayAs?: ChatMessage["displayAs"] },
+      options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
     ) => {
-      const userMsg: ChatMessage = { role: "user", content: text, sentAt: new Date().toISOString(), displayAs: options?.displayAs };
+      const userMsg: ChatMessage = { role: "user", content: text, sentAt: new Date().toISOString(), displayAs: options?.displayAs, planMode: options?.planMode };
       const history = currentMessages.map((m) => ({ role: m.role, content: m.content }));
       const ledgerEntries = (entries || []).map((e) => ({ id: e.id, title: e.title, status: e.status }));
       const activeCtx = ctx !== undefined ? ctx : fileContext;
