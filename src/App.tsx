@@ -270,6 +270,13 @@ function TokenBridge() {
 function Router() {
   const [location] = useLocation();
 
+  // Track navigation history so back buttons can return to the actual entry point.
+  useEffect(() => {
+    import("@/lib/nav-history").then(({ pushNav }) => pushNav(location));
+  }, [location]);
+
+
+
   return (
     <>
       <OnboardingGate />
