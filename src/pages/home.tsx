@@ -5,6 +5,7 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 import {
   useListProjects,
   useCreateProject,
+  useCreateEntry,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1499,6 +1500,20 @@ export default function Home() {
   }, [projects]);
   const homeProjectState = useProjectState(homeFocus);
   const createProject = useCreateProject();
+  const createEntry = useCreateEntry();
+
+  const logProjectInitialized = useCallback((projectId: number) => {
+    createEntry.mutate({
+      projectId,
+      data: {
+        title: "Project initialized: Sovereign context anchored.",
+        summary: "Genesis anchor — the project exists; context is bound and ready for Forge.",
+        status: "committed",
+        severity: "committed",
+        mode: "decide",
+      },
+    });
+  }, [createEntry]);
 
   // Compute greeting once on mount with full micro-state context
   if (greetingRef.current === null) {
@@ -1607,6 +1622,7 @@ export default function Home() {
         onSuccess: (p) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          logProjectInitialized(p.id);
           setLocation(`/project/${p.id}?intake=true`);
         },
         onError: (err: any) => {
@@ -2415,6 +2431,7 @@ export default function Home() {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                logProjectInitialized(p.id);
                 sessionStorage.setItem("atlas-open-tab", "map");
                 setLocation(`/project/${p.id}?intake=true`);
               },
@@ -2425,6 +2442,7 @@ export default function Home() {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                logProjectInitialized(p.id);
                 setLocation(`/project/${p.id}?intake=true`);
               },
             });

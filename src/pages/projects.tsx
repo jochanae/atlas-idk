@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
-import { useListProjects, useCreateProject, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { useListProjects, useCreateProject, useCreateEntry, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { NewProjectModal } from "../components/NewProjectModal";
@@ -67,6 +67,7 @@ export default function Projects() {
   }, [isLoadingData]);
   const isLoading = isLoadingData || showSpinner;
   const createProject = useCreateProject();
+  const createEntry = useCreateEntry();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [createError, setCreateError] = useState<string | null>(null);
@@ -182,7 +183,19 @@ export default function Projects() {
         onSuccess: (created) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          if (created?.id) setLocation(`/project/${created.id}?intake=true`);
+          if (created?.id) {
+            createEntry.mutate({
+              projectId: created.id,
+              data: {
+                title: "Project initialized: Sovereign context anchored.",
+                summary: "Genesis anchor — the project exists; context is bound and ready for Forge.",
+                status: "committed",
+                severity: "committed",
+                mode: "decide",
+              },
+            });
+            setLocation(`/project/${created.id}?intake=true`);
+          }
         },
         onError: (err) => {
           setCreateError(extractApiErrorMessage(err));
