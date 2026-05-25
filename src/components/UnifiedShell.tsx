@@ -442,43 +442,145 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 
 function ShellStatusChip({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
+  const [, navigate] = useLocation();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
   if (projectId == null) return null;
   const count = ps.decisions?.length ?? 0;
   const active = !!ps.activeSession;
+  const recent = (ps.decisions ?? []).slice(0, 4);
+  const statusLabel = active ? "Session active" : "Idle";
+
+  const go = (path: string) => { setOpen(false); navigate(path); };
+
   return (
-    <div
-      aria-label={`${count} ledger ${count === 1 ? "entry" : "entries"}, ${active ? "session active" : "idle"}`}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 9px",
-        borderRadius: 999,
-        background: "rgba(var(--atlas-muted-rgb),0.06)",
-        border: "1px solid rgba(var(--atlas-muted-rgb),0.14)",
-        fontFamily: "var(--app-font-mono)",
-        fontSize: "var(--ts-caption)",
-        letterSpacing: "var(--ls-mono-cap)",
-        lineHeight: 1,
-        textTransform: "uppercase",
-        color: "var(--atlas-muted)",
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-        userSelect: "none",
-      }}
-    >
-      <span
-        className={active ? "atlas-pulse-dot" : undefined}
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`${count} ledger ${count === 1 ? "entry" : "entries"}, ${statusLabel}. Open activity.`}
         style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: active ? "#4ade80" : "transparent",
-          border: active ? undefined : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
-          display: "inline-block",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "3px 9px",
+          borderRadius: 999,
+          background: open ? "rgba(var(--atlas-muted-rgb),0.12)" : "rgba(var(--atlas-muted-rgb),0.06)",
+          border: "1px solid rgba(var(--atlas-muted-rgb),0.14)",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: "var(--ts-caption)",
+          letterSpacing: "var(--ls-mono-cap)",
+          lineHeight: 1,
+          textTransform: "uppercase",
+          color: "var(--atlas-muted)",
+          whiteSpace: "nowrap",
+          cursor: "pointer",
+          userSelect: "none",
         }}
-      />
-      <span style={{ fontWeight: 700, color: count > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)" }}>{count}</span>
+      >
+        <span
+          className={active ? "atlas-pulse-dot" : undefined}
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: active ? "#4ade80" : "transparent",
+            border: active ? undefined : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
+            display: "inline-block",
+          }}
+        />
+        <span style={{ fontWeight: 700, color: count > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)" }}>{count}</span>
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Project activity"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            right: 0,
+            width: 280,
+            background: "rgba(10,9,8,0.96)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(var(--atlas-muted-rgb),0.18)",
+            borderRadius: 12,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+            zIndex: 1000,
+            overflow: "hidden",
+            fontFamily: "var(--app-font-sans)",
+          }}
+        >
+          <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.12)", display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              className={active ? "atlas-pulse-dot" : undefined}
+              style={{ width: 8, height: 8, borderRadius: "50%", background: active ? "#4ade80" : "rgba(var(--atlas-muted-rgb),0.5)" }}
+            />
+            <span style={{ fontSize: 13, color: "var(--atlas-fg)", fontWeight: 600 }}>{statusLabel}</span>
+            <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", textTransform: "uppercase", letterSpacing: "var(--ls-mono-cap)" }}>
+              {count} {count === 1 ? "entry" : "entries"}
+            </span>
+          </div>
+
+          <div style={{ maxHeight: 240, overflowY: "auto" }}>
+            {recent.length === 0 ? (
+              <div style={{ padding: "18px 14px", fontSize: 12, color: "var(--atlas-muted)", textAlign: "center" }}>
+                No committed entries yet. Decisions you commit will land here.
+              </div>
+            ) : (
+              recent.map((e: any) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => go(`/ledger?focus=${e.id}`)}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    padding: "10px 14px", background: "transparent", border: "none",
+                    borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.08)",
+                    cursor: "pointer", color: "var(--atlas-fg)", fontSize: 13, lineHeight: 1.35,
+                  }}
+                  onMouseEnter={(ev) => (ev.currentTarget.style.background = "rgba(var(--atlas-muted-rgb),0.06)")}
+                  onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}
+                >
+                  <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title || "Untitled"}</div>
+                  {e.summary && (
+                    <div style={{ marginTop: 3, fontSize: 11, color: "var(--atlas-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.summary}</div>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => go("/ledger")}
+            style={{
+              display: "block", width: "100%", padding: "10px 14px",
+              background: "transparent", border: "none", borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)",
+              cursor: "pointer", color: "var(--atlas-gold)", fontSize: 12, fontWeight: 600,
+              fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "var(--ls-mono-cap)",
+              textAlign: "center",
+            }}
+          >
+            Open Ledger →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
