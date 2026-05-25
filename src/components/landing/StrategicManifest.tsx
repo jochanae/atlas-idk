@@ -103,7 +103,7 @@ export function InterrogationFragments() {
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className="relative"
                 style={{
-                  opacity: on ? 1 : 0.08,
+                  opacity: on ? 1 : 0.28,
                   transform: on ? "translateY(0)" : "translateY(14px)",
                   transition: "opacity 900ms cubic-bezier(0.16,1,0.3,1), transform 900ms cubic-bezier(0.16,1,0.3,1)",
                 }}
