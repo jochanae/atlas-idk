@@ -1106,6 +1106,33 @@ function FirstRunOverlay({
           </div>
         </div>
 
+        {/* Optional repo URL — autonomous architecture scan */}
+        <div style={{ marginBottom: 14 }}>
+          <input
+            type="url"
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            placeholder="Paste primary repository URL (GitHub) — optional"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              background: "rgba(20,16,12,0.6)",
+              border: "1px solid rgba(201,162,76,0.22)",
+              borderRadius: 10,
+              color: "#E7E1D6",
+              fontSize: "var(--ts-caption)",
+              fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.02em",
+              outline: "none",
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
+          />
+        </div>
+
         {/* CTA buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
