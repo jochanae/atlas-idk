@@ -183,7 +183,19 @@ export default function Projects() {
         onSuccess: (created) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          if (created?.id) setLocation(`/project/${created.id}?intake=true`);
+          if (created?.id) {
+            createEntry.mutate({
+              projectId: created.id,
+              data: {
+                title: "Project initialized: Sovereign context anchored.",
+                summary: "Genesis anchor — the project exists; context is bound and ready for Forge.",
+                status: "committed",
+                severity: "committed",
+                mode: "decide",
+              },
+            });
+            setLocation(`/project/${created.id}?intake=true`);
+          }
         },
         onError: (err) => {
           setCreateError(extractApiErrorMessage(err));
