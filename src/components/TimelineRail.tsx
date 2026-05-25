@@ -88,6 +88,42 @@ export function TimelineRail({
     }
   }, [showSearch]);
 
+  // Track which message is closest to vertical viewport center.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf = 0;
+    const compute = () => {
+      const centerY = window.innerHeight / 2;
+      let best = -1;
+      let bestDist = Infinity;
+      const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
+      nodes.forEach((n) => {
+        const r = n.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight) return;
+        const mid = (r.top + r.bottom) / 2;
+        const d = Math.abs(mid - centerY);
+        if (d < bestDist) {
+          bestDist = d;
+          best = Number(n.getAttribute("data-msg-idx"));
+        }
+      });
+      setFocusIdx(best);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => { raf = 0; compute(); });
+    };
+    compute();
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll, { capture: true } as any);
+      window.removeEventListener("resize", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [messages.length]);
+
+
   // Each tick carries the day label of its message + a boolean for "first of this day".
   const ticks = useMemo(() => {
     const now = Date.now();
