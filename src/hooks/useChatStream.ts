@@ -83,7 +83,7 @@ export interface UseChatStreamReturn {
     currentMessages: ChatMessage[],
     ctx?: string | null,
     imageData?: { base64: string; mediaType: string },
-    options?: { displayAs?: ChatMessage["displayAs"] },
+    options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
   ) => void;
   handleRegenerate: (assistantMsgIndex: number) => void;
 }
