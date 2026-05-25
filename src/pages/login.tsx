@@ -138,10 +138,11 @@ export default function Login() {
       alignItems: "flex-start",
       justifyContent: "center",
       background: "var(--atlas-bg)",
-      padding: "40px 16px calc(40px + env(safe-area-inset-bottom, 0px))",
+      padding: "40px 16px calc(112px + env(safe-area-inset-bottom, 0px))",
       position: "relative",
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
+      touchAction: "pan-y",
     }}>
 
 
