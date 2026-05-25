@@ -66,20 +66,23 @@ export function TimelineRail({
   const [showOverlay, setShowOverlay] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
   const [focusIdx, setFocusIdx] = useState<number>(-1);
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const matchingIdx = useMemo(() => {
+  // Sorted list of message indices that contain the query.
+  const matchList = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return new Set<number>();
-    const s = new Set<number>();
+    if (!q) return [] as number[];
+    const out: number[] = [];
     messages.forEach((m, i) => {
-      if (m.text && m.text.toLowerCase().includes(q)) s.add(i);
+      if (m.text && m.text.toLowerCase().includes(q)) out.push(i);
     });
-    return s;
+    return out;
   }, [messages, query]);
+  const matchingIdx = useMemo(() => new Set(matchList), [matchList]);
 
   useEffect(() => {
     if (showSearch) {
@@ -87,6 +90,81 @@ export function TimelineRail({
       return () => window.clearTimeout(t);
     }
   }, [showSearch]);
+
+  // ── DOM highlight effect: wrap query matches inside every chat bubble with a
+  // <mark class="atlas-search-hit"> span; tear down cleanly when query clears.
+  useEffect(() => {
+    const HIT_CLASS = "atlas-search-hit";
+    const HIT_ACTIVE = "atlas-search-hit--active";
+
+    const unwrapAll = () => {
+      document.querySelectorAll<HTMLElement>(`.${HIT_CLASS}`).forEach((el) => {
+        const parent = el.parentNode;
+        if (!parent) return;
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        parent.removeChild(el);
+        (parent as HTMLElement).normalize?.();
+      });
+    };
+
+    unwrapAll();
+    const q = query.trim();
+    if (!q) return;
+
+    const lower = q.toLowerCase();
+    const roots = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
+    roots.forEach((root) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          if (parent.closest("script,style,textarea,input")) return NodeFilter.FILTER_REJECT;
+          if (parent.classList.contains(HIT_CLASS)) return NodeFilter.FILTER_REJECT;
+          return node.nodeValue.toLowerCase().includes(lower) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        },
+      });
+      const targets: Text[] = [];
+      let n: Node | null = walker.nextNode();
+      while (n) { targets.push(n as Text); n = walker.nextNode(); }
+
+      targets.forEach((textNode) => {
+        const text = textNode.nodeValue ?? "";
+        const lowerText = text.toLowerCase();
+        const frag = document.createDocumentFragment();
+        let i = 0;
+        while (i < text.length) {
+          const found = lowerText.indexOf(lower, i);
+          if (found === -1) {
+            frag.appendChild(document.createTextNode(text.slice(i)));
+            break;
+          }
+          if (found > i) frag.appendChild(document.createTextNode(text.slice(i, found)));
+          const mark = document.createElement("mark");
+          mark.className = HIT_CLASS;
+          mark.textContent = text.slice(found, found + lower.length);
+          frag.appendChild(mark);
+          i = found + lower.length;
+        }
+        textNode.parentNode?.replaceChild(frag, textNode);
+      });
+    });
+
+    // Tag the active match for distinct styling.
+    document.querySelectorAll(`.${HIT_ACTIVE}`).forEach((el) => el.classList.remove(HIT_ACTIVE));
+    const activeMsgIdx = matchList[cursor];
+    if (activeMsgIdx !== undefined) {
+      const el = document.querySelector<HTMLElement>(`[data-msg-idx="${activeMsgIdx}"]`);
+      el?.querySelector(`.${HIT_CLASS}`)?.classList.add(HIT_ACTIVE);
+    }
+
+    return () => { unwrapAll(); };
+  }, [query, matchList, cursor]);
+
+  // Reset cursor when the match set changes.
+  useEffect(() => { setCursor(0); }, [query]);
+
+
 
   // Track which message is closest to vertical viewport center.
   useEffect(() => {
@@ -488,7 +566,7 @@ export function TimelineRail({
             border: "1px solid rgba(201,162,76,0.32)",
             borderRadius: 10,
             boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            minWidth: 240,
+            minWidth: 280,
             animation: "fadeIn 140ms ease",
           }}
         >
@@ -505,8 +583,11 @@ export function TimelineRail({
                 setShowSearch(false);
                 setQuery("");
               } else if (e.key === "Enter") {
-                const first = Array.from(matchingIdx)[0];
-                if (typeof first === "number") scrollTo(first);
+                if (matchList.length === 0) return;
+                const dir = e.shiftKey ? -1 : 1;
+                const next = (cursor + dir + matchList.length) % matchList.length;
+                setCursor(next);
+                scrollTo(matchList[next]);
               }
             }}
             placeholder="Search this thread"
@@ -524,13 +605,42 @@ export function TimelineRail({
             style={{
               fontFamily: "var(--app-font-mono)",
               fontSize: 10,
-              color: "rgba(201,162,76,0.6)",
-              minWidth: 18,
+              color: matchList.length ? "rgba(201,162,76,0.85)" : "rgba(201,162,76,0.4)",
+              minWidth: 36,
               textAlign: "right",
+              whiteSpace: "nowrap",
             }}
           >
-            {query ? matchingIdx.size : ""}
+            {query.trim() ? (matchList.length ? `${cursor + 1} / ${matchList.length}` : "0 / 0") : ""}
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (matchList.length === 0) return;
+              const next = (cursor - 1 + matchList.length) % matchList.length;
+              setCursor(next);
+              scrollTo(matchList[next]);
+            }}
+            aria-label="Previous match"
+            disabled={matchList.length === 0}
+            style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: matchList.length ? "pointer" : "not-allowed", padding: "0 2px", opacity: matchList.length ? 1 : 0.4 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 8L6 5 3 8" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (matchList.length === 0) return;
+              const next = (cursor + 1) % matchList.length;
+              setCursor(next);
+              scrollTo(matchList[next]);
+            }}
+            aria-label="Next match"
+            disabled={matchList.length === 0}
+            style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: matchList.length ? "pointer" : "not-allowed", padding: "0 2px", opacity: matchList.length ? 1 : 0.4 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4l3 3 3-3" /></svg>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -551,6 +661,7 @@ export function TimelineRail({
           </button>
         </div>
       )}
+
     </>
   );
 }
