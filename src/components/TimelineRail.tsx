@@ -66,20 +66,23 @@ export function TimelineRail({
   const [showOverlay, setShowOverlay] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
   const [focusIdx, setFocusIdx] = useState<number>(-1);
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const matchingIdx = useMemo(() => {
+  // Sorted list of message indices that contain the query.
+  const matchList = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return new Set<number>();
-    const s = new Set<number>();
+    if (!q) return [] as number[];
+    const out: number[] = [];
     messages.forEach((m, i) => {
-      if (m.text && m.text.toLowerCase().includes(q)) s.add(i);
+      if (m.text && m.text.toLowerCase().includes(q)) out.push(i);
     });
-    return s;
+    return out;
   }, [messages, query]);
+  const matchingIdx = useMemo(() => new Set(matchList), [matchList]);
 
   useEffect(() => {
     if (showSearch) {
@@ -87,6 +90,81 @@ export function TimelineRail({
       return () => window.clearTimeout(t);
     }
   }, [showSearch]);
+
+  // ── DOM highlight effect: wrap query matches inside every chat bubble with a
+  // <mark class="atlas-search-hit"> span; tear down cleanly when query clears.
+  useEffect(() => {
+    const HIT_CLASS = "atlas-search-hit";
+    const HIT_ACTIVE = "atlas-search-hit--active";
+
+    const unwrapAll = () => {
+      document.querySelectorAll<HTMLElement>(`.${HIT_CLASS}`).forEach((el) => {
+        const parent = el.parentNode;
+        if (!parent) return;
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        parent.removeChild(el);
+        (parent as HTMLElement).normalize?.();
+      });
+    };
+
+    unwrapAll();
+    const q = query.trim();
+    if (!q) return;
+
+    const lower = q.toLowerCase();
+    const roots = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
+    roots.forEach((root) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          if (parent.closest("script,style,textarea,input")) return NodeFilter.FILTER_REJECT;
+          if (parent.classList.contains(HIT_CLASS)) return NodeFilter.FILTER_REJECT;
+          return node.nodeValue.toLowerCase().includes(lower) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        },
+      });
+      const targets: Text[] = [];
+      let n: Node | null = walker.nextNode();
+      while (n) { targets.push(n as Text); n = walker.nextNode(); }
+
+      targets.forEach((textNode) => {
+        const text = textNode.nodeValue ?? "";
+        const lowerText = text.toLowerCase();
+        const frag = document.createDocumentFragment();
+        let i = 0;
+        while (i < text.length) {
+          const found = lowerText.indexOf(lower, i);
+          if (found === -1) {
+            frag.appendChild(document.createTextNode(text.slice(i)));
+            break;
+          }
+          if (found > i) frag.appendChild(document.createTextNode(text.slice(i, found)));
+          const mark = document.createElement("mark");
+          mark.className = HIT_CLASS;
+          mark.textContent = text.slice(found, found + lower.length);
+          frag.appendChild(mark);
+          i = found + lower.length;
+        }
+        textNode.parentNode?.replaceChild(frag, textNode);
+      });
+    });
+
+    // Tag the active match for distinct styling.
+    document.querySelectorAll(`.${HIT_ACTIVE}`).forEach((el) => el.classList.remove(HIT_ACTIVE));
+    const activeMsgIdx = matchList[cursor];
+    if (activeMsgIdx !== undefined) {
+      const el = document.querySelector<HTMLElement>(`[data-msg-idx="${activeMsgIdx}"]`);
+      el?.querySelector(`.${HIT_CLASS}`)?.classList.add(HIT_ACTIVE);
+    }
+
+    return () => { unwrapAll(); };
+  }, [query, matchList, cursor]);
+
+  // Reset cursor when the match set changes.
+  useEffect(() => { setCursor(0); }, [query]);
+
+
 
   // Track which message is closest to vertical viewport center.
   useEffect(() => {
