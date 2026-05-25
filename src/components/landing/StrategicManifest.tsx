@@ -32,8 +32,7 @@ const FRAGMENTS: Fragment[] = [
 ];
 
 export function InterrogationFragments() {
-  // First fragment always lit on mount so the section never opens blank.
-  const [lit, setLit] = useState<boolean[]>(() => FRAGMENTS.map((_, i) => i === 0));
+  const [lit, setLit] = useState<boolean[]>(() => FRAGMENTS.map(() => false));
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -57,8 +56,8 @@ export function InterrogationFragments() {
             obs.disconnect();
           }
         },
-        // Trigger early — as soon as the fragment enters the lower 80% of viewport.
-        { threshold: 0, rootMargin: "0px 0px -20% 0px" },
+        // Trigger when the fragment crosses ~45% from the top of viewport
+        { threshold: 0, rootMargin: "0px 0px -45% 0px" },
       );
       obs.observe(el);
       observers.push(obs);
@@ -103,7 +102,7 @@ export function InterrogationFragments() {
                 ref={(el) => { itemRefs.current[i] = el; }}
                 className="relative"
                 style={{
-                  opacity: on ? 1 : 0.28,
+                  opacity: on ? 1 : 0.08,
                   transform: on ? "translateY(0)" : "translateY(14px)",
                   transition: "opacity 900ms cubic-bezier(0.16,1,0.3,1), transform 900ms cubic-bezier(0.16,1,0.3,1)",
                 }}
