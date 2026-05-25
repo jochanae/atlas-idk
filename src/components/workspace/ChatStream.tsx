@@ -328,7 +328,7 @@ export function ChatStream(props: ChatStreamProps) {
         </button>
       )}
 
-      <TimelineRail messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0) }))} />
+      <TimelineRail messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
     </div>
   );
 }
