@@ -189,20 +189,21 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
   );
 }
 
-/* ─── Pricing ─── */
+import { useRef } from "react";
+
 function PricingSection({ onEnter }: { onEnter: () => void }) {
   const [visRef, setVisRef] = useState(false);
-  const sectionRef = useState<HTMLDivElement | null>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
   const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
   useEffect(() => {
-    const el = sectionRef[0];
+    const el = sectionRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisRef(true); }, { threshold: 0.1 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [sectionRef]);
+  }, []);
 
   const tiers = [
     {
