@@ -5,6 +5,7 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 import {
   useListProjects,
   useCreateProject,
+  useCreateEntry,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
