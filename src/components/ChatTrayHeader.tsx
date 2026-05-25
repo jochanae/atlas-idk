@@ -1,21 +1,22 @@
 import type { CSSProperties, ReactNode } from "react";
+import { Shield } from "lucide-react";
 
 /**
- * ChatTrayHeader — shared header for the Nexus Home chat tray and the
- * Project Workspace chat. Single component, two mount points, identical
- * tokens. The project switcher slot renders only when supplied (workspace),
- * gracefully hides on home.
+ * ChatTrayHeader — shared, ultra-quiet header for the Nexus Home chat tray
+ * and the Project Workspace chat. One indicator per view: a tiny shield
+ * icon denotes sovereign session state; readiness pill renders only when
+ * provided (and only when the surface doesn't already show readiness elsewhere).
  *
  * Composition:
  *   ┌─ 32×4 grab handle ─┐
- *   │   [ZERO-TRACE ●]   [READY 64%]      {projectSlot}      {rightSlot} │
+ *   │  {projectSlot}   [🛡]   [77% Ready?]   {rightSlot}  │
  */
 export interface ChatTrayHeaderProps {
   /** 0-100. Hides the readiness pill when undefined. */
   readinessScore?: number;
-  /** Active session sovereignty state — when true the trust badge pulses. */
+  /** Active session sovereignty state — colors the shield. */
   active?: boolean;
-  /** Optional click on the trust pill (e.g. toggle reflection mode). */
+  /** Optional click on the shield (e.g. toggle reflection mode). */
   onTrustClick?: () => void;
   /** Project context slot — workspace passes a switcher, home leaves empty. */
   projectSlot?: ReactNode;
@@ -45,16 +46,6 @@ export function ChatTrayHeader({
         ...style,
       }}
     >
-      <style>{`
-        @keyframes atlasZeroTracePulse {
-          0%, 100% { opacity: 0.55; transform: scale(1); }
-          50%      { opacity: 1;    transform: scale(1.25); }
-        }
-        .atlas-zt-dot { animation: atlasZeroTracePulse 1.8s ease-in-out infinite; }
-        .atlas-zt-pill:hover { background: rgba(245,158,11,0.16); border-color: rgba(245,158,11,0.32); }
-        .atlas-zt-pill:focus-visible { outline: 2px solid rgba(245,158,11,0.5); outline-offset: 2px; }
-      `}</style>
-
       {/* Grab handle — 32×4 pill, centered */}
       <button
         type="button"
@@ -84,49 +75,46 @@ export function ChatTrayHeader({
           alignItems: "center",
           gap: 8,
           padding: "2px 16px 6px",
-          minHeight: 28,
+          minHeight: 24,
         }}
       >
-        {/* ZERO-TRACE micro-pill */}
+        {/* Project context slot — workspace-only */}
+        {projectSlot ? (
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+            {projectSlot}
+          </div>
+        ) : (
+          <div style={{ flex: 1 }} />
+        )}
+
+        {/* Quiet sovereignty shield — no text, no pulse, no glow */}
         <button
           type="button"
           onClick={onTrustClick}
-          className="atlas-zt-pill"
-          aria-label="Zero-trace session"
-          title="Zero-trace · sovereign session"
+          aria-label={active ? "Zero-trace session active" : "Zero-trace session paused"}
+          title={active ? "Zero-trace · sovereign session" : "Reflection paused"}
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
-            padding: "2px 8px",
-            borderRadius: 999,
-            background: "rgba(245,158,11,0.10)",
-            border: "1px solid rgba(245,158,11,0.20)",
-            color: "rgb(245,158,11)",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 9.5,
-            letterSpacing: "0.10em",
-            fontWeight: 600,
+            justifyContent: "center",
+            width: 22,
+            height: 22,
+            padding: 0,
+            background: "transparent",
+            border: "none",
+            color: active ? "var(--atlas-muted)" : "rgba(255,255,255,0.25)",
             cursor: onTrustClick ? "pointer" : "default",
-            lineHeight: 1,
-            transition: "background 160ms ease, border-color 160ms ease",
+            opacity: 0.7,
+            transition: "opacity 160ms ease, color 160ms ease",
+            flexShrink: 0,
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
         >
-          <span
-            className={active ? "atlas-zt-dot" : undefined}
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              background: "rgb(245,158,11)",
-              boxShadow: "0 0 6px rgba(245,158,11,0.6)",
-              display: "inline-block",
-            }}
-          />
-          ZERO-TRACE
+          <Shield size={13} strokeWidth={1.6} />
         </button>
 
-        {/* Readiness pill — neutral dark */}
+        {/* Readiness pill — neutral, single source of truth per view */}
         {readinessScore !== undefined && (
           <span
             title={`Sovereign Readiness · ${readinessScore}%`}
@@ -136,30 +124,23 @@ export function ChatTrayHeader({
               gap: 5,
               padding: "2px 8px",
               borderRadius: 999,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
               color: "var(--atlas-muted)",
               fontFamily: "var(--app-font-mono)",
               fontSize: 9.5,
               letterSpacing: "0.08em",
               fontWeight: 500,
               lineHeight: 1,
+              flexShrink: 0,
             }}
           >
-            READY
-            <span style={{ color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 600 }}>
+            <span style={{ color: "var(--atlas-fg)", opacity: 0.8, fontWeight: 600 }}>
               {readinessScore}%
             </span>
+            READY
           </span>
         )}
-
-        {/* Project context slot — workspace-only */}
-        {projectSlot && (
-          <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
-            {projectSlot}
-          </div>
-        )}
-        {!projectSlot && <div style={{ flex: 1 }} />}
 
         {/* Right utility cluster */}
         {rightSlot && (

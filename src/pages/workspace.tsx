@@ -6402,10 +6402,7 @@ export default function Workspace() {
         }}
       >
         {leftTab === "chat" && (
-          <ChatTrayHeader
-            readinessScore={Math.round(computeScoreFromNodeState((project?.nodeState ?? {}) as Record<string, unknown>))}
-            active
-          />
+          <ChatTrayHeader active />
         )}
         <div
           className="atlas-app-header-row"
