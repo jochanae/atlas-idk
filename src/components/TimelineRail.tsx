@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type RailMessage = {
   role: "user" | "assistant";
   createdAt?: string;
+  hasSurfacedMemory?: boolean;
 };
 
 type Bucket = {
@@ -11,10 +12,27 @@ type Bucket = {
   count: number;
 };
 
-function bucketize(messages: RailMessage[]): Bucket[] {
-  const now = new Date();
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+function dayLabel(t: number, now: number): string {
+  const startOfDay = (ms: number) => {
+    const d = new Date(ms);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
   const today = startOfDay(now);
+  const yesterday = today - 86_400_000;
+  const weekStart = today - 6 * 86_400_000;
+  if (t >= today) return "TODAY";
+  if (t >= yesterday) return "YESTERDAY";
+  if (t >= weekStart) {
+    return new Date(t).toLocaleDateString(undefined, { weekday: "short" }).toUpperCase();
+  }
+  // Older — use MMM D
+  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
+}
+
+function bucketize(messages: RailMessage[]): Bucket[] {
+  const now = Date.now();
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const today = startOfDay(new Date(now));
   const yesterday = today - 86_400_000;
   const weekStart = today - 6 * 86_400_000;
 
@@ -23,7 +41,7 @@ function bucketize(messages: RailMessage[]): Bucket[] {
 
   messages.forEach((m, i) => {
     if (m.role !== "assistant") return;
-    const t = m.createdAt ? new Date(m.createdAt).getTime() : now.getTime();
+    const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
     let label = "Older";
     if (t >= today) label = "Today";
     else if (t >= yesterday) label = "Yesterday";
@@ -32,7 +50,7 @@ function bucketize(messages: RailMessage[]): Bucket[] {
     buckets[label].count += 1;
   });
 
-  return order.filter(l => buckets[l]).map(l => buckets[l]);
+  return order.filter((l) => buckets[l]).map((l) => buckets[l]);
 }
 
 export function TimelineRail({
@@ -48,16 +66,41 @@ export function TimelineRail({
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
 
-  const ticks = useMemo(
-    () => messages.map((m, i) => ({ idx: i, role: m.role })).filter(t => t.role === "assistant"),
-    [messages],
-  );
+  // Each tick carries the day label of its message + a boolean for "first of this day".
+  const ticks = useMemo(() => {
+    const now = Date.now();
+    const out: {
+      idx: number;
+      role: "user" | "assistant";
+      label: string;
+      isNewDay: boolean;
+      hasMemory: boolean;
+    }[] = [];
+    let prevLabel: string | null = null;
+    messages.forEach((m, i) => {
+      if (m.role !== "assistant") return;
+      const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
+      const label = dayLabel(t, now);
+      out.push({
+        idx: i,
+        role: m.role,
+        label,
+        isNewDay: label !== prevLabel,
+        hasMemory: !!m.hasSurfacedMemory,
+      });
+      prevLabel = label;
+    });
+    return out;
+  }, [messages]);
 
   const buckets = useMemo(() => bucketize(messages), [messages]);
 
-  useEffect(() => () => {
-    if (longPressRef.current) window.clearTimeout(longPressRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (longPressRef.current) window.clearTimeout(longPressRef.current);
+    },
+    [],
+  );
 
   if (ticks.length === 0) return null;
 
@@ -92,7 +135,8 @@ export function TimelineRail({
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
-          width: 14,
+          // Widen the hit/render column so inline day chips have room to the left of the spine.
+          width: 72,
           zIndex: 18,
           display: "flex",
           flexDirection: "column",
@@ -100,7 +144,7 @@ export function TimelineRail({
           justifyContent: "space-evenly",
           padding: "8px 0",
           pointerEvents: "auto",
-          opacity: 0.85,
+          opacity: 0.95,
         }}
       >
         {/* spine */}
@@ -118,40 +162,96 @@ export function TimelineRail({
           }}
         />
         {ticks.map((t) => (
-          <button
+          <div
             key={t.idx}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (didLongPressRef.current) return;
-              scrollTo(t.idx);
-            }}
-            title={`Jump to message ${t.idx + 1}`}
-            aria-label={`Jump to message ${t.idx + 1}`}
             style={{
               position: "relative",
-              zIndex: 1,
-              background: "transparent",
-              border: "none",
-              padding: "4px 4px",
-              margin: 0,
-              cursor: "pointer",
+              width: "100%",
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
+              gap: 6,
+              padding: "2px 0",
             }}
           >
-            <span
-              style={{
-                display: "block",
-                width: 6,
-                height: 2,
-                background: "rgba(201,162,76,0.7)",
-                borderRadius: 1,
-                transition: "width 140ms ease, background 140ms ease",
+            {/* Day chip — only on the first tick of a new day, inline to the LEFT of the spine */}
+            {t.isNewDay && (
+              <span
+                aria-hidden
+                style={{
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: "rgba(201,162,76,0.55)",
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "1px solid rgba(201,162,76,0.18)",
+                  background: "rgba(20,17,14,0.55)",
+                  backdropFilter: "blur(6px)",
+                  WebkitBackdropFilter: "blur(6px)",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t.label}
+              </span>
+            )}
+
+            {/* Memory recall marker — shown when this assistant message surfaced a ledger memory */}
+            {t.hasMemory && (
+              <span
+                aria-label="Memory surfaced"
+                style={{
+                  fontSize: 10,
+                  lineHeight: 1,
+                  color: "rgba(201,162,76,0.85)",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                  textShadow: "0 0 6px rgba(201,162,76,0.5)",
+                }}
+              >
+                ✦
+              </span>
+            )}
+
+            {/* The interactive tick itself, sitting on the spine */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (didLongPressRef.current) return;
+                scrollTo(t.idx);
               }}
-            />
-          </button>
+              title={`Jump to message ${t.idx + 1}`}
+              aria-label={`Jump to message ${t.idx + 1}`}
+              style={{
+                position: "relative",
+                zIndex: 1,
+                background: "transparent",
+                border: "none",
+                padding: "4px 4px",
+                margin: 0,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  width: 6,
+                  height: 2,
+                  background: "rgba(201,162,76,0.7)",
+                  borderRadius: 1,
+                  transition: "width 140ms ease, background 140ms ease",
+                }}
+              />
+            </button>
+          </div>
         ))}
       </div>
 
