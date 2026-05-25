@@ -2323,9 +2323,11 @@ export default function Home() {
       {homeMessages.length > 0 && !subheaderCollapsed && (
         <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
           <ChatTrayHeader
+            showTrust
             active={reflectionLocked}
             onTrustClick={handleLockTap}
             onGrabHandleClick={toggleSubheader}
+
             projectSlot={earnedTitle ? (
               <span style={{
                 fontSize: "var(--ts-label)", fontFamily: "var(--app-font-sans)",
