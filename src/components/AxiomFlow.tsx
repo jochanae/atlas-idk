@@ -1395,7 +1395,12 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
   const D = palette.decisionRgb;
   const F = palette.fgRgb;
   const M = palette.mutedRgb;
-  const goldText = palette.goldText;
+  const isParchment = palette.rootBg === "#FAFAF7";
+  // In parchment (light) mode, node labels read as "stamped charcoal" rather
+  // than amber so they don't blend into the cream canvas. Gold/ember tokens
+  // are still used everywhere else (badges, chips, brackets) where they pop.
+  const goldText = isParchment ? "#111111" : palette.goldText;
+  const emberLabel = isParchment ? "#111111" : palette.emberText;
   const fgSoft = `rgba(${F},0.88)`;
   const fgSofter = `rgba(${F},0.82)`;
   // "defined" = a strategicAnswer is locked in. This is the ONLY signal of a
