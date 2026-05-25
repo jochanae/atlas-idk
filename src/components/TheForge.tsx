@@ -3,6 +3,7 @@ import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
 import type { ArchNode } from "./AxiomFlow";
 import { GlossaryTip } from "./GlossaryTip";
+import { useThemeMode } from "@/lib/theme";
 
 const FORGE_STAGES = [
   "Reading intent...",
@@ -81,6 +82,7 @@ interface Props {
 
 export function TheForge({ platform, readinessScore = 0, activeProjectName, projectId, defaultTab = "forge", preloadContent, onClose, onNodesReady, onFillChatInput }: Props) {
   const [isMobile] = useState(() => window.innerWidth < 768);
+  const theme = useThemeMode();
   const [tab, setTab] = useState<"forge" | "prompt" | "dna">(defaultTab);
 
   // Forge state — pre-fill transcript from preloadContent if provided
@@ -1132,12 +1134,13 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
   const tabContent = tab === "forge" ? forgeContent : tab === "dna" ? dnaContent : quickPromptContent;
   const tabLabel = tab === "forge" ? "THE FORGE" : tab === "dna" ? "PROJECT DNA" : "QUICK PROMPT";
+  const forgeBackgroundImage = theme === "parchment" ? "none" : FORGE_ATMOSPHERE_BACKGROUND;
 
   if (!isMobile) {
     return (
       <>
         <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
-        <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: "column", background: "var(--atlas-bg)", backgroundImage: forgeBackgroundImage, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: 12, height: "100%", overflow: "hidden" }}>
           {headerBlock}
           {tabContent}
         </div>
@@ -1149,7 +1152,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     <>
       <style>{`@keyframes forge-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.7); } }`}</style>
       <div style={{ position: "fixed", inset: 0, zIndex: 350, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} onClick={onClose} />
-      <div style={{ position: "fixed", left: 0, right: 0, top: 50, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: FORGE_ATMOSPHERE_BACKGROUND, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column", paddingTop: "max(env(safe-area-inset-top), 4px)" }}>
+      <div style={{ position: "fixed", left: 0, right: 0, top: 50, bottom: 0, zIndex: 360, background: "var(--atlas-bg)", backgroundImage: forgeBackgroundImage, border: "1px solid rgba(var(--atlas-gold-rgb),0.22)", borderRadius: "16px 16px 0 0", display: "flex", flexDirection: "column", paddingTop: "max(env(safe-area-inset-top), 4px)" }}>
         <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 2px" }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(var(--atlas-gold-rgb),0.18)" }} />
         </div>
