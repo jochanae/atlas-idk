@@ -205,6 +205,20 @@ export default function OnboardingPage() {
       try { localStorage.setItem("axiom_onboarding_step", "4"); } catch {}
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
 
+      // Genesis ledger anchor — created the moment the project exists.
+      fetch(`/api/projects/${data.id}/entries`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          title: "Project initialized: Sovereign context anchored.",
+          summary: "Genesis anchor — the project exists; context is bound and ready for Forge.",
+          status: "committed",
+          severity: "committed",
+          mode: "decide",
+        }),
+      }).catch(() => {});
+
       setBurst(true);
       setForging(true);
       // Hand off after the camera has nearly finished its pull-back
