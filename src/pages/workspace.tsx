@@ -2528,6 +2528,8 @@ function RightPanel({
   onZipTrigger,
   zipLoaded,
   zipFileName,
+  showModelPicker,
+  onShowModelPickerChange,
 }: {
   projectId: number;
   entries: Entry[];
