@@ -64,8 +64,28 @@ export function TimelineRail({
   bottomOffset?: number;
 }) {
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [query, setQuery] = useState("");
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const matchingIdx = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return new Set<number>();
+    const s = new Set<number>();
+    messages.forEach((m, i) => {
+      if (m.text && m.text.toLowerCase().includes(q)) s.add(i);
+    });
+    return s;
+  }, [messages, query]);
+
+  useEffect(() => {
+    if (showSearch) {
+      const t = window.setTimeout(() => searchInputRef.current?.focus(), 40);
+      return () => window.clearTimeout(t);
+    }
+  }, [showSearch]);
 
   // Each tick carries the day label of its message + a boolean for "first of this day".
   const ticks = useMemo(() => {
