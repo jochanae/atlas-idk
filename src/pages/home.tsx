@@ -97,6 +97,7 @@ type HomeMessage = {
   runArtifacts?: RunArtifact[] | null;
   errorMessage?: string | null;
   surface?: AmbientSurface;
+  surfacedMemoriesCount?: number;
 };
 
 function formatMessageTime(iso?: string): string {
@@ -178,6 +179,11 @@ function normalizeLoadedHomeMessages(
       modelUsed: m.modelUsed ?? m.model_used ?? null,
       errorMessage: m.errorMessage ?? m.error_message ?? null,
       surface: m.surface ?? null,
+      surfacedMemoriesCount: Array.isArray(m.surfaced_memories)
+        ? m.surfaced_memories.length
+        : Array.isArray(m.surfacedMemories)
+          ? m.surfacedMemories.length
+          : 0,
     };
   };
   return mapMessage
@@ -3603,7 +3609,7 @@ export default function Home() {
       )}
 
       {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
-      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt }))} />
+      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0) }))} />
 
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
