@@ -132,18 +132,26 @@ export default function Login() {
 
   return (
     <div style={{
-      minHeight: "100dvh",
+      position: "fixed",
+      inset: 0,
       width: "100%",
-      display: "flex",
-      alignItems: "flex-start",
-      justifyContent: "center",
-      background: "var(--atlas-bg)",
-      padding: "40px 16px calc(112px + env(safe-area-inset-bottom, 0px))",
-      position: "relative",
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
       touchAction: "pan-y",
+      overscrollBehaviorY: "contain",
+      background: "var(--atlas-bg)",
     }}>
+      <div style={{
+        minHeight: "100dvh",
+        width: "100%",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        background: "var(--atlas-bg)",
+        padding: "40px 16px calc(112px + env(safe-area-inset-bottom, 0px))",
+        position: "relative",
+        boxSizing: "border-box",
+      }}>
 
 
       {/* Background ambient glow */}
