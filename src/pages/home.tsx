@@ -179,6 +179,11 @@ function normalizeLoadedHomeMessages(
       modelUsed: m.modelUsed ?? m.model_used ?? null,
       errorMessage: m.errorMessage ?? m.error_message ?? null,
       surface: m.surface ?? null,
+      surfacedMemoriesCount: Array.isArray(m.surfaced_memories)
+        ? m.surfaced_memories.length
+        : Array.isArray(m.surfacedMemories)
+          ? m.surfacedMemories.length
+          : 0,
     };
   };
   return mapMessage
