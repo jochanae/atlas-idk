@@ -2576,6 +2576,8 @@ function RightPanel({
   onZipTrigger?: () => void;
   zipLoaded?: boolean;
   zipFileName?: string;
+  showModelPicker: boolean;
+  onShowModelPickerChange: (v: boolean) => void;
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
