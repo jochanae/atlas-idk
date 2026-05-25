@@ -3609,7 +3609,7 @@ export default function Home() {
       )}
 
       {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
-      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0) }))} />
+      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
 
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
