@@ -4436,6 +4436,9 @@ export default function Workspace() {
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [showModelPicker, setShowModelPicker] = useState(() => {
+    try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
+  });
   const [autoNameKey, setAutoNameKey] = useState(0);
   const [pendingResolvedNodeIds, setPendingResolvedNodeIds] = useState<string[]>([]);
   const [fileContext, setFileContext] = useState<string | null>(null);
