@@ -221,6 +221,54 @@ export default function OnboardingPage() {
         }),
       }).catch(() => {});
 
+      // ── Repo-scan upgrade path (optional) ──────────────────────────────
+      // If the user pasted a GitHub URL, autonomously derive architecture
+      // nodes and merge them straight into project.nodeState, then stamp
+      // a second Ledger entry. Failures are silent — we never block the
+      // genesis transition on an optional scan.
+      const trimmedRepo = repoUrl.trim();
+      if (trimmedRepo) {
+        ingestRepository(trimmedRepo)
+          .then(async (result) => {
+            if (result.nodes.length === 0) return;
+            const nodeState: Record<string, unknown> = {};
+            result.nodes.forEach((n) => {
+              nodeState[n.id] = {
+                resolved: n.resolved,
+                label: n.label,
+                type: n.type,
+                x: n.x,
+                y: n.y,
+                ...(n.details ? { details: n.details } : {}),
+                ...(n.strategicAnswer ? { strategicAnswer: n.strategicAnswer } : {}),
+              };
+            });
+            await fetch(`/api/projects/${data.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ nodeState }),
+            }).catch(() => {});
+            await fetch(`/api/projects/${data.id}/entries`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                title: `Repo ingested · ${result.nodes.length} nodes autonomously derived.`,
+                summary: result.summary,
+                status: "committed",
+                severity: "committed",
+                mode: "build",
+                verb: "new",
+              }),
+            }).catch(() => {});
+          })
+          .catch((scanErr) => {
+            console.warn("[onboarding] repo scan failed:", scanErr);
+          });
+      }
+
+
       setBurst(true);
       setForging(true);
       // Hand off after the camera has nearly finished its pull-back
