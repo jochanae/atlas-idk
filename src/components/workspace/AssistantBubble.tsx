@@ -1268,11 +1268,6 @@ export function AssistantBubble({
                 }}
               />
             </span>
-          ) : isNew ? (
-            <StreamingMarkdown
-              content={cleanedContent}
-              onComplete={onStreamActivityComplete}
-            />
           ) : (
             <MarkdownProse content={cleanedContent} />
           )}
