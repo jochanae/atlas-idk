@@ -411,6 +411,85 @@ export function TimelineRail({
           </div>
         </div>
       )}
+
+      {showSearch && (
+        <div
+          style={{
+            position: "fixed",
+            top: topOffset - 6,
+            right: 40,
+            zIndex: 210,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 10px",
+            background: "rgba(20,17,14,0.96)",
+            border: "1px solid rgba(201,162,76,0.32)",
+            borderRadius: 10,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+            minWidth: 240,
+            animation: "fadeIn 140ms ease",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.7)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20" y1="20" x2="16.2" y2="16.2" />
+          </svg>
+          <input
+            ref={searchInputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowSearch(false);
+                setQuery("");
+              } else if (e.key === "Enter") {
+                const first = Array.from(matchingIdx)[0];
+                if (typeof first === "number") scrollTo(first);
+              }
+            }}
+            placeholder="Search this thread"
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "var(--atlas-fg)",
+              fontFamily: "var(--app-font-sans)",
+              fontSize: 13,
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              color: "rgba(201,162,76,0.6)",
+              minWidth: 18,
+              textAlign: "right",
+            }}
+          >
+            {query ? matchingIdx.size : ""}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSearch(false);
+              setQuery("");
+            }}
+            aria-label="Close search"
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--atlas-muted)",
+              cursor: "pointer",
+              fontSize: 14,
+              padding: "0 2px",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </>
   );
 }
