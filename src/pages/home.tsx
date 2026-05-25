@@ -3354,26 +3354,31 @@ export default function Home() {
                         type="button"
                         onClick={it.action}
                         style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.08)",
+                          background: isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
+                          border: isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
                           backdropFilter: "blur(8px)",
                           WebkitBackdropFilter: "blur(8px)",
                           borderRadius: 20,
                           padding: "5px 12px",
-                          color: "rgba(212,175,55,0.5)",
+                          color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
                           cursor: "pointer",
                           fontFamily: "inherit",
                           fontSize: "var(--ts-caption)",
                           letterSpacing: "inherit",
-                          transition: "color 160ms ease, box-shadow 160ms ease",
+                          fontWeight: isParchment ? 600 : 400,
+                          transition: "color 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
                         }}
-                        onMouseEnter={(e) => { 
-                          (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.9)";
-                          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 10px rgba(212,175,55,0.15)";
+                        onMouseEnter={(e) => {
+                          const el = e.currentTarget as HTMLButtonElement;
+                          el.style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)";
+                          el.style.boxShadow = isParchment ? "0 2px 10px rgba(17,17,17,0.06)" : "0 0 10px rgba(212,175,55,0.15)";
+                          if (isParchment) el.style.borderColor = "rgba(17,17,17,0.25)";
                         }}
-                        onMouseLeave={(e) => { 
-                          (e.currentTarget as HTMLButtonElement).style.color = "rgba(212,175,55,0.5)";
-                          (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                        onMouseLeave={(e) => {
+                          const el = e.currentTarget as HTMLButtonElement;
+                          el.style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)";
+                          el.style.boxShadow = "none";
+                          if (isParchment) el.style.borderColor = "rgba(17,17,17,0.12)";
                         }}
                       >
                         {it.label}
