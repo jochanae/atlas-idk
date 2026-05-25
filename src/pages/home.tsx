@@ -22,6 +22,7 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
+import { ingestRepository } from "../lib/repoIngest";
 import { chooseGreeting, readLastActive, markActiveNow } from "../lib/atlas-voice";
 import { fileToBase64Safe } from "../lib/image-resize";
 import { useRequireAuth } from "../hooks/useAuth";
