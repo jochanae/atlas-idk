@@ -1622,6 +1622,7 @@ export default function Home() {
         onSuccess: (p) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          logProjectInitialized(p.id);
           setLocation(`/project/${p.id}?intake=true`);
         },
         onError: (err: any) => {
