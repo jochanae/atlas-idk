@@ -187,10 +187,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
       </div>
     </section>
   );
-}
-
-import { useRef } from "react";
-
+/* ─── Pricing ─── */
 function PricingSection({ onEnter }: { onEnter: () => void }) {
   const [visRef, setVisRef] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
