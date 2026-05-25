@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { ingestRepository } from "@/lib/repoIngest";
 
 // ── Intent → color mapping (locked by product) ──────────────────────────────
 const intents = [
@@ -159,6 +160,7 @@ export default function OnboardingPage() {
     try { return localStorage.getItem("axiom_user_intent") ?? ""; } catch { return ""; }
   });
   const [projectName, setProjectName] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forging, setForging] = useState(false);
@@ -218,6 +220,54 @@ export default function OnboardingPage() {
           mode: "decide",
         }),
       }).catch(() => {});
+
+      // ── Repo-scan upgrade path (optional) ──────────────────────────────
+      // If the user pasted a GitHub URL, autonomously derive architecture
+      // nodes and merge them straight into project.nodeState, then stamp
+      // a second Ledger entry. Failures are silent — we never block the
+      // genesis transition on an optional scan.
+      const trimmedRepo = repoUrl.trim();
+      if (trimmedRepo) {
+        ingestRepository(trimmedRepo)
+          .then(async (result) => {
+            if (result.nodes.length === 0) return;
+            const nodeState: Record<string, unknown> = {};
+            result.nodes.forEach((n) => {
+              nodeState[n.id] = {
+                resolved: n.resolved,
+                label: n.label,
+                type: n.type,
+                x: n.x,
+                y: n.y,
+                ...(n.details ? { details: n.details } : {}),
+                ...(n.strategicAnswer ? { strategicAnswer: n.strategicAnswer } : {}),
+              };
+            });
+            await fetch(`/api/projects/${data.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ nodeState }),
+            }).catch(() => {});
+            await fetch(`/api/projects/${data.id}/entries`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({
+                title: `Repo ingested · ${result.nodes.length} nodes autonomously derived.`,
+                summary: result.summary,
+                status: "committed",
+                severity: "committed",
+                mode: "build",
+                verb: "new",
+              }),
+            }).catch(() => {});
+          })
+          .catch((scanErr) => {
+            console.warn("[onboarding] repo scan failed:", scanErr);
+          });
+      }
+
 
       setBurst(true);
       setForging(true);
@@ -370,6 +420,32 @@ export default function OnboardingPage() {
                   transition: "border-color 240ms ease",
                 }}
               />
+              <input
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="Optional: paste primary repository URL (GitHub)"
+                spellCheck={false}
+                style={{
+                  width: "100%",
+                  marginTop: 20,
+                  border: "1px solid var(--atlas-border)",
+                  borderRadius: 8,
+                  background: "transparent",
+                  color: "var(--atlas-fg)",
+                  outline: "none",
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontFamily: "var(--app-font-mono)",
+                  padding: "10px 12px",
+                  boxSizing: "border-box",
+                  transition: "border-color 200ms ease",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--intent-glow, var(--atlas-gold))"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--atlas-border)"; }}
+              />
+              <p style={{ margin: "10px 0 0", color: "var(--atlas-muted)", fontSize: 11.5, opacity: 0.75, lineHeight: 1.5 }}>
+                If provided, Atlas will autonomously derive your architecture nodes and stamp them into the system map.
+              </p>
               <p style={{ margin: "16px 0 0", color: "var(--atlas-muted)", fontSize: 12.5 }}>
                 You can add more projects anytime.
               </p>
