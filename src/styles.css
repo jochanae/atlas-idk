@@ -427,10 +427,18 @@ html, body {
   border-radius: 0;
   transition: none;
 }
-[data-theme="parchment"] .atlas-input-shell {
-  background: transparent;
-  border: none;
-  box-shadow: none;
+[data-theme="parchment"] .atlas-input-shell,
+[data-theme="parchment"] .atlas-input-shell textarea,
+[data-theme="parchment"] .atlas-input-shell input {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(17, 17, 17, 0.08) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02) !important;
+  border-radius: 12px !important;
+}
+[data-theme="parchment"] .atlas-input-shell textarea,
+[data-theme="parchment"] .atlas-input-shell input {
+  box-shadow: none !important;
+  border: none !important;
 }
 .atlas-input-shell:focus-within {
   animation: none;
