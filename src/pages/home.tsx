@@ -3755,6 +3755,64 @@ export default function Home() {
           onForge={() => setShowQuickPrompt(true)}
         />
       </div>
+
+      {/* Desktop left rail (lg+ only) — persistent navigation surface */}
+      <nav
+        aria-label="Primary"
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          bottom: 16,
+          width: 56,
+          display: "none",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+          padding: "12px 0",
+          background: "color-mix(in oklab, var(--atlas-bg) 70%, transparent)",
+          border: "1px solid color-mix(in oklab, var(--atlas-fg) 8%, transparent)",
+          borderRadius: 14,
+          backdropFilter: "blur(12px)",
+          zIndex: 40,
+        }}
+        className="atlas-home-desktop-rail"
+      >
+        {[
+          { label: "Projects", onClick: () => setShowProjectsSheet(true), icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="9" y1="5" x2="9" y2="19"/></svg>
+          )},
+          { label: "Decisions", onClick: () => setLocation("/ledger"), icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+          )},
+          { label: "Map", onClick: () => setLocation("/map"), icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="2"/><circle cx="4" cy="4" r="1.5"/><circle cx="20" cy="4" r="1.5"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="20" r="1.5"/></svg>
+          )},
+          { label: "Parking", onClick: () => setLocation("/parking"), icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M10 16V8h3a2.5 2.5 0 010 5h-3"/></svg>
+          )},
+          { label: "Profile", onClick: () => setShowProfile(true), icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          )},
+        ].map((item) => (
+          <button
+            key={item.label}
+            onClick={item.onClick}
+            title={item.label}
+            aria-label={item.label}
+            style={{
+              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "var(--atlas-muted)",
+              cursor: "pointer", borderRadius: 10, opacity: 0.7, transition: "opacity 150ms, background 150ms, color 150ms",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = "var(--atlas-fg)"; e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-fg) 6%, transparent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.background = "transparent"; }}
+          >
+            {item.icon}
+          </button>
+        ))}
+      </nav>
+      <style>{`@media (min-width: 1024px) { .atlas-home-desktop-rail { display: flex !important; } }`}</style>
     </div>
   );
 }
