@@ -234,7 +234,7 @@ function PricingSection({ onEnter }: { onEnter: () => void }) {
   return (
     <section
       id="pricing"
-      ref={(el) => { sectionRef[1](el); }}
+      ref={sectionRef}
       className="relative z-10 py-28 md:py-36 px-6"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 h-px transition-all duration-[1.2s] ease-out" style={{
