@@ -1649,7 +1649,7 @@ function FlowNodeComponent({
   const icon = getNodeIcon(node);
   const defined = isNodeDefined(node);
   const moscow = getMoscow(node);
-  const isParchment = palette.rootBg === "#F5F1E8";
+  const isParchment = palette.rootBg === "#FAFAF7";
   const goldPulseName = isParchment ? "gold-pulse-parchment" : "gold-pulse";
   const amberPulseName = isParchment ? "amber-pulse-parchment" : "amber-pulse";
 
