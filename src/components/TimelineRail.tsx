@@ -182,7 +182,54 @@ export function TimelineRail({
             pointerEvents: "none",
           }}
         />
-        {ticks.map((t) => (
+        {/* Search affordance — minimalist trigger pinned at the top of the rail */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSearch((v) => !v);
+          }}
+          title="Search this thread"
+          aria-label="Search this thread"
+          style={{
+            position: "absolute",
+            top: -2,
+            right: 0,
+            width: 28,
+            height: 28,
+            borderRadius: 999,
+            background: "rgba(20,17,14,0.72)",
+            border: "1px solid rgba(201,162,76,0.28)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
+            zIndex: 2,
+            padding: 0,
+            color: "rgba(201,162,76,0.85)",
+            transition: "transform 140ms ease, background 140ms ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.06)";
+            e.currentTarget.style.background = "rgba(201,162,76,0.18)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.background = "rgba(20,17,14,0.72)";
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20" y1="20" x2="16.2" y2="16.2" />
+          </svg>
+        </button>
+
+        {ticks.map((t) => {
+          const isMatch = matchingIdx.has(t.idx);
+          return (
           <div
             key={t.idx}
             style={{
@@ -193,6 +240,8 @@ export function TimelineRail({
               justifyContent: "flex-end",
               gap: 6,
               padding: "2px 0",
+              transform: isMatch ? "scale(1.25)" : "scale(1)",
+              transition: "transform 180ms ease",
             }}
           >
             {/* Day chip — only on the first tick of a new day, inline to the LEFT of the spine */}
