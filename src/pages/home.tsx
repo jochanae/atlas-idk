@@ -2431,6 +2431,7 @@ export default function Home() {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                logProjectInitialized(p.id);
                 sessionStorage.setItem("atlas-open-tab", "map");
                 setLocation(`/project/${p.id}?intake=true`);
               },
@@ -2441,6 +2442,7 @@ export default function Home() {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                logProjectInitialized(p.id);
                 setLocation(`/project/${p.id}?intake=true`);
               },
             });
