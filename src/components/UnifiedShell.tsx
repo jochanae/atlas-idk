@@ -72,12 +72,21 @@ function projectIdFromPath(pathname: string): number | null {
 }
 
 function ShellWordmark() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const handleClick = () => {
+    if (location === "/home") {
+      // Already on home — reset the tray to ambient instead of being a no-op.
+      window.dispatchEvent(new CustomEvent("axiom:home-reset"));
+    } else {
+      setLocation("/home");
+    }
+  };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <button
         type="button"
-        onClick={() => setLocation("/home")}
+        onClick={handleClick}
+        aria-label={location === "/home" ? "Return to ambient Nexus" : "Go home"}
         style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}
       >
         <img
@@ -104,6 +113,7 @@ function ShellWordmark() {
     </div>
   );
 }
+
 
 
 function ShellClock() {

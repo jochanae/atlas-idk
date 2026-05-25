@@ -1,10 +1,13 @@
 import { useLocation } from "wouter";
+import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useListProjects, useListSessions } from "@workspace/api-client-react";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { relativeTime } from "../lib/atlas-utils";
 
 export default function Sessions() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const { data: projects = [], isLoading: projectsLoading } = useListProjects();
 
   return (
@@ -19,11 +22,12 @@ export default function Sessions() {
         <div style={{ padding: "10px 16px 10px", display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
-            onClick={() => setLocation("/home")}
+            onClick={() => goBack()}
             style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", background: "transparent", border: "none", padding: 0, cursor: "pointer", opacity: 0.7 }}
           >
-            ← Home
+            ← Back
           </button>
+
         </div>
         <div style={{ padding: "0 16px 14px" }}>
           <h1 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", margin: 0, color: "var(--atlas-fg)" }}>Sessions</h1>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import type React from "react";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
@@ -22,6 +23,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export default function ParkingLot() {
   const [, setLocation] = useLocation();
+  const { goBack } = useEntryReferrer();
+
   const qc = useQueryClient();
 
   const { data: projects = [] } = useListProjects();
@@ -154,7 +157,8 @@ export default function ParkingLot() {
         {/* Back */}
         <button
           type="button"
-          onClick={() => window.history.back()}
+          onClick={() => goBack()}
+
           style={{
             background: "transparent", border: "none", cursor: "pointer",
             display: "flex", alignItems: "center", gap: 6,
