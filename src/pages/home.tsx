@@ -1058,11 +1058,15 @@ function FirstRunOverlay({
   onSpecMode,
   onWorkspace,
   onDismiss,
+  repoUrl,
+  setRepoUrl,
 }: {
   loading: boolean;
   onSpecMode: () => void;
   onWorkspace: () => void;
   onDismiss?: () => void;
+  repoUrl: string;
+  setRepoUrl: (v: string) => void;
 }) {
 
   return createPortal(
