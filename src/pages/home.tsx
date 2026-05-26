@@ -3685,16 +3685,19 @@ export default function Home() {
           max-width: none !important;
           padding-bottom: 0 !important;
         }
-        @media (max-width: 767px) {
-          .atlas-home-tablet-overview {
-            display: none !important;
-          }
+        @keyframes atlasScrollHintBob {
+          0%, 100% { transform: translateY(0); opacity: 0.6; }
+          50%      { transform: translateY(3px); opacity: 1; }
         }
         @media (min-width: 768px) {
+          .atlas-home-scroll-hint {
+            display: none !important;
+          }
           .atlas-overview-sheet-layer {
             display: none;
           }
         }
+
         @media (min-width: 1024px) {
           .atlas-home-responsive-shell {
             width: min(calc(100% - 48px), 1100px);
