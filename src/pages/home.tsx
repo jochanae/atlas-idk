@@ -1523,7 +1523,7 @@ export default function Home() {
 
   const { data: projects, isLoading } = useListProjects();
   const mostRecentActiveProjectId = useMemo(() => {
-    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "active");
+    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.status === "shaping");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
     const latest = candidates.reduce<Project | null>((current, project: Project) => {
       if (!current) return project;
