@@ -402,12 +402,12 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
       </div>
 
       {/* 0. STAT TILES + SESSIONS CHART (was the dashboard hero) */}
-      <RevealOnScroll delayMs={0}>
+      <RevealOnScroll delayMs={0} className="bfd-col-left">
         <StatsHero />
       </RevealOnScroll>
 
       {/* 1. WHERE WERE WE */}
-      <RevealOnScroll delayMs={40}>
+      <RevealOnScroll delayMs={40} className="bfd-col-left">
 
         <div className="atlas-discovery-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -468,18 +468,12 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
       </RevealOnScroll>
 
       {/* 2. ACTIVITY HUB */}
-      <RevealOnScroll delayMs={80}>
+      <RevealOnScroll delayMs={80} className="bfd-col-left">
         <ActivityHubCard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
-      {/* 3. CONNECTIONS DOCK — live wired */}
-      <RevealOnScroll delayMs={160}>
-        <ConnectionsDock />
-      </RevealOnScroll>
-
-
-      {/* 4. COGNITIVE MOMENTUM (parking) */}
-      <RevealOnScroll delayMs={240}>
+      {/* 3. COGNITIVE MOMENTUM (parking) — right column, top */}
+      <RevealOnScroll delayMs={120} className="bfd-col-right">
         <div className="atlas-discovery-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
@@ -503,6 +497,11 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
             Ideas waiting for their moment.
           </p>
         </div>
+      </RevealOnScroll>
+
+      {/* 4. CONNECTIONS DOCK — right column, bottom */}
+      <RevealOnScroll delayMs={200} className="bfd-col-right">
+        <ConnectionsDock />
       </RevealOnScroll>
     </div>
   );
