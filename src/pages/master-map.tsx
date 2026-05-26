@@ -788,6 +788,7 @@ export default function MasterMap() {
     };
 
     const handleLayer23Click = (cx: number, cy: number): boolean => {
+      // Layer 1 project taps are handled by the outer hitTest → dive to Layer 2.
       if (currentLayerRef.current === 1) return false;
       setRay(cx, cy);
       const hit = layerStack.hit(raycaster);
@@ -803,12 +804,8 @@ export default function MasterMap() {
           setLocation(`/blueprints/${hit.id}`);
           return true;
         }
-        if (hit.subType === "DECISION") {
-          setLocation(`/entry/${hit.id}`);
-          return true;
-        }
-        if (hit.subType === "SPRINT" && layer === 2) {
-          // Drill into Layer 3
+        if (layer === 2) {
+          // Any Layer 2 node drills into Layer 3 (Assets) with this node as focus.
           const projectId = useMapStore.getState().context.projectId;
           const projectName = useMapStore.getState().context.projectName;
           navigateToNode(hit.id, [hit.worldPos.x, hit.worldPos.y, hit.worldPos.z], 3, {
@@ -817,6 +814,10 @@ export default function MasterMap() {
             parentId: hit.id,
             parentLabel: hit.label,
           });
+          return true;
+        }
+        if (hit.subType === "DECISION") {
+          setLocation(`/entry/${hit.id}`);
           return true;
         }
         // Default: show glassmorphic tooltip
