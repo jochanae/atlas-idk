@@ -7244,7 +7244,7 @@ export default function Workspace() {
                   <div
                     onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
                     onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
-                    onDoubleClick={() => setChatWidthPct(45)}
+                    onDoubleClick={() => setChatWidthPct(defaultChatPct())}
                     title="Drag to resize · Double-tap to reset"
                     style={{
                       width: 12, flexShrink: 0, cursor: "col-resize",
