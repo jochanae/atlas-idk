@@ -8298,7 +8298,7 @@ export default function Workspace() {
       <NewProjectModal
         open={showNewProjectModal}
         onClose={() => { setShowNewProjectModal(false); setCreateProjectError(null); }}
-        onCreate={(name) => handleCreateProjectFromWorkspace(name)}
+        onCreate={(name, repo) => handleCreateProjectFromWorkspace(name, repo)}
         creating={createProjectMutation.isPending}
         error={createProjectError}
       />
