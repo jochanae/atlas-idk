@@ -94,7 +94,7 @@ export function UserBubble({
         >
           <div
             style={{
-              fontSize: "var(--ts-body)",
+              fontSize: 16,
               lineHeight: 1.55,
               color: "var(--atlas-fg)",
               fontFamily: "var(--app-font-sans)",
@@ -102,6 +102,7 @@ export function UserBubble({
               wordBreak: "break-word",
             }}
           >
+
             {displayContent}
           </div>
           {isTall && (
