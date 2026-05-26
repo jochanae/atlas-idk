@@ -1231,7 +1231,7 @@ export function AssistantBubble({
           </div>
         )}
 
-        <div style={{ fontSize: 14, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.85 }}>
+        <div style={{ fontSize: 16, lineHeight: 1.85, color: "var(--atlas-fg)", opacity: 0.9, fontFamily: "var(--app-font-sans)" }}>
           {message.streaming ? (
             <span style={{ opacity: 0.85, whiteSpace: "pre-wrap" }}>
               {cleanedContent}
