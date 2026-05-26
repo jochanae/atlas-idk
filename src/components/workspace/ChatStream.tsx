@@ -152,9 +152,9 @@ export function ChatStream(props: ChatStreamProps) {
     onPushSuccess,
   } = props;
 
-  // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
+  // Symmetric gutters matching composer edges (composer wrapper = 14px each side).
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
-  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 104px 96px 24px", position: "relative", scrollbarWidth: "none" };
+  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 14px 96px 14px", position: "relative", scrollbarWidth: "none" };
 
   return (
     <div
