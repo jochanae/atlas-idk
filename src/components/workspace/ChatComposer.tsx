@@ -763,7 +763,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
               <button
                 onClick={() => setPlanMode(v => !v)}
-                title={planMode ? "Plan mode on" : "Plan mode off"}
+                title="Plan mode"
                 aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
@@ -772,10 +772,14 @@ export function ChatComposer(props: ChatComposerProps) {
                   color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 1,
-                  fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "1px", textTransform: "uppercase",
                 }}
               >
-                Plan
+                <svg width="14" height="14" viewBox=" 0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="1" y="1" width="6" height="6" rx="1"/>
+                  <rect x="9" y="1" width="6" height="6" rx="1"/>
+                  <rect x="1" y="9" width="6" height="6" rx="1"/>
+                  <rect x="9" y="9" width="6" height="6" rx="1"/>
+                </svg>
               </button>
 
               {voiceSupported && (
