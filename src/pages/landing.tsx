@@ -176,15 +176,19 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
         >
           Enter Axiom →
         </button>
-      </div>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30">
-        <div className="w-px h-8" style={{ background: "linear-gradient(to bottom, transparent, #D4AF37)" }} />
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.2em", color: "#D4AF37" }}>
-          SCROLL
-        </span>
+        {/* Scroll hint — sits below the button with breathing room */}
+        <div
+          className="mt-14 flex flex-col items-center gap-2"
+          style={{ animation: "axiomScrollBob 2.4s ease-in-out infinite" }}
+        >
+          <div className="w-px h-8" style={{ background: "linear-gradient(to bottom, transparent, rgba(212,175,55,0.55))" }} />
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.3em", color: "rgba(212,175,55,0.55)" }}>
+            SCROLL
+          </span>
+        </div>
       </div>
+      <style>{`@keyframes axiomScrollBob { 0%,100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(6px); opacity: 0.7; } }`}</style>
     </section>
   );
 }
