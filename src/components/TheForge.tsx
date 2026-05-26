@@ -100,6 +100,15 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   const [repoDocsFound, setRepoDocsFound] = useState<string[]>([]);
   const [repoScanStatus, setRepoScanStatus] = useState<"idle" | "loading" | "done">("idle");
 
+  // Project DNA — loaded from project.shape on the backend. Free-form record so
+  // future shape keys (identity / constraints / format / …) can be surfaced
+  // without a schema change here.
+  const [projectShape, setProjectShape] = useState<Record<string, unknown>>({});
+  const dnaValue = (key: string): string => {
+    const v = projectShape[key];
+    return typeof v === "string" ? v : "";
+  };
+
   // Quick Prompt state — auto-detect platform from hostname; respect prop override
   const detectedPlatform = detectPlatformId();
   const [selectedPlatform, setSelectedPlatform] = useState(() => {
