@@ -132,6 +132,8 @@ type Project = {
   entryCount?: number;
   latestEntryAt?: string | null;
   latestSnapshotScore?: number | null;
+  status?: "shaping" | "committed" | "archived";
+  surfaceMode?: "ambient" | "operational";
 };
 type Connection = { a: number; b: number; strength: number };
 type DecisionStats = { committed: number; tension: number };
