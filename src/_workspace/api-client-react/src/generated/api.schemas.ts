@@ -53,6 +53,12 @@ export interface Project {
   latestSnapshotScore?: number | null;
   createdAt: string;
   updatedAt: string;
+  surfaceMode: ProjectSurfaceMode;
+  shape: ProjectShape;
+  /** @nullable */
+  workingTitle: string | null;
+  /** @nullable */
+  committedAt: string | null;
 }
 
 export interface CreateProjectBody {
