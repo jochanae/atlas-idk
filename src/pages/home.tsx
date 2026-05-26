@@ -1060,6 +1060,7 @@ function FirstRunOverlay({
   onDismiss,
   repoUrl,
   setRepoUrl,
+  error,
 }: {
   loading: boolean;
   onSpecMode: () => void;
@@ -1067,6 +1068,7 @@ function FirstRunOverlay({
   onDismiss?: () => void;
   repoUrl: string;
   setRepoUrl: (v: string) => void;
+  error?: string | null;
 }) {
 
   return createPortal(
