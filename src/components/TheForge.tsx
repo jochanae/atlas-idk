@@ -78,9 +78,14 @@ interface Props {
   onClose: () => void;
   onNodesReady?: (nodes: ArchNode[]) => void;
   onFillChatInput?: (text: string) => void;
+  /** Optional scope: when set, Forge hydrates context for this node only and surfaces a breadcrumb. */
+  scopeNodeId?: string | null;
+  scopeNodeLabel?: string | null;
+  /** Clear scope handler — resets to full project hydration. */
+  onClearScope?: () => void;
 }
 
-export function TheForge({ platform, readinessScore = 0, activeProjectName, projectId, defaultTab = "forge", preloadContent, onClose, onNodesReady, onFillChatInput }: Props) {
+export function TheForge({ platform, readinessScore = 0, activeProjectName, projectId, defaultTab = "forge", preloadContent, onClose, onNodesReady, onFillChatInput, scopeNodeId, scopeNodeLabel, onClearScope }: Props) {
   const [isMobile] = useState(() => window.innerWidth < 768);
   const theme = useThemeMode();
   const [tab, setTab] = useState<"forge" | "prompt" | "dna">(defaultTab);
