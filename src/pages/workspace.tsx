@@ -7058,7 +7058,7 @@ export default function Workspace() {
               </LongPressTip>
             )}
             {isMobile && (() => {
-              const moreActive = ["memory","blueprints","connections"].includes(mobileTab);
+              const moreActive = ["memory","blueprints","connections","files"].includes(mobileTab);
               return (
                 <button
                   type="button"
@@ -8089,6 +8089,16 @@ export default function Workspace() {
               margin: "0 auto 10px",
             }} />
             {([
+              {
+                id: "files" as const,
+                label: "Files",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                  </svg>
+                ),
+                onSelect: () => { setMobileTab("files"); setShowMoreSheet(false); },
+              },
               {
                 id: "memory" as const,
                 label: "Memory",

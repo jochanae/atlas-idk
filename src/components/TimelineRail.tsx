@@ -267,7 +267,7 @@ export function TimelineRail({
         onTouchStart={startPress}
         onTouchEnd={endPress}
         style={{
-          position: "absolute",
+          position: "fixed",
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
