@@ -7356,6 +7356,10 @@ export default function Workspace() {
               onPrCreated: (url) => { setSessionPrUrl(url); setLeftTab("diff"); },
               onExtractToForge: (content) => { setForgePreloadContent(content); setShowForgeExternal(true); },
               onReviewDiff: () => setLeftTab("diff"),
+              onOpenArtifact: (_title: string) => {
+                setLeftTab("artifacts");
+                if (isMobile) setMobileTab("artifacts");
+              },
               onEditDeclined: () => {
                 if (sessionId) {
                   const editsInFlight = messages
