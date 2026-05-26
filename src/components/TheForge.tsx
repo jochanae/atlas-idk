@@ -100,6 +100,15 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   const [repoDocsFound, setRepoDocsFound] = useState<string[]>([]);
   const [repoScanStatus, setRepoScanStatus] = useState<"idle" | "loading" | "done">("idle");
 
+  // Project DNA — loaded from project.shape on the backend. Free-form record so
+  // future shape keys (identity / constraints / format / …) can be surfaced
+  // without a schema change here.
+  const [projectShape, setProjectShape] = useState<Record<string, unknown>>({});
+  const dnaValue = (key: string): string => {
+    const v = projectShape[key];
+    return typeof v === "string" ? v : "";
+  };
+
   // Quick Prompt state — auto-detect platform from hostname; respect prop override
   const detectedPlatform = detectPlatformId();
   const [selectedPlatform, setSelectedPlatform] = useState(() => {
@@ -164,7 +173,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
     fetch(`/api/projects/${projectId}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(async (proj: { linkedRepo?: string | null } | null) => {
+      .then(async (proj: { linkedRepo?: string | null; shape?: Record<string, unknown> | null } | null) => {
+        if (proj?.shape && typeof proj.shape === "object") {
+          setProjectShape(proj.shape);
+        }
         if (!proj?.linkedRepo) { setRepoScanStatus("done"); return; }
         let repoInfo: { fullName?: string; defaultBranch?: string } = {};
         try { repoInfo = JSON.parse(proj.linkedRepo); } catch { setRepoScanStatus("done"); return; }
@@ -1056,11 +1068,17 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Identity</span>
           <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>Who you are and what you&apos;re building</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
-          Define your core persona, vision, and strategic context
-        </p>
+        {dnaValue("identity") ? (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+            {dnaValue("identity")}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+            Define your core persona, vision, and strategic context
+          </p>
+        )}
         <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
-          + Add Identity
+          {dnaValue("identity") ? "Edit Identity" : "+ Add Identity"}
         </button>
       </div>
 
@@ -1070,11 +1088,17 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Constraints</span>
           <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>The boundaries the AI must respect</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
-          Add financial, stylistic, or technical constraints
-        </p>
+        {dnaValue("constraints") ? (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+            {dnaValue("constraints")}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+            Add financial, stylistic, or technical constraints
+          </p>
+        )}
         <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
-          + Add Constraint
+          {dnaValue("constraints") ? "Edit Constraint" : "+ Add Constraint"}
         </button>
       </div>
 
@@ -1084,11 +1108,17 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Format</span>
           <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>How you want intelligence packaged</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
-          Define your preferred output structure and style
-        </p>
+        {dnaValue("format") ? (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+            {dnaValue("format")}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+            Define your preferred output structure and style
+          </p>
+        )}
         <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
-          + Add Format
+          {dnaValue("format") ? "Edit Format" : "+ Add Format"}
         </button>
       </div>
 

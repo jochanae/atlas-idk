@@ -237,6 +237,7 @@ export default function MasterMap() {
   const statsRef = useRef<Map<number, DecisionStats>>(new Map());
   const tensionsRef = useRef<Tension[]>([]);
   const hoveredTensionRef = useRef<HoveredTension | null>(null);
+  const shapingCountRef = useRef(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
@@ -406,7 +407,8 @@ export default function MasterMap() {
 
   useEffect(() => {
     setLoading(true);
-    fetchAll().then(({ list }) => {
+    fetchAll().then(({ list, shapingCount }) => {
+      shapingCountRef.current = shapingCount;
       setProjects(list);
       setConnections(buildConns(list));
       const m = new Map<number, string>();
@@ -419,7 +421,8 @@ export default function MasterMap() {
   useEffect(() => {
     if (loading) return;
     const iv = setInterval(() => {
-      fetchAll().then(({ list }) => {
+      fetchAll().then(({ list, shapingCount }) => {
+        shapingCountRef.current = shapingCount;
         const fresh: number[] = [];
         list.forEach(p => {
           const prev = prevEntryDates.current.get(p.id);
@@ -545,6 +548,21 @@ export default function MasterMap() {
     );
     nexRingMesh.rotation.x = Math.PI / 2.8;
     scene.add(nexRingMesh);
+
+    // Shaping halo — soft amber-gold sphere whose intensity scales with the
+    // number of in-flight shaping projects (status === "shaping"). Acts as an
+    // ambient pressure indicator around the Nexium without claiming a node.
+    const shapingHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(NEXIUM_R * 2.2, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xC9A24C,
+        transparent: true,
+        opacity: 0,
+        side: THREE.BackSide,
+        depthWrite: false,
+      }),
+    );
+    scene.add(shapingHalo);
 
     // Nexium "SOURCE" label handled in HTML overlay — we add a ref below
 
@@ -1059,6 +1077,15 @@ export default function MasterMap() {
       const glow = 0.45 + Math.sin(t * 1.8) * 0.15;
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
+
+      // Shaping halo breathes proportional to in-flight shaping count.
+      const sc = shapingCountRef.current;
+      const haloTarget = sc > 0 ? Math.min(0.05 + sc * 0.025, 0.22) : 0;
+      const haloMat = shapingHalo.material as THREE.MeshBasicMaterial;
+      const breathe = 1 + Math.sin(t * 0.9) * 0.06;
+      haloMat.opacity += (haloTarget * (0.85 + Math.sin(t * 1.4) * 0.15) - haloMat.opacity) * 0.05;
+      const haloScaleTarget = sc > 0 ? 1 + Math.min(sc * 0.06, 0.5) : 1;
+      shapingHalo.scale.setScalar(haloScaleTarget * breathe);
 
       // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
