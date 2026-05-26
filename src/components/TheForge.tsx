@@ -173,7 +173,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
     fetch(`/api/projects/${projectId}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(async (proj: { linkedRepo?: string | null } | null) => {
+      .then(async (proj: { linkedRepo?: string | null; shape?: Record<string, unknown> | null } | null) => {
+        if (proj?.shape && typeof proj.shape === "object") {
+          setProjectShape(proj.shape);
+        }
         if (!proj?.linkedRepo) { setRepoScanStatus("done"); return; }
         let repoInfo: { fullName?: string; defaultBranch?: string } = {};
         try { repoInfo = JSON.parse(proj.linkedRepo); } catch { setRepoScanStatus("done"); return; }
