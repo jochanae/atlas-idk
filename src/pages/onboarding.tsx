@@ -615,6 +615,19 @@ export default function OnboardingPage() {
               })}
             </div>
             <PrimaryButton disabled={!selectedIntent} onClick={() => selectedIntent && setStep(3)}>This is me →</PrimaryButton>
+            <DeepDiveHelper
+              intent={selectedIntent}
+              projectName={projectName}
+              repoUrl={repoUrl}
+              onApply={(r) => {
+                if (r.intent) {
+                  setSelectedIntent(r.intent);
+                  try { localStorage.setItem("axiom_user_intent", r.intent); } catch {}
+                }
+                if (r.projectName) setProjectName(r.projectName);
+                if (r.repoUrl) setRepoUrl(r.repoUrl);
+              }}
+            />
           </section>
         )}
 
