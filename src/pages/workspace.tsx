@@ -54,6 +54,7 @@ import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
+import { parseLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import { supabase } from "@/integrations/supabase/client";
 import type { Plan, PlanExecution } from "../lib/plan";
@@ -2528,13 +2529,7 @@ function ConnectionsTab({
     }
   };
 
-  let linkedRepo: { fullName?: string } | null = null;
-  try {
-    if (project?.linkedRepo) {
-      const parsed = JSON.parse(project.linkedRepo) as string | { fullName?: string };
-      linkedRepo = typeof parsed === "string" ? { fullName: parsed } : parsed;
-    }
-  } catch {}
+  const linkedRepo = parseLinkedRepo(project?.linkedRepo);
 
   const repoName = linkedRepo?.fullName ?? null;
   const githubConnected = !!githubConnection;
@@ -5584,11 +5579,7 @@ export default function Workspace() {
 
   // Sync linkedRepo from project DB when project loads
   useEffect(() => {
-    if (!project?.linkedRepo) return;
-    try {
-      const repo = JSON.parse(project.linkedRepo) as LinkedRepo;
-      setLinkedRepo(repo);
-    } catch {}
+    setLinkedRepo(parseLinkedRepo(project?.linkedRepo) as LinkedRepo | null);
   }, [project?.linkedRepo]);
 
   // Load push history from DB on project load (FIX 2)
