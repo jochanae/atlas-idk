@@ -185,7 +185,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         }
         if (!proj?.linkedRepo) { setRepoScanStatus("done"); return; }
         const repoInfo = parseLinkedRepo(proj.linkedRepo);
-        if (!repoInfo.fullName) { setRepoScanStatus("done"); return; }
+        if (!repoInfo?.fullName) { setRepoScanStatus("done"); return; }
         const branch = repoInfo.defaultBranch ?? "main";
         const found: { path: string; content: string }[] = [];
         let totalLen = 0;
