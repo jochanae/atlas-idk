@@ -5192,6 +5192,9 @@ export default function Workspace() {
   // Explicit state captured at pill-open time so TheForge always gets a stable context snapshot
   const [forgeActiveProjectName, setForgeActiveProjectName] = useState<string | undefined>(undefined);
   const [forgeActiveProjectId, setForgeActiveProjectId] = useState<number | undefined>(undefined);
+  // Scope: when Forge is opened from a Master Map node, hydrate just that node's context
+  const [forgeScopeNodeId, setForgeScopeNodeId] = useState<string | null>(null);
+  const [forgeScopeNodeLabel, setForgeScopeNodeLabel] = useState<string | null>(null);
   // autoNameKey moved above (consumed by useChatStream).
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
