@@ -767,8 +767,8 @@ export function ChatComposer(props: ChatComposerProps) {
                 aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
-                  background: planMode ? "rgba(201,162,76,0.1)" : "var(--atlas-surface)",
-                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`,
+                  background: planMode ? "rgba(201,162,76,0.1)" : "transparent",
+                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "transparent"}`,
                   color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 1,
