@@ -6,6 +6,7 @@ import {
   getGetProjectQueryKey,
 } from "@workspace/api-client-react";
 import { LoadingSpinner } from "../ui/loading-spinner";
+import { parseLinkedRepo } from "@/lib/githubRepo";
 
 export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger }: {
   projectId: number;
@@ -139,7 +140,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const autoDetectTriedRef = useRef<string | null>(null);
 
   const { data: previewProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
-  const linkedRepo = (() => { try { return previewProject?.linkedRepo ? JSON.parse(previewProject.linkedRepo) as { fullName: string; defaultBranch?: string } : null; } catch { return null; } })();
+  const linkedRepo = parseLinkedRepo(previewProject?.linkedRepo);
   const token = previewProject?.githubToken ?? null;
 
 
