@@ -344,15 +344,31 @@ const BASE_STORAGE_KEY = "axiom-flow-nodes";
 // Seeded radial mission map — replaces the lonely-goal default so the canvas
 // reads as "populated" the moment a user opens a new project. Positions orbit
 // the goal at (300, 250); fitMap() auto-zooms to fit on mount and resize.
-const INITIAL_NODES: ArchNode[] = [
-  { id: "goal",        label: "The Goal",        type: "goal",        resolved: false, x: 300, y: 250, details: "What does winning look like for this project?" },
-  { id: "must-1",      label: "Core requirement", type: "requirement", resolved: false, x: 300, y:  80, meta: "must",  details: "Tap to define the must-have that makes v1 real." },
-  { id: "blocker-1",   label: "Open blocker",     type: "blocker",     resolved: false, x: 520, y: 160, details: "Tap to name a blocker that's slowing the goal down." },
-  { id: "decision-1",  label: "Open decision",    type: "decision",    resolved: false, x: 520, y: 340, details: "Tap to capture a decision that's still in tension." },
-  { id: "sprint-1",    label: "Sprint 1",         type: "sprint",      resolved: false, x:  80, y: 160, details: "What single deliverable closes this sprint?" },
-  { id: "should-1",    label: "Should-have",      type: "priority",    resolved: false, x:  80, y: 340, meta: "should", details: "What's the cost of deferring this?" },
-  { id: "must-2",      label: "Foundation",       type: "requirement", resolved: false, x: 300, y: 420, meta: "must",  details: "What has to be true before everything else?" },
-];
+// The goal label/details are project-aware so the canvas reads as a real
+// goal ("Ship <project>") instead of the generic placeholder "The Goal".
+function goalLabelFor(projectName?: string): string {
+  const trimmed = (projectName ?? "").trim();
+  if (!trimmed || /^untitled/i.test(trimmed)) return "Name the goal";
+  return `Ship ${trimmed}`;
+}
+function goalDetailsFor(projectName?: string): string {
+  const trimmed = (projectName ?? "").trim();
+  if (!trimmed || /^untitled/i.test(trimmed)) {
+    return "Tap to state the outcome — what does winning look like?";
+  }
+  return `What does shipping ${trimmed} actually look like? Tap to sharpen the outcome.`;
+}
+function buildInitialNodes(projectName?: string): ArchNode[] {
+  return [
+    { id: "goal",        label: goalLabelFor(projectName),  type: "goal",        resolved: false, x: 300, y: 250, details: goalDetailsFor(projectName) },
+    { id: "must-1",      label: "Core requirement", type: "requirement", resolved: false, x: 300, y:  80, meta: "must",  details: "Tap to define the must-have that makes v1 real." },
+    { id: "blocker-1",   label: "Open blocker",     type: "blocker",     resolved: false, x: 520, y: 160, details: "Tap to name a blocker that's slowing the goal down." },
+    { id: "decision-1",  label: "Open decision",    type: "decision",    resolved: false, x: 520, y: 340, details: "Tap to capture a decision that's still in tension." },
+    { id: "sprint-1",    label: "Sprint 1",         type: "sprint",      resolved: false, x:  80, y: 160, details: "What single deliverable closes this sprint?" },
+    { id: "should-1",    label: "Should-have",      type: "priority",    resolved: false, x:  80, y: 340, meta: "should", details: "What's the cost of deferring this?" },
+    { id: "must-2",      label: "Foundation",       type: "requirement", resolved: false, x: 300, y: 420, meta: "must",  details: "What has to be true before everything else?" },
+  ];
+}
 
 const INITIAL_EDGES: ArchEdge[] = [
   { id: "e-goal-must-1",     from: "goal", to: "must-1" },
@@ -393,12 +409,21 @@ function isLegacyDefault(parsedNodes: unknown, parsedEdges: unknown): boolean {
   return true;
 }
 
+// Detect a seeded goal node that still carries the original generic
+// "The Goal" label. Projects seeded before the goal became project-aware
+// land here; we rewrite ONLY the goal label/details, never user edits.
+function isStaleGenericGoal(node: Partial<ArchNode> | undefined): boolean {
+  if (!node) return false;
+  if (node.id !== "goal" || node.type !== "goal") return false;
+  return node.label === "The Goal";
+}
+
 // Migration marker so we only ever reseed a given project once. After a
 // successful reseed (or after we decide a project is NOT legacy), we stamp this
 // key and never reconsider that project again.
 const MIGRATION_KEY_SUFFIX = "-seed-v2-applied";
 
-function loadNodes(key: string): ArchNode[] {
+function loadNodes(key: string, projectName?: string): ArchNode[] {
   try {
     const migrationKey = `${key}${MIGRATION_KEY_SUFFIX}`;
     const alreadyMigrated = localStorage.getItem(migrationKey) === "1";
@@ -406,24 +431,32 @@ function loadNodes(key: string): ArchNode[] {
     if (!r) {
       // Brand-new project: seed and mark migrated.
       localStorage.setItem(migrationKey, "1");
-      return INITIAL_NODES;
+      return buildInitialNodes(projectName);
     }
     const parsed = JSON.parse(r) as ArchNode[];
     if (!Array.isArray(parsed) || parsed.length === 0) {
       localStorage.setItem(migrationKey, "1");
-      return INITIAL_NODES;
+      return buildInitialNodes(projectName);
     }
-    if (alreadyMigrated) return parsed;
+    // Rewrite stale generic "The Goal" label on existing projects so the
+    // canvas reads as a real goal. Only the goal label/details are updated;
+    // all other fields (position, resolved, meta) are preserved.
+    const upgraded = parsed.map(n =>
+      isStaleGenericGoal(n)
+        ? { ...n, label: goalLabelFor(projectName), details: goalDetailsFor(projectName) }
+        : n
+    );
+    if (alreadyMigrated) return upgraded;
     const edgesRaw = localStorage.getItem(`${key}-edges`);
     const parsedEdges = edgesRaw ? JSON.parse(edgesRaw) : null;
     if (isLegacyDefault(parsed, parsedEdges)) {
       localStorage.setItem(migrationKey, "1");
-      return INITIAL_NODES;
+      return buildInitialNodes(projectName);
     }
     // Not legacy — stamp it so we never re-check.
     localStorage.setItem(migrationKey, "1");
-    return parsed;
-  } catch { return INITIAL_NODES; }
+    return upgraded;
+  } catch { return buildInitialNodes(projectName); }
 }
 
 function loadEdges(key: string): ArchEdge[] {
@@ -495,7 +528,7 @@ export function AxiomFlow({
   const theme = useThemeMode();
   const palette = flowPaletteFor(theme);
   const [, setLocation] = useLocation();
-  const [nodes, setNodes] = useState<ArchNode[]>(() => loadNodes(storageKey));
+  const [nodes, setNodes] = useState<ArchNode[]>(() => loadNodes(storageKey, projectName));
   const [edges, setEdges] = useState<ArchEdge[]>(() => loadEdges(storageKey));
   const mapSeenKey = projectId ? `atlas-map-seen-${projectId}` : "atlas-map-seen-standalone";
   const [summaryCollapsed, setSummaryCollapsed] = useState(() => {
@@ -505,6 +538,21 @@ export function AxiomFlow({
   useEffect(() => {
     try { setSummaryCollapsed(localStorage.getItem(mapSeenKey) === "1"); } catch { setSummaryCollapsed(false); }
   }, [mapSeenKey]);
+
+  // If projectName arrives or changes after mount and the goal node still
+  // carries the generic "The Goal" label, rewrite just the goal to read as
+  // a real, project-aware goal. User-edited labels are left untouched.
+  useEffect(() => {
+    setNodes(prev => {
+      const goal = prev.find(n => n.id === "goal");
+      if (!goal || goal.label !== "The Goal") return prev;
+      return prev.map(n =>
+        n.id === "goal"
+          ? { ...n, label: goalLabelFor(projectName), details: goalDetailsFor(projectName) }
+          : n
+      );
+    });
+  }, [projectName]);
 
   // Sync strategicAnswer from DB on first load. `resolved` is now strictly
   // derived from a non-empty strategicAnswer — legacy `Record<id, boolean>`
