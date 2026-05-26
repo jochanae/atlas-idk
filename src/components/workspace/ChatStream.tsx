@@ -1,4 +1,5 @@
 import type { CSSProperties, RefObject } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
@@ -155,7 +156,13 @@ export function ChatStream(props: ChatStreamProps) {
 
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
-  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 104px 96px 24px", position: "relative", scrollbarWidth: "none" };
+  // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
+  const isMobile = useIsMobile();
+  const containerStyle: CSSProperties = {
+    flex: 1, overflowY: "auto", overflowX: "hidden",
+    padding: isMobile ? "56px 14px 96px 14px" : "56px 104px 96px 24px",
+    position: "relative", scrollbarWidth: "none",
+  };
 
   return (
     <div
