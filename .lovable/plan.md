@@ -1,75 +1,79 @@
-# Landing Page Evolution — Final Plan (mockup-first)
+# Shaping → Committed: One Object, Two States (+ Shell Mode)
 
-Evolution of the existing landing page identity. Preserve floating geometry, purple ambient, gold restraint, chips, and Bridge. Evolve copy, pacing, and three new sections. Pricing stays — simplified and lower.
+**Doctrine:** *Shaping is real enough to preserve context, but not formal enough to pollute the system of record.*
 
-## Step 1 (this approval) — Static mobile mockup
+- `status` — is the idea shaping or committed.
+- `surface_mode` — is the project quietly available or operationally driving the workspace.
+- `shell_mode` — what surface the user is standing in: ambient home, active home chat, or operational workspace.
 
-Before touching `landing.tsx`, produce a single self-contained HTML file at mobile width (390px) covering three sections so you can judge rhythm:
-
-- **Hero** — floating geometry refined, headline + locked subhead, three pills, ghost CTA.
-- **Strategic Manifest** — lens selector (Storyteller / Designer / Builder), three-column collapsing to stacked mobile flow.
-- **Structural Outputs** — three editorial entries with mono indices and SVG glyphs.
-
-Delivered as `/mnt/documents/axiom-landing-mobile-mockup.html` (viewable in browser, sized for mobile). No app code touched. You review → green light → I implement against `landing.tsx`.
-
-## Locked copy decisions
-
-- H1: `Every great thing started as a conversation.` (italic gold on "started").
-- Subhead: **`A workspace where ideas hold their shape long enough to become real.`**
-- Mono support: `AXIOM // WHERE IDEAS BECOME DECISIONS BECOME REALITY`.
-- Pills: THINK IT THROUGH · MAP IT OUT · BUILD IT (reframed as cognitive stages, not actions).
-- Interrogation title: `How many ideas faded before they became real?` (sentence case).
-- Bridge tagline: `Decide here. Build anywhere.`
-
-## Step 2 (after mockup approval) — Implementation in `landing.tsx`
-
-Final section order:
+## Core model
 
 ```text
-01  HERO                   refined (geometry kept, slowed, lightened)
-02  THE INTERROGATION      evolved (sentence case, philosophical, left gold tracer)
-03  THE STRATEGIC MANIFEST new (lens selector + three columns)
-04  THE STRUCTURAL OUTPUTS new (mono indices + monochrome SVG)
-05  THE BRIDGE             evolved from HandoffSection ("Decide here. Build anywhere.")
-06  PRICING                simplified single row
-07  FOOTER                 unchanged
+projects
+  status:       'shaping' | 'committed' | 'archived'
+  surface_mode: 'ambient' | 'operational'
+  shape:        jsonb         -- live extraction bucket (silent)
+  working_title:text          -- AI-named, editable
+  committed_at: timestamptz | null
 ```
 
-Removed: `WallOfGoldSection` only.
+Shell/session state (client, not on the project row):
 
-## Preserved DNA (do not touch)
+```text
+shell_mode: 'ambient' | 'active' | 'operational'
+  ambient     = Nexus home, no active conversation yet
+  active      = Nexus home chat has started, shaping happening
+  operational = workspace / Forge / Map / build surfaces
+```
 
-- Floating architectural node geometry behind hero — only: opacity max 0.35, drift 60s, fewer overlapping hairlines.
-- Purple ambient radial gradient system — kept exactly; slightly desaturated under Sections 03–05 for breathing room.
-- 1px gold grid + noise grain global overlay.
-- `LandingHeader` and `LandingFooter`.
-- Serif display H1 with italic gold accent treatment.
-- IBM Plex Mono for eyebrows and micro-labels.
-- The three hero pills.
+Rules:
+- First user message in a `shell_mode = 'ambient'` Nexus session with no active project context auto-creates a `shaping` project owned by `auth.uid()`. Shell flips to `active`. Never auto-create inside an already-committed workspace.
+- Ledger / constellation queries filter to `status = 'committed'` — shaping projects never pollute the system of record.
+- Master Map shows committed projects as nodes; an active shaping project appears as a soft "forming" halo, not a node.
+- Commit flips `status` to `committed`, stamps `committed_at`, writes the first ledger entry from `shape`, lights up the constellation node.
 
-## Motion system
+## Silent extraction
 
-- Easing `cubic-bezier(0.16, 1, 0.3, 1)`.
-- Reveal: opacity 0→1 + translateY 12→0 over 800ms via `IntersectionObserver` (threshold 0.2).
-- Atmospheric loops 40–60s, opacity peaks ≤ 0.25.
-- Respect `prefers-reduced-motion`.
+- Cadence: every **3–5 meaningful message exchanges**, **OR** on-demand when the user opens Forge / Map / Commit. Forge never opens empty just because the cadence hasn't fired.
+- Extractor updates `shape` with: intent, audience, constraints, tone, aesthetic, stack hints, open questions.
+- No UI interruption. No "I noticed…" messages.
+- Idempotent merge into `shape` — never overwrites user-edited fields.
 
-## Visual restraint
+## Footer dead-end fixes (ship in same pass)
 
-- Borders only `rgba(255,255,255,0.05)` / `rgba(255,255,255,0.10)`.
-- Gold + teal combined ≤ ~12% surface coverage per viewport.
-- No new colors. No new icon library. No new dependencies.
+- **Map tap, no committed project**: route to Master Map. If a shaping project is active, render "you are here, shaping [working title]" halo.
+- **Forge tap, no committed project**: open Forge defaulted to **Project DNA** tab, pre-filled from `shape` (triggers on-demand extraction if stale). Demote Quick Prompt to secondary action.
+- **Dock focus ring**: highlights the surface matching the active project's `surface_mode` and the current `shell_mode`.
 
-## Technical scope
+## Commit moment
 
-- Mockup file: `public/axiom-landing-mobile-mockup.html` (also copied to `/mnt/documents/` for direct download).
-- Implementation edits scoped to `src/pages/landing.tsx` (evolve `HeroSection`, `InterrogationSection`, `HandoffSection`, `PricingSection`; remove `WallOfGoldSection`).
-- One new component: `src/components/landing/StrategicManifest.tsx` (houses both Strategic Manifest + Structural Outputs to limit surface area).
-- No backend, routing, auth, or schema changes.
+`CommitPrompt` and `DecisionCatch → Proceed` are the two entry points. On commit:
+1. `status = 'committed'`, `committed_at = now()`.
+2. Insert ledger entry seeded from `shape` (title, summary, severity).
+3. Forge DNA auto-fills from `shape`.
+4. Constellation node animates in.
 
-## Out of scope
+## Build order
 
-- Dedicated `/pricing` route.
-- Header / footer redesign.
-- Replacing the floating geometry with a different visualization.
-- Copy A/B variants, CMS wiring, analytics.
+1. **Migration** — add `status`, `surface_mode`, `shape`, `working_title`, `committed_at` to `projects`. Backfill existing rows to `status = 'committed'`, `surface_mode = 'operational'`.
+2. **Shell mode in shellStore** — add `shell_mode: 'ambient' | 'active' | 'operational'` to `useShellStore`; flip ambient → active on first home message, operational on workspace entry.
+3. **Auto-create on first message** — `home.tsx` send handler creates a shaping project only when shell is ambient and no active project context exists. Store id in `shellStore.activeThread.projectId`.
+4. **Ledger / constellation filters** — scope to `status = 'committed'`.
+5. **Footer fallbacks + dock focus ring** — Map and Forge route correctly when only a shaping project exists.
+6. **Forge default tab** — Project DNA first, Quick Prompt secondary; DNA reads from `shape` and triggers on-demand extraction if stale.
+7. **Silent extractor** — extend `atlas-chat` to extract every 3–5 meaningful exchanges, plus on-demand from Forge/Map/Commit; merge into `shape`.
+8. **Commit transition** — `CommitPrompt` + Decision Catch Proceed path writes ledger entry and flips status.
+9. **Shaping halo on Master Map** — soft "forming" indicator for the active shaping project.
+
+## Technical notes
+
+- `status`, `surface_mode`, and `shell_mode` are three independent dimensions — never collapse.
+- `shape` is jsonb with versioned schema (`shape.v = 1`) so the extractor evolves without migrations.
+- RLS stays `auth.uid() = user_id` — no policy changes needed.
+- Existing ledger/forge/codegen wiring keeps working — committed projects look identical to today's projects.
+
+## Out of scope (defer)
+
+- Dedicated "memory" UI surfacing `shape` contents — keep invisible per subtle-continuity instinct.
+- Cross-project shape inheritance.
+- Auto-archive of stale shaping projects after 30 days idle.
