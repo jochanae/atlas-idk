@@ -3128,33 +3128,8 @@ function RightPanel({
 
       {/* Tab content */}
       {tab === "ledger" && (
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-          {/* Sub-tab bar */}
-          <div style={{ display: "flex", flexShrink: 0 }}>
-            {(["entries", "memory"] as const).map(st => (
-              <button
-                key={st}
-                onClick={() => setLedgerSubTab(st)}
-                style={{
-                  flex: 1, padding: "8px 0", background: "transparent", border: "none",
-                  borderBottom: ledgerSubTab === st ? "2px solid var(--atlas-gold)" : "2px solid transparent",
-                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-                  textTransform: "uppercase" as const,
-                  color: ledgerSubTab === st ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  cursor: "pointer", transition: "all 160ms ease",
-                }}
-              >
-                {st === "entries" ? "Ledger" : "Memory"}
-              </button>
-            ))}
-          </div>
-          {/* Sub-tab content */}
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {ledgerSubTab === "entries"
-              ? <LedgerPanel projectId={projectId} entries={entries} activeCatch={activeCatch} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
-              : <MemoryTab projectId={projectId} />
-            }
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <LedgerPanel projectId={projectId} entries={entries} activeCatch={activeCatch} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
         </div>
       )}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
