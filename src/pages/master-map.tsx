@@ -788,6 +788,7 @@ export default function MasterMap() {
     };
 
     const handleLayer23Click = (cx: number, cy: number): boolean => {
+      // Layer 1 project taps are handled by the outer hitTest → dive to Layer 2.
       if (currentLayerRef.current === 1) return false;
       setRay(cx, cy);
       const hit = layerStack.hit(raycaster);
@@ -803,12 +804,8 @@ export default function MasterMap() {
           setLocation(`/blueprints/${hit.id}`);
           return true;
         }
-        if (hit.subType === "DECISION") {
-          setLocation(`/entry/${hit.id}`);
-          return true;
-        }
-        if (hit.subType === "SPRINT" && layer === 2) {
-          // Drill into Layer 3
+        if (layer === 2) {
+          // Any Layer 2 node drills into Layer 3 (Assets) with this node as focus.
           const projectId = useMapStore.getState().context.projectId;
           const projectName = useMapStore.getState().context.projectName;
           navigateToNode(hit.id, [hit.worldPos.x, hit.worldPos.y, hit.worldPos.z], 3, {
@@ -817,6 +814,10 @@ export default function MasterMap() {
             parentId: hit.id,
             parentLabel: hit.label,
           });
+          return true;
+        }
+        if (hit.subType === "DECISION") {
+          setLocation(`/entry/${hit.id}`);
           return true;
         }
         // Default: show glassmorphic tooltip
@@ -862,8 +863,17 @@ export default function MasterMap() {
       }
       const idx = nodeMeshes.indexOf(obj);
       if (idx < 0) return;
-      // First tap on a project node → open peek panel. Warp only via the
-      // panel's "Open Project →" button.
+      // Layer 1: tap a project node → dive straight to Layer 2 (Architecture).
+      const proj = projectsRef.current[idx];
+      if (proj) {
+        const pos = nodePos3D(idx, projectsRef.current.length);
+        setPeek(null);
+        navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
+          projectId: proj.id,
+          projectName: proj.name,
+        });
+        return;
+      }
       openPeek(idx);
     };
 
@@ -1300,6 +1310,9 @@ export default function MasterMap() {
       }}>
         <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.22em", color: palette.goldText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase" }}>
           {currentLayer === 1 ? "FOUNDATION" : currentLayer === 2 ? "ARCHITECTURE" : "ASSETS"}
+        </div>
+        <div style={{ marginTop: 4, fontSize: 9, letterSpacing: "0.04em", color: palette.goldText, opacity: 0.6, fontFamily: "var(--app-font-sans)" }}>
+          Pulled from your ledger · tap any node to drill in
         </div>
       </div>
 
