@@ -1192,6 +1192,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             height: 50,
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: 12,
             padding: "0 clamp(14px, 4vw, 24px)",
             borderBottom: currentDepth === "ambient" ? "none" : undefined,
@@ -1203,13 +1204,26 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft), border-color var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
-          <div style={{ flexShrink: 0, minWidth: 0 }}>
+          <div style={{ flexShrink: 0, minWidth: 0, position: "relative", zIndex: 2 }}>
             <ShellWordmark />
           </div>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center", pointerEvents: "auto" }}>
+          {/* True viewport-centered switcher — absolutely positioned so left/right cluster widths don't shift it off-center. */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "auto",
+              maxWidth: "min(60vw, 320px)",
+              zIndex: 1,
+            }}
+          >
             <ShellProjectSwitcher projectId={activeProjectId} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellReadinessChip projectId={activeProjectId} />
             <ShellStatusChip projectId={activeProjectId} />
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
