@@ -152,9 +152,9 @@ export function ChatStream(props: ChatStreamProps) {
     onPushSuccess,
   } = props;
 
-  // Padding mirrors home/nexus chat scroller (paddingRight: 80, paddingTop: 56)
-  // so the full-width feel and right-edge gutter match between surfaces.
-  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 16px 12px 16px", position: "relative", scrollbarWidth: "none" };
+  // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
+  // Effective gutters: left 24px, right 104px (24 + 80) from viewport edges.
+  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 104px 12px 24px", position: "relative", scrollbarWidth: "none" };
 
   return (
     <div
