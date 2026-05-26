@@ -11,6 +11,16 @@ export type ChatMessage = {
 
 export type ThreadSource = 'home' | 'project' | null;
 
+// Shell mode: where the user is standing in the app surface.
+//   ambient     = Nexus home, no active conversation yet
+//   active      = Nexus home chat has started, shaping happening
+//   operational = workspace / Forge / Map / build surfaces
+//
+// Independent of a project's own `status` (shaping | committed | archived)
+// and `surface_mode` (ambient | operational). See .lovable/plan.md
+// "Shaping → Committed: One Object, Two States (+ Shell Mode)".
+export type ShellMode = 'ambient' | 'active' | 'operational';
+
 export interface ActiveThread {
   conversationId: string | null;
   projectId: number | null;
@@ -21,6 +31,8 @@ export interface ActiveThread {
 }
 
 interface ShellStore {
+  shellMode: ShellMode;
+  setShellMode: (mode: ShellMode) => void;
   activeThread: ActiveThread;
   setActiveThread: (thread: Partial<ActiveThread>) => void;
   setConversationId: (conversationId: string | null) => void;
@@ -41,6 +53,8 @@ const emptyThread: ActiveThread = {
 };
 
 export const useShellStore = create<ShellStore>((set) => ({
+  shellMode: 'ambient',
+  setShellMode: (shellMode) => set({ shellMode }),
   activeThread: emptyThread,
   setActiveThread: (thread) =>
     set((state) => ({ activeThread: { ...state.activeThread, ...thread } })),
@@ -54,5 +68,5 @@ export const useShellStore = create<ShellStore>((set) => ({
     set((state) => ({ activeThread: { ...state.activeThread, draft } })),
   updateScrollPosition: (pos) =>
     set((state) => ({ activeThread: { ...state.activeThread, scrollPosition: pos } })),
-  clearThread: () => set({ activeThread: emptyThread }),
+  clearThread: () => set({ activeThread: emptyThread, shellMode: 'ambient' }),
 }));
