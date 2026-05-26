@@ -132,6 +132,7 @@ type HomeHandoffNode = {
   details?: string;
   meta?: string;
   moscow?: string;
+  resolved?: boolean;
 };
 
 type HomeHandoffMeta = {
@@ -6998,57 +6999,65 @@ export default function Workspace() {
         `}</style>
       )}
 
-      {(showHomeHandoffBanner || showHomeHandoffDrawer) && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            padding: "9px 18px",
-            background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
-            borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block" }} />
-            <span style={{ fontSize: "var(--ts-label)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {homeHandoffMeta?.parkedCount ?? 0} ideas parked · {homeHandoffMeta?.flowNodeCount ?? 0} flow nodes mapped · conversation memory loaded
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => setShowHomeHandoffDrawer(true)}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--atlas-gold)",
-                cursor: "pointer",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: "var(--ts-caption)",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                padding: "2px 0",
-                textTransform: "uppercase",
-              }}
-            >
-              View →
-            </button>
-            {!showHomeHandoffDrawer && (
+      {(showHomeHandoffBanner || showHomeHandoffDrawer) && (() => {
+        const handoffNodes = homeHandoffMeta?.nodes ?? [];
+        const getMo = (n: HomeHandoffNode) => n.moscow ?? n.meta ?? (n.type === "wont" ? "wont" : undefined);
+        const isDefined = (n: HomeHandoffNode) => Boolean(n.resolved) || Boolean(n.details && n.details.trim() && !/^tap to /i.test(n.details));
+        const mustCount = handoffNodes.filter(n => getMo(n) === "must").length;
+        const shouldCount = handoffNodes.filter(n => getMo(n) === "should").length;
+        const openDecisionCount = handoffNodes.filter(n => n.type === "decision" && !isDefined(n)).length;
+        const blockerCount = handoffNodes.filter(n => n.type === "blocker").length;
+        const definedCount = handoffNodes.filter(isDefined).length;
+        const totalCount = homeHandoffMeta?.flowNodeCount ?? handoffNodes.length;
+        const goalLabel = homeHandoffMeta?.goalLabel?.trim() || "your first node";
+        const projectLabel = project?.name ?? "this project";
+        const parkedCount = homeHandoffMeta?.parkedCount ?? 0;
+        const isEmpty = totalCount === 0;
+        return (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "12px 16px",
+              background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+              borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
+              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-gold)" }}>
+                {isEmpty ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
+              </span>
               <button
-                onClick={() => setShowHomeHandoffBanner(false)}
-                style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0, opacity: 0.55 }}
-                title="Dismiss"
-                aria-label="Dismiss"
+                type="button"
+                onClick={() => setShowHomeHandoffDrawer(true)}
+                style={{ background: "transparent", border: "none", color: "var(--atlas-gold)", cursor: "pointer", fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", padding: "2px 6px" }}
               >
-                ×
+                View →
               </button>
-            )}
+              {!showHomeHandoffDrawer && (
+                <button
+                  onClick={() => setShowHomeHandoffBanner(false)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-gold)", fontSize: 16, lineHeight: 1, padding: "2px 4px", opacity: 0.55 }}
+                  title="Dismiss"
+                  aria-label="Dismiss"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.55, opacity: 0.88 }}>
+              {isEmpty ? (
+                <>Atlas hasn't extracted anything for <b>{projectLabel}</b> yet — open Flow and start mapping.</>
+              ) : (
+                <>Your goal is <b>{goalLabel}</b>. Atlas captured {definedCount} of {totalCount} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers{parkedCount > 0 ? `, ${parkedCount} ideas parked` : ""}. Open Flow or Ledger to edit.</>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {showHomeHandoffDrawer && (
         <div

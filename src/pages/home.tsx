@@ -2101,7 +2101,7 @@ export default function Home() {
           parkedCount: ideaTexts.length,
           flowNodeCount: nodes.length,
           goalLabel: goal?.label ?? "your goal",
-          nodes: nodes.map(n => ({ id: n.id, label: n.label, type: n.type, details: n.details, meta: n.meta, moscow: n.moscow })),
+          nodes: nodes.map(n => ({ id: n.id, label: n.label, type: n.type, details: n.details, meta: n.meta, moscow: n.moscow, resolved: n.resolved })),
           parkedTitles: ideaTexts.map(idea => idea.slice(0, 80)),
         }));
         sessionStorage.setItem("atlas-open-tab", "map");
