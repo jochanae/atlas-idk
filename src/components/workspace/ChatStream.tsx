@@ -238,6 +238,7 @@ export function ChatStream(props: ChatStreamProps) {
               onPrCreated={onPrCreated}
               onExtractToForge={onExtractToForge}
               onReviewDiff={onReviewDiff}
+              onOpenArtifact={onOpenArtifact}
               onEditDeclined={onEditDeclined}
               onAlertDismiss={() => onAlertDismiss(msg)}
               onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}
