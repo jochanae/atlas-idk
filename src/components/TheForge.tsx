@@ -606,16 +606,36 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
             )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {forgeResult.nodes.map(node => (
-              <div key={node.id} style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 8, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", padding: "8px 10px" }}>
-                <span style={{ color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", flexShrink: 0 }}>
-                  <ForgeNodeTypeLabel type={node.type} />
-                </span>
-                <span style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {node.label}
-                </span>
-              </div>
-            ))}
+            {forgeResult.nodes.map(node => {
+              const fromScope = !!scopeNodeId && node.id === scopeNodeId;
+              return (
+                <div key={node.id} style={{
+                  display: "flex", alignItems: "center", gap: 8, borderRadius: 8,
+                  background: "var(--atlas-surface)",
+                  border: "1px solid var(--atlas-border)",
+                  borderLeft: fromScope ? "2px solid var(--atlas-gold)" : "1px solid var(--atlas-border)",
+                  padding: "8px 10px",
+                }}>
+                  <span style={{ color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", flexShrink: 0 }}>
+                    <ForgeNodeTypeLabel type={node.type} />
+                  </span>
+                  <span style={{ color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                    {node.label}
+                  </span>
+                  {fromScope && (
+                    <span style={{
+                      flexShrink: 0,
+                      fontFamily: "var(--app-font-mono)", fontSize: 8.5,
+                      color: "var(--atlas-gold)",
+                      background: "rgba(201,162,76,0.1)",
+                      border: "1px solid rgba(201,162,76,0.3)",
+                      padding: "1px 5px", borderRadius: 3,
+                      letterSpacing: "0.1em", textTransform: "uppercase",
+                    }}>from: node</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {missingForgeNodeTypes.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4, borderRadius: 8, border: "1px solid color-mix(in oklab, var(--warning) 28%, var(--atlas-border))", background: "color-mix(in oklab, var(--warning) 9%, var(--atlas-surface))", padding: "9px 10px" }}>
