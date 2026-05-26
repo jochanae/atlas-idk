@@ -6802,7 +6802,7 @@ export default function Workspace() {
             padding: isMobile ? "10px 16px 8px" : "12px 22px 10px",
           }}
         >
-          <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0 }}>
+          <nav aria-label="Workspace sections" className="scrollbar-none" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flex: 1 }}>
             {([
               "chat",
               ...(showReviewTab ? ["review" as const] : []),
@@ -6989,7 +6989,7 @@ export default function Workspace() {
               </LongPressTip>
             )}
 
-            {hasLinkedRepo && (
+            {hasLinkedRepo && !isMobile && (
               <LongPressTip tip="Rescan GitHub repo and update readiness score">
                 <button
                   type="button"
@@ -8107,6 +8107,22 @@ export default function Workspace() {
                 ),
                 onSelect: () => { setShowMoreSheet(false); setShowForgeExternal(true); },
               },
+              ...(hasLinkedRepo ? [{
+                id: "rescan" as const,
+                label: isScanning ? "Rescanning…" : "Rescan repo",
+                icon: (
+                  <RefreshCw size={18} style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }} />
+                ),
+                onSelect: () => {
+                  if (isScanning) return;
+                  toast.info("Rescanning repository", {
+                    description: "Pulling the latest from GitHub to refresh your readiness score.",
+                    className: "atlas-toast-pill",
+                  });
+                  void runScan(false);
+                  setShowMoreSheet(false);
+                },
+              }] : []),
             ]).map(({ id, label, icon, onSelect }) => {
               const active = mobileTab === id;
               return (
