@@ -549,6 +549,21 @@ export default function MasterMap() {
     nexRingMesh.rotation.x = Math.PI / 2.8;
     scene.add(nexRingMesh);
 
+    // Shaping halo — soft amber-gold sphere whose intensity scales with the
+    // number of in-flight shaping projects (status === "shaping"). Acts as an
+    // ambient pressure indicator around the Nexium without claiming a node.
+    const shapingHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(NEXIUM_R * 2.2, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0xC9A24C,
+        transparent: true,
+        opacity: 0,
+        side: THREE.BackSide,
+        depthWrite: false,
+      }),
+    );
+    scene.add(shapingHalo);
+
     // Nexium "SOURCE" label handled in HTML overlay — we add a ref below
 
     // ── Project nodes — glass spheres ─────────────────────────────────────
