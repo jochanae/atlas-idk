@@ -4859,16 +4859,24 @@ export default function Workspace() {
 
 
   // Close portaled header dropdowns on scroll/resize so they don't float off their anchors.
+  const projectMenuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!showProjectMenu) return;
-    const close = () => { setShowProjectMenu(false); };
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    const onScroll = (e: Event) => {
+      const target = e.target as Node | null;
+      // Ignore scrolls that originate inside the popover itself.
+      if (target && projectMenuRef.current && projectMenuRef.current.contains(target)) return;
+      setShowProjectMenu(false);
+    };
+    const onResize = () => setShowProjectMenu(false);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
   }, [showProjectMenu]);
+
 
   const setWsLens = useCallback((newLens: WorkspaceLens) => {
     const currentMessages = messages;
@@ -7919,20 +7927,23 @@ export default function Workspace() {
       {showProjectMenu && createPortal(
         <>
           <div onClick={() => setShowProjectMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
-          <div
-            className="atlas-popover"
-            style={{
-              position: "fixed",
-              top: 56,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 9999,
-              minWidth: 240,
-              maxWidth: "calc(100vw - 24px)",
-              maxHeight: "calc(100vh - 80px)",
-              overflowY: "auto",
-            }}
-          >
+           <div
+             ref={projectMenuRef}
+             className="atlas-popover"
+             style={{
+               position: "fixed",
+               top: 56,
+               left: "50%",
+               transform: "translateX(-50%)",
+               zIndex: 9999,
+               minWidth: 240,
+               maxWidth: "calc(100vw - 24px)",
+               maxHeight: "calc(100vh - 80px)",
+               overflowY: "auto",
+               WebkitOverflowScrolling: "touch",
+               overscrollBehavior: "contain",
+             }}
+           >
             {(allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived").length > 0 && (() => {
               const others = (allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived");
               return (
