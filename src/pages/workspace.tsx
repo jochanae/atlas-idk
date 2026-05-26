@@ -2459,6 +2459,7 @@ function ConnectionsTab({
   const { data: project } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
+  const updateProject = useUpdateProject();
   const { isConnected: githubConnected } = useGitHub();
 
   const [dbUrl, setDbUrl] = useState<string | null>(null);
@@ -2534,6 +2535,20 @@ function ConnectionsTab({
     cursor: "pointer",
   };
 
+  const removeRepo = () => {
+    updateProject.mutate(
+      { id: projectId, data: { linkedRepo: null } },
+      {
+        onSuccess: () => {
+          toast.success("GitHub repo removed from this project.");
+        },
+        onError: () => {
+          toast.error("Could not remove the linked repo.");
+        },
+      },
+    );
+  };
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div
@@ -2563,13 +2578,33 @@ function ConnectionsTab({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={labelStyle}>GitHub Repo</div>
             {repoName ? (
-              <div style={valueStyle}>{repoName}</div>
+              <>
+                <div style={valueStyle}>{repoName}</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" onClick={onSwitchToFiles} style={actionBtn}>
+                    Manage -&gt;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removeRepo}
+                    style={{
+                      ...actionBtn,
+                      color: "rgba(252,165,165,0.9)",
+                      border: "1px solid rgba(239,68,68,0.28)",
+                    }}
+                  >
+                    Remove repo
+                  </button>
+                </div>
+              </>
             ) : (
-              <div style={missingStyle}>No repo linked</div>
+              <>
+                <div style={missingStyle}>No repo linked</div>
+                <button type="button" onClick={onSwitchToFiles} style={actionBtn}>
+                  Link repo -&gt;
+                </button>
+              </>
             )}
-            <button type="button" onClick={onSwitchToFiles} style={actionBtn}>
-              {repoName ? "Manage ->" : "Link repo ->"}
-            </button>
           </div>
         </div>
 
