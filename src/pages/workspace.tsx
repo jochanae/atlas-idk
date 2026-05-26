@@ -3023,54 +3023,58 @@ function RightPanel({
             </button>
           );
         })}
-        {/* Desktop: hand the full thread off to Atlas as a Forge-ready snapshot.
-            Distinct from the per-message Forge link — this commits the whole
-            conversation. Sized to match neighboring tabs so it reads as a
-            primary toolbar action, not a foreign element. */}
-        {!isMobile && onHandover && (
+        {/* Desktop: passive Forge-awareness pill.
+            Replaces the legacy "Forge Thread →" handoff button.
+            Forge already reads thread context via the memory bucket;
+            this pill surfaces that ambient connection and routes the
+            user to the Memory tab to inspect what's been surfaced. */}
+        {!isMobile && (
           <>
             <div style={{ flex: 1 }} />
-            <button
-              onClick={() => {
-                setTab("map");
-                onHandoverOpenChange?.(true);
-              }}
-              disabled={!currentSnapshot || (currentSnapshot?.definedCount ?? 0) === 0 || !!handoverPending}
-              title={
-                handoverPending
-                  ? "Sending thread to Atlas…"
-                  : !currentSnapshot || currentSnapshot.definedCount === 0
-                    ? "Define at least one node to send the thread"
-                    : "Send the entire conversation to Atlas as a Forge-ready snapshot"
-              }
-              style={{
-                marginRight: 8,
-                padding: "4px 10px",
-                borderRadius: 4,
-                background: "transparent",
-                border: `1px solid ${
-                  !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                    ? "rgba(var(--atlas-muted-rgb),0.3)"
-                    : "rgba(146,64,14,0.55)"
-                }`,
-                color: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.6)"
-                  : "rgba(230,150,90,0.95)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: "var(--ts-xs)",
-                fontWeight: 500,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                cursor: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "not-allowed"
-                  : "pointer",
-                transition: "all 160ms ease",
-              }}
-            >
-              {handoverPending ? "Sending…" : "Forge Thread →"}
-            </button>
+            {(() => {
+              const surfacedCount = currentSnapshot?.definedCount ?? 0;
+              return (
+                <button
+                  onClick={() => setTab("memory")}
+                  title="Forge is continuously reading this thread. Tap to inspect surfaced memories."
+                  style={{
+                    marginRight: 8,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "rgba(201,162,76,0.06)",
+                    border: "1px solid rgba(201,162,76,0.22)",
+                    color: "rgba(201,162,76,0.85)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: "var(--ts-xs)",
+                    fontWeight: 500,
+                    letterSpacing: "0.08em",
+                    textTransform: "none",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "all 160ms ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
+                >
+                  <span style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "var(--atlas-gold)",
+                    boxShadow: "0 0 6px rgba(201,162,76,0.6)",
+                  }} />
+                  Forge is reading this thread
+                  {surfacedCount > 0 && (
+                    <span style={{ opacity: 0.75 }}>
+                      · {surfacedCount} {surfacedCount === 1 ? "memory" : "memories"} surfaced
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </>
         )}
+
         {!isMobile && !onHandover && <div style={{ flex: 1 }} />}
 
         {/* Mobile: spacer so close/fullscreen stay right-aligned */}
