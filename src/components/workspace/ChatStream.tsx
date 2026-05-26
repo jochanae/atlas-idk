@@ -111,6 +111,7 @@ export interface ChatStreamProps {
   onPrCreated: (url: string) => void;
   onExtractToForge: (content: string) => void;
   onReviewDiff: () => void;
+  onOpenArtifact?: (title: string) => void;
   onEditDeclined: () => void;
   onAlertDismiss: (msg: ChatMessage) => void;
   onStreamActivityUpdate: (msg: ChatMessage, content: string) => void;
@@ -144,6 +145,7 @@ export function ChatStream(props: ChatStreamProps) {
     projectId, sessionId, linkedRepo, trustMode,
     onCatchProceed, onCatchAdjust, onPark, onCommit, onRegenerate, onSend,
     onPreviewCode, onRunCommand, onPrCreated, onExtractToForge, onReviewDiff,
+    onOpenArtifact,
     onEditDeclined, onAlertDismiss, onStreamActivityUpdate, onStreamActivityComplete,
     onCommitCardDone, onSurfaceAction,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
@@ -236,6 +238,7 @@ export function ChatStream(props: ChatStreamProps) {
               onPrCreated={onPrCreated}
               onExtractToForge={onExtractToForge}
               onReviewDiff={onReviewDiff}
+              onOpenArtifact={onOpenArtifact}
               onEditDeclined={onEditDeclined}
               onAlertDismiss={() => onAlertDismiss(msg)}
               onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}

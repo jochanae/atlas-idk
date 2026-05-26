@@ -766,6 +766,7 @@ export function AssistantBubble({
   onRunCommand,
   onExtractToForge,
   onReviewDiff,
+  onOpenArtifact,
   onEditDeclined,
   onAlertDismiss,
   onStreamActivityUpdate,
@@ -796,6 +797,7 @@ export function AssistantBubble({
   onRunCommand?: (command: string) => void;
   onExtractToForge?: (content: string) => void;
   onReviewDiff: () => void;
+  onOpenArtifact?: (title: string) => void;
   onEditDeclined?: () => void;
   onAlertDismiss?: () => void;
   onStreamActivityUpdate?: (content: string) => void;
@@ -1272,6 +1274,93 @@ export function AssistantBubble({
             <MarkdownProse content={cleanedContent} />
           )}
         </div>
+
+        {message.streaming && message.planMode && !message.artifact && (
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--atlas-muted)",
+              opacity: 0.7,
+            }}
+          >
+            Generating plan…
+          </div>
+        )}
+
+        {!message.streaming && message.artifact && message.artifact.type === "plan" && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: "10px 12px",
+              borderRadius: 10,
+              background: "var(--atlas-surface)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 26%, var(--atlas-border))",
+              borderLeft: "3px solid var(--atlas-gold)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--atlas-gold)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="2" y="1" width="12" height="14" rx="1.5" />
+              <line x1="5" y1="5" x2="11" y2="5" />
+              <line x1="5" y1="8" x2="11" y2="8" />
+              <line x1="5" y1="11" x2="8" y2="11" />
+            </svg>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
+                Plan
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--atlas-fg)", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {message.artifact.title}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenArtifact?.(message.artifact!.title)}
+              style={{
+                padding: "5px 10px",
+                borderRadius: 6,
+                background: "var(--atlas-gold)",
+                border: "1px solid var(--atlas-gold)",
+                color: "var(--atlas-bg)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(message.artifact!.content);
+              }}
+              style={{
+                padding: "5px 10px",
+                borderRadius: 6,
+                background: "transparent",
+                border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-muted)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Copy
+            </button>
+          </div>
+        )}
+
 
         {migrationBlocks.map((sql, i) => (
           <MigrationCard key={i} sql={sql} />

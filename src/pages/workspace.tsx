@@ -202,6 +202,7 @@ export interface ChatMessage {
   inputTokens?: number | null;
   outputTokens?: number | null;
   costUsd?: number | null;
+  artifact?: { type: string; title: string; content: string } | null;
 }
 
 export type MemoryChip = { label: string; insight?: string };
@@ -4637,6 +4638,8 @@ export default function Workspace() {
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
+  const [latestPlanArtifact, setLatestPlanArtifact] = useState<{ type: string; title: string; content: string } | null>(null);
+  void latestPlanArtifact;
   const [rightOpen, setRightOpen] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flow"
   );
@@ -5706,12 +5709,16 @@ export default function Workspace() {
 
       // Strip the line from displayed message
       const cleaned = m.content.replace(ARTIFACT_RE, "").replace(/\n{3,}/g, "\n\n").trim();
-      setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned } : pm)));
 
       if (!parsed || !parsed.type || !parsed.title || typeof parsed.content !== "string") {
+        setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned } : pm)));
         toast("Failed to save artifact.");
         return;
       }
+
+      const artifact = { type: parsed.type, title: parsed.title, content: parsed.content };
+      setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned, artifact } : pm)));
+      if (artifact.type === "plan") setLatestPlanArtifact(artifact);
 
       const title = parsed.title;
       void (async () => {
@@ -7349,6 +7356,10 @@ export default function Workspace() {
               onPrCreated: (url) => { setSessionPrUrl(url); setLeftTab("diff"); },
               onExtractToForge: (content) => { setForgePreloadContent(content); setShowForgeExternal(true); },
               onReviewDiff: () => setLeftTab("diff"),
+              onOpenArtifact: (_title: string) => {
+                setLeftTab("artifacts");
+                if (isMobile) setMobileTab("artifacts");
+              },
               onEditDeclined: () => {
                 if (sessionId) {
                   const editsInFlight = messages
