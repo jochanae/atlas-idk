@@ -3200,41 +3200,69 @@ export default function Home() {
             };
             const lastTouched = lastTs ? formatAgo(lastTs) : null;
             return (
-              <button
-                type="button"
-                aria-label="Pick up below"
-                onClick={openOverviewSheet}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  alignSelf: "center",
-                  marginTop: 14,
-                  padding: "7px 16px",
-                  background: isParchment ? "rgba(255,255,255,0.75)" : "rgba(28,25,23,0.55)",
-                  border: isParchment ? "1px solid rgba(17,17,17,0.10)" : "1px solid rgba(201,162,76,0.14)",
-                  borderRadius: 999,
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  font: "inherit",
-                  cursor: "pointer",
-                  boxSizing: "border-box",
-                  maxWidth: "100%",
-                }}
-              >
-                <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
-                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
-                  <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
-                </span>
-                <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.95, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
-                  {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
-                  &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "inherit", fontWeight: isParchment ? 600 : "inherit" }}>{activeProjects.length} open</span>
-                  &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(201,162,76,0.65)", fontWeight: isParchment ? 600 : "inherit" }}>↓ pick up below</span>
-                </span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 14 }}>
+                {/* Static status pill — data only */}
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    padding: "6px 14px",
+                    background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
+                    border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
+                    borderRadius: 999,
+                    backdropFilter: "blur(6px)",
+                    WebkitBackdropFilter: "blur(6px)",
+                    boxSizing: "border-box",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
+                    <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
+                    <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
+                  </span>
+                  <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
+                    {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                    &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
+                  </span>
+                </div>
 
-              </button>
+                {/* Distinct CTA — clearly tappable, opens the bottom sheet */}
+                <button
+                  type="button"
+                  aria-label="Expand overview"
+                  onClick={openOverviewSheet}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "9px 18px",
+                    background: isParchment
+                      ? "linear-gradient(180deg, rgba(201,162,76,0.18), rgba(201,162,76,0.10))"
+                      : "linear-gradient(180deg, rgba(201,162,76,0.16), rgba(201,162,76,0.06))",
+                    border: "1px solid rgba(201,162,76,0.38)",
+                    borderRadius: 999,
+                    boxShadow: "0 0 0 1px rgba(201,162,76,0.06) inset, 0 6px 18px -10px rgba(201,162,76,0.45)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    font: "inherit",
+                    cursor: "pointer",
+                    color: isParchment ? "rgba(120,52,8,0.95)" : "var(--atlas-gold)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: "clamp(10px, 2.6vw, 12px)",
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                  <span>Expand overview</span>
+                </button>
+              </div>
             );
           })()}
 
