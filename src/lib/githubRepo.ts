@@ -56,6 +56,23 @@ export function getLinkedRepoFullName(linkedRepo?: string | null): string | null
   return parseLinkedRepo(linkedRepo)?.fullName ?? null;
 }
 
+export function normalizeGitHubRepoInput(input?: string | null): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const match = trimmed.match(/github\.com\/([^/\s]+)\/([^/\s?#]+?)(?:\.git)?(?:[/?#].*)?$/i);
+  if (match) {
+    return `${match[1]}/${match[2]}`;
+  }
+
+  if (/^[^/\s]+\/[^/\s]+$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  return null;
+}
+
 export function serializeLinkedRepo(repo: {
   fullName: string;
   defaultBranch?: string | null;

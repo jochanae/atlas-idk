@@ -56,7 +56,7 @@ import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
-import { parseLinkedRepo } from "../lib/githubRepo";
+import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import { supabase } from "@/integrations/supabase/client";
 import type { Plan, PlanExecution } from "../lib/plan";
@@ -2459,6 +2459,7 @@ function ConnectionsTab({
   const { data: project } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
+  const updateProject = useUpdateProject();
   const { isConnected: githubConnected } = useGitHub();
 
   const [dbUrl, setDbUrl] = useState<string | null>(null);
@@ -2534,6 +2535,20 @@ function ConnectionsTab({
     cursor: "pointer",
   };
 
+  const removeRepo = () => {
+    updateProject.mutate(
+      { id: projectId, data: { linkedRepo: null } },
+      {
+        onSuccess: () => {
+          toast.success("GitHub repo removed from this project.");
+        },
+        onError: () => {
+          toast.error("Could not remove the linked repo.");
+        },
+      },
+    );
+  };
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div
@@ -2563,13 +2578,33 @@ function ConnectionsTab({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={labelStyle}>GitHub Repo</div>
             {repoName ? (
-              <div style={valueStyle}>{repoName}</div>
+              <>
+                <div style={valueStyle}>{repoName}</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" onClick={onSwitchToFiles} style={actionBtn}>
+                    Manage -&gt;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removeRepo}
+                    style={{
+                      ...actionBtn,
+                      color: "rgba(252,165,165,0.9)",
+                      border: "1px solid rgba(239,68,68,0.28)",
+                    }}
+                  >
+                    Remove repo
+                  </button>
+                </div>
+              </>
             ) : (
-              <div style={missingStyle}>No repo linked</div>
+              <>
+                <div style={missingStyle}>No repo linked</div>
+                <button type="button" onClick={onSwitchToFiles} style={actionBtn}>
+                  Link repo -&gt;
+                </button>
+              </>
             )}
-            <button type="button" onClick={onSwitchToFiles} style={actionBtn}>
-              {repoName ? "Manage ->" : "Link repo ->"}
-            </button>
           </div>
         </div>
 
@@ -5201,7 +5236,7 @@ export default function Workspace() {
     });
   }, [deleteProjectMutation, id, queryClient, setLocation]);
 
-  const handleCreateProjectFromWorkspace = useCallback((name: string) => {
+  const handleCreateProjectFromWorkspace = useCallback((name: string, githubRepo?: string) => {
     setCreateProjectError(null);
     createProjectMutation.mutate(
       { data: { name } },
@@ -5209,6 +5244,15 @@ export default function Workspace() {
         onSuccess: (project) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          const normalizedRepo = normalizeGitHubRepoInput(githubRepo);
+          if (normalizedRepo) {
+            void fetch(`/api/projects/${project.id}`, {
+              method: "PATCH",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+            }).catch(() => {});
+          }
           setLocation(`/project/${project.id}?intake=true`);
         },
         onError: (error) => {
@@ -8289,7 +8333,7 @@ export default function Workspace() {
       <NewProjectModal
         open={showNewProjectModal}
         onClose={() => { setShowNewProjectModal(false); setCreateProjectError(null); }}
-        onCreate={(name) => handleCreateProjectFromWorkspace(name)}
+        onCreate={(name, repo) => handleCreateProjectFromWorkspace(name, repo)}
         creating={createProjectMutation.isPending}
         error={createProjectError}
       />

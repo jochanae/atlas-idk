@@ -10,7 +10,7 @@ import {
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getLinkedRepoFullName } from "@/lib/githubRepo";
+import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
@@ -1694,7 +1694,7 @@ export default function Home() {
 
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
-  const performCreateProject = useCallback((name: string, _githubRepo?: string) => {
+  const performCreateProject = useCallback((name: string, githubRepo?: string) => {
     if (isFree && (projects?.length ?? 0) >= 1) {
       setShowNewProjectModal(false);
       setShowUpgrade(true);
@@ -1707,6 +1707,18 @@ export default function Home() {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           logProjectInitialized(p.id);
+          const normalizedRepo = normalizeGitHubRepoInput(githubRepo);
+          if (normalizedRepo) {
+            void fetch(`/api/projects/${p.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+            }).catch(() => {});
+            if (/^https?:\/\//i.test(githubRepo ?? "")) {
+              runRepoScan(p.id, githubRepo!.trim());
+            }
+          }
           setLocation(`/project/${p.id}?intake=true`);
         },
         onError: (err: any) => {
@@ -1720,7 +1732,7 @@ export default function Home() {
         },
       }
     );
-  }, [isFree, projects, createProject, queryClient, setLocation]);
+  }, [isFree, projects, createProject, queryClient, runRepoScan, setLocation]);
 
   const handleNewProject = useCallback((_name = "New Project") => {
     if (isFree && (projects?.length ?? 0) >= 1) {
