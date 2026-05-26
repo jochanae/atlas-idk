@@ -4667,7 +4667,15 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
 
-  const [chatWidthPct, setChatWidthPct] = useState(45);
+  // Default split: chat-leaning. Tablets (768–1279) get 62/38 so the chat
+  // pane has room for the composer; desktop (≥1280) gets 55/45.
+  const defaultChatPct = () => {
+    if (typeof window === "undefined") return 55;
+    const w = window.innerWidth;
+    if (w < 1280) return 62;
+    return 55;
+  };
+  const [chatWidthPct, setChatWidthPct] = useState(defaultChatPct);
   const resizeDrag = useRef({ active: false, startX: 0, startPct: 45 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -7236,7 +7244,7 @@ export default function Workspace() {
                   <div
                     onMouseDown={(e) => { e.preventDefault(); startResize(e.clientX); }}
                     onTouchStart={(e) => { startResize(e.touches[0].clientX); }}
-                    onDoubleClick={() => setChatWidthPct(45)}
+                    onDoubleClick={() => setChatWidthPct(defaultChatPct())}
                     title="Drag to resize · Double-tap to reset"
                     style={{
                       width: 12, flexShrink: 0, cursor: "col-resize",
@@ -7274,7 +7282,7 @@ export default function Workspace() {
         <div
           style={{
             width: isMobile ? "100%" : (desktopRightFull ? 0 : `${chatWidthPct}%`),
-            minWidth: isMobile ? 0 : (desktopRightFull ? 0 : 300),
+            minWidth: isMobile ? 0 : (desktopRightFull ? 0 : 420),
             flexShrink: 0,
             display: desktopRightFull && !isMobile ? "none" : "flex",
             flexDirection: "column",
