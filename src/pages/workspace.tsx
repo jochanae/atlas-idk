@@ -56,7 +56,7 @@ import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
-import { parseLinkedRepo } from "../lib/githubRepo";
+import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import { supabase } from "@/integrations/supabase/client";
 import type { Plan, PlanExecution } from "../lib/plan";
@@ -5201,7 +5201,7 @@ export default function Workspace() {
     });
   }, [deleteProjectMutation, id, queryClient, setLocation]);
 
-  const handleCreateProjectFromWorkspace = useCallback((name: string) => {
+  const handleCreateProjectFromWorkspace = useCallback((name: string, githubRepo?: string) => {
     setCreateProjectError(null);
     createProjectMutation.mutate(
       { data: { name } },
@@ -5209,6 +5209,15 @@ export default function Workspace() {
         onSuccess: (project) => {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          const normalizedRepo = normalizeGitHubRepoInput(githubRepo);
+          if (normalizedRepo) {
+            void fetch(`/api/projects/${project.id}`, {
+              method: "PATCH",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+            }).catch(() => {});
+          }
           setLocation(`/project/${project.id}?intake=true`);
         },
         onError: (error) => {
