@@ -6824,6 +6824,8 @@ export default function Workspace() {
               "chat",
               ...(showReviewTab ? ["review" as const] : []),
               "diff",
+              // On mobile there's no side rail, so surface the rail-only tabs here too.
+              ...(isMobile ? ["blueprints" as const, "artifacts" as const, "terminal" as const] : []),
             ] as WorkspaceLeftTab[]).map((tab) => {
               const active = leftTab === tab;
               const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : "Changes";
