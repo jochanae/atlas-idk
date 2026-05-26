@@ -1060,6 +1060,7 @@ function FirstRunOverlay({
   onDismiss,
   repoUrl,
   setRepoUrl,
+  error,
 }: {
   loading: boolean;
   onSpecMode: () => void;
@@ -1067,6 +1068,7 @@ function FirstRunOverlay({
   onDismiss?: () => void;
   repoUrl: string;
   setRepoUrl: (v: string) => void;
+  error?: string | null;
 }) {
 
   return createPortal(
@@ -1132,6 +1134,17 @@ function FirstRunOverlay({
             onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
           />
         </div>
+
+        {error && (
+          <div style={{
+            marginBottom: 12, padding: "10px 12px", borderRadius: 8,
+            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)",
+            color: "rgba(252,165,165,0.95)", fontSize: "var(--ts-caption)",
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.02em", textAlign: "center",
+          }}>
+            {error}
+          </div>
+        )}
 
         {/* CTA buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2529,29 +2542,56 @@ export default function Home() {
 
       {showOverlay && (
         <FirstRunOverlay
-          loading={isLoading}
+          loading={createProject.isPending}
           repoUrl={overlayRepoUrl}
           setRepoUrl={setOverlayRepoUrl}
+          error={createError}
           onSpecMode={() => {
+            setCreateError(null);
             createProject.mutate({ data: { name: "My Project" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 logProjectInitialized(p.id);
+                const normalizedRepo = normalizeGitHubRepoInput(overlayRepoUrl);
+                if (normalizedRepo) {
+                  void fetch(`/api/projects/${p.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+                  }).catch(() => {});
+                }
                 runRepoScan(p.id, overlayRepoUrl);
                 sessionStorage.setItem("atlas-open-tab", "map");
                 setLocation(`/project/${p.id}?intake=true`);
               },
+              onError: (err: any) => {
+                setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
+              },
             });
           }}
           onWorkspace={() => {
+            setCreateError(null);
             createProject.mutate({ data: { name: "My Project" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 logProjectInitialized(p.id);
+                const normalizedRepo = normalizeGitHubRepoInput(overlayRepoUrl);
+                if (normalizedRepo) {
+                  void fetch(`/api/projects/${p.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+                  }).catch(() => {});
+                }
                 runRepoScan(p.id, overlayRepoUrl);
                 setLocation(`/project/${p.id}?intake=true`);
+              },
+              onError: (err: any) => {
+                setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
               },
             });
           }}
