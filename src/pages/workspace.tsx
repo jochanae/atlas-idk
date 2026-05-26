@@ -8213,7 +8213,10 @@ export default function Workspace() {
           projectId={forgeActiveProjectId ?? id}
           activeProjectName={forgeActiveProjectName ?? project?.name}
           preloadContent={forgePreloadContent}
-          onClose={() => { setShowForgeExternal(false); setForgePreloadContent(undefined); }}
+          scopeNodeId={forgeScopeNodeId}
+          scopeNodeLabel={forgeScopeNodeLabel}
+          onClearScope={() => { setForgeScopeNodeId(null); setForgeScopeNodeLabel(null); }}
+          onClose={() => { setShowForgeExternal(false); setForgePreloadContent(undefined); setForgeScopeNodeId(null); setForgeScopeNodeLabel(null); }}
           onNodesReady={(nodes) => {
             // Push nodes to Flow canvas
             setExternalForgeNodes(nodes);
