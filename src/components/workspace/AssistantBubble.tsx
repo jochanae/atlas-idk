@@ -1094,28 +1094,6 @@ export function AssistantBubble({
               })()}
             </span>
           )}
-          {message.intentType && (
-            <span style={{
-              display: "inline-flex", alignItems: "center",
-              padding: "1px 6px", borderRadius: 8, opacity: 1,
-              background: message.intentType === "BUILD"
-                ? "rgba(74,222,128,0.12)"
-                : message.intentType === "PLAN"
-                ? "rgba(201,162,76,0.12)"
-                : "rgba(139,92,246,0.15)",
-              border: `1px solid ${
-                message.intentType === "BUILD" ? "rgba(74,222,128,0.3)"
-                : message.intentType === "PLAN" ? "rgba(201,162,76,0.3)"
-                : "rgba(139,92,246,0.3)"
-              }`,
-              fontSize: 8, fontWeight: 700, letterSpacing: "0.06em",
-              color: message.intentType === "BUILD" ? "#4ade80"
-                : message.intentType === "PLAN" ? "var(--atlas-gold)"
-                : "#a78bfa",
-            }}>
-              {message.intentType}
-            </span>
-          )}
         </div>
         {modelUsedLabel && (
           <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: -4, marginBottom: 7 }}>
