@@ -1730,7 +1730,8 @@ export default function MasterMap() {
         position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
         display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 10px",
         borderBottom: `1px solid ${palette.headerBorder}`,
-        background: palette.headerBg, backdropFilter: "blur(16px)",
+        background: palette.headerBg, backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
       }}>
         <button onClick={() => exitToReferrer("/home")} style={{
           width: 32, height: 32, borderRadius: 8, border: `1px solid ${palette.panelBorder}`,
