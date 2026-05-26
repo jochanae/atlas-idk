@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useUpdateProject } from "@workspace/api-client-react";
 import type { Project, UpdateProjectBody } from "@workspace/api-client-react";
+import { parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
 
 interface Props {
   project: Project;
@@ -29,13 +30,7 @@ function repoNameFromValue(value: unknown): string | null {
 }
 
 function parseLinkedRepoValue(linkedRepo?: string | null): string | null {
-  if (!linkedRepo) return null;
-
-  try {
-    return repoNameFromValue(JSON.parse(linkedRepo));
-  } catch {
-    return repoNameFromValue(linkedRepo);
-  }
+  return parseLinkedRepo(linkedRepo)?.fullName ?? null;
 }
 
 function parseLinkedRepos(project: Project): string[] {
@@ -70,7 +65,7 @@ function linkedRepoPayloadFor(repoName: string, project: Project): string {
     return project.linkedRepo;
   }
 
-  return JSON.stringify({
+  return serializeLinkedRepo({
     fullName: repoName,
     defaultBranch: "main",
     name: repoName.split("/")[1] ?? repoName,

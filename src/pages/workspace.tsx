@@ -54,6 +54,7 @@ import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
+import { parseLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
 import { supabase } from "@/integrations/supabase/client";
 import type { Plan, PlanExecution } from "../lib/plan";
@@ -2222,7 +2223,7 @@ function MapTab({ projectId }: { projectId: number }) {
 
   const { data: mapProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const token = mapProject?.githubToken ?? null;
-  const linkedRepo = (() => { try { return mapProject?.linkedRepo ? JSON.parse(mapProject.linkedRepo) as { fullName: string; defaultBranch: string } : null; } catch { return null; } })();
+  const linkedRepo = parseLinkedRepo(mapProject?.linkedRepo);
 
   const saveMapToMemory = (data: ProjectScan, existingMemory: string) => {
     const scanBlock = [
@@ -2528,13 +2529,7 @@ function ConnectionsTab({
     }
   };
 
-  let linkedRepo: { fullName?: string } | null = null;
-  try {
-    if (project?.linkedRepo) {
-      const parsed = JSON.parse(project.linkedRepo) as string | { fullName?: string };
-      linkedRepo = typeof parsed === "string" ? { fullName: parsed } : parsed;
-    }
-  } catch {}
+  const linkedRepo = parseLinkedRepo(project?.linkedRepo);
 
   const repoName = linkedRepo?.fullName ?? null;
   const githubConnected = !!githubConnection;
@@ -5584,11 +5579,7 @@ export default function Workspace() {
 
   // Sync linkedRepo from project DB when project loads
   useEffect(() => {
-    if (!project?.linkedRepo) return;
-    try {
-      const repo = JSON.parse(project.linkedRepo) as LinkedRepo;
-      setLinkedRepo(repo);
-    } catch {}
+    setLinkedRepo(parseLinkedRepo(project?.linkedRepo) as LinkedRepo | null);
   }, [project?.linkedRepo]);
 
   // Load push history from DB on project load (FIX 2)
@@ -5616,15 +5607,7 @@ export default function Workspace() {
       "__server__";
 
     let cancelled = false;
-    const parsedRepo = (() => {
-      try {
-        const r = JSON.parse(project.linkedRepo);
-        // Handle both plain-string "owner/repo" and JSON { fullName, defaultBranch } formats
-        if (typeof r === "string") return { fullName: r, defaultBranch: "main" };
-        return r as { fullName: string; defaultBranch: string };
-      }
-      catch { return null; }
-    })();
+    const parsedRepo = parseLinkedRepo(project.linkedRepo);
     if (!parsedRepo) return;
 
     const branch = parsedRepo.defaultBranch ?? "main";
@@ -5718,13 +5701,7 @@ export default function Workspace() {
   // Skips if a fresh scan (< 24h) already exists in localStorage.
   useEffect(() => {
     if (!project?.linkedRepo) return;
-    const parsedRepo = (() => {
-      try {
-        const r = JSON.parse(project.linkedRepo);
-        if (typeof r === "string") return { fullName: r, defaultBranch: "main" };
-        return r as { fullName: string; defaultBranch: string };
-      } catch { return null; }
-    })();
+    const parsedRepo = parseLinkedRepo(project.linkedRepo);
     if (!parsedRepo?.fullName) return;
 
     const scanKey = `atlas-scan-${id}`;

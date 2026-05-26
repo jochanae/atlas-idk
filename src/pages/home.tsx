@@ -10,6 +10,7 @@ import {
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { getLinkedRepoFullName } from "@/lib/githubRepo";
 import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
@@ -791,13 +792,8 @@ function ProjectCard({ project, onSelect }: { project: Project; onSelect: () => 
               maxWidth: 140,
             }}>
               {(() => {
-                try {
-                  const r = JSON.parse(project.linkedRepo);
-                  const full = typeof r === "string" ? r : (r.fullName ?? project.linkedRepo);
-                  return full.includes("/") ? full.split("/")[1] : full;
-                } catch {
-                  return project.linkedRepo.includes("/") ? project.linkedRepo.split("/")[1] : project.linkedRepo;
-                }
+                const full = getLinkedRepoFullName(project.linkedRepo) ?? project.linkedRepo;
+                return full.includes("/") ? full.split("/")[1] : full;
               })()}
             </span>
           </div>

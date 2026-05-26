@@ -22,6 +22,7 @@ import {
   GhTreeNodeRow,
   buildTree,
 } from "../../pages/workspace";
+import { getLinkedRepoFullName, parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
 
 function DbUrlInput({ projectId, onSave }: { projectId: number; onSave: (url: string) => void }) {
   const [value, setValue] = useState("");
@@ -451,43 +452,42 @@ export function FilesPanel({
   // Auto-load linked repo once repos are available (from DB)
   useEffect(() => {
     if (autoLoadedRef.current || repos.length === 0 || !filesProject?.linkedRepo) return;
+    const savedRepo = parseLinkedRepo(filesProject.linkedRepo);
+    if (!savedRepo?.fullName) return;
+
+    const match = repos.find(r => r.fullName.toLowerCase() === savedRepo.fullName.toLowerCase());
+    if (!match) return;
+
+    autoLoadedRef.current = true;
+    loadTree(match);
+    const scanKey = `atlas-scan-${projectId}`;
     try {
-      const savedRepo = JSON.parse(filesProject.linkedRepo) as GhRepo;
-      const match = repos.find(r => r.fullName.toLowerCase() === savedRepo.fullName.toLowerCase());
-      if (match) {
-        autoLoadedRef.current = true;
-        loadTree(match);
-        // Re-inject cached scan context so AI always knows the repo structure
-        const scanKey = `atlas-scan-${projectId}`;
-        try {
-          const cached = localStorage.getItem(scanKey);
-          if (cached) {
-            const data = JSON.parse(cached) as { repo: string; stack: string[]; routes: string[]; pages: string[]; tables?: string[]; summary: string };
-            const lines = [
-              `[Repo overview — ${data.repo}]`,
-              `Stack: ${(data.stack || []).join(", ")}`,
-              `Routes: ${(data.routes || []).slice(0, 12).join(", ")}`,
-              `Pages: ${(data.pages || []).slice(0, 12).join(", ")}`,
-              data.tables?.length ? `Tables: ${data.tables.join(", ")}` : "",
-              `Summary: ${data.summary}`,
-            ].filter(Boolean);
-            setScanStatus("done");
-            onFileContext(lines.join("\n"));
-          } else if (tokenState) {
-            runAutoScan(match, tokenState);
-          }
-        } catch {
-          if (tokenState) runAutoScan(match, tokenState);
-        }
+      const cached = localStorage.getItem(scanKey);
+      if (cached) {
+        const data = JSON.parse(cached) as { repo: string; stack: string[]; routes: string[]; pages: string[]; tables?: string[]; summary: string };
+        const lines = [
+          `[Repo overview — ${data.repo}]`,
+          `Stack: ${(data.stack || []).join(", ")}`,
+          `Routes: ${(data.routes || []).slice(0, 12).join(", ")}`,
+          `Pages: ${(data.pages || []).slice(0, 12).join(", ")}`,
+          data.tables?.length ? `Tables: ${data.tables.join(", ")}` : "",
+          `Summary: ${data.summary}`,
+        ].filter(Boolean);
+        setScanStatus("done");
+        onFileContext(lines.join("\n"));
+      } else if (tokenState) {
+        runAutoScan(match, tokenState);
       }
-    } catch {}
-  }, [repos, filesProject?.linkedRepo, loadTree]);
+    } catch {
+      if (tokenState) runAutoScan(match, tokenState);
+    }
+  }, [repos, filesProject?.linkedRepo, loadTree, onFileContext, projectId, tokenState]);
 
   // Link a repo to this project and load its tree
   const pickRepo = useCallback((repo: GhRepo) => {
     setLinkRepoError(null);
     updateProject.mutate(
-      { id: projectId, data: { linkedRepo: JSON.stringify(repo) } },
+      { id: projectId, data: { linkedRepo: serializeLinkedRepo(repo) } },
       {
         onSuccess: () => {
           onLinkedRepoChange(repo);
@@ -1029,10 +1029,7 @@ export function FilesPanel({
             </div>
           )}
           {!reposLoading && repos.map((repo) => {
-            let linkedFullName: string | null = null;
-            try {
-              linkedFullName = filesProject?.linkedRepo ? JSON.parse(filesProject.linkedRepo).fullName : null;
-            } catch {}
+            const linkedFullName = getLinkedRepoFullName(filesProject?.linkedRepo);
             const isLinked = linkedFullName === repo.fullName;
             return (
               <div
@@ -1089,7 +1086,7 @@ export function FilesPanel({
                       { data: { name: repo.name } },
                       {
                         onSuccess: (newProject) => {
-                          const repoJson = JSON.stringify(repo);
+                          const repoJson = serializeLinkedRepo(repo);
                           updateProject.mutate(
                             { id: newProject.id, data: { linkedRepo: repoJson } },
                             {

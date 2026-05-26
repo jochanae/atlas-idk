@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
+import { parseLinkedRepo } from "@/lib/githubRepo";
 import type { ArchNode } from "./AxiomFlow";
 import { GlossaryTip } from "./GlossaryTip";
 import { useThemeMode } from "@/lib/theme";
@@ -183,9 +184,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           setProjectShape(proj.shape);
         }
         if (!proj?.linkedRepo) { setRepoScanStatus("done"); return; }
-        let repoInfo: { fullName?: string; defaultBranch?: string } = {};
-        try { repoInfo = JSON.parse(proj.linkedRepo); } catch { setRepoScanStatus("done"); return; }
-        if (!repoInfo.fullName) { setRepoScanStatus("done"); return; }
+        const repoInfo = parseLinkedRepo(proj.linkedRepo);
+        if (!repoInfo?.fullName) { setRepoScanStatus("done"); return; }
         const branch = repoInfo.defaultBranch ?? "main";
         const found: { path: string; content: string }[] = [];
         let totalLen = 0;
@@ -233,12 +233,10 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         const linked: GhProject[] = [];
         for (const p of data) {
           if (!p.linkedRepo) continue;
-          try {
-            const parsed = JSON.parse(p.linkedRepo) as { fullName?: string; defaultBranch?: string };
-            if (parsed.fullName) {
-              linked.push({ name: p.name, githubRepo: parsed.fullName, defaultBranch: parsed.defaultBranch ?? "main" });
-            }
-          } catch { /* malformed linkedRepo, skip */ }
+          const parsed = parseLinkedRepo(p.linkedRepo);
+          if (parsed?.fullName) {
+            linked.push({ name: p.name, githubRepo: parsed.fullName, defaultBranch: parsed.defaultBranch ?? "main" });
+          }
         }
         setGhProjects(linked);
       })
