@@ -539,6 +539,21 @@ export function AxiomFlow({
     try { setSummaryCollapsed(localStorage.getItem(mapSeenKey) === "1"); } catch { setSummaryCollapsed(false); }
   }, [mapSeenKey]);
 
+  // If projectName arrives or changes after mount and the goal node still
+  // carries the generic "The Goal" label, rewrite just the goal to read as
+  // a real, project-aware goal. User-edited labels are left untouched.
+  useEffect(() => {
+    setNodes(prev => {
+      const goal = prev.find(n => n.id === "goal");
+      if (!goal || goal.label !== "The Goal") return prev;
+      return prev.map(n =>
+        n.id === "goal"
+          ? { ...n, label: goalLabelFor(projectName), details: goalDetailsFor(projectName) }
+          : n
+      );
+    });
+  }, [projectName]);
+
   // Sync strategicAnswer from DB on first load. `resolved` is now strictly
   // derived from a non-empty strategicAnswer — legacy `Record<id, boolean>`
   // rows are intentionally NOT migrated to "resolved", so a previously-checked
