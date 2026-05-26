@@ -132,6 +132,7 @@ type HomeHandoffNode = {
   details?: string;
   meta?: string;
   moscow?: string;
+  resolved?: boolean;
 };
 
 type HomeHandoffMeta = {
