@@ -574,28 +574,40 @@ export type Database = {
       }
       projects: {
         Row: {
+          committed_at: string | null
           created_at: string
           id: string
           last_opened_at: string
           name: string
+          shape: Json
           status: string
+          surface_mode: string
           user_id: string
+          working_title: string | null
         }
         Insert: {
+          committed_at?: string | null
           created_at?: string
           id?: string
           last_opened_at?: string
           name: string
+          shape?: Json
           status?: string
+          surface_mode?: string
           user_id: string
+          working_title?: string | null
         }
         Update: {
+          committed_at?: string | null
           created_at?: string
           id?: string
           last_opened_at?: string
           name?: string
+          shape?: Json
           status?: string
+          surface_mode?: string
           user_id?: string
+          working_title?: string | null
         }
         Relationships: []
       }
