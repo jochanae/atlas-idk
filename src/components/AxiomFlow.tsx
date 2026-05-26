@@ -613,14 +613,26 @@ export function AxiomFlow({
   const readinessScore = Math.round(
     (nonWontNodes.filter(isNodeDefined).length / Math.max(nonWontNodes.length, 1)) * 100
   );
-  const goalForSummary = nodes.find(n => n.type === "goal") ?? nodes[0];
-  const mustCount = nodes.filter(n => getMoscow(n) === "must").length;
-  const shouldCount = nodes.filter(n => getMoscow(n) === "should").length;
+  const goalNode = nodes.find(n => n.type === "goal");
+  const goalIsDefined = goalNode ? isNodeDefined(goalNode) : false;
+  // Only count nodes the user has actually defined — seed placeholders don't count.
+  const mustCount = nodes.filter(n => isNodeDefined(n) && getMoscow(n) === "must").length;
+  const shouldCount = nodes.filter(n => isNodeDefined(n) && getMoscow(n) === "should").length;
   const openDecisionCount = nodes.filter(n => n.type === "decision" && !isNodeDefined(n)).length;
-  const blockerCount = nodes.filter(n => n.type === "blocker").length;
+  const blockerCount = nodes.filter(n => n.type === "blocker" && isNodeDefined(n)).length;
   const definedCount = nodes.filter(isNodeDefined).length;
+  const placeholderCount = nodes.length - definedCount;
   const isEmptyMap = definedCount === 0;
   const projectLabel = projectName?.trim() || "this project";
+  const goalLabelForSummary = goalIsDefined && goalNode?.label ? goalNode.label : projectLabel;
+  const pluralize = (n: number, singular: string, plural?: string) =>
+    `${n} ${n === 1 ? singular : (plural ?? `${singular}s`)}`;
+  const summaryParts = [
+    mustCount > 0 ? pluralize(mustCount, "must-have") : null,
+    shouldCount > 0 ? pluralize(shouldCount, "should-have") : null,
+    openDecisionCount > 0 ? pluralize(openDecisionCount, "open decision") : null,
+    blockerCount > 0 ? pluralize(blockerCount, "blocker") : null,
+  ].filter(Boolean) as string[];
 
   useEffect(() => { onReadinessChange?.(readinessScore); }, [readinessScore, onReadinessChange]);
 
