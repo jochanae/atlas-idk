@@ -9,6 +9,7 @@ import {
   getGetProjectQueryKey,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
+import { Switch } from "@/components/ui/switch";
 import {
   type LinkedRepo,
   type GhRepo,
@@ -186,6 +187,11 @@ export function FilesPanel({
   const [githubConnection, setGithubConnection] = useState<AccountConnection | null>(null);
   const [serverTokenAvailable, setServerTokenAvailable] = useState(false);
   const [serverTokenChecked, setServerTokenChecked] = useState(false);
+  const [showModelPicker, setShowModelPicker] =
+    useState(() =>
+      localStorage.getItem("atlas-power-model-picker")
+      === "1"
+    );
   const tokenSynced = useRef(false);
   const [autoLinkStatus, setAutoLinkStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [autoLinkResult, setAutoLinkResult] = useState<{ linked: Array<{ projectName: string; repoFullName: string }>; skipped: string[] } | null>(null);
@@ -548,6 +554,33 @@ export function FilesPanel({
 
   const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
   const sMuted = { color: "var(--atlas-muted)", ...sMono };
+  const onShowModelPickerChange = (checked: boolean) => {
+    if (checked) {
+      localStorage.setItem("atlas-power-model-picker", "1");
+      setShowModelPicker(true);
+    } else {
+      localStorage.removeItem("atlas-power-model-picker");
+      setShowModelPicker(false);
+    }
+  };
+  const modelPickerToggleRow = (
+    <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--atlas-border)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div>
+          <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--atlas-fg)", opacity: 0.75 }}>
+            Manual model selection
+          </div>
+          <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.55, marginTop: 2 }}>
+            Show model picker in message bar
+          </div>
+        </div>
+        <Switch
+          checked={showModelPicker}
+          onCheckedChange={onShowModelPickerChange}
+        />
+      </div>
+    </div>
+  );
 
   // Token setup screen — only show after server check, and only if no token at all
   if (!tokenState) {
@@ -712,6 +745,7 @@ export function FilesPanel({
         </a>
         <div style={{ width: "100%" }}>
           <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
+          {modelPickerToggleRow}
         </div>
       </div>
     );
@@ -1241,6 +1275,7 @@ export function FilesPanel({
       )}
       <div style={{ flexShrink: 0, padding: "0 10px 12px" }}>
         <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
+        {modelPickerToggleRow}
       </div>
     </div>
   );
