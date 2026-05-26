@@ -267,7 +267,7 @@ export function TimelineRail({
         onTouchStart={startPress}
         onTouchEnd={endPress}
         style={{
-          position: "fixed",
+          position: "absolute",
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
@@ -282,6 +282,7 @@ export function TimelineRail({
           pointerEvents: "auto",
           opacity: 0.95,
         }}
+
       >
         {/* spine */}
         <div
