@@ -44,7 +44,7 @@ type ActivityItem = {
   timestamp: string;
 };
 
-function RevealOnScroll({ children, delayMs = 0 }: { children: ReactNode; delayMs?: number }) {
+function RevealOnScroll({ children, delayMs = 0, className }: { children: ReactNode; delayMs?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
@@ -59,7 +59,7 @@ function RevealOnScroll({ children, delayMs = 0 }: { children: ReactNode; delayM
     return () => obs.disconnect();
   }, []);
   return (
-    <div ref={ref} style={{
+    <div ref={ref} className={className} style={{
       opacity: revealed ? 1 : 0,
       transform: revealed ? "translateY(0)" : "translateY(14px)",
       transition: `opacity 550ms cubic-bezier(0.4,0,0.2,1) ${delayMs}ms, transform 550ms cubic-bezier(0.4,0,0.2,1) ${delayMs}ms`,
