@@ -1164,6 +1164,45 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
         <button style={tabBtn(tab === "prompt")} onClick={() => setTab("prompt")}>Quick Prompt</button>
         <button style={tabBtn(tab === "dna")} onClick={() => setTab("dna")}>Project DNA</button>
       </div>
+
+      {/* Scope breadcrumb — visible only when Forge was entered from a Master Map node */}
+      {scopeNodeId && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 16px",
+          background: "linear-gradient(90deg, rgba(201,162,76,0.08), rgba(201,162,76,0.02))",
+          borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+          borderLeft: "2px solid var(--atlas-gold)",
+        }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+              color: "rgba(var(--atlas-muted-rgb),0.7)",
+              letterSpacing: "0.14em", textTransform: "uppercase",
+            }}>Scoped to</span>
+            <span style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 12, fontWeight: 600,
+              color: "var(--atlas-gold)", letterSpacing: "0.02em",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{scopeNodeLabel ?? scopeNodeId}</span>
+          </div>
+          {onClearScope && (
+            <button
+              onClick={onClearScope}
+              title="Clear scope — hydrate full project context"
+              style={{
+                background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.25)",
+                color: "rgba(var(--atlas-muted-rgb),0.7)",
+                fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em",
+                padding: "3px 8px", borderRadius: 4, cursor: "pointer",
+                textTransform: "uppercase",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(var(--atlas-muted-rgb),0.7)"; }}
+            >Clear scope</button>
+          )}
+        </div>
+      )}
     </div>
   );
 
