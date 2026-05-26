@@ -407,7 +407,8 @@ export default function MasterMap() {
 
   useEffect(() => {
     setLoading(true);
-    fetchAll().then(({ list }) => {
+    fetchAll().then(({ list, shapingCount }) => {
+      shapingCountRef.current = shapingCount;
       setProjects(list);
       setConnections(buildConns(list));
       const m = new Map<number, string>();
