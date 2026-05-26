@@ -42,6 +42,7 @@ import { Briefcase, ChevronDown, MoreVertical } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
+import { LongPressTip } from "../lib/long-press-tip";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
