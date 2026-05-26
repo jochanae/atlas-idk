@@ -790,8 +790,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   className={voiceListening ? "atlas-voice-active" : ""}
                   style={{
                     minWidth: 44, minHeight: 44, padding: 6, borderRadius: 8,
-                    background: voiceListening ? "var(--atlas-ember)" : "var(--atlas-surface)",
-                    border: `1px solid ${voiceListening ? "var(--atlas-ember)" : "var(--atlas-border)"}`,
+                    background: voiceListening ? "var(--atlas-ember)" : "transparent",
+                    border: `1px solid ${voiceListening ? "var(--atlas-ember)" : "transparent"}`,
                     color: voiceListening ? "var(--atlas-fg)" : "var(--atlas-muted)",
                     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all var(--motion-base) var(--ease-standard)", flexShrink: 0,
