@@ -6659,9 +6659,18 @@ export default function Workspace() {
               <LongPressTip tip="Rescan GitHub repo and update readiness score">
                 <button
                   type="button"
-                  onClick={() => { if (!isScanning) void runScan(false); }}
+                  onClick={() => {
+                    if (isScanning) return;
+                    toast.info("Rescanning repository", {
+                      description: hasLinkedRepo
+                        ? "Pulling the latest from GitHub to refresh your readiness score."
+                        : "No GitHub repo linked yet — connect one in the Files tab.",
+                      className: "atlas-toast-pill",
+                    });
+                    void runScan(false);
+                  }}
                   disabled={isScanning}
-                  title={isScanning ? "Scanning…" : "Rescan readiness from GitHub"}
+                  title={isScanning ? "Scanning your repo…" : "Rescan repo · refresh readiness score"}
                   aria-label="Rescan readiness"
                   style={{
                     width: isTinyScreen ? 20 : 22,
