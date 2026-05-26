@@ -4,7 +4,7 @@ import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "../LiveGenerationCard";
-import { TimelineRail } from "../TimelineRail";
+
 import type {
   ChatMessage,
   AmbientSurface,
@@ -152,9 +152,9 @@ export function ChatStream(props: ChatStreamProps) {
     onPushSuccess,
   } = props;
 
-  // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
+  // Symmetric gutters matching composer edges (composer wrapper = 14px each side).
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
-  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 104px 96px 24px", position: "relative", scrollbarWidth: "none" };
+  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 14px 96px 14px", position: "relative", scrollbarWidth: "none" };
 
   return (
     <div
@@ -302,38 +302,6 @@ export function ChatStream(props: ChatStreamProps) {
       ) : null}
 
       <div ref={bottomRef} />
-
-      {showScrollBtn && (
-        <button
-          onClick={onScrollToLatest}
-          aria-label="Scroll to latest"
-          style={{
-            position: "sticky",
-            bottom: 12,
-            left: "100%",
-            transform: "translateX(-100%)",
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: "var(--atlas-surface)",
-            border: "1px solid var(--atlas-gold)",
-            color: "var(--atlas-gold)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-            zIndex: 5,
-            flexShrink: 0,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 3v10M4 9l4 4 4-4"/>
-          </svg>
-        </button>
-      )}
-
-      <TimelineRail messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
     </div>
   );
 }

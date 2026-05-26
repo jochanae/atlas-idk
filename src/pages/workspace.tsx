@@ -6922,6 +6922,55 @@ export default function Workspace() {
 
             {/* Readiness ring + mode pill moved to the top shell */}
 
+            {/* Search in thread — replaces the floating right-rail trigger */}
+            <button
+              type="button"
+              title="Search in thread"
+              aria-label="Search in thread"
+              disabled={messages.length === 0}
+              onClick={() => {
+                threadSearchCursorRef.current = { q: "", matches: [], idx: -1 };
+                setThreadSearchStatus("");
+                setThreadSearchDraft("");
+                setShowProjectMenu(true);
+              }}
+              style={{
+                width: 26, height: 26, padding: 0, borderRadius: 7,
+                background: "transparent", border: "none",
+                color: "var(--atlas-muted)",
+                cursor: messages.length === 0 ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "color 160ms ease, opacity 160ms ease",
+                flexShrink: 0, opacity: messages.length === 0 ? 0.3 : 0.65,
+              }}
+              onMouseEnter={(e) => { if (messages.length > 0) { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.opacity = "1"; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.opacity = messages.length === 0 ? "0.3" : "0.65"; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5L14 14" /></svg>
+            </button>
+
+            {/* Scroll to latest — only when scrolled up */}
+            {showWsScrollBtn && leftTab === "chat" && (
+              <button
+                type="button"
+                title="Scroll to latest"
+                aria-label="Scroll to latest"
+                onClick={() => chatPanelScrollRef.current?.scrollTo({ top: chatPanelScrollRef.current.scrollHeight, behavior: "smooth" })}
+                style={{
+                  width: 26, height: 26, padding: 0, borderRadius: 7,
+                  background: "transparent", border: "none",
+                  color: "var(--atlas-gold)",
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "color 160ms ease, opacity 160ms ease",
+                  flexShrink: 0, opacity: 0.85,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v10M4 9l4 4 4-4"/></svg>
+              </button>
+            )}
 
             {!isMobile && (
               <button
