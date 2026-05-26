@@ -7927,20 +7927,23 @@ export default function Workspace() {
       {showProjectMenu && createPortal(
         <>
           <div onClick={() => setShowProjectMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
-          <div
-            className="atlas-popover"
-            style={{
-              position: "fixed",
-              top: 56,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 9999,
-              minWidth: 240,
-              maxWidth: "calc(100vw - 24px)",
-              maxHeight: "calc(100vh - 80px)",
-              overflowY: "auto",
-            }}
-          >
+           <div
+             ref={projectMenuRef}
+             className="atlas-popover"
+             style={{
+               position: "fixed",
+               top: 56,
+               left: "50%",
+               transform: "translateX(-50%)",
+               zIndex: 9999,
+               minWidth: 240,
+               maxWidth: "calc(100vw - 24px)",
+               maxHeight: "calc(100vh - 80px)",
+               overflowY: "auto",
+               WebkitOverflowScrolling: "touch",
+               overscrollBehavior: "contain",
+             }}
+           >
             {(allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived").length > 0 && (() => {
               const others = (allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived");
               return (
