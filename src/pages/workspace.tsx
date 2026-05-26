@@ -5856,6 +5856,10 @@ export default function Workspace() {
     [messages, planStates]
   );
   const showReviewTab = reviewMessages.length > 0;
+  const pendingReviewCount = useMemo(
+    () => reviewMessages.filter((m) => (planStates.get(m.id ?? 0) ?? "pending") === "pending").length,
+    [reviewMessages, planStates]
+  );
   const chatPlanStates = useMemo(() => {
     if (!showReviewTab) return planStates;
     const next = new Map(planStates);
