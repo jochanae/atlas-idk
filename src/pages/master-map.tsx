@@ -196,10 +196,14 @@ function buildConns(projects: Project[]): Connection[] {
   }
   return out;
 }
-async function fetchAll(): Promise<{ nexus: Project | null; list: Project[] }> {
+async function fetchAll(): Promise<{ nexus: Project | null; list: Project[]; shapingCount: number }> {
   const lR = await fetch(`${BASE_URL}/api/projects`, { credentials: "include" });
   const raw: Project[] = lR.ok ? await lR.json() : [];
-  return { nexus: null, list: raw };
+  // Constellation shows the system of record — only committed projects render as nodes.
+  // Shaping projects orbit invisibly until they commit; we surface the count for the halo.
+  const committed = raw.filter((p) => (p.status ?? "committed") === "committed");
+  const shapingCount = raw.filter((p) => p.status === "shaping").length;
+  return { nexus: null, list: committed, shapingCount };
 }
 
 // ── component ────────────────────────────────────────────────────────────────
