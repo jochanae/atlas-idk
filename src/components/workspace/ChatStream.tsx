@@ -152,7 +152,9 @@ export function ChatStream(props: ChatStreamProps) {
     onPushSuccess,
   } = props;
 
-  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", padding: "12px 88px 12px 22px", position: "relative" };
+  // Padding mirrors home/nexus chat scroller (paddingRight: 80, paddingTop: 56)
+  // so the full-width feel and right-edge gutter match between surfaces.
+  const containerStyle: CSSProperties = { flex: 1, overflowY: "auto", overflowX: "hidden", padding: "56px 80px 12px 16px", position: "relative", scrollbarWidth: "none" };
 
   return (
     <div
