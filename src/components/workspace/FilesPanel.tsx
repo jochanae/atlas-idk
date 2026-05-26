@@ -9,6 +9,7 @@ import {
   getGetProjectQueryKey,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
+import { useGitHub } from "@/hooks/useGitHub";
 import { GitHubConnect } from "@/components/GitHubConnect";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -83,26 +84,8 @@ function DbUrlInput({ projectId, onSave }: { projectId: number; onSave: (url: st
   );
 }
 
-type AccountConnection = {
-  id: number | string;
-  type?: string | null;
-  token?: string | null;
-  accessToken?: string | null;
-  githubToken?: string | null;
-  meta?: {
-    token?: string | null;
-    accessToken?: string | null;
-    githubToken?: string | null;
-  } | null;
-};
-
-function githubTokenFromConnection(connection: AccountConnection): string | null {
-  return connection.token ?? connection.accessToken ?? connection.githubToken ??
-    connection.meta?.token ?? connection.meta?.accessToken ?? connection.meta?.githubToken ?? null;
-}
-
 function githubHeaders(token: string | null): HeadersInit {
-  return token && token !== "__account__" ? { "x-github-token": token } : {};
+  return token ? { "x-github-token": token } : {};
 }
 
 function DatabaseConnectionSection({
@@ -185,65 +168,15 @@ export function FilesPanel({
   });
   const { data: allProjects } = useListProjects();
 
-  const [tokenState, setTokenState] = useState<string | null>(null);
-  const [githubConnection, setGithubConnection] = useState<AccountConnection | null>(null);
-  const [serverTokenAvailable, setServerTokenAvailable] = useState(false);
-  const [serverTokenChecked, setServerTokenChecked] = useState(false);
+  const { isConnected, isLoading } = useGitHub();
+  const token = isConnected ? "__account__" : null;
   const [showModelPicker, setShowModelPicker] =
     useState(() =>
       localStorage.getItem("atlas-power-model-picker")
       === "1"
     );
-  const tokenSynced = useRef(false);
   const [autoLinkStatus, setAutoLinkStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [autoLinkResult, setAutoLinkResult] = useState<{ linked: Array<{ projectName: string; repoFullName: string }>; skipped: string[] } | null>(null);
-  const loadGithubConnection = useCallback(async () => {
-    const res = await fetch("/api/connections");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
-    const github = connections.find((c) => c.type === "github") ?? null;
-    setGithubConnection(github);
-    setTokenState(github ? githubTokenFromConnection(github) ?? "__account__" : null);
-    return github;
-  }, []);
-
-  useEffect(() => {
-    loadGithubConnection().catch(() => {
-      setGithubConnection(null);
-      setTokenState(null);
-    });
-  }, [loadGithubConnection]);
-
-  // Check if server has a GITHUB_TOKEN configured — auto-connect if no manual token exists
-  useEffect(() => {
-    fetch("/api/github/server-token")
-      .then(r => r.ok ? r.json() : { available: false })
-      .then((d: any) => {
-        const avail = !!d.available;
-        setServerTokenAvailable(avail);
-        setServerTokenChecked(true);
-        if (avail && !githubConnection) {
-          setTokenState("__server__");
-        }
-      })
-      .catch(() => setServerTokenChecked(true));
-  }, [githubConnection]);
-
-  useEffect(() => {
-    if (!githubConnection && serverTokenAvailable) setTokenState("__server__");
-  }, [githubConnection, serverTokenAvailable]);
-
-  useEffect(() => {
-    if (!filesProject) return;
-    if (githubConnection) {
-      if (tokenSynced.current) return;
-      tokenSynced.current = true;
-      return;
-    }
-
-    if (!serverTokenAvailable) setTokenState(null);
-  }, [filesProject, githubConnection, serverTokenAvailable]);
   const [repos, setRepos] = useState<GhRepo[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [reposError, setReposError] = useState<string | null>(null);
@@ -264,10 +197,7 @@ export function FilesPanel({
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [commitsError, setCommitsError] = useState<string | null>(null);
   const [commitsReason, setCommitsReason] = useState<string | null>(null);
-  const [disconnectConfirm, setDisconnectConfirm] = useState(false);
-  const [clearTokenError, setClearTokenError] = useState<string | null>(null);
   const [unlinkRepoError, setUnlinkRepoError] = useState<string | null>(null);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const autoLoadedRef = useRef(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
@@ -302,7 +232,6 @@ export function FilesPanel({
   // Reset auto-load gate when project switches
   useEffect(() => {
     autoLoadedRef.current = false;
-    tokenSynced.current = false;
     setSelectedRepo(null);
     setTree([]);
     setSelectedPath(null);
@@ -339,13 +268,13 @@ export function FilesPanel({
   }, [filesSubTab, loadCommits]);
 
   const handleAutoLink = async () => {
-    if (!tokenState || autoLinkStatus === "running") return;
+    if (!token || autoLinkStatus === "running") return;
     setAutoLinkStatus("running");
     setAutoLinkResult(null);
     try {
       const res = await fetch("/api/github/auto-link", {
         method: "POST",
-        headers: githubHeaders(tokenState),
+        headers: githubHeaders(token),
       });
       const data = await res.json() as any;
       if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -358,47 +287,24 @@ export function FilesPanel({
     }
   };
 
-  const clearToken = async () => {
-    setClearTokenError(null);
-    setIsDisconnecting(true);
-    try {
-      if (githubConnection) {
-        const res = await fetch(`/api/connections/${githubConnection.id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      }
-      setGithubConnection(null);
-      setTokenState(serverTokenAvailable ? "__server__" : null);
-      setRepos([]); setSelectedRepo(null); setTree([]);
-      setSelectedPath(null); setFileContent(null);
-      setView("repos");
-      onFileContext(null);
-    } catch (err: any) {
-      const msg = err?.response?.data?.error ?? err?.message ?? "Failed to disconnect GitHub";
-      setClearTokenError(msg);
-    } finally {
-      setIsDisconnecting(false);
-      setDisconnectConfirm(false);
-    }
-  };
-
   const ghFetch = useCallback(async (path: string) => {
-    const res = await fetch(path, { headers: githubHeaders(tokenState) });
+    const res = await fetch(path, { headers: githubHeaders(token) });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error || `HTTP ${res.status}`);
     }
     return res.json();
-  }, [tokenState]);
+  }, [token]);
 
   useEffect(() => {
-    if (!tokenState) return;
+    if (!token) return;
     setReposLoading(true);
     setReposError(null);
     ghFetch("/api/github/repos")
       .then((data) => setRepos(data as GhRepo[]))
       .catch((e) => setReposError(e.message))
       .finally(() => setReposLoading(false));
-  }, [tokenState, ghFetch]);
+  }, [token, ghFetch]);
 
   const loadTree = useCallback(async (repo: GhRepo) => {
     setSelectedRepo(repo);
@@ -453,13 +359,13 @@ export function FilesPanel({
         ].filter(Boolean);
         setScanStatus("done");
         onFileContext(lines.join("\n"));
-      } else if (tokenState) {
-        runAutoScan(match, tokenState);
+      } else if (token) {
+        runAutoScan(match, token);
       }
     } catch {
-      if (tokenState) runAutoScan(match, tokenState);
+      if (token) runAutoScan(match, token);
     }
-  }, [repos, filesProject?.linkedRepo, loadTree, onFileContext, projectId, tokenState]);
+  }, [repos, filesProject?.linkedRepo, loadTree, onFileContext, projectId, token]);
 
   // Link a repo to this project and load its tree
   const pickRepo = useCallback((repo: GhRepo) => {
@@ -470,7 +376,7 @@ export function FilesPanel({
         onSuccess: () => {
           onLinkedRepoChange(repo);
           loadTree(repo);
-          if (tokenState) runAutoScan(repo, tokenState);
+          if (token) runAutoScan(repo, token);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error ?? err?.message ?? "Failed to link repo";
@@ -478,7 +384,7 @@ export function FilesPanel({
         },
       }
     );
-  }, [projectId, updateProject, onLinkedRepoChange, loadTree, tokenState]);
+  }, [projectId, updateProject, onLinkedRepoChange, loadTree, token]);
 
   // Unlink the repo from this project
   const unlinkRepo = useCallback(() => {
@@ -560,127 +466,15 @@ export function FilesPanel({
     </div>
   );
 
-  // Token setup screen — only show after server check, and only if no token at all
-  if (!tokenState) {
-    if (!serverTokenChecked) {
-      // Still checking — show a brief loading state to avoid flash
-      return (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.5 }}>connecting…</div>
-        </div>
-      );
-    }
+  if (!isConnected) {
+    if (isLoading) return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.5 }}>connecting…</div>
+      </div>
+    );
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 18px", gap: 14 }}>
-        {/* —— ZIP Upload —— */}
-        <div style={{ width: "100%", marginBottom: 4 }}>
-          <div style={{
-            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "var(--atlas-muted)", marginBottom: 8,
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
-            <span>Upload ZIP</span>
-            {zipLoaded && (
-              <span style={{
-                fontSize: 9, color: "rgba(134,239,172,0.8)",
-                background: "rgba(134,239,172,0.08)",
-                border: "1px solid rgba(134,239,172,0.2)",
-                padding: "2px 7px", borderRadius: 10,
-              }}>
-                ACTIVE
-              </span>
-            )}
-          </div>
-
-          {zipLoaded ? (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 12px", borderRadius: 7,
-              background: "rgba(201,162,76,0.05)",
-              border: "1px solid rgba(201,162,76,0.2)",
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-              </svg>
-              <span style={{
-                flex: 1, fontSize: 11, fontFamily: "var(--app-font-mono)",
-                color: "rgba(201,162,76,0.85)",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {zipFileName || "ZIP loaded"}
-              </span>
-              <button
-                onClick={() => onZipTrigger?.()}
-                style={{
-                  background: "transparent",
-                  border: "1px solid rgba(201,162,76,0.2)",
-                  borderRadius: 5, padding: "3px 9px",
-                  fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-                  color: "rgba(201,162,76,0.6)",
-                  cursor: "pointer", letterSpacing: "0.06em",
-                }}
-              >
-                Replace
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => onZipTrigger?.()}
-              style={{
-                width: "100%", padding: "11px 14px",
-                background: "rgba(201,162,76,0.04)",
-                border: "1px dashed rgba(201,162,76,0.25)",
-                borderRadius: 7, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
-                color: "rgba(201,162,76,0.7)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 11, letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                transition: "all 160ms ease",
-                WebkitTapHighlightColor: "transparent",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "rgba(201,162,76,0.08)";
-                e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "rgba(201,162,76,0.04)";
-                e.currentTarget.style.borderColor = "rgba(201,162,76,0.25)";
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Upload ZIP — no GitHub needed
-            </button>
-          )}
-
-          <div style={{
-            marginTop: 6, fontSize: 10, color: "rgba(120,113,108,0.5)",
-            fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
-          }}>
-            Drop a ZIP of your project and Atlas reads the code directly. No repo required.
-          </div>
-        </div>
-        {/* —— GitHub connect —— */}
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" opacity={0.25}>
-          <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.8c.85.004 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z" fill="var(--atlas-fg)" />
-        </svg>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", opacity: 0.7, fontWeight: 500, marginBottom: 5 }}>Connect GitHub</div>
-          <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.6 }}>
-            Paste your GitHub token once — it works<br />across all your projects automatically.
-          </div>
-        </div>
-        <div style={{ width: "100%" }}>
-          <GitHubConnect onSuccess={() => { void loadGithubConnection(); }} />
-        </div>
-        <div style={{ width: "100%" }}>
-          <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
-          {modelPickerToggleRow}
-        </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 18px", gap: 16 }}>
+        <GitHubConnect onSuccess={() => window.location.reload()} />
       </div>
     );
   }
@@ -751,59 +545,7 @@ export function FilesPanel({
               {isUnlinking ? "unlinking…" : "unlink"}
             </button>
           )}
-          {tokenState === "__server__" ? (
-            <span
-              title="Connected automatically via Replit GitHub integration"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "3px 8px", borderRadius: 6,
-                background: "rgba(52,211,153,0.07)",
-                border: "1px solid rgba(52,211,153,0.18)",
-                fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-                letterSpacing: "0.05em", color: "rgba(52,211,153,0.75)",
-              }}
-            >
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />
-              via Replit
-            </span>
-          ) : disconnectConfirm ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 6, padding: "4px 8px" }}>
-              <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "rgba(252,165,165,0.85)", letterSpacing: "0.04em" }}>Remove token?</span>
-              <button
-                onClick={() => setDisconnectConfirm(false)}
-                disabled={isDisconnecting}
-                style={{ background: "transparent", border: "1px solid var(--atlas-border)", borderRadius: 5, cursor: isDisconnecting ? "default" : "pointer", color: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", padding: "3px 8px", opacity: isDisconnecting ? 0.35 : 0.8, minHeight: 28 }}
-              >Cancel</button>
-              <button
-                onClick={() => { void clearToken(); }}
-                disabled={isDisconnecting}
-                style={{ background: "rgba(220,38,38,0.2)", border: "1px solid rgba(220,38,38,0.4)", borderRadius: 5, cursor: isDisconnecting ? "default" : "pointer", color: "rgba(252,165,165,0.95)", fontSize: 10, fontFamily: "var(--app-font-mono)", padding: "3px 8px", opacity: isDisconnecting ? 0.55 : 1, minHeight: 28 }}
-              >{isDisconnecting ? "removing…" : "Remove"}</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setDisconnectConfirm(true)}
-              title={tokenState === "__account__" ? "GitHub Connected" : "Change GitHub token"}
-              style={{
-                display: "flex", alignItems: "center", gap: 4,
-                background: "rgba(var(--atlas-gold-rgb),0.06)",
-                border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
-                borderRadius: 6, cursor: "pointer",
-                color: "rgba(var(--atlas-gold-rgb),0.65)", fontSize: 9.5,
-                fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em",
-                padding: "4px 8px", minHeight: 28,
-                transition: "all 140ms ease",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(var(--atlas-gold-rgb),0.12)"; e.currentTarget.style.color = "rgba(var(--atlas-gold-rgb),0.9)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(var(--atlas-gold-rgb),0.06)"; e.currentTarget.style.color = "rgba(var(--atlas-gold-rgb),0.65)"; }}
-            >
-              <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <circle cx="5" cy="8" r="2.5" /><path d="M7.5 8h4M10 6v4" />
-                <path d="M3 5.5L5.5 3 8 5.5" />
-              </svg>
-              {tokenState === "__account__" ? "GitHub Connected" : "token"}
-            </button>
-          )}
+          <GitHubConnect />
         </div>
       </div>
 
@@ -860,13 +602,7 @@ export function FilesPanel({
         </div>
       )}
 
-      {/* Inline errors for disconnect / unlink */}
-      {clearTokenError && (
-        <div style={{ margin: "4px 6px 0", padding: "6px 10px", borderRadius: 5, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 6 }}>
-          <span style={{ flexShrink: 0, opacity: 0.7 }}>✕</span>
-          <span>{clearTokenError}</span>
-        </div>
-      )}
+      {/* Inline errors for unlink */}
       {unlinkRepoError && (
         <div style={{ margin: "4px 6px 0", padding: "6px 10px", borderRadius: 5, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 6 }}>
           <span style={{ flexShrink: 0, opacity: 0.7 }}>✕</span>
