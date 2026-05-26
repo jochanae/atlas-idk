@@ -61,8 +61,8 @@ function paletteFor(theme: ThemeMode): ScenePalette {
       spoke: 0x111111,
       tracer: 0xB45309,
       pageBg: "#FAFAF7",
-      headerBg: "rgba(255,255,255,0.85)",
-      headerBorder: "rgba(17,17,17,0.10)",
+      headerBg: "rgba(255,255,255,0.45)",
+      headerBorder: "rgba(17,17,17,0.08)",
       // Label tokens promoted to stamped charcoal so satellite names stay
       // crisp against the cream canvas (was muddy tan/brown ~0.7 alpha).
       goldText: "rgba(17,17,17,0.92)",
