@@ -6802,7 +6802,7 @@ export default function Workspace() {
             padding: isMobile ? "10px 16px 8px" : "12px 22px 10px",
           }}
         >
-          <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0 }}>
+          <nav aria-label="Workspace sections" className="scrollbar-none" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flex: 1 }}>
             {([
               "chat",
               ...(showReviewTab ? ["review" as const] : []),
