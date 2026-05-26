@@ -341,11 +341,27 @@ const TAP_THRESHOLD = 8;
 const CANVAS_PADDING = 80;
 const BASE_STORAGE_KEY = "axiom-flow-nodes";
 
-// New projects open with an empty canvas — no pre-populated seed nodes.
-// The user's first action (chat, tap, or AI-resolved node) introduces nodes.
-const INITIAL_NODES: ArchNode[] = [];
+// Seeded radial mission map — replaces the lonely-goal default so the canvas
+// reads as "populated" the moment a user opens a new project. Positions orbit
+// the goal at (300, 250); fitMap() auto-zooms to fit on mount and resize.
+const INITIAL_NODES: ArchNode[] = [
+  { id: "goal",        label: "The Goal",        type: "goal",        resolved: false, x: 300, y: 250, details: "What does winning look like for this project?" },
+  { id: "must-1",      label: "Core requirement", type: "requirement", resolved: false, x: 300, y:  80, meta: "must",  details: "Tap to define the must-have that makes v1 real." },
+  { id: "blocker-1",   label: "Open blocker",     type: "blocker",     resolved: false, x: 520, y: 160, details: "Tap to name a blocker that's slowing the goal down." },
+  { id: "decision-1",  label: "Open decision",    type: "decision",    resolved: false, x: 520, y: 340, details: "Tap to capture a decision that's still in tension." },
+  { id: "sprint-1",    label: "Sprint 1",         type: "sprint",      resolved: false, x:  80, y: 160, details: "What single deliverable closes this sprint?" },
+  { id: "should-1",    label: "Should-have",      type: "priority",    resolved: false, x:  80, y: 340, meta: "should", details: "What's the cost of deferring this?" },
+  { id: "must-2",      label: "Foundation",       type: "requirement", resolved: false, x: 300, y: 420, meta: "must",  details: "What has to be true before everything else?" },
+];
 
-const INITIAL_EDGES: ArchEdge[] = [];
+const INITIAL_EDGES: ArchEdge[] = [
+  { id: "e-goal-must-1",     from: "goal", to: "must-1" },
+  { id: "e-goal-blocker-1",  from: "goal", to: "blocker-1" },
+  { id: "e-goal-decision-1", from: "goal", to: "decision-1" },
+  { id: "e-goal-sprint-1",   from: "goal", to: "sprint-1" },
+  { id: "e-goal-should-1",   from: "goal", to: "should-1" },
+  { id: "e-goal-must-2",     from: "goal", to: "must-2" },
+];
 
 
 // Detect the EXACT untouched legacy "lonely goal" default — every field must
@@ -983,95 +999,7 @@ export function AxiomFlow({
               <path d="M3 4h10M3 8h7M3 12h5" />
             </svg>
           </button>
-        ) : (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: 42,
-              transform: "translateX(-50%)",
-              zIndex: 12,
-              width: "min(520px, calc(100% - 28px))",
-              background: palette.panelBg,
-              border: `1px solid rgba(${palette.goldRgb},0.38)`,
-              borderRadius: 12,
-              padding: "12px 14px",
-              boxShadow: palette.panelShadow,
-              pointerEvents: "auto",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: palette.goldText, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldText }}>
-                {isEmptyMap ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
-              </span>
-              <button
-                onClick={() => {
-                  setSummaryCollapsed(true);
-                  try { localStorage.setItem(mapSeenKey, "1"); } catch {}
-                }}
-                style={{ background: "transparent", border: "none", color: palette.fgText, opacity: 0.55, cursor: "pointer", fontSize: 16, lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ color: palette.fgText, fontSize: 12, lineHeight: 1.55, opacity: 0.88, marginBottom: 10 }}>
-              {isEmptyMap ? (
-                <>Atlas hasn't extracted anything for <b>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b>Get started</b> and tell Atlas what you're building.</>
-              ) : (
-                <>Your goal is <b>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {isEmptyMap && onNodeFocus && (
-                <button
-                  onClick={() => {
-                    setSummaryCollapsed(true);
-                    try { localStorage.setItem(mapSeenKey, "1"); } catch {}
-                    onNodeFocus(`Let's map ${projectLabel}. What does winning look like, and what are the must-haves to get there?`);
-                  }}
-                  style={{
-                    padding: "6px 11px",
-                    borderRadius: 7,
-                    background: `rgba(${palette.goldRgb},0.28)`,
-                    border: `1px solid rgba(${palette.goldRgb},0.55)`,
-                    color: palette.goldText,
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Get started
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setSummaryCollapsed(true);
-                  try { localStorage.setItem(mapSeenKey, "1"); } catch {}
-                }}
-                style={{
-                  padding: "6px 11px",
-                  borderRadius: 7,
-                  background: `rgba(${palette.goldRgb},0.18)`,
-                  border: `1px solid rgba(${palette.goldRgb},0.45)`,
-                  color: palette.goldText,
-                  cursor: "pointer",
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        )
+        ) : null
       )}
 
       {/* No floating pill in the canvas — handover is triggered from the
