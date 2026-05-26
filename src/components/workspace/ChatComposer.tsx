@@ -774,11 +774,11 @@ export function ChatComposer(props: ChatComposerProps) {
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 1,
                 }}
               >
-                <svg width="14" height="14" viewBox=" 0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="1" y="1" width="6" height="6" rx="1"/>
-                  <rect x="9" y="1" width="6" height="6" rx="1"/>
-                  <rect x="1" y="9" width="6" height="6" rx="1"/>
-                  <rect x="9" y="9" width="6" height="6" rx="1"/>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="1" width="12" height="14" rx="1.5"/>
+                  <line x1="5" y1="5" x2="11" y2="5"/>
+                  <line x1="5" y1="8" x2="11" y2="8"/>
+                  <line x1="5" y1="11" x2="8" y2="11"/>
                 </svg>
               </button>
 
