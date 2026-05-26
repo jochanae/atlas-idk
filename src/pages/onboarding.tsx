@@ -410,11 +410,6 @@ export default function OnboardingPage() {
     try { localStorage.setItem("axiom_onboarding_step", String(step)); } catch {}
   }, [step]);
 
-  const chooseIntent = (id: string) => {
-    setSelectedIntent(id);
-    try { localStorage.setItem("axiom_user_intent", id); } catch {}
-    setStep(3);
-  };
 
   const onNameChange = (val: string) => {
     setProjectName(val);
