@@ -488,8 +488,8 @@ export function TimelineRail({
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "rgba(20,17,14,0.96)",
-              border: "1px solid rgba(201,162,76,0.28)",
+              background: "var(--atlas-bg)",
+              border: "1px solid var(--atlas-border)",
               borderRadius: 10,
               padding: "10px 6px",
               minWidth: 180,
