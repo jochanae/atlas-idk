@@ -3341,42 +3341,38 @@ export default function Home() {
                   </span>
                 </div>
 
-                {/* Distinct CTA — clearly tappable, opens the bottom sheet */}
+                {/* Subtle scroll hint — mobile only; dashboard sits right below */}
                 <button
                   type="button"
-                  aria-label="Expand overview"
-                  onClick={openOverviewSheet}
+                  aria-label="Scroll to overview"
+                  className="atlas-home-scroll-hint"
+                  onClick={() => {
+                    const el = document.getElementById("atlas-home-overview");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    else window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" });
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
-                    padding: "9px 18px",
-                    background: isParchment
-                      ? "linear-gradient(180deg, rgba(201,162,76,0.18), rgba(201,162,76,0.10))"
-                      : "linear-gradient(180deg, rgba(201,162,76,0.16), rgba(201,162,76,0.06))",
-                    border: "1px solid rgba(201,162,76,0.38)",
-                    borderRadius: 999,
-                    boxShadow: "0 0 0 1px rgba(201,162,76,0.06) inset, 0 6px 18px -10px rgba(201,162,76,0.45)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    font: "inherit",
+                    width: 28,
+                    height: 28,
+                    marginTop: 2,
+                    background: "transparent",
+                    border: "none",
                     cursor: "pointer",
-                    color: isParchment ? "rgba(120,52,8,0.95)" : "var(--atlas-gold)",
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: "clamp(10px, 2.6vw, 12px)",
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
+                    color: isParchment ? "rgba(120,52,8,0.55)" : "rgba(201,162,76,0.55)",
+                    animation: "atlasScrollHintBob 2.2s ease-in-out infinite",
                   }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <polyline points="18 15 12 9 6 15" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="6 9 12 15 18 9" />
                   </svg>
-                  <span>Expand overview</span>
                 </button>
               </div>
             );
           })()}
+
 
           {/* Inline create error */}
           {createError && (
