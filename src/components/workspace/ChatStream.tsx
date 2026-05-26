@@ -1,4 +1,5 @@
 import type { CSSProperties, RefObject } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
