@@ -364,7 +364,7 @@ export function FilesPanel({
       const res = await fetch("/api/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "github", token: t.trim() }),
+        body: JSON.stringify({ type: "github", label: "GitHub", token: t.trim() }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
