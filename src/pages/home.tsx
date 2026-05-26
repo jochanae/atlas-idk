@@ -2162,7 +2162,7 @@ export default function Home() {
         // Surface actions stay ambient; failures should not interrupt the thread.
       }
     }
-  }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, openOverviewSheet, queryClient, setLocation]);
+  }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, queryClient, setLocation]);
 
   const handleClearThread = useCallback(async () => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
