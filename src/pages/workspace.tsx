@@ -6849,6 +6849,18 @@ export default function Workspace() {
                 >
                   {tab === "terminal" && <TerminalSquare size={12} strokeWidth={1.7} />}
                   {label}
+                  {showPulse && (
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: "var(--atlas-gold)",
+                        boxShadow: "0 0 8px var(--atlas-gold)",
+                        animation: "atlas-pulse 1.6s ease-in-out infinite",
+                        marginLeft: 2,
+                      }}
+                    />
+                  )}
                   {badge !== undefined && (
                     <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", color: "var(--atlas-gold)", padding: "0 2px", letterSpacing: "0.05em" }}>
                       {badge}
