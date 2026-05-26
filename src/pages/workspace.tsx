@@ -3023,54 +3023,58 @@ function RightPanel({
             </button>
           );
         })}
-        {/* Desktop: hand the full thread off to Atlas as a Forge-ready snapshot.
-            Distinct from the per-message Forge link — this commits the whole
-            conversation. Sized to match neighboring tabs so it reads as a
-            primary toolbar action, not a foreign element. */}
-        {!isMobile && onHandover && (
+        {/* Desktop: passive Forge-awareness pill.
+            Replaces the legacy "Forge Thread →" handoff button.
+            Forge already reads thread context via the memory bucket;
+            this pill surfaces that ambient connection and routes the
+            user to the Memory tab to inspect what's been surfaced. */}
+        {!isMobile && (
           <>
             <div style={{ flex: 1 }} />
-            <button
-              onClick={() => {
-                setTab("map");
-                onHandoverOpenChange?.(true);
-              }}
-              disabled={!currentSnapshot || (currentSnapshot?.definedCount ?? 0) === 0 || !!handoverPending}
-              title={
-                handoverPending
-                  ? "Sending thread to Atlas…"
-                  : !currentSnapshot || currentSnapshot.definedCount === 0
-                    ? "Define at least one node to send the thread"
-                    : "Send the entire conversation to Atlas as a Forge-ready snapshot"
-              }
-              style={{
-                marginRight: 8,
-                padding: "4px 10px",
-                borderRadius: 4,
-                background: "transparent",
-                border: `1px solid ${
-                  !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                    ? "rgba(var(--atlas-muted-rgb),0.3)"
-                    : "rgba(146,64,14,0.55)"
-                }`,
-                color: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "rgba(var(--atlas-muted-rgb),0.6)"
-                  : "rgba(230,150,90,0.95)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: "var(--ts-xs)",
-                fontWeight: 500,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                cursor: !currentSnapshot || currentSnapshot.definedCount === 0 || handoverPending
-                  ? "not-allowed"
-                  : "pointer",
-                transition: "all 160ms ease",
-              }}
-            >
-              {handoverPending ? "Sending…" : "Forge Thread →"}
-            </button>
+            {(() => {
+              const surfacedCount = currentSnapshot?.definedCount ?? 0;
+              return (
+                <button
+                  onClick={() => setTab("memory")}
+                  title="Forge is continuously reading this thread. Tap to inspect surfaced memories."
+                  style={{
+                    marginRight: 8,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "rgba(201,162,76,0.06)",
+                    border: "1px solid rgba(201,162,76,0.22)",
+                    color: "rgba(201,162,76,0.85)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: "var(--ts-xs)",
+                    fontWeight: 500,
+                    letterSpacing: "0.08em",
+                    textTransform: "none",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "all 160ms ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
+                >
+                  <span style={{
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: "var(--atlas-gold)",
+                    boxShadow: "0 0 6px rgba(201,162,76,0.6)",
+                  }} />
+                  Forge is reading this thread
+                  {surfacedCount > 0 && (
+                    <span style={{ opacity: 0.75 }}>
+                      · {surfacedCount} {surfacedCount === 1 ? "memory" : "memories"} surfaced
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </>
         )}
+
         {!isMobile && !onHandover && <div style={{ flex: 1 }} />}
 
         {/* Mobile: spacer so close/fullscreen stay right-aligned */}
@@ -3128,33 +3132,8 @@ function RightPanel({
 
       {/* Tab content */}
       {tab === "ledger" && (
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-          {/* Sub-tab bar */}
-          <div style={{ display: "flex", flexShrink: 0 }}>
-            {(["entries", "memory"] as const).map(st => (
-              <button
-                key={st}
-                onClick={() => setLedgerSubTab(st)}
-                style={{
-                  flex: 1, padding: "8px 0", background: "transparent", border: "none",
-                  borderBottom: ledgerSubTab === st ? "2px solid var(--atlas-gold)" : "2px solid transparent",
-                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-                  textTransform: "uppercase" as const,
-                  color: ledgerSubTab === st ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  cursor: "pointer", transition: "all 160ms ease",
-                }}
-              >
-                {st === "entries" ? "Ledger" : "Memory"}
-              </button>
-            ))}
-          </div>
-          {/* Sub-tab content */}
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {ledgerSubTab === "entries"
-              ? <LedgerPanel projectId={projectId} entries={entries} activeCatch={activeCatch} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
-              : <MemoryTab projectId={projectId} />
-            }
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <LedgerPanel projectId={projectId} entries={entries} activeCatch={activeCatch} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
         </div>
       )}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
@@ -5213,6 +5192,23 @@ export default function Workspace() {
   // Explicit state captured at pill-open time so TheForge always gets a stable context snapshot
   const [forgeActiveProjectName, setForgeActiveProjectName] = useState<string | undefined>(undefined);
   const [forgeActiveProjectId, setForgeActiveProjectId] = useState<number | undefined>(undefined);
+  // Scope: when Forge is opened from a Master Map node, hydrate just that node's context
+  const [forgeScopeNodeId, setForgeScopeNodeId] = useState<string | null>(null);
+  const [forgeScopeNodeLabel, setForgeScopeNodeLabel] = useState<string | null>(null);
+  // URL-driven scoped entry: /project/:id?forgeNode=<id>&forgeNodeLabel=<label> opens Forge scoped.
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const n = sp.get("forgeNode");
+      if (n) {
+        setForgeScopeNodeId(n);
+        setForgeScopeNodeLabel(sp.get("forgeNodeLabel"));
+        setShowForgeExternal(true);
+      }
+    } catch { /* noop */ }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // autoNameKey moved above (consumed by useChatStream).
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
@@ -6828,12 +6824,9 @@ export default function Workspace() {
               "chat",
               ...(showReviewTab ? ["review" as const] : []),
               "diff",
-              "blueprints",
-              "artifacts",
-              "terminal",
             ] as WorkspaceLeftTab[]).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : tab === "diff" ? "Changes" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Console");
+              const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : "Changes";
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : tab === "review" && pendingReviewCount > 0 ? pendingReviewCount : undefined;
               const showPulse = tab === "review" && pendingReviewCount > 0 && leftTab !== "review";
               return (
@@ -8234,7 +8227,10 @@ export default function Workspace() {
           projectId={forgeActiveProjectId ?? id}
           activeProjectName={forgeActiveProjectName ?? project?.name}
           preloadContent={forgePreloadContent}
-          onClose={() => { setShowForgeExternal(false); setForgePreloadContent(undefined); }}
+          scopeNodeId={forgeScopeNodeId}
+          scopeNodeLabel={forgeScopeNodeLabel}
+          onClearScope={() => { setForgeScopeNodeId(null); setForgeScopeNodeLabel(null); }}
+          onClose={() => { setShowForgeExternal(false); setForgePreloadContent(undefined); setForgeScopeNodeId(null); setForgeScopeNodeLabel(null); }}
           onNodesReady={(nodes) => {
             // Push nodes to Flow canvas
             setExternalForgeNodes(nodes);
