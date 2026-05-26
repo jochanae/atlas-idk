@@ -2758,7 +2758,19 @@ export default function Home() {
                                 }}
                               />
                             )}
-                            {msg.content}
+                            <CollapsibleMessageText
+                              fadeFromColor="rgba(201,162,76,0.12)"
+                              textStyle={{
+                                fontSize: "var(--ts-body)",
+                                lineHeight: 1.55,
+                                color: "var(--atlas-fg)",
+                                fontFamily: "var(--app-font-sans)",
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {msg.content}
+                            </CollapsibleMessageText>
                           </div>
                           {msg.createdAt && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
