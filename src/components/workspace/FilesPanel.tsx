@@ -9,6 +9,7 @@ import {
   getGetProjectQueryKey,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
+import { GitHubConnect } from "@/components/GitHubConnect";
 import { Switch } from "@/components/ui/switch";
 import {
   type LinkedRepo,
@@ -243,8 +244,6 @@ export function FilesPanel({
 
     if (!serverTokenAvailable) setTokenState(null);
   }, [filesProject, githubConnection, serverTokenAvailable]);
-  const [tokenInput, setTokenInput] = useState("");
-  const [tokenSaveError, setTokenSaveError] = useState<string | null>(null);
   const [repos, setRepos] = useState<GhRepo[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [reposError, setReposError] = useState<string | null>(null);
@@ -356,27 +355,6 @@ export function FilesPanel({
     } catch (e: any) {
       setAutoLinkStatus("error");
       setAutoLinkResult({ linked: [], skipped: [e.message ?? "Unknown error"] });
-    }
-  };
-
-  const saveToken = async (t: string) => {
-    setTokenSaveError(null);
-    try {
-      const res = await fetch("/api/connections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "github", label: "GitHub", token: t.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      setTokenState(t.trim());
-      setTokenInput("");
-      await loadGithubConnection();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error ?? err?.message ?? "Failed to save token";
-      setTokenSaveError(msg);
     }
   };
 
@@ -696,53 +674,9 @@ export function FilesPanel({
             Paste your GitHub token once — it works<br />across all your projects automatically.
           </div>
         </div>
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 7 }}>
-          <input
-            type="password"
-            value={tokenInput}
-            onChange={(e) => { setTokenInput(e.target.value); setTokenSaveError(null); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim()) void saveToken(tokenInput.trim()); }}
-            placeholder="ghp_…"
-            autoComplete="off"
-            style={{
-              width: "100%", padding: "8px 10px", borderRadius: 6,
-              background: "var(--atlas-surface)",
-              border: `1px solid ${tokenSaveError ? "rgba(239,68,68,0.5)" : "var(--atlas-border)"}`,
-              color: "var(--atlas-fg)", fontSize: 11, fontFamily: "var(--app-font-mono)",
-              outline: "none", boxSizing: "border-box",
-              transition: "border-color 160ms ease",
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = tokenSaveError ? "rgba(239,68,68,0.5)" : "rgba(201,162,76,0.4)")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = tokenSaveError ? "rgba(239,68,68,0.5)" : "var(--atlas-border)")}
-          />
-          {tokenSaveError && (
-            <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.4, marginTop: -2 }}>
-              {tokenSaveError}
-            </div>
-          )}
-          <button
-            onClick={() => { if (tokenInput.trim()) void saveToken(tokenInput.trim()); }}
-            disabled={!tokenInput.trim()}
-            style={{
-              padding: "7px", borderRadius: 6, width: "100%",
-              background: tokenInput.trim() ? "var(--atlas-ember)" : "var(--atlas-surface)",
-              border: "none", color: "var(--atlas-fg)", fontSize: 10,
-              fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-              textTransform: "uppercase", cursor: tokenInput.trim() ? "pointer" : "not-allowed",
-              transition: "background 160ms ease",
-            }}
-          >
-            Connect
-          </button>
+        <div style={{ width: "100%" }}>
+          <GitHubConnect onSuccess={() => { void loadGithubConnection(); }} />
         </div>
-        <a
-          href="https://github.com/settings/tokens/new?description=Atlas+Dev+Env&scopes=repo"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: 9.5, color: "var(--atlas-gold)", opacity: 0.6, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}
-        >
-          Create token on GitHub →
-        </a>
         <div style={{ width: "100%" }}>
           <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
           {modelPickerToggleRow}
