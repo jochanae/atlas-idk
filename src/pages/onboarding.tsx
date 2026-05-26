@@ -146,6 +146,238 @@ function MapBackdrop({ forging }: { forging: boolean }) {
   );
 }
 
+// ── Deep Dive Helper ─────────────────────────────────────────────────────────
+// Hand the onboarding questionnaire off to an external chat (ChatGPT /
+// Perplexity / Gemini), then accept a pasted response and parse it back
+// into the intent / project name / repo fields. Mirrors the Forge brain-dump
+// idea: "I don't know what to put — go think out loud somewhere else and
+// bring the answer back."
+const ONBOARDING_QUESTION_BLOCK = `I'm onboarding into Axiom — a sovereign strategic thinking partner. Help me think through these three questions, then end your reply with EXACTLY this block so I can paste it back and have it auto-fill the form:
+
+---
+INTENT: <one of: idea | founder | auditor | strategist | thinker>
+PROJECT_NAME: <a short, concrete name>
+REPO_URL: <optional GitHub URL, or leave blank>
+---
+
+The questions:
+
+1) What brings me here? Pick ONE intent:
+   • idea — I have an idea to build (start from scratch)
+   • founder — I'm managing a launch or business (operations, momentum)
+   • auditor — I'm auditing or fixing a system (course-correction, security)
+   • strategist — I'm mapping a complex decision (deep-focus processing)
+   • thinker — I need space to think freely (clean slate, clarity)
+
+2) What should I name my first project? Keep it short and concrete.
+
+3) (Optional) Do I have a primary GitHub repo URL for it?
+
+My current thinking (may be empty — help me find it):`;
+
+function buildDeepDiveContext(opts: { intent: string; projectName: string; repoUrl: string; }) {
+  const lines = [ONBOARDING_QUESTION_BLOCK];
+  if (opts.intent) lines.push(`\n(So far I'm leaning toward intent: ${opts.intent})`);
+  if (opts.projectName) lines.push(`\n(Working project name: ${opts.projectName})`);
+  if (opts.repoUrl) lines.push(`\n(Repo I'm considering: ${opts.repoUrl})`);
+  return lines.join("\n");
+}
+
+const INTENT_IDS = ["idea", "founder", "auditor", "strategist", "thinker"] as const;
+
+function parseDeepDiveResponse(text: string): { intent?: string; projectName?: string; repoUrl?: string } {
+  const out: { intent?: string; projectName?: string; repoUrl?: string } = {};
+  const intentMatch = text.match(/INTENT\s*[:=]\s*([A-Za-z_-]+)/i);
+  if (intentMatch) {
+    const v = intentMatch[1].toLowerCase();
+    if ((INTENT_IDS as readonly string[]).includes(v)) out.intent = v;
+  }
+  const nameMatch = text.match(/PROJECT[_ ]?NAME\s*[:=]\s*(.+)/i);
+  if (nameMatch) {
+    const v = nameMatch[1].trim().replace(/^["'<]+|["'>]+$/g, "").replace(/\s*---\s*$/, "").trim();
+    if (v && !/^<.*>$/.test(v)) out.projectName = v.slice(0, 120);
+  }
+  const repoMatch = text.match(/REPO[_ ]?URL\s*[:=]\s*(\S+)/i);
+  if (repoMatch) {
+    const v = repoMatch[1].trim().replace(/^["'<]+|["'>]+$/g, "");
+    if (/^https?:\/\//.test(v)) out.repoUrl = v;
+  }
+  return out;
+}
+
+function DeepDiveHelper({
+  intent, projectName, repoUrl, onApply,
+}: {
+  intent: string;
+  projectName: string;
+  repoUrl: string;
+  onApply: (r: { intent?: string; projectName?: string; repoUrl?: string }) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [paste, setPaste] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState<string | null>(null);
+
+  const launch = (target: "chatgpt" | "perplexity" | "gemini") => {
+    const ctx = buildDeepDiveContext({ intent, projectName, repoUrl });
+    const encoded = encodeURIComponent(ctx);
+    setMenuOpen(false);
+    if (target === "chatgpt") {
+      window.open(`https://chatgpt.com/?q=${encoded}`, "_blank");
+    } else if (target === "perplexity") {
+      window.open(`https://www.perplexity.ai/search?q=${encoded}`, "_blank");
+    } else {
+      navigator.clipboard.writeText(ctx).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2800);
+      setTimeout(() => window.open("https://gemini.google.com", "_blank"), 1200);
+    }
+    setPasteOpen(true);
+  };
+
+  const apply = () => {
+    const parsed = parseDeepDiveResponse(paste);
+    const got = [parsed.intent && "intent", parsed.projectName && "name", parsed.repoUrl && "repo"].filter(Boolean) as string[];
+    if (got.length === 0) {
+      setApplied("Couldn't find INTENT / PROJECT_NAME / REPO_URL lines in that paste.");
+      return;
+    }
+    onApply(parsed);
+    setApplied(`Applied: ${got.join(", ")}`);
+    setPaste("");
+    setTimeout(() => setApplied(null), 3200);
+  };
+
+  return (
+    <div style={{
+      marginTop: 28, width: "100%", maxWidth: 560,
+      border: "1px solid var(--atlas-border)", borderRadius: 12,
+      background: "color-mix(in oklab, var(--atlas-gold) 3%, var(--atlas-surface))",
+      padding: "14px 16px", textAlign: "left",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ ...monoStyle, fontSize: 9.5, color: "var(--atlas-gold)" }}>Need help figuring it out?</div>
+          <div style={{ fontSize: 13, color: "var(--atlas-muted)", marginTop: 4, lineHeight: 1.5 }}>
+            Send these questions to a chat you love. Paste the answer back — we'll sort it into the form.
+          </div>
+        </div>
+        <div style={{ position: "relative" }}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(v => !v)}
+            style={{
+              ...monoStyle, fontSize: 10,
+              padding: "8px 12px", borderRadius: 999,
+              border: "1px solid var(--atlas-gold)", background: "transparent",
+              color: "var(--atlas-gold)", cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            Deep Dive ↗
+          </button>
+          {menuOpen && (
+            <>
+              <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 59 }} />
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60,
+                minWidth: 220, background: "var(--atlas-surface)",
+                border: "1px solid var(--atlas-border)", borderRadius: 10,
+                boxShadow: "0 12px 32px -12px rgba(0,0,0,0.5)", padding: 6,
+              }}>
+                {([
+                  { id: "chatgpt" as const, label: "ChatGPT", sub: "Context auto-fills" },
+                  { id: "perplexity" as const, label: "Perplexity", sub: "Context auto-fills" },
+                  { id: "gemini" as const, label: "Gemini", sub: copied ? "Copied — paste when it opens" : "Copies context, paste once" },
+                ]).map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => launch(p.id)}
+                    style={{
+                      display: "block", width: "100%", textAlign: "left",
+                      padding: "8px 10px", borderRadius: 6,
+                      background: "transparent", border: "none", cursor: "pointer",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.08)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", fontWeight: 600 }}>{p.label}</div>
+                    <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 2, fontFamily: "var(--app-font-mono)" }}>{p.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        {!pasteOpen ? (
+          <button
+            type="button"
+            onClick={() => setPasteOpen(true)}
+            style={{
+              ...monoStyle, fontSize: 9.5, color: "var(--atlas-muted)",
+              background: "transparent", border: "none", padding: 0, cursor: "pointer",
+            }}
+          >
+            Already have a response? Paste it ↓
+          </button>
+        ) : (
+          <>
+            <textarea
+              value={paste}
+              onChange={e => setPaste(e.target.value)}
+              placeholder={"Paste the chat's reply here. We'll look for:\nINTENT: …\nPROJECT_NAME: …\nREPO_URL: …"}
+              rows={5}
+              style={{
+                width: "100%", boxSizing: "border-box",
+                background: "var(--atlas-bg)", color: "var(--atlas-fg)",
+                border: "1px solid var(--atlas-border)", borderRadius: 8,
+                padding: "10px 12px", fontSize: 13, lineHeight: 1.5,
+                fontFamily: "var(--app-font-mono)", outline: "none", resize: "vertical",
+              }}
+            />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                disabled={!paste.trim()}
+                onClick={apply}
+                style={{
+                  ...monoStyle, fontSize: 10,
+                  padding: "8px 14px", borderRadius: 999,
+                  border: "1px solid var(--atlas-gold)",
+                  background: paste.trim() ? "var(--atlas-gold)" : "transparent",
+                  color: paste.trim() ? "var(--atlas-bg)" : "var(--atlas-muted)",
+                  cursor: paste.trim() ? "pointer" : "not-allowed",
+                }}
+              >
+                Sort into form →
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPaste(""); setPasteOpen(false); setApplied(null); }}
+                style={{
+                  ...monoStyle, fontSize: 10, padding: "8px 10px",
+                  background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              {applied && (
+                <span style={{ fontSize: 11, color: applied.startsWith("Applied") ? "var(--atlas-gold)" : "var(--atlas-ember, #d97757)" }}>
+                  {applied}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingPage() {
   const { isLoading } = useRequireAuth();
   const [, setLocation] = useLocation();
@@ -383,6 +615,19 @@ export default function OnboardingPage() {
               })}
             </div>
             <PrimaryButton disabled={!selectedIntent} onClick={() => selectedIntent && setStep(3)}>This is me →</PrimaryButton>
+            <DeepDiveHelper
+              intent={selectedIntent}
+              projectName={projectName}
+              repoUrl={repoUrl}
+              onApply={(r) => {
+                if (r.intent) {
+                  setSelectedIntent(r.intent);
+                  try { localStorage.setItem("axiom_user_intent", r.intent); } catch {}
+                }
+                if (r.projectName) setProjectName(r.projectName);
+                if (r.repoUrl) setRepoUrl(r.repoUrl);
+              }}
+            />
           </section>
         )}
 
@@ -454,6 +699,19 @@ export default function OnboardingPage() {
                 {creating || forging ? "Forging…" : "Begin →"}
               </PrimaryButton>
             </form>
+            <DeepDiveHelper
+              intent={selectedIntent}
+              projectName={projectName}
+              repoUrl={repoUrl}
+              onApply={(r) => {
+                if (r.intent) {
+                  setSelectedIntent(r.intent);
+                  try { localStorage.setItem("axiom_user_intent", r.intent); } catch {}
+                }
+                if (r.projectName) setProjectName(r.projectName);
+                if (r.repoUrl) setRepoUrl(r.repoUrl);
+              }}
+            />
           </section>
         )}
       </div>
