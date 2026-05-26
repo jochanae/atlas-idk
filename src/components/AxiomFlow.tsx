@@ -363,7 +363,6 @@ const INITIAL_EDGES: ArchEdge[] = [
   { id: "e-goal-must-2",     from: "goal", to: "must-2" },
 ];
 
-
 // Detect the EXACT untouched legacy "lonely goal" default — every field must
 // match the original seed and no edges may exist. Any user-edited goal (label,
 // position, resolved state, details) is preserved untouched.
@@ -613,26 +612,14 @@ export function AxiomFlow({
   const readinessScore = Math.round(
     (nonWontNodes.filter(isNodeDefined).length / Math.max(nonWontNodes.length, 1)) * 100
   );
-  const goalNode = nodes.find(n => n.type === "goal");
-  const goalIsDefined = goalNode ? isNodeDefined(goalNode) : false;
-  // Only count nodes the user has actually defined — seed placeholders don't count.
-  const mustCount = nodes.filter(n => isNodeDefined(n) && getMoscow(n) === "must").length;
-  const shouldCount = nodes.filter(n => isNodeDefined(n) && getMoscow(n) === "should").length;
+  const goalForSummary = nodes.find(n => n.type === "goal") ?? nodes[0];
+  const mustCount = nodes.filter(n => getMoscow(n) === "must").length;
+  const shouldCount = nodes.filter(n => getMoscow(n) === "should").length;
   const openDecisionCount = nodes.filter(n => n.type === "decision" && !isNodeDefined(n)).length;
-  const blockerCount = nodes.filter(n => n.type === "blocker" && isNodeDefined(n)).length;
+  const blockerCount = nodes.filter(n => n.type === "blocker").length;
   const definedCount = nodes.filter(isNodeDefined).length;
-  const placeholderCount = nodes.length - definedCount;
   const isEmptyMap = definedCount === 0;
   const projectLabel = projectName?.trim() || "this project";
-  const goalLabelForSummary = goalIsDefined && goalNode?.label ? goalNode.label : projectLabel;
-  const pluralize = (n: number, singular: string, plural?: string) =>
-    `${n} ${n === 1 ? singular : (plural ?? `${singular}s`)}`;
-  const summaryParts = [
-    mustCount > 0 ? pluralize(mustCount, "must-have") : null,
-    shouldCount > 0 ? pluralize(shouldCount, "should-have") : null,
-    openDecisionCount > 0 ? pluralize(openDecisionCount, "open decision") : null,
-    blockerCount > 0 ? pluralize(blockerCount, "blocker") : null,
-  ].filter(Boolean) as string[];
 
   useEffect(() => { onReadinessChange?.(readinessScore); }, [readinessScore, onReadinessChange]);
 
@@ -1032,7 +1019,7 @@ export function AxiomFlow({
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: palette.goldText, flexShrink: 0 }} />
               <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldText }}>
-                {isEmptyMap ? `${projectLabel} — nothing mapped yet` : `${projectLabel} — flow summary`}
+                {isEmptyMap ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
               </span>
               <button
                 onClick={() => {
@@ -1046,14 +1033,9 @@ export function AxiomFlow({
             </div>
             <div style={{ color: palette.fgText, fontSize: 12, lineHeight: 1.55, opacity: 0.88, marginBottom: 10 }}>
               {isEmptyMap ? (
-                <>The canvas for <b>{projectLabel}</b> has {nodes.length} placeholder {nodes.length === 1 ? "node" : "nodes"} ready — tap any one to define it, or tap <b>Get started</b> and tell Atlas what you're building.</>
+                <>Atlas hasn't extracted anything for <b>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b>Get started</b> and tell Atlas what you're building.</>
               ) : (
-                <>
-                  Goal: <b>{goalLabelForSummary}</b>. {pluralize(definedCount, "node")} defined
-                  {placeholderCount > 0 ? <> · {placeholderCount} still placeholder</> : null}
-                  {summaryParts.length > 0 ? <> — {summaryParts.join(", ")}</> : null}
-                  . Tap any node to edit.
-                </>
+                <>Your goal is <b>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
