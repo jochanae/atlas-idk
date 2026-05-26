@@ -3777,45 +3777,54 @@ export default function Home() {
         }
 
         @media (min-width: 1024px) {
+          /* Hero stays a centered single column — chat down the middle */
           .atlas-home-responsive-shell {
-            width: min(calc(100% - 48px), 1100px);
-            max-width: 1100px;
+            width: 100%;
+            max-width: none;
             margin: 0 auto;
-            padding: 0 !important;
-            display: grid !important;
-            grid-template-columns: minmax(0, 62fr) minmax(0, 38fr);
-            gap: 20px;
-            align-items: start;
+            display: block !important;
+            grid-template-columns: none !important;
             justify-content: initial !important;
           }
           .atlas-home-chat-column {
             justify-content: stretch;
           }
           .atlas-home-chat-inner {
-            max-width: none !important;
+            max-width: 768px !important;
+            margin: 0 auto;
             padding-bottom: 48px !important;
           }
+          /* Right-aside dashboard removed on desktop — moved below the fold */
           .atlas-home-desktop-overview {
-            display: block;
-            min-width: 0;
-            max-height: calc(100svh - 32px);
-            position: sticky;
-            top: 16px;
+            display: none !important;
           }
-          .atlas-home-desktop-overview-scroll {
-            max-height: inherit;
-            overflow-y: auto;
-            padding-right: 4px;
-          }
-          .atlas-home-desktop-overview-scroll > .atlas-below-fold-dashboard {
-            max-width: none !important;
-            padding-bottom: 24px !important;
-          }
-          .atlas-home-tablet-overview,
           .atlas-home-bottom-nav {
             display: none !important;
           }
+          /* Show below-fold dashboard, expanded to wide grid */
+          .atlas-home-tablet-overview {
+            display: flex !important;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 8px 32px 140px !important;
+          }
+          .atlas-home-tablet-overview > .atlas-below-fold-dashboard {
+            max-width: none !important;
+            padding-bottom: 24px !important;
+            display: grid !important;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            grid-auto-flow: row dense;
+            column-gap: 24px;
+            row-gap: 24px;
+          }
+          /* Divider spans full width */
+          .atlas-home-tablet-overview > .atlas-below-fold-dashboard > div:not(.bfd-col-left):not(.bfd-col-right) {
+            grid-column: 1 / -1;
+          }
+          .bfd-col-left  { grid-column: span 8; }
+          .bfd-col-right { grid-column: span 4; }
         }
+
       `}</style>
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
