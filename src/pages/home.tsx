@@ -3408,7 +3408,7 @@ export default function Home() {
       </div>
 
       {/* Below-the-fold: Recent Activity / Discovery section */}
-      <div className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
+      <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
         <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
           <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
         </div>
