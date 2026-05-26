@@ -2529,29 +2529,56 @@ export default function Home() {
 
       {showOverlay && (
         <FirstRunOverlay
-          loading={isLoading}
+          loading={createProject.isPending}
           repoUrl={overlayRepoUrl}
           setRepoUrl={setOverlayRepoUrl}
+          error={createError}
           onSpecMode={() => {
+            setCreateError(null);
             createProject.mutate({ data: { name: "My Project" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 logProjectInitialized(p.id);
+                const normalizedRepo = normalizeGitHubRepoInput(overlayRepoUrl);
+                if (normalizedRepo) {
+                  void fetch(`/api/projects/${p.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+                  }).catch(() => {});
+                }
                 runRepoScan(p.id, overlayRepoUrl);
                 sessionStorage.setItem("atlas-open-tab", "map");
                 setLocation(`/project/${p.id}?intake=true`);
               },
+              onError: (err: any) => {
+                setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
+              },
             });
           }}
           onWorkspace={() => {
+            setCreateError(null);
             createProject.mutate({ data: { name: "My Project" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
                 logProjectInitialized(p.id);
+                const normalizedRepo = normalizeGitHubRepoInput(overlayRepoUrl);
+                if (normalizedRepo) {
+                  void fetch(`/api/projects/${p.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+                  }).catch(() => {});
+                }
                 runRepoScan(p.id, overlayRepoUrl);
                 setLocation(`/project/${p.id}?intake=true`);
+              },
+              onError: (err: any) => {
+                setCreateError(extractApiErrorMessage(err) ?? "Failed to create project");
               },
             });
           }}
