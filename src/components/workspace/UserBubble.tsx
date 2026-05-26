@@ -1,11 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { haptic } from "@/lib/long-press-tip";
+import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 
-// Collapse threshold: matches home/nexus reading rhythm.
-// Long messages collapse with a "SHOW MORE" affordance so the chat doesn't
-// get visually dominated by a giant user paste.
-const COLLAPSE_LINES = 6;
-const COLLAPSE_CHARS = 360;
 const ICON_TOUCH_TARGET_STYLE: CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
 function formatTimestamp(iso?: string): string {
