@@ -47,7 +47,7 @@ import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { NewProjectModal } from "../components/NewProjectModal";
-import { Archive, ChevronDown, ChevronUp, Eye, RefreshCw, TerminalSquare } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, TerminalSquare } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
@@ -2893,35 +2893,6 @@ function RightPanel({
           <circle cx="5.5" cy="4.5" r="0.7" fill="currentColor" opacity={0.5} />
         </svg>
       ),
-    },
-    {
-      id: "memory" as RightTab,
-      label: "Memory",
-      icon: (
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-          <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M5 5.5h6M5 8h6M5 10.5h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-          <circle cx="3.2" cy="5.5" r="0.7" fill="currentColor" opacity={0.45} />
-          <circle cx="3.2" cy="8" r="0.7" fill="currentColor" opacity={0.45} />
-          <circle cx="3.2" cy="10.5" r="0.7" fill="currentColor" opacity={0.45} />
-        </svg>
-      ),
-    },
-    {
-      id: "blueprints" as RightTab,
-      label: "Blueprints",
-      icon: (
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-          <path d="M2 2h8l3 3v9H2V2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-          <path d="M10 2v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-          <path d="M4 7h6M4 9.5h6M4 12h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-        </svg>
-      ),
-    },
-    {
-      id: "artifacts" as RightTab,
-      label: "Artifacts",
-      icon: <Archive size={13} strokeWidth={1.6} />,
     },
     {
       id: "map" as RightTab,
@@ -6932,35 +6903,6 @@ export default function Workspace() {
 
 
             {!isMobile && (
-              <button
-                title="Open Preview"
-                aria-label="Toggle preview"
-                type="button"
-                onClick={openPreviewPanel}
-                style={{
-                  width: 26,
-                  height: 26,
-                  padding: 0,
-                  borderRadius: 7,
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--atlas-muted)",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "color 160ms ease, opacity 160ms ease",
-                  flexShrink: 0,
-                  opacity: 0.65,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.opacity = "1"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.opacity = "0.65"; }}
-              >
-                <Eye size={15} strokeWidth={1.7} />
-              </button>
-            )}
-
-            {!isMobile && (
               <LongPressTip tip="Dashboard view">
                 <button
                   title="Visual Vault"
@@ -7071,123 +7013,6 @@ export default function Workspace() {
           </div>
         </div>
 
-        {!isMobile && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            minHeight: 32,
-            padding: "0 14px 7px",
-            borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.06)",
-            minWidth: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-            <span
-              className={sessionId ? "atlas-pulse-dot" : undefined}
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: sessionId ? "#4ade80" : "transparent",
-                border: sessionId ? undefined : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
-                flexShrink: 0,
-                display: "inline-block",
-              }}
-            />
-            {renaming ? (
-              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
-                <input
-                  ref={renameInputRef}
-                  autoFocus
-                  value={renameDraft}
-                  disabled={updateProjectHeader.isPending}
-                  onChange={(e) => { setRenameDraft(e.target.value); setRenameError(null); }}
-                  onKeyDown={(e) => {
-                    if (updateProjectHeader.isPending) return;
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const newName = renameDraft.trim() || (project?.name ?? "");
-                      updateProjectHeader.mutate({ id, data: { name: newName } }, {
-                        onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); void projectState.refresh(); setRenaming(false); setRenameError(null); },
-                        onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
-                      });
-                    }
-                    if (e.key === "Escape") { renameEscapeRef.current = true; setRenaming(false); setRenameError(null); }
-                  }}
-                  onBlur={() => {
-                    if (updateProjectHeader.isPending) return;
-                    if (renameEscapeRef.current) { renameEscapeRef.current = false; return; }
-                    const newName = renameDraft.trim() || (project?.name ?? "");
-                    updateProjectHeader.mutate({ id, data: { name: newName } }, {
-                      onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) }); void projectState.refresh(); setRenaming(false); setRenameError(null); },
-                      onError: (err) => { setRenameError((err as Error)?.message ?? "Failed to rename."); setTimeout(() => renameInputRef.current?.focus(), 0); },
-                    });
-                  }}
-
-                  style={{ background: "transparent", border: "none", outline: "none", color: "var(--atlas-fg)", fontSize: "var(--ts-body)", fontWeight: 500, fontFamily: "var(--app-font-sans)", width: 180, opacity: updateProjectHeader.isPending ? 0.5 : 1, transition: "opacity 150ms ease" }}
-                />
-                {renameError && (
-                  <span style={{ fontSize: "var(--ts-sm)", color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginTop: 2, lineHeight: 1.3, pointerEvents: "none" }}>
-                    {renameError}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setRenameDraft(project?.name ?? ""); setRenaming(true); }}
-                title="Tap to rename"
-                style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0, maxWidth: isMobile ? 180 : 320, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--atlas-fg)" }}
-              >
-                <span
-                  key={autoNameKey}
-                  className={autoNameKey > 0 ? "atlas-name-fresh" : undefined}
-                  style={{ fontSize: "var(--ts-body)", opacity: 0.92, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
-                >
-                  {(() => {
-                    const n = project?.name ?? "…";
-                    return isTinyScreen && n.length > 12 ? n.slice(0, 12) + "…" : n;
-                  })()}
-                </span>
-                <span className="atlas-name-pencil" style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", flexShrink: 0, lineHeight: 1 }}>✎</span>
-              </button>
-            )}
-
-            {!!project?.lastHandoverHash && !!currentSnapshot && currentSnapshot.hash !== project.lastHandoverHash && (
-              <button
-                type="button"
-                title="Architecture flow has changed since last Atlas handover"
-                onClick={focusSystemMap}
-                style={{
-                  padding: "2px 7px",
-                  borderRadius: 4,
-                  background: "rgba(146,64,14,0.18)",
-                  border: "1px solid rgba(146,64,14,0.55)",
-                  color: "rgba(230,150,90,0.95)",
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: "var(--ts-tiny)",
-                  fontWeight: 700,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-              >
-                Updated since handover
-              </button>
-            )}
-          </div>
-
-
-
-
-          {/* Lens UI removed — Atlas reads intent, no manual lens picker. */}
-
-
-        </div>
-        )}
       </div>
       )}
 
