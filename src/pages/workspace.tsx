@@ -29,6 +29,7 @@ import { TheForge } from "../components/TheForge";
 import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
+import { PlanCard } from "../components/PlanCard";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
@@ -215,6 +216,7 @@ export interface LinkedRepo {
 }
 
 type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "artifacts" | "workbench";
+type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
@@ -730,6 +732,251 @@ function LinePatchReviewCard({
         />
       )}
     </>
+  );
+}
+
+function ReviewPlanCard({
+  message,
+  projectId,
+  linkedRepo,
+  githubPushToken,
+  planState,
+  planExecution,
+  onPlanStateChange,
+  onPlanExecutionChange,
+  onExecuteHomePlan,
+  onStreamActivityUpdate,
+  onStreamActivityComplete,
+  onPushSuccess,
+  onPrCreated,
+}: {
+  message: ChatMessage;
+  projectId: number;
+  linkedRepo: LinkedRepo | null;
+  githubPushToken?: string | null;
+  planState: PlanState;
+  planExecution?: PlanExecution;
+  onPlanStateChange: (messageId: number, state: PlanState) => void;
+  onPlanExecutionChange: (messageId: number, execution: PlanExecution | null) => void;
+  onExecuteHomePlan: (plan: Plan) => void;
+  onStreamActivityUpdate: (message: ChatMessage, content: string) => void;
+  onStreamActivityComplete: () => void;
+  onPushSuccess: (records: PushRecord[]) => void;
+  onPrCreated?: (prUrl: string) => void;
+}) {
+  const [showPlanPushModal, setShowPlanPushModal] = useState(false);
+  const [planPushEdits, setPlanPushEdits] = useState<FileEdit[] | null>(null);
+  const activeEdits = message.fileEdits ?? (message.fileEdit ? [message.fileEdit] : []);
+  const userEdits = activeEdits.filter((edit) => !/^artifacts\/(atlas|api-server)\//.test(edit.path));
+  const planMessageId = message.id ?? 0;
+
+  if (!message.plan) return null;
+
+  const setPlanStatus = (state: PlanState) => {
+    onPlanStateChange(planMessageId, state);
+  };
+
+  const setPlanExecution = (execution: PlanExecution | null) => {
+    onPlanExecutionChange(planMessageId, execution);
+  };
+
+  const resolvePlanLinePatches = async (): Promise<FileEdit[]> => {
+    if (!message.linePatches?.length) return [];
+    if (!linkedRepo) throw new Error("No repo linked - connect a GitHub repo in the Files tab.");
+    if (!githubPushToken) throw new Error("No GitHub token - add your personal token in the Files tab.");
+    const groups: Record<string, LinePatch[]> = {};
+    for (const patch of message.linePatches) {
+      if (!groups[patch.path]) groups[patch.path] = [];
+      groups[patch.path].push(patch);
+    }
+    const edits: FileEdit[] = [];
+    for (const [filePath, patches] of Object.entries(groups)) {
+      const response = await fetch(
+        `/api/github/file?repo=${encodeURIComponent(linkedRepo.fullName)}&path=${encodeURIComponent(filePath)}&branch=${encodeURIComponent(linkedRepo.defaultBranch)}`,
+        { headers: { ...getAuthHeaders(), "x-github-token": githubPushToken } }
+      );
+      if (!response.ok) throw new Error(`Could not fetch ${filePath.split("/").pop()} (${response.status})`);
+      const data = await response.json() as { content: string };
+      let content = data.content;
+      for (const patch of patches) {
+        const idx = content.indexOf(patch.find);
+        if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Atlas to re-read the file first.`);
+        content = content.slice(0, idx) + patch.replace + content.slice(idx + patch.find.length);
+      }
+      const ext = filePath.split(".").pop() ?? "";
+      const language = ["ts", "tsx"].includes(ext) ? "typescript" : ["js", "jsx"].includes(ext) ? "javascript" : ext;
+      edits.push({ path: filePath, language, content });
+    }
+    return edits;
+  };
+
+  const handlePlanApprove = async () => {
+    if (!message.plan || planState === "executing") return;
+    const firstStepOrder = message.plan.steps[0]?.order ?? 1;
+    setPlanStatus("executing");
+    setPlanExecution({ currentStepOrder: firstStepOrder, completedStepOrders: [] });
+    onStreamActivityUpdate(message, `PLAN_STEP:${message.plan.steps[0]?.description ?? message.plan.title}`);
+
+    const codeEdits = userEdits.length > 0 ? userEdits : activeEdits;
+    const hasCodeChanges = codeEdits.length > 0 || (message.linePatches?.length ?? 0) > 0;
+
+    if (message.planFromHome && !hasCodeChanges) {
+      onExecuteHomePlan(message.plan);
+      return;
+    }
+
+    if (!hasCodeChanges) {
+      setPlanExecution({
+        completedStepOrders: message.plan.steps.map((step) => step.order),
+        changedFiles: 0,
+        statusMessage: "Done. 0 files changed.",
+      });
+      setPlanStatus("completed");
+      onStreamActivityComplete();
+      return;
+    }
+
+    try {
+      const patchEdits = await resolvePlanLinePatches();
+      const modalEdits = [...codeEdits, ...patchEdits];
+      if (modalEdits.length === 0) {
+        setPlanExecution({
+          completedStepOrders: message.plan.steps.map((step) => step.order),
+          changedFiles: 0,
+          statusMessage: "Done. 0 files changed.",
+        });
+        setPlanStatus("completed");
+        onStreamActivityComplete();
+        return;
+      }
+      const pushStep = message.plan.steps.find((step) => step.type === "push") ?? message.plan.steps[message.plan.steps.length - 1];
+      setPlanExecution({
+        currentStepOrder: pushStep?.order,
+        completedStepOrders: message.plan.steps.filter((step) => step.order !== pushStep?.order).map((step) => step.order),
+      });
+      onStreamActivityUpdate(message, `PLAN_STEP:${pushStep?.description ?? "Review and push changes"}`);
+      setPlanPushEdits(modalEdits);
+      setShowPlanPushModal(true);
+    } catch (error) {
+      setPlanExecution({
+        currentStepOrder: undefined,
+        completedStepOrders: [],
+        failedStep: {
+          order: firstStepOrder,
+          error: error instanceof Error ? error.message : "Plan execution failed.",
+        },
+      });
+      setPlanStatus("pending");
+      onStreamActivityComplete();
+    }
+  };
+
+  return (
+    <>
+      <PlanCard
+        plan={message.plan}
+        messageId={planMessageId}
+        projectId={projectId}
+        isExecuting={planState === "executing"}
+        isExpanded={planState === "reviewing"}
+        isCompleted={planState === "completed"}
+        execution={planExecution}
+        onReview={() => setPlanStatus(planState === "reviewing" ? "pending" : "reviewing")}
+        onSkip={() => setPlanStatus("skipped")}
+        onApprove={() => void handlePlanApprove()}
+      />
+
+      {showPlanPushModal && planPushEdits && planPushEdits.length > 0 && (
+        <GitHubPushModal
+          fileEdits={planPushEdits}
+          linkedRepo={linkedRepo}
+          projectId={projectId}
+          onClose={() => {
+            setShowPlanPushModal(false);
+            setPlanStatus("pending");
+            setPlanExecution(null);
+            onStreamActivityComplete();
+          }}
+          onPushSuccess={(records) => {
+            onPushSuccess(records);
+            const changedFiles = new Set(records.map((record) => record.path)).size;
+            setPlanExecution({
+              completedStepOrders: message.plan?.steps.map((step) => step.order) ?? [],
+              changedFiles,
+              statusMessage: `Done. ${changedFiles} file${changedFiles === 1 ? "" : "s"} changed.`,
+            });
+            setPlanStatus("completed");
+            setShowPlanPushModal(false);
+            onStreamActivityComplete();
+          }}
+          onPrCreated={onPrCreated}
+        />
+      )}
+    </>
+  );
+}
+
+function ReviewTabPanel({
+  messages,
+  projectId,
+  linkedRepo,
+  githubPushToken,
+  planStates,
+  planExecutions,
+  onPlanStateChange,
+  onPlanExecutionChange,
+  onExecuteHomePlan,
+  onStreamActivityUpdate,
+  onStreamActivityComplete,
+  onPushSuccess,
+  onPrCreated,
+}: {
+  messages: ChatMessage[];
+  projectId: number;
+  linkedRepo: LinkedRepo | null;
+  githubPushToken?: string | null;
+  planStates: Map<number, PlanState>;
+  planExecutions: Map<number, PlanExecution>;
+  onPlanStateChange: (messageId: number, state: PlanState) => void;
+  onPlanExecutionChange: (messageId: number, execution: PlanExecution | null) => void;
+  onExecuteHomePlan: (plan: Plan) => void;
+  onStreamActivityUpdate: (message: ChatMessage, content: string) => void;
+  onStreamActivityComplete: () => void;
+  onPushSuccess: (records: PushRecord[]) => void;
+  onPrCreated?: (prUrl: string) => void;
+}) {
+  return (
+    <div style={{ flex: 1, height: "100%", overflowY: "auto", padding: "16px 22px 28px" }} className="scrollbar-none">
+      {messages.length === 0 ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.55 }}>
+          No review items yet.
+        </div>
+      ) : (
+        <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 10 }}>
+          {messages.map((message, index) => {
+            const messageId = message.id ?? 0;
+            return (
+              <ReviewPlanCard
+                key={message.id ?? `review-${index}`}
+                message={message}
+                projectId={projectId}
+                linkedRepo={linkedRepo}
+                githubPushToken={githubPushToken}
+                planState={planStates.get(messageId) ?? "pending"}
+                planExecution={planExecutions.get(messageId)}
+                onPlanStateChange={onPlanStateChange}
+                onPlanExecutionChange={onPlanExecutionChange}
+                onExecuteHomePlan={onExecuteHomePlan}
+                onStreamActivityUpdate={onStreamActivityUpdate}
+                onStreamActivityComplete={onStreamActivityComplete}
+                onPushSuccess={onPushSuccess}
+                onPrCreated={onPrCreated}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2706,7 +2953,7 @@ function RightPanel({
     },
     ...(wsLens === "build" || wsLens === "scenario" ? [{
       id: "terminal" as RightTab,
-      label: "Terminal",
+      label: "Console",
       icon: (
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
           <rect x="1" y="2" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
@@ -4454,7 +4701,7 @@ export default function Workspace() {
     sendCtxRef,
     scenarioStartIdxRef,
   } = useChatLens(id);
-  const [leftTab, setLeftTab] = useState<"chat" | "diff" | "blueprints" | "terminal" | "artifacts">("chat");
+  const [leftTab, setLeftTab] = useState<WorkspaceLeftTab>("chat");
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
@@ -5600,6 +5847,30 @@ export default function Workspace() {
     );
   }, [chatPending, doSend, messages, sessionId]);
 
+  const reviewMessages = useMemo(
+    () => messages.filter((message) =>
+      message.role === "assistant" &&
+      !!message.plan &&
+      (planStates.get(message.id ?? 0) ?? "pending") !== "skipped"
+    ),
+    [messages, planStates]
+  );
+  const showReviewTab = reviewMessages.length > 0;
+  const chatPlanStates = useMemo(() => {
+    if (!showReviewTab) return planStates;
+    const next = new Map(planStates);
+    for (const message of reviewMessages) {
+      next.set(message.id ?? 0, "skipped");
+    }
+    return next;
+  }, [planStates, reviewMessages, showReviewTab]);
+
+  useEffect(() => {
+    if (leftTab === "review" && !showReviewTab) {
+      setLeftTab("chat");
+    }
+  }, [leftTab, showReviewTab]);
+
   useEffect(() => {
     if (!sessionId || homePlanLoadedRef.current || messages.length > 0) return;
     let plan: Plan | null = null;
@@ -6154,6 +6425,51 @@ export default function Workspace() {
     // switch the right panel into other views.
   }, []);
 
+  const handleReviewPushSuccess = useCallback((records: PushRecord[]) => {
+    haptic.double();
+    setPushHistory((prev) => {
+      const next = [...prev, ...records].slice(-20);
+      updateProjectHeader.mutate({ id, data: { pushHistory: next } });
+      return next;
+    });
+    const filenames = records.map((record) => record.filename).join(", ");
+    const branch = records[0]?.branch ?? "unknown";
+    const commitUrl = records[0]?.commitUrl ?? "";
+    createEntry.mutate(
+      {
+        projectId: id,
+        data: {
+          title: `Code pushed: ${filenames}`,
+          summary: `Branch: ${branch} · Files: ${filenames} · Commit: ${commitUrl}`,
+          status: "committed",
+          severity: "committed",
+          mode: "BUILD",
+          verb: "github_push",
+        },
+      },
+      { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
+    );
+    setPreviewRefreshTrigger((tick) => tick + 1);
+    setTimeout(() => setPreviewRefreshTrigger((tick) => tick + 1), 25000);
+    setTimeout(() => setPreviewRefreshTrigger((tick) => tick + 1), 55000);
+    if (sessionId) {
+      if (agenticMode && agenticIterCount >= 8) {
+        return;
+      }
+      const repoName = linkedRepo?.fullName ?? "unknown repo";
+      const filePaths = records.map((record) => record.path).join(", ");
+      if (agenticMode) setAgenticIterCount((count) => count + 1);
+      doSend(
+        `[FILE_COMMITTED] ${records.length} file(s) committed to ${repoName}: ${filePaths}. Verify the build.`,
+        sessionId,
+        messagesRef.current,
+        undefined,
+        undefined,
+        { displayAs: "autoVerify" },
+      );
+    }
+  }, [agenticIterCount, agenticMode, createEntry, doSend, id, linkedRepo?.fullName, queryClient, refreshParkedEntries, sessionId, updateProjectHeader]);
+
   // ── Readiness Snapshots ───────────────────────────────────────────────────
   const { data: readinessSnapshots } = useListReadinessSnapshots(
     id ? Number(id) : 0,
@@ -6487,16 +6803,23 @@ export default function Workspace() {
           }}
         >
           <nav aria-label="Workspace sections" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0 }}>
-            {(["chat", "diff", "blueprints", "artifacts", "terminal"] as Array<"chat" | "diff" | "blueprints" | "artifacts" | "terminal">).map((tab) => {
+            {([
+              "chat",
+              ...(showReviewTab ? ["review" as const] : []),
+              "diff",
+              "blueprints",
+              "artifacts",
+              "terminal",
+            ] as WorkspaceLeftTab[]).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "diff" ? "Diff" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Terminal");
+              const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : tab === "diff" ? "Changes" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Console");
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
               return (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setLeftTab(tab)}
-                  aria-label={tab === "terminal" ? "Open terminal" : tab === "diff" ? "View diff" : tab === "blueprints" ? "Open blueprints" : tab === "artifacts" ? "Open artifacts" : "Open chat"}
+                  aria-label={tab === "terminal" ? "Open console" : tab === "diff" ? "View changes" : tab === "review" ? "Open review" : tab === "blueprints" ? "Open blueprints" : tab === "artifacts" ? "Open artifacts" : "Open chat"}
                   style={{
                     position: "relative",
                     padding: "6px 2px 10px",
@@ -7299,7 +7622,30 @@ export default function Workspace() {
             boxShadow: "none",
           }}
         >
-          {leftTab === "diff" ? (
+          {leftTab === "review" ? (
+            <ReviewTabPanel
+              messages={reviewMessages}
+              projectId={id}
+              linkedRepo={linkedRepo}
+              githubPushToken={githubPushToken}
+              planStates={planStates}
+              planExecutions={planExecutions}
+              onPlanStateChange={updatePlanState}
+              onPlanExecutionChange={updatePlanExecution}
+              onExecuteHomePlan={executeHomePlan}
+              onStreamActivityUpdate={(msg, content) => {
+                const markers = [
+                  msg.autoFetchedFiles && msg.autoFetchedFiles.length > 0 ? "FILE_READ" : "",
+                  msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
+                  msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
+                ].filter(Boolean).join("\n");
+                setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
+              }}
+              onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
+              onPushSuccess={handleReviewPushSuccess}
+              onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
+            />
+          ) : leftTab === "diff" ? (
             <div style={{ flex: 1, height: "100%", overflowY: "auto", padding: "16px 14px" }} className="scrollbar-none">
                     {pushHistory.length === 0 ? (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8, paddingBottom: 40 }}>
@@ -7343,7 +7689,7 @@ export default function Workspace() {
           <UnifiedConversationSurface
             mode="operational"
             projectId={id}
-            chatStreamProps={leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
+            chatStreamProps={leftTab !== "review" && leftTab !== "diff" && leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" ? {
               scrollRef: chatPanelScrollRef,
               bottomRef: bottomRef,
               onScroll: (e) => {
@@ -7425,56 +7771,12 @@ export default function Workspace() {
                 void refreshParkedEntries();
               },
               onSurfaceAction: handleAmbientSurfaceAction,
-              planStates,
+              planStates: chatPlanStates,
               planExecutions,
               onPlanStateChange: updatePlanState,
               onPlanExecutionChange: updatePlanExecution,
               onExecuteHomePlan: executeHomePlan,
-              onPushSuccess: (records) => {
-                haptic.double();
-                setPushHistory((prev) => {
-                  const next = [...prev, ...records].slice(-20);
-                  updateProjectHeader.mutate({ id, data: { pushHistory: next } });
-                  return next;
-                });
-                const filenames = records.map((r) => r.filename).join(", ");
-                const branch = records[0]?.branch ?? "unknown";
-                const commitUrl = records[0]?.commitUrl ?? "";
-                createEntry.mutate(
-                  {
-                    projectId: id,
-                    data: {
-                      title: `Code pushed: ${filenames}`,
-                      summary: `Branch: ${branch} · Files: ${filenames} · Commit: ${commitUrl}`,
-                      status: "committed",
-                      severity: "committed",
-                      mode: "BUILD",
-                      verb: "github_push",
-                    },
-                  },
-                  { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
-                );
-                setPreviewRefreshTrigger((t) => t + 1);
-                setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 25000);
-                setTimeout(() => setPreviewRefreshTrigger((t) => t + 1), 55000);
-                if (sessionId) {
-                  if (agenticMode && agenticIterCount >= 8) {
-                    // hard-stop at 8 iterations
-                  } else {
-                    const repoName = linkedRepo?.fullName ?? "unknown repo";
-                    const filePaths = records.map((r) => r.path).join(", ");
-                    if (agenticMode) setAgenticIterCount((n) => n + 1);
-                    doSend(
-                      `[FILE_COMMITTED] ${records.length} file(s) committed to ${repoName}: ${filePaths}. Verify the build.`,
-                      sessionId,
-                      messagesRef.current,
-                      undefined,
-                      undefined,
-                      { displayAs: "autoVerify" },
-                    );
-                  }
-                }
-              },
+              onPushSuccess: handleReviewPushSuccess,
             } : null}
             betweenSlot={
               agenticMode && agenticIterCount > 0 ? (
