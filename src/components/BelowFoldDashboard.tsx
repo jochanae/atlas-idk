@@ -808,6 +808,15 @@ function AddConnectionModal({ onClose, onSaved }: { onClose: () => void; onSaved
         body.url = trimmed;
         if (label.trim()) body.label = label.trim();
       }
+      // Backend requires label (min 1 char). Default sensibly when blank.
+      if (!body.label) {
+        if (type === "github") {
+          const repoName = trimmed.replace(/\.git$/, "").split("/").filter(Boolean).pop();
+          body.label = repoName || "GitHub";
+        } else {
+          body.label = type.charAt(0).toUpperCase() + type.slice(1);
+        }
+      }
       const res = await fetch("/api/connections", {
         method: "POST",
         credentials: "include",

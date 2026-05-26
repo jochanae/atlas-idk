@@ -2496,7 +2496,7 @@ function ConnectionsTab({
       const res = await fetch("/api/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ type: "github", token: tokenValue.trim() }),
+        body: JSON.stringify({ type: "github", label: "GitHub", token: tokenValue.trim() }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
