@@ -3,7 +3,7 @@ import { AxiomFlow } from "../AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../AxiomFlow";
 import { SystemMap } from "../SystemMap";
 import type { ArchNode as SystemMapNode } from "../SystemMap";
-import { UnifiedContextDock } from "../UnifiedContextDock";
+
 import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
 import {
