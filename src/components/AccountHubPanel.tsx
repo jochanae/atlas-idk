@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { apiUrl } from "@/lib/api";
 
 // ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
 interface AtlasProfile {
@@ -507,7 +508,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
 
               {authUser?.googleLinked && (
                 <a
-                  href="/api/auth/google"
+                  href={apiUrl("/api/auth/google")}
                   title="Re-authenticate with Google to sync your latest profile photo"
                   style={{
                     flex: 1, padding: "7px 10px", borderRadius: 7,
