@@ -4638,6 +4638,8 @@ export default function Workspace() {
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
+  const [latestPlanArtifact, setLatestPlanArtifact] = useState<{ type: string; title: string; content: string } | null>(null);
+  void latestPlanArtifact;
   const [rightOpen, setRightOpen] = useState(() =>
     new URLSearchParams(window.location.search).get("view") === "flow"
   );
