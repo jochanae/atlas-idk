@@ -186,6 +186,9 @@ export function MarkdownProse({ content }: { content: string }) {
         fontSize: 16,
         lineHeight: 1.85,
         letterSpacing: "-0.005em",
+        overflowWrap: "anywhere",
+        wordBreak: "break-word",
+        minWidth: 0,
       }}
     >
       <ReactMarkdown
