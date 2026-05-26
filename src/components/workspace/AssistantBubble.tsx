@@ -797,6 +797,7 @@ export function AssistantBubble({
   onRunCommand?: (command: string) => void;
   onExtractToForge?: (content: string) => void;
   onReviewDiff: () => void;
+  onOpenArtifact?: (title: string) => void;
   onEditDeclined?: () => void;
   onAlertDismiss?: () => void;
   onStreamActivityUpdate?: (content: string) => void;
