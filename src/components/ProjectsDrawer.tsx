@@ -32,6 +32,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [sessionsExpanded, setSessionsExpanded] = useState(false);
+  const [filter, setFilter] = useState<ProjectFilter>("all");
   void sessionsExpanded;
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
@@ -48,8 +49,16 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
 
   if (!open) return null;
 
-  const visible = projects.slice(0, 6);
-  const hasMore = projects.length > visible.length;
+  const filtered = projects.filter((p) => {
+    if (filter === "all") return p.status !== "archived";
+    if (filter === "committed") return (p.status ?? "committed") === "committed";
+    if (filter === "shaping") return p.status === "shaping";
+    return true;
+  });
+  const visible = filtered.slice(0, 6);
+  const hasMore = filtered.length > visible.length;
+  const shapingCount = projects.filter((p) => p.status === "shaping").length;
+
 
   return createPortal(
     <>
