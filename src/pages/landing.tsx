@@ -118,16 +118,16 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           as a conversation.
         </h1>
 
-        <p className="mb-10 italic mx-auto" style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontWeight: 400,
-          color: "rgba(232,220,200,0.55)",
-          fontSize: "clamp(1rem, 2vw, 1.25rem)",
-          maxWidth: 480,
-          lineHeight: 1.55,
-        }}>
-          A workspace where ideas hold their shape long enough to become real.
-        </p>
+      <p className="mb-10 italic mx-auto" style={{
+        fontFamily: "'Cormorant Garamond', Georgia, serif",
+        fontWeight: 400,
+        color: "rgba(232,220,200,0.55)",
+        fontSize: "clamp(1rem, 2vw, 1.25rem)",
+        maxWidth: 480,
+        lineHeight: 1.55,
+      }}>
+        Axiom is where that conversation becomes architecture.
+      </p>
 
         {/* Mode pills */}
         <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
