@@ -6989,7 +6989,7 @@ export default function Workspace() {
               </LongPressTip>
             )}
 
-            {hasLinkedRepo && (
+            {hasLinkedRepo && !isMobile && (
               <LongPressTip tip="Rescan GitHub repo and update readiness score">
                 <button
                   type="button"
