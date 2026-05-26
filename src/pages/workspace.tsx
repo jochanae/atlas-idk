@@ -5458,6 +5458,23 @@ export default function Workspace() {
     }
   }, [hasForgeNodes, id]);
 
+  // ── Shaping arrival toast (one-time) ───────────────────────────────────────────
+  useEffect(() => {
+    if (!project || !Number.isFinite(id)) return;
+    if (project.status !== "shaping") return;
+    if ((sessions?.length ?? 0) > 0) return;
+    if (!project.workingTitle) return;
+    const key = `atlas-shaping-arrival-${id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      toast("Picked up from your conversation", {
+        description: `"${project.workingTitle}" — rename it anytime by tapping the title.`,
+        duration: 5000,
+      });
+      localStorage.setItem(key, "1");
+    } catch { /* ignore localStorage errors */ }
+  }, [project, sessions, id]);
+
   // fallbackEntries + entries moved above (consumed by useChatStream).
   // createSession moved above (consumed by useChatStream).
   const createEntry = useCreateEntry();
