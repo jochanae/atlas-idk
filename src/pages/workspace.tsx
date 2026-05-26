@@ -6817,7 +6817,8 @@ export default function Workspace() {
             ] as WorkspaceLeftTab[]).map((tab) => {
               const active = leftTab === tab;
               const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : tab === "diff" ? "Changes" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Console");
-              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
+              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : tab === "review" && pendingReviewCount > 0 ? pendingReviewCount : undefined;
+              const showPulse = tab === "review" && pendingReviewCount > 0 && leftTab !== "review";
               return (
                 <button
                   key={tab}
