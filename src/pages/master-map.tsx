@@ -1292,18 +1292,16 @@ export default function MasterMap() {
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }}
       />
 
-      {/* Nexium label (center of canvas) */}
-      {currentLayer === 1 && (
-        <div style={{
-          position: "absolute", top: "50%", left: "50%",
-          transform: "translate(-50%, calc(-50% + 58px))",
-          textAlign: "center", pointerEvents: "none", zIndex: 5,
-        }}>
-          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.22em", color: palette.goldText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase" }}>
-            SOURCE
-          </div>
+      {/* Layer label (center of canvas) — Foundation / Architecture / Assets */}
+      <div style={{
+        position: "absolute", top: "50%", left: "50%",
+        transform: "translate(-50%, calc(-50% + 58px))",
+        textAlign: "center", pointerEvents: "none", zIndex: 5,
+      }}>
+        <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.22em", color: palette.goldText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase" }}>
+          {currentLayer === 1 ? "FOUNDATION" : currentLayer === 2 ? "ARCHITECTURE" : "ASSETS"}
         </div>
-      )}
+      </div>
 
       {/* Project labels — positioned by animation loop */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", display: currentLayer === 1 ? "block" : "none" }}>
