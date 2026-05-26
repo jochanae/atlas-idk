@@ -3596,14 +3596,8 @@ export default function Home() {
         />
       )}
 
-      {showOverviewSheet && (
-        <OverviewBottomSheet
-          closing={isOverviewSheetClosing}
-          onClose={closeOverviewSheet}
-        >
-          {renderOverviewDashboard(true)}
-        </OverviewBottomSheet>
-      )}
+
+
 
       {/* Fixed 5-item bottom nav — true flex row, even spacing */}
       <style>{`
