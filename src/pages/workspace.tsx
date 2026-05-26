@@ -5195,6 +5195,20 @@ export default function Workspace() {
   // Scope: when Forge is opened from a Master Map node, hydrate just that node's context
   const [forgeScopeNodeId, setForgeScopeNodeId] = useState<string | null>(null);
   const [forgeScopeNodeLabel, setForgeScopeNodeLabel] = useState<string | null>(null);
+  // URL-driven scoped entry: /project/:id?forgeNode=<id>&forgeNodeLabel=<label> opens Forge scoped.
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const n = sp.get("forgeNode");
+      if (n) {
+        setForgeScopeNodeId(n);
+        setForgeScopeNodeLabel(sp.get("forgeNodeLabel"));
+        setShowForgeExternal(true);
+      }
+    } catch { /* noop */ }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // autoNameKey moved above (consumed by useChatStream).
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
