@@ -2123,9 +2123,11 @@ export default function Home() {
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
-      openOverviewSheet();
+      const el = document.getElementById("atlas-home-overview");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+
 
     const activeProjectId = surface.projectId ?? surface.workspaceId ?? homeProjectState.project?.id ?? mostRecentActiveProjectId;
 
@@ -2160,7 +2162,7 @@ export default function Home() {
         // Surface actions stay ambient; failures should not interrupt the thread.
       }
     }
-  }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, openOverviewSheet, queryClient, setLocation]);
+  }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, queryClient, setLocation]);
 
   const handleClearThread = useCallback(async () => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
@@ -3341,42 +3343,38 @@ export default function Home() {
                   </span>
                 </div>
 
-                {/* Distinct CTA — clearly tappable, opens the bottom sheet */}
+                {/* Subtle scroll hint — mobile only; dashboard sits right below */}
                 <button
                   type="button"
-                  aria-label="Expand overview"
-                  onClick={openOverviewSheet}
+                  aria-label="Scroll to overview"
+                  className="atlas-home-scroll-hint"
+                  onClick={() => {
+                    const el = document.getElementById("atlas-home-overview");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    else window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" });
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
-                    padding: "9px 18px",
-                    background: isParchment
-                      ? "linear-gradient(180deg, rgba(201,162,76,0.18), rgba(201,162,76,0.10))"
-                      : "linear-gradient(180deg, rgba(201,162,76,0.16), rgba(201,162,76,0.06))",
-                    border: "1px solid rgba(201,162,76,0.38)",
-                    borderRadius: 999,
-                    boxShadow: "0 0 0 1px rgba(201,162,76,0.06) inset, 0 6px 18px -10px rgba(201,162,76,0.45)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    font: "inherit",
+                    width: 28,
+                    height: 28,
+                    marginTop: 2,
+                    background: "transparent",
+                    border: "none",
                     cursor: "pointer",
-                    color: isParchment ? "rgba(120,52,8,0.95)" : "var(--atlas-gold)",
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: "clamp(10px, 2.6vw, 12px)",
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
+                    color: isParchment ? "rgba(120,52,8,0.55)" : "rgba(201,162,76,0.55)",
+                    animation: "atlasScrollHintBob 2.2s ease-in-out infinite",
                   }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <polyline points="18 15 12 9 6 15" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="6 9 12 15 18 9" />
                   </svg>
-                  <span>Expand overview</span>
                 </button>
               </div>
             );
           })()}
+
 
           {/* Inline create error */}
           {createError && (
@@ -3412,7 +3410,7 @@ export default function Home() {
       </div>
 
       {/* Below-the-fold: Recent Activity / Discovery section */}
-      <div className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
+      <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
         <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
           <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
         </div>
@@ -3600,14 +3598,8 @@ export default function Home() {
         />
       )}
 
-      {showOverviewSheet && (
-        <OverviewBottomSheet
-          closing={isOverviewSheetClosing}
-          onClose={closeOverviewSheet}
-        >
-          {renderOverviewDashboard(true)}
-        </OverviewBottomSheet>
-      )}
+
+
 
       {/* Fixed 5-item bottom nav — true flex row, even spacing */}
       <style>{`
@@ -3695,16 +3687,19 @@ export default function Home() {
           max-width: none !important;
           padding-bottom: 0 !important;
         }
-        @media (max-width: 767px) {
-          .atlas-home-tablet-overview {
-            display: none !important;
-          }
+        @keyframes atlasScrollHintBob {
+          0%, 100% { transform: translateY(0); opacity: 0.6; }
+          50%      { transform: translateY(3px); opacity: 1; }
         }
         @media (min-width: 768px) {
+          .atlas-home-scroll-hint {
+            display: none !important;
+          }
           .atlas-overview-sheet-layer {
             display: none;
           }
         }
+
         @media (min-width: 1024px) {
           .atlas-home-responsive-shell {
             width: min(calc(100% - 48px), 1100px);
