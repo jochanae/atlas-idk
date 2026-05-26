@@ -5,6 +5,7 @@ import { useListProjects, useCreateProject, useCreateEntry, getListProjectsQuery
 import { useQueryClient } from "@tanstack/react-query";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { NewProjectModal } from "../components/NewProjectModal";
+import { getLinkedRepoFullName, serializeLinkedRepo } from "../lib/githubRepo";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
@@ -43,13 +44,7 @@ async function fetchGithubSecret(): Promise<string | null> {
 }
 
 function resolveLinkedFullName(linkedRepo?: string | null): string | null {
-  if (!linkedRepo) return null;
-  try {
-    const r = JSON.parse(linkedRepo);
-    return typeof r === "string" ? r : (r.fullName ?? null);
-  } catch {
-    return linkedRepo;
-  }
+  return getLinkedRepoFullName(linkedRepo);
 }
 
 export default function Projects() {
@@ -125,7 +120,7 @@ export default function Projects() {
     setImportingRepo(repo.fullName);
     try {
       const token = getStoredToken(projects, secretToken);
-      const linkedRepoPayload = JSON.stringify(repo);
+      const linkedRepoPayload = serializeLinkedRepo(repo);
 
       // 1. Explicit target project (from per-card chain-link button)
       let projectId: number | null = targetProjectId;
@@ -565,8 +560,10 @@ export default function Projects() {
               ) : (() => {
                 const q = repoSearch.trim().toLowerCase();
                 const filtered = q ? githubRepos.filter(r => r.name.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q)) : githubRepos;
-                const linkedList = targetProjectId ? [] : filtered.filter(r => linkedFullNames.has(r.fullName));
-                const unlinkedList = filtered.filter(r => !linkedFullNames.has(r.fullName));
+                const linkedList = filtered.filter(r => linkedFullNames.has(r.fullName));
+                const unlinkedList = targetProjectId
+                  ? filtered
+                  : filtered.filter(r => !linkedFullNames.has(r.fullName));
                 if (filtered.length === 0) {
                   return (
                     <div style={{ padding: "24px 20px", textAlign: "center" }}>
@@ -595,12 +592,17 @@ export default function Projects() {
                     {linkedList.length > 0 && (
                       <div style={{ padding: "14px 20px 4px" }}>
                         <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                          Already linked
+                          {targetProjectId ? "Available to relink" : "Already linked"}
                         </span>
                       </div>
                     )}
                     {linkedList.map(repo => (
-                      <RepoRow key={repo.id} repo={repo} linked />
+                      <RepoRow
+                        key={repo.id}
+                        repo={repo}
+                        linked={!targetProjectId}
+                        onImport={targetProjectId ? () => handleImportRepo(repo) : undefined}
+                      />
                     ))}
                   </>
                 );
@@ -844,8 +846,7 @@ function ProjectRow({
               }}>
                 {(() => {
                   try {
-                    const r = JSON.parse(p.linkedRepo);
-                    const full = typeof r === "string" ? r : (r.fullName ?? p.linkedRepo);
+                    const full = resolveLinkedFullName(p.linkedRepo) ?? p.linkedRepo;
                     return full.includes("/") ? full.split("/")[1] : full;
                   } catch {
                     return p.linkedRepo.includes("/") ? p.linkedRepo.split("/")[1] : p.linkedRepo;
