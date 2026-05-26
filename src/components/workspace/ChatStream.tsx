@@ -145,6 +145,7 @@ export function ChatStream(props: ChatStreamProps) {
     projectId, sessionId, linkedRepo, trustMode,
     onCatchProceed, onCatchAdjust, onPark, onCommit, onRegenerate, onSend,
     onPreviewCode, onRunCommand, onPrCreated, onExtractToForge, onReviewDiff,
+    onOpenArtifact,
     onEditDeclined, onAlertDismiss, onStreamActivityUpdate, onStreamActivityComplete,
     onCommitCardDone, onSurfaceAction,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
