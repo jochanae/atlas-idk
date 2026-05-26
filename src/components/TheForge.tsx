@@ -1088,11 +1088,17 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>Constraints</span>
           <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>The boundaries the AI must respect</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
-          Add financial, stylistic, or technical constraints
-        </p>
+        {dnaValue("constraints") ? (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+            {dnaValue("constraints")}
+          </p>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>
+            Add financial, stylistic, or technical constraints
+          </p>
+        )}
         <button style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 20, border: "1px solid rgba(var(--atlas-gold-rgb),0.25)", background: "rgba(var(--atlas-gold-rgb),0.02)", color: "rgba(var(--atlas-gold-rgb),0.75)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" }}>
-          + Add Constraint
+          {dnaValue("constraints") ? "Edit Constraint" : "+ Add Constraint"}
         </button>
       </div>
 
