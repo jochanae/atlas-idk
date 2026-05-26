@@ -22,13 +22,37 @@ type GithubRepo = {
   url: string;
 };
 
-function getStoredToken(projects?: Array<{ githubToken?: string | null }>, secretToken?: string | null): string | null {
+function getStoredToken(
+  projects?: Array<{ githubToken?: string | null }>,
+  secretToken?: string | null,
+  accountToken?: string | null,
+): string | null {
   if (secretToken) return secretToken;
+  if (accountToken) return accountToken;
   try {
     const local = localStorage.getItem("atlas-github-token");
     if (local) return local;
   } catch {}
   return projects?.find(p => p.githubToken)?.githubToken ?? null;
+}
+
+async function fetchGithubAccountToken(): Promise<string | null> {
+  try {
+    const res = await fetch("/api/connections", { credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const connections = (Array.isArray(data) ? data : data?.connections ?? []) as Array<{
+      type?: string | null;
+      token?: string | null;
+      accessToken?: string | null;
+      githubToken?: string | null;
+      meta?: { token?: string | null; accessToken?: string | null; githubToken?: string | null } | null;
+    }>;
+    const github = connections.find((connection) => connection?.type === "github");
+    return github?.token ?? github?.accessToken ?? github?.githubToken ?? github?.meta?.token ?? github?.meta?.accessToken ?? github?.meta?.githubToken ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchGithubSecret(): Promise<string | null> {
@@ -79,6 +103,7 @@ export default function Projects() {
   const [importingRepo, setImportingRepo] = useState<string | null>(null);
   const [recentlyLinked, setRecentlyLinked] = useState<string | null>(null);
   const [secretToken, setSecretToken] = useState<string | null>(null);
+  const [accountToken, setAccountToken] = useState<string | null>(null);
   const [hasGithubToken, setHasGithubToken] = useState<boolean>(false);
   const [repoSearch, setRepoSearch] = useState("");
   // When set, sheet links directly to that project (bypasses name-match logic)
@@ -87,10 +112,11 @@ export default function Projects() {
   // Check for GITHUB_TOKEN in /api/secrets on mount
   useEffect(() => {
     let cancelled = false;
-    fetchGithubSecret().then(tok => {
+    Promise.all([fetchGithubSecret(), fetchGithubAccountToken()]).then(([secretTok, accountTok]) => {
       if (cancelled) return;
-      setSecretToken(tok);
-      setHasGithubToken(!!tok || !!getStoredToken(projects));
+      setSecretToken(secretTok);
+      setAccountToken(accountTok);
+      setHasGithubToken(!!getStoredToken(projects, secretTok, accountTok));
     });
     return () => { cancelled = true; };
   }, [projects]);
@@ -103,7 +129,7 @@ export default function Projects() {
     if (githubRepos.length > 0) return; // already loaded
     setGithubLoading(true);
     try {
-      const token = getStoredToken(projects, secretToken);
+      const token = getStoredToken(projects, secretToken, accountToken);
       if (!token) { setGithubLoading(false); return; }
       const res = await fetch("/api/github/repos", { credentials: "include", headers: { "x-github-token": token } });
       if (!res.ok) throw new Error(`GitHub error ${res.status}`);
@@ -114,12 +140,12 @@ export default function Projects() {
     } finally {
       setGithubLoading(false);
     }
-  }, [projects, githubRepos.length, secretToken]);
+  }, [projects, githubRepos.length, secretToken, accountToken]);
 
   const handleImportRepo = useCallback(async (repo: GithubRepo) => {
     setImportingRepo(repo.fullName);
     try {
-      const token = getStoredToken(projects, secretToken);
+      const token = getStoredToken(projects, secretToken, accountToken);
       const linkedRepoPayload = serializeLinkedRepo(repo);
 
       // 1. Explicit target project (from per-card chain-link button)
@@ -162,7 +188,7 @@ export default function Projects() {
     } finally {
       setImportingRepo(null);
     }
-  }, [projects, queryClient, secretToken, targetProjectId]);
+  }, [projects, queryClient, secretToken, accountToken, targetProjectId]);
 
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
@@ -526,7 +552,7 @@ export default function Projects() {
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <LoadingSpinner size="md" color="atlas" />
                 </div>
-              ) : !getStoredToken(projects, secretToken) ? (
+              ) : !getStoredToken(projects, secretToken, accountToken) ? (
                 <div style={{ padding: "32px 24px", textAlign: "center" }}>
                   <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "var(--atlas-fg)", marginBottom: 6 }}>
                     No GitHub token connected.
