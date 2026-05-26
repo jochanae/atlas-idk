@@ -7282,7 +7282,7 @@ export default function Workspace() {
         <div
           style={{
             width: isMobile ? "100%" : (desktopRightFull ? 0 : `${chatWidthPct}%`),
-            minWidth: isMobile ? 0 : (desktopRightFull ? 0 : 300),
+            minWidth: isMobile ? 0 : (desktopRightFull ? 0 : 420),
             flexShrink: 0,
             display: desktopRightFull && !isMobile ? "none" : "flex",
             flexDirection: "column",
