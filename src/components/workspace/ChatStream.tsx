@@ -165,7 +165,9 @@ export function ChatStream(props: ChatStreamProps) {
   };
 
   return (
+    <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
     <div
+
       ref={scrollRef}
       aria-live="polite"
       aria-label="Atlas conversation"
