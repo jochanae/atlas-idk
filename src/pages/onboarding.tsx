@@ -699,6 +699,19 @@ export default function OnboardingPage() {
                 {creating || forging ? "Forging…" : "Begin →"}
               </PrimaryButton>
             </form>
+            <DeepDiveHelper
+              intent={selectedIntent}
+              projectName={projectName}
+              repoUrl={repoUrl}
+              onApply={(r) => {
+                if (r.intent) {
+                  setSelectedIntent(r.intent);
+                  try { localStorage.setItem("axiom_user_intent", r.intent); } catch {}
+                }
+                if (r.projectName) setProjectName(r.projectName);
+                if (r.repoUrl) setRepoUrl(r.repoUrl);
+              }}
+            />
           </section>
         )}
       </div>
