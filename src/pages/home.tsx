@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type React
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
+import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import {
   useListProjects,
   useCreateProject,
