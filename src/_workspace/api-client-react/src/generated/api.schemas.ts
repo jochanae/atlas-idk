@@ -12,9 +12,20 @@ export interface HealthStatus {
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 
 export const ProjectStatus = {
-  active: "active",
+  shaping: "shaping",
+  committed: "committed",
   archived: "archived",
 } as const;
+
+export type ProjectSurfaceMode =
+  (typeof ProjectSurfaceMode)[keyof typeof ProjectSurfaceMode];
+
+export const ProjectSurfaceMode = {
+  ambient: "ambient",
+  operational: "operational",
+} as const;
+
+export type ProjectShape = { [key: string]: unknown } | null;
 
 export type ProjectNodeState = { [key: string]: unknown } | null;
 
@@ -42,21 +53,23 @@ export interface Project {
   latestSnapshotScore?: number | null;
   createdAt: string;
   updatedAt: string;
+  surfaceMode: ProjectSurfaceMode;
+  shape: ProjectShape;
+  /** @nullable */
+  workingTitle: string | null;
+  /** @nullable */
+  committedAt: string | null;
 }
 
 export interface CreateProjectBody {
   name: string;
   /** @nullable */
   description?: string | null;
+  status?: ProjectStatus;
+  surfaceMode?: ProjectSurfaceMode;
+  /** @nullable */
+  workingTitle?: string | null;
 }
-
-export type UpdateProjectBodyStatus =
-  (typeof UpdateProjectBodyStatus)[keyof typeof UpdateProjectBodyStatus];
-
-export const UpdateProjectBodyStatus = {
-  active: "active",
-  archived: "archived",
-} as const;
 
 export type UpdateProjectBodyNodeState = { [key: string]: unknown } | null;
 
@@ -64,7 +77,11 @@ export interface UpdateProjectBody {
   name?: string;
   /** @nullable */
   description?: string | null;
-  status?: UpdateProjectBodyStatus;
+  status?: ProjectStatus;
+  surfaceMode?: ProjectSurfaceMode;
+  shape?: { [key: string]: unknown };
+  /** @nullable */
+  workingTitle?: string | null;
   /** @nullable */
   memory?: string | null;
   /** @nullable */
