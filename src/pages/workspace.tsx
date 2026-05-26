@@ -5709,12 +5709,16 @@ export default function Workspace() {
 
       // Strip the line from displayed message
       const cleaned = m.content.replace(ARTIFACT_RE, "").replace(/\n{3,}/g, "\n\n").trim();
-      setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned } : pm)));
 
       if (!parsed || !parsed.type || !parsed.title || typeof parsed.content !== "string") {
+        setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned } : pm)));
         toast("Failed to save artifact.");
         return;
       }
+
+      const artifact = { type: parsed.type, title: parsed.title, content: parsed.content };
+      setMessages((prev) => prev.map((pm, pi) => (pi === idx ? { ...pm, content: cleaned, artifact } : pm)));
+      if (artifact.type === "plan") setLatestPlanArtifact(artifact);
 
       const title = parsed.title;
       void (async () => {
