@@ -12,9 +12,20 @@ export interface HealthStatus {
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 
 export const ProjectStatus = {
-  active: "active",
+  shaping: "shaping",
+  committed: "committed",
   archived: "archived",
 } as const;
+
+export type ProjectSurfaceMode =
+  (typeof ProjectSurfaceMode)[keyof typeof ProjectSurfaceMode];
+
+export const ProjectSurfaceMode = {
+  ambient: "ambient",
+  operational: "operational",
+} as const;
+
+export type ProjectShape = { [key: string]: unknown } | null;
 
 export type ProjectNodeState = { [key: string]: unknown } | null;
 
