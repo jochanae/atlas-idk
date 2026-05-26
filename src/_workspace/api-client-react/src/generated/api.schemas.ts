@@ -65,15 +65,11 @@ export interface CreateProjectBody {
   name: string;
   /** @nullable */
   description?: string | null;
+  status?: ProjectStatus;
+  surfaceMode?: ProjectSurfaceMode;
+  /** @nullable */
+  workingTitle?: string | null;
 }
-
-export type UpdateProjectBodyStatus =
-  (typeof UpdateProjectBodyStatus)[keyof typeof UpdateProjectBodyStatus];
-
-export const UpdateProjectBodyStatus = {
-  active: "active",
-  archived: "archived",
-} as const;
 
 export type UpdateProjectBodyNodeState = { [key: string]: unknown } | null;
 
@@ -81,7 +77,11 @@ export interface UpdateProjectBody {
   name?: string;
   /** @nullable */
   description?: string | null;
-  status?: UpdateProjectBodyStatus;
+  status?: ProjectStatus;
+  surfaceMode?: ProjectSurfaceMode;
+  shape?: { [key: string]: unknown };
+  /** @nullable */
+  workingTitle?: string | null;
   /** @nullable */
   memory?: string | null;
   /** @nullable */
