@@ -2223,7 +2223,7 @@ function MapTab({ projectId }: { projectId: number }) {
 
   const { data: mapProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const token = mapProject?.githubToken ?? null;
-  const linkedRepo = (() => { try { return mapProject?.linkedRepo ? JSON.parse(mapProject.linkedRepo) as { fullName: string; defaultBranch: string } : null; } catch { return null; } })();
+  const linkedRepo = parseLinkedRepo(mapProject?.linkedRepo);
 
   const saveMapToMemory = (data: ProjectScan, existingMemory: string) => {
     const scanBlock = [
@@ -5607,15 +5607,7 @@ export default function Workspace() {
       "__server__";
 
     let cancelled = false;
-    const parsedRepo = (() => {
-      try {
-        const r = JSON.parse(project.linkedRepo);
-        // Handle both plain-string "owner/repo" and JSON { fullName, defaultBranch } formats
-        if (typeof r === "string") return { fullName: r, defaultBranch: "main" };
-        return r as { fullName: string; defaultBranch: string };
-      }
-      catch { return null; }
-    })();
+    const parsedRepo = parseLinkedRepo(project.linkedRepo);
     if (!parsedRepo) return;
 
     const branch = parsedRepo.defaultBranch ?? "main";
@@ -5709,13 +5701,7 @@ export default function Workspace() {
   // Skips if a fresh scan (< 24h) already exists in localStorage.
   useEffect(() => {
     if (!project?.linkedRepo) return;
-    const parsedRepo = (() => {
-      try {
-        const r = JSON.parse(project.linkedRepo);
-        if (typeof r === "string") return { fullName: r, defaultBranch: "main" };
-        return r as { fullName: string; defaultBranch: string };
-      } catch { return null; }
-    })();
+    const parsedRepo = parseLinkedRepo(project.linkedRepo);
     if (!parsedRepo?.fullName) return;
 
     const scanKey = `atlas-scan-${id}`;
