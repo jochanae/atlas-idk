@@ -1336,18 +1336,22 @@ export default function MasterMap() {
       />
 
       {/* Layer label (center of canvas) — Foundation / Architecture / Assets */}
-      <div style={{
-        position: "absolute", top: "50%", left: "50%",
-        transform: "translate(-50%, calc(-50% + 58px))",
-        textAlign: "center", pointerEvents: "none", zIndex: 5,
-      }}>
-        <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.22em", color: palette.goldText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase" }}>
-          {currentLayer === 1 ? "FOUNDATION" : currentLayer === 2 ? "ARCHITECTURE" : "ASSETS"}
+      {/* Hidden when the empty-state overlay is showing, otherwise the hint
+          text bleeds through the popup card and overlaps its buttons. */}
+      {!(currentLayer === 2 && layer2Empty) && (
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, calc(-50% + 58px))",
+          textAlign: "center", pointerEvents: "none", zIndex: 5,
+        }}>
+          <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.22em", color: palette.goldText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase" }}>
+            {currentLayer === 1 ? "FOUNDATION" : currentLayer === 2 ? "ARCHITECTURE" : "ASSETS"}
+          </div>
+          <div style={{ marginTop: 4, fontSize: 9, letterSpacing: "0.04em", color: palette.goldText, opacity: 0.6, fontFamily: "var(--app-font-sans)" }}>
+            Pulled from your ledger · tap any node to drill in
+          </div>
         </div>
-        <div style={{ marginTop: 4, fontSize: 9, letterSpacing: "0.04em", color: palette.goldText, opacity: 0.6, fontFamily: "var(--app-font-sans)" }}>
-          Pulled from your ledger · tap any node to drill in
-        </div>
-      </div>
+      )}
 
       {/* Project labels — positioned by animation loop */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", display: currentLayer === 1 ? "block" : "none" }}>
