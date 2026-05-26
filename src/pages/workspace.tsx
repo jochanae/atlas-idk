@@ -5178,6 +5178,28 @@ export default function Workspace() {
     }
   }, [hasForgeNodes, projectState.forgeState, projectState.loading, projectState.state]);
 
+  useEffect(() => {
+    if (projectLoading || sessionsLoading) return;
+    if (!project || !id) return;
+    if (!sessions || sessions.length !== 0) return;
+    if (!project.memory) return;
+    const flagKey = `atlas-forge-nudge-${id}`;
+    try {
+      if (localStorage.getItem(flagKey)) return;
+      toast("Your map is in Forge", {
+        description: "Tap to see what Atlas captured from your onboarding.",
+        action: {
+          label: "Open Forge",
+          onClick: () => setMobileTab("map"),
+        },
+        duration: 6000,
+      });
+      localStorage.setItem(flagKey, "1");
+    } catch {
+      // ignore localStorage errors
+    }
+  }, [projectLoading, sessionsLoading, project, sessions, id, setMobileTab]);
+
   const updateForgeState = useCallback(async (action: "forged" | "dismissed") => {
     if (!Number.isFinite(id)) return;
     try {
