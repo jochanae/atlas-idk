@@ -1135,6 +1135,17 @@ function FirstRunOverlay({
           />
         </div>
 
+        {error && (
+          <div style={{
+            marginBottom: 12, padding: "10px 12px", borderRadius: 8,
+            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.35)",
+            color: "rgba(252,165,165,0.95)", fontSize: "var(--ts-caption)",
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.02em", textAlign: "center",
+          }}>
+            {error}
+          </div>
+        )}
+
         {/* CTA buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
