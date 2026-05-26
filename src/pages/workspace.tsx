@@ -4859,16 +4859,24 @@ export default function Workspace() {
 
 
   // Close portaled header dropdowns on scroll/resize so they don't float off their anchors.
+  const projectMenuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!showProjectMenu) return;
-    const close = () => { setShowProjectMenu(false); };
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    const onScroll = (e: Event) => {
+      const target = e.target as Node | null;
+      // Ignore scrolls that originate inside the popover itself.
+      if (target && projectMenuRef.current && projectMenuRef.current.contains(target)) return;
+      setShowProjectMenu(false);
+    };
+    const onResize = () => setShowProjectMenu(false);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
   }, [showProjectMenu]);
+
 
   const setWsLens = useCallback((newLens: WorkspaceLens) => {
     const currentMessages = messages;
