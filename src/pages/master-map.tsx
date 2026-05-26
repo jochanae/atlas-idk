@@ -1078,6 +1078,15 @@ export default function MasterMap() {
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
 
+      // Shaping halo breathes proportional to in-flight shaping count.
+      const sc = shapingCountRef.current;
+      const haloTarget = sc > 0 ? Math.min(0.05 + sc * 0.025, 0.22) : 0;
+      const haloMat = shapingHalo.material as THREE.MeshBasicMaterial;
+      const breathe = 1 + Math.sin(t * 0.9) * 0.06;
+      haloMat.opacity += (haloTarget * (0.85 + Math.sin(t * 1.4) * 0.15) - haloMat.opacity) * 0.05;
+      const haloScaleTarget = sc > 0 ? 1 + Math.min(sc * 0.06, 0.5) : 1;
+      shapingHalo.scale.setScalar(haloScaleTarget * breathe);
+
       // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
       const gy = gyroTilt.current.y;
