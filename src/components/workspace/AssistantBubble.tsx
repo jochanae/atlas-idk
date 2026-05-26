@@ -766,6 +766,7 @@ export function AssistantBubble({
   onRunCommand,
   onExtractToForge,
   onReviewDiff,
+  onOpenArtifact,
   onEditDeclined,
   onAlertDismiss,
   onStreamActivityUpdate,
