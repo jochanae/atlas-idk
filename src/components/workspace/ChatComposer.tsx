@@ -830,8 +830,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   aria-label={sendPreparingSession ? "Preparing session" : "Send message"}
                   style={{
                     minWidth: 44, minHeight: 44, padding: 3,
-                    background: hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "var(--atlas-surface)",
-                    border: hasInput ? "none" : "1px solid var(--atlas-border)",
+                    background: hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "transparent",
+                    border: hasInput ? "none" : "1px solid transparent",
                     boxShadow: hasInput ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
                   }}
                 >
