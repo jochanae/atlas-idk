@@ -5856,6 +5856,10 @@ export default function Workspace() {
     [messages, planStates]
   );
   const showReviewTab = reviewMessages.length > 0;
+  const pendingReviewCount = useMemo(
+    () => reviewMessages.filter((m) => (planStates.get(m.id ?? 0) ?? "pending") === "pending").length,
+    [reviewMessages, planStates]
+  );
   const chatPlanStates = useMemo(() => {
     if (!showReviewTab) return planStates;
     const next = new Map(planStates);
@@ -6813,7 +6817,8 @@ export default function Workspace() {
             ] as WorkspaceLeftTab[]).map((tab) => {
               const active = leftTab === tab;
               const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : tab === "diff" ? "Changes" : tab === "blueprints" ? (isTinyScreen ? "BP" : "Blueprints") : tab === "artifacts" ? (isTinyScreen ? "Art" : "Artifacts") : (isTinyScreen ? "" : "Console");
-              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : undefined;
+              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : tab === "review" && pendingReviewCount > 0 ? pendingReviewCount : undefined;
+              const showPulse = tab === "review" && pendingReviewCount > 0 && leftTab !== "review";
               return (
                 <button
                   key={tab}
@@ -6844,6 +6849,18 @@ export default function Workspace() {
                 >
                   {tab === "terminal" && <TerminalSquare size={12} strokeWidth={1.7} />}
                   {label}
+                  {showPulse && (
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 6, height: 6, borderRadius: "50%",
+                        background: "var(--atlas-gold)",
+                        boxShadow: "0 0 8px var(--atlas-gold)",
+                        animation: "atlas-pulse 1.6s ease-in-out infinite",
+                        marginLeft: 2,
+                      }}
+                    />
+                  )}
                   {badge !== undefined && (
                     <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", color: "var(--atlas-gold)", padding: "0 2px", letterSpacing: "0.05em" }}>
                       {badge}
