@@ -112,7 +112,12 @@ export default function Ledger() {
   const isLoading = isAllProjects ? allEntriesLoading : projectEntriesLoading;
   // Full lookup for walking supersedesId chains in EntryRow
   const allEntriesById = useMemo(() => new Map(entries.map((e: Entry) => [e.id, e])), [entries]);
-  const { data: projects = [] } = useListProjects();
+  const { data: projectsRaw = [] } = useListProjects();
+  // Ledger is the system of record — shaping projects must never appear here.
+  const projects = useMemo(
+    () => projectsRaw.filter((p: Project) => p.status === "committed"),
+    [projectsRaw],
+  );
 
   // Auto-expand and scroll to an entry from ?expand=<id>, then clear the param
   useEffect(() => {
