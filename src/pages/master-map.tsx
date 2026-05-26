@@ -1465,7 +1465,16 @@ export default function MasterMap() {
             </div>
 
             {/* Anchor: project name + message */}
-            <div style={{ textAlign: "center", maxWidth: 280 }}>
+            <div style={{
+              textAlign: "center", maxWidth: 280,
+              padding: "16px 18px 14px",
+              borderRadius: 14,
+              background: "rgba(var(--atlas-bg-rgb), 0.92)",
+              border: `1px solid ${palette.panelBorder}`,
+              boxShadow: "0 18px 40px -18px rgba(0,0,0,0.55)",
+              backdropFilter: "blur(8px)",
+              pointerEvents: "auto",
+            }}>
               <div style={{
                 fontSize: 15, fontWeight: 600, color: palette.goldTextStrong,
                 fontFamily: "var(--app-font-sans)", letterSpacing: "0.01em",
