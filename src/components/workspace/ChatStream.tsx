@@ -111,6 +111,7 @@ export interface ChatStreamProps {
   onPrCreated: (url: string) => void;
   onExtractToForge: (content: string) => void;
   onReviewDiff: () => void;
+  onOpenArtifact?: (title: string) => void;
   onEditDeclined: () => void;
   onAlertDismiss: (msg: ChatMessage) => void;
   onStreamActivityUpdate: (msg: ChatMessage, content: string) => void;
