@@ -444,13 +444,12 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
   box-shadow: 0 -8px 32px -12px rgba(0,0,0,0.08) !important;
 }
 /* Mobile / tablet: active-thread composer goes edge-to-edge like workspace,
-   breaking out of the .atlas-home-responsive-shell 24px side gutter. */
+   breaking out of the .atlas-home-responsive-shell 24px side gutter.
+   Rounded top corners + glassmorphism are preserved. */
 @media (max-width: 1023px) {
   body[data-axiom-thread="active"] .atlas-input-shell {
     margin-left: -24px;
     margin-right: -24px;
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
   }
 }
 [data-theme="parchment"] .atlas-input-shell,
