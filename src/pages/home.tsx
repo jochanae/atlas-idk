@@ -42,6 +42,7 @@ import { Briefcase, ChevronDown, MoreVertical } from "lucide-react";
 import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
+import { LongPressTip } from "../lib/long-press-tip";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -2987,23 +2988,51 @@ export default function Home() {
 
             {/* Bottom action bar */}
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
-              {/* History clock */}
-              <button
-                onClick={handleOpenHistory}
-                title="Conversation history"
-                style={{
-                  width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none",
-                  color: "rgba(120,113,108,0.45)", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "color 160ms ease", flexShrink: 0,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(120,113,108,0.45)")}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-              </button>
+            {/* History clock — jumpstart active sessions */}
+              <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
+                <button
+                  onClick={handleOpenHistory}
+                  aria-label="Open conversation history"
+                  style={{
+                    width: 34, height: 34, borderRadius: 999,
+                    background: "rgba(212, 175, 55, 0.1)",
+                    border: "1px solid rgba(212, 175, 55, 0.18)",
+                    color: "rgba(212, 175, 55, 0.85)",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 180ms cubic-bezier(.2,.8,.2,1)",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.18)";
+                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.45)";
+                    e.currentTarget.style.color = "var(--atlas-gold)";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.1)";
+                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.18)";
+                    e.currentTarget.style.color = "rgba(212, 175, 55, 0.85)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.18)";
+                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.45)";
+                    e.currentTarget.style.color = "var(--atlas-gold)";
+                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.1)";
+                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.18)";
+                    e.currentTarget.style.color = "rgba(212, 175, 55, 0.85)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </button>
+              </LongPressTip>
 
               {/* Paperclip — label triggers file input natively; works on mobile Safari */}
               <label
