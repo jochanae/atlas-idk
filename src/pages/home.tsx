@@ -10,7 +10,7 @@ import {
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getLinkedRepoFullName, serializeLinkedRepo } from "@/lib/githubRepo";
+import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
@@ -1707,15 +1707,17 @@ export default function Home() {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           logProjectInitialized(p.id);
-          const trimmedRepo = githubRepo?.trim();
-          if (trimmedRepo && /^https?:\/\/github\.com\//i.test(trimmedRepo)) {
+          const normalizedRepo = normalizeGitHubRepoInput(githubRepo);
+          if (normalizedRepo) {
             void fetch(`/api/projects/${p.id}`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: trimmedRepo }) }),
+              body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
             }).catch(() => {});
-            runRepoScan(p.id, trimmedRepo);
+            if (/^https?:\/\//i.test(githubRepo ?? "")) {
+              runRepoScan(p.id, githubRepo!.trim());
+            }
           }
           setLocation(`/project/${p.id}?intake=true`);
         },
