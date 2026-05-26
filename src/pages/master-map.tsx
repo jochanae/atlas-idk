@@ -61,8 +61,8 @@ function paletteFor(theme: ThemeMode): ScenePalette {
       spoke: 0x111111,
       tracer: 0xB45309,
       pageBg: "#FAFAF7",
-      headerBg: "rgba(255,255,255,0.85)",
-      headerBorder: "rgba(17,17,17,0.10)",
+      headerBg: "rgba(255,255,255,0.45)",
+      headerBorder: "rgba(17,17,17,0.08)",
       // Label tokens promoted to stamped charcoal so satellite names stay
       // crisp against the cream canvas (was muddy tan/brown ~0.7 alpha).
       goldText: "rgba(17,17,17,0.92)",
@@ -97,8 +97,8 @@ function paletteFor(theme: ThemeMode): ScenePalette {
     spoke: 0xC9A24C,
     tracer: 0xC9A24C,
     pageBg: "#090806",
-    headerBg: "var(--atlas-bg)",
-    headerBorder: "rgba(201,162,76,0.07)",
+    headerBg: "rgba(9,8,6,0.25)",
+    headerBorder: "rgba(201,162,76,0.06)",
     goldText: "rgba(201,162,76,0.7)",
     goldTextStrong: "rgba(201,162,76,0.92)",
     mutedText: "var(--atlas-muted)",
@@ -1730,7 +1730,8 @@ export default function MasterMap() {
         position: "absolute", top: 0, left: 0, right: 0, zIndex: 20,
         display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 10px",
         borderBottom: `1px solid ${palette.headerBorder}`,
-        background: palette.headerBg, backdropFilter: "blur(16px)",
+        background: palette.headerBg, backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
       }}>
         <button onClick={() => exitToReferrer("/home")} style={{
           width: 32, height: 32, borderRadius: 8, border: `1px solid ${palette.panelBorder}`,
