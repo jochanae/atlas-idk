@@ -3,7 +3,7 @@ import { AxiomFlow } from "../AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../AxiomFlow";
 import { SystemMap } from "../SystemMap";
 import type { ArchNode as SystemMapNode } from "../SystemMap";
-import { UnifiedContextDock } from "../UnifiedContextDock";
+
 import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
 import {
@@ -869,19 +869,8 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         />
       )}
 
-      {/* Unified operational dock — replaces CockpitBar.
-          Modes: CHAT | LEDGER | A (→ chat) | PREVIEW | FLOW. */}
-      <UnifiedContextDock
-        mode="operational"
-        activeOperationalTab="map"
-        onAtlasCore={() => { onBackToChat?.(); }}
-        onChat={() => { onBackToChat?.(); }}
-        onLedger={onNavLedger}
-        onPreview={onNavPreview}
-        onFlow={() => { /* already on flow */ }}
-        entryCount={entryCount}
-        activeCatch={activeCatch}
-      />
+      {/* Dock owned by parent workspace — do not render a second one here
+          (caused the stacked mobile footer when Flow tab was active). */}
 
     </div>
   );
