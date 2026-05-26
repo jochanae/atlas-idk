@@ -993,6 +993,11 @@ function ShellFooter() {
 
   const openProjectTab = useCallback((tab: "chat" | "ledger" | "files" | "preview" | "flow" | "forge") => {
     if (!activeProjectId) {
+      // Footer fallback: MAP/FLOW with no committed project → global master map
+      if (tab === "flow") {
+        setLocation("/map");
+        return;
+      }
       setLocation("/projects");
       return;
     }
