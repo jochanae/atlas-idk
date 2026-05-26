@@ -1011,7 +1011,100 @@ export function AxiomFlow({
               <path d="M3 4h10M3 8h7M3 12h5" />
             </svg>
           </button>
-        ) : null
+        ) : (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: 42,
+              transform: "translateX(-50%)",
+              zIndex: 12,
+              width: "min(520px, calc(100% - 28px))",
+              background: palette.panelBg,
+              border: `1px solid rgba(${palette.goldRgb},0.38)`,
+              borderRadius: 12,
+              padding: "12px 14px",
+              boxShadow: palette.panelShadow,
+              pointerEvents: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: palette.goldText, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldText }}>
+                {isEmptyMap ? `${projectLabel} — nothing mapped yet` : `${projectLabel} — flow summary`}
+              </span>
+              <button
+                onClick={() => {
+                  setSummaryCollapsed(true);
+                  try { localStorage.setItem(mapSeenKey, "1"); } catch {}
+                }}
+                style={{ background: "transparent", border: "none", color: palette.fgText, opacity: 0.55, cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ color: palette.fgText, fontSize: 12, lineHeight: 1.55, opacity: 0.88, marginBottom: 10 }}>
+              {isEmptyMap ? (
+                <>The canvas for <b>{projectLabel}</b> has {nodes.length} placeholder {nodes.length === 1 ? "node" : "nodes"} ready — tap any one to define it, or tap <b>Get started</b> and tell Atlas what you're building.</>
+              ) : (
+                <>
+                  Goal: <b>{goalLabelForSummary}</b>. {pluralize(definedCount, "node")} defined
+                  {placeholderCount > 0 ? <> · {placeholderCount} still placeholder</> : null}
+                  {summaryParts.length > 0 ? <> — {summaryParts.join(", ")}</> : null}
+                  . Tap any node to edit.
+                </>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {isEmptyMap && onNodeFocus && (
+                <button
+                  onClick={() => {
+                    setSummaryCollapsed(true);
+                    try { localStorage.setItem(mapSeenKey, "1"); } catch {}
+                    onNodeFocus(`Let's map ${projectLabel}. What does winning look like, and what are the must-haves to get there?`);
+                  }}
+                  style={{
+                    padding: "6px 11px",
+                    borderRadius: 7,
+                    background: `rgba(${palette.goldRgb},0.28)`,
+                    border: `1px solid rgba(${palette.goldRgb},0.55)`,
+                    color: palette.goldText,
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Get started
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setSummaryCollapsed(true);
+                  try { localStorage.setItem(mapSeenKey, "1"); } catch {}
+                }}
+                style={{
+                  padding: "6px 11px",
+                  borderRadius: 7,
+                  background: `rgba(${palette.goldRgb},0.18)`,
+                  border: `1px solid rgba(${palette.goldRgb},0.45)`,
+                  color: palette.goldText,
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )
       )}
 
       {/* No floating pill in the canvas — handover is triggered from the
