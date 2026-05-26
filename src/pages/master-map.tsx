@@ -237,6 +237,7 @@ export default function MasterMap() {
   const statsRef = useRef<Map<number, DecisionStats>>(new Map());
   const tensionsRef = useRef<Tension[]>([]);
   const hoveredTensionRef = useRef<HoveredTension | null>(null);
+  const shapingCountRef = useRef(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
