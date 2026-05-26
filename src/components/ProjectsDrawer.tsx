@@ -215,6 +215,44 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
 
           {projectsExpanded && (
             <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 6 }}>
+              {/* Filter chips: All | Committed | Shaping */}
+              <div role="tablist" aria-label="Project filter" style={{ display: "flex", gap: 4, padding: "2px 6px 8px" }}>
+                {([
+                  { key: "all", label: "All", count: projects.filter(p => p.status !== "archived").length },
+                  { key: "committed", label: "Committed", count: projects.filter(p => (p.status ?? "committed") === "committed").length },
+                  { key: "shaping", label: "Shaping", count: shapingCount },
+                ] as Array<{ key: ProjectFilter; label: string; count: number }>).map((chip) => {
+                  const active = filter === chip.key;
+                  return (
+                    <button
+                      key={chip.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setFilter(chip.key)}
+                      style={{
+                        flex: 1,
+                        padding: "4px 6px",
+                        borderRadius: 6,
+                        border: `1px solid ${active ? "rgba(201,162,76,0.4)" : "rgba(201,162,76,0.12)"}`,
+                        background: active ? "rgba(201,162,76,0.10)" : "transparent",
+                        color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        cursor: "pointer",
+                        fontSize: 9.5,
+                        fontWeight: active ? 700 : 500,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        fontFamily: "var(--app-font-mono)",
+                        transition: "background 140ms ease, border-color 140ms ease, color 140ms ease",
+                      }}
+                    >
+                      {chip.label}
+                      <span style={{ opacity: 0.55, marginLeft: 4, fontWeight: 500 }}>{chip.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {visible.length === 0 ? (
                 <div style={{ padding: "8px 14px", fontSize: 12, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.6, fontStyle: "italic" }}>No projects yet.</div>
               ) : (
