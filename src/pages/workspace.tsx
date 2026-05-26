@@ -7058,7 +7058,7 @@ export default function Workspace() {
               </LongPressTip>
             )}
             {isMobile && (() => {
-              const moreActive = ["memory","blueprints","connections"].includes(mobileTab);
+              const moreActive = ["memory","blueprints","connections","files"].includes(mobileTab);
               return (
                 <button
                   type="button"
