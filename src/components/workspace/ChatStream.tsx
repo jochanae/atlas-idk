@@ -313,15 +313,18 @@ export function ChatStream(props: ChatStreamProps) {
         </div>
       )}
 
-      {activityStream.active && liveGeneration.shouldShow ? (
-        <LiveGenerationCard
-          mode={liveGeneration.mode as never}
-          steps={liveGeneration.steps as never}
-          isComplete={false}
-        />
-      ) : activityStream.active ? (
-        <AtlasActivityBar content={activityStream.content} lens={wsLens} />
+      {activityStream.active && (messages.length === 0 || messages[messages.length - 1].role === "user") ? (
+        liveGeneration.shouldShow ? (
+          <LiveGenerationCard
+            mode={liveGeneration.mode as never}
+            steps={liveGeneration.steps as never}
+            isComplete={false}
+          />
+        ) : (
+          <AtlasActivityBar content={activityStream.content} lens={wsLens} />
+        )
       ) : null}
+
 
       <div ref={bottomRef} />
 
