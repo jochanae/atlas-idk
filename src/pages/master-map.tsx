@@ -863,8 +863,17 @@ export default function MasterMap() {
       }
       const idx = nodeMeshes.indexOf(obj);
       if (idx < 0) return;
-      // First tap on a project node → open peek panel. Warp only via the
-      // panel's "Open Project →" button.
+      // Layer 1: tap a project node → dive straight to Layer 2 (Architecture).
+      const proj = projectsRef.current[idx];
+      if (proj) {
+        const pos = nodePos3D(idx, projectsRef.current.length);
+        setPeek(null);
+        navigateToNode(String(proj.id), [pos.x, pos.y, pos.z], 2, {
+          projectId: proj.id,
+          projectName: proj.name,
+        });
+        return;
+      }
       openPeek(idx);
     };
 
