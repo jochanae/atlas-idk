@@ -8107,6 +8107,22 @@ export default function Workspace() {
                 ),
                 onSelect: () => { setShowMoreSheet(false); setShowForgeExternal(true); },
               },
+              ...(hasLinkedRepo ? [{
+                id: "rescan" as const,
+                label: isScanning ? "Rescanning…" : "Rescan repo",
+                icon: (
+                  <RefreshCw size={18} style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }} />
+                ),
+                onSelect: () => {
+                  if (isScanning) return;
+                  toast.info("Rescanning repository", {
+                    description: "Pulling the latest from GitHub to refresh your readiness score.",
+                    className: "atlas-toast-pill",
+                  });
+                  void runScan(false);
+                  setShowMoreSheet(false);
+                },
+              }] : []),
             ]).map(({ id, label, icon, onSelect }) => {
               const active = mobileTab === id;
               return (
