@@ -506,14 +506,19 @@ html, body {
   border-bottom-color: transparent !important;
 }
 
-/* Composer — glass top with rounded shoulders */
+/* Composer — glass top with rounded shoulders.
+   Translucent enough that scrolling chat content is visible behind it. */
 .atlas-composer-glass {
-  background: color-mix(in oklab, var(--atlas-bg) 68%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border-top-left-radius: 18px;
-  border-top-right-radius: 18px;
-  box-shadow: 0 -4px 24px -8px rgba(0,0,0,0.35);
+  background: color-mix(in oklab, var(--atlas-bg) 42%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-top: 0.5px solid color-mix(in srgb, var(--atlas-gold) 22%, transparent);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  box-shadow: 0 -8px 32px -12px rgba(0,0,0,0.45);
+}
+[data-theme="parchment"] .atlas-composer-glass {
+  background: color-mix(in oklab, var(--atlas-bg) 55%, transparent);
 }
 
 /* ── Side drawer mobile sizing ──
