@@ -1,11 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { haptic } from "@/lib/long-press-tip";
+import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 
-// Collapse threshold: matches home/nexus reading rhythm.
-// Long messages collapse with a "SHOW MORE" affordance so the chat doesn't
-// get visually dominated by a giant user paste.
-const COLLAPSE_LINES = 6;
-const COLLAPSE_CHARS = 360;
 const ICON_TOUCH_TARGET_STYLE: CSSProperties = { minWidth: 34, minHeight: 34, padding: 6 };
 
 function formatTimestamp(iso?: string): string {
@@ -46,16 +42,8 @@ export function UserBubble({
   onCopy: () => void;
   onEdit: () => void;
 }) {
-  const lines = content.split("\n");
-  const isTall = lines.length > COLLAPSE_LINES || content.length > COLLAPSE_CHARS;
-  const [expanded, setExpanded] = useState(!isTall);
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  const displayContent = !expanded
-    ? lines.slice(0, COLLAPSE_LINES).join("\n").slice(0, COLLAPSE_CHARS) +
-      (lines.length > COLLAPSE_LINES || content.length > COLLAPSE_CHARS ? "…" : "")
-    : content;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).catch(() => {});
@@ -74,11 +62,7 @@ export function UserBubble({
     >
       <div style={{ maxWidth: "80%", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
         {/* Bubble — home/nexus parity */}
-        <button
-          type="button"
-          disabled={!isTall}
-          onClick={isTall ? () => setExpanded((v) => !v) : undefined}
-          aria-label={isTall ? (expanded ? "Collapse message" : "Expand message") : undefined}
+        <div
           style={{
             position: "relative",
             padding: "9px 13px",
@@ -86,14 +70,11 @@ export function UserBubble({
             width: "100%",
             background: "rgba(201,162,76,0.12)",
             border: "0.5px solid rgba(201,162,76,0.3)",
-            textAlign: "left",
-            font: "inherit",
-            cursor: isTall ? "pointer" : "default",
-            transition: "background 200ms ease, border-color 200ms ease",
           }}
         >
-          <div
-            style={{
+          <CollapsibleMessageText
+            fadeFromColor="rgba(201,162,76,0.12)"
+            textStyle={{
               fontSize: 16,
               lineHeight: 1.55,
               color: "var(--atlas-fg)",
@@ -102,24 +83,9 @@ export function UserBubble({
               wordBreak: "break-word",
             }}
           >
-
-            {displayContent}
-          </div>
-          {isTall && (
-            <div
-              style={{
-                marginTop: 6,
-                fontSize: 9,
-                fontFamily: "var(--app-font-mono)",
-                letterSpacing: "0.12em",
-                color: "var(--atlas-gold)",
-                opacity: 0.6,
-              }}
-            >
-              {expanded ? "SHOW LESS ↑" : "SHOW MORE ↓"}
-            </div>
-          )}
-        </button>
+            {content}
+          </CollapsibleMessageText>
+        </div>
 
         {/* Timestamp — BELOW bubble, matches home/nexus */}
         {sentAt && (
