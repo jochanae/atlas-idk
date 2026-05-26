@@ -5,7 +5,7 @@ import { useListProjects, useCreateProject, useCreateEntry, getListProjectsQuery
 import { useQueryClient } from "@tanstack/react-query";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { NewProjectModal } from "../components/NewProjectModal";
-import { getLinkedRepoFullName, serializeLinkedRepo } from "../lib/githubRepo";
+import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "../lib/githubRepo";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
@@ -197,7 +197,7 @@ export default function Projects() {
     setShowNewProjectModal(true);
   };
 
-  const performCreateProject = (name: string, _githubRepo?: string) => {
+  const performCreateProject = (name: string, githubRepo?: string) => {
     createProject.mutate(
       { data: { name } },
       {
@@ -205,6 +205,15 @@ export default function Projects() {
           setShowNewProjectModal(false);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           if (created?.id) {
+            const normalizedRepo = normalizeGitHubRepoInput(githubRepo);
+            if (normalizedRepo) {
+              void fetch(`/api/projects/${created.id}`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ linkedRepo: serializeLinkedRepo({ fullName: normalizedRepo }) }),
+              }).catch(() => {});
+            }
             createEntry.mutate({
               projectId: created.id,
               data: {
