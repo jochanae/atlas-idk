@@ -466,31 +466,6 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-            <button
-              onClick={() => setPlanMode(v => !v)}
-              title={planMode ? "Plan mode on" : "Plan mode off"}
-              aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
-              style={{
-                marginTop: 2,
-                padding: "3px 10px",
-                borderRadius: 999,
-                background: planMode ? "rgba(201,162,76,0.08)" : "transparent",
-                border: planMode ? "1px solid rgba(201,162,76,0.35)" : "1px solid transparent",
-                color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                fontSize: 11,
-                fontFamily: "var(--app-font-mono)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-                opacity: planMode ? 1 : 0.4,
-                transition: "all var(--motion-fast) var(--ease-standard)",
-                flexShrink: 1,
-                whiteSpace: "nowrap",
-                lineHeight: 1.4,
-              }}
-            >
-              Plan
-            </button>
             <div style={{ position: "relative", flex: 1 }}>
               <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
 
