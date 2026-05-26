@@ -498,7 +498,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
 
 
-          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "nowrap", gap: 4 }}>
+          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, flexWrap: "nowrap", gap: 4 }}>
 
 
             {/* Left: paperclip + vault (tiny screens) + wrench (read Atlas source) */}
