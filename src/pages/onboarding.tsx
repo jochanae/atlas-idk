@@ -385,7 +385,9 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(() => {
     try {
       const stored = Number(localStorage.getItem("axiom_onboarding_step") ?? "1");
-      return stored >= 1 && stored <= 3 ? stored : 1;
+      // Step 2 (intent picker) was removed — collapse any stored 2 → 3.
+      if (stored === 2) return 3;
+      return stored === 1 || stored === 3 ? stored : 1;
     } catch { return 1; }
   });
   const [selectedIntent, setSelectedIntent] = useState(() => {
@@ -408,11 +410,6 @@ export default function OnboardingPage() {
     try { localStorage.setItem("axiom_onboarding_step", String(step)); } catch {}
   }, [step]);
 
-  const chooseIntent = (id: string) => {
-    setSelectedIntent(id);
-    try { localStorage.setItem("axiom_user_intent", id); } catch {}
-    setStep(3);
-  };
 
   const onNameChange = (val: string) => {
     setProjectName(val);
@@ -505,7 +502,8 @@ export default function OnboardingPage() {
       setForging(true);
       // Hand off after the camera has nearly finished its pull-back
       setTimeout(() => {
-        setLocation(`/map?projectId=${data.id}&onboarding=true`);
+        // Land in the workspace so Atlas can auto-greet — not the Master Map.
+        setLocation(`/workspace?projectId=${data.id}&onboarding=true`);
       }, 1150);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Project creation failed.");
@@ -561,80 +559,16 @@ export default function OnboardingPage() {
             <p style={{ margin: "18px 0 0", maxWidth: 520, color: "var(--atlas-muted)", fontSize: "clamp(16px, 3vw, 20px)", lineHeight: 1.6 }}>
               The system that holds your thinking accountable.
             </p>
-            <PrimaryButton onClick={() => setStep(2)}>Get Started →</PrimaryButton>
+            <PrimaryButton onClick={() => setStep(3)}>Get Started →</PrimaryButton>
           </section>
         )}
 
-        {step === 2 && (
-          <section style={{ ...panelStyle, maxWidth: 860 }}>
-            <div style={{ ...monoStyle, color: "var(--intent-glow, var(--atlas-gold))", fontSize: 10, marginBottom: 12 }}>
-              Step 2
-            </div>
-            <h1 style={{ margin: 0, fontSize: "clamp(30px, 6vw, 48px)", fontWeight: 300, letterSpacing: "-0.03em", color: "var(--atlas-fg)" }}>
-              What brings you here?
-            </h1>
-            <div style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 30 }}>
-              {intents.map((intent) => {
-                const active = selectedIntent === intent.id;
-                return (
-                  <button
-                    key={intent.id}
-                    type="button"
-                    onClick={() => chooseIntent(intent.id)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = intent.color;
-                      e.currentTarget.style.boxShadow = `0 0 24px -10px ${intent.color}`;
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.borderColor = "var(--atlas-border)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }
-                    }}
-                    style={{
-                      minHeight: 148,
-                      padding: "18px 16px",
-                      textAlign: "left",
-                      borderRadius: 16,
-                      border: active ? `2px solid ${intent.color}` : "1px solid var(--atlas-border)",
-                      background: active ? "var(--atlas-surface-alt)" : "var(--atlas-surface)",
-                      color: "var(--atlas-fg)",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                      transition: "border-color 220ms ease, box-shadow 220ms ease, background 220ms ease",
-                      boxShadow: active ? `0 0 28px -8px ${intent.color}` : "none",
-                    }}
-                  >
-                    <span style={{ fontSize: 26, lineHeight: 1 }}>{intent.icon}</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>{intent.label}</span>
-                    <span style={{ fontSize: 12.5, color: "var(--atlas-muted)", lineHeight: 1.55 }}>{intent.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <PrimaryButton disabled={!selectedIntent} onClick={() => selectedIntent && setStep(3)}>This is me →</PrimaryButton>
-            <DeepDiveHelper
-              intent={selectedIntent}
-              projectName={projectName}
-              repoUrl={repoUrl}
-              onApply={(r) => {
-                if (r.intent) {
-                  setSelectedIntent(r.intent);
-                  try { localStorage.setItem("axiom_user_intent", r.intent); } catch {}
-                }
-                if (r.projectName) setProjectName(r.projectName);
-                if (r.repoUrl) setRepoUrl(r.repoUrl);
-              }}
-            />
-          </section>
-        )}
+        {/* Step 2 (intent picker) removed — Welcome flows directly into Name Your Project. */}
 
         {step === 3 && (
           <section style={panelStyle}>
             <div style={{ ...monoStyle, color: "var(--intent-glow, var(--atlas-gold))", fontSize: 10, marginBottom: 12 }}>
-              Step 3
+              Step 2
             </div>
             <h1 style={{ margin: 0, fontSize: "clamp(30px, 6vw, 52px)", fontWeight: 300, letterSpacing: "-0.03em", color: "var(--atlas-fg)" }}>
               Name your first project.
