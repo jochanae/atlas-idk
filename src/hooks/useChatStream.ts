@@ -440,6 +440,7 @@ export function useChatStream(
             outputTokens: res.outputTokens ?? null,
             costUsd: res.costUsd != null ? Number(res.costUsd) : null,
           }]);
+          setActivityStream({ active: false, content: "" });
           if (isScenario) {
             setScenarioBuffer((prev) => [
               ...prev,
