@@ -1311,6 +1311,9 @@ export default function MasterMap() {
         <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.22em", color: palette.goldText, fontFamily: "var(--app-font-mono)", textTransform: "uppercase" }}>
           {currentLayer === 1 ? "FOUNDATION" : currentLayer === 2 ? "ARCHITECTURE" : "ASSETS"}
         </div>
+        <div style={{ marginTop: 4, fontSize: 9, letterSpacing: "0.04em", color: palette.goldText, opacity: 0.6, fontFamily: "var(--app-font-sans)" }}>
+          Pulled from your ledger · tap any node to drill in
+        </div>
       </div>
 
       {/* Project labels — positioned by animation loop */}
