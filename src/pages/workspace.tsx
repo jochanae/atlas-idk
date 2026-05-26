@@ -6828,7 +6828,7 @@ export default function Workspace() {
               ...(isMobile ? ["blueprints" as const, "artifacts" as const, "terminal" as const] : []),
             ] as WorkspaceLeftTab[]).map((tab) => {
               const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : "Changes";
+              const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : tab === "diff" ? "Changes" : tab === "blueprints" ? "Blueprints" : tab === "artifacts" ? "Artifacts" : tab === "terminal" ? "Console" : tab;
               const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : tab === "review" && pendingReviewCount > 0 ? pendingReviewCount : undefined;
               const showPulse = tab === "review" && pendingReviewCount > 0 && leftTab !== "review";
               return (
