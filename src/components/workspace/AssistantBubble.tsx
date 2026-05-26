@@ -1514,37 +1514,51 @@ export function AssistantBubble({
           />
         )}
 
-        {!message.streaming && commitPayload && !commitCardDone && (
-          <CommitCard
-            payload={commitPayload}
-            projectId={projectId}
-            sessionId={sessionId}
-            sourceMessageId={message.id}
-            onDone={() => {
-              setCommitCardDone(true);
-              onCommitCardDone?.();
-            }}
-          />
-        )}
+        {(() => {
+          const primaryCardShown =
+            (!message.streaming &&
+              !!message.plan &&
+              /FILE_EDIT_START/i.test(message.content) &&
+              planState !== "skipped") ||
+            (!message.streaming &&
+              (userEdits.length > 0 || (message.linePatches?.length ?? 0) > 0));
 
-        {!message.streaming && message.catchPayload && !message.catchResolved && (
-          <DecisionLogCard
-            payload={message.catchPayload}
-            projectId={projectId}
-            sessionId={sessionId}
-            onProceed={onCatchProceed}
-            onAdjust={onCatchAdjust}
-          />
-        )}
+          return (
+            <>
+              {!primaryCardShown && !message.streaming && commitPayload && !commitCardDone && (
+                <CommitCard
+                  payload={commitPayload}
+                  projectId={projectId}
+                  sessionId={sessionId}
+                  sourceMessageId={message.id}
+                  onDone={() => {
+                    setCommitCardDone(true);
+                    onCommitCardDone?.();
+                  }}
+                />
+              )}
 
-        {!message.streaming && message.alertPayload && !message.alertResolved && (
-          <ProactiveAlertCard
-            payload={message.alertPayload}
-            projectId={projectId}
-            sessionId={sessionId}
-            onDismiss={() => onAlertDismiss?.()}
-          />
-        )}
+              {!primaryCardShown && !message.streaming && message.catchPayload && !message.catchResolved && (
+                <DecisionLogCard
+                  payload={message.catchPayload}
+                  projectId={projectId}
+                  sessionId={sessionId}
+                  onProceed={onCatchProceed}
+                  onAdjust={onCatchAdjust}
+                />
+              )}
+
+              {!primaryCardShown && !message.streaming && message.alertPayload && !message.alertResolved && (
+                <ProactiveAlertCard
+                  payload={message.alertPayload}
+                  projectId={projectId}
+                  sessionId={sessionId}
+                  onDismiss={() => onAlertDismiss?.()}
+                />
+              )}
+            </>
+          );
+        })()}
 
 
 
