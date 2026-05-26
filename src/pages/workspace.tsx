@@ -5190,7 +5190,7 @@ export default function Workspace() {
         description: "Tap to see what Atlas captured from your onboarding.",
         action: {
           label: "Open Forge",
-          onClick: () => setMobileTab("flow"),
+          onClick: () => setMobileTab("map"),
         },
         duration: 6000,
       });
