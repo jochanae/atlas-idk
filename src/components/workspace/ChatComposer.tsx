@@ -767,8 +767,8 @@ export function ChatComposer(props: ChatComposerProps) {
                 aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
-                  background: planMode ? "rgba(201,162,76,0.1)" : "var(--atlas-surface)",
-                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`,
+                  background: planMode ? "rgba(201,162,76,0.1)" : "transparent",
+                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "transparent"}`,
                   color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 1,
@@ -790,8 +790,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   className={voiceListening ? "atlas-voice-active" : ""}
                   style={{
                     minWidth: 44, minHeight: 44, padding: 6, borderRadius: 8,
-                    background: voiceListening ? "var(--atlas-ember)" : "var(--atlas-surface)",
-                    border: `1px solid ${voiceListening ? "var(--atlas-ember)" : "var(--atlas-border)"}`,
+                    background: voiceListening ? "var(--atlas-ember)" : "transparent",
+                    border: `1px solid ${voiceListening ? "var(--atlas-ember)" : "transparent"}`,
                     color: voiceListening ? "var(--atlas-fg)" : "var(--atlas-muted)",
                     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all var(--motion-base) var(--ease-standard)", flexShrink: 0,
@@ -830,8 +830,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   aria-label={sendPreparingSession ? "Preparing session" : "Send message"}
                   style={{
                     minWidth: 44, minHeight: 44, padding: 3,
-                    background: hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "var(--atlas-surface)",
-                    border: hasInput ? "none" : "1px solid var(--atlas-border)",
+                    background: hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "transparent",
+                    border: hasInput ? "none" : "1px solid transparent",
                     boxShadow: hasInput ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
                   }}
                 >
