@@ -16,6 +16,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
+import { useGitHub } from "@/hooks/useGitHub";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useChatLens } from "@/hooks/useChatLens";
@@ -2458,6 +2459,7 @@ function ConnectionsTab({
   const { data: project } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
+  const { isConnected: githubConnected } = useGitHub();
 
   const [dbUrl, setDbUrl] = useState<string | null>(null);
 
