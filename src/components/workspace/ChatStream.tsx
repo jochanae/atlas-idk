@@ -165,7 +165,9 @@ export function ChatStream(props: ChatStreamProps) {
   };
 
   return (
+    <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
     <div
+
       ref={scrollRef}
       aria-live="polite"
       aria-label="Atlas conversation"
@@ -341,10 +343,12 @@ export function ChatStream(props: ChatStreamProps) {
         </button>
       )}
 
+    </div>
       <TimelineRail messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
     </div>
   );
 }
+
 
 // Silence unused-imports introduced by Plan/AmbientSurface re-export aliasing.
 export type _AmbientSurface = AmbientSurface;
