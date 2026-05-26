@@ -421,7 +421,8 @@ export default function MasterMap() {
   useEffect(() => {
     if (loading) return;
     const iv = setInterval(() => {
-      fetchAll().then(({ list }) => {
+      fetchAll().then(({ list, shapingCount }) => {
+        shapingCountRef.current = shapingCount;
         const fresh: number[] = [];
         list.forEach(p => {
           const prev = prevEntryDates.current.get(p.id);
