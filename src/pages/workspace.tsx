@@ -4667,7 +4667,15 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
 
-  const [chatWidthPct, setChatWidthPct] = useState(45);
+  // Default split: chat-leaning. Tablets (768–1279) get 62/38 so the chat
+  // pane has room for the composer; desktop (≥1280) gets 55/45.
+  const defaultChatPct = () => {
+    if (typeof window === "undefined") return 55;
+    const w = window.innerWidth;
+    if (w < 1280) return 62;
+    return 55;
+  };
+  const [chatWidthPct, setChatWidthPct] = useState(defaultChatPct);
   const resizeDrag = useRef({ active: false, startX: 0, startPct: 45 });
   const containerRef = useRef<HTMLDivElement>(null);
 
