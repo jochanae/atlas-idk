@@ -9,7 +9,11 @@ export type DrawerProject = {
   name: string;
   description?: string | null;
   latestSnapshotScore?: number | null;
+  status?: "shaping" | "committed" | "archived";
 };
+
+type ProjectFilter = "all" | "committed" | "shaping";
+
 
 type Props = {
   open: boolean;
