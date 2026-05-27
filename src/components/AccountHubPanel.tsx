@@ -356,7 +356,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     if (deleteInput.trim().toUpperCase() !== "DELETE") return;
     setDeleting(true);
     try {
-      await fetch("/api/auth/account", { method: "DELETE", credentials: "include" });
+      await fetch(apiUrl("/api/auth/account"), { method: "DELETE", credentials: "include" });
       queryClient.setQueryData(["auth", "me"], null);
       window.location.href = "/login";
     } finally {
