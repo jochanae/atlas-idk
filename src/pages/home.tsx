@@ -3464,7 +3464,7 @@ export default function Home() {
                     <line x1="12" y1="19" x2="12" y2="23" />
                     <line x1="8" y1="23" x2="16" y2="23" />
                   </svg>
-                  <div className="atlas-waveform" style={{ color: "var(--atlas-gold)" }}>
+                  <div className={`atlas-waveform${isListening ? " is-active" : ""}`} style={{ color: "var(--atlas-gold)" }}>
                     <span /><span /><span />
                   </div>
                 </button>
