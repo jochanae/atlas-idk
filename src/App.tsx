@@ -232,15 +232,13 @@ function OnboardingGate() {
   useEffect(() => {
     if (!shouldCheck || isLoading || !projects) return;
     try {
-      const onboardingComplete = localStorage.getItem("axiom_onboarding_complete");
-      // Back-fill: any existing user with at least one project has already
-      // been through some form of onboarding — never boot them to /onboarding.
+      const onboardingComplete = 
+        localStorage.getItem("axiom_onboarding_complete") ||
+        localStorage.getItem("atlas-onboarded");
       if (!onboardingComplete && projects.length > 0) {
         localStorage.setItem("axiom_onboarding_complete", "1");
         return;
       }
-      // Only first-run users (no flag AND no projects ever) see onboarding.
-      // Deleting the last project does NOT re-trigger onboarding.
       if (!onboardingComplete && projects.length === 0) {
         setLocation("/onboarding", { replace: true });
       }
