@@ -5353,21 +5353,47 @@ export default function Workspace() {
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow
   // updates even when the user isn't scrolling.
   useEffect(() => {
-    const el = chatPanelScrollRef.current;
-    if (!el) return;
-    const recompute = () => {
-      setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-    };
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    Array.from(el.children).forEach((c) => ro.observe(c as Element));
-    const mo = new MutationObserver(() => {
-      Array.from(el.children).forEach((c) => ro.observe(c as Element));
+    let ro: ResizeObserver | null = null;
+    let mo: MutationObserver | null = null;
+    let rafId: number | null = null;
+    let cancelled = false;
+
+    const attach = (el: HTMLDivElement) => {
+      const recompute = () => {
+        setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+      };
       recompute();
-    });
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-    return () => { ro.disconnect(); mo.disconnect(); };
+      ro = new ResizeObserver(recompute);
+      ro.observe(el);
+      Array.from(el.children).forEach((c) => ro!.observe(c as Element));
+      mo = new MutationObserver(() => {
+        Array.from(el.children).forEach((c) => ro!.observe(c as Element));
+        recompute();
+      });
+      mo.observe(el, { childList: true, subtree: true, characterData: true });
+      el.addEventListener("scroll", recompute, { passive: true });
+      (el as unknown as { __wsRecompute?: () => void }).__wsRecompute = recompute;
+    };
+
+    const waitForRef = () => {
+      if (cancelled) return;
+      const el = chatPanelScrollRef.current;
+      if (el) { attach(el); return; }
+      rafId = requestAnimationFrame(waitForRef);
+    };
+    waitForRef();
+
+    return () => {
+      cancelled = true;
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      ro?.disconnect();
+      mo?.disconnect();
+      const el = chatPanelScrollRef.current as (HTMLDivElement & { __wsRecompute?: () => void }) | null;
+      if (el?.__wsRecompute) {
+        el.removeEventListener("scroll", el.__wsRecompute);
+        delete el.__wsRecompute;
+      }
+    };
   }, []);
   const initialSent = useRef(false);
   // abortControllerRef owned by useChatStream.
