@@ -34,7 +34,11 @@ const ACTIVE_PROJECT_STORAGE_KEY = "atlas-active-project-id";
 
 function clearStoredActiveProject() {
   useShellStore.getState().setProjectId(null);
-  try { localStorage.removeItem(ACTIVE_PROJECT_STORAGE_KEY); } catch {}
+  try {
+    localStorage.removeItem(ACTIVE_PROJECT_STORAGE_KEY);
+  } catch {
+    // Storage access can fail in restricted browser contexts.
+  }
 }
 
 export function useProjectState(projectId: number | null) {
