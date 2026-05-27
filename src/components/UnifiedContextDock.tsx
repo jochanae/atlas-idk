@@ -471,21 +471,21 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core — tap to focus chat, hold to open projects"
-            aria-label="Atlas Core. Tap to focus chat. Hold or press Shift+Enter to open projects."
+            title="Atlas Core — tap to focus chat, hold for last project, hold longer for projects list"
+            aria-label="Atlas Core. Tap to focus chat. Short hold opens last project. Longer hold or Shift+Enter opens projects list."
             className="udock-center"
             onClick={handleAtlasClick}
             onPointerDown={startLongPress}
-            onPointerUp={cancelLongPress}
+            onPointerUp={handleAtlasPointerUp}
             onPointerLeave={cancelLongPress}
             onPointerCancel={cancelLongPress}
-            onContextMenu={(e) => { e.preventDefault(); longPressFired.current = true; goToLastConversation(); }}
+            onContextMenu={(e) => { e.preventDefault(); cancelLongPress(); goToProjects(); }}
             onKeyDown={(e) => {
               if (e.repeat) return;
               if (e.key === "Enter" && e.shiftKey) {
                 e.preventDefault();
-                longPressFired.current = true;
-                goToLastConversation();
+                cancelLongPress();
+                goToProjects();
               } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 startLongPress();
@@ -494,10 +494,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             onKeyUp={(e) => {
               if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
-                const fired = longPressFired.current;
-                cancelLongPress();
-                if (!fired) fireTap();
-                longPressFired.current = false;
+                if (!resolveLongPress()) fireTap();
               } else if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 fireTap();
