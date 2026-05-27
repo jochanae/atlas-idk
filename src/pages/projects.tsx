@@ -108,6 +108,8 @@ export default function Projects() {
   const [accountToken, setAccountToken] = useState<string | null>(null);
   const [hasGithubToken, setHasGithubToken] = useState<boolean>(false);
   const [repoSearch, setRepoSearch] = useState("");
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [githubTokenInput, setGithubTokenInput] = useState("");
   // When set, sheet links directly to that project (bypasses name-match logic)
   const [targetProjectId, setTargetProjectId] = useState<number | null>(null);
   const backendReady = API_BASE.length > 0;
@@ -125,6 +127,28 @@ export default function Projects() {
     } catch {}
     return currentProjects?.find(p => p.githubToken)?.githubToken ?? (backendReady ? "__server__" : null);
   }, [backendReady]);
+
+  const loadGithubRepos = useCallback(async (force = false, tokenOverride?: string | null) => {
+    if (!backendReady) {
+      setGithubError("GitHub import is unavailable in this preview because the backend URL is not configured.");
+      return;
+    }
+    if (!force && githubRepos.length > 0) return;
+    setGithubLoading(true);
+    setGithubError(null);
+    try {
+      const token = tokenOverride ?? getStoredToken(projects, secretToken, accountToken);
+      if (!token) return;
+      const res = await fetch("/api/github/repos", { credentials: "include", headers: { "x-github-token": token } });
+      if (!res.ok) throw new Error(`GitHub error ${res.status}`);
+      const data = await res.json() as GithubRepo[];
+      setGithubRepos(data);
+    } catch (e: any) {
+      setGithubError(e?.message ?? "Failed to load repos");
+    } finally {
+      setGithubLoading(false);
+    }
+  }, [projects, githubRepos.length, secretToken, accountToken, backendReady, getStoredToken]);
 
   // Check for GITHUB_TOKEN in /api/secrets or account connections on mount
   useEffect(() => {
@@ -149,21 +173,9 @@ export default function Projects() {
     setTargetProjectId(forProjectId ?? null);
     setGithubError(null);
     setRepoSearch("");
-    if (githubRepos.length > 0) return; // already loaded
-    setGithubLoading(true);
-    try {
-      const token = getStoredToken(projects, secretToken, accountToken);
-      if (!token) { setGithubLoading(false); return; }
-      const res = await fetch("/api/github/repos", { credentials: "include", headers: { "x-github-token": token } });
-      if (!res.ok) throw new Error(`GitHub error ${res.status}`);
-      const data = await res.json() as GithubRepo[];
-      setGithubRepos(data);
-    } catch (e: any) {
-      setGithubError(e?.message ?? "Failed to load repos");
-    } finally {
-      setGithubLoading(false);
-    }
-  }, [projects, githubRepos.length, secretToken, accountToken, backendReady, getStoredToken]);
+    setShowTokenInput(false);
+    void loadGithubRepos();
+  }, [backendReady, loadGithubRepos]);
 
   const handleImportRepo = useCallback(async (repo: GithubRepo) => {
     setImportingRepo(repo.fullName);
@@ -547,13 +559,40 @@ export default function Projects() {
                     Your GitHub Repositories
                   </span>
                 </div>
-                <button
-                  onClick={() => setShowGithubSheet(false)}
-                  aria-label="Close"
-                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 22, lineHeight: 1, padding: "2px 6px", flexShrink: 0 }}
-                >
-                  ×
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => setShowTokenInput(v => !v)}
+                    style={{
+                      ...sMono,
+                      fontSize: 9,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      padding: "4px 7px",
+                      borderRadius: 5,
+                      border: `1px solid ${showTokenInput ? "rgba(201,162,76,0.5)" : "var(--atlas-border)"}`,
+                      background: showTokenInput ? "rgba(201,162,76,0.12)" : "transparent",
+                      color: showTokenInput ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    TOKEN
+                  </button>
+                  <button
+                    onClick={() => { setGithubRepos([]); void loadGithubRepos(true); }}
+                    disabled={githubLoading || !backendReady}
+                    aria-label="Refresh repositories"
+                    style={{ background: "transparent", border: "none", cursor: githubLoading || !backendReady ? "not-allowed" : "pointer", color: "var(--atlas-muted)", fontSize: 17, lineHeight: 1, padding: "2px 4px", opacity: githubLoading || !backendReady ? 0.35 : 0.8 }}
+                  >
+                    ↻
+                  </button>
+                  <button
+                    onClick={() => setShowGithubSheet(false)}
+                    aria-label="Close"
+                    style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 22, lineHeight: 1, padding: "2px 6px" }}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
               {targetProjectId && (
                 <div style={{ ...sMono, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em", marginTop: 6 }}>
@@ -587,7 +626,67 @@ export default function Projects() {
 
             {/* Sheet body */}
             <div style={{ overflowY: "auto", flex: 1, padding: "8px 0 20px" }}>
-              {githubLoading ? (
+              {showTokenInput ? (
+                <div style={{ padding: "18px 20px 16px", borderBottom: "1px solid var(--atlas-border)" }}>
+                  <div style={{ ...sMono, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em", marginBottom: 8 }}>
+                    Paste a GitHub token to browse private repositories.
+                  </div>
+                  <input
+                    type="password"
+                    value={githubTokenInput}
+                    onChange={e => setGithubTokenInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && githubTokenInput.trim()) {
+                        const token = githubTokenInput.trim();
+                        try { localStorage.setItem("atlas-github-token", token); } catch {}
+                        setSecretToken(token);
+                        setHasGithubToken(true);
+                        setGithubRepos([]);
+                        setShowTokenInput(false);
+                        void loadGithubRepos(true, token);
+                      }
+                    }}
+                    placeholder="ghp_..."
+                    autoComplete="off"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      background: "var(--atlas-bg)",
+                      border: "1px solid var(--atlas-border)",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      color: "var(--atlas-fg)",
+                      fontSize: 12,
+                      fontFamily: "var(--app-font-mono)",
+                      outline: "none",
+                    }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+                    <button
+                      onClick={() => setShowTokenInput(false)}
+                      style={{ ...sMono, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", padding: "6px 10px", borderRadius: 5, border: "1px solid var(--atlas-border)", background: "transparent", color: "var(--atlas-muted)", cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        const token = githubTokenInput.trim();
+                        if (!token) return;
+                        try { localStorage.setItem("atlas-github-token", token); } catch {}
+                        setSecretToken(token);
+                        setHasGithubToken(true);
+                        setGithubRepos([]);
+                        setShowTokenInput(false);
+                        void loadGithubRepos(true, token);
+                      }}
+                      disabled={!githubTokenInput.trim()}
+                      style={{ ...sMono, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", padding: "6px 12px", borderRadius: 5, border: "1px solid rgba(201,162,76,0.35)", background: githubTokenInput.trim() ? "rgba(201,162,76,0.12)" : "rgba(201,162,76,0.04)", color: githubTokenInput.trim() ? "var(--atlas-gold)" : "var(--atlas-muted)", cursor: githubTokenInput.trim() ? "pointer" : "not-allowed" }}
+                    >
+                      Save token
+                    </button>
+                  </div>
+                </div>
+              ) : githubLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <LoadingSpinner size="md" color="atlas" />
                 </div>
@@ -623,11 +722,11 @@ export default function Projects() {
                     Open Secrets →
                   </Link>
                 </div>
-              ) : githubError ? (
+              ) : !showTokenInput && githubError ? (
                 <div style={{ padding: "24px 20px", textAlign: "center" }}>
                   <p style={{ ...sMono, fontSize: 11, color: "rgba(252,165,165,0.8)", letterSpacing: "0.06em" }}>{githubError}</p>
                 </div>
-              ) : githubRepos.length === 0 ? (
+              ) : githubRepos.length === 0 && !showTokenInput ? (
                 <div style={{ padding: "24px 20px", textAlign: "center" }}>
                   <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)" }}>No repositories found.</p>
                 </div>
@@ -635,9 +734,7 @@ export default function Projects() {
                 const q = repoSearch.trim().toLowerCase();
                 const filtered = q ? githubRepos.filter(r => r.name.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q)) : githubRepos;
                 const linkedList = filtered.filter(r => linkedFullNames.has(r.fullName));
-                const unlinkedList = targetProjectId
-                  ? filtered
-                  : filtered.filter(r => !linkedFullNames.has(r.fullName));
+                const importableList = filtered.filter(r => !linkedFullNames.has(r.fullName));
                 if (filtered.length === 0) {
                   return (
                     <div style={{ padding: "24px 20px", textAlign: "center" }}>
@@ -647,14 +744,14 @@ export default function Projects() {
                 }
                 return (
                   <>
-                    {unlinkedList.length > 0 && (
+                    {importableList.length > 0 && (
                       <div style={{ padding: "6px 20px 4px" }}>
                         <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                          Available
+                          Importable repos
                         </span>
                       </div>
                     )}
-                    {unlinkedList.map(repo => (
+                    {importableList.map(repo => (
                       <RepoRow
                         key={repo.id}
                         repo={repo}
@@ -666,7 +763,7 @@ export default function Projects() {
                     {linkedList.length > 0 && (
                       <div style={{ padding: "14px 20px 4px" }}>
                         <span style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.5 }}>
-                          {targetProjectId ? "Available to relink" : "Already linked"}
+                          Already linked repos
                         </span>
                       </div>
                     )}
@@ -674,8 +771,8 @@ export default function Projects() {
                       <RepoRow
                         key={repo.id}
                         repo={repo}
-                        linked={!targetProjectId}
-                        onImport={targetProjectId ? () => handleImportRepo(repo) : undefined}
+                        linked
+                        linkedProject={linkedRepoToProject.get(repo.fullName)}
                       />
                     ))}
                   </>
@@ -696,14 +793,16 @@ export default function Projects() {
   );
 }
 
-function RepoRow({ repo, linked, importing, success, onImport }: {
+function RepoRow({ repo, linked, linkedProject, importing, success, onImport }: {
   repo: GithubRepo;
   linked?: boolean;
+  linkedProject?: { id: number; name: string };
   importing?: boolean;
   success?: boolean;
   onImport?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [, setLocation] = useLocation();
   const ago = (() => {
     const d = new Date(repo.updatedAt);
     const days = Math.floor((Date.now() - d.getTime()) / 86400000);
@@ -752,15 +851,36 @@ function RepoRow({ repo, linked, importing, success, onImport }: {
 
       {/* Action */}
       {linked ? (
-        <span style={{
-          ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
-          color: "rgb(251,191,36)",
-          background: "rgba(251,191,36,0.1)",
-          border: "1px solid rgba(251,191,36,0.3)",
-          borderRadius: 4, padding: "3px 7px",
-        }}>
-          Already linked
-        </span>
+        linkedProject ? (
+          <button
+            onClick={() => setLocation(`/project/${linkedProject.id}`)}
+            title={`Open ${linkedProject.name}`}
+            style={{
+              ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
+              color: "rgb(251,191,36)",
+              background: hovered ? "rgba(251,191,36,0.16)" : "rgba(251,191,36,0.1)",
+              border: "1px solid rgba(251,191,36,0.3)",
+              borderRadius: 4, padding: "3px 7px",
+              cursor: "pointer",
+              maxWidth: 140,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {linkedProject.name}
+          </button>
+        ) : (
+          <span style={{
+            ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
+            color: "rgb(251,191,36)",
+            background: "rgba(251,191,36,0.1)",
+            border: "1px solid rgba(251,191,36,0.3)",
+            borderRadius: 4, padding: "3px 7px",
+          }}>
+            Already linked
+          </span>
+        )
       ) : success ? (
         <span style={{
           ...sMono, fontSize: 9, letterSpacing: "0.1em", flexShrink: 0, textTransform: "uppercase",
