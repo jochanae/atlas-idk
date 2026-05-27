@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Entry, Project, Session } from "@workspace/api-client-react";
+import { useShellStore } from "@/store/shellStore";
 
 export type ProjectForgeState = {
   forged?: boolean;
@@ -29,6 +30,13 @@ const EMPTY_PROJECT_STATE: ProjectStatePayload = {
   recentContext: null,
 };
 
+const ACTIVE_PROJECT_STORAGE_KEY = "atlas-active-project-id";
+
+function clearStoredActiveProject() {
+  useShellStore.getState().setProjectId(null);
+  try { localStorage.removeItem(ACTIVE_PROJECT_STORAGE_KEY); } catch {}
+}
+
 export function useProjectState(projectId: number | null) {
   const [state, setState] = useState<ProjectStatePayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,6 +58,7 @@ export function useProjectState(projectId: number | null) {
         credentials: "include",
         signal,
       });
+      if (res.status === 404) clearStoredActiveProject();
       if (!res.ok) throw new Error(`Project state failed: HTTP ${res.status}`);
       const payload = await res.json() as Partial<ProjectStatePayload>;
       const nextState: ProjectStatePayload = {
@@ -66,6 +75,7 @@ export function useProjectState(projectId: number | null) {
         memorySummary: payload.memorySummary ?? null,
         recentContext: payload.recentContext ?? null,
       };
+      if (!nextState.project) clearStoredActiveProject();
       setState(nextState);
       return nextState;
     } catch (err) {

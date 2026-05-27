@@ -6625,19 +6625,15 @@ export default function Workspace() {
   );
 
   // ── Project not found ────────────────────────────────────────────────────
-  if (!projectLoading && !sessionsLoading && id && !project) {
-    return (
-      <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--atlas-bg)", gap: 20 }}>
-        <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.35em", color: "var(--atlas-gold)", opacity: 0.4, textTransform: "uppercase" }}>Axiom</div>
-        <div style={{ fontSize: "var(--ts-display)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "0.04em" }}>Project not found.</div>
-        <button
-          onClick={() => setLocation("/home")}
-          style={{ padding: "10px 24px", borderRadius: 9, cursor: "pointer", background: "linear-gradient(180deg, var(--atlas-gold) 0%, #B8942A 100%)", border: "1px solid rgba(var(--atlas-gold-rgb),0.4)", color: "#0C0A09", fontSize: "var(--ts-caption)", fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase" }}
-        >
-          Go home
-        </button>
-      </div>
-    );
+  const projectNotFound = !projectLoading && !sessionsLoading && !!id && !project;
+  useEffect(() => {
+    if (projectNotFound) {
+      setLocation("/home", { replace: true });
+    }
+  }, [projectNotFound, setLocation]);
+
+  if (projectNotFound) {
+    return null;
   }
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
