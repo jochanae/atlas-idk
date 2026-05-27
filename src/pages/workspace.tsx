@@ -4397,7 +4397,25 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
 
   const q = INTAKE_QUESTIONS[step];
   const isLast = step === INTAKE_QUESTIONS.length - 1;
-  const canSkip = !q.required;
+  // All questions are skippable — intake enriches context, never gates entry.
+  const canSkip = true;
+
+  const skipAll = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      fetch("/api/forge/intake", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ projectId, answers, skipped: true }),
+      }).catch(() => {});
+      await Promise.resolve(onComplete(answers));
+    } catch {
+      setError("Couldn't skip. Try again.");
+      setSubmitting(false);
+    }
+  };
 
   const advance = async (val: string) => {
     const updated = { ...answers, [q.key]: val };
@@ -4434,6 +4452,23 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "24px 20px",
     }}>
+      {/* Skip-all escape hatch — always visible */}
+      <button
+        type="button"
+        onClick={skipAll}
+        disabled={submitting}
+        style={{
+          position: "absolute", top: 16, right: 18,
+          background: "transparent", border: "1px solid var(--atlas-border)",
+          color: "var(--atlas-muted)", fontSize: 11, fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.08em", textTransform: "uppercase",
+          padding: "8px 12px", borderRadius: 6, cursor: submitting ? "wait" : "pointer",
+        }}
+        title="Skip intake — jump straight into the workspace"
+      >
+        Skip intake →
+      </button>
+
       {/* Progress bar */}
       <div style={{ width: "100%", maxWidth: 560, marginBottom: 32 }}>
         <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
@@ -4442,7 +4477,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
           ))}
         </div>
         <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.13em", color: "var(--atlas-muted)", textTransform: "uppercase" }}>
-          {step + 1} of {INTAKE_QUESTIONS.length}
+          {step + 1} of {INTAKE_QUESTIONS.length} · optional
         </div>
       </div>
 
