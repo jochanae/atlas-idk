@@ -2879,8 +2879,12 @@ export default function Home() {
                     </Fragment>
                   ))}
 
-                  {/* Thinking indicator */}
-                  {isAtlasStreaming && (
+                  {/* Thinking indicator — only before first token arrives.
+                      Once the streaming assistant message has content, that
+                      bubble renders its own ATLAS label + text, so this
+                      standalone block would duplicate (two ATLAS rows with
+                      Thinking… stuck below the text). */}
+                  {isAtlasStreaming && !homeMessages.some(m => (m as any).streaming && m.content && m.content.length > 0) && (
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 6, animation: "fadeIn 200ms ease forwards" }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
