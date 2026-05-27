@@ -252,19 +252,17 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     return false;
   };
 
+  const suppressNextClick = useRef(false);
   const handleAtlasPointerUp = () => {
-    if (!resolveLongPress()) {
-      // pointer released before any long-press tier — treat as tap (handled by onClick)
+    if (resolveLongPress()) {
+      suppressNextClick.current = true;
     }
   };
   const handleAtlasClick = () => {
-    // If a long-press already fired during pointerup, intent has been cleared.
-    if (longPressIntent.current !== "none") {
-      // Shouldn't happen, but guard.
-      resolveLongPress();
+    if (suppressNextClick.current) {
+      suppressNextClick.current = false;
       return;
     }
-    // If the pointerup handler already triggered navigation, click is harmless.
     fireTap();
   };
 
