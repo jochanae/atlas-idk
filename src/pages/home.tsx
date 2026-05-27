@@ -1898,11 +1898,7 @@ export default function Home() {
         homeFocus == null && shell.activeThread.projectId == null;
       const isFirstMessage = homeMessages.length === 0;
       if (noActiveProject && isFirstMessage) {
-        const provisionalName =
-          messageText
-            .replace(/\s+/g, " ")
-            .trim()
-            .slice(0, 60) || "New thread";
+        const provisionalName = "Untitled";
         createProject
           .mutateAsync({
             data: {
@@ -2564,7 +2560,7 @@ export default function Home() {
           error={createError}
           onSpecMode={() => {
             setCreateError(null);
-            createProject.mutate({ data: { name: "My Project" } }, {
+            createProject.mutate({ data: { name: "Untitled" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
@@ -2589,7 +2585,7 @@ export default function Home() {
           }}
           onWorkspace={() => {
             setCreateError(null);
-            createProject.mutate({ data: { name: "My Project" } }, {
+            createProject.mutate({ data: { name: "Untitled" } }, {
               onSuccess: (p) => {
                 dismissOverlay();
                 queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
