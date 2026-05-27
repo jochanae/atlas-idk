@@ -22,6 +22,7 @@ import type { Plan } from "@/lib/plan";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
+import { createTextPacer, type TextPacer } from "@/lib/textPacer";
 
 type PriorMessage = Message;
 
@@ -291,6 +292,7 @@ export function useChatStream(
       void (async () => {
         let streamingId: number | null = null;
         let streamingFinished = false;
+        let pacer: TextPacer | null = null;
         try {
           const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
 
@@ -327,10 +329,21 @@ export function useChatStream(
           const reader = r.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
-          const renderStreamedText = () => {
-            const { content } = stripGithubAutoLinkToolCall(streamedText);
+          const renderFrom = (raw: string) => {
+            const { content } = stripGithubAutoLinkToolCall(raw);
             return appendGithubAutoLinkStatus(content, githubAutoLinkStatus);
           };
+          // Pacer: decouples network token bursts from the visible reveal.
+          // See src/lib/textPacer.ts + mem://design/conversational-flow.
+          pacer = createTextPacer({
+            onTick: (released) => {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === placeholderId ? { ...m, content: renderFrom(released) } : m
+                )
+              );
+            },
+          });
           const triggerGithubAutoLink = (content: string) => {
             if (githubAutoLinkPromise) return;
             const { found } = stripGithubAutoLinkToolCall(content);
@@ -348,10 +361,11 @@ export function useChatStream(
                 status = GITHUB_AUTO_LINK_FAILURE;
               }
               githubAutoLinkStatus = status;
+              // Re-emit current paced text with new suffix.
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === placeholderId
-                    ? { ...m, content: renderStreamedText() }
+                    ? { ...m, content: renderFrom(streamedText.slice(0, pacer?.released() ?? 0)) }
                     : m
                 )
               );
@@ -380,19 +394,20 @@ export function useChatStream(
                   const chunk = JSON.parse(evtData) as string;
                   streamedText += chunk;
                   triggerGithubAutoLink(streamedText);
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === placeholderId
-                        ? { ...m, content: renderStreamedText() }
-                        : m
-                    )
-                  );
+                  // Feed the pacer instead of writing to React state directly.
+                  // The pacer's rAF loop will release chars at human reading cadence
+                  // and call setMessages at most once per frame.
+                  pacer?.push(chunk);
                 } else if (evtName === "narration") {
                   const text = JSON.parse(evtData) as string;
                   setActivityStream({ active: true, content: text });
                 } else if (evtName === "done") {
                   const res = JSON.parse(evtData);
                   streamingFinished = true;
+                  // Drain any remaining buffered text BEFORE swapping the placeholder
+                  // out for the final message, so the user sees the reveal finish
+                  // rather than a sudden jump to the full content.
+                  await (pacer?.finish() ?? Promise.resolve());
                   setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
                   streamingId = null;
                   if (!res) return;
@@ -485,6 +500,7 @@ export function useChatStream(
             }
           }
         } catch (err: unknown) {
+          try { pacer?.abort(); } catch { /* noop */ }
           if (streamingId !== null) {
             setMessages((prev) => prev.filter((m) => m.id !== streamingId));
           }
@@ -496,6 +512,7 @@ export function useChatStream(
           setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", sentAt: new Date().toISOString() }]);
           setActivityStream({ active: false, content: "" });
         } finally {
+          try { pacer?.abort(); } catch { /* noop */ }
           if (!streamingFinished && streamingId !== null) {
             setMessages((prev) => prev.filter((m) => m.id !== streamingId));
           }

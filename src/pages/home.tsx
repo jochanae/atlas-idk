@@ -47,6 +47,7 @@ import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { createTextPacer, followScrollIfNearBottom } from "@/lib/textPacer";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1708,9 +1709,9 @@ export default function Home() {
   useEffect(() => {
     if (homeMessages.length === 0) return;
     const container = messagesEndRef.current?.parentElement;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
+    // Only auto-scroll if the user is near the bottom — never yank them
+    // away from earlier text they're reading.
+    followScrollIfNearBottom(container, 120);
   }, [homeMessages]);
 
   useEffect(() => {
@@ -2011,76 +2012,91 @@ export default function Home() {
       // Add a streaming message bubble immediately
       setHomeMessages(prev => [...prev, { role: 'assistant', content: '', model: homeModel, intentType: null, isNew: true, id: streamingId, streaming: true, createdAt: new Date().toISOString() }]);
 
+      // Pacer: smooths network token bursts into a steady, readable reveal.
+      // See src/lib/textPacer.ts + mem://design/conversational-flow.
+      const pacer = createTextPacer({
+        onTick: (released) => {
+          setHomeMessages(prev => prev.map(m =>
+            (m as any).id === streamingId ? { ...m, content: released } : m
+          ));
+        },
+      });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const blocks = buf.split("\n\n");
-        buf = blocks.pop() ?? "";
-        for (const block of blocks) {
-          let evtName = "";
-          let evtData = "";
-          for (const line of block.split("\n")) {
-            if (line.startsWith("event: ")) evtName = line.slice(7).trim();
-            else if (line.startsWith("data: ")) evtData = line.slice(6);
-          }
-          if (!evtData) continue;
-          try {
-            if (evtName === "token") {
-              const token = JSON.parse(evtData) as string;
-              streamedText += token;
-              setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, content: streamedText } : m
-              ));
-            } else if (evtName === "step") {
-              const step = JSON.parse(evtData) as { verb?: string; target?: string; status?: "ok" | "warn" | "fail" };
-              if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
-            } else if (evtName === "done") {
-              const meta = JSON.parse(evtData) as {
-                memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
-                executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number;
-                execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number;
-                runStatus?: RunStatus; run_status?: RunStatus;
-                runSummary?: string; run_summary?: string;
-                runActions?: RunAction[]; run_actions?: RunAction[];
-                runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
-                terminalCmd?: unknown; terminal_cmd?: unknown;
-                terminalResult?: unknown; terminal_result?: unknown;
-                modelUsed?: string | null; model_used?: string | null;
-                surface?: AmbientSurface;
-              };
-              const plan = detectPlanFromText(streamedText);
-              const metrics = {
-                executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
-                inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
-                outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
-                costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
-              };
-              const runFields = {
-                runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as RunStatus,
-                runSummary: meta.runSummary ?? meta.run_summary ?? null,
-                runActions: meta.runActions ?? meta.run_actions ?? null,
-                runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
-                terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
-                terminalResult: meta.terminalResult ?? meta.terminal_result,
-                modelUsed: meta.modelUsed ?? meta.model_used ?? null,
-              };
-              setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
-              ));
-              if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
-              if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
-            } else if (evtName === "error") {
-              const errMsg = JSON.parse(evtData) as string;
-              setHomeMessages(prev => prev.map(m =>
-                (m as any).id === streamingId
-                  ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false, runStatus: "failed" as RunStatus, errorMessage: errMsg || "Unknown error" }
-                  : m
-              ));
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const blocks = buf.split("\n\n");
+          buf = blocks.pop() ?? "";
+          for (const block of blocks) {
+            let evtName = "";
+            let evtData = "";
+            for (const line of block.split("\n")) {
+              if (line.startsWith("event: ")) evtName = line.slice(7).trim();
+              else if (line.startsWith("data: ")) evtData = line.slice(6);
             }
-          } catch {}
+            if (!evtData) continue;
+            try {
+              if (evtName === "token") {
+                const token = JSON.parse(evtData) as string;
+                streamedText += token;
+                pacer.push(token);
+              } else if (evtName === "step") {
+                const step = JSON.parse(evtData) as { verb?: string; target?: string; status?: "ok" | "warn" | "fail" };
+                if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
+              } else if (evtName === "done") {
+                const meta = JSON.parse(evtData) as {
+                  memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
+                  executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number;
+                  execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number;
+                  runStatus?: RunStatus; run_status?: RunStatus;
+                  runSummary?: string; run_summary?: string;
+                  runActions?: RunAction[]; run_actions?: RunAction[];
+                  runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
+                  terminalCmd?: unknown; terminal_cmd?: unknown;
+                  terminalResult?: unknown; terminal_result?: unknown;
+                  modelUsed?: string | null; model_used?: string | null;
+                  surface?: AmbientSurface;
+                };
+                // Wait for the pacer to finish revealing all tokens before
+                // we mark the bubble non-streaming and attach final metadata.
+                await pacer.finish();
+                const plan = detectPlanFromText(streamedText);
+                const metrics = {
+                  executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
+                  inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
+                  outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
+                  costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
+                };
+                const runFields = {
+                  runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as RunStatus,
+                  runSummary: meta.runSummary ?? meta.run_summary ?? null,
+                  runActions: meta.runActions ?? meta.run_actions ?? null,
+                  runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
+                  terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
+                  terminalResult: meta.terminalResult ?? meta.terminal_result,
+                  modelUsed: meta.modelUsed ?? meta.model_used ?? null,
+                };
+                setHomeMessages(prev => prev.map(m =>
+                  (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
+                ));
+                if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
+                if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
+              } else if (evtName === "error") {
+                pacer.abort();
+                const errMsg = JSON.parse(evtData) as string;
+                setHomeMessages(prev => prev.map(m =>
+                  (m as any).id === streamingId
+                    ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false, runStatus: "failed" as RunStatus, errorMessage: errMsg || "Unknown error" }
+                    : m
+                ));
+              }
+            } catch {}
+          }
         }
+      } finally {
+        pacer.abort();
       }
     } catch {
       setHomeMessages(prev => prev.map(m =>
