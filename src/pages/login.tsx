@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { lovable } from "@/integrations/lovable";
 import { apiUrl } from "../lib/api";
 
 type Mode = "login" | "signup" | "forgot";
@@ -109,6 +110,27 @@ export default function Login() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/login`,
+        extraParams: { prompt: "select_account" },
+      });
+
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+
+      sessionStorage.setItem("atlas-just-authed", "1");
+      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      navigate("/home");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
       setLoading(false);
     }
   };
@@ -451,22 +473,24 @@ export default function Login() {
 
           {/* Social gates */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <a
-              href={apiUrl("/api/auth/google")}
+            <button
+              type="button"
+              onClick={() => void handleGoogleSignIn()}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 10, padding: "10px 16px", borderRadius: 10,
                 background: "var(--atlas-glass-bg)", border: "1px solid var(--atlas-border)",
                 color: "var(--atlas-fg)", fontSize: 11, ...mono, letterSpacing: "0.12em",
-                textTransform: "uppercase", cursor: "pointer", textDecoration: "none",
+                textTransform: "uppercase", cursor: loading ? "wait" : "pointer", textDecoration: "none",
                 transition: "all 200ms ease", boxSizing: "border-box",
               }}
+              disabled={loading}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--atlas-glass-bg)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "var(--atlas-glass-bg)"; e.currentTarget.style.borderColor = "var(--atlas-border)"; }}
             >
               <GoogleIcon />
               <span>Continue with Google</span>
-            </a>
+            </button>
             <button
               disabled
               title="Apple Sign-In coming soon"
