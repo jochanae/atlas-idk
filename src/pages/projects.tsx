@@ -316,7 +316,7 @@ export default function Projects() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Link Repos */}
-          {hasGithubToken && (
+          {hasGithubToken && backendReady && (
             <button
               onClick={() => openGithubSheet()}
               style={{
@@ -435,7 +435,7 @@ export default function Projects() {
                   onCancelDelete={() => setConfirmDeleteId(null)}
                   onConfirmDelete={() => handleDelete(p.id)}
                   onArchive={() => handleArchive(p.id, true)}
-                  onLinkRepo={hasGithubToken ? () => openGithubSheet(p.id) : undefined}
+                  onLinkRepo={hasGithubToken && backendReady ? () => openGithubSheet(p.id) : undefined}
                 />
               ))}
             </div>
@@ -569,6 +569,15 @@ export default function Projects() {
               {githubLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <LoadingSpinner size="md" color="atlas" />
+                </div>
+              ) : !backendReady ? (
+                <div style={{ padding: "32px 24px", textAlign: "center" }}>
+                  <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "var(--atlas-fg)", marginBottom: 6 }}>
+                    GitHub import is offline in this preview.
+                  </p>
+                  <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.04em", marginBottom: 0 }}>
+                    The app has no backend API URL configured right now, so repo browsing and linking cannot work from this screen.
+                  </p>
                 </div>
               ) : !getStoredToken(projects, secretToken, accountToken) ? (
                 <div style={{ padding: "32px 24px", textAlign: "center" }}>
