@@ -1719,6 +1719,10 @@ export default function Home() {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
   const performCreateProject = useCallback((name: string, githubRepo?: string) => {
+    if (!backendReady) {
+      setCreateError("Project creation is unavailable in this preview because the backend API URL is not configured.");
+      return;
+    }
     if (isFree && (projects?.length ?? 0) >= 1) {
       setShowNewProjectModal(false);
       setShowUpgrade(true);
@@ -1756,7 +1760,7 @@ export default function Home() {
         },
       }
     );
-  }, [isFree, projects, createProject, queryClient, runRepoScan, setLocation]);
+  }, [backendReady, isFree, projects, createProject, queryClient, runRepoScan, setLocation]);
 
   const handleNewProject = useCallback((_name = "New Project") => {
     if (isFree && (projects?.length ?? 0) >= 1) {
