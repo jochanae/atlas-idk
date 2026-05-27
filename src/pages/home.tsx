@@ -3178,37 +3178,8 @@ export default function Home() {
 
             {/* Bottom action bar */}
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
-              <button
-                onClick={() => setShowFocusPicker(true)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 7px", borderRadius: 999,
-                  background: homeFocus ? "rgba(201,162,76,0.1)" : "transparent",
-                  border: homeFocus ? "1px solid rgba(201,162,76,0.3)" : "1px solid transparent",
-                  cursor: "pointer", flexShrink: 0,
-                  fontFamily: "var(--app-font-mono)", fontSize: 9,
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: homeFocus ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: homeFocus ? 1 : 0.45,
-                  transition: "all 140ms ease",
-                }}
-              >
-                {homeFocus ? (
-                  <>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
-                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
-                    <span
-                      onClick={(e) => { e.stopPropagation(); setHomeFocus(null); }}
-                      style={{ marginLeft: 2, opacity: 0.6, fontSize: 12, lineHeight: 1 }}
-                    >×</span>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ fontSize: 11, lineHeight: 1, opacity: 0.7 }}>⊕</span>
-                    focus
-                  </>
-                )}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "center", minWidth: 0 }}>
+
             {/* History clock — jumpstart active sessions */}
               <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
                 <button
@@ -3254,6 +3225,53 @@ export default function Home() {
                   </svg>
                 </button>
               </LongPressTip>
+
+              {/* Focus — icon-only when no project; pill with name when one is selected */}
+              <button
+                onClick={() => setShowFocusPicker(true)}
+                title="Focus on a project"
+                aria-label="Focus on a project"
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+                  ...(homeFocus
+                    ? {
+                        padding: "4px 7px", borderRadius: 999,
+                        background: "rgba(201,162,76,0.1)",
+                        border: "1px solid rgba(201,162,76,0.3)",
+                        fontFamily: "var(--app-font-mono)", fontSize: 9,
+                        letterSpacing: "0.1em", textTransform: "uppercase",
+                        color: "var(--atlas-gold)",
+                      }
+                    : {
+                        width: 32, height: 32, borderRadius: 8, padding: 0,
+                        background: "transparent", border: "none",
+                        color: "rgba(120,113,108,0.45)",
+                      }),
+                  cursor: "pointer", flexShrink: 0,
+                  transition: "all 140ms ease",
+                }}
+              >
+                {homeFocus ? (
+                  <>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
+                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
+                    <span
+                      onClick={(e) => { e.stopPropagation(); setHomeFocus(null); }}
+                      style={{ marginLeft: 2, opacity: 0.6, fontSize: 12, lineHeight: 1 }}
+                    >×</span>
+                  </>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <circle cx="12" cy="12" r="3.5"/>
+                    <line x1="12" y1="1" x2="12" y2="4"/>
+                    <line x1="12" y1="20" x2="12" y2="23"/>
+                    <line x1="1" y1="12" x2="4" y2="12"/>
+                    <line x1="20" y1="12" x2="23" y2="12"/>
+                  </svg>
+                )}
+              </button>
+
 
               {/* Paperclip — label triggers file input natively; works on mobile Safari */}
               <label
@@ -3370,6 +3388,7 @@ export default function Home() {
                   </div>
                   </>
                 )}
+              </div>
               </div>
 
               {/* Center hint — absolutely centered in the input row */}
