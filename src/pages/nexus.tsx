@@ -317,6 +317,22 @@ export default function NexusPage() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Insert a streaming placeholder we will pace into.
+    const placeholderSentAt = new Date().toISOString();
+    setMessages(prev => [...prev, { role: "assistant", content: "", sentAt: placeholderSentAt, streaming: true }]);
+
+    // Pacer reveals the response at a readable cadence instead of dropping
+    // the full string in one frame. See src/lib/textPacer.ts.
+    const pacer = createTextPacer({
+      onTick: (released) => {
+        setMessages(prev => prev.map(m =>
+          m.sentAt === placeholderSentAt && m.role === "assistant"
+            ? { ...m, content: released }
+            : m
+        ));
+      },
+    });
+
     fetch(`${getBase()}/api/nexus/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -328,12 +344,27 @@ export default function NexusPage() {
       signal: controller.signal,
     })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(res => {
-        setMessages(prev => [...prev, { role: "assistant", content: res.response, sentAt: new Date().toISOString() }]);
+      .then(async (res) => {
+        pacer.push(res.response ?? "");
+        await pacer.finish();
+        setMessages(prev => prev.map(m =>
+          m.sentAt === placeholderSentAt && m.role === "assistant"
+            ? { ...m, streaming: false }
+            : m
+        ));
       })
       .catch(err => {
-        if (err instanceof Error && err.name === "AbortError") return;
-        setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong — try again.", sentAt: new Date().toISOString() }]);
+        pacer.abort();
+        if (err instanceof Error && err.name === "AbortError") {
+          // Drop the empty placeholder on abort.
+          setMessages(prev => prev.filter(m => !(m.sentAt === placeholderSentAt && m.role === "assistant" && !m.content)));
+          return;
+        }
+        setMessages(prev => prev.map(m =>
+          m.sentAt === placeholderSentAt && m.role === "assistant"
+            ? { ...m, content: "Something went wrong — try again.", streaming: false }
+            : m
+        ));
       })
       .finally(() => { setPending(false); abortRef.current = null; });
   }, [pending]);
