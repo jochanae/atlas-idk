@@ -1233,6 +1233,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
+  const backendReady = API_BASE.length > 0;
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
 
@@ -2553,6 +2554,7 @@ export default function Home() {
       {showOverlay && (
         <FirstRunOverlay
           loading={createProject.isPending}
+          backendReady={backendReady}
           repoUrl={overlayRepoUrl}
           setRepoUrl={setOverlayRepoUrl}
           error={createError}
