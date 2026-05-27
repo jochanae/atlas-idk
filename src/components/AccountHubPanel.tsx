@@ -299,7 +299,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
       const body: Record<string, string | null> = { name: name.trim() || null };
       if (pendingAvatar) body.avatarUrl = pendingAvatar;
 
-      await fetch("/api/auth/profile", {
+      await fetch(apiUrl("/api/auth/profile"), {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
