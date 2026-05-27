@@ -1,4 +1,12 @@
-import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode, type RefObject } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { toast } from "sonner";
 import { useParams, useLocation, useSearch, Link } from "wouter";
 import { buildReopenChain } from "../components/EntryCard";
@@ -81,8 +89,14 @@ export default function Ledger() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const ptrContainerRef = useRef<HTMLDivElement>(null);
-  const { pulling: ptr_pulling, distance: ptr_distance, refreshing: ptr_refreshing } = usePullToRefresh(
-    async () => { await queryClient.invalidateQueries(); },
+  const {
+    pulling: ptr_pulling,
+    distance: ptr_distance,
+    refreshing: ptr_refreshing,
+  } = usePullToRefresh(
+    async () => {
+      await queryClient.invalidateQueries();
+    },
     true,
     ptrContainerRef,
   );
@@ -237,20 +251,37 @@ export default function Ledger() {
 
   const committedCount = entries.filter((e: Entry) => e.status === "committed").length;
   const pullToRefreshIndicator = (ptr_pulling || ptr_refreshing) && (
-    <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      display: "flex", justifyContent: "center", alignItems: "flex-end",
-      height: Math.min(ptr_distance, 72) + 16,
-      pointerEvents: "none",
-    }}>
-      <div style={{
-        width: 26, height: 26, borderRadius: "50%",
-        border: "1.5px solid rgba(201,162,76,0.25)",
-        borderTopColor: ptr_distance >= 96 || ptr_refreshing ? "var(--atlas-gold)" : "rgba(201,162,76,0.5)",
-        opacity: Math.min(ptr_distance / 60, 1),
-        animation: ptr_refreshing ? "ptr-spin 700ms linear infinite" : "none",
-        transform: ptr_refreshing ? "none" : `rotate(${Math.min((ptr_distance / 96) * 270, 270)}deg)`,
-      }} />
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-end",
+        height: Math.min(ptr_distance, 72) + 16,
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: "50%",
+          border: "1.5px solid rgba(201,162,76,0.25)",
+          borderTopColor:
+            ptr_distance >= 96 || ptr_refreshing
+              ? "var(--atlas-gold)"
+              : "rgba(201,162,76,0.5)",
+          opacity: Math.min(ptr_distance / 60, 1),
+          animation: ptr_refreshing ? "ptr-spin 700ms linear infinite" : "none",
+          transform: ptr_refreshing
+            ? "none"
+            : `rotate(${Math.min((ptr_distance / 96) * 270, 270)}deg)`,
+        }}
+      />
     </div>
   );
 
@@ -268,7 +299,17 @@ export default function Ledger() {
   }
 
   return (
-    <div ref={ptrContainerRef} style={{ position: "relative", height: "100dvh", background: "transparent", color: "var(--foreground)", paddingBottom: 80, overflowY: "auto" }}>
+    <div
+      ref={ptrContainerRef}
+      style={{
+        position: "relative",
+        height: "100dvh",
+        background: "transparent",
+        color: "var(--foreground)",
+        paddingBottom: 80,
+        overflowY: "auto",
+      }}
+    >
       {pullToRefreshIndicator}
       <style>{`@keyframes ptr-spin { to { transform: rotate(360deg); } }`}</style>
       <FooterAuditLine />
@@ -632,7 +673,17 @@ function GlobalDecisionsView({
   ];
 
   return (
-    <div ref={pullToRefreshContainerRef} style={{ position: "relative", height: "100dvh", background: "transparent", color: "var(--foreground)", paddingBottom: 80, overflowY: "auto" }}>
+    <div
+      ref={pullToRefreshContainerRef}
+      style={{
+        position: "relative",
+        height: "100dvh",
+        background: "transparent",
+        color: "var(--foreground)",
+        paddingBottom: 80,
+        overflowY: "auto",
+      }}
+    >
       {pullToRefreshIndicator}
       <style>{`@keyframes ptr-spin { to { transform: rotate(360deg); } }`}</style>
       <FooterAuditLine />
