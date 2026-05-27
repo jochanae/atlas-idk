@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
-import { getAuthHeaders } from "@/lib/api";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 
 export interface AuthUser {
   id: string | number;
