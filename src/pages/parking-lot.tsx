@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import type React from "react";
 import { useLocation } from "wouter";
@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-client-react";
 import type { Entry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 // ── Architectural note (locked rule from original Atlas) ──────────────────────
 // "Ledger and Parking Lot are the same object, rendered differently based on
@@ -25,7 +26,19 @@ export default function ParkingLot() {
   const [, setLocation] = useLocation();
   const { goBack } = useEntryReferrer();
 
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
+  const ptrContainerRef = useRef<HTMLDivElement>(null);
+  const {
+    pulling: ptr_pulling,
+    distance: ptr_distance,
+    refreshing: ptr_refreshing,
+  } = usePullToRefresh(
+    async () => {
+      await queryClient.invalidateQueries();
+    },
+    true,
+    ptrContainerRef,
+  );
 
   const { data: projects = [] } = useListProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(() => {
@@ -71,14 +84,14 @@ export default function ParkingLot() {
 
   const invalidateAll = () => {
     projects.forEach(p => {
-      qc.invalidateQueries({ queryKey: getListEntriesQueryKey(p.id) });
-      qc.invalidateQueries({ queryKey: ["entries", p.id, "parked"] });
-      qc.invalidateQueries({ queryKey: ["entries", p.id, "draft"] });
-      qc.invalidateQueries({ queryKey: ["entries", p.id, "committed"] });
+      queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(p.id) });
+      queryClient.invalidateQueries({ queryKey: ["entries", p.id, "parked"] });
+      queryClient.invalidateQueries({ queryKey: ["entries", p.id, "draft"] });
+      queryClient.invalidateQueries({ queryKey: ["entries", p.id, "committed"] });
     });
-    qc.invalidateQueries({ queryKey: ["entries", queryProjectId, "parked"] });
-    qc.invalidateQueries({ queryKey: ["entries", queryProjectId, "draft"] });
-    qc.invalidateQueries({ queryKey: ["entries", queryProjectId, "committed"] });
+    queryClient.invalidateQueries({ queryKey: ["entries", queryProjectId, "parked"] });
+    queryClient.invalidateQueries({ queryKey: ["entries", queryProjectId, "draft"] });
+    queryClient.invalidateQueries({ queryKey: ["entries", queryProjectId, "committed"] });
   };
 
   const updateEntry = useUpdateEntry({ mutation: { onSuccess: invalidateAll } });
@@ -137,13 +150,51 @@ export default function ParkingLot() {
   const parkedCount = entries.length;
 
   return (
-    <div style={{
-      height: "100dvh",
-      overflowY: "auto",
-      background: "transparent",
-      display: "flex",
-      flexDirection: "column",
-    }}>
+    <div
+      ref={ptrContainerRef}
+      style={{
+        height: "100dvh",
+        overflowY: "auto",
+        background: "transparent",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {(ptr_pulling || ptr_refreshing) && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-end",
+            height: Math.min(ptr_distance, 72) + 16,
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              border: "1.5px solid rgba(201,162,76,0.25)",
+              borderTopColor:
+                ptr_distance >= 96 || ptr_refreshing
+                  ? "var(--atlas-gold)"
+                  : "rgba(201,162,76,0.5)",
+              opacity: Math.min(ptr_distance / 60, 1),
+              animation: ptr_refreshing ? "ptr-spin 700ms linear infinite" : "none",
+              transform: ptr_refreshing
+                ? "none"
+                : `rotate(${Math.min((ptr_distance / 96) * 270, 270)}deg)`,
+            }}
+          />
+        </div>
+      )}
+      <style>{`@keyframes ptr-spin { to { transform: rotate(360deg); } }`}</style>
       {/* Header */}
       <div style={{
         position: "sticky", top: 0, zIndex: 50,

@@ -314,7 +314,7 @@ html, body {
     height: 100%;
     width: 100%;
     overflow: hidden;
-    overscroll-behavior-y: auto;
+    overscroll-behavior-y: none;
     background-color: var(--atlas-bg);
     background-image:
       radial-gradient(

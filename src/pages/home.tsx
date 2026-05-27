@@ -46,6 +46,7 @@ import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { LongPressTip } from "../lib/long-press-tip";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1233,10 +1234,6 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const pullStartY = useRef<number | null>(null);
-  const PULL_THRESHOLD = 72;
   const backendReady = API_BASE.length > 0;
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
@@ -1466,21 +1463,29 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const queryClient = useQueryClient();
-
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
+  const ptrContainerRef = useRef<HTMLDivElement>(null);
+  const {
+    pulling: ptr_pulling,
+    distance: ptr_distance,
+    refreshing: ptr_refreshing,
+  } = usePullToRefresh(
+    async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
-        fetch("/api/nexus/briefing", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({}) })
-          .then(r => r.ok ? r.json() : { briefing: null })
-          .then((data: any) => setBriefing(data.briefing ?? null)),
+        fetch("/api/nexus/briefing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({}),
+        })
+          .then((r) => (r.ok ? r.json() : { briefing: null }))
+          .then((data: any) => setBriefing(data.briefing ?? null))
+          .catch(() => {}),
       ]);
-    } catch {} finally {
-      setIsRefreshing(false);
-      setPullDistance(0);
-    }
-  }, [queryClient]);
+    },
+    !isAtlasStreaming,
+    ptrContainerRef,
+  );
 
   // Atlas Core center-button → focus composer
   useEffect(() => {
@@ -2392,28 +2397,8 @@ export default function Home() {
 
   return (
     <div
+      ref={ptrContainerRef}
       className="atlas-home-bg"
-      onTouchStart={(e) => {
-        const el = e.currentTarget;
-        if (el.scrollTop === 0 && !isAtlasStreaming) {
-          pullStartY.current = e.touches[0].clientY;
-        }
-      }}
-      onTouchMove={(e) => {
-        if (pullStartY.current === null) return;
-        const delta = e.touches[0].clientY - pullStartY.current;
-        if (delta > 0 && delta < 140) {
-          setPullDistance(delta);
-        }
-      }}
-      onTouchEnd={() => {
-        if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
-          void handleRefresh();
-        } else {
-          setPullDistance(0);
-        }
-        pullStartY.current = null;
-      }}
       style={{
         height: "100vh",
         backgroundColor: "var(--atlas-bg)",
@@ -2423,24 +2408,38 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {(pullDistance > 0 || isRefreshing) && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          display: "flex", justifyContent: "center", alignItems: "center",
-          height: Math.min(pullDistance, 72),
-          background: "transparent",
-          pointerEvents: "none",
-          transition: isRefreshing ? "none" : "height 60ms linear",
-        }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%",
-            border: "1.5px solid rgba(201,162,76,0.35)",
-            borderTopColor: pullDistance >= 72 || isRefreshing ? "var(--atlas-gold)" : "transparent",
-            animation: isRefreshing ? "spin 700ms linear infinite" : "none",
-            opacity: Math.min(pullDistance / 72, 1),
-            transform: `rotate(${(pullDistance / 72) * 180}deg)`,
-            transition: isRefreshing ? "none" : "opacity 100ms ease",
-          }} />
+      {(ptr_pulling || ptr_refreshing) && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-end",
+            height: Math.min(ptr_distance, 72) + 16,
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              border: "1.5px solid rgba(201,162,76,0.25)",
+              borderTopColor:
+                ptr_distance >= 96 || ptr_refreshing
+                  ? "var(--atlas-gold)"
+                  : "rgba(201,162,76,0.5)",
+              opacity: Math.min(ptr_distance / 60, 1),
+              animation: ptr_refreshing ? "ptr-spin 700ms linear infinite" : "none",
+              transform: ptr_refreshing
+                ? "none"
+                : `rotate(${Math.min((ptr_distance / 96) * 270, 270)}deg)`,
+            }}
+          />
         </div>
       )}
 
@@ -3814,6 +3813,7 @@ export default function Home() {
           0%, 100% { opacity: 0.45; }
           50%       { opacity: 1; }
         }
+        @keyframes ptr-spin { to { transform: rotate(360deg); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes homeAxiomPulse {
