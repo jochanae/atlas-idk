@@ -1362,7 +1362,8 @@ export default function Home() {
   // Greeting is computed below, after `projects` is available.
 
   // ── Home context: repo / branch / model ────────────────────────────────────
-  const [homeFocus] = useState<number | null>(null);
+  const [homeFocus, setHomeFocus] = useState<number | null>(null);
+  const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const [showHandoff, setShowHandoff] = useState(false);
@@ -3073,6 +3074,49 @@ export default function Home() {
                 e.target.value = "";
               }}
             />
+
+            {/* Project focus chip */}
+            <div style={{ marginBottom: homeFocus || showFocusPicker ? 8 : 0 }}>
+              {homeFocus ? (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "rgba(201,162,76,0.1)", border: "1px solid rgba(201,162,76,0.3)", marginBottom: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
+                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
+                  </span>
+                  <button
+                    onClick={() => setHomeFocus(null)}
+                    style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, padding: "0 2px", display: "flex", alignItems: "center" }}
+                  >×</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowFocusPicker(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 999, background: "transparent", border: "1px solid rgba(201,162,76,0.15)", cursor: "pointer", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.6 }}
+                >
+                  <span style={{ fontSize: 11, lineHeight: 1 }}>+</span> focus a project
+                </button>
+              )}
+            </div>
+
+            {/* Project focus picker sheet */}
+            {showFocusPicker && (
+              <>
+                <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+                <div style={{ position: "fixed", bottom: 120, left: 16, right: 16, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 14, padding: "12px 0", maxHeight: 320, overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus a project</div>
+                  {(projects ?? []).filter((p: any) => p.status !== "shaping" && p.status !== "archived").map((p: any) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setHomeFocus(p.id); setShowFocusPicker(false); }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                    >
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Attached files preview strip */}
             {attachedFiles.length > 0 && (
