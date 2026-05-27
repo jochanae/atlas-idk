@@ -2215,8 +2215,11 @@ export default function Home() {
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
-      const el = document.getElementById("atlas-home-overview");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (surface.projectId) {
+        setLocation(`/project/${surface.projectId}?tab=map`);
+      } else {
+        setLocation("/map");
+      }
       return;
     }
 
