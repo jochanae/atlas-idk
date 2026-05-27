@@ -299,7 +299,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
       const body: Record<string, string | null> = { name: name.trim() || null };
       if (pendingAvatar) body.avatarUrl = pendingAvatar;
 
-      await fetch("/api/auth/profile", {
+      await fetch(apiUrl("/api/auth/profile"), {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -330,7 +330,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     if (newPw !== confirmPw) { setPwError("Passwords don't match"); return; }
     setChangingPw(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
+      const res = await fetch(apiUrl("/api/auth/change-password"), {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -356,7 +356,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     if (deleteInput.trim().toUpperCase() !== "DELETE") return;
     setDeleting(true);
     try {
-      await fetch("/api/auth/account", { method: "DELETE", credentials: "include" });
+      await fetch(apiUrl("/api/auth/account"), { method: "DELETE", credentials: "include" });
       queryClient.setQueryData(["auth", "me"], null);
       window.location.href = "/login";
     } finally {

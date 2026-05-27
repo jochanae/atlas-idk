@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { apiUrl } from "@/lib/api";
 
 export default function AuthCallback() {
   const [, navigate] = useLocation();
@@ -21,7 +22,7 @@ export default function AuthCallback() {
 
     async function exchangeToken() {
       try {
-        const res = await fetch(`/api/auth/session/exchange?token=${encodeURIComponent(exchangeTokenValue)}`, {
+        const res = await fetch(apiUrl(`/api/auth/session/exchange?token=${encodeURIComponent(exchangeTokenValue)}`), {
           credentials: "include",
         });
         const data = await res.json() as { ok?: boolean };
