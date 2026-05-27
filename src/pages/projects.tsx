@@ -112,7 +112,21 @@ export default function Projects() {
   const [targetProjectId, setTargetProjectId] = useState<number | null>(null);
   const backendReady = API_BASE.length > 0;
 
-  // Check for GITHUB_TOKEN in /api/secrets on mount
+  const getStoredToken = useCallback((
+    currentProjects?: Array<{ githubToken?: string | null }>,
+    currentSecretToken?: string | null,
+    currentAccountToken?: string | null,
+  ): string | null => {
+    if (currentSecretToken) return currentSecretToken;
+    if (currentAccountToken) return currentAccountToken;
+    try {
+      const local = localStorage.getItem("atlas-github-token");
+      if (local) return local;
+    } catch {}
+    return currentProjects?.find(p => p.githubToken)?.githubToken ?? (backendReady ? "__server__" : null);
+  }, [backendReady]);
+
+  // Check for GITHUB_TOKEN in /api/secrets or account connections on mount
   useEffect(() => {
     let cancelled = false;
     Promise.all([fetchGithubSecret(), fetchGithubAccountToken()]).then(([secretTok, accountTok]) => {
@@ -122,7 +136,7 @@ export default function Projects() {
       setHasGithubToken(!!getStoredToken(projects, secretTok, accountTok));
     });
     return () => { cancelled = true; };
-  }, [projects]);
+  }, [projects, getStoredToken]);
 
   const openGithubSheet = useCallback(async (forProjectId?: number) => {
     if (!backendReady) {
@@ -149,7 +163,7 @@ export default function Projects() {
     } finally {
       setGithubLoading(false);
     }
-  }, [projects, githubRepos.length, secretToken, accountToken, backendReady]);
+  }, [projects, githubRepos.length, secretToken, accountToken, backendReady, getStoredToken]);
 
   const handleImportRepo = useCallback(async (repo: GithubRepo) => {
     setImportingRepo(repo.fullName);
