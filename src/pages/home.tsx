@@ -3178,37 +3178,8 @@ export default function Home() {
 
             {/* Bottom action bar */}
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
-              <button
-                onClick={() => setShowFocusPicker(true)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 7px", borderRadius: 999,
-                  background: homeFocus ? "rgba(201,162,76,0.1)" : "transparent",
-                  border: homeFocus ? "1px solid rgba(201,162,76,0.3)" : "1px solid transparent",
-                  cursor: "pointer", flexShrink: 0,
-                  fontFamily: "var(--app-font-mono)", fontSize: 9,
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: homeFocus ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: homeFocus ? 1 : 0.45,
-                  transition: "all 140ms ease",
-                }}
-              >
-                {homeFocus ? (
-                  <>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
-                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
-                    <span
-                      onClick={(e) => { e.stopPropagation(); setHomeFocus(null); }}
-                      style={{ marginLeft: 2, opacity: 0.6, fontSize: 12, lineHeight: 1 }}
-                    >×</span>
-                  </>
-                ) : (
-                  <>
-                    <span style={{ fontSize: 11, lineHeight: 1, opacity: 0.7 }}>⊕</span>
-                    focus
-                  </>
-                )}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "center", minWidth: 0 }}>
+
             {/* History clock — jumpstart active sessions */}
               <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
                 <button
