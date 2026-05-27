@@ -3178,7 +3178,7 @@ export default function Home() {
 
             {/* Bottom action bar */}
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "center", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: isTinyScreen ? "center" : "flex-start", minWidth: 0 }}>
 
             {/* History clock — jumpstart active sessions */}
               <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
