@@ -187,6 +187,12 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       window.dispatchEvent(new CustomEvent("axiom:close-project-menu"));
     } catch {}
     setLocation("/projects");
+    // Hard fallback in case wouter context is missing in this subtree
+    window.setTimeout(() => {
+      if (window.location.pathname !== "/projects") {
+        window.location.href = "/projects";
+      }
+    }, 150);
   };
 
   const startLongPress = () => {
@@ -195,7 +201,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     longPressTimer.current = window.setTimeout(() => {
       longPressFired.current = true;
       goToLastConversation();
-    }, 480);
+    }, 320);
   };
   const cancelLongPress = () => {
     if (longPressTimer.current) {
