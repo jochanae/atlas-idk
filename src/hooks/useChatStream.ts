@@ -292,6 +292,7 @@ export function useChatStream(
       void (async () => {
         let streamingId: number | null = null;
         let streamingFinished = false;
+        let pacer: TextPacer | null = null;
         try {
           const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
 
