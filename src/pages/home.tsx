@@ -2822,12 +2822,6 @@ export default function Home() {
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
 
-                          {!msg.streaming && (
-                            <AmbientEmergenceCard
-                              surface={msg.surface ?? null}
-                              onAction={handleAmbientSurfaceAction}
-                            />
-                          )}
                           {!msg.streaming && Boolean(msg.terminalCmd || msg.terminalResult) && (
                             <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
                           )}
@@ -2860,7 +2854,7 @@ export default function Home() {
                               />
                             );
                           })()}
-                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && (
+                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && homeMessages.filter(m => m.role === "user").length >= 5 && (
                             <HomeHandoffCard
                               signal={msg.handoffSignal}
                               projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
