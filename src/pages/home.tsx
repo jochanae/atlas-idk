@@ -3389,6 +3389,7 @@ export default function Home() {
                   </>
                 )}
               </div>
+              </div>
 
               {/* Center hint — absolutely centered in the input row */}
               {!isTinyScreen && (
