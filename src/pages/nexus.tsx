@@ -282,9 +282,15 @@ export default function NexusPage() {
     })));
   }, [thread]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom — but only when the user is already near the bottom,
+  // so reading earlier text isn't interrupted by an incoming stream.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = bottomRef.current?.parentElement;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distance <= 120) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, pending]);
 
   // Fire initial message from sessionStorage (set by home page glass input)
