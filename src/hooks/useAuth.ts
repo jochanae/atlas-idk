@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
-import { getAuthHeaders } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface AuthUser {
-  id: number;
+  id: string;
   email: string;
   name: string | null;
   avatarUrl: string | null;
@@ -15,13 +15,40 @@ export interface AuthUser {
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
-  const res = await fetch("/api/auth/me", {
-    credentials: "include",
-    headers: getAuthHeaders(),
-  });
-  if (res.status === 401) return null;
-  if (!res.ok) throw new Error("Auth check failed");
-  return res.json() as Promise<AuthUser>;
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    if (/Auth session missing/i.test(error.message)) return null;
+    throw error;
+  }
+
+  const user = data.user;
+  if (!user) return null;
+
+  const fullName = [
+    user.user_metadata?.full_name,
+    user.user_metadata?.name,
+    user.user_metadata?.user_name,
+  ].find((value) => typeof value === "string" && value.trim().length > 0) as string | undefined;
+
+  const avatarUrl = [
+    user.user_metadata?.avatar_url,
+    user.user_metadata?.picture,
+  ].find((value) => typeof value === "string" && value.trim().length > 0) as string | undefined;
+
+  const providerList = Array.isArray(user.app_metadata?.providers)
+    ? user.app_metadata.providers.map((provider) => String(provider).toLowerCase())
+    : [];
+
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    name: fullName ?? null,
+    avatarUrl: avatarUrl ?? null,
+    role: "user",
+    subscriptionTier: "free",
+    googleLinked: providerList.includes("google"),
+    hasPassword: providerList.includes("email"),
+  };
 }
 
 export function useAuth() {
@@ -47,7 +74,10 @@ export function useLogout() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   return async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    await supabase.auth.signOut();
+    try {
+      localStorage.removeItem("atlas-token");
+    } catch {}
     queryClient.setQueryData(["auth", "me"], null);
     navigate("/login");
   };
