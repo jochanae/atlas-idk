@@ -46,51 +46,57 @@ export function useProjectState(projectId: number | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadProjectState = useCallback(async (signal?: AbortSignal) => {
-    if (projectId == null) {
-      setState(null);
-      setLoading(false);
+  const loadProjectState = useCallback(
+    async (signal?: AbortSignal) => {
+      if (projectId == null) {
+        setState(null);
+        setLoading(false);
+        setError(null);
+        return null;
+      }
+
+      setLoading(true);
       setError(null);
-      return null;
-    }
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/projects/${projectId}/state`, {
-        credentials: "include",
-        signal,
-      });
-      if (res.status === 404) clearStoredActiveProject();
-      if (!res.ok) throw new Error(`Project state failed: HTTP ${res.status}`);
-      const payload = await res.json() as Partial<ProjectStatePayload>;
-      const nextState: ProjectStatePayload = {
-        ...EMPTY_PROJECT_STATE,
-        ...payload,
-        project: payload.project ?? null,
-        activeSession: payload.activeSession ?? null,
-        decisions: Array.isArray(payload.decisions) ? payload.decisions : [],
-        parked: Array.isArray(payload.parked) ? payload.parked : [],
-        parkedCount: typeof payload.parkedCount === "number"
-          ? payload.parkedCount
-          : Array.isArray(payload.parked) ? payload.parked.length : 0,
-        forgeState: payload.forgeState ?? null,
-        memorySummary: payload.memorySummary ?? null,
-        recentContext: payload.recentContext ?? null,
-      };
-      if (!nextState.project) clearStoredActiveProject();
-      setState(nextState);
-      return nextState;
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return null;
-      const nextError = err instanceof Error ? err : new Error("Project state failed");
-      setError(nextError);
-      return null;
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [projectId]);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/state`, {
+          credentials: "include",
+          signal,
+        });
+        if (res.status === 404) clearStoredActiveProject();
+        if (!res.ok) throw new Error(`Project state failed: HTTP ${res.status}`);
+        const payload = (await res.json()) as Partial<ProjectStatePayload>;
+        const nextState: ProjectStatePayload = {
+          ...EMPTY_PROJECT_STATE,
+          ...payload,
+          project: payload.project ?? null,
+          activeSession: payload.activeSession ?? null,
+          decisions: Array.isArray(payload.decisions) ? payload.decisions : [],
+          parked: Array.isArray(payload.parked) ? payload.parked : [],
+          parkedCount:
+            typeof payload.parkedCount === "number"
+              ? payload.parkedCount
+              : Array.isArray(payload.parked)
+                ? payload.parked.length
+                : 0,
+          forgeState: payload.forgeState ?? null,
+          memorySummary: payload.memorySummary ?? null,
+          recentContext: payload.recentContext ?? null,
+        };
+        if (!nextState.project) clearStoredActiveProject();
+        setState(nextState);
+        return nextState;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return null;
+        const nextError = err instanceof Error ? err : new Error("Project state failed");
+        setError(nextError);
+        return null;
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [projectId],
+  );
 
   useEffect(() => {
     if (projectId == null) {
