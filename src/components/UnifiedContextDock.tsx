@@ -233,12 +233,12 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     if (longPressTimerLong.current) window.clearTimeout(longPressTimerLong.current);
     longPressTimerShort.current = window.setTimeout(() => {
       longPressIntent.current = "last-project";
-      try { (navigator as any).vibrate?.(10); } catch {}
-    }, 320);
+      try { (navigator as any).vibrate?.(14); } catch {}
+    }, 500);
     longPressTimerLong.current = window.setTimeout(() => {
       longPressIntent.current = "projects";
-      try { (navigator as any).vibrate?.(22); } catch {}
-    }, 700);
+      try { (navigator as any).vibrate?.(30); } catch {}
+    }, 1200);
   };
   const cancelLongPress = () => {
     if (longPressTimerShort.current) { window.clearTimeout(longPressTimerShort.current); longPressTimerShort.current = null; }
