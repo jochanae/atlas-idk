@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "../lib/githubRepo";
+import { API_BASE } from "@/lib/api";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
@@ -72,7 +73,8 @@ function resolveLinkedFullName(linkedRepo?: string | null): string | null {
 }
 
 export default function Projects() {
-  const { data: projects, isLoading: isLoadingData } = useListProjects();
+  const { data: projectsRaw, isLoading: isLoadingData } = useListProjects();
+  const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
   const [showSpinner, setShowSpinner] = useState(true);
   const spinnerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -108,6 +110,7 @@ export default function Projects() {
   const [repoSearch, setRepoSearch] = useState("");
   // When set, sheet links directly to that project (bypasses name-match logic)
   const [targetProjectId, setTargetProjectId] = useState<number | null>(null);
+  const backendReady = API_BASE.length > 0;
 
   // Check for GITHUB_TOKEN in /api/secrets on mount
   useEffect(() => {
@@ -122,6 +125,12 @@ export default function Projects() {
   }, [projects]);
 
   const openGithubSheet = useCallback(async (forProjectId?: number) => {
+    if (!backendReady) {
+      setGithubError("GitHub import is unavailable in this preview because the backend URL is not configured.");
+      setShowGithubSheet(true);
+      setTargetProjectId(forProjectId ?? null);
+      return;
+    }
     setShowGithubSheet(true);
     setTargetProjectId(forProjectId ?? null);
     setGithubError(null);
@@ -140,7 +149,7 @@ export default function Projects() {
     } finally {
       setGithubLoading(false);
     }
-  }, [projects, githubRepos.length, secretToken, accountToken]);
+  }, [projects, githubRepos.length, secretToken, accountToken, backendReady]);
 
   const handleImportRepo = useCallback(async (repo: GithubRepo) => {
     setImportingRepo(repo.fullName);
@@ -198,6 +207,10 @@ export default function Projects() {
   };
 
   const performCreateProject = (name: string, githubRepo?: string) => {
+    if (!backendReady) {
+      setCreateError("Project creation is unavailable in this preview because the backend URL is not configured.");
+      return;
+    }
     createProject.mutate(
       { data: { name } },
       {
@@ -307,7 +320,7 @@ export default function Projects() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Link Repos */}
-          {hasGithubToken && (
+          {hasGithubToken && backendReady && (
             <button
               onClick={() => openGithubSheet()}
               style={{
@@ -426,7 +439,7 @@ export default function Projects() {
                   onCancelDelete={() => setConfirmDeleteId(null)}
                   onConfirmDelete={() => handleDelete(p.id)}
                   onArchive={() => handleArchive(p.id, true)}
-                  onLinkRepo={hasGithubToken ? () => openGithubSheet(p.id) : undefined}
+                  onLinkRepo={hasGithubToken && backendReady ? () => openGithubSheet(p.id) : undefined}
                 />
               ))}
             </div>
@@ -560,6 +573,15 @@ export default function Projects() {
               {githubLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
                   <LoadingSpinner size="md" color="atlas" />
+                </div>
+              ) : !backendReady ? (
+                <div style={{ padding: "32px 24px", textAlign: "center" }}>
+                  <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "var(--atlas-fg)", marginBottom: 6 }}>
+                    GitHub import is offline in this preview.
+                  </p>
+                  <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.04em", marginBottom: 0 }}>
+                    The app has no backend API URL configured right now, so repo browsing and linking cannot work from this screen.
+                  </p>
                 </div>
               ) : !getStoredToken(projects, secretToken, accountToken) ? (
                 <div style={{ padding: "32px 24px", textAlign: "center" }}>
