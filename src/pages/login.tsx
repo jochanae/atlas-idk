@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { lovable } from "@/integrations/lovable";
 import { apiUrl } from "../lib/api";
 
 type Mode = "login" | "signup" | "forgot";
@@ -114,25 +113,12 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     setError(null);
     setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/login`,
-        extraParams: { prompt: "select_account" },
-      });
-
-      if (result.error) throw result.error;
-      if (result.redirected) return;
-
-      sessionStorage.setItem("atlas-just-authed", "1");
-      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      navigate("/home");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed");
-      setLoading(false);
-    }
+    // Hand off to the backend OAuth start endpoint. The backend redirects to
+    // Google, then back to /auth/callback (or /auth/token-bridge) on success.
+    window.location.href = apiUrl("/api/auth/google");
   };
 
   if (isLoading) return (
