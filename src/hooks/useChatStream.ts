@@ -393,19 +393,20 @@ export function useChatStream(
                   const chunk = JSON.parse(evtData) as string;
                   streamedText += chunk;
                   triggerGithubAutoLink(streamedText);
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === placeholderId
-                        ? { ...m, content: renderStreamedText() }
-                        : m
-                    )
-                  );
+                  // Feed the pacer instead of writing to React state directly.
+                  // The pacer's rAF loop will release chars at human reading cadence
+                  // and call setMessages at most once per frame.
+                  pacer.push(chunk);
                 } else if (evtName === "narration") {
                   const text = JSON.parse(evtData) as string;
                   setActivityStream({ active: true, content: text });
                 } else if (evtName === "done") {
                   const res = JSON.parse(evtData);
                   streamingFinished = true;
+                  // Drain any remaining buffered text BEFORE swapping the placeholder
+                  // out for the final message, so the user sees the reveal finish
+                  // rather than a sudden jump to the full content.
+                  await pacer.finish();
                   setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
                   streamingId = null;
                   if (!res) return;
