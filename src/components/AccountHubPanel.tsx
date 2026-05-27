@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { lovable } from "@/integrations/lovable";
 import { apiUrl } from "@/lib/api";
 
 // ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
@@ -287,6 +288,14 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   const avatarSrc = pendingAvatar ?? authUser?.avatarUrl ?? null;
   const displayName = authUser?.name || authUser?.email?.split("@")[0] || "Account";
 
+  const handleGoogleReconnect = useCallback(async () => {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.href,
+      extraParams: { prompt: "select_account" },
+    });
+    if (result.error) throw result.error;
+  }, []);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
@@ -507,23 +516,25 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               </button>
 
               {authUser?.googleLinked && (
-                <a
-                  href={apiUrl("/api/auth/google")}
+                <button
+                  type="button"
+                  onClick={() => void handleGoogleReconnect()}
                   title="Re-authenticate with Google to sync your latest profile photo"
                   style={{
                     flex: 1, padding: "7px 10px", borderRadius: 7,
                     background: "rgba(66,133,244,0.06)", border: "1px solid rgba(66,133,244,0.18)",
                     color: "rgba(66,133,244,0.85)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-                    cursor: "pointer", letterSpacing: "0.04em", textDecoration: "none",
+                     cursor: "pointer", letterSpacing: "0.04em", textDecoration: "none",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                     transition: "background 160ms ease",
+                     appearance: "none",
                   }}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(66,133,244,0.11)")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(66,133,244,0.06)")}
                 >
                   <GoogleIcon size={11} />
                   Sync Google
-                </a>
+                </button>
               )}
             </div>
 
