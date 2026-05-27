@@ -330,7 +330,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     if (newPw !== confirmPw) { setPwError("Passwords don't match"); return; }
     setChangingPw(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
+      const res = await fetch(apiUrl("/api/auth/change-password"), {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
