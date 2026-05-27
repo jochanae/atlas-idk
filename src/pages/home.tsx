@@ -1324,7 +1324,7 @@ export default function Home() {
     });
     mo.observe(el, { childList: true, subtree: true, characterData: true });
     return () => { ro.disconnect(); mo.disconnect(); };
-  }, [homeMessages.length, isAtlasStreaming]);
+  }, [homeMessages.length]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
