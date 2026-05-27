@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { apiUrl } from "@/lib/api";
 
 export default function AuthCallback() {
   const [, navigate] = useLocation();
