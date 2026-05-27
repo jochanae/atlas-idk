@@ -328,10 +328,21 @@ export function useChatStream(
           const reader = r.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";
-          const renderStreamedText = () => {
-            const { content } = stripGithubAutoLinkToolCall(streamedText);
+          const renderFrom = (raw: string) => {
+            const { content } = stripGithubAutoLinkToolCall(raw);
             return appendGithubAutoLinkStatus(content, githubAutoLinkStatus);
           };
+          // Pacer: decouples network token bursts from the visible reveal.
+          // See src/lib/textPacer.ts + mem://design/conversational-flow.
+          const pacer: TextPacer = createTextPacer({
+            onTick: (released) => {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === placeholderId ? { ...m, content: renderFrom(released) } : m
+                )
+              );
+            },
+          });
           const triggerGithubAutoLink = (content: string) => {
             if (githubAutoLinkPromise) return;
             const { found } = stripGithubAutoLinkToolCall(content);
@@ -349,10 +360,11 @@ export function useChatStream(
                 status = GITHUB_AUTO_LINK_FAILURE;
               }
               githubAutoLinkStatus = status;
+              // Re-emit current paced text with new suffix.
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === placeholderId
-                    ? { ...m, content: renderStreamedText() }
+                    ? { ...m, content: renderFrom(streamedText.slice(0, pacer.released())) }
                     : m
                 )
               );
