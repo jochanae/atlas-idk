@@ -1567,6 +1567,20 @@ export default function Home() {
   const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
   const { data: projects, isLoading } = useListProjects();
+  useEffect(() => {
+    if (!projects || projects.length === 0) return;
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
+    const abandoned = projects.filter((p: any) =>
+      p.status === "shaping" &&
+      new Date(p.updatedAt ?? p.createdAt).getTime() < cutoff
+    );
+    abandoned.forEach((p: any) => {
+      fetch(`/api/projects/${p.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      }).catch(() => {});
+    });
+  }, [projects]);
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.status === "shaping");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
