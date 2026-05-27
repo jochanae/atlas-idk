@@ -14,6 +14,7 @@ import {
   getListEntriesQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { createTextPacer } from "@/lib/textPacer";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface NexusMsg {
