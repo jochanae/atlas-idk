@@ -286,10 +286,13 @@ export default function Projects() {
   const activeProjects = projects?.filter(p => (p.status ?? "active") !== "archived") ?? [];
   const archivedProjects = projects?.filter(p => p.status === "archived") ?? [];
 
-  // Build set of already-linked fullNames for fast lookup
-  const linkedFullNames = new Set(
-    (projects ?? []).map(p => resolveLinkedFullName(p.linkedRepo)).filter(Boolean) as string[]
-  );
+  // Build set/map of already-linked fullNames for fast lookup
+  const linkedRepoToProject = new Map<string, typeof projects[number]>();
+  (projects ?? []).forEach((p) => {
+    const fullName = resolveLinkedFullName(p.linkedRepo);
+    if (fullName) linkedRepoToProject.set(fullName, p);
+  });
+  const linkedFullNames = new Set(linkedRepoToProject.keys());
 
   return (
     <div style={{
