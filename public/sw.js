@@ -1,4 +1,4 @@
-const CACHE = "axiom-v3";
+const CACHE = "axiom-v4";
 const STATIC_PRECACHE = ["/manifest.json", "/axiom-logo.svg", "/favicon.svg", "/opengraph.jpg"];
 
 // On install: precache known static assets and take control immediately
@@ -25,6 +25,10 @@ self.addEventListener("fetch", (e) => {
   // Skip non-GET and cross-origin requests (e.g. API calls, fonts CDN)
   if (request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
+
+  // OAuth broker paths MUST always hit the network — never cache or intercept.
+  // The Lovable proxy worker handles /~oauth/initiate and /~oauth/callback.
+  if (url.pathname.startsWith("/~oauth")) return;
 
   // API calls: always network, never cache
   if (url.pathname.startsWith("/api/")) return;
