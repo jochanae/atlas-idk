@@ -21,6 +21,7 @@ interface NexusMsg {
   role: "user" | "assistant";
   content: string;
   sentAt: string;
+  streaming?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
