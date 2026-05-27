@@ -1709,9 +1709,9 @@ export default function Home() {
   useEffect(() => {
     if (homeMessages.length === 0) return;
     const container = messagesEndRef.current?.parentElement;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
+    // Only auto-scroll if the user is near the bottom — never yank them
+    // away from earlier text they're reading.
+    followScrollIfNearBottom(container, 120);
   }, [homeMessages]);
 
   useEffect(() => {
