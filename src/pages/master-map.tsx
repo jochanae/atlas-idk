@@ -272,7 +272,10 @@ export default function MasterMap() {
   const goBackRef = useRef<(() => void) | null>(null);
 
 
-  const activeProjectId = useMemo(() => {
+  // Recompute on every render — wouter's useLocation only tracks pathname, not
+  // search params, so memoizing on [location] misses ?projectId changes when
+  // navigating in from a project tile.
+  const activeProjectId = (() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const raw = params.get("projectId") ?? params.get("activeProjectId") ?? params.get("project") ?? sessionStorage.getItem("atlas-active-project-id");
@@ -281,7 +284,7 @@ export default function MasterMap() {
     } catch {
       return null;
     }
-  }, [location]);
+  })();
 
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
