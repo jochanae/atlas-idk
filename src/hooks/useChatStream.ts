@@ -365,7 +365,7 @@ export function useChatStream(
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === placeholderId
-                    ? { ...m, content: renderFrom(streamedText.slice(0, pacer.released())) }
+                    ? { ...m, content: renderFrom(streamedText.slice(0, pacer?.released() ?? 0)) }
                     : m
                 )
               );
@@ -397,7 +397,7 @@ export function useChatStream(
                   // Feed the pacer instead of writing to React state directly.
                   // The pacer's rAF loop will release chars at human reading cadence
                   // and call setMessages at most once per frame.
-                  pacer.push(chunk);
+                  pacer?.push(chunk);
                 } else if (evtName === "narration") {
                   const text = JSON.parse(evtData) as string;
                   setActivityStream({ active: true, content: text });
@@ -407,7 +407,7 @@ export function useChatStream(
                   // Drain any remaining buffered text BEFORE swapping the placeholder
                   // out for the final message, so the user sees the reveal finish
                   // rather than a sudden jump to the full content.
-                  await pacer.finish();
+                  await (pacer?.finish() ?? Promise.resolve());
                   setMessages((prev) => prev.filter((m) => m.id !== placeholderId));
                   streamingId = null;
                   if (!res) return;
