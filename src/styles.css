@@ -811,11 +811,15 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
   background: currentColor;
   border-radius: 2px;
   transform-origin: center;
+  transform: scaleY(0.55);
+  animation: none;
+}
+.atlas-waveform.is-active span {
   animation: atlas-wave-bar 900ms ease-in-out infinite;
 }
-.atlas-waveform span:nth-child(1) { animation-delay: 0ms; animation-duration: 800ms; }
-.atlas-waveform span:nth-child(2) { animation-delay: 160ms; animation-duration: 1000ms; }
-.atlas-waveform span:nth-child(3) { animation-delay: 320ms; animation-duration: 750ms; }
+.atlas-waveform.is-active span:nth-child(1) { animation-delay: 0ms; animation-duration: 800ms; }
+.atlas-waveform.is-active span:nth-child(2) { animation-delay: 160ms; animation-duration: 1000ms; }
+.atlas-waveform.is-active span:nth-child(3) { animation-delay: 320ms; animation-duration: 750ms; }
 
 /* ── Typewriter cursor ── */
 @keyframes atlas-cursor-blink {
