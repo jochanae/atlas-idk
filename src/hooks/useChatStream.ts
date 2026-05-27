@@ -499,6 +499,7 @@ export function useChatStream(
             }
           }
         } catch (err: unknown) {
+          try { pacer.abort(); } catch { /* noop */ }
           if (streamingId !== null) {
             setMessages((prev) => prev.filter((m) => m.id !== streamingId));
           }
@@ -510,6 +511,7 @@ export function useChatStream(
           setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", sentAt: new Date().toISOString() }]);
           setActivityStream({ active: false, content: "" });
         } finally {
+          try { pacer.abort(); } catch { /* noop */ }
           if (!streamingFinished && streamingId !== null) {
             setMessages((prev) => prev.filter((m) => m.id !== streamingId));
           }
