@@ -47,6 +47,7 @@ import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { createTextPacer, followScrollIfNearBottom } from "@/lib/textPacer";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
