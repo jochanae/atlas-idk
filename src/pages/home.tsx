@@ -3293,6 +3293,12 @@ export default function Home() {
                 {/* Send */}
                 <button
                   className="atlas-send-btn"
+                  type="button"
+                  // Prevent textarea blur on tap — mobile virtual keyboard collapsing
+                  // mid-tap reflows the layout and the click lands on a different
+                  // element, which is why Send only works once and Enter still works.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={handleSubmit}
                   disabled={isSending}
                   style={{
