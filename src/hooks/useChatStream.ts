@@ -22,6 +22,7 @@ import type { Plan } from "@/lib/plan";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
+import { createTextPacer, type TextPacer } from "@/lib/textPacer";
 
 type PriorMessage = Message;
 
