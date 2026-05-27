@@ -335,7 +335,7 @@ export function useChatStream(
           };
           // Pacer: decouples network token bursts from the visible reveal.
           // See src/lib/textPacer.ts + mem://design/conversational-flow.
-          const pacer: TextPacer = createTextPacer({
+          pacer = createTextPacer({
             onTick: (released) => {
               setMessages((prev) =>
                 prev.map((m) =>
