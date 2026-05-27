@@ -207,6 +207,10 @@ export default function Projects() {
   };
 
   const performCreateProject = (name: string, githubRepo?: string) => {
+    if (!backendReady) {
+      setCreateError("Project creation is unavailable in this preview because the backend URL is not configured.");
+      return;
+    }
     createProject.mutate(
       { data: { name } },
       {
