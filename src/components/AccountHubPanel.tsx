@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, useLogout } from "@/hooks/useAuth";
-import { lovable } from "@/integrations/lovable";
 import { apiUrl } from "@/lib/api";
 
 // ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
@@ -288,12 +287,9 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   const avatarSrc = pendingAvatar ?? authUser?.avatarUrl ?? null;
   const displayName = authUser?.name || authUser?.email?.split("@")[0] || "Account";
 
-  const handleGoogleReconnect = useCallback(async () => {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.href,
-      extraParams: { prompt: "select_account" },
-    });
-    if (result.error) throw result.error;
+  const handleGoogleReconnect = useCallback(() => {
+    // Backend OAuth start — same endpoint used on /login.
+    window.location.href = apiUrl("/api/auth/google");
   }, []);
 
   // ── Handlers ──────────────────────────────────────────────────────────────

@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
 import { getAuthHeaders } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface AuthUser {
   id: string | number;
@@ -15,7 +14,7 @@ export interface AuthUser {
   hasPassword: boolean;
 }
 
-async function fetchBackendUser(): Promise<AuthUser | null> {
+export async function fetchMe(): Promise<AuthUser | null> {
   try {
     const res = await fetch("/api/auth/me", {
       credentials: "include",
@@ -46,49 +45,6 @@ async function fetchBackendUser(): Promise<AuthUser | null> {
   }
 }
 
-async function fetchManagedUser(): Promise<AuthUser | null> {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) {
-    if (/Auth session missing/i.test(error.message)) return null;
-    throw error;
-  }
-
-  const user = data.user;
-  if (!user) return null;
-
-  const fullName = [
-    user.user_metadata?.full_name,
-    user.user_metadata?.name,
-    user.user_metadata?.user_name,
-  ].find((value) => typeof value === "string" && value.trim().length > 0) as string | undefined;
-
-  const avatarUrl = [
-    user.user_metadata?.avatar_url,
-    user.user_metadata?.picture,
-  ].find((value) => typeof value === "string" && value.trim().length > 0) as string | undefined;
-
-  const providerList = Array.isArray(user.app_metadata?.providers)
-    ? user.app_metadata.providers.map((provider) => String(provider).toLowerCase())
-    : [];
-
-  return {
-    id: user.id,
-    email: user.email ?? "",
-    name: fullName ?? null,
-    avatarUrl: avatarUrl ?? null,
-    role: "user",
-    subscriptionTier: "free",
-    googleLinked: providerList.includes("google"),
-    hasPassword: providerList.includes("email"),
-  };
-}
-
-export async function fetchMe(): Promise<AuthUser | null> {
-  const backendUser = await fetchBackendUser();
-  if (backendUser) return backendUser;
-  return fetchManagedUser();
-}
-
 export function useAuth() {
   const { data: user, isLoading } = useQuery({
     queryKey: ["auth", "me"],
@@ -112,10 +68,7 @@ export function useLogout() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   return async () => {
-    await Promise.allSettled([
-      fetch("/api/auth/logout", { method: "POST", credentials: "include" }),
-      supabase.auth.signOut(),
-    ]);
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
     try {
       localStorage.removeItem("atlas-token");
     } catch {}
