@@ -30,6 +30,7 @@ import AuthCallback from "./pages/auth-callback";
 import MasterMap from "./pages/master-map";
 import OnboardingPage from "./pages/onboarding";
 import { getListProjectsQueryKey, useListProjects } from "@workspace/api-client-react";
+import { fetchMe } from "@/hooks/useAuth";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────
 // Noisy background endpoints — a single 401 here should never boot the user.
@@ -292,13 +293,9 @@ function Router() {
           <Route path="/" component={() => {
             const [, nav] = useLocation();
             useEffect(() => {
-              const controller = new AbortController();
-              const timeout = setTimeout(() => controller.abort(), 4000);
-              fetch("/api/auth/me", { credentials: "include", signal: controller.signal })
-                .then(r => r.ok ? r.json() : null)
-                .then(user => nav(user?.id ? "/home" : "/landing", { replace: true }))
-                .catch(() => nav("/landing", { replace: true }))
-                .finally(() => clearTimeout(timeout));
+               void fetchMe()
+                 .then((user) => nav(user?.id ? "/home" : "/landing", { replace: true }))
+                 .catch(() => nav("/landing", { replace: true }));
             }, []);
             return null;
           }} />
