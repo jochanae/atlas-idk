@@ -3075,34 +3075,11 @@ export default function Home() {
               }}
             />
 
-            {/* Project focus chip */}
-            <div style={{ marginBottom: homeFocus || showFocusPicker ? 8 : 0 }}>
-              {homeFocus ? (
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, background: "rgba(201,162,76,0.1)", border: "1px solid rgba(201,162,76,0.3)", marginBottom: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
-                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
-                  </span>
-                  <button
-                    onClick={() => setHomeFocus(null)}
-                    style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1, padding: "0 2px", display: "flex", alignItems: "center" }}
-                  >×</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowFocusPicker(true)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 999, background: "transparent", border: "1px solid rgba(201,162,76,0.15)", cursor: "pointer", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.6 }}
-                >
-                  <span style={{ fontSize: 11, lineHeight: 1 }}>+</span> focus a project
-                </button>
-              )}
-            </div>
-
             {/* Project focus picker sheet */}
             {showFocusPicker && (
               <>
-                <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
-                <div style={{ position: "fixed", bottom: 120, left: 16, right: 16, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 14, padding: "12px 0", maxHeight: 320, overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
                   <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus a project</div>
                   {(projects ?? []).filter((p: any) => p.status !== "shaping" && p.status !== "archived").map((p: any) => (
                     <button
@@ -3201,6 +3178,37 @@ export default function Home() {
 
             {/* Bottom action bar */}
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
+              <button
+                onClick={() => setShowFocusPicker(true)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 7px", borderRadius: 999,
+                  background: homeFocus ? "rgba(201,162,76,0.1)" : "transparent",
+                  border: homeFocus ? "1px solid rgba(201,162,76,0.3)" : "1px solid transparent",
+                  cursor: "pointer", flexShrink: 0,
+                  fontFamily: "var(--app-font-mono)", fontSize: 9,
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: homeFocus ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  opacity: homeFocus ? 1 : 0.45,
+                  transition: "all 140ms ease",
+                }}
+              >
+                {homeFocus ? (
+                  <>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
+                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
+                    <span
+                      onClick={(e) => { e.stopPropagation(); setHomeFocus(null); }}
+                      style={{ marginLeft: 2, opacity: 0.6, fontSize: 12, lineHeight: 1 }}
+                    >×</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 11, lineHeight: 1, opacity: 0.7 }}>⊕</span>
+                    focus
+                  </>
+                )}
+              </button>
             {/* History clock — jumpstart active sessions */}
               <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
                 <button
