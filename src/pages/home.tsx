@@ -11,6 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
+import { API_BASE } from "@/lib/api";
 import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
@@ -1061,6 +1062,7 @@ function FirstRunOverlay({
   repoUrl,
   setRepoUrl,
   error,
+  backendReady,
 }: {
   loading: boolean;
   onSpecMode: () => void;
@@ -1069,6 +1071,7 @@ function FirstRunOverlay({
   repoUrl: string;
   setRepoUrl: (v: string) => void;
   error?: string | null;
+  backendReady: boolean;
 }) {
 
   return createPortal(
@@ -1108,32 +1111,39 @@ function FirstRunOverlay({
           </div>
         </div>
 
-        {/* Optional repo URL — autonomous architecture scan */}
-        <div style={{ marginBottom: 14 }}>
-          <input
-            type="url"
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            placeholder="Paste primary repository URL (GitHub) — optional"
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              background: "rgba(20,16,12,0.6)",
-              border: "1px solid rgba(201,162,76,0.22)",
-              borderRadius: 10,
-              color: "#E7E1D6",
-              fontSize: "var(--ts-caption)",
-              fontFamily: "var(--app-font-mono)",
-              letterSpacing: "0.02em",
-              outline: "none",
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
-          />
-        </div>
+        {backendReady ? (
+          <div style={{ marginBottom: 14 }}>
+            <input
+              type="url"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              placeholder="Paste primary repository URL (GitHub) — optional"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                background: "rgba(20,16,12,0.6)",
+                border: "1px solid rgba(201,162,76,0.22)",
+                borderRadius: 10,
+                color: "#E7E1D6",
+                fontSize: "var(--ts-caption)",
+                fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.02em",
+                outline: "none",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(212,175,55,0.55)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.22)"; }}
+            />
+          </div>
+        ) : (
+          <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(201,162,76,0.16)", background: "rgba(20,16,12,0.45)" }}>
+            <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "rgba(231,225,214,0.72)", lineHeight: 1.6 }}>
+              GitHub import is offline in this preview because the backend API URL is not configured.
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{
