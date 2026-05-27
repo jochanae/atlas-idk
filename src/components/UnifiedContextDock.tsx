@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from "react";
+import { useLocation } from "wouter";
 
 /**
  * UnifiedContextDock
@@ -155,6 +156,7 @@ function AxiomCenterSVG({ size = 52 }: { size?: number }) {
 
 export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { mode, onAtlasCore } = props;
+  const [, setLocation] = useLocation();
 
   
   const longPressTimer = useRef<number | null>(null);
@@ -184,7 +186,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     try {
       window.dispatchEvent(new CustomEvent("axiom:close-project-menu"));
     } catch {}
-    window.location.href = "/projects";
+    setLocation("/projects");
   };
 
   const startLongPress = () => {
