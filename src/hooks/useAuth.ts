@@ -16,7 +16,7 @@ export interface AuthUser {
 
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
-    const res = await fetch("/api/auth/me", {
+    const res = await fetch(apiUrl("/api/auth/me"), {
       credentials: "include",
       headers: getAuthHeaders(),
     });
