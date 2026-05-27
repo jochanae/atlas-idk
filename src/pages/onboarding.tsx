@@ -435,6 +435,13 @@ export default function OnboardingPage() {
       // ── "Big Bang" cinematic transition ────────────────────────────────
       try { localStorage.setItem("axiom_onboarding_step", "4"); } catch {}
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ onboardedAt: new Date().toISOString() }),
+      }).catch(() => {});
+      try { localStorage.setItem("atlas-onboarded", "1"); } catch {}
 
       // Genesis ledger anchor — created the moment the project exists.
       fetch(`/api/projects/${data.id}/entries`, {
