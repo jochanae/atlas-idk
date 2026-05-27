@@ -5349,6 +5349,26 @@ export default function Workspace() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
+
+  // Track content growth (streaming reveal) so the scroll-to-bottom arrow
+  // updates even when the user isn't scrolling.
+  useEffect(() => {
+    const el = chatPanelScrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    Array.from(el.children).forEach((c) => ro.observe(c as Element));
+    const mo = new MutationObserver(() => {
+      Array.from(el.children).forEach((c) => ro.observe(c as Element));
+      recompute();
+    });
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => { ro.disconnect(); mo.disconnect(); };
+  }, []);
   const initialSent = useRef(false);
   // abortControllerRef owned by useChatStream.
   const importPrimed = useRef(false);

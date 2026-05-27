@@ -1304,6 +1304,27 @@ export default function Home() {
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
   }, [homeMessages.length]);
+
+  // Keep showScrollBtn in sync as streaming content grows the scroll container.
+  // Without this, the arrow only updates on user scroll events and can miss
+  // backlog produced while Atlas streams a reply.
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const recompute = () => {
+      setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+    };
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    Array.from(el.children).forEach((c) => ro.observe(c as Element));
+    const mo = new MutationObserver(() => {
+      Array.from(el.children).forEach((c) => ro.observe(c as Element));
+      recompute();
+    });
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => { ro.disconnect(); mo.disconnect(); };
+  }, [homeMessages.length]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
