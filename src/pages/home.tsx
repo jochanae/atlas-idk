@@ -1233,6 +1233,10 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pullStartY = useRef<number | null>(null);
+  const PULL_THRESHOLD = 72;
   const backendReady = API_BASE.length > 0;
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
@@ -1462,6 +1466,21 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const queryClient = useQueryClient();
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
+        fetch("/api/nexus/briefing", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({}) })
+          .then(r => r.ok ? r.json() : { briefing: null })
+          .then((data: any) => setBriefing(data.briefing ?? null)),
+      ]);
+    } catch {} finally {
+      setIsRefreshing(false);
+      setPullDistance(0);
+    }
+  }, [queryClient]);
 
   // Atlas Core center-button → focus composer
   useEffect(() => {
@@ -2374,6 +2393,27 @@ export default function Home() {
   return (
     <div
       className="atlas-home-bg"
+      onTouchStart={(e) => {
+        const el = e.currentTarget;
+        if (el.scrollTop === 0 && !isAtlasStreaming) {
+          pullStartY.current = e.touches[0].clientY;
+        }
+      }}
+      onTouchMove={(e) => {
+        if (pullStartY.current === null) return;
+        const delta = e.touches[0].clientY - pullStartY.current;
+        if (delta > 0 && delta < 140) {
+          setPullDistance(delta);
+        }
+      }}
+      onTouchEnd={() => {
+        if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+          void handleRefresh();
+        } else {
+          setPullDistance(0);
+        }
+        pullStartY.current = null;
+      }}
       style={{
         height: "100vh",
         backgroundColor: "var(--atlas-bg)",
@@ -2383,6 +2423,27 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
+      {(pullDistance > 0 || isRefreshing) && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+          display: "flex", justifyContent: "center", alignItems: "center",
+          height: Math.min(pullDistance, 72),
+          background: "transparent",
+          pointerEvents: "none",
+          transition: isRefreshing ? "none" : "height 60ms linear",
+        }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: "50%",
+            border: "1.5px solid rgba(201,162,76,0.35)",
+            borderTopColor: pullDistance >= 72 || isRefreshing ? "var(--atlas-gold)" : "transparent",
+            animation: isRefreshing ? "spin 700ms linear infinite" : "none",
+            opacity: Math.min(pullDistance / 72, 1),
+            transform: `rotate(${(pullDistance / 72) * 180}deg)`,
+            transition: isRefreshing ? "none" : "opacity 100ms ease",
+          }} />
+        </div>
+      )}
+
       {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
           Home is never Operational, so no green pulsing dot here. */}
       {homeMessages.length > 0 && subheaderCollapsed && (
@@ -3753,6 +3814,7 @@ export default function Home() {
           0%, 100% { opacity: 0.45; }
           50%       { opacity: 1; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes homeAxiomPulse {
           0%, 100% {

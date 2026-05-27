@@ -62,7 +62,7 @@
 
 html, body {
   touch-action: pan-x pan-y;
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: none;
 }
 
 :focus-visible {
