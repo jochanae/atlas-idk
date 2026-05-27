@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { API_BASE } from "@/lib/api";
 
 const POETIC_NAMES = [
   "Quiet Forge", "North Star", "Slow Burn", "Open Field", "First Light",
@@ -60,6 +61,7 @@ export function NewProjectModal({ open, onClose, onCreate, creating, error }: Pr
 
   const trimmed = name.trim();
   const canCreate = trimmed.length > 0 && !creating;
+  const backendReady = API_BASE.length > 0;
 
   const submit = (withGithub: boolean) => {
     if (!canCreate) return;
@@ -142,43 +144,55 @@ export function NewProjectModal({ open, onClose, onCreate, creating, error }: Pr
         </div>
 
         {/* GitHub section */}
-        <button
-          type="button"
-          onClick={() => setShowGithub((v) => !v)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "transparent", border: "none", cursor: "pointer",
-            padding: "4px 0", color: "var(--atlas-muted)", fontSize: 12,
-            fontFamily: "var(--app-font-sans)", marginBottom: showGithub ? 10 : 18,
-          }}
-        >
-          <span style={{ fontSize: 10, transform: showGithub ? "rotate(90deg)" : "rotate(0)", transition: "transform 160ms", display: "inline-block" }}>▸</span>
-          {showGithub ? "Hide GitHub repo" : "Add GitHub repo"}
-          <span style={{ fontSize: 10, opacity: 0.6, fontFamily: "var(--app-font-mono)" }}>optional</span>
-        </button>
-
-        {showGithub && (
-          <div style={{ marginBottom: 18 }}>
-            <input
-              value={githubRepo}
-              onChange={(e) => setGithubRepo(e.target.value)}
-              placeholder="owner/repo"
+        {backendReady && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowGithub((v) => !v)}
               style={{
-                width: "100%",
-                padding: "9px 12px",
-                borderRadius: 8,
-                background: "var(--atlas-surface-alt)",
-                border: "1px solid var(--atlas-border)",
-                color: "var(--atlas-fg)",
-                fontSize: 13,
-                outline: "none",
-                fontFamily: "var(--app-font-mono)",
+                display: "flex", alignItems: "center", gap: 6,
+                background: "transparent", border: "none", cursor: "pointer",
+                padding: "4px 0", color: "var(--atlas-muted)", fontSize: 12,
+                fontFamily: "var(--app-font-sans)", marginBottom: showGithub ? 10 : 18,
               }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--atlas-gold)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
-            />
-            <p style={{ margin: "6px 0 0", fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.7, fontFamily: "var(--app-font-mono)" }}>
-              You can link or change this later.
+            >
+              <span style={{ fontSize: 10, transform: showGithub ? "rotate(90deg)" : "rotate(0)", transition: "transform 160ms", display: "inline-block" }}>▸</span>
+              {showGithub ? "Hide GitHub repo" : "Add GitHub repo"}
+              <span style={{ fontSize: 10, opacity: 0.6, fontFamily: "var(--app-font-mono)" }}>optional</span>
+            </button>
+
+            {showGithub && (
+              <div style={{ marginBottom: 18 }}>
+                <input
+                  value={githubRepo}
+                  onChange={(e) => setGithubRepo(e.target.value)}
+                  placeholder="owner/repo"
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    background: "var(--atlas-surface-alt)",
+                    border: "1px solid var(--atlas-border)",
+                    color: "var(--atlas-fg)",
+                    fontSize: 13,
+                    outline: "none",
+                    fontFamily: "var(--app-font-mono)",
+                  }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--atlas-gold)")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
+                />
+                <p style={{ margin: "6px 0 0", fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.7, fontFamily: "var(--app-font-mono)" }}>
+                  You can link or change this later.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {!backendReady && (
+          <div style={{ marginBottom: 18 }}>
+            <p style={{ margin: 0, fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.8, fontFamily: "var(--app-font-mono)", lineHeight: 1.6 }}>
+              GitHub linking is unavailable in this preview because the backend API URL is not configured.
             </p>
           </div>
         )}
