@@ -1113,6 +1113,24 @@ export default function MasterMap() {
       const haloScaleTarget = sc > 0 ? 1 + Math.min(sc * 0.06, 0.5) : 1;
       shapingHalo.scale.setScalar(haloScaleTarget * breathe);
 
+      // Active-project halo — breathe gold ring around the active node only.
+      const activeId = activeProjectIdRef.current;
+      const ringBreathe = 0.62 + Math.sin(t * 1.6) * 0.18;
+      const ringScalePulse = 1 + Math.sin(t * 1.6) * 0.04;
+      for (let hi = 0; hi < activeHalos.length; hi++) {
+        const h = activeHalos[hi];
+        const isActive = activeId != null && nodeProjectIds[hi] === activeId;
+        const mat = h.material as THREE.MeshBasicMaterial;
+        const target = isActive ? ringBreathe : 0;
+        mat.opacity += (target - mat.opacity) * 0.08;
+        const base = baseScales[hi] ?? 1;
+        const sTarget = isActive ? base * ringScalePulse : base;
+        const cur = h.scale.x;
+        h.scale.setScalar(cur + (sTarget - cur) * 0.12);
+        h.rotation.z = t * 0.25;
+        h.lookAt(camera.position);
+      }
+
       // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
       const gy = gyroTilt.current.y;
