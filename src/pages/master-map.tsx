@@ -572,10 +572,12 @@ export default function MasterMap() {
 
     // Nexium "SOURCE" label handled in HTML overlay — we add a ref below
 
-    // ── Project nodes — glass spheres ─────────────────────────────────────
-    const projs = projectsRef.current;
-    const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
+    const rippleMeshes: THREE.Mesh[] = [];
+    const activeHalos: THREE.Mesh[] = [];
+    const nodeProjectIds: number[] = [];
+    const baseScales: number[] = [];
+    rippleTimers.current = new Array(projs.length).fill(0);
     const rippleMeshes: THREE.Mesh[] = [];
     const baseScales: number[] = [];
     rippleTimers.current = new Array(projs.length).fill(0);
