@@ -558,7 +558,7 @@ export default function MasterMap() {
     const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
     const rippleMeshes: THREE.Mesh[] = [];
-    const nodeProjectIds: number[] = [];
+    
 
     const baseScales: number[] = [];
     rippleTimers.current = new Array(projs.length).fill(0);
