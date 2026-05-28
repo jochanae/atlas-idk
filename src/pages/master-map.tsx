@@ -626,7 +626,6 @@ export default function MasterMap() {
       scene.add(ring);
       rippleMeshes.push(ring);
 
-      nodeProjectIds.push(projs[i].id);
 
     });
 
