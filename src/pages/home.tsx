@@ -1404,6 +1404,7 @@ export default function Home() {
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
+  const [showShredder, setShowShredder] = useState(false);
 
   const vibrate = useCallback((pattern: number | number[]) => {
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
@@ -1423,10 +1424,16 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (reflectionLocked) {
-      setShowShredChoice(true);
+      // Already private — open Mental Shredder again, or long-press surfaces keep/shred choice
+      setShowShredder(true);
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
+      setShowShredder(true);
+      toast("Think Freely · Private session", {
+        className: "atlas-toast-premium",
+        description: "Zero-trace · nothing here is logged.",
+      });
     }
   }, [reflectionLocked, vibrate, callReflectionMode]);
 
