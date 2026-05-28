@@ -1,5 +1,4 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Shield } from "lucide-react";
 
 /**
  * ChatTrayHeader — shared, ultra-quiet header for the Nexus Home chat tray
@@ -96,27 +95,56 @@ export function ChatTrayHeader({
           <button
             type="button"
             onClick={onTrustClick}
-            aria-label={active ? "Zero-trace session active" : "Zero-trace session paused"}
-            title={active ? "Zero-trace · sovereign session" : "Reflection paused"}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 22,
-              height: 22,
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              color: active ? "var(--atlas-muted)" : "rgba(255,255,255,0.25)",
-              cursor: onTrustClick ? "pointer" : "default",
-              opacity: 0.7,
-              transition: "opacity 160ms ease, color 160ms ease",
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+            aria-label={active ? "Private session active — tap to exit" : "Start private session"}
+            title={active ? "Think Freely · private session active" : "Start a private session"}
+            className={`
+              relative inline-flex items-center justify-center w-8 h-8 rounded-lg flex-shrink-0
+              transition-all duration-200 ease-out select-none
+              active:scale-95 touch-manipulation
+              ${active
+                ? "bg-[rgba(201,162,76,0.08)] border border-[rgba(201,162,76,0.3)] text-[var(--atlas-gold)] shadow-[0_0_12px_rgba(201,162,76,0.1)]"
+                : "bg-transparent border border-transparent text-stone-500/40 hover:text-stone-400 hover:bg-stone-800/30"
+              }
+            `}
           >
-            <Shield size={13} strokeWidth={1.6} />
+            {/* Ambient micro-glow ring when active */}
+            {active && (
+              <span className="absolute inset-0 rounded-lg animate-pulse bg-[rgba(201,162,76,0.03)] ring-1 ring-[rgba(201,162,76,0.2)]" />
+            )}
+
+            {active ? (
+              // Secure Locked State
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="relative z-10 drop-shadow-[0_0_2px_rgba(201,162,76,0.4)]"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" fill="rgba(201,162,76,0.1)" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            ) : (
+              // Unlocked / Open State
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="relative z-10"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+              </svg>
+            )}
           </button>
         )}
 
