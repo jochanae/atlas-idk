@@ -284,8 +284,8 @@ export default function MasterMap() {
     }
   })();
 
-  const activeProjectIdRef = useRef<number | null>(activeProjectId);
-  useEffect(() => { activeProjectIdRef.current = activeProjectId; }, [activeProjectId]);
+
+
 
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
@@ -558,8 +558,8 @@ export default function MasterMap() {
     const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
     const rippleMeshes: THREE.Mesh[] = [];
-    const activeHalos: THREE.Mesh[] = [];
-    const nodeProjectIds: number[] = [];
+    
+
     const baseScales: number[] = [];
     rippleTimers.current = new Array(projs.length).fill(0);
 
@@ -626,22 +626,7 @@ export default function MasterMap() {
       scene.add(ring);
       rippleMeshes.push(ring);
 
-      // Active-project outline — a simple camera-facing ring for the active project only.
-      const halo = new THREE.Mesh(
-        new THREE.TorusGeometry(NODE_R * 1.55, 0.65, 8, 80),
-        new THREE.MeshBasicMaterial({
-          color: 0xC9A24C,
-          transparent: true,
-          opacity: 0,
-          side: THREE.DoubleSide,
-          depthWrite: false,
-        }),
-      );
-      halo.position.copy(positions[i]);
-      halo.scale.setScalar(sizeBoost);
-      scene.add(halo);
-      activeHalos.push(halo);
-      nodeProjectIds.push(projs[i].id);
+
     });
 
     // ── Spokes Nexium → nodes ─────────────────────────────────────────────
@@ -1084,18 +1069,8 @@ export default function MasterMap() {
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
 
-      // Active-project outline — no glow or pulse, just the active node ring.
-      const activeId = activeProjectIdRef.current;
-      for (let hi = 0; hi < activeHalos.length; hi++) {
-        const h = activeHalos[hi];
-        const isActive = activeId != null && nodeProjectIds[hi] === activeId;
-        const mat = h.material as THREE.MeshBasicMaterial;
-        const target = isActive ? 0.82 : 0;
-        mat.opacity += (target - mat.opacity) * 0.12;
-        const base = baseScales[hi] ?? 1;
-        h.scale.setScalar(base);
-        h.lookAt(camera.position);
-      }
+
+
 
       // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
