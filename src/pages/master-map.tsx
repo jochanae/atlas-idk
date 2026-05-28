@@ -196,14 +196,13 @@ function buildConns(projects: Project[]): Connection[] {
   }
   return out;
 }
-async function fetchAll(): Promise<{ nexus: Project | null; list: Project[]; shapingCount: number }> {
+async function fetchAll(): Promise<{ nexus: Project | null; list: Project[] }> {
   const lR = await fetch(`${BASE_URL}/api/projects`, { credentials: "include" });
   const raw: Project[] = lR.ok ? await lR.json() : [];
   // Constellation shows the system of record — only committed projects render as nodes.
-  // Shaping projects orbit invisibly until they commit; we surface the count for the halo.
+  // Shaping projects orbit invisibly until they commit.
   const committed = raw.filter((p) => (p.status ?? "committed") === "committed");
-  const shapingCount = raw.filter((p) => p.status === "shaping").length;
-  return { nexus: null, list: committed, shapingCount };
+  return { nexus: null, list: committed };
 }
 
 // ── component ────────────────────────────────────────────────────────────────
@@ -237,7 +236,6 @@ export default function MasterMap() {
   const statsRef = useRef<Map<number, DecisionStats>>(new Map());
   const tensionsRef = useRef<Tension[]>([]);
   const hoveredTensionRef = useRef<HoveredTension | null>(null);
-  const shapingCountRef = useRef(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
@@ -413,8 +411,7 @@ export default function MasterMap() {
 
   useEffect(() => {
     setLoading(true);
-    fetchAll().then(({ list, shapingCount }) => {
-      shapingCountRef.current = shapingCount;
+    fetchAll().then(({ list }) => {
       setProjects(list);
       setConnections(buildConns(list));
       const m = new Map<number, string>();
@@ -427,8 +424,7 @@ export default function MasterMap() {
   useEffect(() => {
     if (loading) return;
     const iv = setInterval(() => {
-      fetchAll().then(({ list, shapingCount }) => {
-        shapingCountRef.current = shapingCount;
+      fetchAll().then(({ list }) => {
         const fresh: number[] = [];
         list.forEach(p => {
           const prev = prevEntryDates.current.get(p.id);
@@ -555,21 +551,6 @@ export default function MasterMap() {
     nexRingMesh.rotation.x = Math.PI / 2.8;
     scene.add(nexRingMesh);
 
-    // Shaping halo — soft amber-gold sphere whose intensity scales with the
-    // number of in-flight shaping projects (status === "shaping"). Acts as an
-    // ambient pressure indicator around the Nexium without claiming a node.
-    const shapingHalo = new THREE.Mesh(
-      new THREE.SphereGeometry(NEXIUM_R * 2.2, 32, 32),
-      new THREE.MeshBasicMaterial({
-        color: 0xC9A24C,
-        transparent: true,
-        opacity: 0,
-        side: THREE.BackSide,
-        depthWrite: false,
-      }),
-    );
-    scene.add(shapingHalo);
-
     // Nexium "SOURCE" label handled in HTML overlay — we add a ref below
 
     // ── Project nodes — glass spheres ─────────────────────────────────────
@@ -645,10 +626,9 @@ export default function MasterMap() {
       scene.add(ring);
       rippleMeshes.push(ring);
 
-      // Active-project halo — persistent breathing gold torus, fades in only
-      // for the currently active project. Animated in the tick loop.
+      // Active-project outline — a simple camera-facing ring for the active project only.
       const halo = new THREE.Mesh(
-        new THREE.TorusGeometry(NODE_R * 1.55, 0.9, 10, 80),
+        new THREE.TorusGeometry(NODE_R * 1.55, 0.65, 8, 80),
         new THREE.MeshBasicMaterial({
           color: 0xC9A24C,
           transparent: true,
@@ -1104,30 +1084,16 @@ export default function MasterMap() {
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
 
-      // Shaping halo breathes proportional to in-flight shaping count.
-      const sc = shapingCountRef.current;
-      const haloTarget = sc > 0 ? Math.min(0.05 + sc * 0.025, 0.22) : 0;
-      const haloMat = shapingHalo.material as THREE.MeshBasicMaterial;
-      const breathe = 1 + Math.sin(t * 0.9) * 0.06;
-      haloMat.opacity += (haloTarget * (0.85 + Math.sin(t * 1.4) * 0.15) - haloMat.opacity) * 0.05;
-      const haloScaleTarget = sc > 0 ? 1 + Math.min(sc * 0.06, 0.5) : 1;
-      shapingHalo.scale.setScalar(haloScaleTarget * breathe);
-
-      // Active-project halo — breathe gold ring around the active node only.
+      // Active-project outline — no glow or pulse, just the active node ring.
       const activeId = activeProjectIdRef.current;
-      const ringBreathe = 0.62 + Math.sin(t * 1.6) * 0.18;
-      const ringScalePulse = 1 + Math.sin(t * 1.6) * 0.04;
       for (let hi = 0; hi < activeHalos.length; hi++) {
         const h = activeHalos[hi];
         const isActive = activeId != null && nodeProjectIds[hi] === activeId;
         const mat = h.material as THREE.MeshBasicMaterial;
-        const target = isActive ? ringBreathe : 0;
-        mat.opacity += (target - mat.opacity) * 0.08;
+        const target = isActive ? 0.82 : 0;
+        mat.opacity += (target - mat.opacity) * 0.12;
         const base = baseScales[hi] ?? 1;
-        const sTarget = isActive ? base * ringScalePulse : base;
-        const cur = h.scale.x;
-        h.scale.setScalar(cur + (sTarget - cur) * 0.12);
-        h.rotation.z = t * 0.25;
+        h.scale.setScalar(base);
         h.lookAt(camera.position);
       }
 
@@ -1415,8 +1381,6 @@ export default function MasterMap() {
                 borderRadius: 12,
                 border: "1px solid rgba(var(--atlas-gold-rgb),0.42)",
                 background: "rgba(var(--atlas-bg-rgb),0.68)",
-                boxShadow: "0 0 12px 2px rgba(var(--atlas-gold-rgb), 0.4)",
-                animation: "atlas-active-project-breathe 2s ease-in-out infinite",
               } : {}),
             }}>
               {isActiveProject && (
@@ -2142,15 +2106,5 @@ const STYLES = `
   0%   { transform: rotate(0deg) scale(0.7); opacity: 0; }
   35%  { opacity: 0.8; }
   100% { transform: rotate(12deg) scale(2.5); opacity: 0; }
-}
-@keyframes atlas-active-project-breathe {
-  0%, 100% {
-    box-shadow: 0 0 12px 2px rgba(var(--atlas-gold-rgb), 0.4);
-    border-color: rgba(var(--atlas-gold-rgb),0.42);
-  }
-  50% {
-    box-shadow: 0 0 18px 3px rgba(var(--atlas-gold-rgb), 0.5);
-    border-color: rgba(var(--atlas-gold-rgb),0.58);
-  }
 }
 `;
