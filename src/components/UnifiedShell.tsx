@@ -17,7 +17,7 @@ import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import type { ProjectNodeState } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { computeScoreFromNodeState } from "@/components/ReadinessRing";
+import { computeScoreFromNodeState, MODE_META, READINESS_MODE_KEY, computeBlendedScore, type ReadinessMode } from "@/components/ReadinessRing";
 
 
 
@@ -423,17 +423,63 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 function ShellReadinessChip({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<ReadinessMode>(() => {
+    try {
+      const v = localStorage.getItem(READINESS_MODE_KEY) as ReadinessMode | null;
+      return v === "arch" || v === "decisions" || v === "blended" ? v : "blended";
+    } catch { return "blended"; }
+  });
+  const longPressRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
+
   if (projectId == null) return null;
   const proj = ps.project as { latestSnapshotScore?: number | null; nodeState?: ProjectNodeState | null; name?: string } | null;
-  const score = proj?.latestSnapshotScore ?? computeScoreFromNodeState(proj?.nodeState ?? null);
+  const ns = (proj?.nodeState ?? {}) as Record<string, unknown>;
   const decisionsCount = ps.decisions?.length ?? 0;
+
+  // Split scores by category for mode switching.
+  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
+  let archTotal = 0, archResolved = 0, decTotal = 0, decResolved = 0;
+  Object.entries(ns).forEach(([nid, raw]) => {
+    const resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
+    if (ARCH_IDS.has(nid)) { archTotal++; if (resolved) archResolved++; }
+    else { decTotal++; if (resolved) decResolved++; }
+  });
+  const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
+  const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
+  const blendedScore = proj?.latestSnapshotScore ?? (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
+  const score = mode === "arch" ? archScore : mode === "decisions" ? decisionsScore : blendedScore;
+  const meta = MODE_META[mode];
+
+  const cycleMode = () => {
+    const order: ReadinessMode[] = ["blended", "arch", "decisions"];
+    const next = order[(order.indexOf(mode) + 1) % order.length];
+    setMode(next);
+    try { localStorage.setItem(READINESS_MODE_KEY, next); } catch {}
+  };
+
+  const startLongPress = () => {
+    longPressFiredRef.current = false;
+    longPressRef.current = window.setTimeout(() => {
+      longPressFiredRef.current = true;
+      setOpen(true);
+    }, 450);
+  };
+  const cancelLongPress = () => {
+    if (longPressRef.current) { window.clearTimeout(longPressRef.current); longPressRef.current = null; }
+  };
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        title={`Readiness ${score}% — tap for breakdown`}
-        aria-label={`Readiness ${score} percent. Open sovereign readiness ledger.`}
+        onClick={() => { if (!longPressFiredRef.current) cycleMode(); }}
+        onPointerDown={startLongPress}
+        onPointerUp={cancelLongPress}
+        onPointerLeave={cancelLongPress}
+        onPointerCancel={cancelLongPress}
+        title={`${meta.label} — ${meta.description}. Tap to switch · long-press for breakdown.`}
+        aria-label={`Readiness mode ${meta.label}, ${score} percent. Tap to switch mode, long-press for breakdown.`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "4px 10px", borderRadius: 999, cursor: "pointer",
@@ -441,6 +487,9 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
           border: "1px solid rgba(201,162,76,0.28)",
           color: "var(--atlas-gold)", flexShrink: 0,
           transition: "background 160ms ease, border-color 160ms ease",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "manipulation",
         }}
         onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.18)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
@@ -448,7 +497,7 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
         <span style={{
           fontFamily: "var(--app-font-mono)", fontSize: 8.5, fontWeight: 700,
           letterSpacing: "0.12em", color: "var(--atlas-muted)", lineHeight: 1,
-        }}>MIX</span>
+        }}>{meta.abbr}</span>
         <span style={{
           width: 4, height: 4, borderRadius: 999,
           background: score >= 80 ? "#4ade80" : score >= 50 ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)",
@@ -460,7 +509,7 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
       </button>
       {open && (
         <SovereignReadinessSheet
-          score={score}
+          score={blendedScore}
           projectName={proj?.name ?? null}
           decisionsCount={decisionsCount}
           nodeState={proj?.nodeState ?? null}
@@ -470,6 +519,7 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
     </>
   );
 }
+
 
 function SovereignReadinessSheet({
   score, projectName, decisionsCount, nodeState, onClose,
