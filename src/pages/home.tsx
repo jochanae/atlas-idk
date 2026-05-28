@@ -2437,8 +2437,10 @@ export default function Home() {
   }, [homeMessages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Issue found: Enter submits were a no-op, and the send button was gated by project loading instead of chat sending.
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // On touch devices Enter inserts a newline — user submits via the Send button.
+    // Only desktop (fine pointer) gets Enter-to-send.
+    const isTouch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    if (!isTouch && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       void handleSubmit();
     }
