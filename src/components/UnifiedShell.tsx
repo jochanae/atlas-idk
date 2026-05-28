@@ -447,7 +447,7 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
   });
   const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
   const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  const blendedScore = proj?.latestSnapshotScore ?? computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null);
+  const blendedScore = proj?.latestSnapshotScore ?? (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
   const score = mode === "arch" ? archScore : mode === "decisions" ? decisionsScore : blendedScore;
   const meta = MODE_META[mode];
 
