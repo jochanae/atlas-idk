@@ -2620,6 +2620,8 @@ export default function Home() {
           />
         </div>
       )}
+      <MentalShredderModal open={showShredder} onOpenChange={setShowShredder} />
+
 
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
