@@ -2437,8 +2437,10 @@ export default function Home() {
   }, [homeMessages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Issue found: Enter submits were a no-op, and the send button was gated by project loading instead of chat sending.
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // On touch devices Enter inserts a newline — user submits via the Send button.
+    // Only desktop (fine pointer) gets Enter-to-send.
+    const isTouch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    if (!isTouch && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       void handleSubmit();
     }
@@ -3503,12 +3505,17 @@ export default function Home() {
                 <button
                   className="atlas-send-btn"
                   type="button"
-                  // Prevent textarea blur on tap — mobile virtual keyboard collapsing
-                  // mid-tap reflows the layout and the click lands on a different
-                  // element, which is why Send only works once and Enter still works.
-                  onMouseDown={(e) => e.preventDefault()}
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={handleSubmit}
+                  // Fire on pointerdown so a mobile tap submits BEFORE the textarea
+                  // blurs and the virtual keyboard reflows the layout (which used to
+                  // cause the synthesized click to land on a different element).
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    if (!isSending && hasInput) void handleSubmit();
+                  }}
+                  onClick={(e) => {
+                    // Desktop fallback (no pointer events / keyboard activation)
+                    if (e.detail === 0) void handleSubmit();
+                  }}
                   disabled={isSending}
                   style={{
                     width: 40, height: 40, flexShrink: 0,
