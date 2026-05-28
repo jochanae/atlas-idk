@@ -1070,18 +1070,8 @@ export default function MasterMap() {
       nexMat.emissiveIntensity = glow;
       goldLight.intensity = 6 + Math.sin(t * 1.8) * 2;
 
-      // Active-project outline — no glow or pulse, just the active node ring.
-      const activeId = activeProjectIdRef.current;
-      for (let hi = 0; hi < activeHalos.length; hi++) {
-        const h = activeHalos[hi];
-        const isActive = activeId != null && nodeProjectIds[hi] === activeId;
-        const mat = h.material as THREE.MeshBasicMaterial;
-        const target = isActive ? 0.82 : 0;
-        mat.opacity += (target - mat.opacity) * 0.12;
-        const base = baseScales[hi] ?? 1;
-        h.scale.setScalar(base);
-        h.lookAt(camera.position);
-      }
+
+
 
       // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
