@@ -1424,8 +1424,7 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (reflectionLocked) {
-      // Already private — open Mental Shredder again, or long-press surfaces keep/shred choice
-      setShowShredder(true);
+      setShowShredChoice(true);
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
