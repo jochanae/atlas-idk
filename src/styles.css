@@ -1094,3 +1094,25 @@ mark.atlas-search-hit.atlas-search-hit--active {
   background: color-mix(in oklab, #f59e0b 42%, transparent);
   outline: 1px solid color-mix(in oklab, #f59e0b 70%, transparent);
 }
+
+/* Mental Shredder — fall animation */
+@keyframes atlasShredFall {
+  0%   { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(80px); opacity: 0; }
+}
+
+/* Premium gold toast (sonner) */
+.atlas-toast-premium {
+  background: linear-gradient(135deg, rgba(242,216,154,0.14) 0%, rgba(201,162,76,0.06) 100%) !important;
+  border: 1px solid rgba(230,198,135,0.45) !important;
+  color: var(--atlas-fg) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 24px rgba(230,198,135,0.18) !important;
+  backdrop-filter: blur(10px);
+}
+.atlas-toast-premium [data-description] {
+  color: var(--atlas-gold) !important;
+  opacity: 0.85;
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
