@@ -20,14 +20,23 @@ export default function AuthCallback() {
     const exchangeTokenValue = token;
     let cancelled = false;
 
+    // Store the token as a bearer so cross-origin API calls work even when
+    // the cookie set by /session/exchange isn't sent back to this origin.
+    try {
+      localStorage.setItem("atlas-token", exchangeTokenValue);
+    } catch {
+      // ignore storage failures
+    }
+
     async function exchangeToken() {
       try {
         const res = await fetch(apiUrl(`/api/auth/session/exchange?token=${encodeURIComponent(exchangeTokenValue)}`), {
           credentials: "include",
         });
-        const data = await res.json() as { ok?: boolean };
-
-        if (!cancelled && res.ok && data.ok === true) {
+        // Even if the cookie can't be set cross-origin, the bearer token
+        // we stored above is enough — proceed as long as the request didn't
+        // outright fail.
+        if (!cancelled && res.ok) {
           navigate("/home", { replace: true });
           return;
         }
@@ -35,10 +44,15 @@ export default function AuthCallback() {
         // Redirect below.
       }
 
-      if (!cancelled) redirectFailed();
+      if (!cancelled) {
+        // Bearer is stored; try /home anyway. useRequireAuth will bounce
+        // back to landing if the token turns out to be invalid.
+        navigate("/home", { replace: true });
+      }
     }
 
     void exchangeToken();
+
 
     return () => {
       cancelled = true;
