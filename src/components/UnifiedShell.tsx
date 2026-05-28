@@ -17,7 +17,7 @@ import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import type { ProjectNodeState } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { computeScoreFromNodeState } from "@/components/ReadinessRing";
+import { computeScoreFromNodeState, MODE_META, READINESS_MODE_KEY, computeBlendedScore, type ReadinessMode } from "@/components/ReadinessRing";
 
 
 
