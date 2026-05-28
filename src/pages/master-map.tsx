@@ -284,8 +284,8 @@ export default function MasterMap() {
     }
   })();
 
-  const activeProjectIdRef = useRef<number | null>(activeProjectId);
-  useEffect(() => { activeProjectIdRef.current = activeProjectId; }, [activeProjectId]);
+
+
 
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
