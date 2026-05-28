@@ -644,6 +644,24 @@ export default function MasterMap() {
       ring.scale.setScalar(sizeBoost);
       scene.add(ring);
       rippleMeshes.push(ring);
+
+      // Active-project halo — persistent breathing gold torus, fades in only
+      // for the currently active project. Animated in the tick loop.
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(NODE_R * 1.55, 0.9, 10, 80),
+        new THREE.MeshBasicMaterial({
+          color: 0xC9A24C,
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      halo.position.copy(positions[i]);
+      halo.scale.setScalar(sizeBoost);
+      scene.add(halo);
+      activeHalos.push(halo);
+      nodeProjectIds.push(projs[i].id);
     });
 
     // ── Spokes Nexium → nodes ─────────────────────────────────────────────
