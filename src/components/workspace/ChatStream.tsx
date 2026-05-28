@@ -330,7 +330,15 @@ export function ChatStream(props: ChatStreamProps) {
 
       {showScrollBtn && (
         <button
-          onClick={onScrollToLatest}
+          onPointerDown={(e) => {
+            if (e.pointerType !== "mouse") {
+              e.preventDefault();
+              onScrollToLatest();
+            }
+          }}
+          onClick={(e) => {
+            if (e.detail === 0) onScrollToLatest();
+          }}
           aria-label="Scroll to latest"
           style={{
             position: "sticky",
