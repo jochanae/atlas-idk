@@ -2789,7 +2789,7 @@ export default function Home() {
                   {reflectionLocked ? "Think Freely" : greetingRef.current?.head}
                 </h1>
                 <p style={{
-                  fontSize: "var(--ts-body)",
+                  fontSize: reflectionLocked ? 11 : ("var(--ts-body)" as any),
                   color: reflectionLocked ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   opacity: reflectionLocked ? 0.8 : 0.55,
                   margin: 0,
@@ -2797,7 +2797,6 @@ export default function Home() {
                   fontFamily: reflectionLocked ? "var(--app-font-mono)" : undefined,
                   letterSpacing: reflectionLocked ? "0.1em" : undefined,
                   textTransform: reflectionLocked ? "uppercase" : undefined,
-                  fontSize: reflectionLocked ? 11 : undefined as any,
                 }}>
                   {reflectionLocked ? "Private session · Zero-trace" : greetingRef.current?.sub}
                 </p>
