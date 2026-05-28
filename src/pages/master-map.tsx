@@ -286,6 +286,9 @@ export default function MasterMap() {
     }
   })();
 
+  const activeProjectIdRef = useRef<number | null>(activeProjectId);
+  useEffect(() => { activeProjectIdRef.current = activeProjectId; }, [activeProjectId]);
+
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
   useEffect(() => { peekRef.current = peek; }, [peek]);
@@ -574,6 +577,8 @@ export default function MasterMap() {
     const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
     const rippleMeshes: THREE.Mesh[] = [];
+    const activeHalos: THREE.Mesh[] = [];
+    const nodeProjectIds: number[] = [];
     const baseScales: number[] = [];
     rippleTimers.current = new Array(projs.length).fill(0);
 
@@ -639,6 +644,24 @@ export default function MasterMap() {
       ring.scale.setScalar(sizeBoost);
       scene.add(ring);
       rippleMeshes.push(ring);
+
+      // Active-project halo — persistent breathing gold torus, fades in only
+      // for the currently active project. Animated in the tick loop.
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(NODE_R * 1.55, 0.9, 10, 80),
+        new THREE.MeshBasicMaterial({
+          color: 0xC9A24C,
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      halo.position.copy(positions[i]);
+      halo.scale.setScalar(sizeBoost);
+      scene.add(halo);
+      activeHalos.push(halo);
+      nodeProjectIds.push(projs[i].id);
     });
 
     // ── Spokes Nexium → nodes ─────────────────────────────────────────────
@@ -1089,6 +1112,24 @@ export default function MasterMap() {
       haloMat.opacity += (haloTarget * (0.85 + Math.sin(t * 1.4) * 0.15) - haloMat.opacity) * 0.05;
       const haloScaleTarget = sc > 0 ? 1 + Math.min(sc * 0.06, 0.5) : 1;
       shapingHalo.scale.setScalar(haloScaleTarget * breathe);
+
+      // Active-project halo — breathe gold ring around the active node only.
+      const activeId = activeProjectIdRef.current;
+      const ringBreathe = 0.62 + Math.sin(t * 1.6) * 0.18;
+      const ringScalePulse = 1 + Math.sin(t * 1.6) * 0.04;
+      for (let hi = 0; hi < activeHalos.length; hi++) {
+        const h = activeHalos[hi];
+        const isActive = activeId != null && nodeProjectIds[hi] === activeId;
+        const mat = h.material as THREE.MeshBasicMaterial;
+        const target = isActive ? ringBreathe : 0;
+        mat.opacity += (target - mat.opacity) * 0.08;
+        const base = baseScales[hi] ?? 1;
+        const sTarget = isActive ? base * ringScalePulse : base;
+        const cur = h.scale.x;
+        h.scale.setScalar(cur + (sTarget - cur) * 0.12);
+        h.rotation.z = t * 0.25;
+        h.lookAt(camera.position);
+      }
 
       // ── Camera: layer-aware target & zoom ──
       const gx = gyroTilt.current.x;
