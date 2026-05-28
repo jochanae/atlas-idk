@@ -25,6 +25,7 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
 import { ChatTrayHeader } from "../components/ChatTrayHeader";
 import { InviteModal } from "../components/InviteModal";
+import { MentalShredderModal } from "../components/MentalShredderModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { ingestRepository } from "../lib/repoIngest";
 import { chooseGreeting, readLastActive, markActiveNow } from "../lib/atlas-voice";
