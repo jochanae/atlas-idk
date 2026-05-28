@@ -2773,11 +2773,33 @@ export default function Home() {
             {/* Greeting */}
             {homeMessages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
-                <h1 style={{ fontSize: "var(--ts-display-xl)", fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.025em", lineHeight: 1.2, opacity: 0.85, margin: "0 0 10px" }}>
-                  {greetingRef.current?.head}
+                <h1 style={{
+                  fontSize: "var(--ts-display-xl)", fontWeight: 300,
+                  letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
+                  ...(reflectionLocked
+                    ? {
+                        background: "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                        backgroundClip: "text",
+                        opacity: 1,
+                      }
+                    : { color: "var(--atlas-fg)", opacity: 0.85 }),
+                }}>
+                  {reflectionLocked ? "Think Freely" : greetingRef.current?.head}
                 </h1>
-                <p style={{ fontSize: "var(--ts-body)", color: "var(--atlas-muted)", opacity: 0.55, margin: 0, fontStyle: "italic" }}>
-                  {greetingRef.current?.sub}
+                <p style={{
+                  fontSize: "var(--ts-body)",
+                  color: reflectionLocked ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  opacity: reflectionLocked ? 0.8 : 0.55,
+                  margin: 0,
+                  fontStyle: reflectionLocked ? "normal" : "italic",
+                  fontFamily: reflectionLocked ? "var(--app-font-mono)" : undefined,
+                  letterSpacing: reflectionLocked ? "0.1em" : undefined,
+                  textTransform: reflectionLocked ? "uppercase" : undefined,
+                  fontSize: reflectionLocked ? 11 : undefined as any,
+                }}>
+                  {reflectionLocked ? "Private session · Zero-trace" : greetingRef.current?.sub}
                 </p>
               </div>
             )}
