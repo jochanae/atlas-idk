@@ -27,7 +27,6 @@ import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
-import { GitHubConnect } from "../components/GitHubConnect";
 import { PreviewPanel } from "../components/workspace/PreviewPanel";
 import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { FilesPanel } from "../components/workspace/FilesPanel";
@@ -414,6 +413,130 @@ export interface GhTreeNode {
 
 // ── Platform detection ────────────────────────────────────────────────────────
 
+// ── GithubTokenInput ──────────────────────────────────────────────────────────
+function GithubTokenInput({
+  isConnected,
+  isLoading,
+  error,
+  onConnect,
+  onDisconnect,
+}: {
+  isConnected: boolean;
+  isLoading: boolean;
+  error: string | null;
+  onConnect: (token: string) => Promise<boolean>;
+  onDisconnect: () => Promise<void>;
+}) {
+  const [token, setToken] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleConnect = async () => {
+    const trimmed = token.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    const ok = await onConnect(trimmed);
+    setSaving(false);
+    if (ok) setToken("");
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.65 }}>
+        Checking GitHub connection...
+      </div>
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.85, fontFamily: "var(--app-font-mono)" }}>
+          GitHub connected at account level.
+        </div>
+        <button
+          type="button"
+          onClick={() => { void onDisconnect(); }}
+          style={{
+            alignSelf: "flex-start",
+            padding: "6px 14px",
+            borderRadius: 6,
+            background: "transparent",
+            border: "1px solid rgba(239,68,68,0.3)",
+            color: "rgba(252,165,165,0.8)",
+            fontSize: 10,
+            fontFamily: "var(--app-font-mono)",
+            cursor: "pointer",
+            letterSpacing: "0.06em",
+          }}
+        >
+          Disconnect
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.7 }}>
+        Connect GitHub once for this account so Atlas can read and write code across projects.
+      </div>
+      <input
+        type="password"
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") void handleConnect(); }}
+        placeholder="ghp_..."
+        autoComplete="off"
+        style={{
+          width: "100%",
+          padding: "8px 10px",
+          borderRadius: 6,
+          background: "var(--atlas-surface)",
+          border: "1px solid var(--atlas-border)",
+          color: "var(--atlas-fg)",
+          fontSize: 11,
+          fontFamily: "var(--app-font-mono)",
+          outline: "none",
+          boxSizing: "border-box",
+        }}
+      />
+      {error && (
+        <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>
+          {error}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => { void handleConnect(); }}
+        disabled={!token.trim() || saving}
+        style={{
+          alignSelf: "flex-start",
+          padding: "8px 14px",
+          borderRadius: 6,
+          background: token.trim() ? "var(--atlas-gold)" : "var(--atlas-surface)",
+          border: "none",
+          color: token.trim() ? "#0D0B09" : "var(--atlas-muted)",
+          fontSize: 10,
+          fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          cursor: token.trim() && !saving ? "pointer" : "not-allowed",
+        }}
+      >
+        {saving ? "Connecting..." : "Connect"}
+      </button>
+      <a
+        href="https://github.com/settings/tokens/new?description=Atlas&scopes=repo"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ fontSize: 9.5, color: "var(--atlas-gold)", opacity: 0.55, fontFamily: "var(--app-font-mono)" }}
+      >
+        Create token on GitHub -&gt;
+      </a>
+    </div>
+  );
+}
+
 // ── ConnectionsTab ────────────────────────────────────────────────────────────
 function ConnectionsTab({
   projectId,
@@ -430,7 +553,13 @@ function ConnectionsTab({
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
   const updateProject = useUpdateProject();
-  const { isConnected: githubConnected } = useGitHub();
+  const {
+    isConnected: githubConnected,
+    isLoading: githubLoading,
+    error: githubError,
+    connect: connectGithub,
+    disconnect: disconnectGithub,
+  } = useGitHub();
 
   const [dbUrl, setDbUrl] = useState<string | null>(null);
 
@@ -581,7 +710,13 @@ function ConnectionsTab({
         <div style={rowStyle}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={labelStyle}>GitHub</div>
-            <GitHubConnect />
+            <GithubTokenInput
+              isConnected={githubConnected}
+              isLoading={githubLoading}
+              error={githubError}
+              onConnect={connectGithub}
+              onDisconnect={disconnectGithub}
+            />
           </div>
         </div>
 
@@ -3375,11 +3510,7 @@ export default function Workspace() {
     if (!project?.linkedRepo) return;
     if (repoCtxLoadedFor.current === id) return;
 
-    // Token resolution: DB record → localStorage → server-side GITHUB_TOKEN
-    const token =
-      project?.githubToken ??
-      (() => { try { return localStorage.getItem("atlas-github-token"); } catch { return null; } })() ??
-      "__server__";
+    const token = githubPushToken ?? "__server__";
 
     let cancelled = false;
     const parsedRepo = parseLinkedRepo(project.linkedRepo);
@@ -3469,7 +3600,7 @@ export default function Workspace() {
     })();
 
     return () => { cancelled = true; };
-  }, [id, project?.linkedRepo, project?.githubToken]);
+  }, [githubPushToken, id, project?.linkedRepo]);
 
   // Auto-run analyze scan at workspace level so Atlas knows the full codebase
   // structure the moment a project opens — no FILES tab visit required.
@@ -3491,10 +3622,7 @@ export default function Workspace() {
       }
     } catch { /* no cache or parse error — proceed */ }
 
-    const token =
-      project?.githubToken ??
-      (() => { try { return localStorage.getItem("atlas-github-token"); } catch { return null; } })() ??
-      "__server__";
+    const token = githubPushToken ?? "__server__";
 
     fetch("/api/github/analyze", {
       method: "POST",
@@ -3507,7 +3635,7 @@ export default function Workspace() {
         try { localStorage.setItem(scanKey, JSON.stringify(data)); } catch {}
       })
       .catch(() => { /* silent — never break the workspace */ });
-  }, [id, project?.linkedRepo, project?.githubToken]);
+  }, [githubPushToken, id, project?.linkedRepo]);
 
   // Persist last visited project for footer LEDGER shortcut
   useEffect(() => {
@@ -3520,10 +3648,7 @@ export default function Workspace() {
   sendCtxRef.current = {
     wsLens,
     wsModel,
-    githubToken:
-      project?.githubToken ??
-      (() => { try { return localStorage.getItem("atlas-github-token"); } catch { return null; } })() ??
-      null,
+    githubToken: githubPushToken,
   };
 
   // doSend / handleRegenerate owned by useChatStream.
