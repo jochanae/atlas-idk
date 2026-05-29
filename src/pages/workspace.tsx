@@ -37,6 +37,7 @@ import { MapTab } from "@/components/workspace/MapTab";
 import { StreamingText, ChunkedBubbles } from "@/components/workspace/StreamingText";
 import { MenuBtn, AtlasLogo } from "@/components/workspace/atoms";
 import { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow } from "@/components/workspace/CommitHistory";
+export { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow };
 import { WorkbenchPanel } from "../components/workspace/WorkbenchPanel";
 import { ArtifactsPanel } from "@/components/workspace/ArtifactsPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
