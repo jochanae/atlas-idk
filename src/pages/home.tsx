@@ -2090,7 +2090,19 @@ export default function Home() {
                 // Wait for the pacer to finish revealing all tokens before
                 // we mark the bubble non-streaming and attach final metadata.
                 await pacer.finish();
-                const plan = detectPlanFromText(streamedText);
+                let fullText = streamedText;
+                // Parse NAVIGATE_TO command
+                const navMatch = fullText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
+                if (navMatch) {
+                  const route = navMatch[1];
+                  // Remove the marker from displayed text
+                  fullText = fullText.replace(/\nNAVIGATE_TO:\{[^}]+\}/g, "").trim();
+                  // Navigate after a short delay so the message renders first
+                  setTimeout(() => {
+                    window.location.href = route;
+                  }, 800);
+                }
+                const plan = detectPlanFromText(fullText);
                 const metrics = {
                   executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
                   inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
@@ -2107,7 +2119,7 @@ export default function Home() {
                   modelUsed: meta.modelUsed ?? meta.model_used ?? null,
                 };
                 setHomeMessages(prev => prev.map(m =>
-                  (m as any).id === streamingId ? { ...m, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
+                  (m as any).id === streamingId ? { ...m, content: fullText, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
                 ));
                 if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
                 if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
