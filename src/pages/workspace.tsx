@@ -6,7 +6,6 @@ import { useParams, useLocation } from "wouter";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
-import { useGitHub } from "@/hooks/useGitHub";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useChatLens } from "@/hooks/useChatLens";
@@ -549,27 +548,88 @@ function ConnectionsTab({
   showModelPicker: boolean;
   onShowModelPickerChange: (v: boolean) => void;
 }) {
+  type AccountConnection = { id: number | string; type?: string | null };
+
   const { data: project } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
   const updateProject = useUpdateProject();
-  const {
-    isConnected: githubConnected,
-    isLoading: githubLoading,
-    error: githubError,
-    connect: connectGithub,
-    disconnect: disconnectGithub,
-  } = useGitHub();
 
+  const [githubConnection, setGithubConnection] = useState<AccountConnection | null>(null);
+  const [githubLoading, setGithubLoading] = useState(true);
+  const [githubSaving, setGithubSaving] = useState(false);
+  const [githubError, setGithubError] = useState<string | null>(null);
   const [dbUrl, setDbUrl] = useState<string | null>(null);
 
+  const loadGithubConnection = useCallback(async () => {
+    setGithubLoading(true);
+    setGithubError(null);
+    try {
+      const res = await fetch("/api/connections", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
+      setGithubConnection(connections.find((c) => c.type === "github") ?? null);
+    } catch (error) {
+      setGithubError(error instanceof Error ? error.message : "Could not load GitHub connection");
+      setGithubConnection(null);
+    } finally {
+      setGithubLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    void loadGithubConnection();
     try { setDbUrl(localStorage.getItem(`atlas-db-url-${projectId}`)); } catch {}
-  }, [projectId]);
+  }, [loadGithubConnection, projectId]);
+
+  const saveGithubToken = async () => {
+    const tokenValue = prompt("Paste GitHub token:");
+    if (tokenValue === null || !tokenValue.trim()) return;
+    setGithubSaving(true);
+    setGithubError(null);
+    try {
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ type: "github", label: "GitHub", token: tokenValue.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      await loadGithubConnection();
+    } catch (error) {
+      setGithubError(error instanceof Error ? error.message : "Could not save GitHub connection");
+    } finally {
+      setGithubSaving(false);
+    }
+  };
+
+  const disconnectGithub = async () => {
+    if (!githubConnection) return;
+    setGithubSaving(true);
+    setGithubError(null);
+    try {
+      const res = await fetch(`/api/connections/${githubConnection.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setGithubConnection(null);
+    } catch (error) {
+      setGithubError(error instanceof Error ? error.message : "Could not disconnect GitHub");
+    } finally {
+      setGithubSaving(false);
+    }
+  };
 
   const linkedRepo = parseLinkedRepo(project?.linkedRepo);
 
   const repoName = linkedRepo?.fullName ?? null;
+  const githubConnected = !!githubConnection;
   const maskedDb = dbUrl ? dbUrl.replace(/:[^:@]*@/, ":***@") : null;
 
   const DOT_GREEN = "rgba(74,222,128,0.9)";
@@ -708,15 +768,29 @@ function ConnectionsTab({
         </div>
 
         <div style={rowStyle}>
+          <div style={dotStyle(githubConnected)} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={labelStyle}>GitHub</div>
-            <GithubTokenInput
-              isConnected={githubConnected}
-              isLoading={githubLoading}
-              error={githubError}
-              onConnect={connectGithub}
-              onDisconnect={disconnectGithub}
-            />
+            {githubConnected ? (
+              <div style={valueStyle}>GitHub Connected</div>
+            ) : githubLoading ? (
+              <div style={missingStyle}>Checking connection...</div>
+            ) : (
+              <div style={missingStyle}>No token - file reads disabled</div>
+            )}
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => { void saveGithubToken(); }} disabled={githubSaving} style={{ ...actionBtn, opacity: githubSaving ? 0.6 : 1 }}>
+                {githubConnected ? "Update token" : "Connect"}
+              </button>
+              {githubConnected && (
+                <button type="button" onClick={() => { void disconnectGithub(); }} disabled={githubSaving} style={{ ...actionBtn, color: "rgba(248,113,113,0.85)", opacity: githubSaving ? 0.6 : 1 }}>
+                  Disconnect
+                </button>
+              )}
+            </div>
+            {githubError && (
+              <div style={{ ...missingStyle, marginTop: 5, fontStyle: "normal" }}>{githubError}</div>
+            )}
           </div>
         </div>
 
