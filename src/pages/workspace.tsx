@@ -214,7 +214,7 @@ export interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "artifacts" | "workbench";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "forge" | "artifacts" | "workbench";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
@@ -1837,28 +1837,12 @@ function MobileTabBar({
   entryCount,
   activeCatch,
 }: {
-  activeTab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "workbench";
-  onTabChange: (tab: "chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "workbench") => void;
+  activeTab: "chat" | "ledger" | "files" | "map" | "preview" | "memory" | "blueprints" | "connections" | "forge";
+  onTabChange: (tab: "chat" | "ledger" | "files" | "map" | "preview" | "memory" | "blueprints" | "connections" | "forge") => void;
   entryCount: number;
   activeCatch: boolean;
 }) {
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const overflowRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!overflowOpen) return;
-    const close = (e: MouseEvent | TouchEvent) => {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
-        setOverflowOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("touchstart", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("touchstart", close);
-    };
-  }, [overflowOpen]);
+  const [showMore, setShowMore] = useState(false);
 
   const mainTabs: { id: "chat" | "ledger" | "files" | "map"; label: string; icon: React.ReactNode; badge?: number; alert?: boolean }[] = [
     {
@@ -1907,34 +1891,6 @@ function MobileTabBar({
           <line x1="18.5" y1="5.5" x2="13.5" y2="10.5" />
           <line x1="5.5" y1="18.5" x2="10.5" y2="13.5" />
           <line x1="18.5" y1="18.5" x2="13.5" y2="13.5" />
-        </svg>
-      ),
-    },
-  ];
-
-  const overflowTabs: { id: "preview" | "workbench"; label: string; icon: React.ReactNode }[] = [
-    {
-      id: "preview",
-      label: "Preview",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="15" rx="2" />
-          <path d="M2 8h20" />
-          <circle cx="5" cy="5.5" r="0.9" fill="currentColor" opacity={0.5} />
-          <circle cx="8" cy="5.5" r="0.9" fill="currentColor" opacity={0.5} />
-          <path d="M8 22h8M12 18v4" />
-        </svg>
-      ),
-    },
-    {
-      id: "workbench",
-      label: "Workbench",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <rect x="14" y="14" width="7" height="7" rx="1" />
         </svg>
       ),
     },
@@ -2034,103 +1990,158 @@ function MobileTabBar({
           </button>
         );
       })}
-      <div ref={overflowRef} style={{ flex: 1, position: "relative", display: "flex" }}>
-        {overflowOpen && (
+      {/* ── More button ── */}
+      <button
+        onClick={() => setShowMore(true)}
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          color: ["memory","blueprints","connections","forge"].includes(activeTab)
+            ? "var(--atlas-gold)"
+            : "var(--atlas-muted)",
+          transition: "color 180ms ease",
+          position: "relative",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        {/* Active indicator bar */}
+        <div style={{
+          position: "absolute", top: 0, left: "20%", right: "20%", height: 2,
+          borderRadius: "0 0 2px 2px",
+          background: ["memory","blueprints","connections","forge"].includes(activeTab)
+            ? "var(--atlas-gold)" : "transparent",
+          transition: "background 180ms ease",
+        }} />
+        {/* ··· icon */}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="19" cy="12" r="2" />
+        </svg>
+        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1 }}>
+          More
+        </span>
+      </button>
+
+      {/* ── More sheet overlay ── */}
+      {showMore && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setShowMore(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 290,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+          />
+          {/* Sheet */}
           <div
             style={{
-              position: "absolute",
-              bottom: "calc(100% + 8px)",
-              right: 8,
-              minWidth: 150,
-              borderRadius: 12,
-              border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+              position: "fixed", bottom: 64, left: 0, right: 0,
+              zIndex: 300,
               background: "var(--atlas-surface)",
-              boxShadow: "0 18px 48px rgba(0,0,0,0.42)",
-              padding: 6,
-              zIndex: 1,
+              borderTop: "1px solid rgba(201,162,76,0.18)",
+              borderRadius: "14px 14px 0 0",
+              padding: "16px 0 12px",
             }}
           >
-            {overflowTabs.map(({ id, label, icon }) => {
+            <div style={{
+              width: 36, height: 3, borderRadius: 2,
+              background: "rgba(201,162,76,0.25)",
+              margin: "0 auto 16px",
+            }} />
+            {(
+              [
+                {
+                  id: "memory" as const,
+                  label: "Memory",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z"/>
+                      <path d="M8 9h8M8 13h8M8 17h5"/>
+                    </svg>
+                  ),
+                },
+                {
+                  id: "blueprints" as const,
+                  label: "Blueprints",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <path d="M3 9h18M9 21V9"/>
+                    </svg>
+                  ),
+                },
+                {
+                  id: "connections" as const,
+                  label: "Connections",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6" cy="12" r="2"/>
+                      <circle cx="18" cy="6" r="2"/>
+                      <circle cx="18" cy="18" r="2"/>
+                      <path d="M8 11l8-4M8 13l8 4"/>
+                    </svg>
+                  ),
+                },
+                {
+                  id: "forge" as const,
+                  label: "Forge",
+                  icon: (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                  ),
+                },
+              ] as { id: "memory" | "blueprints" | "connections" | "forge"; label: string; icon: React.ReactNode }[]
+            ).map(({ id, label, icon }) => {
               const active = activeTab === id;
               return (
                 <button
                   key={id}
-                  type="button"
-                  onClick={() => { onTabChange(id); setOverflowOpen(false); }}
-                  aria-label={id === "preview" ? "Toggle preview" : "Open workbench"}
+                  onClick={() => { onTabChange(id); setShowMore(false); }}
                   style={{
                     width: "100%",
                     display: "flex",
                     alignItems: "center",
-                    gap: 9,
-                    padding: "9px 10px",
-                    borderRadius: 8,
-                    background: active ? "rgba(var(--atlas-gold-rgb),0.1)" : "transparent",
+                    gap: 14,
+                    padding: "13px 24px",
+                    background: active ? "rgba(201,162,76,0.07)" : "transparent",
                     border: "none",
-                    color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    borderLeft: `3px solid ${active ? "var(--atlas-gold)" : "transparent"}`,
                     cursor: "pointer",
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 12,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
                     textAlign: "left",
+                    WebkitTapHighlightColor: "transparent",
+                    transition: "all 160ms ease",
                   }}
                 >
                   {icon}
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                    {label}
-                  </span>
+                  {label}
+                  {active && (
+                    <span style={{ marginLeft: "auto", fontSize: 9, color: "var(--atlas-gold)", opacity: 0.7 }}>
+                      ACTIVE
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
-        )}
-        <button
-          type="button"
-          onClick={() => setOverflowOpen((open) => !open)}
-          aria-label="More workspace tabs"
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 3,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: overflowOpen || activeTab === "preview" || activeTab === "workbench" ? "var(--atlas-gold)" : "var(--atlas-muted)",
-            transition: "color 180ms ease",
-            position: "relative",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: "20%",
-              right: "20%",
-              height: 2,
-              borderRadius: "0 0 2px 2px",
-              background: overflowOpen || activeTab === "preview" || activeTab === "workbench" ? "var(--atlas-gold)" : "transparent",
-              transition: "background 180ms ease",
-            }}
-          />
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <circle cx="12" cy="5" r="1.8" />
-            <circle cx="12" cy="12" r="1.8" />
-            <circle cx="12" cy="19" r="1.8" />
-          </svg>
-          <span
-            style={{
-              fontSize: "var(--ts-xs)",
-              fontFamily: "var(--app-font-mono)",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              lineHeight: 1,
-            }}
-          >
-            More
-          </span>
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
 }
