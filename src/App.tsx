@@ -20,6 +20,7 @@ import Workshop from "./pages/workshop";
 import ProjectCompass from "./pages/project-compass";
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
+import Pricing from "./pages/pricing";
 import Help from "./pages/help";
 import Vault from "./pages/vault";
 import Secrets from "./pages/secrets";
@@ -317,6 +318,7 @@ function Router() {
           <Route path="/compass" component={ProjectCompass} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
+          <Route path="/pricing" component={Pricing} />
           <Route path="/help" component={Help} />
           <Route path="/vault" component={Vault} />
           <Route path="/secrets" component={Secrets} />
