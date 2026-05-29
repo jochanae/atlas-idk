@@ -3730,10 +3730,11 @@ export default function Workspace() {
   // ensureSessionId + session bootstrap effect now owned by useChatStream.
 
   // Always-current ref so doSend doesn't capture stale state
+  const ghToken = githubPushToken ?? (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
   sendCtxRef.current = {
     wsLens,
     wsModel,
-    githubToken: githubPushToken,
+    githubToken: ghToken,
   };
 
   // doSend / handleRegenerate owned by useChatStream.
