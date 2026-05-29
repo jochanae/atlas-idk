@@ -10,9 +10,9 @@ import {
 import type { Entry } from "@workspace/api-client-react";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
+import { PushDiffCard } from "@/components/workspace/ReviewCards";
+import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
 import {
-  PushDiffCard,
-  ParkingLotEntry,
   type CatchPayload,
   type PushRecord,
 } from "../../pages/workspace";
