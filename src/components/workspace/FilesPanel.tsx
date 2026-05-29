@@ -476,6 +476,99 @@ export function FilesPanel({
     );
     return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 18px", gap: 16 }}>
+        {/* —— ZIP Upload —— */}
+        <div style={{ width: "100%", marginBottom: 4 }}>
+          <div style={{
+            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "var(--atlas-muted)", marginBottom: 8,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}>
+            <span>Upload ZIP</span>
+            {zipLoaded && (
+              <span style={{
+                fontSize: 9, color: "rgba(134,239,172,0.8)",
+                background: "rgba(134,239,172,0.08)",
+                border: "1px solid rgba(134,239,172,0.2)",
+                padding: "2px 7px", borderRadius: 10,
+              }}>
+                ACTIVE
+              </span>
+            )}
+          </div>
+
+          {zipLoaded ? (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 12px", borderRadius: 7,
+              background: "rgba(201,162,76,0.05)",
+              border: "1px solid rgba(201,162,76,0.2)",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+              </svg>
+              <span style={{
+                flex: 1, fontSize: 11, fontFamily: "var(--app-font-mono)",
+                color: "rgba(201,162,76,0.85)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {zipFileName || "ZIP loaded"}
+              </span>
+              <button
+                onClick={() => onZipTrigger?.()}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(201,162,76,0.2)",
+                  borderRadius: 5, padding: "3px 9px",
+                  fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                  color: "rgba(201,162,76,0.6)",
+                  cursor: "pointer", letterSpacing: "0.06em",
+                }}
+              >
+                Replace
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onZipTrigger?.()}
+              style={{
+                width: "100%", padding: "11px 14px",
+                background: "rgba(201,162,76,0.04)",
+                border: "1px dashed rgba(201,162,76,0.25)",
+                borderRadius: 7, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+                color: "rgba(201,162,76,0.7)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11, letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                transition: "all 160ms ease",
+                WebkitTapHighlightColor: "transparent",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "rgba(201,162,76,0.08)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "rgba(201,162,76,0.04)";
+                e.currentTarget.style.borderColor = "rgba(201,162,76,0.25)";
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Upload ZIP — no GitHub needed
+            </button>
+          )}
+
+          <div style={{
+            marginTop: 6, fontSize: 10, color: "rgba(120,113,108,0.5)",
+            fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
+          }}>
+            Drop a ZIP of your project and Atlas reads the code directly. No repo required.
+          </div>
+        </div>
+        {/* —— GitHub connect —— */}
         <GitHubConnect onSuccess={() => window.location.reload()} />
       </div>
     );
