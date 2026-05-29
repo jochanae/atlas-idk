@@ -101,6 +101,7 @@ import { ChatComposer } from "@/components/workspace/ChatComposer";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { MemoryTab } from "@/components/workspace/MemoryTab";
 import { BlueprintsTab } from "@/components/workspace/BlueprintsTab";
+import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
@@ -214,7 +215,7 @@ export interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "forge" | "artifacts" | "workbench";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "forge" | "artifacts" | "workbench";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
@@ -872,6 +873,7 @@ function ConnectionsTab({
 // ── RightPanel (tabbed) ──────────────────────────────────────────────────────
 function RightPanel({
   projectId,
+  projectName,
   githubToken,
   entries,
   activeCatch,
@@ -923,6 +925,7 @@ function RightPanel({
   onShowModelPickerChange,
 }: {
   projectId: number;
+  projectName: string;
   githubToken: string | null;
   entries: Entry[];
   activeCatch: CatchPayload | null;
@@ -1060,6 +1063,19 @@ function RightPanel({
           <path d="M6.5 8h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           <path d="M1.5 5.5C1.5 3.5 3 2 4 2M1.5 10.5C1.5 12.5 3 14 4 14" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity={0.45} />
           <path d="M14.5 5.5C14.5 3.5 13 2 12 2M14.5 10.5C14.5 12.5 13 14 12 14" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity={0.45} />
+        </svg>
+      ),
+    },
+    {
+      id: "secrets" as RightTab,
+      label: "Secrets",
+      icon: (
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <rect x="3" y="7" width="10" height="7" rx="1.5" 
+            stroke="currentColor" strokeWidth="1.2"/>
+          <path d="M5 7V5a3 3 0 016 0v2" 
+            stroke="currentColor" strokeWidth="1.2" 
+            strokeLinecap="round"/>
         </svg>
       ),
     },
@@ -1263,6 +1279,12 @@ function RightPanel({
         />
       )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} githubToken={githubToken} onSwitchToFiles={() => setTab("files")} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
+      {tab === "secrets" && (
+        <SecretsPanel 
+          projectId={projectId} 
+          projectName={projectName} 
+        />
+      )}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
@@ -5356,6 +5378,7 @@ export default function Workspace() {
         flowPanel={!isMobile ? (
           <RightPanel
             projectId={id}
+            projectName={project?.name ?? "Project"}
             githubToken={project?.githubToken ?? null}
             entries={entries || []}
             activeCatch={activeCatch}
@@ -5803,6 +5826,7 @@ export default function Workspace() {
             >
               <RightPanel
                 projectId={id}
+                projectName={project?.name ?? "Project"}
                 githubToken={project?.githubToken ?? null}
                 entries={entries || []}
                 activeCatch={activeCatch}
