@@ -171,9 +171,9 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     }
   }, [location]);
 
-  const longPressTimerShort = useRef<number | null>(null);
-  const longPressTimerLong = useRef<number | null>(null);
-  const longPressIntent = useRef<"none" | "last-project" | "projects">("none");
+  const pressStartTime = useRef<number>(0);
+  const longPressTimer = useRef<number | null>(null);
+  const didLongPress = useRef(false);
 
   const pulseCenter = () => {
     if (typeof document === "undefined") return;
@@ -228,27 +228,34 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   };
 
   const startLongPress = () => {
-    longPressIntent.current = "none";
-    if (longPressTimerShort.current) window.clearTimeout(longPressTimerShort.current);
-    if (longPressTimerLong.current) window.clearTimeout(longPressTimerLong.current);
-    longPressTimerShort.current = window.setTimeout(() => {
-      longPressIntent.current = "last-project";
-      try { (navigator as any).vibrate?.(14); } catch {}
+    pressStartTime.current = Date.now();
+    didLongPress.current = false;
+    if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    longPressTimer.current = window.setTimeout(() => {
+      didLongPress.current = true;
     }, 500);
-    longPressTimerLong.current = window.setTimeout(() => {
-      longPressIntent.current = "projects";
-      try { (navigator as any).vibrate?.(30); } catch {}
-    }, 1200);
   };
+
   const cancelLongPress = () => {
-    if (longPressTimerShort.current) { window.clearTimeout(longPressTimerShort.current); longPressTimerShort.current = null; }
-    if (longPressTimerLong.current) { window.clearTimeout(longPressTimerLong.current); longPressTimerLong.current = null; }
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
   };
+
   const resolveLongPress = (): boolean => {
-    const intent = longPressIntent.current;
     cancelLongPress();
-    if (intent === "projects") { longPressIntent.current = "none"; goToProjects(); return true; }
-    if (intent === "last-project") { longPressIntent.current = "none"; goToLastProject(); return true; }
+    const duration = Date.now() - pressStartTime.current;
+    if (duration >= 1200) {
+      try { (navigator as any).vibrate?.([30]); } catch {}
+      goToProjects();
+      return true;
+    }
+    if (duration >= 500) {
+      try { (navigator as any).vibrate?.([18]); } catch {}
+      goToLastProject();
+      return true;
+    }
     return false;
   };
 
@@ -263,7 +270,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       suppressNextClick.current = false;
       return;
     }
-    // Only fires on non-touch devices (mouse click)
     if (window.matchMedia("(hover: hover)").matches) {
       fireTap();
     }
@@ -476,8 +482,16 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             aria-label="Atlas Core. Tap to focus chat. Short hold opens last project. Longer hold or Shift+Enter opens projects list."
             className="udock-center"
             onClick={handleAtlasClick}
-            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startLongPress(); }}
-            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); if (!resolveLongPress()) fireTap(); }}
+            onTouchStart={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              startLongPress();
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!resolveLongPress()) fireTap();
+            }}
             onContextMenu={(e) => { e.preventDefault(); cancelLongPress(); goToProjects(); }}
             onKeyDown={(e) => {
               if (e.repeat) return;
