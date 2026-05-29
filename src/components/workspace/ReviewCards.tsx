@@ -3,6 +3,7 @@ import { PlanCard } from "@/components/PlanCard";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { getAuthHeaders } from "@/lib/api";
+import { diffStat } from "@/lib/formatters";
 import type { Plan, PlanExecution } from "@/lib/plan";
 import {
   getGetProjectQueryKey,
@@ -396,6 +397,212 @@ export function ReviewTabPanel({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── PushDiffCard ──────────────────────────────────────────────────────────────
+// Groups one commit's worth of file pushes into a collapsible diff card.
+export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]; onRollbackAll: () => Promise<void> }) {
+  const [open, setOpen] = useState(true);
+  const [rolling, setRolling] = useState(false);
+  const [done, setDone] = useState(records.every(r => r.rolledBack));
+
+  const first = records[0];
+  const canRollback = records.some(r => r.originalContent && !r.rolledBack);
+
+  const stats = records.map(r => ({ ...r, ...diffStat(r.originalContent, r.newContent) }));
+  const totalAdded = stats.reduce((s, r) => s + r.additions, 0);
+  const totalDeleted = stats.reduce((s, r) => s + r.deletions, 0);
+
+  return (
+    <div style={{ borderRadius: 8, background: "rgba(0,0,0,0.22)", border: "1px solid var(--atlas-border)", marginBottom: 7, overflow: "hidden" }}>
+      {/* Collapsible header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+      >
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{ flexShrink: 0, transition: "transform 160ms ease", transform: open ? "rotate(90deg)" : "rotate(0deg)", opacity: 0.45 }}
+        >
+          <path d="M3 2l4 3-4 3" stroke="var(--atlas-fg)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", flex: 1 }}>
+          {records.length} File{records.length !== 1 ? "s" : ""} Changed
+        </span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#4ade80", opacity: 0.8 }}>+{totalAdded}</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#f87171", opacity: 0.8, marginRight: 4 }}>-{totalDeleted}</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: "var(--atlas-muted)", opacity: 0.45 }}>
+          {new Date(first.pushedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      </button>
+
+      {/* File list */}
+      {open && (
+        <div style={{ borderTop: "1px solid var(--atlas-border)" }}>
+          {stats.map(r => {
+            const ext = r.filename.split(".").pop()?.toLowerCase() ?? "";
+            const iconColor =
+              ext === "ts" || ext === "tsx" ? "#60a5fa"
+              : ext === "js" || ext === "jsx" ? "#fbbf24"
+              : ext === "css" || ext === "scss" ? "#a78bfa"
+              : ext === "json" ? "#34d399"
+              : ext === "md" ? "#C9A24C"
+              : ext === "py" ? "#4ade80"
+              : ext === "html" ? "#f97316"
+              : ext === "sh" || ext === "bash" ? "#86efac"
+              : "rgba(var(--atlas-muted-rgb),0.65)";
+            const isNew = r.originalContent === null;
+            return (
+              <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderBottom: "1px solid var(--atlas-surface)" }}>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.8 }}>
+                  <path d="M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V6L9 1z" stroke={iconColor} strokeWidth="1.2" strokeLinejoin="round" />
+                  <path d="M9 1v5h5" stroke={iconColor} strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.filename}
+                </span>
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "#4ade80", flexShrink: 0 }}>+{r.additions}</span>
+                {isNew ? (
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "0px 5px", borderRadius: 4, flexShrink: 0, letterSpacing: "0.04em" }}>New</span>
+                ) : (
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "#f87171", flexShrink: 0 }}>-{r.deletions}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Footer actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {first.branch}
+        </div>
+        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+          {first.commitUrl && (
+            <a href={first.commitUrl} target="_blank" rel="noopener noreferrer"
+              style={{ padding: "3px 9px", borderRadius: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", textDecoration: "none", opacity: 0.75 }}
+            >
+              View →
+            </a>
+          )}
+          {canRollback && !done && (
+            <button
+              disabled={rolling}
+              onClick={async () => { setRolling(true); await onRollbackAll(); setRolling(false); setDone(true); }}
+              style={{ padding: "3px 9px", borderRadius: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: rolling ? "rgba(255,255,255,0.03)" : "rgba(239,68,68,0.07)", border: `1px solid ${rolling ? "var(--atlas-border)" : "rgba(239,68,68,0.22)"}`, color: rolling ? "var(--atlas-muted)" : "rgba(252,165,165,0.8)", cursor: rolling ? "not-allowed" : "pointer", transition: "all 150ms ease" }}
+            >
+              {rolling ? "…" : "↺ Rollback"}
+            </button>
+          )}
+          {done && <span style={{ padding: "3px 9px", fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>rolled back</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PushDiffCard ──────────────────────────────────────────────────────────────
+// Groups one commit's worth of file pushes into a collapsible diff card.
+export function PushDiffCard({ records, onRollbackAll }: { records: PushRecord[]; onRollbackAll: () => Promise<void> }) {
+  const [open, setOpen] = useState(true);
+  const [rolling, setRolling] = useState(false);
+  const [done, setDone] = useState(records.every(r => r.rolledBack));
+
+  const first = records[0];
+  const canRollback = records.some(r => r.originalContent && !r.rolledBack);
+
+  const stats = records.map(r => ({ ...r, ...diffStat(r.originalContent, r.newContent) }));
+  const totalAdded = stats.reduce((s, r) => s + r.additions, 0);
+  const totalDeleted = stats.reduce((s, r) => s + r.deletions, 0);
+
+  return (
+    <div style={{ borderRadius: 8, background: "rgba(0,0,0,0.22)", border: "1px solid var(--atlas-border)", marginBottom: 7, overflow: "hidden" }}>
+      {/* Collapsible header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+      >
+        <svg
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+          style={{ flexShrink: 0, transition: "transform 160ms ease", transform: open ? "rotate(90deg)" : "rotate(0deg)", opacity: 0.45 }}
+        >
+          <path d="M3 2l4 3-4 3" stroke="var(--atlas-fg)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", flex: 1 }}>
+          {records.length} File{records.length !== 1 ? "s" : ""} Changed
+        </span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#4ade80", opacity: 0.8 }}>+{totalAdded}</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "#f87171", opacity: 0.8, marginRight: 4 }}>-{totalDeleted}</span>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", color: "var(--atlas-muted)", opacity: 0.45 }}>
+          {new Date(first.pushedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      </button>
+
+      {/* File list */}
+      {open && (
+        <div style={{ borderTop: "1px solid var(--atlas-border)" }}>
+          {stats.map(r => {
+            const ext = r.filename.split(".").pop()?.toLowerCase() ?? "";
+            const iconColor =
+              ext === "ts" || ext === "tsx" ? "#60a5fa"
+              : ext === "js" || ext === "jsx" ? "#fbbf24"
+              : ext === "css" || ext === "scss" ? "#a78bfa"
+              : ext === "json" ? "#34d399"
+              : ext === "md" ? "#C9A24C"
+              : ext === "py" ? "#4ade80"
+              : ext === "html" ? "#f97316"
+              : ext === "sh" || ext === "bash" ? "#86efac"
+              : "rgba(var(--atlas-muted-rgb),0.65)";
+            const isNew = r.originalContent === null;
+            return (
+              <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderBottom: "1px solid var(--atlas-surface)" }}>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, opacity: 0.8 }}>
+                  <path d="M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V6L9 1z" stroke={iconColor} strokeWidth="1.2" strokeLinejoin="round" />
+                  <path d="M9 1v5h5" stroke={iconColor} strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-fg)", opacity: 0.85, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.filename}
+                </span>
+                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "#4ade80", flexShrink: 0 }}>+{r.additions}</span>
+                {isNew ? (
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-tiny)", background: "rgba(74,222,128,0.12)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "0px 5px", borderRadius: 4, flexShrink: 0, letterSpacing: "0.04em" }}>New</span>
+                ) : (
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", color: "#f87171", flexShrink: 0 }}>-{r.deletions}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Footer actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", justifyContent: "space-between" }}>
+        <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", opacity: 0.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {first.branch}
+        </div>
+        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+          {first.commitUrl && (
+            <a href={first.commitUrl} target="_blank" rel="noopener noreferrer"
+              style={{ padding: "3px 9px", borderRadius: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", textDecoration: "none", opacity: 0.75 }}
+            >
+              View →
+            </a>
+          )}
+          {canRollback && !done && (
+            <button
+              disabled={rolling}
+              onClick={async () => { setRolling(true); await onRollbackAll(); setRolling(false); setDone(true); }}
+              style={{ padding: "3px 9px", borderRadius: 4, fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: rolling ? "rgba(255,255,255,0.03)" : "rgba(239,68,68,0.07)", border: `1px solid ${rolling ? "var(--atlas-border)" : "rgba(239,68,68,0.22)"}`, color: rolling ? "var(--atlas-muted)" : "rgba(252,165,165,0.8)", cursor: rolling ? "not-allowed" : "pointer", transition: "all 150ms ease" }}
+            >
+              {rolling ? "…" : "↺ Rollback"}
+            </button>
+          )}
+          {done && <span style={{ padding: "3px 9px", fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>rolled back</span>}
+        </div>
+      </div>
     </div>
   );
 }
