@@ -539,11 +539,13 @@ function GithubTokenInput({
 // ── ConnectionsTab ────────────────────────────────────────────────────────────
 function ConnectionsTab({
   projectId,
+  githubToken,
   onSwitchToFiles,
   showModelPicker,
   onShowModelPickerChange,
 }: {
   projectId: number;
+  githubToken: string | null;
   onSwitchToFiles: () => void;
   showModelPicker: boolean;
   onShowModelPickerChange: (v: boolean) => void;
@@ -629,7 +631,7 @@ function ConnectionsTab({
   const linkedRepo = parseLinkedRepo(project?.linkedRepo);
 
   const repoName = linkedRepo?.fullName ?? null;
-  const githubConnected = !!githubConnection;
+  const githubConnected = !!githubToken || !!githubConnection;
   const maskedDb = dbUrl ? dbUrl.replace(/:[^:@]*@/, ":***@") : null;
 
   const DOT_GREEN = "rgba(74,222,128,0.9)";
@@ -870,6 +872,7 @@ function ConnectionsTab({
 // ── RightPanel (tabbed) ──────────────────────────────────────────────────────
 function RightPanel({
   projectId,
+  githubToken,
   entries,
   activeCatch,
   onClose,
@@ -920,6 +923,7 @@ function RightPanel({
   onShowModelPickerChange,
 }: {
   projectId: number;
+  githubToken: string | null;
   entries: Entry[];
   activeCatch: CatchPayload | null;
   onClose?: () => void;
@@ -1258,7 +1262,7 @@ function RightPanel({
           zipFileName={zipFileName}
         />
       )}
-      {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
+      {tab === "connections" && <ConnectionsTab projectId={projectId} githubToken={githubToken} onSwitchToFiles={() => setTab("files")} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
@@ -5352,6 +5356,7 @@ export default function Workspace() {
         flowPanel={!isMobile ? (
           <RightPanel
             projectId={id}
+            githubToken={project?.githubToken ?? null}
             entries={entries || []}
             activeCatch={activeCatch}
             onFileContext={setFileContext}
@@ -5798,6 +5803,7 @@ export default function Workspace() {
             >
               <RightPanel
                 projectId={id}
+                githubToken={project?.githubToken ?? null}
                 entries={entries || []}
                 activeCatch={activeCatch}
                 onClose={() => { setRightOpen(false); setRightFullscreen(false); }}
