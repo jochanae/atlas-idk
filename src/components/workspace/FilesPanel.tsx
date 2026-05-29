@@ -20,10 +20,12 @@ import {
   type GhFileContent,
   type GhCommitSummary,
   CommitHistoryCard,
+} from "../../pages/workspace";
+import {
   CommitHistorySkeleton,
   GhTreeNodeRow,
   buildTree,
-} from "../../pages/workspace";
+} from "@/components/workspace/CommitHistory";
 import { getLinkedRepoFullName, parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
 
 function DbUrlInput({ projectId, onSave }: { projectId: number; onSave: (url: string) => void }) {
