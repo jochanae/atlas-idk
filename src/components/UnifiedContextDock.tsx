@@ -263,7 +263,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       suppressNextClick.current = false;
       return;
     }
-    fireTap();
+    // Only fires on non-touch devices (mouse click)
+    if (window.matchMedia("(hover: hover)").matches) {
+      fireTap();
+    }
   };
 
 
@@ -473,12 +476,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             aria-label="Atlas Core. Tap to focus chat. Short hold opens last project. Longer hold or Shift+Enter opens projects list."
             className="udock-center"
             onClick={handleAtlasClick}
-            onPointerDown={startLongPress}
-            onPointerUp={handleAtlasPointerUp}
-            onPointerLeave={cancelLongPress}
-            onPointerCancel={cancelLongPress}
-            onTouchStart={(e) => { e.preventDefault(); startLongPress(); }}
-            onTouchEnd={(e) => { e.preventDefault(); handleAtlasPointerUp(); }}
+            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startLongPress(); }}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); if (!resolveLongPress()) fireTap(); }}
             onContextMenu={(e) => { e.preventDefault(); cancelLongPress(); goToProjects(); }}
             onKeyDown={(e) => {
               if (e.repeat) return;
