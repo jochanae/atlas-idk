@@ -477,6 +477,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             onPointerUp={handleAtlasPointerUp}
             onPointerLeave={cancelLongPress}
             onPointerCancel={cancelLongPress}
+            onTouchStart={(e) => { e.preventDefault(); startLongPress(); }}
+            onTouchEnd={(e) => { e.preventDefault(); handleAtlasPointerUp(); }}
             onContextMenu={(e) => { e.preventDefault(); cancelLongPress(); goToProjects(); }}
             onKeyDown={(e) => {
               if (e.repeat) return;
@@ -513,7 +515,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               boxShadow: "0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5)",
               transition: "transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard)",
               WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
+              touchAction: "none",
             }}
           >
             <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden" }}>
