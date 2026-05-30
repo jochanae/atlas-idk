@@ -2427,15 +2427,32 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
-        <div
-          onClick={() => {
+      {nexusChat.shapingPayload && (
+        <ShapingForgeOverlay
+          open={shapingOverlayOpen}
+          payload={nexusChat.shapingPayload}
+          held={nexusChat.shapingHeld}
+          onClose={() => setShapingOverlayOpen(false)}
+          onCommit={() => {
             const existing = (projects as any[])?.find(
               (p: any) => p.entity_type === "idea"
             );
-            if (existing) window.location.href =
-              `/project/${existing.id}`;
+            if (existing) window.location.href = `/project/${existing.id}`;
           }}
+          onRelease={() => {
+            nexusChat.setShapingPayload(null);
+            nexusChat.setShapingHeld(false);
+          }}
+          onDropFacet={(field) => {
+            nexusChat.setShapingPayload((prev) =>
+              prev ? { ...prev, [field]: "" } : prev
+            );
+          }}
+        />
+      )}
+      {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
+        <div
+          onClick={() => setShapingOverlayOpen(true)}
           style={{
             display: "flex",
             alignItems: "center",
