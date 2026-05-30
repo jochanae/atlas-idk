@@ -191,14 +191,11 @@ export function useNexusChatStream(
             setTimeout(() => { window.location.href = route; }, 800);
           }
 
-          // Parse READY_TO_SHAPE
-          const shapingMatch = displayText.match(/READY_TO_SHAPE:\{([^\n]+)\}/);
-          if (shapingMatch && !shapingHeld) {
-            try {
-              const payload = JSON.parse(`{${shapingMatch[1]}}`);
-              if (payload?.title && payload?.tension) setShapingPayload(payload);
-            } catch { /* non-fatal */ }
-            displayText = displayText.replace(/\nREADY_TO_SHAPE:\{[^\n]+\}/g, "").trim();
+          // Read shapingPayload from meta — backend parses and 
+          // sends it in the done event already cleaned
+          const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
+          if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeld) {
+            setShapingPayload(shapingFromMeta);
           }
 
           // Parse MEMORY_CHIPS
