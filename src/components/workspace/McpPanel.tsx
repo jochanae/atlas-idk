@@ -64,19 +64,18 @@ const secondaryButtonStyle: React.CSSProperties = {
 function normalizeTools(value: unknown): McpTool[] {
   if (!Array.isArray(value)) return [];
 
-  return value
-    .map((tool) => {
-      if (!tool || typeof tool !== "object") return null;
-      const record = tool as Record<string, unknown>;
-      const name = typeof record.name === "string" ? record.name : null;
-      if (!name) return null;
-
-      return {
-        name,
-        description: typeof record.description === "string" ? record.description : null,
-      };
-    })
-    .filter((tool): tool is McpTool => tool !== null);
+  const result: McpTool[] = [];
+  for (const tool of value) {
+    if (!tool || typeof tool !== "object") continue;
+    const record = tool as Record<string, unknown>;
+    const name = typeof record.name === "string" ? record.name : null;
+    if (!name) continue;
+    result.push({
+      name,
+      description: typeof record.description === "string" ? record.description : null,
+    });
+  }
+  return result;
 }
 
 function getErrorMessage(err: unknown, fallback: string) {
