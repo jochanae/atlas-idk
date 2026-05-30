@@ -4098,7 +4098,12 @@ export default function Workspace() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const chatEl = chatPanelScrollRef.current;
+    if (chatEl) {
+      chatEl.scrollTop = chatEl.scrollHeight - chatEl.clientHeight;
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: "instant" });
+    }
   }, [messages, chatPending]);
 
   // Close mobile panel on mobile→desktop resize
@@ -5609,7 +5614,18 @@ export default function Workspace() {
                 setShowWsScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
               },
               showScrollBtn: showWsScrollBtn,
-              onScrollToLatest: () => chatPanelScrollRef.current?.scrollTo({ top: chatPanelScrollRef.current.scrollHeight, behavior: "smooth" }),
+              onScrollToLatest: () => {
+                const el = chatPanelScrollRef.current;
+                if (!el) return;
+                // Use scrollTop directly — more reliable on Android Chrome
+                // than scrollTo with smooth behavior
+                const target = el.scrollHeight - el.clientHeight;
+                el.scrollTop = target;
+                // Belt and suspenders — also try after a frame
+                requestAnimationFrame(() => {
+                  if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
+                });
+              },
               messages,
               chatPending,
               activityStream,
