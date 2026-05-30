@@ -194,10 +194,8 @@ export function useNexusChatStream(
           // Read shapingPayload from meta — backend parses and 
           // sends it in the done event already cleaned
           const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
-          console.log("[shaping] meta.shapingPayload:", shapingFromMeta);
           if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeld) {
             setShapingPayload(shapingFromMeta);
-            console.log("[shaping] payload set:", shapingFromMeta);
           }
 
           // Parse MEMORY_CHIPS

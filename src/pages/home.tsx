@@ -2373,6 +2373,44 @@ export default function Home() {
   };
 
   const hasInput = input.trim().length > 0;
+  const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const header = document.querySelector(".atlas-app-header");
+    if (!header) return;
+    const logoRegion = header.children[0] as HTMLElement | undefined;
+
+    const slot = document.createElement("div");
+    slot.setAttribute("data-home-shaping-slot", "true");
+    slot.style.display = "flex";
+    slot.style.alignItems = "center";
+    slot.style.flexShrink = "0";
+    slot.style.position = "relative";
+    slot.style.zIndex = "2";
+
+    const previousDisplay = logoRegion?.style.display ?? "";
+    const previousAlignItems = logoRegion?.style.alignItems ?? "";
+    const previousGap = logoRegion?.style.gap ?? "";
+    if (logoRegion) {
+      logoRegion.style.display = "flex";
+      logoRegion.style.alignItems = "center";
+      logoRegion.style.gap = "12px";
+      logoRegion.appendChild(slot);
+    } else {
+      header.insertBefore(slot, header.children[1] ?? null);
+    }
+    setShapingHeaderSlot(slot);
+
+    return () => {
+      slot.remove();
+      if (logoRegion) {
+        logoRegion.style.display = previousDisplay;
+        logoRegion.style.alignItems = previousAlignItems;
+        logoRegion.style.gap = previousGap;
+      }
+      setShapingHeaderSlot(null);
+    };
+  }, []);
 
   return (
     <div
@@ -2387,6 +2425,53 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
+      {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
+        <div
+          onClick={() => {
+            const existing = (projects as any[])?.find(
+              (p: any) => p.entity_type === "idea"
+            );
+            if (existing) window.location.href =
+              `/project/${existing.id}`;
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "4px 10px",
+            borderRadius: "999px",
+            border: `1px solid rgba(201, 162, 76, ${
+              nexusChat.shapingHeld ? "0.4" : "0.6"
+            })`,
+            background: `rgba(201, 162, 76, ${
+              nexusChat.shapingHeld ? "0.06" : "0.1"
+            })`,
+            cursor: "pointer",
+            animation: !nexusChat.shapingHeld
+              ? "shapingPulse 2s ease-in-out infinite"
+              : "none",
+          }}
+        >
+          <div style={{
+            width: "6px",
+            height: "6px",
+            borderRadius: "50%",
+            background: "var(--atlas-gold)",
+            opacity: nexusChat.shapingHeld ? 0.7 : 1,
+          }} />
+          <span style={{
+            fontSize: "10px",
+            color: "var(--atlas-gold)",
+            letterSpacing: "0.1em",
+            fontFamily: "var(--app-font-mono)",
+          }}>
+            {nexusChat.shapingHeld
+              ? nexusChat.shapingPayload.title
+              : "SHAPING"}
+          </span>
+        </div>,
+        shapingHeaderSlot
+      )}
       {(ptr_pulling || ptr_refreshing) && (
         <div
           style={{
@@ -3036,125 +3121,6 @@ export default function Home() {
           </div>
 
           {/* Continuity strip — moved below; anchors above quick-action pills */}
-
-          {nexusChat.shapingPayload && !nexusChat.shapingHeld && (
-            <div style={{
-              margin: "12px 16px",
-              marginBottom: "80px",
-              padding: "16px",
-              background: "rgba(201, 162, 76, 0.06)",
-              border: "1px solid rgba(201, 162, 76, 0.25)",
-              borderRadius: "12px",
-              backdropFilter: "blur(8px)",
-              position: "relative",
-              zIndex: 100,
-            }}>
-              <div style={{
-                fontSize: "10px",
-                letterSpacing: "0.12em",
-                color: "var(--atlas-gold)",
-                marginBottom: "8px",
-                textTransform: "uppercase",
-              }}>
-                Something is taking shape
-              </div>
-              <div style={{
-                fontSize: "15px",
-                fontWeight: 600,
-                color: "var(--atlas-fg)",
-                marginBottom: "4px",
-              }}>
-                {nexusChat.shapingPayload.title}
-              </div>
-              <div style={{
-                fontSize: "13px",
-                color: "var(--atlas-muted)",
-                marginBottom: "16px",
-                lineHeight: 1.5,
-              }}>
-                {nexusChat.shapingPayload.tension}
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={async () => {
-                    try {
-                      await fetch("/api/shaping/hold", {
-                        method: "POST",
-                        credentials: "include",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(nexusChat.shapingPayload),
-                      });
-                    } catch { /* non-fatal */ }
-                    nexusChat.setShapingHeld(true);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    background: "rgba(201, 162, 76, 0.15)",
-                    border: "1px solid rgba(201, 162, 76, 0.4)",
-                    borderRadius: "8px",
-                    color: "var(--atlas-gold)",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Hold it
-                </button>
-                <button
-                  onClick={() => nexusChat.setShapingPayload(null)}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    background: "transparent",
-                    border: "1px solid var(--atlas-border)",
-                    borderRadius: "8px",
-                    color: "var(--atlas-muted)",
-                    fontSize: "13px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Not yet
-                </button>
-              </div>
-            </div>
-          )}
-
-          {nexusChat.shapingHeld && nexusChat.shapingPayload && (
-            <div onClick={() => {
-              // Navigate to the shaping project when tapped
-              const existing = (projects as any[])?.find(
-                (p) => p.entity_type === "idea"
-              );
-              if (existing) {
-                window.location.href = `/project/${existing.id}`;
-              }
-            }} style={{
-              margin: "8px 16px",
-              padding: "10px 14px",
-              background: "rgba(201, 162, 76, 0.08)",
-              border: "1px solid rgba(201, 162, 76, 0.2)",
-              borderRadius: "20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-            }}>
-              <div style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: "var(--atlas-gold)",
-              }} />
-              <span style={{
-                fontSize: "12px",
-                color: "var(--atlas-gold)",
-                letterSpacing: "0.08em",
-              }}>
-                Shaping · {nexusChat.shapingPayload.title}
-              </span>
-            </div>
-          )}
 
           {/* Input shell */}
           <div className="atlas-input-shell" style={{ position: "relative", padding: "18px 20px 14px" }}>
