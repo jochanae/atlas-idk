@@ -1608,7 +1608,7 @@ export default function Home() {
     if (!projects || projects.length === 0) return;
     const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
     const abandoned = projects.filter((p: any) =>
-      p.status === "shaping" &&
+      p.entity_type === "idea" &&
       new Date(p.updatedAt ?? p.createdAt).getTime() < cutoff
     );
     abandoned.forEach((p: any) => {
@@ -1618,8 +1618,29 @@ export default function Home() {
       }).catch(() => {});
     });
   }, [projects]);
+  useEffect(() => {
+    if (!projects || shapingHeld) return;
+    const existing = (projects as any[]).find(
+      (p) => p.entity_type === "idea"
+    );
+    if (existing) {
+      let desc: { title?: string; tension?: string; audience?: string; what?: string } = {};
+      try {
+        desc = typeof existing.description === "string"
+          ? JSON.parse(existing.description)
+          : existing.description ?? {};
+      } catch {}
+      setShapingPayload({
+        title: existing.name ?? "Untitled idea",
+        tension: desc.tension ?? "",
+        audience: desc.audience ?? "",
+        what: desc.what ?? "",
+      });
+      setShapingHeld(true);
+    }
+  }, [projects]);
   const mostRecentActiveProjectId = useMemo(() => {
-    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.status === "shaping");
+    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
     const latest = candidates.reduce<Project | null>((current, project: Project) => {
       if (!current) return project;
@@ -3237,7 +3258,15 @@ export default function Home() {
           )}
 
           {shapingHeld && shapingPayload && (
-            <div style={{
+            <div onClick={() => {
+              // Navigate to the shaping project when tapped
+              const existing = (projects as any[])?.find(
+                (p) => p.entity_type === "idea"
+              );
+              if (existing) {
+                window.location.href = `/project/${existing.id}`;
+              }
+            }} style={{
               margin: "8px 16px",
               padding: "10px 14px",
               background: "rgba(201, 162, 76, 0.08)",
@@ -3246,6 +3275,7 @@ export default function Home() {
               display: "flex",
               alignItems: "center",
               gap: "8px",
+              cursor: "pointer",
             }}>
               <div style={{
                 width: "8px",
@@ -3258,7 +3288,7 @@ export default function Home() {
                 color: "var(--atlas-gold)",
                 letterSpacing: "0.08em",
               }}>
-                {shapingPayload.title}
+                Shaping · {shapingPayload.title}
               </span>
             </div>
           )}
