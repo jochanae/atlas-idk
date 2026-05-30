@@ -48,7 +48,6 @@ import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useChatStream } from "@/hooks/useChatStream";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 
@@ -1325,11 +1324,6 @@ export default function Home() {
     } : null,
   });
   const focusProjectId = homeFocus;
-  // Legacy — will be removed after nexusChat migration verified
-  const nexusStream = useChatStream({
-    projectId: focusProjectId ?? 0,
-    endpoint: "/api/nexus/chat",
-  });
   const [shapingPayload, setShapingPayload] = useState<{
     title: string;
     audience: string;
