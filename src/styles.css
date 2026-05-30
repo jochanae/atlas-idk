@@ -62,7 +62,7 @@
 
 html, body {
   touch-action: pan-x pan-y;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: auto;
 }
 
 :focus-visible {
@@ -314,7 +314,7 @@ html, body {
     height: 100%;
     width: 100%;
     overflow: hidden;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: auto;
     background-color: var(--atlas-bg);
     background-image:
       radial-gradient(
