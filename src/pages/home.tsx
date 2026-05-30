@@ -1300,6 +1300,13 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
+  const [shapingPayload, setShapingPayload] = useState<{
+    title: string;
+    audience: string;
+    tension: string;
+    what: string;
+  } | null>(null);
+  const [shapingHeld, setShapingHeld] = useState(false);
   useEffect(() => {
     const active = homeMessages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
@@ -2101,6 +2108,21 @@ export default function Home() {
                   setTimeout(() => {
                     window.location.href = route;
                   }, 800);
+                }
+                // Parse READY_TO_SHAPE marker
+                const shapingMatch = fullText.match(
+                  /READY_TO_SHAPE:\{([^\n]+)\}/
+                );
+                if (shapingMatch && !shapingHeld) {
+                  try {
+                    const payload = JSON.parse(`{${shapingMatch[1]}}`);
+                    if (payload?.title && payload?.tension) {
+                      setShapingPayload(payload);
+                    }
+                  } catch { /* non-fatal */ }
+                  fullText = fullText
+                    .replace(/\nREADY_TO_SHAPE:\{[^\n]+\}/g, "")
+                    .trim();
                 }
                 const plan = detectPlanFromText(fullText);
                 const metrics = {
@@ -3134,6 +3156,112 @@ export default function Home() {
 
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
+          {shapingPayload && !shapingHeld && (
+            <div style={{
+              margin: "12px 16px",
+              padding: "16px",
+              background: "rgba(201, 162, 76, 0.06)",
+              border: "1px solid rgba(201, 162, 76, 0.25)",
+              borderRadius: "12px",
+              backdropFilter: "blur(8px)",
+            }}>
+              <div style={{
+                fontSize: "10px",
+                letterSpacing: "0.12em",
+                color: "var(--atlas-gold)",
+                marginBottom: "8px",
+                textTransform: "uppercase",
+              }}>
+                Something is taking shape
+              </div>
+              <div style={{
+                fontSize: "15px",
+                fontWeight: 600,
+                color: "var(--atlas-fg)",
+                marginBottom: "4px",
+              }}>
+                {shapingPayload.title}
+              </div>
+              <div style={{
+                fontSize: "13px",
+                color: "var(--atlas-muted)",
+                marginBottom: "16px",
+                lineHeight: 1.5,
+              }}>
+                {shapingPayload.tension}
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={async () => {
+                    try {
+                      await fetch("/api/shaping/hold", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(shapingPayload),
+                      });
+                    } catch { /* non-fatal */ }
+                    setShapingHeld(true);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    background: "rgba(201, 162, 76, 0.15)",
+                    border: "1px solid rgba(201, 162, 76, 0.4)",
+                    borderRadius: "8px",
+                    color: "var(--atlas-gold)",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Hold it
+                </button>
+                <button
+                  onClick={() => setShapingPayload(null)}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    background: "transparent",
+                    border: "1px solid var(--atlas-border)",
+                    borderRadius: "8px",
+                    color: "var(--atlas-muted)",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Not yet
+                </button>
+              </div>
+            </div>
+          )}
+
+          {shapingHeld && shapingPayload && (
+            <div style={{
+              margin: "8px 16px",
+              padding: "10px 14px",
+              background: "rgba(201, 162, 76, 0.08)",
+              border: "1px solid rgba(201, 162, 76, 0.2)",
+              borderRadius: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}>
+              <div style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: "var(--atlas-gold)",
+              }} />
+              <span style={{
+                fontSize: "12px",
+                color: "var(--atlas-gold)",
+                letterSpacing: "0.08em",
+              }}>
+                {shapingPayload.title}
+              </span>
+            </div>
+          )}
 
           {/* Input shell */}
           <div className="atlas-input-shell" style={{ position: "relative", padding: "18px 20px 14px" }}>
