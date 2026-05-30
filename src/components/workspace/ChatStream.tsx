@@ -160,6 +160,7 @@ export function ChatStream(props: ChatStreamProps) {
   const isMobile = useIsMobile();
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
+    overscrollBehaviorY: "contain",
     padding: isMobile ? "56px 14px 96px 14px" : "56px 104px 96px 24px",
     position: "relative", scrollbarWidth: "none",
   };

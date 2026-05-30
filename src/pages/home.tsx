@@ -2847,6 +2847,7 @@ export default function Home() {
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
                     flex: 1, maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    overscrollBehaviorY: "contain",
                     minHeight: 0,
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
