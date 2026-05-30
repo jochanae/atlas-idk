@@ -1331,6 +1331,7 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
+  const [shapingOverlayOpen, setShapingOverlayOpen] = useState(false);
   useEffect(() => {
     const active = nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
