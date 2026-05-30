@@ -48,6 +48,7 @@ import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useChatStream } from "@/hooks/useChatStream";
 import { createTextPacer, followScrollIfNearBottom } from "@/lib/textPacer";
 
 const PLACEHOLDERS = [
@@ -1300,6 +1301,10 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
+  const nexusStream = useChatStream({
+    projectId: focusProjectId ?? 0,
+    endpoint: "/api/nexus/chat",
+  });
   const [shapingPayload, setShapingPayload] = useState<{
     title: string;
     audience: string;
@@ -2032,6 +2037,7 @@ export default function Home() {
     setIsAtlasStreaming(true);
     const streamingId = Date.now().toString();
     try {
+      // TODO: migrate to nexusStream.doSend in next step
       const res = await fetch("/api/nexus/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
