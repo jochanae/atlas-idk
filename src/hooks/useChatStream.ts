@@ -35,6 +35,7 @@ export interface UseChatStreamOptions {
   queryClient: QueryClient;
   getListSessionsQueryKey: (projectId: number) => QueryKey;
   mapPriorMessage: (m: PriorMessage) => ChatMessage;
+  endpoint?: "/api/chat" | "/api/nexus/chat";
 
   // B2c deps
   entries: LedgerEntryLike[] | undefined;
@@ -129,6 +130,7 @@ export function useChatStream(
     queryClient,
     getListSessionsQueryKey,
     mapPriorMessage,
+    endpoint = "/api/chat",
     entries,
     fileContext,
     forgeContext,
@@ -296,7 +298,7 @@ export function useChatStream(
         try {
           const ghToken = (() => { try { return localStorage.getItem("atlas-github-token") || null; } catch { return null; } })();
 
-          const r = await fetch("/api/chat", {
+          const r = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
