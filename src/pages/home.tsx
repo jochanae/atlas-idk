@@ -110,6 +110,9 @@ type HomeMessage = {
   errorMessage?: string | null;
   surface?: AmbientSurface;
   surfacedMemoriesCount?: number;
+  visualLoading?: boolean;
+  visualImageBase64?: string | null;
+  visualCaption?: string | null;
 };
 
 function formatMessageTime(iso?: string): string {
@@ -2899,6 +2902,68 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
                           </div>
+
+                          {msg.visualLoading && (
+                            <div style={{
+                              marginTop: "12px",
+                              padding: "16px",
+                              background: "rgba(201, 162, 76, 0.04)",
+                              border: "1px solid rgba(201, 162, 76, 0.15)",
+                              borderRadius: "12px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "10px",
+                            }}>
+                              <div style={{
+                                width: "20px",
+                                height: "20px",
+                                borderRadius: "50%",
+                                border: "2px solid rgba(201, 162, 76, 0.3)",
+                                borderTopColor: "var(--atlas-gold)",
+                                animation: "spin 1s linear infinite",
+                                flexShrink: 0,
+                              }} />
+                              <span style={{
+                                fontSize: "12px",
+                                color: "var(--atlas-muted)",
+                                fontFamily: "var(--app-font-mono)",
+                                letterSpacing: "0.08em",
+                              }}>
+                                Sketching a concept...
+                              </span>
+                            </div>
+                          )}
+
+                          {msg.visualImageBase64 && !msg.visualLoading && (
+                            <div style={{
+                              marginTop: "12px",
+                              borderRadius: "12px",
+                              overflow: "hidden",
+                              border: "1px solid rgba(201, 162, 76, 0.2)",
+                            }}>
+                              <img
+                                src={`data:image/png;base64,${msg.visualImageBase64}`}
+                                alt={msg.visualCaption ?? "Concept sketch"}
+                                style={{
+                                  width: "100%",
+                                  display: "block",
+                                  borderRadius: "12px 12px 0 0",
+                                }}
+                              />
+                              {msg.visualCaption && (
+                                <div style={{
+                                  padding: "8px 12px",
+                                  background: "rgba(201, 162, 76, 0.04)",
+                                  fontSize: "11px",
+                                  color: "var(--atlas-muted)",
+                                  fontFamily: "var(--app-font-mono)",
+                                  letterSpacing: "0.08em",
+                                }}>
+                                  {msg.visualCaption}
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           {!msg.streaming && Boolean(msg.terminalCmd || msg.terminalResult) && (
                             <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
