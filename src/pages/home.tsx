@@ -3180,11 +3180,14 @@ export default function Home() {
           {shapingPayload && !shapingHeld && (
             <div style={{
               margin: "12px 16px",
+              marginBottom: "80px",
               padding: "16px",
               background: "rgba(201, 162, 76, 0.06)",
               border: "1px solid rgba(201, 162, 76, 0.25)",
               borderRadius: "12px",
               backdropFilter: "blur(8px)",
+              position: "relative",
+              zIndex: 100,
             }}>
               <div style={{
                 fontSize: "10px",
