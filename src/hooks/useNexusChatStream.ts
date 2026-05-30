@@ -215,7 +215,7 @@ export function useNexusChatStream(
                   content: displayText,
                   streaming: false,
                   handoffSignal: handoff ?? null,
-                  surface: meta.surface ?? null,
+                  surface: (meta.surface ?? null) as string | null,
                   executionTimeMs: (meta.executionTimeMs ?? meta.execution_time_ms ?? null) as number | null,
                   inputTokens: (meta.inputTokens ?? meta.input_tokens ?? null) as number | null,
                   outputTokens: (meta.outputTokens ?? meta.output_tokens ?? null) as number | null,

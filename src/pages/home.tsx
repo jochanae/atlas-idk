@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
+import { ShapingForgeOverlay } from "@/components/nexus/ShapingForgeOverlay";
 import {
   useListProjects,
   useCreateProject,
@@ -1331,6 +1332,7 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
+  const [shapingOverlayOpen, setShapingOverlayOpen] = useState(false);
   useEffect(() => {
     const active = nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
@@ -1654,7 +1656,7 @@ export default function Home() {
     }
   }, [projects, nexusChat.shapingHeld, nexusChat.setShapingPayload, nexusChat.setShapingHeld]);
   const mostRecentActiveProjectId = useMemo(() => {
-    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.entity_type === "idea");
+    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as any).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
     const latest = candidates.reduce<Project | null>((current, project: Project) => {
       if (!current) return project;
@@ -2425,15 +2427,32 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
-        <div
-          onClick={() => {
+      {nexusChat.shapingPayload && (
+        <ShapingForgeOverlay
+          open={shapingOverlayOpen}
+          payload={nexusChat.shapingPayload}
+          held={nexusChat.shapingHeld}
+          onClose={() => setShapingOverlayOpen(false)}
+          onCommit={() => {
             const existing = (projects as any[])?.find(
               (p: any) => p.entity_type === "idea"
             );
-            if (existing) window.location.href =
-              `/project/${existing.id}`;
+            if (existing) window.location.href = `/project/${existing.id}`;
           }}
+          onRelease={() => {
+            nexusChat.setShapingPayload(null);
+            nexusChat.setShapingHeld(false);
+          }}
+          onDropFacet={(field) => {
+            nexusChat.setShapingPayload((prev) =>
+              prev ? { ...prev, [field]: "" } : prev
+            );
+          }}
+        />
+      )}
+      {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
+        <div
+          onClick={() => setShapingOverlayOpen(true)}
           style={{
             display: "flex",
             alignItems: "center",

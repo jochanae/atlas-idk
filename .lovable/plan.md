@@ -1,79 +1,84 @@
-# Shaping → Committed: One Object, Two States (+ Shell Mode)
+## What changes
 
-**Doctrine:** *Shaping is real enough to preserve context, but not formal enough to pollute the system of record.*
+Today the **SHAPING** pill in the Nexus home header is a single tap-target that jumps to an existing idea project. We replace that behavior with an in-place overlay that reveals Atlas's active working memory — narrative-first, with a scannable tag strip, and a real Commit path into the Ledger.
 
-- `status` — is the idea shaping or committed.
-- `surface_mode` — is the project quietly available or operationally driving the workspace.
-- `shell_mode` — what surface the user is standing in: ambient home, active home chat, or operational workspace.
+The pill itself, its placement, pulse animation, and gold styling stay exactly as they are. Only the tap behavior and the new overlay are added.
 
-## Core model
+## The overlay — "Shaping Forge"
 
-```text
-projects
-  status:       'shaping' | 'committed' | 'archived'
-  surface_mode: 'ambient' | 'operational'
-  shape:        jsonb         -- live extraction bucket (silent)
-  working_title:text          -- AI-named, editable
-  committed_at: timestamptz | null
-```
-
-Shell/session state (client, not on the project row):
+Triggered by tapping the pill. Dismissed by tap-outside, ESC, or a downward drag on the pill itself.
 
 ```text
-shell_mode: 'ambient' | 'active' | 'operational'
-  ambient     = Nexus home, no active conversation yet
-  active      = Nexus home chat has started, shaping happening
-  operational = workspace / Forge / Map / build surfaces
+┌────────────────────────────────────────────┐
+│ ░░░ blurred obsidian backdrop ░░░          │
+│                                            │
+│   ●  filament pulse (gold → warm-amber)    │
+│   ─────────────────────────────            │
+│                                            │
+│   [Audience] Small restaurants             │  ← tag strip
+│   [Friction] Overpriced SaaS               │     mono, 10px, gold
+│   [Scope]    Lean waitlist                 │     ✕ on each = drop
+│                                            │
+│   ── The Anchor ──                         │  ← narrative
+│   Isolating the core mechanics of an       │     Geist Sans, prose
+│   independent reservation framework…       │
+│                                            │
+│   ── Holding ──                            │
+│   • Target: low-overhead operators         │
+│   • Friction: bloated platforms…           │
+│   • Scope: lean queue vs. ledger           │
+│                                            │
+│   ── Trajectory ──                         │
+│   Awaiting your read on "manage" to        │
+│   shape either a real-time queue or…       │
+│                                            │
+│   ─────────────────────────────            │
+│   [ Release ]            [ Commit → ]      │
+└────────────────────────────────────────────┘
 ```
 
-Rules:
-- First user message in a `shell_mode = 'ambient'` Nexus session with no active project context auto-creates a `shaping` project owned by `auth.uid()`. Shell flips to `active`. Never auto-create inside an already-committed workspace.
-- Ledger / constellation queries filter to `status = 'committed'` — shaping projects never pollute the system of record.
-- Master Map shows committed projects as nodes; an active shaping project appears as a soft "forming" halo, not a node.
-- Commit flips `status` to `committed`, stamps `committed_at`, writes the first ledger entry from `shape`, lights up the constellation node.
+### Three sections, in order
 
-## Silent extraction
+1. **Tag strip** — 3–4 mono chips derived from `shapingPayload` (audience, tension/friction, what/scope). Each chip has a hairline `✕` — tap to drop that facet from the frame (calls `setShapingPayload` with that field cleared).
+2. **The Anchor** — one sentence synthesized from `shapingPayload.title` + `tension`.
+3. **Holding** — bulleted narrative pulled from `audience`, `tension`, `what`.
+4. **Trajectory** — one sentence: "Awaiting your read on X to shape Y." Derived from what's still missing in the payload (e.g. if `what` is thin, prompt for it).
 
-- Cadence: every **3–5 meaningful message exchanges**, **OR** on-demand when the user opens Forge / Map / Commit. Forge never opens empty just because the cadence hasn't fired.
-- Extractor updates `shape` with: intent, audience, constraints, tone, aesthetic, stack hints, open questions.
-- No UI interruption. No "I noticed…" messages.
-- Idempotent merge into `shape` — never overwrites user-edited fields.
+The narrative is rendered from the existing `shapingPayload` shape — no new backend call. If a field is empty, that section gracefully omits.
 
-## Footer dead-end fixes (ship in same pass)
+### Actions
 
-- **Map tap, no committed project**: route to Master Map. If a shaping project is active, render "you are here, shaping [working title]" halo.
-- **Forge tap, no committed project**: open Forge defaulted to **Project DNA** tab, pre-filled from `shape` (triggers on-demand extraction if stale). Demote Quick Prompt to secondary action.
-- **Dock focus ring**: highlights the surface matching the active project's `surface_mode` and the current `shell_mode`.
+- **Commit →** opens the existing `CommitPrompt` flow with the Anchor pre-filled as the intent. On commit, a Ledger entry is created (status: Committed), the overlay closes, and the pill transitions to its existing "held" visual state showing the committed title (already implemented behavior).
+- **Release** — clears `shapingPayload` and `shapingHeld`, closes overlay, pill disappears. No Ledger write. (This replaces the more aggressive "Purge" naming.)
 
-## Commit moment
+## Visual execution
 
-`CommitPrompt` and `DecisionCatch → Proceed` are the two entry points. On commit:
-1. `status = 'committed'`, `committed_at = now()`.
-2. Insert ledger entry seeded from `shape` (title, summary, severity).
-3. Forge DNA auto-fills from `shape`.
-4. Constellation node animates in.
+- **Backdrop:** `backdrop-filter: blur(14px)` over `rgba(10,10,10,0.55)`.
+- **Panel:** centered, max-width 420px on mobile (full-bleed with 16px gutter), rounded 16px, `1px solid color-mix(in oklab, var(--atlas-gold) 25%, transparent)`, shadow `0 20px 60px rgba(0,0,0,0.5)`.
+- **Filament:** 1px tall, 64px wide, gradient `linear-gradient(90deg, transparent, var(--atlas-gold), transparent)`, 2s breathing animation.
+- **Tag chips:** `var(--app-font-mono)`, 10px, gold on `rgba(201,162,76,0.06)` with 1px gold-tinted border.
+- **Narrative:** Geist Sans, 14px body, 1.6 line-height. Section labels in mono uppercase 9px, 0.12em letter-spacing, `--atlas-muted`.
+- **Buttons:** Release = ghost (muted text, transparent), Commit = gold-bordered pill matching existing CTA pattern.
+- **No teal.** Sticking to the obsidian + gold system. Filament uses gold → warm-amber, not gold → teal.
 
-## Build order
+## Animation
 
-1. **Migration** — add `status`, `surface_mode`, `shape`, `working_title`, `committed_at` to `projects`. Backfill existing rows to `status = 'committed'`, `surface_mode = 'operational'`.
-2. **Shell mode in shellStore** — add `shell_mode: 'ambient' | 'active' | 'operational'` to `useShellStore`; flip ambient → active on first home message, operational on workspace entry.
-3. **Auto-create on first message** — `home.tsx` send handler creates a shaping project only when shell is ambient and no active project context exists. Store id in `shellStore.activeThread.projectId`.
-4. **Ledger / constellation filters** — scope to `status = 'committed'`.
-5. **Footer fallbacks + dock focus ring** — Map and Forge route correctly when only a shaping project exists.
-6. **Forge default tab** — Project DNA first, Quick Prompt secondary; DNA reads from `shape` and triggers on-demand extraction if stale.
-7. **Silent extractor** — extend `atlas-chat` to extract every 3–5 meaningful exchanges, plus on-demand from Forge/Map/Commit; merge into `shape`.
-8. **Commit transition** — `CommitPrompt` + Decision Catch Proceed path writes ledger entry and flips status.
-9. **Shaping halo on Master Map** — soft "forming" indicator for the active shaping project.
+- Open: backdrop fades in 180ms, panel scales from 0.96 → 1.0 with `cubic-bezier(0.2, 0.8, 0.2, 1)` over 220ms.
+- Close: reverse, 160ms.
+- Filament: continuous 2s opacity breath (0.4 → 1 → 0.4).
+- Pill → overlay: the pill itself stays visible behind the backdrop and pulses in sync with the filament, reinforcing the "this is what's behind the pill" metaphor.
 
-## Technical notes
+## Files touched
 
-- `status`, `surface_mode`, and `shell_mode` are three independent dimensions — never collapse.
-- `shape` is jsonb with versioned schema (`shape.v = 1`) so the extractor evolves without migrations.
-- RLS stays `auth.uid() = user_id` — no policy changes needed.
-- Existing ledger/forge/codegen wiring keeps working — committed projects look identical to today's projects.
+- **New:** `src/components/nexus/ShapingForgeOverlay.tsx` — the overlay component. Props: `payload`, `held`, `onCommit`, `onRelease`, `onDropFacet(field)`, `onClose`.
+- **Edit:** `src/pages/home.tsx` (~line 2428) — replace the pill's `onClick` navigation with `setShapingOverlayOpen(true)`; render `<ShapingForgeOverlay>` below the portal. Wire `onCommit` into the existing CommitPrompt flow (find current CommitPrompt invocation pattern in the file).
+- **Edit:** `src/hooks/useNexusChatStream.ts` — add `dropPayloadFacet(field: keyof NexusShapingPayload)` helper that calls `setShapingPayload(prev => prev ? { ...prev, [field]: "" } : prev)`. No other changes to the stream hook.
 
-## Out of scope (defer)
+No backend, edge function, schema, or routing changes. Pure frontend.
 
-- Dedicated "memory" UI surfacing `shape` contents — keep invisible per subtle-continuity instinct.
-- Cross-project shape inheritance.
-- Auto-archive of stale shaping projects after 30 days idle.
+## Out of scope (call out, don't build)
+
+- Live token-by-token streaming of the narrative *inside* the overlay. The overlay re-renders when `shapingPayload` updates, which is already reactive — that's enough for v1.
+- A new `--atlas-shaping` teal token. If we want teal in the system later, that's a separate design-system decision.
+- Drag-down peek gesture on the pill. Tap-to-open + tap-outside-to-close is enough for v1; gesture can come later.
+- Editing the narrative text. Drop-facet via `✕` is the only mutation surface in v1.
