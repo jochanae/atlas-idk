@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
+import { ShapingForgeOverlay } from "@/components/nexus/ShapingForgeOverlay";
 import {
   useListProjects,
   useCreateProject,
