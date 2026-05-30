@@ -1633,12 +1633,15 @@ export default function Home() {
     });
   }, [projects]);
   useEffect(() => {
-    if (!projects || nexusChat.shapingHeld) return;
+    if (!projects || !Array.isArray(projects)) return;
     const existing = (projects as any[]).find(
-      (p) => p.entity_type === "idea"
+      (p: any) => p.entity_type === "idea"
     );
-    if (existing) {
-      let desc: { title?: string; tension?: string; audience?: string; what?: string } = {};
+    if (existing && !nexusChat.shapingHeld) {
+      let desc: { 
+        title?: string; tension?: string; 
+        audience?: string; what?: string 
+      } = {};
       try {
         desc = typeof existing.description === "string"
           ? JSON.parse(existing.description)
@@ -1651,8 +1654,12 @@ export default function Home() {
         what: desc.what ?? "",
       });
       nexusChat.setShapingHeld(true);
+    } else if (!existing) {
+      // No shaping project exists — clear state
+      nexusChat.setShapingPayload(null);
+      nexusChat.setShapingHeld(false);
     }
-  }, [projects, nexusChat.shapingHeld, nexusChat.setShapingPayload, nexusChat.setShapingHeld]);
+  }, [projects]);
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
