@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 
 export interface NexusMessage {
@@ -86,7 +86,12 @@ export function useNexusChatStream(
   const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: string } | null>(null);
   const [shapingPayload, setShapingPayload] = useState<NexusShapingPayload | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
+  const shapingHeldRef = useRef(false);
   const [handoffSignal, setHandoffSignal] = useState<NexusHandoffSignal | null>(null);
+
+  useEffect(() => {
+    shapingHeldRef.current = shapingHeld;
+  }, [shapingHeld]);
 
   const { stream, abort: abortStream } = useAtlasStream();
   const streamingIdRef = useRef<string | null>(null);
@@ -150,106 +155,113 @@ export function useNexusChatStream(
     };
     setMessages(prev => [...prev, assistantMsg]);
 
-    await stream({
-      endpoint: "/api/nexus/chat",
-      body: {
-        message: text,
-        model: resolved.model,
-        focusProjectId: resolved.focusProjectId,
-        mode: resolved.mode,
-        imageBase64,
-        imageMimeType,
-        conversationId: resolved.conversationId,
-        projectContext: resolved.projectContext ?? null,
-      },
-      callbacks: {
-        onToken: (released) => {
-          // Strip any partial or complete markers from 
-          // streamed content so they never show as gibberish
-          const cleaned = released
-            .replace(/\nREADY_TO_SHAPE:\{[^\n]*\}?/g, "")
-            .replace(/\nNAVIGATE_TO:\{[^\n]*\}?/g, "")
-            .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "")
-            .replace(/READY_TO_SHAPE:[^\n]*/g, "")
-            .replace(/NAVIGATE_TO:[^\n]*/g, "");
-          setMessages(prev => prev.map(m =>
-            (m as any).id === streamingId
-              ? { ...m, content: cleaned }
-              : m
-          ));
+    try {
+      await stream({
+        endpoint: "/api/nexus/chat",
+        body: {
+          message: text,
+          model: resolved.model,
+          focusProjectId: resolved.focusProjectId,
+          mode: resolved.mode,
+          imageBase64,
+          imageMimeType,
+          conversationId: resolved.conversationId,
+          projectContext: resolved.projectContext ?? null,
         },
-        onStep: (step) => {
-          setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
+        callbacks: {
+          onToken: (released) => {
+            // Strip any partial or complete markers from 
+            // streamed content so they never show as gibberish
+            const cleaned = released
+              .replace(/\nREADY_TO_SHAPE:\{[^\n]*\}?/g, "")
+              .replace(/\nNAVIGATE_TO:\{[^\n]*\}?/g, "")
+              .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "")
+              .replace(/READY_TO_SHAPE:[^\n]*/g, "")
+              .replace(/NAVIGATE_TO:[^\n]*/g, "");
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? { ...m, content: cleaned }
+                : m
+            ));
+          },
+          onStep: (step) => {
+            setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
+          },
+          onDone: (fullText, meta) => {
+            // Parse NAVIGATE_TO
+            let displayText = fullText;
+            const navMatch = displayText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
+            if (navMatch) {
+              const route = navMatch[1];
+              displayText = displayText.replace(/\nNAVIGATE_TO:\{[^}]+\}/g, "").trim();
+              setTimeout(() => { window.location.href = route; }, 800);
+            }
+
+            // Read shapingPayload from meta — backend parses and 
+            // sends it in the done event already cleaned
+            const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
+            if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeldRef.current) {
+              setShapingPayload(shapingFromMeta);
+            }
+
+            // Parse MEMORY_CHIPS
+            const chipMatch = displayText.match(/MEMORY_CHIPS:\s*(\[[\s\S]*?\])/);
+            if (chipMatch) {
+              try { JSON.parse(chipMatch[1]); } catch { /* non-fatal */ }
+              displayText = displayText.replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "").trim();
+            }
+
+            const handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
+            if (handoff) setHandoffSignal(handoff);
+
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? {
+                    ...m,
+                    content: displayText,
+                    streaming: false,
+                    handoffSignal: handoff ?? null,
+                    surface: meta.surface ?? null,
+                    executionTimeMs: (meta.executionTimeMs ?? meta.execution_time_ms ?? null) as number | null,
+                    inputTokens: (meta.inputTokens ?? meta.input_tokens ?? null) as number | null,
+                    outputTokens: (meta.outputTokens ?? meta.output_tokens ?? null) as number | null,
+                    costUsd: (meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null)) as number | null,
+                    runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as string,
+                    runSummary: (meta.runSummary ?? meta.run_summary ?? null) as string | null,
+                    modelUsed: (meta.modelUsed ?? meta.model_used ?? null) as string | null,
+                  }
+                : m
+            ));
+
+            setLiveStep(null);
+            setIsStreaming(false);
+            setIsPending(false);
+          },
+          onError: (errMsg) => {
+            setMessages(prev => prev.map(m =>
+              (m as any).id === streamingId
+                ? {
+                    ...m,
+                    content: errMsg || "Something went wrong. Tap send again.",
+                    streaming: false,
+                    runStatus: "failed",
+                    errorMessage: errMsg,
+                  }
+                : m
+            ));
+            setIsStreaming(false);
+            setIsPending(false);
+            setLiveStep(null);
+          },
         },
-        onDone: (fullText, meta) => {
-          // Parse NAVIGATE_TO
-          let displayText = fullText;
-          const navMatch = displayText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
-          if (navMatch) {
-            const route = navMatch[1];
-            displayText = displayText.replace(/\nNAVIGATE_TO:\{[^}]+\}/g, "").trim();
-            setTimeout(() => { window.location.href = route; }, 800);
-          }
-
-          // Read shapingPayload from meta — backend parses and 
-          // sends it in the done event already cleaned
-          const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
-          if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeld) {
-            setShapingPayload(shapingFromMeta);
-          }
-
-          // Parse MEMORY_CHIPS
-          const chipMatch = displayText.match(/MEMORY_CHIPS:\s*(\[[\s\S]*?\])/);
-          if (chipMatch) {
-            try { JSON.parse(chipMatch[1]); } catch { /* non-fatal */ }
-            displayText = displayText.replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "").trim();
-          }
-
-          const handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
-          if (handoff) setHandoffSignal(handoff);
-
-          setMessages(prev => prev.map(m =>
-            (m as any).id === streamingId
-              ? {
-                  ...m,
-                  content: displayText,
-                  streaming: false,
-                  handoffSignal: handoff ?? null,
-                  surface: meta.surface ?? null,
-                  executionTimeMs: (meta.executionTimeMs ?? meta.execution_time_ms ?? null) as number | null,
-                  inputTokens: (meta.inputTokens ?? meta.input_tokens ?? null) as number | null,
-                  outputTokens: (meta.outputTokens ?? meta.output_tokens ?? null) as number | null,
-                  costUsd: (meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null)) as number | null,
-                  runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as string,
-                  runSummary: (meta.runSummary ?? meta.run_summary ?? null) as string | null,
-                  modelUsed: (meta.modelUsed ?? meta.model_used ?? null) as string | null,
-                }
-              : m
-          ));
-
-          setLiveStep(null);
-          setIsStreaming(false);
-          setIsPending(false);
-        },
-        onError: (errMsg) => {
-          setMessages(prev => prev.map(m =>
-            (m as any).id === streamingId
-              ? {
-                  ...m,
-                  content: errMsg || "Something went wrong. Tap send again.",
-                  streaming: false,
-                  runStatus: "failed",
-                  errorMessage: errMsg,
-                }
-              : m
-          ));
-          setIsStreaming(false);
-          setIsPending(false);
-          setLiveStep(null);
-        },
-      },
-    });
-  }, [isPending, focusProjectId, model, mode, conversationId, projectContext, stream, shapingHeld]);
+      });
+    } finally {
+      // Always reset — even if stream threw unexpectedly
+      setIsStreaming(false);
+      setIsPending(false);
+      setLiveStep(null);
+    }
+  }, [isPending, focusProjectId, model, mode, conversationId, projectContext, stream]);
 
   return {
     messages,
