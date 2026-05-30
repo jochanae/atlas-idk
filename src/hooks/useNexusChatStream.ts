@@ -164,9 +164,17 @@ export function useNexusChatStream(
       },
       callbacks: {
         onToken: (released) => {
+          // Strip any partial or complete markers from 
+          // streamed content so they never show as gibberish
+          const cleaned = released
+            .replace(/\nREADY_TO_SHAPE:\{[^\n]*\}?/g, "")
+            .replace(/\nNAVIGATE_TO:\{[^\n]*\}?/g, "")
+            .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "")
+            .replace(/READY_TO_SHAPE:[^\n]*/g, "")
+            .replace(/NAVIGATE_TO:[^\n]*/g, "");
           setMessages(prev => prev.map(m =>
             (m as any).id === streamingId
-              ? { ...m, content: released }
+              ? { ...m, content: cleaned }
               : m
           ));
         },
