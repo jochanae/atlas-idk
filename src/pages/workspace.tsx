@@ -102,6 +102,7 @@ import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurf
 import { MemoryTab } from "@/components/workspace/MemoryTab";
 import { BlueprintsTab } from "@/components/workspace/BlueprintsTab";
 import { SecretsPanel } from "@/components/workspace/SecretsPanel";
+import { JobsPanel } from "@/components/workspace/JobsPanel";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
@@ -215,7 +216,7 @@ export interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "forge" | "artifacts" | "workbench";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "jobs" | "forge" | "artifacts" | "workbench";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
@@ -1079,6 +1080,20 @@ function RightPanel({
         </svg>
       ),
     },
+    {
+      id: "jobs" as RightTab,
+      label: "Jobs",
+      icon: (
+        <svg width="13" height="13" viewBox="0 0 16 16" 
+          fill="none">
+          <circle cx="8" cy="8" r="6" 
+            stroke="currentColor" strokeWidth="1.2"/>
+          <path d="M8 5v3.5l2 1.5" 
+            stroke="currentColor" strokeWidth="1.2" 
+            strokeLinecap="round"/>
+        </svg>
+      ),
+    },
     ...(wsLens === "build" || wsLens === "scenario" ? [{
       id: "terminal" as RightTab,
       label: "Console",
@@ -1284,6 +1299,9 @@ function RightPanel({
           projectId={projectId} 
           projectName={projectName} 
         />
+      )}
+      {tab === "jobs" && (
+        <JobsPanel projectId={projectId} />
       )}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
