@@ -630,9 +630,9 @@ export default function MasterMap() {
 
       // Active project halo ring — persistent pulsing ring
       const haloRing = new THREE.Mesh(
-        new THREE.TorusGeometry(NODE_R, 2.2, 16, 80),
+        new THREE.TorusGeometry(NODE_R * 2.1, 3.5, 16, 80),
         new THREE.MeshBasicMaterial({
-          color: new THREE.Color(0xC9A24C),
+          color: new THREE.Color(0x7DD3C8),
           transparent: true,
           opacity: 0,
           side: THREE.DoubleSide,
@@ -1213,9 +1213,9 @@ export default function MasterMap() {
           const pulse = 1.15 + Math.sin(t * 2.2) * 0.07;
           halo.scale.setScalar(bs * pulse);
           // Opacity breathes between 0.45 and 0.85
-          mat.opacity = 0.75 + Math.sin(t * 2.2) * 0.25;
+          mat.opacity = 0.55 + Math.sin(t * 1.8) * 0.3;
           // Gold color with slight warmth shift on pulse
-          mat.color.setHex(0xC9A24C);
+          mat.color.setHex(0x7DD3C8);
         } else {
           mat.opacity += (0 - mat.opacity) * 0.12;
         }
