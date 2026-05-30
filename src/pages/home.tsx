@@ -49,7 +49,8 @@ import { useShellStore } from "../store/shellStore";
 import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useChatStream } from "@/hooks/useChatStream";
-import { createTextPacer, followScrollIfNearBottom } from "@/lib/textPacer";
+import { useNexusChatStream } from "@/hooks/useNexusChatStream";
+import { followScrollIfNearBottom } from "@/lib/textPacer";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1300,7 +1301,31 @@ export default function Home() {
   const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [activeConversationId, setActiveConversationId] = useState<string>(() => {
+    const newId = crypto.randomUUID();
+    try { sessionStorage.setItem("atlas-home-conversation-id", newId); } catch {}
+    return newId;
+  });
+  // ── Home context: repo / branch / model ────────────────────────────────────
+  const [homeFocus, setHomeFocus] = useState<number | null>(null);
+  const [showFocusPicker, setShowFocusPicker] = useState(false);
+  const [homeModel] = useState<string>("claude");
+  const [homeMode] = useState<string>("strategic");
+  const homeProjectState = useProjectState(homeFocus);
   const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
+  const nexusChat = useNexusChatStream({
+    focusProjectId: homeFocus ?? null,
+    model: homeModel,
+    mode: homeMode,
+    conversationId: activeConversationId,
+    projectContext: homeFocus != null ? {
+      projectId: homeFocus,
+      memorySummary: homeProjectState.memorySummary,
+      decisions: homeProjectState.decisions,
+    } : null,
+  });
+  const focusProjectId = homeFocus;
+  // Legacy — will be removed after nexusChat migration verified
   const nexusStream = useChatStream({
     projectId: focusProjectId ?? 0,
     endpoint: "/api/nexus/chat",
@@ -1313,10 +1338,10 @@ export default function Home() {
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   useEffect(() => {
-    const active = homeMessages.length > 0;
+    const active = nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [homeMessages.length]);
+  }, [nexusChat.messages.length]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -1337,7 +1362,7 @@ export default function Home() {
     });
     mo.observe(el, { childList: true, subtree: true, characterData: true });
     return () => { ro.disconnect(); mo.disconnect(); };
-  }, [homeMessages.length]);
+  }, [nexusChat.messages.length]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -1354,11 +1379,6 @@ export default function Home() {
   const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
 
   const [threadLoading, setThreadLoading] = useState(true);
-  const [activeConversationId, setActiveConversationId] = useState<string>(() => {
-    const newId = crypto.randomUUID();
-    try { sessionStorage.setItem("atlas-home-conversation-id", newId); } catch {}
-    return newId;
-  });
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -1374,13 +1394,13 @@ export default function Home() {
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
-    if (homeMessages.length === 0) {
+    if (nexusChat.messages.length === 0) {
       setDepth("ambient");
-    } else if (previousCount === 0 && homeMessages.length === 1) {
+    } else if (previousCount === 0 && nexusChat.messages.length === 1) {
       setDepth("active");
     }
-    previousHomeMessageCountRef.current = homeMessages.length;
-  }, [homeMessages.length, setDepth]);
+    previousHomeMessageCountRef.current = nexusChat.messages.length;
+  }, [nexusChat.messages.length, setDepth]);
 
   // Derive first name from auth (updates when /me resolves)
   {
@@ -1396,11 +1416,6 @@ export default function Home() {
 
   // Greeting is computed below, after `projects` is available.
 
-  // ── Home context: repo / branch / model ────────────────────────────────────
-  const [homeFocus, setHomeFocus] = useState<number | null>(null);
-  const [showFocusPicker, setShowFocusPicker] = useState(false);
-  const [homeModel] = useState<string>("claude");
-  const [homeMode] = useState<string>("strategic");
   const [showHandoff, setShowHandoff] = useState(false);
   const [handoffLoading, setHandoffLoading] = useState(false);
   const [handoffStage, setHandoffStage] = useState("");
@@ -1461,13 +1476,13 @@ export default function Home() {
     setShowShredChoice(false);
     setIsShredding(true);
     setTimeout(() => {
-      setHomeMessages([]);
+      nexusChat.setMessages([]);
       setIsShredding(false);
       setReflectionLocked(false);
       setShowGoneFlash(true);
       setTimeout(() => setShowGoneFlash(false), 1500);
     }, 700);
-  }, [vibrate, callReflectionMode]);
+  }, [vibrate, callReflectionMode, nexusChat.setMessages]);
 
 
   // Cycle pending phrases while Atlas is generating
@@ -1624,7 +1639,7 @@ export default function Home() {
     });
   }, [projects]);
   useEffect(() => {
-    if (!projects || shapingHeld) return;
+    if (!projects || nexusChat.shapingHeld) return;
     const existing = (projects as any[]).find(
       (p) => p.entity_type === "idea"
     );
@@ -1635,15 +1650,15 @@ export default function Home() {
           ? JSON.parse(existing.description)
           : existing.description ?? {};
       } catch {}
-      setShapingPayload({
+      nexusChat.setShapingPayload({
         title: existing.name ?? "Untitled idea",
         tension: desc.tension ?? "",
         audience: desc.audience ?? "",
         what: desc.what ?? "",
       });
-      setShapingHeld(true);
+      nexusChat.setShapingHeld(true);
     }
-  }, [projects]);
+  }, [projects, nexusChat.shapingHeld, nexusChat.setShapingPayload, nexusChat.setShapingHeld]);
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
@@ -1655,7 +1670,6 @@ export default function Home() {
     }, null);
     return latest?.id ?? null;
   }, [projects]);
-  const homeProjectState = useProjectState(homeFocus);
   const createProject = useCreateProject();
   const createEntry = useCreateEntry();
 
@@ -1768,32 +1782,32 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (homeMessages.length === 0) return;
+    if (nexusChat.messages.length === 0) return;
     const container = messagesEndRef.current?.parentElement;
     // Only auto-scroll if the user is near the bottom — never yank them
     // away from earlier text they're reading.
     followScrollIfNearBottom(container, 120);
-  }, [homeMessages]);
+  }, [nexusChat.messages]);
 
   useEffect(() => {
     const handleBeforeUnload = async () => {
-      if (homeMessages.length >= 4) {
+      if (nexusChat.messages.length >= 4) {
         await fetch("/api/nexus/conversation/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ messages: homeMessages }),
+          body: JSON.stringify({ messages: nexusChat.messages }),
           keepalive: true,
         });
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [homeMessages]);
+  }, [nexusChat.messages]);
 
   // Load the active conversation from DB (re-runs when conversationId changes)
   useEffect(() => {
-    setHomeMessages([]);
+    nexusChat.setMessages([]);
     setLoadedHistoryCount(0);
     setThreadLoading(true);
     try {
@@ -1807,14 +1821,14 @@ export default function Home() {
       .then(async (msgs: Array<{ role: string; content: string }>) => {
         const normalizedMessages = normalizeLoadedHomeMessages(msgs);
         if (normalizedMessages.length > 0) {
-          setHomeMessages(normalizedMessages);
+          nexusChat.setMessages(normalizedMessages as any);
           setLoadedHistoryCount(normalizedMessages.length);
           return;
         }
       })
       .catch(() => {})
       .finally(() => setThreadLoading(false));
-  }, [activeConversationId]);
+  }, [activeConversationId, nexusChat.setMessages]);
 
 
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -1885,7 +1899,7 @@ export default function Home() {
     setOverlayDismissed(true);
   };
   const showOverlay = !isLoading && projects !== undefined && projects.length === 0 && !overlayDismissed;
-  const firstHandoffMessageIndex = homeMessages.findIndex(m => m.role === "assistant" && !!m.handoffSignal);
+  const firstHandoffMessageIndex = (nexusChat.messages as HomeMessage[]).findIndex(m => m.role === "assistant" && !!m.handoffSignal);
 
   const navigateToProject = useCallback(
     (projectId: number) => {
@@ -1997,7 +2011,7 @@ export default function Home() {
       const shell = useShellStore.getState();
       const noActiveProject =
         homeFocus == null && shell.activeThread.projectId == null;
-      const isFirstMessage = homeMessages.length === 0;
+      const isFirstMessage = nexusChat.messages.length === 0;
       if (noActiveProject && isFirstMessage) {
         const provisionalName = "Untitled";
         createProject
@@ -2035,185 +2049,31 @@ export default function Home() {
     }
 
     setIsAtlasStreaming(true);
-    const streamingId = Date.now().toString();
+    setIsSending(true);
     try {
-      // TODO: migrate to nexusStream.doSend in next step
-      const res = await fetch("/api/nexus/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          message: messageText,
-          model: homeModel,
-          focusProjectId: homeFocus,
-          mode: homeMode,
-          imageBase64,
-          imageMimeType,
-          conversationId: activeConversationId,
-          projectContext: homeFocus != null ? {
-            projectId: homeFocus,
-            memorySummary: homeProjectState.memorySummary,
-            decisions: homeProjectState.decisions,
-          } : null,
-        }),
+      await nexusChat.send({
+        text: messageText,
+        imageBase64,
+        imageMimeType,
       });
-      if (!res.ok) {
-        const errText = res.status === 413 ? "Images are too large to send. Try fewer or smaller images." : "Something went wrong. Try again.";
-        toast(errText);
-        // Restore the input so she doesn't lose her message
-        setInput(text);
-        setAttachedFiles(files);
-        return;
-      }
-      appendUserMessageIfMissing();
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let streamedText = "";
-
-      // Add a streaming message bubble immediately
-      setHomeMessages(prev => [...prev, { role: 'assistant', content: '', model: homeModel, intentType: null, isNew: true, id: streamingId, streaming: true, createdAt: new Date().toISOString() }]);
-
-      // Pacer: smooths network token bursts into a steady, readable reveal.
-      // See src/lib/textPacer.ts + mem://design/conversational-flow.
-      const pacer = createTextPacer({
-        onTick: (released) => {
-          setHomeMessages(prev => prev.map(m =>
-            (m as any).id === streamingId ? { ...m, content: released } : m
-          ));
-        },
-      });
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const blocks = buf.split("\n\n");
-          buf = blocks.pop() ?? "";
-          for (const block of blocks) {
-            let evtName = "";
-            let evtData = "";
-            for (const line of block.split("\n")) {
-              if (line.startsWith("event: ")) evtName = line.slice(7).trim();
-              else if (line.startsWith("data: ")) evtData = line.slice(6);
-            }
-            if (!evtData) continue;
-            try {
-              if (evtName === "token") {
-                const token = JSON.parse(evtData) as string;
-                streamedText += token;
-                pacer.push(token);
-              } else if (evtName === "step") {
-                const step = JSON.parse(evtData) as { verb?: string; target?: string; status?: "ok" | "warn" | "fail" };
-                if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
-              } else if (evtName === "done") {
-                const meta = JSON.parse(evtData) as {
-                  memoryUpdated: boolean; detectedMode: string; handoffSignal?: HomeHandoffSignal;
-                  executionTimeMs?: number; inputTokens?: number; outputTokens?: number; costUsd?: number;
-                  execution_time_ms?: number; input_tokens?: number; output_tokens?: number; cost_usd?: number;
-                  runStatus?: RunStatus; run_status?: RunStatus;
-                  runSummary?: string; run_summary?: string;
-                  runActions?: RunAction[]; run_actions?: RunAction[];
-                  runArtifacts?: RunArtifact[]; run_artifacts?: RunArtifact[];
-                  terminalCmd?: unknown; terminal_cmd?: unknown;
-                  terminalResult?: unknown; terminal_result?: unknown;
-                  modelUsed?: string | null; model_used?: string | null;
-                  surface?: AmbientSurface;
-                };
-                // Wait for the pacer to finish revealing all tokens before
-                // we mark the bubble non-streaming and attach final metadata.
-                await pacer.finish();
-                let fullText = streamedText;
-                // Parse NAVIGATE_TO command
-                const navMatch = fullText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
-                if (navMatch) {
-                  const route = navMatch[1];
-                  // Remove the marker from displayed text
-                  fullText = fullText.replace(/\nNAVIGATE_TO:\{[^}]+\}/g, "").trim();
-                  // Navigate after a short delay so the message renders first
-                  setTimeout(() => {
-                    window.location.href = route;
-                  }, 800);
-                }
-                // Parse READY_TO_SHAPE marker
-                const shapingMatch = fullText.match(
-                  /READY_TO_SHAPE:\{([^\n]+)\}/
-                );
-                if (shapingMatch && !shapingHeld) {
-                  try {
-                    const payload = JSON.parse(`{${shapingMatch[1]}}`);
-                    if (payload?.title && payload?.tension) {
-                      setShapingPayload(payload);
-                    }
-                  } catch { /* non-fatal */ }
-                  fullText = fullText
-                    .replace(/\nREADY_TO_SHAPE:\{[^\n]+\}/g, "")
-                    .trim();
-                }
-                const plan = detectPlanFromText(fullText);
-                const metrics = {
-                  executionTimeMs: meta.executionTimeMs ?? meta.execution_time_ms ?? null,
-                  inputTokens: meta.inputTokens ?? meta.input_tokens ?? null,
-                  outputTokens: meta.outputTokens ?? meta.output_tokens ?? null,
-                  costUsd: meta.costUsd ?? (meta.cost_usd != null ? Number(meta.cost_usd) : null),
-                };
-                const runFields = {
-                  runStatus: (meta.runStatus ?? meta.run_status ?? "completed") as RunStatus,
-                  runSummary: meta.runSummary ?? meta.run_summary ?? null,
-                  runActions: meta.runActions ?? meta.run_actions ?? null,
-                  runArtifacts: meta.runArtifacts ?? meta.run_artifacts ?? null,
-                  terminalCmd: meta.terminalCmd ?? meta.terminal_cmd,
-                  terminalResult: meta.terminalResult ?? meta.terminal_result,
-                  modelUsed: meta.modelUsed ?? meta.model_used ?? null,
-                };
-                setHomeMessages(prev => prev.map(m =>
-                  (m as any).id === streamingId ? { ...m, content: fullText, streaming: false, handoffSignal: meta.handoffSignal, surface: meta.surface ?? null, ...metrics, ...runFields, ...(plan ? { plan } : {}) } : m
-                ));
-                if (meta.handoffSignal?.projectName) setHandoffProjectName(meta.handoffSignal.projectName);
-                if (meta.detectedMode === "deep-dive" && homeMessages.length + 2 >= 4) setShowHandoff(true);
-              } else if (evtName === "error") {
-                pacer.abort();
-                const errMsg = JSON.parse(evtData) as string;
-                setHomeMessages(prev => prev.map(m =>
-                  (m as any).id === streamingId
-                    ? { ...m, content: errMsg || "Something went wrong. Tap send again.", streaming: false, runStatus: "failed" as RunStatus, errorMessage: errMsg || "Unknown error" }
-                    : m
-                ));
-              }
-            } catch {}
-          }
-        }
-      } finally {
-        pacer.abort();
-      }
-    } catch {
-      setHomeMessages(prev => prev.map(m =>
-        (m as any).id === streamingId
-          ? { ...m, streaming: false, runStatus: "failed" as RunStatus, errorMessage: "Connection dropped during run. Tap send again to retry." }
-          : m
-      ));
-      toast("Connection error. Your message was not lost — tap send again.");
-      setInput(text);
-      setAttachedFiles(files);
     } finally {
       setIsAtlasStreaming(false);
       setIsSending(false);
       setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     }
-  }, [input, attachedFiles, isSending, homeModel, homeFocus, projects, activeConversationId, homeMessages.length, mostRecentActiveProjectId, homeProjectState.memorySummary, homeProjectState.decisions]);
+  }, [input, attachedFiles, isSending, homeFocus, nexusChat.messages.length, createProject, nexusChat.send]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
-    if (!homeMessages.length) return;
+    if (!nexusChat.messages.length) return;
     setHandoffLoading(true);
     setHandoffStage("Setting up your workspace...");
     try {
       let name = (projectNameOverride || signal?.projectName || "").trim();
       const DEFAULT_PROJECT_NAMES = new Set(["New Project", "New Idea", "My Project", "Untitled", ""]);
       if (DEFAULT_PROJECT_NAMES.has(name)) {
-        const lastUserMsg = [...homeMessages].reverse().find(m => m.role === "user");
+        const lastUserMsg = [...(nexusChat.messages as HomeMessage[])].reverse().find(m => m.role === "user");
         if (lastUserMsg?.content) {
           try {
             const nameRes = await fetch("/api/nexus/name", {
@@ -2240,7 +2100,7 @@ export default function Home() {
       if (!createRes.ok || !project.id) throw new Error(project?.error ?? "Project creation failed");
       const projectId = Number(project.id);
       setActiveProjectId(projectId);
-      const transcriptMessages = homeMessages.slice(-20).map(({ role, content }) => ({ role, content }));
+      const transcriptMessages = (nexusChat.messages as HomeMessage[]).slice(-20).map(({ role, content }) => ({ role, content }));
       const transcript = transcriptMessages.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`).join("\n\n");
       const summary = signal?.reason || transcriptMessages.map(m => m.content).join(" ").slice(0, 800);
 
@@ -2331,7 +2191,7 @@ export default function Home() {
       setHandoffLoading(false);
       setHandoffStage("");
     }
-  }, [homeMessages, queryClient, setActiveProjectId, setLocation]);
+  }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation]);
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
@@ -2381,22 +2241,22 @@ export default function Home() {
 
   const handleClearThread = useCallback(async () => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
-    setHomeMessages([]);
+    nexusChat.setMessages([]);
     setReviewingPlanIds(new Set());
     setShowClearConfirm(false);
     toast("Conversation cleared");
-  }, [activeConversationId]);
+  }, [activeConversationId, nexusChat.setMessages]);
 
   const handleNewConversation = useCallback(() => {
     const newId = crypto.randomUUID();
     try { localStorage.setItem("atlas-home-conversation-id", newId); } catch {}
     try { sessionStorage.setItem("atlas-home-conversation-id", newId); } catch {}
     setActiveConversationId(newId);
-    setHomeMessages([]);
+    nexusChat.setMessages([]);
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, []);
+  }, [nexusChat.setMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
@@ -2467,13 +2327,13 @@ export default function Home() {
         : [];
 
       if (normalizedMessages.length > 0) {
-        setHomeMessages(normalizedMessages);
+        nexusChat.setMessages(normalizedMessages as any);
         setActiveConversationId(id);
         setReviewingPlanIds(new Set());
         try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
         try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
       } else {
-        setHomeMessages([]);
+        nexusChat.setMessages([]);
         setActiveConversationId(id);
         setReviewingPlanIds(new Set());
         try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
@@ -2481,11 +2341,11 @@ export default function Home() {
       }
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId]);
+  }, [setActiveConversationId, nexusChat.setMessages]);
 
   const handleDownloadThread = useCallback(() => {
-    if (homeMessages.length === 0) return;
-    const lines = homeMessages
+    if (nexusChat.messages.length === 0) return;
+    const lines = nexusChat.messages
       .map(m => `## ${m.role === 'user' ? 'You' : 'Atlas'}\n${m.content}`)
       .join("\n\n---\n\n");
     const blob = new Blob([`# Atlas Conversation\n${new Date().toLocaleDateString()}\n\n---\n\n${lines}`], { type: "text/markdown" });
@@ -2495,7 +2355,7 @@ export default function Home() {
     a.download = `atlas-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [homeMessages]);
+  }, [nexusChat.messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // On touch devices Enter inserts a newline — user submits via the Send button.
@@ -2570,7 +2430,7 @@ export default function Home() {
 
       {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
           Home is never Operational, so no green pulsing dot here. */}
-      {homeMessages.length > 0 && subheaderCollapsed && (
+      {nexusChat.messages.length > 0 && subheaderCollapsed && (
         <div
           style={{
             position: "sticky", top: 50, zIndex: 20, height: 14, width: "100%",
@@ -2586,7 +2446,7 @@ export default function Home() {
         </div>
       )}
 
-      {homeMessages.length > 0 && !subheaderCollapsed && (
+      {nexusChat.messages.length > 0 && !subheaderCollapsed && (
         <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
           <ChatTrayHeader
             showTrust
@@ -2809,7 +2669,7 @@ export default function Home() {
         }}
       >
         <UnifiedConversationSurface
-          mode={homeMessages.length > 0 ? "active" : "ambient"}
+          mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
               <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
@@ -2820,7 +2680,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: homeMessages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: homeMessages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: homeMessages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
+          <div style={{ minHeight: nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -2836,7 +2696,7 @@ export default function Home() {
             }} />
 
             {/* Greeting */}
-            {homeMessages.length === 0 && (
+            {nexusChat.messages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
@@ -2869,17 +2729,17 @@ export default function Home() {
             )}
 
             {/* Chat thread */}
-            <div style={{ margin: homeMessages.length > 0 ? "6px 0 26px" : "18px 0 26px", minHeight: homeMessages.length > 0 ? 60 : 0 }}>
-              {homeMessages.length > 0 && (
+            <div style={{ margin: nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px", minHeight: nexusChat.messages.length > 0 ? 60 : 0 }}>
+              {nexusChat.messages.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
                 </div>
               )}
-            {homeMessages.length === 0 && !isAtlasStreaming && !threadLoading ? (
+            {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading ? (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
                 <LoadingSpinner size="sm" color="atlas" />
               </div>
-            ) : homeMessages.length === 0 && !isAtlasStreaming ? (
+            ) : nexusChat.messages.length === 0 && !isAtlasStreaming ? (
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <LoadingSpinner size="sm" color="atlas" />
               </div>
@@ -2907,14 +2767,14 @@ export default function Home() {
                     transition: "border-color 200ms",
                   }}
                 >
-                  {showGoneFlash && homeMessages.length === 0 && (
+                  {showGoneFlash && nexusChat.messages.length === 0 && (
                     <div style={{ textAlign: "center", padding: "24px 0", fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, letterSpacing: "0.08em", animation: "fadeOut 1500ms ease forwards" }}>
                       Gone.
                     </div>
                   )}
-                  {homeMessages.map((msg, i) => (
+                  {(nexusChat.messages as HomeMessage[]).map((msg, i) => (
                     <Fragment key={i}>
-                      {loadedHistoryCount > 0 && i === loadedHistoryCount && homeMessages.length > loadedHistoryCount && (
+                      {loadedHistoryCount > 0 && i === loadedHistoryCount && nexusChat.messages.length > loadedHistoryCount && (
                         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", opacity: 0.3 }}>
                           <div style={{ flex: 1, height: 1, background: "var(--atlas-border)" }} />
                           <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.14em", color: "var(--atlas-muted)", textTransform: "lowercase" }}>
@@ -2986,7 +2846,7 @@ export default function Home() {
                               />
                             );
                           })()}
-                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && homeMessages.filter(m => m.role === "user").length >= 5 && (
+                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && nexusChat.messages.filter(m => m.role === "user").length >= 5 && (
                             <HomeHandoffCard
                               signal={msg.handoffSignal}
                               projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
@@ -3087,7 +2947,7 @@ export default function Home() {
                       bubble renders its own ATLAS label + text, so this
                       standalone block would duplicate (two ATLAS rows with
                       Thinking… stuck below the text). */}
-                  {isAtlasStreaming && !homeMessages.some(m => (m as any).streaming && m.content && m.content.length > 0) && (
+                  {isAtlasStreaming && !nexusChat.messages.some(m => (m as any).streaming && m.content && m.content.length > 0) && (
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 6, animation: "fadeIn 200ms ease forwards" }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
@@ -3095,9 +2955,9 @@ export default function Home() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <LoadingSpinner size="sm" color="atlas" />
-                          {liveStep ? (
+                          {nexusChat.liveStep ? (
                             <span
-                              key={`step-${liveStep.verb}-${liveStep.target ?? ""}`}
+                              key={`step-${nexusChat.liveStep.verb}-${nexusChat.liveStep.target ?? ""}`}
                               style={{
                                 fontFamily: "var(--app-font-mono)",
                                 fontSize: "var(--ts-micro)",
@@ -3109,17 +2969,17 @@ export default function Home() {
                               }}
                             >
                               <span style={{
-                                color: liveStep.status === "warn" ? "var(--atlas-gold)"
-                                  : liveStep.status === "fail" ? "#e25b5b"
+                                color: nexusChat.liveStep.status === "warn" ? "var(--atlas-gold)"
+                                  : nexusChat.liveStep.status === "fail" ? "#e25b5b"
                                   : "var(--atlas-fg)",
                                 opacity: 0.9,
                                 fontWeight: 500,
                               }}>
-                                {liveStep.verb}
+                                {nexusChat.liveStep.verb}
                               </span>
-                              {liveStep.target && (
+                              {nexusChat.liveStep.target && (
                                 <span style={{ color: "var(--atlas-muted)", opacity: 0.75 }}>
-                                  {liveStep.target}
+                                  {nexusChat.liveStep.target}
                                 </span>
                               )}
                             </span>
@@ -3183,7 +3043,7 @@ export default function Home() {
 
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
-          {shapingPayload && !shapingHeld && (
+          {nexusChat.shapingPayload && !nexusChat.shapingHeld && (
             <div style={{
               margin: "12px 16px",
               marginBottom: "80px",
@@ -3210,7 +3070,7 @@ export default function Home() {
                 color: "var(--atlas-fg)",
                 marginBottom: "4px",
               }}>
-                {shapingPayload.title}
+                {nexusChat.shapingPayload.title}
               </div>
               <div style={{
                 fontSize: "13px",
@@ -3218,7 +3078,7 @@ export default function Home() {
                 marginBottom: "16px",
                 lineHeight: 1.5,
               }}>
-                {shapingPayload.tension}
+                {nexusChat.shapingPayload.tension}
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
@@ -3228,10 +3088,10 @@ export default function Home() {
                         method: "POST",
                         credentials: "include",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(shapingPayload),
+                        body: JSON.stringify(nexusChat.shapingPayload),
                       });
                     } catch { /* non-fatal */ }
-                    setShapingHeld(true);
+                    nexusChat.setShapingHeld(true);
                   }}
                   style={{
                     flex: 1,
@@ -3248,7 +3108,7 @@ export default function Home() {
                   Hold it
                 </button>
                 <button
-                  onClick={() => setShapingPayload(null)}
+                  onClick={() => nexusChat.setShapingPayload(null)}
                   style={{
                     flex: 1,
                     padding: "10px",
@@ -3266,7 +3126,7 @@ export default function Home() {
             </div>
           )}
 
-          {shapingHeld && shapingPayload && (
+          {nexusChat.shapingHeld && nexusChat.shapingPayload && (
             <div onClick={() => {
               // Navigate to the shaping project when tapped
               const existing = (projects as any[])?.find(
@@ -3297,7 +3157,7 @@ export default function Home() {
                 color: "var(--atlas-gold)",
                 letterSpacing: "0.08em",
               }}>
-                Shaping · {shapingPayload.title}
+                Shaping · {nexusChat.shapingPayload.title}
               </span>
             </div>
           )}
@@ -3371,7 +3231,7 @@ export default function Home() {
             )}
 
             <div style={{ position: "relative" }}>
-              {!hasInput && !inputFocused && (homeMessages.length === 0 || reflectionLocked) && (
+              {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || reflectionLocked) && (
                 <div
                   style={{
                     position: "absolute",
@@ -3601,7 +3461,7 @@ export default function Home() {
                       <button
                         key={p.id}
                         onClick={() => {
-                          const recentMsgs = homeMessages.slice(-5).map((m: {role: string; content: string}) => `${m.role === "user" ? "Me" : "Atlas"}: ${m.content}`).join("\n\n");
+                          const recentMsgs = nexusChat.messages.slice(-5).map((m: {role: string; content: string}) => `${m.role === "user" ? "Me" : "Atlas"}: ${m.content}`).join("\n\n");
                           const current = input.trim();
                           const ctx = [current ? `My question: ${current}` : "", recentMsgs].filter(Boolean).join("\n\n---\n\n").slice(0, 2000);
                           const encoded = encodeURIComponent(ctx);
@@ -3725,7 +3585,7 @@ export default function Home() {
 
           {/* Intent row — soft orientation under the input. Permission, not features. */}
 
-          {homeMessages.length === 0 && (() => {
+          {nexusChat.messages.length === 0 && (() => {
             const pickStarter = (starter: string) => {
               setInput(starter);
               // Do NOT focus the textarea — that opens the mobile keyboard.
@@ -4108,7 +3968,7 @@ export default function Home() {
       )}
 
       {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
-      <TimelineRail messages={homeMessages.map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      <TimelineRail messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
 
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
@@ -4296,7 +4156,7 @@ export default function Home() {
       `}</style>
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
-          mode={homeMessages.length > 0 ? "active" : "ambient"}
+          mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onProjects={() => setShowProjectsSheet(true)}
