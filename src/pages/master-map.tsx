@@ -283,6 +283,10 @@ export default function MasterMap() {
       return null;
     }
   })();
+  const activeProjectIdRef = useRef(activeProjectId);
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
 
 
 
@@ -557,6 +561,7 @@ export default function MasterMap() {
     const projs = projectsRef.current;
     const positions: THREE.Vector3[] = projs.map((_, i) => nodePos3D(i, projs.length));
     const nodeMeshes: THREE.Mesh[] = [];
+    const haloMeshes: THREE.Mesh[] = [];
     const rippleMeshes: THREE.Mesh[] = [];
     
 
@@ -614,6 +619,21 @@ export default function MasterMap() {
       mesh.scale.setScalar(sizeBoost);
       scene.add(mesh);
       nodeMeshes.push(mesh);
+
+      // Active project halo ring — persistent pulsing ring
+      const haloRing = new THREE.Mesh(
+        new THREE.TorusGeometry(NODE_R, 0.9, 12, 80),
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color(0xC9A24C),
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+        }),
+      );
+      haloRing.position.copy(positions[i]);
+      haloRing.scale.setScalar(sizeBoost);
+      scene.add(haloRing);
+      haloMeshes.push(haloRing);
       projectPositionsRef.current.set(projs[i].id, [positions[i].x, positions[i].y, positions[i].z]);
 
       // Ripple ring (billboarded) — keep per-name hue so pulse stays recognizable
@@ -1172,6 +1192,26 @@ export default function MasterMap() {
           y: (-sp.y * 0.5 + 0.5) * canvas.clientHeight,
         } : prev);
       }
+
+      // ── Active project halo ──
+      haloMeshes.forEach((halo, i) => {
+        const pid = projectsRef.current[i]?.id;
+        const isActive = pid !== undefined && pid === activeProjectIdRef.current;
+        halo.lookAt(camera.position);
+        const mat = halo.material as THREE.MeshBasicMaterial;
+        const bs = baseScales[i] ?? 1;
+        if (isActive) {
+          // Breathing pulse — scale between 1.08x and 1.22x
+          const pulse = 1.15 + Math.sin(t * 2.2) * 0.07;
+          halo.scale.setScalar(bs * pulse);
+          // Opacity breathes between 0.45 and 0.85
+          mat.opacity = 0.65 + Math.sin(t * 2.2) * 0.2;
+          // Gold color with slight warmth shift on pulse
+          mat.color.setHex(0xC9A24C);
+        } else {
+          mat.opacity += (0 - mat.opacity) * 0.12;
+        }
+      });
 
       // ── Ripple rings ──
       rippleMeshes.forEach((ring, i) => {
