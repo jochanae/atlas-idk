@@ -278,7 +278,10 @@ export default function MasterMap() {
       const params = new URLSearchParams(window.location.search);
       const raw = params.get("projectId") ?? params.get("activeProjectId") ?? params.get("project") ?? sessionStorage.getItem("atlas-active-project-id");
       const parsed = raw ? Number(raw) : NaN;
-      return Number.isFinite(parsed) ? parsed : null;
+      if (Number.isFinite(parsed)) return parsed;
+      // Fall back to most recently updated project
+      if (projects.length > 0) return projects[0].id;
+      return null;
     } catch {
       return null;
     }
@@ -292,7 +295,12 @@ export default function MasterMap() {
 
 
   useEffect(() => { hoveredIdxRef.current = hoveredIdx; }, [hoveredIdx]);
-  useEffect(() => { projectsRef.current = projects; }, [projects]);
+  useEffect(() => {
+    projectsRef.current = projects;
+    if (projects.length > 0) {
+      try { (navigator as any).vibrate?.([40]); } catch {}
+    }
+  }, [projects]);
   useEffect(() => { peekRef.current = peek; }, [peek]);
   useEffect(() => { tensionsRef.current = tensions; }, [tensions]);
   useEffect(() => { hoveredTensionRef.current = hoveredTension; }, [hoveredTension]);
@@ -622,7 +630,7 @@ export default function MasterMap() {
 
       // Active project halo ring — persistent pulsing ring
       const haloRing = new THREE.Mesh(
-        new THREE.TorusGeometry(NODE_R, 0.9, 12, 80),
+        new THREE.TorusGeometry(NODE_R, 2.2, 16, 80),
         new THREE.MeshBasicMaterial({
           color: new THREE.Color(0xC9A24C),
           transparent: true,
@@ -1205,7 +1213,7 @@ export default function MasterMap() {
           const pulse = 1.15 + Math.sin(t * 2.2) * 0.07;
           halo.scale.setScalar(bs * pulse);
           // Opacity breathes between 0.45 and 0.85
-          mat.opacity = 0.65 + Math.sin(t * 2.2) * 0.2;
+          mat.opacity = 0.75 + Math.sin(t * 2.2) * 0.25;
           // Gold color with slight warmth shift on pulse
           mat.color.setHex(0xC9A24C);
         } else {
