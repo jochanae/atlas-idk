@@ -356,7 +356,8 @@ export function ChatStream(props: ChatStreamProps) {
             justifyContent: "center",
             cursor: "pointer",
             boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-            zIndex: 5,
+            zIndex: 50,
+            pointerEvents: "auto",
             flexShrink: 0,
           }}
         >
