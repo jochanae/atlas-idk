@@ -26,6 +26,9 @@ export interface NexusMessage {
   modelUsed?: string | null;
   errorMessage?: string;
   plan?: unknown;
+  visualImageBase64?: string | null;
+  visualCaption?: string | null;
+  visualLoading?: boolean;
 }
 
 export interface NexusHandoffSignal {
@@ -177,7 +180,8 @@ export function useNexusChatStream(
               .replace(/\nNAVIGATE_TO:\{[^\n]*\}?/g, "")
               .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "")
               .replace(/READY_TO_SHAPE:[^\n]*/g, "")
-              .replace(/NAVIGATE_TO:[^\n]*/g, "");
+              .replace(/NAVIGATE_TO:[^\n]*/g, "")
+              .replace(/VISUALIZE:\{[^\n]*\}?/g, "");
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
@@ -202,6 +206,71 @@ export function useNexusChatStream(
             const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
             if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeldRef.current) {
               setShapingPayload(shapingFromMeta);
+            }
+
+            // Parse VISUALIZE marker
+            const visualMatch = fullText.match(
+              /VISUALIZE:\{([^\n]+)\}/
+            );
+            if (visualMatch) {
+              try {
+                const visualData = JSON.parse(
+                  `{${visualMatch[1]}}`
+                ) as { prompt: string; caption: string };
+                
+                if (visualData?.prompt) {
+                  // Set loading state on the message
+                  setMessages(prev => prev.map(m =>
+                    (m as any).id === streamingId
+                      ? { 
+                          ...m, 
+                          visualLoading: true,
+                          visualCaption: visualData.caption ?? null,
+                        }
+                      : m
+                  ));
+
+                  // Fetch the image async — don't block onDone
+                  fetch("/api/nexus/visualize", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                      prompt: visualData.prompt 
+                    }),
+                  })
+                    .then(r => r.ok ? r.json() : null)
+                    .then((data: { 
+                      imageBase64?: string; 
+                      mimeType?: string 
+                    } | null) => {
+                      if (data?.imageBase64) {
+                        setMessages(prev => prev.map(m =>
+                          (m as any).id === streamingId
+                            ? {
+                                ...m,
+                                visualLoading: false,
+                                visualImageBase64: data.imageBase64,
+                              }
+                            : m
+                        ));
+                      } else {
+                        setMessages(prev => prev.map(m =>
+                          (m as any).id === streamingId
+                            ? { ...m, visualLoading: false }
+                            : m
+                        ));
+                      }
+                    })
+                    .catch(() => {
+                      setMessages(prev => prev.map(m =>
+                        (m as any).id === streamingId
+                          ? { ...m, visualLoading: false }
+                          : m
+                      ));
+                    });
+                }
+              } catch { /* non-fatal */ }
             }
 
             // Parse MEMORY_CHIPS
