@@ -2557,7 +2557,7 @@ export default function Home() {
         </div>
       )}
 
-      {nexusChat.messages.length > 0 && !subheaderCollapsed && (
+      {!subheaderCollapsed && (
         <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
           <ChatTrayHeader
             showTrust
@@ -3104,11 +3104,39 @@ export default function Home() {
                               {msg.content}
                             </CollapsibleMessageText>
                           </div>
-                          {msg.createdAt && (
-                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
-                              {formatMessageTime(msg.createdAt)}
-                            </div>
-                          )}
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                            <button
+                              type="button"
+                              title={copiedMsgIdx === i ? "Copied!" : "Copy"}
+                              aria-label="Copy message"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.content).catch(() => {});
+                                setCopiedMsgIdx(i);
+                                setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                padding: "3px 2px",
+                                cursor: "pointer",
+                                opacity: copiedMsgIdx === i ? 0.9 : 0.55,
+                                color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                                lineHeight: 1,
+                                transition: "opacity 140ms, color 140ms",
+                              }}
+                            >
+                              {copiedMsgIdx === i ? (
+                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+                              )}
+                            </button>
+                            {msg.createdAt && (
+                              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
+                                {formatMessageTime(msg.createdAt)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3604,7 +3632,7 @@ export default function Home() {
                   // cause the synthesized click to land on a different element).
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    if (!isSending && hasInput) void handleSubmit();
+                    if (!isSending && canSubmitNow()) void handleSubmit();
                   }}
                   onClick={(e) => {
                     // Desktop fallback (no pointer events / keyboard activation)
@@ -3613,9 +3641,9 @@ export default function Home() {
                   disabled={isSending}
                   style={{
                     width: 40, height: 40, flexShrink: 0,
-                    background: hasInput && !isSending ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
-                    border: hasInput ? "none" : "1px solid var(--atlas-border)",
-                    boxShadow: hasInput && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
+                    background: canSubmit && !isSending ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
+                    border: canSubmit ? "none" : "1px solid var(--atlas-border)",
+                    boxShadow: canSubmit && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
                     opacity: isSending ? 0.5 : 1,
                   }}
                 >
@@ -3623,8 +3651,8 @@ export default function Home() {
                     <LoadingSpinner size="sm" color="ember" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={13} height={13}
-                      fill={hasInput ? "var(--atlas-fg)" : "none"}
-                      stroke={hasInput ? "var(--atlas-fg)" : "var(--atlas-muted)"}
+                      fill={canSubmit ? "var(--atlas-fg)" : "none"}
+                      stroke={canSubmit ? "var(--atlas-fg)" : "var(--atlas-muted)"}
                       strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
                     >
                       <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
