@@ -2541,7 +2541,7 @@ export default function Home() {
 
       {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
           Home is never Operational, so no green pulsing dot here. */}
-      {nexusChat.messages.length > 0 && subheaderCollapsed && (
+      {subheaderCollapsed && (
         <div
           style={{
             position: "sticky", top: 50, zIndex: 20, height: 14, width: "100%",
