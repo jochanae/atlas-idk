@@ -1200,6 +1200,23 @@ function ShellFooter() {
     setLocation("/home");
   }, [currentDepth, scrollHomeConversationToTop, setLocation]);
 
+  const openLastProject = useCallback(() => {
+    let lastId: string | null = null;
+    try {
+      lastId = localStorage.getItem("atlas-last-project") || localStorage.getItem("atlas-last-project-id");
+    } catch {}
+    if (lastId && lastId !== "null" && lastId !== "undefined") {
+      setLocation(`/project/${lastId}`);
+    } else {
+      setLocation("/projects");
+    }
+  }, [setLocation]);
+
+  const openAllProjects = useCallback(() => {
+    setLocation("/projects");
+  }, [setLocation]);
+
+
   const navItems = useMemo<[ShellNavItem, ShellNavItem, ShellNavItem, ShellNavItem]>(() => {
     if (renderDepth === "operational") {
       return [
