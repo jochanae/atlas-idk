@@ -774,11 +774,25 @@ export function ChatComposer(props: ChatComposerProps) {
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 1,
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="1" width="12" height="14" rx="1.5"/>
-                  <line x1="5" y1="5" x2="11" y2="5"/>
-                  <line x1="5" y1="8" x2="11" y2="8"/>
-                  <line x1="5" y1="11" x2="8" y2="11"/>
+                {/* Checklist + gold dot — Plan mode signifier */}
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  {/* checkmarks */}
+                  <path d="M2.5 6L4 7.5L6.5 5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M2.5 12L4 13.5L6.5 11" stroke="currentColor" strokeWidth="1.5" />
+                  {/* list lines */}
+                  <line x1="9" y1="6.5" x2="14" y2="6.5" stroke="currentColor" strokeWidth="1.5" />
+                  <line x1="9" y1="12.5" x2="13" y2="12.5" stroke="currentColor" strokeWidth="1.5" />
+                  {/* gold dot — always gold to match the mark */}
+                  <circle
+                    cx="16"
+                    cy="4"
+                    r={planMode ? 2.4 : 2}
+                    fill="#C9A24C"
+                    style={{
+                      filter: planMode ? "drop-shadow(0 0 4px rgba(201,162,76,0.75))" : "none",
+                      transition: "all var(--motion-fast) var(--ease-standard)",
+                    }}
+                  />
                 </svg>
               </button>
 
