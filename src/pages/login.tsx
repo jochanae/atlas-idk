@@ -3,21 +3,10 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { apiUrl } from "../lib/api";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 type Mode = "login" | "signup" | "forgot";
-
-async function apiPost(path: string, body: Record<string, string>) {
-  const res = await fetch(apiUrl(path), {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json() as { error?: string; message?: string; token?: string };
-  if (!res.ok) throw new Error(data.error ?? "Something went wrong");
-  return data;
-}
 
 export default function Login() {
   const [mode, setMode] = useState<Mode>("login");
@@ -82,7 +71,10 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      await apiPost("/api/auth/forgot-password", { email });
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (err) throw err;
       setForgotSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -96,12 +88,19 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const path = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
-      const body: Record<string, string> = { email, password };
-      if (mode === "signup" && name.trim()) body.name = name.trim();
-      const data = await apiPost(path, body);
-      if (data.token) {
-        localStorage.setItem("atlas-token", String(data.token));
+      if (mode === "login") {
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        if (err) throw err;
+      } else {
+        const { error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: name.trim() ? { display_name: name.trim() } : undefined,
+          },
+        });
+        if (err) throw err;
       }
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       sessionStorage.setItem("atlas-just-authed", "1");
@@ -113,12 +112,26 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleOAuth = async (provider: "google" | "apple") => {
     setError(null);
     setLoading(true);
-    // Hand off to the backend OAuth start endpoint. The backend redirects to
-    // Google, then back to /auth/callback (or /auth/token-bridge) on success.
-    window.location.href = apiUrl("/api/auth/google");
+    try {
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError(result.error instanceof Error ? result.error.message : `Could not start ${provider} sign-in`);
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return; // browser navigating away
+      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      sessionStorage.setItem("atlas-just-authed", "1");
+      navigate("/home");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Could not start ${provider} sign-in`);
+      setLoading(false);
+    }
   };
 
   if (isLoading) return (
@@ -461,7 +474,7 @@ export default function Login() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
               type="button"
-              onClick={() => void handleGoogleSignIn()}
+              onClick={() => void handleOAuth("google")}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 10, padding: "10px 16px", borderRadius: 10,
@@ -478,16 +491,19 @@ export default function Login() {
               <span>Continue with Google</span>
             </button>
             <button
-              disabled
-              title="Apple Sign-In coming soon"
+              type="button"
+              onClick={() => void handleOAuth("apple")}
+              disabled={loading}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 10, padding: "10px 16px", borderRadius: 10,
-                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-                color: "var(--atlas-muted)", fontSize: 11, ...mono, letterSpacing: "0.12em",
-                textTransform: "uppercase", cursor: "not-allowed", opacity: 0.35,
-                transition: "all 200ms ease",
+                background: "var(--atlas-glass-bg)", border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-fg)", fontSize: 11, ...mono, letterSpacing: "0.12em",
+                textTransform: "uppercase", cursor: loading ? "wait" : "pointer",
+                transition: "all 200ms ease", boxSizing: "border-box",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--atlas-border)"; }}
             >
               <AppleIcon />
               <span>Continue with Apple</span>
