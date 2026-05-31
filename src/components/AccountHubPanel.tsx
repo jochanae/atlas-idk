@@ -268,6 +268,17 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   const [atlasProfile, setAtlasProfile] = useState<AtlasProfile>(loadAtlasProfile);
   const [githubTokenInput, setGithubTokenInput] = useState("");
 
+  useEffect(() => {
+    fetch("/api/connections", { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{type: string}>) => {
+        if (data.some(c => c.type === "github")) {
+          setGithubTokenInput("saved");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // ── Save ──────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -699,14 +710,19 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
             </div>
             <input
               type="password"
-              placeholder="ghp_... or github_pat_..."
+              disabled={githubTokenInput === "saved"}
+              placeholder={githubTokenInput === "saved"
+                ? "✓ GitHub connected"
+                : "ghp_.... or github_pat_..."}
               style={{
                 width: "100%",
                 padding: "10px 12px",
                 background: "var(--atlas-bg)",
                 border: "1px solid var(--atlas-border)",
                 borderRadius: "8px",
-                color: "var(--atlas-fg)",
+                color: githubTokenInput === "saved"
+                  ? "var(--atlas-gold)"
+                  : "var(--atlas-fg)",
                 fontSize: "13px",
                 marginBottom: "8px",
                 boxSizing: "border-box",
@@ -729,7 +745,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
                 });
                 if (res.ok) {
                   toast.success("GitHub connected.");
-                  setGithubTokenInput("");
+                  setGithubTokenInput("saved");
                 } else {
                   toast.error("Failed to save token. Try again.");
                 }
