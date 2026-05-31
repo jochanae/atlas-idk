@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 
+const STREAM_TIMEOUT_MS = 30_000;
+
 export interface NexusMessage {
   id?: string;
   role: "user" | "assistant";
@@ -98,13 +100,27 @@ export function useNexusChatStream(
 
   const { stream, abort: abortStream } = useAtlasStream();
   const streamingIdRef = useRef<string | null>(null);
+  const cleanedUpRef = useRef(true);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const abort = useCallback(() => {
-    abortStream();
+  const resetStreamState = useCallback(() => {
+    if (cleanedUpRef.current) return;
+
+    cleanedUpRef.current = true;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    streamingIdRef.current = null;
     setIsStreaming(false);
     setIsPending(false);
     setLiveStep(null);
-  }, [abortStream]);
+  }, []);
+
+  const abort = useCallback(() => {
+    abortStream();
+    resetStreamState();
+  }, [abortStream, resetStreamState]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -137,6 +153,25 @@ export function useNexusChatStream(
     setIsStreaming(true);
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
+    cleanedUpRef.current = false;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      if (cleanedUpRef.current || streamingIdRef.current !== streamingId) return;
+
+      abortStream();
+      setMessages(prev => prev.map(m =>
+        (m as any).id === streamingId
+          ? {
+              ...m,
+              content: "Connection timed out. Tap send again to retry.",
+              streaming: false,
+              runStatus: "failed",
+              errorMessage: "Stream timed out.",
+            }
+          : m
+      ));
+      resetStreamState();
+    }, STREAM_TIMEOUT_MS);
 
     // Add user message
     const userMsg: NexusMessage = {
@@ -320,9 +355,7 @@ export function useNexusChatStream(
                 : m
             ));
 
-            setLiveStep(null);
-            setIsStreaming(false);
-            setIsPending(false);
+            resetStreamState();
           },
           onError: (errMsg) => {
             setMessages(prev => prev.map(m =>
@@ -336,19 +369,15 @@ export function useNexusChatStream(
                   }
                 : m
             ));
-            setIsStreaming(false);
-            setIsPending(false);
-            setLiveStep(null);
+            resetStreamState();
           },
         },
       });
     } finally {
       // Always reset — even if stream threw unexpectedly
-      setIsStreaming(false);
-      setIsPending(false);
-      setLiveStep(null);
+      resetStreamState();
     }
-  }, [isPending, focusProjectId, model, mode, conversationId, projectContext, stream]);
+  }, [isPending, focusProjectId, model, mode, conversationId, projectContext, stream, abortStream, resetStreamState]);
 
   return {
     messages,
