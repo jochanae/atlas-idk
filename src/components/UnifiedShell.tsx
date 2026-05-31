@@ -278,7 +278,10 @@ function ShellAvatar() {
 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
-  const name = ps.project?.name?.trim() || "Untitled project";
+  // Avoid the "Untitled" flash while the project state is still loading for the first time.
+  const hydrating = ps.loading && !ps.project;
+  const resolvedName = ps.project?.name?.trim();
+  const name = resolvedName || (hydrating ? "" : "Untitled project");
   const hasActive = Boolean(ps.activeSession);
   const qc = useQueryClient();
   const updateProject = useUpdateProject();
