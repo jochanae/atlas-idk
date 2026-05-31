@@ -1236,7 +1236,17 @@ function ShellFooter() {
     }
     return [
       { label: "Home", icon: "home", action: () => setLocation("/home") },
-      { label: "Projects", icon: "projects", action: () => setLocation("/projects") },
+      {
+        label: "Projects",
+        icon: "projects",
+        action: () => {
+          if (location === "/projects") {
+            openLastProject();
+          } else {
+            setLocation("/projects");
+          }
+        },
+      },
       { label: "Decisions", icon: "decisions", action: () => setLocation("/ledger") },
       { label: "You", icon: "you", action: () => setLocation("/you") },
     ];
