@@ -2500,6 +2500,16 @@ export default function Home() {
               });
               if (res.ok) {
                 nexusChat.setShapingHeld(true);
+                // Refresh projects so the next tap can find the new idea
+                await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                // If the response includes the new project id, navigate immediately
+                try {
+                  const data = await res.clone().json();
+                  const newId = data?.id ?? data?.project?.id ?? data?.projectId;
+                  if (newId) {
+                    window.location.href = `/project/${newId}`;
+                  }
+                } catch { /* response may not be JSON — non-fatal */ }
               }
             } catch { /* non-fatal */ }
           }}
