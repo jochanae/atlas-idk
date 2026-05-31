@@ -288,8 +288,8 @@ export function useNexusChatStream(
                       ));
                     });
                 }
-              } catch { /* non-fatal */ }
             }
+
 
             // Parse MEMORY_CHIPS
             const chipMatch = displayText.match(/MEMORY_CHIPS:\s*(\[[\s\S]*?\])/);
