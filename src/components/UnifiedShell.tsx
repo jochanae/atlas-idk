@@ -1098,7 +1098,7 @@ function ShellCenterButton({
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
           userSelect: "none",
-          transform: stage === "long" ? "scale(1.06)" : stage === "medium" ? "scale(1.03)" : "scale(1)",
+          transform: stage === "long" ? "scale(1.06)" : "scale(1)",
           transition: "transform 120ms var(--ease-standard), box-shadow 120ms var(--ease-standard), border-color 120ms var(--ease-standard)",
           boxShadow: ringSpread,
         }}
