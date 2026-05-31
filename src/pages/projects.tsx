@@ -308,14 +308,14 @@ export default function Projects() {
     } catch {}
   }, [queryClient]);
 
-  const activeProjects = projects?.filter(p => 
-    (p.status ?? "active") !== "archived" && 
+  const activeProjects = projects?.filter(p =>
+    (p.status ?? "active") !== "archived" &&
     p.status !== "shaping" &&
-    p.entity_type !== "idea"
+    (p as any).entity_type !== "idea"
   ) ?? [];
-  const archivedProjects = projects?.filter(p => 
-    p.status === "archived" && 
-    p.entity_type !== "idea"
+  const archivedProjects = projects?.filter(p =>
+    p.status === "archived" &&
+    (p as any).entity_type !== "idea"
   ) ?? [];
 
   // Build set/map of already-linked fullNames for fast lookup
