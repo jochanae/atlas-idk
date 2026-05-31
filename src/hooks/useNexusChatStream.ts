@@ -181,7 +181,8 @@ export function useNexusChatStream(
               .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "")
               .replace(/READY_TO_SHAPE:[^\n]*/g, "")
               .replace(/NAVIGATE_TO:[^\n]*/g, "")
-              .replace(/VISUALIZE:\{[^\n]*\}?/g, "");
+              .replace(/\nVISUALIZE:\{[^\n]*\}?/g, "")
+              .replace(/VISUALIZE:\{"prompt"[\s\S]*?"caption":"[^"]*"\}/g, "");
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
