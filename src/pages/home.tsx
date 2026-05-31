@@ -4002,25 +4002,63 @@ export default function Home() {
             ) : conversations.map(c => (
               <div
                 key={c.id}
-                onClick={() => handleSwitchConversation(c.id)}
                 style={{
                   padding: "12px 0",
                   borderBottom: "1px solid var(--atlas-border)",
-                  cursor: "pointer",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  gap: 12,
                 }}
               >
-                <div>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchConversation(c.id)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    color: "inherit",
+                  }}
+                >
                   <div style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", marginBottom: 2 }}>{c.title}</div>
                   <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
                     {new Date(c.createdAt).toLocaleDateString()} · {c.messageCount} messages
                   </div>
+                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteConversation(c.id);
+                    }}
+                    aria-label="Delete conversation"
+                    title="Delete conversation"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: "4px",
+                      cursor: "pointer",
+                      color: "rgba(239,68,68,0.7)",
+                      lineHeight: 0,
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"/>
+                      <path d="M8 6V4h8v2"/>
+                      <path d="M19 6l-1 14H6L5 6"/>
+                      <path d="M10 11v6M14 11v6"/>
+                    </svg>
+                  </button>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </div>
             ))}
           </div>
