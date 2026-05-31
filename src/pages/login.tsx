@@ -474,7 +474,7 @@ export default function Login() {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
               type="button"
-              onClick={() => void handleGoogleSignIn()}
+              onClick={() => void handleOAuth("google")}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 10, padding: "10px 16px", borderRadius: 10,
@@ -491,16 +491,19 @@ export default function Login() {
               <span>Continue with Google</span>
             </button>
             <button
-              disabled
-              title="Apple Sign-In coming soon"
+              type="button"
+              onClick={() => void handleOAuth("apple")}
+              disabled={loading}
               style={{
                 width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 10, padding: "10px 16px", borderRadius: 10,
-                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-                color: "var(--atlas-muted)", fontSize: 11, ...mono, letterSpacing: "0.12em",
-                textTransform: "uppercase", cursor: "not-allowed", opacity: 0.35,
-                transition: "all 200ms ease",
+                background: "var(--atlas-glass-bg)", border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-fg)", fontSize: 11, ...mono, letterSpacing: "0.12em",
+                textTransform: "uppercase", cursor: loading ? "wait" : "pointer",
+                transition: "all 200ms ease", boxSizing: "border-box",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--atlas-border)"; }}
             >
               <AppleIcon />
               <span>Continue with Apple</span>
