@@ -1125,3 +1125,8 @@ mark.atlas-search-hit.atlas-search-hit--active {
   font-size: 11px;
   letter-spacing: 0.04em;
 }
+
+@keyframes axiomShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
