@@ -14,6 +14,7 @@ import { useProjectState } from "@/hooks/useProjectState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
+import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
 import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import type { ProjectNodeState } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1413,6 +1414,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellReadinessChip projectId={activeProjectId} />
             <ShellStatusChip projectId={activeProjectId} />
+            {location === "/home" && <ThinkFreelyHeaderToggle />}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 
