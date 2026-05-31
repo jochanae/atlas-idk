@@ -208,8 +208,11 @@ export function useNexusChatStream(
         },
         callbacks: {
           onToken: (released) => {
-            const cleaned = released
-              .split('\n')
+            // released is the FULL accumulated text from 
+            // the pacer — not just the latest chunk.
+            // Strip markers from the full accumulated text.
+            const lines = released.split('\n');
+            const cleaned = lines
               .filter(line => {
                 const t = line.trim();
                 return !t.startsWith('VISUALIZE:') &&
@@ -220,7 +223,7 @@ export function useNexusChatStream(
               .join('\n')
               .replace(/VISUALIZE:\{[\s\S]*$/g, '')
               .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
-              .trim();
+              .trimEnd();
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
