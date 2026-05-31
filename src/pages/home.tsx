@@ -1974,7 +1974,8 @@ export default function Home() {
 
 
   const handleSubmit = useCallback(async () => {
-    const text = input.trim();
+    const liveText = textareaRef.current?.value ?? input;
+    const text = liveText.trim();
     const hasImages = attachedFiles.some(f => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
     // Block PTR and double-sends immediately — before any async work
@@ -2346,6 +2347,22 @@ export default function Home() {
     } catch {}
   }, [setActiveConversationId, nexusChat.setMessages]);
 
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    }).catch(() => {});
+
+    setConversations((prev) => prev.filter((conversation) => conversation.id !== id));
+
+    if (id === activeConversationId) {
+      handleNewConversation();
+    }
+
+    try { localStorage.removeItem(`atlas-thread-title:${id}`); } catch {}
+    toast("Conversation deleted");
+  }, [activeConversationId, handleNewConversation]);
+
   const handleDownloadThread = useCallback(() => {
     if (nexusChat.messages.length === 0) return;
     const lines = nexusChat.messages
@@ -2382,6 +2399,12 @@ export default function Home() {
   };
 
   const hasInput = input.trim().length > 0;
+  const hasAttachments = attachedFiles.length > 0;
+  const canSubmit = hasInput || hasAttachments;
+  const canSubmitNow = () => {
+    const liveText = textareaRef.current?.value ?? input;
+    return liveText.trim().length > 0 || attachedFiles.length > 0;
+  };
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
