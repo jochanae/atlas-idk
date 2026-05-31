@@ -998,35 +998,28 @@ function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: bo
 
 function ShellCenterButton({
   onTap,
-  onMediumPress,
   onLongPress,
 }: {
   onTap: () => void;
-  onMediumPress: () => void;
   onLongPress: () => void;
 }) {
   // Gesture thresholds (ms)
-  // tap          : < 350
-  // medium-press : 350 – 900   → last active project
-  // long-press   : >= 900      → /projects
-  const MEDIUM_MS = 350;
-  const LONG_MS = 900;
+  // tap        : < 600
+  // long-press : >= 600 → /projects
+  const LONG_MS = 600;
   const MOVE_CANCEL_PX = 10;
 
   const downAtRef = useRef<number | null>(null);
   const startXYRef = useRef<{ x: number; y: number } | null>(null);
-  const mediumTimerRef = useRef<number | null>(null);
   const longTimerRef = useRef<number | null>(null);
-  const stageRef = useRef<"tap" | "medium" | "long">("tap");
   const cancelledRef = useRef(false);
-  const [stage, setStage] = useState<"idle" | "tap" | "medium" | "long">("idle");
+  const [stage, setStage] = useState<"idle" | "tap" | "long">("idle");
 
   const haptic = useCallback((ms: number) => {
     try { if ("vibrate" in navigator) navigator.vibrate(ms); } catch {}
   }, []);
 
   const clearTimers = useCallback(() => {
-    if (mediumTimerRef.current) { window.clearTimeout(mediumTimerRef.current); mediumTimerRef.current = null; }
     if (longTimerRef.current) { window.clearTimeout(longTimerRef.current); longTimerRef.current = null; }
   }, []);
 
@@ -1034,7 +1027,6 @@ function ShellCenterButton({
     clearTimers();
     downAtRef.current = null;
     startXYRef.current = null;
-    stageRef.current = "tap";
     cancelledRef.current = false;
     setStage("idle");
   }, [clearTimers]);
@@ -1044,16 +1036,9 @@ function ShellCenterButton({
     try { (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId); } catch {}
     downAtRef.current = performance.now();
     startXYRef.current = { x: e.clientX, y: e.clientY };
-    stageRef.current = "tap";
     cancelledRef.current = false;
     setStage("tap");
-    mediumTimerRef.current = window.setTimeout(() => {
-      stageRef.current = "medium";
-      setStage("medium");
-      haptic(15);
-    }, MEDIUM_MS);
     longTimerRef.current = window.setTimeout(() => {
-      stageRef.current = "long";
       setStage("long");
       haptic(35);
     }, LONG_MS);
@@ -1076,17 +1061,14 @@ function ShellCenterButton({
     setStage("idle");
     downAtRef.current = null;
     if (dur >= LONG_MS) onLongPress();
-    else if (dur >= MEDIUM_MS) onMediumPress();
     else onTap();
-  }, [clearTimers, reset, onTap, onMediumPress, onLongPress]);
+  }, [clearTimers, reset, onTap, onLongPress]);
 
   const ringColor =
     stage === "long" ? "rgba(var(--atlas-gold-rgb),0.95)" :
-    stage === "medium" ? "rgba(var(--atlas-gold-rgb),0.75)" :
     "rgba(var(--atlas-gold-rgb),0.55)";
   const ringSpread =
     stage === "long" ? "0 0 0 4px rgba(var(--atlas-gold-rgb),0.95), 0 0 28px rgba(var(--atlas-gold-rgb),0.5)" :
-    stage === "medium" ? "0 0 0 3px rgba(var(--atlas-gold-rgb),0.75), 0 0 22px rgba(var(--atlas-gold-rgb),0.32)" :
     "0 0 0 2px rgba(var(--atlas-gold-rgb),0.55), 0 0 18px rgba(var(--atlas-gold-rgb),0.18)";
 
   return (
@@ -1116,7 +1098,7 @@ function ShellCenterButton({
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
           userSelect: "none",
-          transform: stage === "long" ? "scale(1.06)" : stage === "medium" ? "scale(1.03)" : "scale(1)",
+          transform: stage === "long" ? "scale(1.06)" : "scale(1)",
           transition: "transform 120ms var(--ease-standard), box-shadow 120ms var(--ease-standard), border-color 120ms var(--ease-standard)",
           boxShadow: ringSpread,
         }}
@@ -1148,7 +1130,7 @@ function ShellCenterButton({
 
 function ShellFooter() {
   const { currentDepth, activeProjectId } = useShellState();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [renderDepth, setRenderDepth] = useState<ShellDepth>(currentDepth);
   const [itemsVisible, setItemsVisible] = useState(true);
@@ -1236,11 +1218,21 @@ function ShellFooter() {
     }
     return [
       { label: "Home", icon: "home", action: () => setLocation("/home") },
-      { label: "Projects", icon: "projects", action: () => setLocation("/projects") },
+      {
+        label: "Projects",
+        icon: "projects",
+        action: () => {
+          if (location === "/projects") {
+            openLastProject();
+          } else {
+            setLocation("/projects");
+          }
+        },
+      },
       { label: "Decisions", icon: "decisions", action: () => setLocation("/ledger") },
       { label: "You", icon: "you", action: () => setLocation("/you") },
     ];
-  }, [openProjectTab, renderDepth, setLocation]);
+  }, [openProjectTab, renderDepth, setLocation, location, openLastProject]);
 
   if (!isMobile) return null;
 
@@ -1276,7 +1268,7 @@ function ShellFooter() {
       >
         <ShellFooterNavItem item={navItems[0]} visible={itemsVisible} />
         <ShellFooterNavItem item={navItems[1]} visible={itemsVisible} />
-        <ShellCenterButton onTap={centerAction} onMediumPress={openLastProject} onLongPress={openAllProjects} />
+        <ShellCenterButton onTap={centerAction} onLongPress={openAllProjects} />
         <ShellFooterNavItem item={navItems[2]} visible={itemsVisible} />
         <ShellFooterNavItem item={navItems[3]} visible={itemsVisible} />
       </div>
