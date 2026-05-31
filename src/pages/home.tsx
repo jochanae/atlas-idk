@@ -1974,7 +1974,8 @@ export default function Home() {
 
 
   const handleSubmit = useCallback(async () => {
-    const text = input.trim();
+    const liveText = textareaRef.current?.value ?? input;
+    const text = liveText.trim();
     const hasImages = attachedFiles.some(f => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
     // Block PTR and double-sends immediately — before any async work
@@ -2346,6 +2347,22 @@ export default function Home() {
     } catch {}
   }, [setActiveConversationId, nexusChat.setMessages]);
 
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    }).catch(() => {});
+
+    setConversations((prev) => prev.filter((conversation) => conversation.id !== id));
+
+    if (id === activeConversationId) {
+      handleNewConversation();
+    }
+
+    try { localStorage.removeItem(`atlas-thread-title:${id}`); } catch {}
+    toast("Conversation deleted");
+  }, [activeConversationId, handleNewConversation]);
+
   const handleDownloadThread = useCallback(() => {
     if (nexusChat.messages.length === 0) return;
     const lines = nexusChat.messages
@@ -2382,6 +2399,12 @@ export default function Home() {
   };
 
   const hasInput = input.trim().length > 0;
+  const hasAttachments = attachedFiles.length > 0;
+  const canSubmit = hasInput || hasAttachments;
+  const canSubmitNow = () => {
+    const liveText = textareaRef.current?.value ?? input;
+    return liveText.trim().length > 0 || attachedFiles.length > 0;
+  };
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -2518,7 +2541,7 @@ export default function Home() {
 
       {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
           Home is never Operational, so no green pulsing dot here. */}
-      {nexusChat.messages.length > 0 && subheaderCollapsed && (
+      {subheaderCollapsed && (
         <div
           style={{
             position: "sticky", top: 50, zIndex: 20, height: 14, width: "100%",
@@ -2534,7 +2557,7 @@ export default function Home() {
         </div>
       )}
 
-      {nexusChat.messages.length > 0 && !subheaderCollapsed && (
+      {!subheaderCollapsed && (
         <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
           <ChatTrayHeader
             showTrust
@@ -3081,11 +3104,39 @@ export default function Home() {
                               {msg.content}
                             </CollapsibleMessageText>
                           </div>
-                          {msg.createdAt && (
-                            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
-                              {formatMessageTime(msg.createdAt)}
-                            </div>
-                          )}
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                            <button
+                              type="button"
+                              title={copiedMsgIdx === i ? "Copied!" : "Copy"}
+                              aria-label="Copy message"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.content).catch(() => {});
+                                setCopiedMsgIdx(i);
+                                setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                padding: "3px 2px",
+                                cursor: "pointer",
+                                opacity: copiedMsgIdx === i ? 0.9 : 0.55,
+                                color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                                lineHeight: 1,
+                                transition: "opacity 140ms, color 140ms",
+                              }}
+                            >
+                              {copiedMsgIdx === i ? (
+                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+                              )}
+                            </button>
+                            {msg.createdAt && (
+                              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
+                                {formatMessageTime(msg.createdAt)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3320,7 +3371,25 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: isTinyScreen ? "center" : "flex-start", minWidth: 0 }}>
 
-            {/* History clock — jumpstart active sessions */}
+              {/* Plus — opens attachments for now, leaves room for a menu later */}
+              <label
+                htmlFor="home-file-input"
+                title="Add attachment"
+                aria-label="Add attachment"
+                style={{
+                  width: 32, height: 32, borderRadius: 8, background: "transparent",
+                  color: attachedFiles.length > 0 ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "color 160ms ease", flexShrink: 0, userSelect: "none",
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v10" />
+                  <path d="M3 8h10" />
+                </svg>
+              </label>
+
+              {/* History clock — jumpstart active sessions */}
               <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
                 <button
                   onClick={handleOpenHistory}
@@ -3412,22 +3481,6 @@ export default function Home() {
                 )}
               </button>
 
-
-              {/* Paperclip — label triggers file input natively; works on mobile Safari */}
-              <label
-                htmlFor="home-file-input"
-                title="Attach image"
-                style={{
-                  width: 32, height: 32, borderRadius: 8, background: "transparent",
-                  color: attachedFiles.length > 0 ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "color 160ms ease", flexShrink: 0, userSelect: "none",
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                  <path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </label>
 
               {/* Vault — shown in input bar only on tiny screens */}
               {isTinyScreen && (
@@ -3581,7 +3634,7 @@ export default function Home() {
                   // cause the synthesized click to land on a different element).
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    if (!isSending && hasInput) void handleSubmit();
+                    if (!isSending && canSubmitNow()) void handleSubmit();
                   }}
                   onClick={(e) => {
                     // Desktop fallback (no pointer events / keyboard activation)
@@ -3590,9 +3643,9 @@ export default function Home() {
                   disabled={isSending}
                   style={{
                     width: 40, height: 40, flexShrink: 0,
-                    background: hasInput && !isSending ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
-                    border: hasInput ? "none" : "1px solid var(--atlas-border)",
-                    boxShadow: hasInput && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
+                    background: canSubmit && !isSending ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
+                    border: canSubmit ? "none" : "1px solid var(--atlas-border)",
+                    boxShadow: canSubmit && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
                     opacity: isSending ? 0.5 : 1,
                   }}
                 >
@@ -3600,8 +3653,8 @@ export default function Home() {
                     <LoadingSpinner size="sm" color="ember" />
                   ) : (
                     <svg viewBox="0 0 20 20" width={13} height={13}
-                      fill={hasInput ? "var(--atlas-fg)" : "none"}
-                      stroke={hasInput ? "var(--atlas-fg)" : "var(--atlas-muted)"}
+                      fill={canSubmit ? "var(--atlas-fg)" : "none"}
+                      stroke={canSubmit ? "var(--atlas-fg)" : "var(--atlas-muted)"}
                       strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
                     >
                       <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
@@ -3949,25 +4002,63 @@ export default function Home() {
             ) : conversations.map(c => (
               <div
                 key={c.id}
-                onClick={() => handleSwitchConversation(c.id)}
                 style={{
                   padding: "12px 0",
                   borderBottom: "1px solid var(--atlas-border)",
-                  cursor: "pointer",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  gap: 12,
                 }}
               >
-                <div>
+                <button
+                  type="button"
+                  onClick={() => handleSwitchConversation(c.id)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    color: "inherit",
+                  }}
+                >
                   <div style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", marginBottom: 2 }}>{c.title}</div>
                   <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
                     {new Date(c.createdAt).toLocaleDateString()} · {c.messageCount} messages
                   </div>
+                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteConversation(c.id);
+                    }}
+                    aria-label="Delete conversation"
+                    title="Delete conversation"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: "4px",
+                      cursor: "pointer",
+                      color: "rgba(239,68,68,0.7)",
+                      lineHeight: 0,
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"/>
+                      <path d="M8 6V4h8v2"/>
+                      <path d="M19 6l-1 14H6L5 6"/>
+                      <path d="M10 11v6M14 11v6"/>
+                    </svg>
+                  </button>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </div>
             ))}
           </div>
