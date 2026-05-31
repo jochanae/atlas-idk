@@ -1276,7 +1276,7 @@ function ShellFooter() {
       >
         <ShellFooterNavItem item={navItems[0]} visible={itemsVisible} />
         <ShellFooterNavItem item={navItems[1]} visible={itemsVisible} />
-        <ShellCenterButton onClick={centerAction} />
+        <ShellCenterButton onTap={centerAction} onMediumPress={openLastProject} onLongPress={openAllProjects} />
         <ShellFooterNavItem item={navItems[2]} visible={itemsVisible} />
         <ShellFooterNavItem item={navItems[3]} visible={itemsVisible} />
       </div>
