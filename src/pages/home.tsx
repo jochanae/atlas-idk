@@ -1480,6 +1480,18 @@ export default function Home() {
     }, 700);
   }, [vibrate, callReflectionMode, nexusChat.setMessages]);
 
+  // Bridge to the global header's Think Freely lock — listen for tap events and
+  // broadcast state changes so the header icon mirrors reflection mode.
+  useEffect(() => {
+    const onToggle = () => { handleLockTap(); };
+    window.addEventListener("axiom:think-freely-toggle", onToggle);
+    return () => window.removeEventListener("axiom:think-freely-toggle", onToggle);
+  }, [handleLockTap]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("axiom:think-freely-state", { detail: { active: reflectionLocked } }));
+  }, [reflectionLocked]);
+
 
   // Cycle pending phrases while Atlas is generating
   useEffect(() => {
