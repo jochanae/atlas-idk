@@ -174,14 +174,18 @@ export function useNexusChatStream(
         callbacks: {
           onToken: (released) => {
             const cleaned = released
-              .replace(/\nVISUALIZE:\{[\s\S]*?\}[\s]*/g, "")
-              .replace(/VISUALIZE:\{[\s\S]*?\}/g, "")
-              .replace(/,"caption":"[^"]*"\}/g, "")
-              .replace(/\nREADY_TO_SHAPE:\{[^\n]*\}?/g, "")
-              .replace(/READY_TO_SHAPE:[^\n]*/g, "")
-              .replace(/\nNAVIGATE_TO:\{[^\n]*\}?/g, "")
-              .replace(/NAVIGATE_TO:[^\n]*/g, "")
-              .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "");
+              .split('\n')
+              .filter(line => {
+                const t = line.trim();
+                return !t.startsWith('VISUALIZE:') &&
+                       !t.startsWith('READY_TO_SHAPE:') &&
+                       !t.startsWith('NAVIGATE_TO:') &&
+                       !t.startsWith('MEMORY_CHIPS:');
+              })
+              .join('\n')
+              .replace(/VISUALIZE:\{[\s\S]*$/g, '')
+              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
+              .trim();
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
