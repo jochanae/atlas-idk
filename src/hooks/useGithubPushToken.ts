@@ -32,6 +32,16 @@ export function useGithubPushToken(projectToken?: string | null): string | null 
         if (cancelled) return;
         const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
         const githubConnection = connections.find((connection) => connection?.type === "github");
+        console.log("[githubPushToken] connections:", JSON.stringify(connections.map(c => ({
+          type: c.type,
+          hasToken: !!(c.token ?? c.accessToken ?? c.githubToken ?? c.meta?.token),
+        }))));
+        console.log("[githubPushToken] found github:", !!githubConnection);
+        console.log("[githubPushToken] token value:", githubConnection
+          ? githubTokenFromConnection(githubConnection)
+            ? "EXISTS"
+            : "NULL"
+          : "NO_CONNECTION");
         setAccountTokenState({
           loaded: true,
           hasConnection: !!githubConnection,
