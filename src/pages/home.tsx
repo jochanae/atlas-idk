@@ -2551,9 +2551,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* ATLAS subheader — visible only in Active. Title button renders ONLY when earned.
-          Home is never Operational, so no green pulsing dot here. */}
-      {subheaderCollapsed && (
+      {/* ATLAS subheader — visible only when conversation is active. Lock now lives in the global header. */}
+      {nexusChat.messages.length > 0 && subheaderCollapsed && (
         <div
           style={{
             position: "sticky", top: 50, zIndex: 20, height: 14, width: "100%",
@@ -2569,12 +2568,11 @@ export default function Home() {
         </div>
       )}
 
-      {!subheaderCollapsed && (
+      {nexusChat.messages.length > 0 && !subheaderCollapsed && (
         <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
           <ChatTrayHeader
-            showTrust
+            showTrust={false}
             active={reflectionLocked}
-            onTrustClick={handleLockTap}
             onGrabHandleClick={toggleSubheader}
 
             projectSlot={earnedTitle ? (
