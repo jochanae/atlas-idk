@@ -3464,10 +3464,11 @@ export default function Home() {
               </button>
 
 
-              {/* Paperclip — label triggers file input natively; works on mobile Safari */}
+              {/* Plus — opens attachments for now, leaves room for a menu later */}
               <label
                 htmlFor="home-file-input"
-                title="Attach image"
+                title="Add attachment"
+                aria-label="Add attachment"
                 style={{
                   width: 32, height: 32, borderRadius: 8, background: "transparent",
                   color: attachedFiles.length > 0 ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)", cursor: "pointer",
@@ -3475,8 +3476,9 @@ export default function Home() {
                   transition: "color 160ms ease", flexShrink: 0, userSelect: "none",
                 }}
               >
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                  <path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v10" />
+                  <path d="M3 8h10" />
                 </svg>
               </label>
 
