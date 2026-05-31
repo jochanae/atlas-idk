@@ -174,14 +174,18 @@ export function useNexusChatStream(
         callbacks: {
           onToken: (released) => {
             const cleaned = released
-              .replace(/\nVISUALIZE:\{[\s\S]*?\}[\s]*/g, "")
-              .replace(/VISUALIZE:\{[\s\S]*?\}/g, "")
-              .replace(/,"caption":"[^"]*"\}/g, "")
-              .replace(/\nREADY_TO_SHAPE:\{[^\n]*\}?/g, "")
-              .replace(/READY_TO_SHAPE:[^\n]*/g, "")
-              .replace(/\nNAVIGATE_TO:\{[^\n]*\}?/g, "")
-              .replace(/NAVIGATE_TO:[^\n]*/g, "")
-              .replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "");
+              .split('\n')
+              .filter(line => {
+                const t = line.trim();
+                return !t.startsWith('VISUALIZE:') &&
+                       !t.startsWith('READY_TO_SHAPE:') &&
+                       !t.startsWith('NAVIGATE_TO:') &&
+                       !t.startsWith('MEMORY_CHIPS:');
+              })
+              .join('\n')
+              .replace(/VISUALIZE:\{[\s\S]*$/g, '')
+              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
+              .trim();
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
@@ -210,14 +214,28 @@ export function useNexusChatStream(
 
             // Parse VISUALIZE marker
             const visualMatch = fullText.match(
-              /VISUALIZE:\{([^\n]+)\}/
+              /VISUALIZE:\{([\s\S]*?)\}(?:\s|$)/
+            ) || fullText.match(
+              /VISUALIZE:(\{[\s\S]*\})/
             );
             if (visualMatch) {
+              let visualData: { prompt: string; caption: string } | null = null;
               try {
-                const visualData = JSON.parse(
-                  `{${visualMatch[1]}}`
-                ) as { prompt: string; caption: string };
-                
+                const rawJson = visualMatch[1].startsWith('{')
+                  ? visualMatch[1]
+                  : `{${visualMatch[1]}}`;
+                visualData = JSON.parse(rawJson);
+              } catch {
+                const promptMatch = fullText.match(/"prompt":"([^"]+)"/);
+                const captionMatch = fullText.match(/"caption":"([^"]+)"/);
+                if (promptMatch) {
+                  visualData = {
+                    prompt: promptMatch[1],
+                    caption: captionMatch?.[1] ?? "",
+                  };
+                }
+              }
+
                 if (visualData?.prompt) {
                   // Set loading state on the message
                   setMessages(prev => prev.map(m =>
@@ -270,8 +288,8 @@ export function useNexusChatStream(
                       ));
                     });
                 }
-              } catch { /* non-fatal */ }
             }
+
 
             // Parse MEMORY_CHIPS
             const chipMatch = displayText.match(/MEMORY_CHIPS:\s*(\[[\s\S]*?\])/);
