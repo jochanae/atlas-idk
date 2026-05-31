@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -116,18 +116,18 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin,
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
-      if (result.error) {
-        setError(result.error instanceof Error ? result.error.message : `Could not start ${provider} sign-in`);
+      if (err) {
+        setError(err.message || `Could not start ${provider} sign-in`);
         setLoading(false);
         return;
       }
-      if (result.redirected) return; // browser navigating away
-      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      sessionStorage.setItem("atlas-just-authed", "1");
-      navigate("/home");
+      // Browser is redirecting to the OAuth provider — nothing else to do.
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not start ${provider} sign-in`);
       setLoading(false);
