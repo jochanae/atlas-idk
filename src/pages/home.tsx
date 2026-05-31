@@ -2826,7 +2826,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
+          <div style={{ minHeight: nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", height: nexusChat.messages.length > 0 ? "100%" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -3280,7 +3280,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div className="atlas-input-shell" style={{ position: "relative", padding: "18px 20px 14px" }}>
+          <div className="atlas-input-shell" style={{ position: "relative", padding: "18px 20px 14px", flexShrink: 0 }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
             <input
