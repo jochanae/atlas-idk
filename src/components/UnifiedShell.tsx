@@ -1250,7 +1250,7 @@ function ShellFooter() {
       { label: "Decisions", icon: "decisions", action: () => setLocation("/ledger") },
       { label: "You", icon: "you", action: () => setLocation("/you") },
     ];
-  }, [openProjectTab, renderDepth, setLocation]);
+  }, [openProjectTab, renderDepth, setLocation, location, openLastProject]);
 
   if (!isMobile) return null;
 
