@@ -1664,7 +1664,7 @@ export default function Home() {
     }
   }, [projects]);
   const mostRecentActiveProjectId = useMemo(() => {
-    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || project.entity_type === "idea");
+    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
     const latest = candidates.reduce<Project | null>((current, project: Project) => {
       if (!current) return project;
