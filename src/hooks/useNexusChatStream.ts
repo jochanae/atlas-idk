@@ -214,14 +214,28 @@ export function useNexusChatStream(
 
             // Parse VISUALIZE marker
             const visualMatch = fullText.match(
-              /VISUALIZE:\{([^\n]+)\}/
+              /VISUALIZE:\{([\s\S]*?)\}(?:\s|$)/
+            ) || fullText.match(
+              /VISUALIZE:(\{[\s\S]*\})/
             );
             if (visualMatch) {
+              let visualData: { prompt: string; caption: string } | null = null;
               try {
-                const visualData = JSON.parse(
-                  `{${visualMatch[1]}}`
-                ) as { prompt: string; caption: string };
-                
+                const rawJson = visualMatch[1].startsWith('{')
+                  ? visualMatch[1]
+                  : `{${visualMatch[1]}}`;
+                visualData = JSON.parse(rawJson);
+              } catch {
+                const promptMatch = fullText.match(/"prompt":"([^"]+)"/);
+                const captionMatch = fullText.match(/"caption":"([^"]+)"/);
+                if (promptMatch) {
+                  visualData = {
+                    prompt: promptMatch[1],
+                    caption: captionMatch?.[1] ?? "",
+                  };
+                }
+              }
+
                 if (visualData?.prompt) {
                   // Set loading state on the message
                   setMessages(prev => prev.map(m =>
