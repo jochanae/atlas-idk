@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 
@@ -265,6 +266,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
 
   // ── Atlas context (localStorage) ──────────────────────────────────────────
   const [atlasProfile, setAtlasProfile] = useState<AtlasProfile>(loadAtlasProfile);
+  const [githubTokenInput, setGithubTokenInput] = useState("");
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -669,6 +671,83 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               onChange={(v) => setAtlasProfile(p => ({ ...p, notes: v }))}
               placeholder="Anything you want it to always know…"
             />
+          </div>
+
+          <div style={{
+            margin: "16px",
+            padding: "16px",
+            background: "var(--atlas-surface)",
+            border: "1px solid var(--atlas-border)",
+            borderRadius: "12px",
+          }}>
+            <div style={{
+              fontSize: "11px",
+              letterSpacing: "0.1em",
+              color: "var(--atlas-gold)",
+              marginBottom: "12px",
+              fontFamily: "var(--app-font-mono)",
+            }}>
+              GITHUB
+            </div>
+            <div style={{
+              fontSize: "13px",
+              color: "var(--atlas-muted)",
+              marginBottom: "12px",
+            }}>
+              Connect GitHub once to enable file reading and
+              code editing across all projects.
+            </div>
+            <input
+              type="password"
+              placeholder="ghp_... or github_pat_..."
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                background: "var(--atlas-bg)",
+                border: "1px solid var(--atlas-border)",
+                borderRadius: "8px",
+                color: "var(--atlas-fg)",
+                fontSize: "13px",
+                marginBottom: "8px",
+                boxSizing: "border-box",
+              }}
+              onChange={(e) => setGithubTokenInput(e.target.value)}
+              value={githubTokenInput ?? ""}
+            />
+            <button
+              onClick={async () => {
+                if (!githubTokenInput?.trim()) return;
+                const res = await fetch("/api/connections", {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    type: "github",
+                    label: "GitHub",
+                    token: githubTokenInput.trim(),
+                  }),
+                });
+                if (res.ok) {
+                  toast.success("GitHub connected.");
+                  setGithubTokenInput("");
+                } else {
+                  toast.error("Failed to save token. Try again.");
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "10px",
+                background: "rgba(201, 162, 76, 0.12)",
+                border: "1px solid rgba(201, 162, 76, 0.3)",
+                borderRadius: "8px",
+                color: "var(--atlas-gold)",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Save GitHub Token
+            </button>
           </div>
 
           {/* ── Actions section ───────────────────────────────────────────── */}

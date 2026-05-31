@@ -3569,9 +3569,21 @@ export default function Workspace() {
   }, [homeHandoffMeta, parkedEntries]);
 
   const handlePushAll = useCallback(async (fileEdits: FileEdit[]) => {
-    if (!linkedRepo) return;
+    if (!linkedRepo) {
+      toast.error(
+        "No repository linked. Link a repo in the header dropdown.",
+        { duration: 4000 }
+      );
+      return;
+    }
     const token = githubPushToken;
-    if (!token) return;
+    if (!token) {
+      toast.error(
+        "GitHub token not found. Add it in the Connections tab.",
+        { duration: 4000 }
+      );
+      return;
+    }
     const today = new Date().toISOString().slice(0, 10);
     const branch = `atlas/auto-${today}-${Date.now().toString(36).slice(-4)}`;
     try {
