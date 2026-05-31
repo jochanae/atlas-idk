@@ -996,29 +996,132 @@ function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: bo
   );
 }
 
-function ShellCenterButton({ onClick }: { onClick: () => void }) {
+function ShellCenterButton({
+  onTap,
+  onMediumPress,
+  onLongPress,
+}: {
+  onTap: () => void;
+  onMediumPress: () => void;
+  onLongPress: () => void;
+}) {
+  // Gesture thresholds (ms)
+  // tap          : < 350
+  // medium-press : 350 – 900   → last active project
+  // long-press   : >= 900      → /projects
+  const MEDIUM_MS = 350;
+  const LONG_MS = 900;
+  const MOVE_CANCEL_PX = 10;
+
+  const downAtRef = useRef<number | null>(null);
+  const startXYRef = useRef<{ x: number; y: number } | null>(null);
+  const mediumTimerRef = useRef<number | null>(null);
+  const longTimerRef = useRef<number | null>(null);
+  const stageRef = useRef<"tap" | "medium" | "long">("tap");
+  const cancelledRef = useRef(false);
+  const [stage, setStage] = useState<"idle" | "tap" | "medium" | "long">("idle");
+
+  const haptic = useCallback((ms: number) => {
+    try { if ("vibrate" in navigator) navigator.vibrate(ms); } catch {}
+  }, []);
+
+  const clearTimers = useCallback(() => {
+    if (mediumTimerRef.current) { window.clearTimeout(mediumTimerRef.current); mediumTimerRef.current = null; }
+    if (longTimerRef.current) { window.clearTimeout(longTimerRef.current); longTimerRef.current = null; }
+  }, []);
+
+  const reset = useCallback(() => {
+    clearTimers();
+    downAtRef.current = null;
+    startXYRef.current = null;
+    stageRef.current = "tap";
+    cancelledRef.current = false;
+    setStage("idle");
+  }, [clearTimers]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    try { (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId); } catch {}
+    downAtRef.current = performance.now();
+    startXYRef.current = { x: e.clientX, y: e.clientY };
+    stageRef.current = "tap";
+    cancelledRef.current = false;
+    setStage("tap");
+    mediumTimerRef.current = window.setTimeout(() => {
+      stageRef.current = "medium";
+      setStage("medium");
+      haptic(15);
+    }, MEDIUM_MS);
+    longTimerRef.current = window.setTimeout(() => {
+      stageRef.current = "long";
+      setStage("long");
+      haptic(35);
+    }, LONG_MS);
+  }, [haptic]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!startXYRef.current) return;
+    const dx = e.clientX - startXYRef.current.x;
+    const dy = e.clientY - startXYRef.current.y;
+    if (Math.hypot(dx, dy) > MOVE_CANCEL_PX) {
+      cancelledRef.current = true;
+      reset();
+    }
+  }, [reset]);
+
+  const handlePointerUp = useCallback(() => {
+    if (cancelledRef.current || downAtRef.current === null) { reset(); return; }
+    const dur = performance.now() - downAtRef.current;
+    clearTimers();
+    setStage("idle");
+    downAtRef.current = null;
+    if (dur >= LONG_MS) onLongPress();
+    else if (dur >= MEDIUM_MS) onMediumPress();
+    else onTap();
+  }, [clearTimers, reset, onTap, onMediumPress, onLongPress]);
+
+  const ringColor =
+    stage === "long" ? "rgba(var(--atlas-gold-rgb),0.95)" :
+    stage === "medium" ? "rgba(var(--atlas-gold-rgb),0.75)" :
+    "rgba(var(--atlas-gold-rgb),0.55)";
+  const ringSpread =
+    stage === "long" ? "0 0 0 4px rgba(var(--atlas-gold-rgb),0.95), 0 0 28px rgba(var(--atlas-gold-rgb),0.5)" :
+    stage === "medium" ? "0 0 0 3px rgba(var(--atlas-gold-rgb),0.75), 0 0 22px rgba(var(--atlas-gold-rgb),0.32)" :
+    "0 0 0 2px rgba(var(--atlas-gold-rgb),0.55), 0 0 18px rgba(var(--atlas-gold-rgb),0.18)";
+
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <button
         type="button"
-        title="Axiom"
+        title="Tap: home · Medium press: last project · Long press: all projects"
+        aria-label="Axiom. Tap for home, medium press for last active project, long press to open all projects."
         className="atlas-home-center-btn"
-        onClick={onClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={reset}
+        onPointerLeave={(e) => { if (e.buttons === 0) return; reset(); }}
+        onContextMenu={(e) => e.preventDefault()}
         style={{
           width: 56,
           height: 56,
           borderRadius: "50%",
-          border: "2px solid var(--atlas-gold)",
+          border: `2px solid ${ringColor}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
           marginTop: -26,
           flexShrink: 0,
-          boxShadow: "0 0 0 2px rgba(var(--atlas-gold-rgb),0.55), 0 0 18px rgba(var(--atlas-gold-rgb),0.18)",
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
+          userSelect: "none",
+          transform: stage === "long" ? "scale(1.06)" : stage === "medium" ? "scale(1.03)" : "scale(1)",
+          transition: "transform 120ms var(--ease-standard), box-shadow 120ms var(--ease-standard), border-color 120ms var(--ease-standard)",
+          boxShadow: ringSpread,
         }}
       >
-        <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, pointerEvents: "none" }}>
           <svg viewBox="0 0 512 512" width="52" height="52" display="block">
             <defs>
               <radialGradient id="shell-center-purple" cx="50%" cy="50%" r="50%">
