@@ -1148,7 +1148,7 @@ function ShellCenterButton({
 
 function ShellFooter() {
   const { currentDepth, activeProjectId } = useShellState();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [renderDepth, setRenderDepth] = useState<ShellDepth>(currentDepth);
   const [itemsVisible, setItemsVisible] = useState(true);
