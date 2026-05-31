@@ -2471,12 +2471,37 @@ export default function Home() {
     >
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
-          onClick={() => {
-            const existing = (projects as any[])?.find(
-              (p: any) => p.entity_type === "idea"
-            );
-            if (existing) window.location.href =
-              `/project/${existing.id}`;
+          onClick={async () => {
+            if (!nexusChat.shapingPayload) return;
+
+            // If already held — navigate to existing project
+            if (nexusChat.shapingHeld) {
+              const existing = (projects as any[])?.find(
+                (p: any) => p.entity_type === "idea"
+              );
+              if (existing) {
+                window.location.href = `/project/${existing.id}`;
+              }
+              return;
+            }
+
+            // Not yet held — save it with the correct title
+            try {
+              const res = await fetch("/api/shaping/hold", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: nexusChat.shapingPayload.title,
+                  audience: nexusChat.shapingPayload.audience,
+                  tension: nexusChat.shapingPayload.tension,
+                  what: nexusChat.shapingPayload.what,
+                }),
+              });
+              if (res.ok) {
+                nexusChat.setShapingHeld(true);
+              }
+            } catch { /* non-fatal */ }
           }}
           style={{
             display: "flex",
