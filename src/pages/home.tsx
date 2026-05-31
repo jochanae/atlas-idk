@@ -25,7 +25,7 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
 import { ChatTrayHeader } from "../components/ChatTrayHeader";
 import { InviteModal } from "../components/InviteModal";
-import { MentalShredderModal } from "../components/MentalShredderModal";
+
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { ingestRepository } from "../lib/repoIngest";
 import { chooseGreeting, readLastActive, markActiveNow } from "../lib/atlas-voice";
@@ -1428,7 +1428,7 @@ export default function Home() {
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
-  const [showShredder, setShowShredder] = useState(false);
+  
 
   const vibrate = useCallback((pattern: number | number[]) => {
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
@@ -1452,7 +1452,6 @@ export default function Home() {
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
-      setShowShredder(true);
       toast("Think Freely · Private session", {
         className: "atlas-toast-premium",
         description: "Zero-trace · nothing here is logged.",
@@ -2632,7 +2631,7 @@ export default function Home() {
           />
         </div>
       )}
-      <MentalShredderModal open={showShredder} onOpenChange={setShowShredder} />
+      
 
 
       {/* Lens chips removed from home — lenses live in the workspace only */}
