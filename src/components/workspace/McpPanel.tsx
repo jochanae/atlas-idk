@@ -65,7 +65,7 @@ function normalizeTools(value: unknown): McpTool[] {
   if (!Array.isArray(value)) return [];
 
   return value
-    .map((tool) => {
+    .map((tool): McpTool | null => {
       if (!tool || typeof tool !== "object") return null;
       const record = tool as Record<string, unknown>;
       const name = typeof record.name === "string" ? record.name : null;
