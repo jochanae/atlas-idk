@@ -278,7 +278,10 @@ function ShellAvatar() {
 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
-  const name = ps.project?.name?.trim() || "Untitled project";
+  // Avoid the "Untitled" flash while the project state is still loading for the first time.
+  const hydrating = ps.loading && !ps.project;
+  const resolvedName = ps.project?.name?.trim();
+  const name = resolvedName || (hydrating ? "" : "Untitled project");
   const hasActive = Boolean(ps.activeSession);
   const qc = useQueryClient();
   const updateProject = useUpdateProject();
@@ -408,7 +411,23 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             pointerEvents: "auto",
           }}
         >
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
+          {hydrating ? (
+            <span
+              aria-label="Loading project"
+              style={{
+                display: "inline-block",
+                width: 96,
+                height: 12,
+                borderRadius: 4,
+                background: "linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(212,175,55,0.18) 50%, rgba(255,255,255,0.04) 100%)",
+                backgroundSize: "200% 100%",
+                animation: "axiomShimmer 1.2s ease-in-out infinite",
+                opacity: 0.7,
+              }}
+            />
+          ) : (
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
+          )}
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
             <polyline points="6 9 12 15 18 9" />
           </svg>
