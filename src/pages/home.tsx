@@ -1319,11 +1319,27 @@ export default function Home() {
   const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string>(() => {
-    const newId = crypto.randomUUID();
-    try { sessionStorage.setItem("atlas-home-conversation-id", newId); } catch {}
-    return newId;
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem("atlas-home-conversation-id") ||
+        localStorage.getItem("atlas-home-conversation-id");
+    } catch {
+      return null;
+    }
   });
+  const rememberActiveConversationId = useCallback((conversationId: string) => {
+    try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
+    try { sessionStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
+  }, []);
+  const handleStreamConversationId = useCallback((conversationId: string) => {
+    if (!conversationId || conversationId === activeConversationId) return;
+    conversationThreadRequestRef.current = {
+      conversationId,
+      requestId: (conversationThreadRequestRef.current?.requestId ?? 0) + 1,
+    };
+    rememberActiveConversationId(conversationId);
+    setActiveConversationId(conversationId);
+  }, [activeConversationId, rememberActiveConversationId]);
   // ── Home context: repo / branch / model ────────────────────────────────────
   const [homeFocus, setHomeFocus] = useState<number | null>(null);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
@@ -1335,6 +1351,7 @@ export default function Home() {
     model: homeModel,
     mode: homeMode,
     conversationId: activeConversationId,
+    onConversationId: handleStreamConversationId,
     projectContext: homeFocus != null ? {
       projectId: homeFocus,
       memorySummary: homeProjectState.memorySummary,
@@ -1450,6 +1467,7 @@ export default function Home() {
   }, []);
 
   const callReflectionMode = useCallback(async (enabled: boolean) => {
+    if (!activeConversationId) return;
     try {
       await fetch(`/api/sessions/${encodeURIComponent(activeConversationId)}/reflection-mode`, {
         method: "POST",
@@ -1857,6 +1875,13 @@ export default function Home() {
 
   // Load the active conversation from DB (re-runs when conversationId changes)
   useEffect(() => {
+    if (!activeConversationId) {
+      nexusChat.setMessages([]);
+      setLoadedHistoryCount(0);
+      setThreadLoading(false);
+      setHandoffProjectName("");
+      return;
+    }
     if (conversationThreadRequestRef.current?.conversationId === activeConversationId) return;
     const requestId = (conversationThreadRequestRef.current?.requestId ?? 0) + 1;
     conversationThreadRequestRef.current = { conversationId: activeConversationId, requestId };
@@ -2254,7 +2279,9 @@ export default function Home() {
   }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, queryClient, setLocation]);
 
   const handleClearThread = useCallback(async () => {
-    await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
+    if (activeConversationId) {
+      await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
+    }
     nexusChat.setMessages([]);
     setReviewingPlanIds(new Set());
     setShowClearConfirm(false);
@@ -2262,10 +2289,10 @@ export default function Home() {
   }, [activeConversationId, nexusChat.setMessages]);
 
   const handleNewConversation = useCallback(() => {
-    const newId = crypto.randomUUID();
-    try { localStorage.setItem("atlas-home-conversation-id", newId); } catch {}
-    try { sessionStorage.setItem("atlas-home-conversation-id", newId); } catch {}
-    setActiveConversationId(newId);
+    try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+    try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+    conversationThreadRequestRef.current = null;
+    setActiveConversationId(null);
     nexusChat.setMessages([]);
     setReviewingPlanIds(new Set());
     setShowHistory(false);
@@ -2286,6 +2313,10 @@ export default function Home() {
 
   // Hydrate earned title when the active conversation changes.
   useEffect(() => {
+    if (!activeConversationId) {
+      setEarnedTitle(null);
+      return;
+    }
     try {
       const stored = localStorage.getItem(`atlas-thread-title:${activeConversationId}`);
       setEarnedTitle(stored && stored.trim() ? stored : null);
@@ -2296,6 +2327,7 @@ export default function Home() {
 
   const persistEarnedTitle = useCallback((title: string | null) => {
     setEarnedTitle(title);
+    if (!activeConversationId) return;
     try {
       if (title && title.trim()) {
         localStorage.setItem(`atlas-thread-title:${activeConversationId}`, title.trim());

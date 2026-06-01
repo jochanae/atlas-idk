@@ -52,6 +52,7 @@ export interface UseNexusChatStreamOptions {
   model?: string;
   mode?: string;
   conversationId?: string | null;
+  onConversationId?: (conversationId: string) => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -83,7 +84,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onConversationId, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -144,6 +145,7 @@ export function useNexusChatStream(
       model: overrideOptions?.model ?? model,
       mode: overrideOptions?.mode ?? mode,
       conversationId: overrideOptions?.conversationId ?? conversationId,
+      onConversationId: overrideOptions?.onConversationId ?? onConversationId,
       projectContext: overrideOptions?.projectContext ?? projectContext,
     };
 
@@ -199,10 +201,10 @@ export function useNexusChatStream(
           model: resolved.model,
           ...(resolved.focusProjectId != null ? { projectId: resolved.focusProjectId } : {}),
           mode: resolved.mode,
-          imageBase64,
-          imageMimeType,
-          conversationId: resolved.conversationId,
-          projectContext: resolved.projectContext ?? null,
+          ...(imageBase64 ? { imageBase64 } : {}),
+          ...(imageMimeType ? { imageMimeType } : {}),
+          ...(resolved.conversationId ? { conversationId: resolved.conversationId } : {}),
+          ...(resolved.projectContext ? { projectContext: resolved.projectContext } : {}),
         },
         callbacks: {
           onToken: (released) => {
@@ -228,6 +230,14 @@ export function useNexusChatStream(
             setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
           },
           onDone: (fullText, meta) => {
+            const returnedConversationId =
+              typeof meta.conversationId === "string" && meta.conversationId.trim()
+                ? meta.conversationId
+                : null;
+            if (returnedConversationId) {
+              resolved.onConversationId?.(returnedConversationId);
+            }
+
             // Parse NAVIGATE_TO
             let displayText = fullText;
             const navMatch = displayText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
@@ -374,7 +384,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [isPending, focusProjectId, model, mode, conversationId, projectContext, stream, abortStream, resetStreamState]);
+  }, [isPending, focusProjectId, model, mode, conversationId, onConversationId, projectContext, stream, abortStream, resetStreamState]);
 
   return {
     messages,
