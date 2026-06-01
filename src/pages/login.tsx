@@ -4,9 +4,34 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 
 type Mode = "login" | "signup" | "forgot";
+
+function toAuthErrorMessage(err: unknown, mode: Exclude<Mode, "forgot">): string {
+  if (err instanceof Error) {
+    const message = err.message.toLowerCase();
+
+    if (message.includes("invalid login credentials")) {
+      return "That email/password combination didn’t match.";
+    }
+
+    if (message.includes("email not confirmed")) {
+      return "Your email still needs to be confirmed before you can sign in.";
+    }
+
+    if (message.includes("weak_password") || message.includes("known to be weak") || message.includes("easy to guess") || message.includes("pwned")) {
+      return mode === "signup"
+        ? "Choose a stronger password. Avoid common or reused passwords."
+        : "That password was rejected. Try a stronger one or reset it.";
+    }
+
+    return err.message;
+  }
+
+  return "Something went wrong";
+}
 
 export default function Login() {
   const [mode, setMode] = useState<Mode>("login");
@@ -77,7 +102,7 @@ export default function Login() {
       if (err) throw err;
       setForgotSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(toAuthErrorMessage(err, "login"));
     } finally {
       setLoading(false);
     }
@@ -106,7 +131,7 @@ export default function Login() {
       sessionStorage.setItem("atlas-just-authed", "1");
       navigate("/home");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(toAuthErrorMessage(err, mode));
     } finally {
       setLoading(false);
     }
@@ -116,12 +141,12 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const { error: err } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: `${window.location.origin}/auth/callback`,
       });
+
+      const err = result.error;
+
       if (err) {
         setError(err.message || `Could not start ${provider} sign-in`);
         setLoading(false);
