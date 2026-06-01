@@ -864,19 +864,21 @@ function RepoSearchSheet({
   const [query, setQuery] = useState("");
   const [repos, setRepos] = useState<HomeRepo[]>([]);
   const [loading, setLoading] = useState(true);
+  const reposRequestRef = useRef(0);
 
   useEffect(() => {
-    let cancelled = false;
+    if (reposRequestRef.current > 0) return;
+    const requestId = 1;
+    reposRequestRef.current = requestId;
     setLoading(true);
     fetch("/api/github/repos", { headers: { "x-github-token": "__server__" }, credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then((data: any[]) => {
-        if (cancelled) return;
+        if (reposRequestRef.current !== requestId) return;
         setRepos(data.map((r: any) => ({ fullName: r.fullName, name: r.name, defaultBranch: r.defaultBranch ?? "main" })));
         setLoading(false);
       })
-      .catch(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .catch(() => { if (reposRequestRef.current === requestId) setLoading(false); });
   }, []);
 
   const filtered = repos.filter(r =>
@@ -977,26 +979,35 @@ function BranchPickerSheet({
 }) {
   const [branches, setBranches] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const branchRequestRef = useRef<{ key: string; requestId: number } | null>(null);
+  const repoFullName = repo?.fullName ?? null;
+  const repoDefaultBranch = repo?.defaultBranch ?? "main";
 
   useEffect(() => {
-    if (!repo) return;
+    if (!repoFullName) return;
+    const requestKey = `${repoFullName}:${repoDefaultBranch}`;
+    if (branchRequestRef.current?.key === requestKey) return;
+    const requestId = (branchRequestRef.current?.requestId ?? 0) + 1;
+    branchRequestRef.current = { key: requestKey, requestId };
     setLoading(true);
-    fetch(`/api/github/repos/${encodeURIComponent(repo.fullName)}/branches`, {
+    fetch(`/api/github/repos/${encodeURIComponent(repoFullName)}/branches`, {
       headers: { "x-github-token": "__server__" }, credentials: "include",
     })
       .then(r => r.ok ? r.json() : null)
       .then((data: any) => {
+        if (branchRequestRef.current?.requestId !== requestId) return;
         const list = Array.isArray(data)
           ? data.map((b: any) => b.name ?? b)
-          : [repo.defaultBranch ?? "main"];
-        setBranches(list.length ? list : [repo.defaultBranch ?? "main"]);
+          : [repoDefaultBranch];
+        setBranches(list.length ? list : [repoDefaultBranch]);
         setLoading(false);
       })
       .catch(() => {
-        setBranches([repo?.defaultBranch ?? "main"]);
+        if (branchRequestRef.current?.requestId !== requestId) return;
+        setBranches([repoDefaultBranch]);
         setLoading(false);
       });
-  }, [repo]);
+  }, [repoFullName, repoDefaultBranch]);
 
   const displayBranches = branches.length ? branches : (repo ? [repo.defaultBranch ?? "main"] : ["main"]);
 
@@ -1264,6 +1275,11 @@ export default function Home() {
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
+  const briefingRequestRef = useRef(0);
+  const conversationsRequestRef = useRef(0);
+  const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
+  const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
+  const demoRunSummaryActiveRef = useRef(false);
   useEffect(() => {
     const handler = () => setIsTinyScreen(window.innerWidth < 390);
     window.addEventListener("resize", handler);
@@ -1502,11 +1518,16 @@ export default function Home() {
 
   // Demo: simulate live step events when ?demo=runsummary or localStorage flag is set
   useEffect(() => {
-    if (!isAtlasStreaming) return;
+    if (!isAtlasStreaming) {
+      demoRunSummaryActiveRef.current = false;
+      return;
+    }
+    if (demoRunSummaryActiveRef.current) return;
     const demo = typeof window !== "undefined" &&
       (window.location.search.includes("demo=runsummary") ||
         window.localStorage.getItem("atlas_demo_runsummary") === "1");
     if (!demo) return;
+    demoRunSummaryActiveRef.current = true;
     const fakeSteps: Array<{ verb: string; target: string; status?: "ok" | "warn" }> = [
       { verb: "Read", target: "chat_messages.ts" },
       { verb: "Grepped", target: "codebase" },
@@ -1521,7 +1542,10 @@ export default function Home() {
       i = (i + 1) % fakeSteps.length;
       setLiveStep(fakeSteps[i]);
     }, 1600);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      demoRunSummaryActiveRef.current = false;
+    };
   }, [isAtlasStreaming]);
   const [, setLocation] = useLocation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1637,9 +1661,11 @@ export default function Home() {
     const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
     const abandoned = projects.filter((p: any) =>
       p.entity_type === "idea" &&
-      new Date(p.updatedAt ?? p.createdAt).getTime() < cutoff
+      new Date(p.updatedAt ?? p.createdAt).getTime() < cutoff &&
+      !prunedAbandonedProjectIdsRef.current.has(p.id)
     );
     abandoned.forEach((p: any) => {
+      prunedAbandonedProjectIdsRef.current.add(p.id);
       fetch(`/api/projects/${p.id}`, {
         method: "DELETE",
         credentials: "include",
@@ -1673,7 +1699,7 @@ export default function Home() {
       nexusChat.setShapingPayload(null);
       nexusChat.setShapingHeld(false);
     }
-  }, [projects]);
+  }, [projects, nexusChat.shapingHeld, nexusChat.setShapingHeld, nexusChat.setShapingPayload]);
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
@@ -1770,6 +1796,9 @@ export default function Home() {
   }
 
   useEffect(() => {
+    if (briefingRequestRef.current > 0) return;
+    const requestId = 1;
+    briefingRequestRef.current = requestId;
     setBriefingLoading(true);
     fetch("/api/nexus/briefing", {
       method: "POST",
@@ -1779,16 +1808,23 @@ export default function Home() {
     })
       .then(r => r.ok ? r.json() : { briefing: null })
       .then((data: any) => {
+        if (briefingRequestRef.current !== requestId) return;
         setBriefing(data.briefing ?? null);
         setBriefingLoading(false);
       })
-      .catch(() => setBriefingLoading(false));
+      .catch(() => {
+        if (briefingRequestRef.current === requestId) setBriefingLoading(false);
+      });
   }, []);
 
   useEffect(() => {
+    if (conversationsRequestRef.current > 0) return;
+    const requestId = 1;
+    conversationsRequestRef.current = requestId;
     fetch("/api/nexus/conversations", { credentials: "include" })
       .then(r => r.ok ? r.json() : { conversations: [] })
       .then((data: any) => {
+        if (conversationsRequestRef.current !== requestId) return;
         const list = data.conversations ?? [];
         setConversations(list);
       })
@@ -1822,6 +1858,9 @@ export default function Home() {
 
   // Load the active conversation from DB (re-runs when conversationId changes)
   useEffect(() => {
+    if (conversationThreadRequestRef.current?.conversationId === activeConversationId) return;
+    const requestId = (conversationThreadRequestRef.current?.requestId ?? 0) + 1;
+    conversationThreadRequestRef.current = { conversationId: activeConversationId, requestId };
     nexusChat.setMessages([]);
     setLoadedHistoryCount(0);
     setThreadLoading(true);
@@ -1834,6 +1873,7 @@ export default function Home() {
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(async (msgs: Array<{ role: string; content: string }>) => {
+        if (conversationThreadRequestRef.current?.requestId !== requestId) return;
         const normalizedMessages = normalizeLoadedHomeMessages(msgs);
         if (normalizedMessages.length > 0) {
           nexusChat.setMessages(normalizedMessages as any);
@@ -1842,7 +1882,11 @@ export default function Home() {
         }
       })
       .catch(() => {})
-      .finally(() => setThreadLoading(false));
+      .finally(() => {
+        if (conversationThreadRequestRef.current?.requestId === requestId) {
+          setThreadLoading(false);
+        }
+      });
   }, [activeConversationId, nexusChat.setMessages]);
 
 
@@ -2283,7 +2327,7 @@ export default function Home() {
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [handleNewConversation]);
+  }, [handleNewConversation, setDepth]);
 
 
   // Hydrate earned title when the active conversation changes.
