@@ -2814,7 +2814,7 @@ export default function Home() {
                     display: "flex", flexDirection: "column", gap: 12,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
-                    minHeight: 0,
+                    
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
