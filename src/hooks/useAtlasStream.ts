@@ -73,7 +73,6 @@ export function useAtlasStream(): UseAtlasStreamReturn {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          credentials: "include",
           ...headers,
         },
         credentials: "include",
