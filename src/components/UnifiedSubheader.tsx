@@ -198,7 +198,9 @@ export function UnifiedSubheader({
           })}
         </nav>
 
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 3 : 7, flexShrink: 0 }}>
+        <div
+          style={{ display: "flex", alignItems: "center", gap: isMobile ? 3 : 7, flexShrink: 0 }}
+        >
           {overflowTabs.length > 0 && (
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
@@ -210,7 +212,10 @@ export function UnifiedSubheader({
                 aria-expanded={menuOpen}
                 style={{
                   background: overflowActive || menuOpen ? "rgba(201,162,76,0.10)" : "transparent",
-                  border: overflowActive || menuOpen ? "1px solid rgba(201,162,76,0.32)" : "1px solid transparent",
+                  border:
+                    overflowActive || menuOpen
+                      ? "1px solid rgba(201,162,76,0.32)"
+                      : "1px solid transparent",
                   borderRadius: 6,
                   padding: "4px 4px",
                   cursor: "pointer",
@@ -265,7 +270,9 @@ export function UnifiedSubheader({
                           textAlign: "left",
                         }}
                       >
-                        {tab.id === "console" && <TerminalSquare size={12} strokeWidth={1.7} aria-hidden />}
+                        {tab.id === "console" && (
+                          <TerminalSquare size={12} strokeWidth={1.7} aria-hidden />
+                        )}
                         {tab.label}
                       </button>
                     );
