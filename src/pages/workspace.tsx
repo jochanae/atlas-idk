@@ -23,7 +23,7 @@ import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
-import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
+import { UnifiedSubheader, type UnifiedSubheaderMenuAction, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
@@ -2778,7 +2778,6 @@ export default function Workspace() {
     activityStream,
     setActivityStream,
     abortControllerRef,
-    handleStop,
     memoryChips,
     setMemoryChips,
     doSend,
@@ -2959,10 +2958,6 @@ export default function Workspace() {
   // useChatLens destructure moved above (consumed by useChatStream).
   const [rightFullscreen, setRightFullscreen] = useState(false);
   const [desktopRightFull, setDesktopRightFull] = useState(false);
-  const [showSrcPicker, setShowSrcPicker] = useState(false);
-  const [srcReadLoading, setSrcReadLoading] = useState(false);
-  const [showDeepDiveMenu, setShowDeepDiveMenu] = useState(false);
-  const [deepDiveCopied, setDeepDiveCopied] = useState(false);
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [switchToExpanded, setSwitchToExpanded] = useState(false);
   const [switchProjectDeleteId, setSwitchProjectDeleteId] = useState<number | null>(null);
@@ -3358,32 +3353,6 @@ export default function Workspace() {
       },
     );
   }, [createProjectMutation, queryClient, setLocation]);
-
-  const ATLAS_SRC_FILES = [
-    { label: "workspace.tsx", path: "artifacts/atlas/src/pages/workspace.tsx", hint: "main UI · ~4k lines" },
-    { label: "home.tsx", path: "artifacts/atlas/src/pages/home.tsx", hint: "home page" },
-    { label: "chat.ts", path: "artifacts/api-server/src/routes/chat.ts", hint: "AI + memory route" },
-    { label: "self.ts", path: "artifacts/api-server/src/routes/self.ts", hint: "self-repair route" },
-    { label: "projects.ts", path: "artifacts/api-server/src/routes/projects.ts", hint: "projects API" },
-  ];
-
-  const handleReadSrc = async (filePath: string) => {
-    setShowSrcPicker(false);
-    setSrcReadLoading(true);
-    try {
-      const res = await fetch(`/api/self/read?path=${encodeURIComponent(filePath)}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json() as { content: string; lines: number };
-      const label = filePath.split("/").pop() ?? filePath;
-      setFileContext(`// ${label} (${json.lines} lines)\n${json.content}`);
-    } catch {
-      // silent
-    } finally {
-      setSrcReadLoading(false);
-    }
-  };
 
   // fileContext moved above (consumed by useChatStream).
   // chatPending owned by useChatStream.
@@ -3830,7 +3799,6 @@ export default function Workspace() {
   };
 
   // doSend / handleRegenerate owned by useChatStream.
-  // handleStop owned by useChatStream.
 
 
 
@@ -4533,6 +4501,31 @@ export default function Workspace() {
     setLeftTab("terminal");
   }, [isMobile]);
 
+  const handleUnifiedSubheaderMenuAction = useCallback((action: UnifiedSubheaderMenuAction) => {
+    if (action === "forge") {
+      setShowForgeExternal(true);
+      return;
+    }
+    if (action === "rescan-repo") {
+      if (isScanning) return;
+      toast.info("Rescanning repository", {
+        description: "Pulling the latest from GitHub to refresh your readiness score.",
+        className: "atlas-toast-pill",
+      });
+      void runScan(false);
+      return;
+    }
+
+    if (isMobile) {
+      setMobileTab(action);
+      setRightOpen(true);
+      return;
+    }
+
+    setDesktopForceTab(action);
+    setTimeout(() => setDesktopForceTab(undefined), 120);
+  }, [isMobile, isScanning, runScan]);
+
   const handleReviewPushSuccess = useCallback((records: PushRecord[]) => {
     haptic.double();
     setPushHistory((prev) => {
@@ -4881,6 +4874,8 @@ export default function Workspace() {
         onTabChange={handleUnifiedSubheaderTabChange}
         hasProject={Boolean(project)}
         isMobile={isMobile}
+        showWorkspaceMenu
+        onMenuAction={handleUnifiedSubheaderMenuAction}
       />
 
       {/* ── Spec → Build handoff modal ── */}
@@ -5544,25 +5539,10 @@ export default function Workspace() {
               setInput,
               autoResize,
               handleKeyDown,
-              isTinyScreen,
-              setShowVault,
-              showSrcPicker,
-              setShowSrcPicker,
-              srcReadLoading,
-              ATLAS_SRC_FILES,
-              handleReadSrc,
-              showDeepDiveMenu,
-              setShowDeepDiveMenu,
-              deepDiveCopied,
-              setDeepDiveCopied,
-              setShowWsModelSheet,
-              wsModel,
-              showModelPicker,
               voiceSupported,
               voiceListening,
               toggleVoice,
               chatPending,
-              handleStop,
               handleSend,
               createSessionPending: createSession.isPending,
               sendPreparingSession,
