@@ -9,6 +9,13 @@ import {
   BridgeSection,
 } from "@/components/landing/StrategicManifest";
 
+const smallUiText: CSSProperties = {
+  fontFamily: "Inter, sans-serif",
+  fontWeight: 300,
+  textTransform: "uppercase",
+  letterSpacing: "0.15em",
+};
+
 export default function LandingPage() {
   const [, setLocation] = useLocation();
   const handleEnter = () => {
@@ -97,8 +104,8 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
       <LogicCore />
 
       <div className="relative z-10 max-w-4xl text-center">
-        <p className="mb-8 tracking-[0.3em] uppercase" style={{
-          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+        <p className="mb-8" style={{
+          ...smallUiText,
           fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
           color: "rgba(232,220,200,0.32)",
         }}>
@@ -133,14 +140,12 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
         <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
           {["Think it through", "Map it out", "Build it"].map((label) => (
             <span key={label} style={{
-              fontFamily: "'IBM Plex Mono', monospace",
+              ...smallUiText,
               fontSize: "0.62rem",
-              letterSpacing: "0.2em",
               color: "rgba(232,220,200,0.55)",
               border: "1px solid rgba(232,220,200,0.14)",
               padding: "6px 12px",
               borderRadius: 999,
-              textTransform: "uppercase",
             }}>
               {label}
             </span>
@@ -149,12 +154,10 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
 
         <button
           onClick={onEnter}
-          className="group relative uppercase"
+          className="group relative"
           style={{
-            fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+            ...smallUiText,
             fontSize: "clamp(0.7rem, 1.5vw, 0.8rem)",
-            fontWeight: 500,
-            letterSpacing: "0.28em",
             color: "#e8dcc8",
             border: "1px solid rgba(212,175,55,0.5)",
             background: "transparent",
@@ -183,7 +186,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           style={{ animation: "axiomScrollBob 2.4s ease-in-out infinite" }}
         >
           <div className="w-px h-8" style={{ background: "linear-gradient(to bottom, transparent, rgba(212,175,55,0.55))" }} />
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "0.55rem", letterSpacing: "0.3em", color: "rgba(212,175,55,0.55)" }}>
+          <span style={{ ...smallUiText, fontSize: "0.55rem", color: "rgba(212,175,55,0.55)" }}>
             SCROLL
           </span>
         </div>
@@ -197,7 +200,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
 function PricingSection({ onEnter }: { onEnter: () => void }) {
   const [visRef, setVisRef] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
+  const mono: CSSProperties = smallUiText;
   const serif: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
   useEffect(() => {
@@ -247,7 +250,7 @@ function PricingSection({ onEnter }: { onEnter: () => void }) {
       }} />
 
       <div className="max-w-4xl mx-auto">
-        <p className="uppercase tracking-[0.35em] mb-6 text-center" style={{
+        <p className="mb-6 text-center" style={{
           ...mono, fontSize: "0.65rem", color: "#6b5f50",
           opacity: visRef ? 1 : 0, transform: visRef ? "translateY(0)" : "translateY(12px)",
         }}>
@@ -277,7 +280,7 @@ function PricingSection({ onEnter }: { onEnter: () => void }) {
         </div>
 
         <p className="mt-8 text-center transition-all duration-700" style={{
-          ...mono, fontSize: "0.55rem", color: "#3d3529", letterSpacing: "0.1em",
+          ...mono, fontSize: "0.55rem", color: "#3d3529",
           opacity: visRef ? 0.7 : 0, transitionDelay: "0.6s",
         }}>
           All plans include end-to-end encryption · Cancel anytime
@@ -314,13 +317,12 @@ function LandingTierCard({ tier, mono, serif, onEnter, visible, delay }: {
       {tier.highlight && (
         <div className="absolute" style={{
           top: -1, right: 18, background: "#D4AF37", color: "#050505",
-          ...mono, fontSize: "0.55rem", fontWeight: 700, letterSpacing: "0.14em",
-          textTransform: "uppercase", padding: "3px 9px",
+          ...mono, fontSize: "0.55rem", padding: "3px 9px",
         }}>
           Most popular
         </div>
       )}
-      <p style={{ ...mono, fontSize: "0.6rem", letterSpacing: "0.22em", textTransform: "uppercase", color: tier.highlight ? "#D4AF37" : "#6b5f50", marginBottom: 16 }}>
+      <p style={{ ...mono, fontSize: "0.6rem", color: tier.highlight ? "#D4AF37" : "#6b5f50", marginBottom: 16 }}>
         {tier.name}
       </p>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 4, marginBottom: 20 }}>
@@ -351,8 +353,7 @@ function LandingTierCard({ tier, mono, serif, onEnter, visible, delay }: {
         padding: "10px 0", border: `1px solid ${tier.highlight ? "rgba(212,175,55,0.5)" : "rgba(107,95,80,0.25)"}`,
         background: tier.highlight ? hov ? "rgba(212,175,55,0.14)" : "rgba(212,175,55,0.06)" : hov ? "rgba(107,95,80,0.1)" : "transparent",
         color: tier.highlight ? "#D4AF37" : "#6b5f50", ...mono, fontSize: "0.65rem",
-        letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer", transition: "all 180ms ease",
-        fontWeight: tier.highlight ? 600 : 400,
+        cursor: "pointer", transition: "all 180ms ease",
       }}>
         {tier.cta}
       </button>
@@ -362,15 +363,15 @@ function LandingTierCard({ tier, mono, serif, onEnter, visible, delay }: {
 
 /* ─── Footer ─── */
 function LandingFooter() {
-  const mono: CSSProperties = { fontFamily: "'IBM Plex Mono', 'Courier New', monospace" };
+  const mono: CSSProperties = smallUiText;
   return (
     <div className="py-10 px-6 flex flex-col items-center gap-3" style={{ background: "#050505" }}>
       <img src="/axiom-logo.svg" alt="Axiom" style={{ width: 28, height: 28, borderRadius: "20%", opacity: 0.6 }} />
-      <p className="uppercase tracking-[0.4em]" style={{ ...mono, fontSize: "0.55rem", color: "#3d3529" }}>
+      <p style={{ ...mono, fontSize: "0.55rem", color: "#3d3529" }}>
         Axiom — by Into Innovations
       </p>
       <div className="w-6 h-px" style={{ background: "rgba(212,175,55,0.2)" }} />
-      <p style={{ ...mono, fontSize: "0.5rem", color: "#2a2520", letterSpacing: "0.15em" }}>
+      <p style={{ ...mono, fontSize: "0.5rem", color: "#2a2520" }}>
         © {new Date().getFullYear()} Into Innovations LLC. All rights reserved.
       </p>
       <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginTop: "8px" }}>
@@ -380,7 +381,7 @@ function LandingFooter() {
           { label: "Help & FAQ", href: "/help" },
           { label: "Pricing", href: "#pricing" },
         ].map(({ label, href }) => (
-          <a key={href} href={href} style={{ fontSize: "0.5rem", color: "#3a3530", letterSpacing: "0.1em", textDecoration: "underline" }}>{label}</a>
+          <a key={href} href={href} style={{ ...mono, fontSize: "0.5rem", color: "#3a3530", textDecoration: "underline" }}>{label}</a>
         ))}
       </div>
     </div>

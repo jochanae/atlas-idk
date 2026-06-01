@@ -1,4 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
+
+const smallUiText: CSSProperties = {
+  fontFamily: "Inter, sans-serif",
+  fontWeight: 300,
+  textTransform: "uppercase",
+  letterSpacing: "0.15em",
+};
 
 export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
   const [scrolled, setScrolled] = useState(false);
@@ -47,32 +54,15 @@ export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <img src="/axiom-logo.svg" alt="Axiom" style={{ width: 32, height: 32, borderRadius: "22%", flexShrink: 0 }} />
         <span style={{
-          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-          fontSize: 14, fontWeight: 800, letterSpacing: "0.15em", color: "#D4AF37",
+          ...smallUiText,
+          fontSize: 14, color: "#D4AF37",
         }}>
           AXIOM
         </span>
       </div>
 
-      {/* Center nav — desktop only */}
-      <nav className="lp-header-nav" style={{ display: "none", gap: 32, alignItems: "center" }}>
-        {[
-          { label: "How It Works", href: "#how-it-works" },
-          { label: "Spec Mode", href: "#spec" },
-          { label: "Build Mode", href: "#build" },
-        ].map((item) => (
-          <a key={item.href} href={item.href} style={{
-            fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-            fontSize: 12, color: "rgba(229,231,235,0.6)", letterSpacing: "0.08em",
-            textTransform: "uppercase", textDecoration: "none", transition: "color 200ms",
-          }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#D4AF37")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(229,231,235,0.6)")}
-          >
-            {item.label}
-          </a>
-        ))}
-      </nav>
+      {/* Center nav intentionally empty. */}
+      <nav className="lp-header-nav" style={{ display: "none", gap: 32, alignItems: "center" }} />
 
       {/* Right — mobile */}
       <div className="lp-header-mobile-right" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -85,9 +75,9 @@ export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
           {installed ? "✓" : "↓"}
         </button>
         <button onClick={onSignIn} style={{
-          fontFamily: "'IBM Plex Mono', monospace",
+          ...smallUiText,
           padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(212,175,55,0.3)",
-          color: "#D4AF37", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+          color: "#D4AF37", fontSize: 11,
           background: "transparent", cursor: "pointer", transition: "background 200ms", marginLeft: 8,
         }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,175,55,0.08)")}
@@ -100,8 +90,8 @@ export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
       {/* Right — desktop */}
       <div className="lp-header-desktop-right" style={{ display: "none", alignItems: "center" }}>
         <button onClick={onSignIn} style={{
-          fontFamily: "'IBM Plex Mono', monospace",
-          color: "#D4AF37", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em",
+          ...smallUiText,
+          color: "#D4AF37", fontSize: 12,
           background: "transparent", border: "none", cursor: "pointer", transition: "color 200ms",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(212,175,55,0.8)")}
@@ -110,9 +100,9 @@ export function LandingHeader({ onSignIn }: { onSignIn?: () => void }) {
           Sign In
         </button>
         <button onClick={onSignIn} style={{
-          fontFamily: "'IBM Plex Mono', monospace",
+          ...smallUiText,
           padding: "8px 20px", borderRadius: 8, background: "#D4AF37", color: "#0D0B09",
-          fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", border: "none",
+          fontSize: 12, border: "none",
           cursor: "pointer", marginLeft: 12, transition: "background 200ms",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(212,175,55,0.9)")}
