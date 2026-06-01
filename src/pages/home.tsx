@@ -45,7 +45,6 @@ import { Briefcase } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
-import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
@@ -1288,8 +1287,6 @@ export default function Home() {
   }, []);
   const isParchment = useThemeMode() === "parchment";
   const chatScrollRef = useRef<HTMLDivElement>(null);
-  const [showDeepDiveMenu, setShowDeepDiveMenu] = useState(false);
-  const [deepDiveCopied, setDeepDiveCopied] = useState(false);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const { user: authUser } = useRequireAuth();
   const [showProfile, setShowProfile] = useState(false);
@@ -1740,7 +1737,6 @@ export default function Home() {
     }, null);
     return latest?.id ?? null;
   }, [projects]);
-  const homeHasProject = homeFocus != null;
   const handleHomeSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
     if (tab === "chat" || homeFocus == null) return;
     const workspaceTab =
@@ -2600,7 +2596,7 @@ export default function Home() {
       <UnifiedSubheader
         activeTab="chat"
         onTabChange={handleHomeSubheaderTabChange}
-        hasProject={homeHasProject}
+        hasProject={false}
         isMobile={isMobile}
       />
       
@@ -3201,7 +3197,7 @@ export default function Home() {
               ref={fileInputRef}
               id="home-file-input"
               type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
+              accept="image/jpeg,image/png,image/gif,image/webp,.zip,application/zip,.pdf,.txt,.md,.csv,.json,.docx,.xlsx,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json"
               style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, pointerEvents: "none", overflow: "hidden" }}
               multiple
               onChange={(e) => {
@@ -3318,7 +3314,7 @@ export default function Home() {
 
             {/* Bottom action bar */}
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: isTinyScreen ? "center" : "flex-start", minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
               {/* Plus — opens attachments for now, leaves room for a menu later */}
               <label
@@ -3337,215 +3333,7 @@ export default function Home() {
                   <path d="M3 8h10" />
                 </svg>
               </label>
-
-              {/* History clock — jumpstart active sessions */}
-              <LongPressTip tip="Where were we? · Resume active conversation" duration={2500}>
-                <button
-                  onClick={handleOpenHistory}
-                  aria-label="Open conversation history"
-                  style={{
-                    width: 34, height: 34, borderRadius: 999,
-                    background: "rgba(212, 175, 55, 0.1)",
-                    border: "1px solid rgba(212, 175, 55, 0.18)",
-                    color: "rgba(212, 175, 55, 0.85)",
-                    cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 180ms cubic-bezier(.2,.8,.2,1)",
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.18)";
-                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.45)";
-                    e.currentTarget.style.color = "var(--atlas-gold)";
-                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.1)";
-                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.18)";
-                    e.currentTarget.style.color = "rgba(212, 175, 55, 0.85)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.18)";
-                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.45)";
-                    e.currentTarget.style.color = "var(--atlas-gold)";
-                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.background = "rgba(212, 175, 55, 0.1)";
-                    e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.18)";
-                    e.currentTarget.style.color = "rgba(212, 175, 55, 0.85)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                </button>
-              </LongPressTip>
-
-              {/* Focus — icon-only when no project; pill with name when one is selected */}
-              <button
-                onClick={() => setShowFocusPicker(true)}
-                title="Focus on a project"
-                aria-label="Focus on a project"
-                style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
-                  ...(homeFocus
-                    ? {
-                        padding: "4px 7px", borderRadius: 999,
-                        background: "rgba(201,162,76,0.1)",
-                        border: "1px solid rgba(201,162,76,0.3)",
-                        fontFamily: "var(--app-font-mono)", fontSize: 9,
-                        letterSpacing: "0.1em", textTransform: "uppercase",
-                        color: "var(--atlas-gold)",
-                      }
-                    : {
-                        width: 32, height: 32, borderRadius: 8, padding: 0,
-                        background: "transparent", border: "none",
-                        color: "rgba(120,113,108,0.45)",
-                      }),
-                  cursor: "pointer", flexShrink: 0,
-                  transition: "all 140ms ease",
-                }}
-              >
-                {homeFocus ? (
-                  <>
-                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0 }} />
-                    {projects?.find((p: any) => p.id === homeFocus)?.name ?? "Project"}
-                    <span
-                      onClick={(e) => { e.stopPropagation(); setHomeFocus(null); }}
-                      style={{ marginLeft: 2, opacity: 0.6, fontSize: 12, lineHeight: 1 }}
-                    >×</span>
-                  </>
-                ) : (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9"/>
-                    <circle cx="12" cy="12" r="3.5"/>
-                    <line x1="12" y1="1" x2="12" y2="4"/>
-                    <line x1="12" y1="20" x2="12" y2="23"/>
-                    <line x1="1" y1="12" x2="4" y2="12"/>
-                    <line x1="20" y1="12" x2="23" y2="12"/>
-                  </svg>
-                )}
-              </button>
-
-
-              {/* Vault — shown in input bar only on tiny screens */}
-              {isTinyScreen && (
-                <button
-                  title="Visual Vault"
-                  onClick={() => setShowVault(true)}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none",
-                    color: "rgba(120,113,108,0.45)", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "color 160ms ease", flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(120,113,108,0.45)")}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
-                  </svg>
-                </button>
-              )}
-
-              {/* Deep Dive button */}
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button
-                  onClick={() => setShowDeepDiveMenu(v => !v)}
-                  title="Deep Dive — send this conversation to ChatGPT, Perplexity or Gemini"
-                  style={{
-                    width: 32, height: 32, borderRadius: 8,
-                    background: showDeepDiveMenu ? "rgba(201,162,76,0.1)" : "transparent",
-                    border: showDeepDiveMenu ? "1px solid rgba(201,162,76,0.25)" : "none",
-                    color: showDeepDiveMenu ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)",
-                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "color 160ms ease, background 160ms ease",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "var(--atlas-fg)")}
-                  onMouseLeave={e => { if (!showDeepDiveMenu) e.currentTarget.style.color = "rgba(120,113,108,0.45)"; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="8" cy="6" r="4" />
-                    <path d="M8 10v5M5 13h6" />
-                    <path d="M5.5 4.5L3 2M10.5 4.5L13 2" />
-                  </svg>
-                </button>
-                {showDeepDiveMenu && (
-                  <>
-                  <div onClick={() => setShowDeepDiveMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 59 }} />
-                  <div
-                    className="atlas-popover"
-                    style={{ position: "absolute", bottom: "calc(100% + 8px)", left: 0, zIndex: 60, minWidth: 210 }}
-                  >
-                    <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(201,162,76,0.5)", padding: "4px 10px 6px", borderBottom: "1px solid rgba(201,162,76,0.08)", marginBottom: 4 }}>
-                      Deep Dive
-                    </div>
-                    {([
-                      { id: "chatgpt", label: "ChatGPT", sub: "Context auto-fills" },
-                      { id: "perplexity", label: "Perplexity", sub: "Context auto-fills" },
-                      { id: "gemini", label: "Gemini", sub: deepDiveCopied ? "Copied — paste when it opens" : "Copies context, paste once" },
-                    ] as const).map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          const recentMsgs = nexusChat.messages.slice(-5).map((m: {role: string; content: string}) => `${m.role === "user" ? "Me" : "Atlas"}: ${m.content}`).join("\n\n");
-                          const current = input.trim();
-                          const ctx = [current ? `My question: ${current}` : "", recentMsgs].filter(Boolean).join("\n\n---\n\n").slice(0, 2000);
-                          const encoded = encodeURIComponent(ctx);
-                          setShowDeepDiveMenu(false);
-                          if (p.id === "chatgpt") {
-                            window.open(`https://chatgpt.com/?q=${encoded}`, "_blank");
-                          } else if (p.id === "perplexity") {
-                            window.open(`https://www.perplexity.ai/search?q=${encoded}`, "_blank");
-                          } else {
-                            navigator.clipboard.writeText(ctx).catch(() => {});
-                            setDeepDiveCopied(true);
-                            setTimeout(() => setDeepDiveCopied(false), 3000);
-                            toast("Opening Gemini", {
-                              description: "Your context is copied — just paste it when you arrive.",
-                              duration: 4000,
-                            });
-                            setTimeout(() => window.open("https://gemini.google.com", "_blank"), 2500);
-                          }
-                        }}
-                        style={{
-                          display: "block", width: "100%", textAlign: "left",
-                          background: "transparent", border: "none",
-                          padding: "7px 10px", borderRadius: 5, cursor: "pointer",
-                          transition: "background 120ms ease",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                      >
-                        <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-fg)", fontWeight: 500 }}>{p.label}</div>
-                        <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", marginTop: 1, fontFamily: "var(--app-font-mono)" }}>{p.sub}</div>
-                      </button>
-                    ))}
-                  </div>
-                  </>
-                )}
               </div>
-              </div>
-
-              {/* Center hint — absolutely centered in the input row */}
-              {!isTinyScreen && (
-                <span style={{
-                  position: "absolute", left: "50%", top: "50%",
-                  transform: "translate(-50%, -50%)",
-                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)",
-                  letterSpacing: "0.05em", color: "rgba(120,113,108,0.3)",
-                  userSelect: "none", pointerEvents: "none",
-                  whiteSpace: "nowrap",
-                }}>
-                  type a message...
-                </span>
-              )}
 
               {/* Mic + Send — pinned to right via auto left margin */}
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>

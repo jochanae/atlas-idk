@@ -1,21 +1,31 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ChevronDown, ChevronUp, MoreVertical, TerminalSquare } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 
 export type UnifiedSubheaderTab = "chat" | "changes" | "blueprints" | "artifacts" | "console";
+export type UnifiedSubheaderMenuAction = "files" | "memory" | "connections" | "forge" | "rescan-repo";
 
 type UnifiedSubheaderProps = {
   activeTab: UnifiedSubheaderTab;
   onTabChange: (tab: UnifiedSubheaderTab) => void;
   hasProject: boolean;
   isMobile: boolean;
+  showWorkspaceMenu?: boolean;
+  onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
 };
 
 const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }> = [
-  { id: "chat", label: "Chat", ariaLabel: "Open chat" },
-  { id: "changes", label: "Changes", ariaLabel: "View changes" },
-  { id: "blueprints", label: "Blueprints", ariaLabel: "Open blueprints" },
-  { id: "artifacts", label: "Artifacts", ariaLabel: "Open artifacts" },
-  { id: "console", label: "Console", ariaLabel: "Open console" },
+  { id: "changes", label: "CHANGES", ariaLabel: "View changes" },
+  { id: "blueprints", label: "BLUEPRINTS", ariaLabel: "Open blueprints" },
+  { id: "artifacts", label: "ARTIFACTS", ariaLabel: "Open artifacts" },
+  { id: "console", label: "CONSOLE", ariaLabel: "Open console" },
+];
+
+const MENU_ITEMS: Array<{ id: UnifiedSubheaderMenuAction; label: string }> = [
+  { id: "files", label: "FILES" },
+  { id: "memory", label: "MEMORY" },
+  { id: "connections", label: "CONNECTIONS" },
+  { id: "forge", label: "FORGE" },
+  { id: "rescan-repo", label: "RESCAN REPO" },
 ];
 
 function tabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
@@ -40,11 +50,29 @@ function tabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
   };
 }
 
+const chevronButtonStyle: CSSProperties = {
+  width: 28,
+  height: 28,
+  padding: 0,
+  borderRadius: 999,
+  background: "transparent",
+  border: "1px solid transparent",
+  color: "rgba(201,162,76,0.72)",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 16,
+  lineHeight: 1,
+};
+
 export function UnifiedSubheader({
   activeTab,
   onTabChange,
   hasProject,
   isMobile,
+  showWorkspaceMenu = false,
+  onMenuAction,
 }: UnifiedSubheaderProps) {
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -66,65 +94,14 @@ export function UnifiedSubheader({
     };
   }, [menuOpen]);
 
-  const availableTabs = hasProject ? TABS : TABS.slice(0, 1);
-  const primaryTabs = isMobile && hasProject ? availableTabs.slice(0, 2) : availableTabs;
-  const overflowTabs = isMobile && hasProject ? availableTabs.slice(2) : [];
-  const overflowActive = overflowTabs.some((tab) => tab.id === activeTab);
-
   const selectTab = (tab: UnifiedSubheaderTab) => {
     onTabChange(tab);
     setMenuOpen(false);
   };
 
-  if (!expanded) {
-    return (
-      <div
-        className="atlas-unified-subheader atlas-unified-subheader--collapsed"
-        style={{
-          marginTop: 50,
-          flexShrink: 0,
-          position: "relative",
-          zIndex: 20,
-          height: 18,
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "transparent",
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          title="Show navigation tabs"
-          aria-label="Show navigation tabs"
-          aria-expanded={false}
-          style={{
-            height: 16,
-            minWidth: 34,
-            borderRadius: 999,
-            border: "1px solid rgba(var(--atlas-gold-rgb),0.22)",
-            background: "rgba(var(--atlas-bg-rgb),0.28)",
-            color: "var(--atlas-gold)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            opacity: 0.72,
-            padding: "0 10px",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-          }}
-        >
-          <ChevronDown size={11} strokeWidth={2} aria-hidden />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div
-      className="atlas-unified-subheader atlas-unified-subheader--expanded"
+      className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
         marginTop: 50,
         flexShrink: 0,
@@ -140,87 +117,87 @@ export function UnifiedSubheader({
           display: "flex",
           alignItems: "center",
           gap: 10,
-          minHeight: 44,
-          padding: isMobile ? "10px 16px 8px" : "12px 22px 10px",
+          minHeight: expanded ? 44 : 28,
+          padding: isMobile ? "8px 16px 6px" : "10px 22px 8px",
         }}
       >
-        <nav
-          aria-label="Workspace sections"
-          className="scrollbar-none"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: isMobile ? 14 : 22,
-            minWidth: 0,
-            overflowX: "auto",
-            overflowY: "hidden",
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-            flex: 1,
-          }}
-        >
-          {primaryTabs.map((tab) => {
-            const active = activeTab === tab.id || (!hasProject && tab.id === "chat");
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => selectTab(tab.id)}
-                aria-label={tab.ariaLabel}
-                style={tabButtonStyle(active, isMobile)}
-                onMouseEnter={(event) => {
-                  if (!active) event.currentTarget.style.opacity = "0.82";
-                }}
-                onMouseLeave={(event) => {
-                  if (!active) event.currentTarget.style.opacity = "0.5";
-                }}
-              >
-                {tab.id === "console" && <TerminalSquare size={12} strokeWidth={1.7} aria-hidden />}
-                {tab.label}
-                {active && (
-                  <span
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      bottom: 2,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: 3,
-                      height: 3,
-                      borderRadius: "50%",
-                      background: "var(--atlas-gold)",
-                      boxShadow: "0 0 6px rgba(201,162,76,0.6)",
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        {expanded && hasProject ? (
+          <nav
+            aria-label="Workspace sections"
+            className="scrollbar-none"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: isMobile ? 14 : 22,
+              minWidth: 0,
+              overflowX: "auto",
+              overflowY: "hidden",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              flex: 1,
+            }}
+          >
+            {TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => selectTab(tab.id)}
+                  aria-label={tab.ariaLabel}
+                  style={tabButtonStyle(active, isMobile)}
+                  onMouseEnter={(event) => {
+                    if (!active) event.currentTarget.style.opacity = "0.82";
+                  }}
+                  onMouseLeave={(event) => {
+                    if (!active) event.currentTarget.style.opacity = "0.5";
+                  }}
+                >
+                  {tab.label}
+                  {active && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        bottom: 2,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        width: 3,
+                        height: 3,
+                        borderRadius: "50%",
+                        background: "var(--atlas-gold)",
+                        boxShadow: "0 0 6px rgba(201,162,76,0.6)",
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        ) : (
+          <div style={{ flex: 1 }} />
+        )}
 
         <div
           style={{ display: "flex", alignItems: "center", gap: isMobile ? 3 : 7, flexShrink: 0 }}
         >
-          {overflowTabs.length > 0 && (
+          {expanded && showWorkspaceMenu && (
             <div ref={menuRef} style={{ position: "relative" }}>
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
-                title="More tabs"
-                aria-label="More tabs"
+                title="Workspace menu"
+                aria-label="Workspace menu"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 style={{
-                  background: overflowActive || menuOpen ? "rgba(201,162,76,0.10)" : "transparent",
-                  border:
-                    overflowActive || menuOpen
-                      ? "1px solid rgba(201,162,76,0.32)"
-                      : "1px solid transparent",
+                  background: menuOpen ? "rgba(201,162,76,0.10)" : "transparent",
+                  border: menuOpen ? "1px solid rgba(201,162,76,0.32)" : "1px solid transparent",
                   borderRadius: 6,
                   padding: "4px 4px",
                   cursor: "pointer",
-                  color: overflowActive || menuOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: overflowActive || menuOpen ? 1 : 0.7,
+                  color: menuOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  opacity: menuOpen ? 1 : 0.7,
                   lineHeight: 0,
                   display: "inline-flex",
                   flexShrink: 0,
@@ -245,23 +222,25 @@ export function UnifiedSubheader({
                     boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
                   }}
                 >
-                  {overflowTabs.map((tab) => {
-                    const active = activeTab === tab.id;
+                  {MENU_ITEMS.map((item) => {
                     return (
                       <button
-                        key={tab.id}
+                        key={item.id}
                         type="button"
                         role="menuitem"
-                        onClick={() => selectTab(tab.id)}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onMenuAction?.(item.id);
+                        }}
                         style={{
                           width: "100%",
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
                           padding: "9px 12px",
-                          background: active ? "rgba(201,162,76,0.08)" : "transparent",
+                          background: "transparent",
                           border: "none",
-                          color: active ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                          color: "var(--atlas-fg)",
                           cursor: "pointer",
                           fontFamily: "var(--app-font-mono)",
                           fontSize: "var(--ts-caption)",
@@ -270,10 +249,7 @@ export function UnifiedSubheader({
                           textAlign: "left",
                         }}
                       >
-                        {tab.id === "console" && (
-                          <TerminalSquare size={12} strokeWidth={1.7} aria-hidden />
-                        )}
-                        {tab.label}
+                        {item.label}
                       </button>
                     );
                   })}
@@ -284,27 +260,15 @@ export function UnifiedSubheader({
           <button
             type="button"
             onClick={() => {
-              setExpanded(false);
+              setExpanded((open) => !open);
               setMenuOpen(false);
             }}
-            title="Hide navigation tabs"
-            aria-label="Hide navigation tabs"
-            aria-expanded={true}
-            style={{
-              width: 24,
-              height: 24,
-              padding: 0,
-              borderRadius: 999,
-              background: "transparent",
-              border: "1px solid transparent",
-              color: "rgba(201,162,76,0.65)",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            title={expanded ? "Collapse subheader" : "Expand subheader"}
+            aria-label={expanded ? "Collapse subheader" : "Expand subheader"}
+            aria-expanded={expanded}
+            style={chevronButtonStyle}
           >
-            <ChevronUp size={13} strokeWidth={2} aria-hidden />
+            {expanded ? "▴" : "▾"}
           </button>
         </div>
       </div>
