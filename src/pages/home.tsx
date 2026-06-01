@@ -3,16 +3,9 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
-import {
-  useListProjects,
-  useCreateProject,
-  useCreateEntry,
-  getListProjectsQueryKey,
-} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
-import type { Project } from "@workspace/api-client-react";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";

@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { useListProjects } from "@workspace/api-client-react";
 
 const LAST_PROJECT_KEY = "atlas-last-project-id";
 

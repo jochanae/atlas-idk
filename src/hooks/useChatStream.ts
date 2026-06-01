@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import {
-  useListMessages,
-  useCreateSession,
-} from "@/_workspace/api-client-react/src/generated/api";
-import type {
-  Message,
-  Session,
-} from "@/_workspace/api-client-react/src/generated/api.schemas";
 import type {
   ChatMessage,
   MemoryChip,

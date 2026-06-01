@@ -10,28 +10,19 @@ import { UnifiedShell } from "@/components/UnifiedShell";
 import Home from "./pages/home";
 import Landing from "./pages/landing";
 import Login from "./pages/login";
-import Projects from "./pages/projects";
 import Workspace from "./pages/workspace";
-import Ledger from "./pages/ledger";
-import ParkingLot from "./pages/parking-lot";
-import EntryDetail from "./pages/entry-detail";
 
-import Workshop from "./pages/workshop";
-import ProjectCompass from "./pages/project-compass";
 import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
 import Pricing from "./pages/pricing";
 import Help from "./pages/help";
-import Vault from "./pages/vault";
 import Secrets from "./pages/secrets";
 import Admin from "./pages/admin";
 
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
-import MasterMap from "./pages/master-map";
 import OnboardingPage from "./pages/onboarding";
-import { getListProjectsQueryKey, useListProjects } from "@workspace/api-client-react";
 import { fetchMe } from "@/hooks/useAuth";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────

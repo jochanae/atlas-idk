@@ -16,7 +16,6 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { StatusGlyph, SEVERITY_LABEL } from "./StatusGlyph";
 import { CapsuleTag } from "./CapsuleTag";
-import type { Entry } from "@workspace/api-client-react";
 
 export interface ReopenChainItem {
   id: number;

@@ -5,10 +5,6 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { getAuthHeaders } from "@/lib/api";
 import { diffStat } from "@/lib/formatters";
 import type { Plan, PlanExecution } from "@/lib/plan";
-import {
-  getGetProjectQueryKey,
-  useGetProject,
-} from "@workspace/api-client-react";
 import type {
   ChatMessage,
   FileEdit,

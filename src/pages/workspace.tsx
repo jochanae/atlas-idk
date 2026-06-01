@@ -57,26 +57,6 @@ import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "
 import { loadProfile } from "@/lib/userProfile";
 import { supabase } from "@/integrations/supabase/client";
 import type { Plan, PlanExecution } from "../lib/plan";
-import {
-  useGetProject,
-  useListProjects,
-  useListSessions,
-  useListEntries,
-  
-  useCreateSession,
-  useCreateEntry,
-  useCreateProject,
-  useUpdateProject,
-  useDeleteProject,
-  useListReadinessSnapshots,
-  useRecordReadinessSnapshot,
-  getListReadinessSnapshotsQueryKey,
-  getListEntriesQueryKey,
-  getListSessionsQueryKey,
-  getGetProjectQueryKey,
-  getListProjectsQueryKey,
-} from "@workspace/api-client-react";
-import type { Entry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ReadinessRing,

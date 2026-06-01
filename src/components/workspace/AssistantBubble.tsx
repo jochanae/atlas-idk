@@ -22,12 +22,6 @@ import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import type { Plan, PlanExecution } from "../../lib/plan";
 import { haptic } from "@/lib/long-press-tip";
 
-import {
-  useCreateEntry,
-  useGetProject,
-  getGetProjectQueryKey,
-  getListEntriesQueryKey,
-} from "@workspace/api-client-react";
 
 import type {
   ChatMessage,

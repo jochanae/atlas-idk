@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListEntriesQueryKey, useUpdateEntry } from "@workspace/api-client-react";
-import type { Entry } from "@workspace/api-client-react";
 import { timeAgo } from "@/lib/formatters";
 import { haptic } from "@/lib/long-press-tip";
 
