@@ -272,6 +272,18 @@ export function ChatComposer(props: ChatComposerProps) {
   const [planMode, setPlanMode] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
+  // When the project is empty, focus the composer so Atlas feels "already in the room".
+  // Skip on mobile to avoid yanking the keyboard up uninvited.
+  useEffect(() => {
+    if (isMobile) return;
+    if (messages.length !== 0) return;
+    if (firstRunDismissed) return;
+    const t = setTimeout(() => { textareaRef.current?.focus(); }, 120);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length, isMobile]);
+
+
   return (
 
     <>
