@@ -2598,6 +2598,7 @@ export default function Home() {
         onTabChange={handleHomeSubheaderTabChange}
         hasProject={false}
         isMobile={isMobile}
+        hasConversation={nexusChat.messages.length > 0}
       />
       
 
