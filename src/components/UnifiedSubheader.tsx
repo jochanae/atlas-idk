@@ -259,19 +259,21 @@ export function UnifiedSubheader({
               )}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              setExpanded((open) => !open);
-              setMenuOpen(false);
-            }}
-            title={expanded ? "Collapse subheader" : "Expand subheader"}
-            aria-label={expanded ? "Collapse subheader" : "Expand subheader"}
-            aria-expanded={expanded}
-            style={chevronButtonStyle}
-          >
-            {expanded ? "▴" : "▾"}
-          </button>
+          {hasConversation && (
+            <button
+              type="button"
+              onClick={() => {
+                setExpanded((open) => !open);
+                setMenuOpen(false);
+              }}
+              title={expanded ? "Collapse subheader" : "Expand subheader"}
+              aria-label={expanded ? "Collapse subheader" : "Expand subheader"}
+              aria-expanded={expanded}
+              style={chevronButtonStyle}
+            >
+              {expanded ? "▴" : "▾"}
+            </button>
+          )}
         </div>
       </div>
     </div>
