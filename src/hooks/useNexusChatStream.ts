@@ -87,6 +87,7 @@ export function useNexusChatStream(
   const { focusProjectId, model = "claude", mode, conversationId, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
+  const messagesRef = useRef<NexusMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: string } | null>(null);
@@ -98,6 +99,10 @@ export function useNexusChatStream(
   useEffect(() => {
     shapingHeldRef.current = shapingHeld;
   }, [shapingHeld]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const { stream, abort: abortStream } = useAtlasStream();
   const streamingIdRef = useRef<string | null>(null);
@@ -142,7 +147,7 @@ export function useNexusChatStream(
 
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const history = messagesRef.current.map((m) => ({ role: m.role, content: m.content }));
     const userProfile = profileToString(loadProfile());
 
     setIsPending(true);
@@ -370,7 +375,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [isPending, model, mode, messages, stream, abortStream, resetStreamState]);
+  }, [isPending, model, mode, stream, abortStream, resetStreamState]);
 
   return {
     messages,

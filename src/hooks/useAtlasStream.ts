@@ -127,11 +127,10 @@ export function useAtlasStream(): UseAtlasStreamReturn {
               } else if (evtName === "done") {
                 const meta = JSON.parse(evtData) as Record<string, unknown>;
                 await pacer.finish();
-                // Use content from meta if available (already cleaned)
-                // otherwise use accumulated streamedText
+                // Prefer cleaned final text from the done payload when present.
                 const finalText =
-                  (meta.content as string | undefined)
-                  ?? (meta.response as string | undefined)
+                  (typeof meta.content === "string" ? meta.content : undefined)
+                  ?? (typeof meta.response === "string" ? meta.response : undefined)
                   ?? streamedText;
                 callbacks.onDone(finalText, meta);
               } else if (evtName === "error") {
