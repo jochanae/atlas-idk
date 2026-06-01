@@ -197,13 +197,12 @@ export function useNexusChatStream(
         body: {
           message: text,
           model: resolved.model,
-          focusProjectId: resolved.focusProjectId,
+          ...(resolved.focusProjectId != null ? { projectId: resolved.focusProjectId } : {}),
           mode: resolved.mode,
           imageBase64,
           imageMimeType,
           conversationId: resolved.conversationId,
           projectContext: resolved.projectContext ?? null,
-          global: true,
         },
         callbacks: {
           onToken: (released) => {

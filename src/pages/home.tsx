@@ -1330,7 +1330,6 @@ export default function Home() {
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
-  const [homeMessages, setHomeMessages] = useState<HomeMessage[]>([]);
   const nexusChat = useNexusChatStream({
     focusProjectId: homeFocus ?? null,
     model: homeModel,
@@ -2046,23 +2045,10 @@ export default function Home() {
     const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
 
-    // Use first image for display preview, safe-resize for API (always caps at 7000px — no raw fallback)
-    const imageUrl = imageFiles.length > 0 ? URL.createObjectURL(imageFiles[0]) : undefined;
+    // Safe-resize the first image for API (always caps at 7000px — no raw fallback)
     // Append image count note if multiple were attached
     const imageNote = imageFiles.length > 1 ? ` [${imageFiles.length} images attached — showing first]` : "";
     const messageText = fullText + imageNote;
-
-    const userMessageCreatedAt = new Date().toISOString();
-    const userMessage: HomeMessage = { role: 'user', content: messageText, imageUrl, createdAt: userMessageCreatedAt };
-    const appendUserMessageIfMissing = () => {
-      setHomeMessages(prev =>
-        prev.some(m => m.role === 'user' && m.content === messageText && m.createdAt === userMessageCreatedAt)
-          ? prev
-          : [...prev, userMessage]
-      );
-    };
-
-    appendUserMessageIfMissing();
 
     let imageBase64: string | undefined;
     let imageMimeType: string | undefined;
@@ -2073,9 +2059,6 @@ export default function Home() {
         imageMimeType = safe.mediaType;
       } catch {
         // If resize fails entirely, skip the image and continue with text only
-        setHomeMessages(prev => prev.map(m => (
-          m === userMessage ? { ...m, imageUrl: undefined } : m
-        )));
       }
     }
 
