@@ -13,6 +13,7 @@ import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
 import { useForceDesktop, useIsMobile, useIsTinyScreen, useIsDesktop } from "@/hooks/useBreakpoints";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useGitHub } from "@/hooks/useGitHub";
 import { AxiomFlow } from "../components/AxiomFlow";
 import type { ArchNode, NodeStateMap, HandoverSnapshot } from "../components/AxiomFlow";
 import { SystemMap } from "../components/SystemMap";
@@ -542,99 +543,32 @@ function GithubTokenInput({
 // ── ConnectionsTab ────────────────────────────────────────────────────────────
 function ConnectionsTab({
   projectId,
-  githubToken,
   onSwitchToFiles,
+  onOpenAccountSettings,
   showModelPicker,
   onShowModelPickerChange,
 }: {
   projectId: number;
-  githubToken: string | null;
   onSwitchToFiles: () => void;
+  onOpenAccountSettings: () => void;
   showModelPicker: boolean;
   onShowModelPickerChange: (v: boolean) => void;
 }) {
-  type AccountConnection = { id: number | string; type?: string | null };
-
   const { data: project } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
   const updateProject = useUpdateProject();
+  const { isConnected: githubConnected, isLoading: githubLoading, error: githubError } = useGitHub();
 
-  const [githubConnection, setGithubConnection] = useState<AccountConnection | null>(null);
-  const [githubLoading, setGithubLoading] = useState(true);
-  const [githubSaving, setGithubSaving] = useState(false);
-  const [githubError, setGithubError] = useState<string | null>(null);
   const [dbUrl, setDbUrl] = useState<string | null>(null);
 
-  const loadGithubConnection = useCallback(async () => {
-    setGithubLoading(true);
-    setGithubError(null);
-    try {
-      const res = await fetch("/api/connections", {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
-      setGithubConnection(connections.find((c) => c.type === "github") ?? null);
-    } catch (error) {
-      setGithubError(error instanceof Error ? error.message : "Could not load GitHub connection");
-      setGithubConnection(null);
-    } finally {
-      setGithubLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void loadGithubConnection();
     try { setDbUrl(localStorage.getItem(`atlas-db-url-${projectId}`)); } catch {}
-  }, [loadGithubConnection, projectId]);
-
-  const saveGithubToken = async () => {
-    const tokenValue = prompt("Paste GitHub token:");
-    if (tokenValue === null || !tokenValue.trim()) return;
-    setGithubSaving(true);
-    setGithubError(null);
-    try {
-      const res = await fetch("/api/connections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ type: "github", label: "GitHub", token: tokenValue.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      await loadGithubConnection();
-    } catch (error) {
-      setGithubError(error instanceof Error ? error.message : "Could not save GitHub connection");
-    } finally {
-      setGithubSaving(false);
-    }
-  };
-
-  const disconnectGithub = async () => {
-    if (!githubConnection) return;
-    setGithubSaving(true);
-    setGithubError(null);
-    try {
-      const res = await fetch(`/api/connections/${githubConnection.id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setGithubConnection(null);
-    } catch (error) {
-      setGithubError(error instanceof Error ? error.message : "Could not disconnect GitHub");
-    } finally {
-      setGithubSaving(false);
-    }
-  };
+  }, [projectId]);
 
   const linkedRepo = parseLinkedRepo(project?.linkedRepo);
 
   const repoName = linkedRepo?.fullName ?? null;
-  const githubConnected = !!githubToken || !!githubConnection;
   const maskedDb = dbUrl ? dbUrl.replace(/:[^:@]*@/, ":***@") : null;
 
   const DOT_GREEN = "rgba(74,222,128,0.9)";
@@ -777,22 +711,18 @@ function ConnectionsTab({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={labelStyle}>GitHub</div>
             {githubConnected ? (
-              <div style={valueStyle}>GitHub Connected</div>
+              <div style={valueStyle}>Connected at account level</div>
             ) : githubLoading ? (
               <div style={missingStyle}>Checking connection...</div>
             ) : (
-              <div style={missingStyle}>No token - file reads disabled</div>
+              <div style={missingStyle}>Not connected</div>
             )}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => { void saveGithubToken(); }} disabled={githubSaving} style={{ ...actionBtn, opacity: githubSaving ? 0.6 : 1 }}>
-                {githubConnected ? "Update token" : "Connect"}
-              </button>
-              {githubConnected && (
-                <button type="button" onClick={() => { void disconnectGithub(); }} disabled={githubSaving} style={{ ...actionBtn, color: "rgba(248,113,113,0.85)", opacity: githubSaving ? 0.6 : 1 }}>
-                  Disconnect
-                </button>
-              )}
+            <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.5, marginTop: 4 }}>
+              Projects inherit the user-level GitHub connection automatically.
             </div>
+            <button type="button" onClick={onOpenAccountSettings} style={actionBtn}>
+              Manage in account settings -&gt;
+            </button>
             {githubError && (
               <div style={{ ...missingStyle, marginTop: 5, fontStyle: "normal" }}>{githubError}</div>
             )}
@@ -876,7 +806,6 @@ function ConnectionsTab({
 function RightPanel({
   projectId,
   projectName,
-  githubToken,
   entries,
   activeCatch,
   onClose,
@@ -920,6 +849,8 @@ function RightPanel({
   onContinueSession,
   onNavLedger,
   onNavPreview,
+  onOpenConnections,
+  onOpenAccountSettings,
   onZipTrigger,
   zipLoaded,
   zipFileName,
@@ -928,7 +859,6 @@ function RightPanel({
 }: {
   projectId: number;
   projectName: string;
-  githubToken: string | null;
   entries: Entry[];
   activeCatch: CatchPayload | null;
   onClose?: () => void;
@@ -972,6 +902,8 @@ function RightPanel({
   onContinueSession?: (sessionId: number | string) => void;
   onNavLedger?: () => void;
   onNavPreview?: () => void;
+  onOpenConnections?: () => void;
+  onOpenAccountSettings: () => void;
   onZipTrigger?: () => void;
   zipLoaded?: boolean;
   zipFileName?: string;
@@ -993,6 +925,11 @@ function RightPanel({
   useEffect(() => {
     if (forceTab) setTab(forceTab);
   }, [forceTab]);
+
+  const openConnections = useCallback(() => {
+    setTab("connections");
+    onOpenConnections?.();
+  }, [onOpenConnections]);
 
   // Terminal is always available — no auto-fallback on lens change.
 
@@ -1310,9 +1247,10 @@ function RightPanel({
           onZipTrigger={onZipTrigger}
           zipLoaded={zipLoaded}
           zipFileName={zipFileName}
+          onOpenConnections={openConnections}
         />
       )}
-      {tab === "connections" && <ConnectionsTab projectId={projectId} githubToken={githubToken} onSwitchToFiles={() => setTab("files")} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
+      {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} onOpenAccountSettings={onOpenAccountSettings} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
       {tab === "secrets" && (
         <SecretsPanel 
           projectId={projectId} 
@@ -5204,7 +5142,6 @@ export default function Workspace() {
           <RightPanel
             projectId={id}
             projectName={project?.name ?? "Project"}
-            githubToken={project?.githubToken ?? null}
             entries={entries || []}
             activeCatch={activeCatch}
             onFileContext={setFileContext}
@@ -5244,6 +5181,7 @@ export default function Workspace() {
             onForgeNodesConsumed={() => setExternalForgeNodes([])}
             onForgeCompleted={() => void updateForgeState("forged")}
             onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
+            onOpenAccountSettings={() => setShowProfile(true)}
             onZipTrigger={() => {
               const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
               input?.click();
@@ -5648,7 +5586,6 @@ export default function Workspace() {
               <RightPanel
                 projectId={id}
                 projectName={project?.name ?? "Project"}
-                githubToken={project?.githubToken ?? null}
                 entries={entries || []}
                 activeCatch={activeCatch}
                 onClose={() => { setRightOpen(false); setRightFullscreen(false); }}
@@ -5701,6 +5638,8 @@ export default function Workspace() {
                 onContinueSession={(sid) => { setSessionId(Number(sid)); setMobileTab("chat"); setRightOpen(false); }}
                 onNavLedger={() => setMobileTab("ledger")}
                 onNavPreview={() => setMobileTab("preview")}
+                onOpenConnections={() => setMobileTab("connections")}
+                onOpenAccountSettings={() => setShowProfile(true)}
                 onZipTrigger={() => {
                   const input = document.getElementById("ws-file-input") as HTMLInputElement | null;
                   input?.click();

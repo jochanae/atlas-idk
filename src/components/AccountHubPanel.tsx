@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useGitHub } from "@/hooks/useGitHub";
 import { apiUrl } from "@/lib/api";
 
 // ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
@@ -267,17 +268,13 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   // ── Atlas context (localStorage) ──────────────────────────────────────────
   const [atlasProfile, setAtlasProfile] = useState<AtlasProfile>(loadAtlasProfile);
   const [githubTokenInput, setGithubTokenInput] = useState("");
-
-  useEffect(() => {
-    fetch("/api/connections", { credentials: "include" })
-      .then(r => r.ok ? r.json() : [])
-      .then((data: Array<{type: string}>) => {
-        if (data.some(c => c.type === "github")) {
-          setGithubTokenInput("saved");
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const {
+    connect: connectGitHub,
+    disconnect: disconnectGitHub,
+    isConnected: githubConnected,
+    isLoading: githubLoading,
+    error: githubError,
+  } = useGitHub();
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -710,9 +707,11 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
             </div>
             <input
               type="password"
-              disabled={githubTokenInput === "saved"}
-              placeholder={githubTokenInput === "saved"
+              disabled={githubConnected || githubLoading}
+              placeholder={githubConnected
                 ? "✓ GitHub connected"
+                : githubLoading
+                  ? "Checking GitHub connection..."
                 : "ghp_.... or github_pat_..."}
               style={{
                 width: "100%",
@@ -720,7 +719,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
                 background: "var(--atlas-bg)",
                 border: "1px solid var(--atlas-border)",
                 borderRadius: "8px",
-                color: githubTokenInput === "saved"
+                color: githubConnected
                   ? "var(--atlas-gold)"
                   : "var(--atlas-fg)",
                 fontSize: "13px",
@@ -728,42 +727,61 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
                 boxSizing: "border-box",
               }}
               onChange={(e) => setGithubTokenInput(e.target.value)}
-              value={githubTokenInput ?? ""}
+              value={githubConnected ? "" : githubTokenInput}
             />
-            <button
-              onClick={async () => {
-                if (!githubTokenInput?.trim()) return;
-                const res = await fetch("/api/connections", {
-                  method: "POST",
-                  credentials: "include",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    type: "github",
-                    label: "GitHub",
-                    token: githubTokenInput.trim(),
-                  }),
-                });
-                if (res.ok) {
-                  toast.success("GitHub connected.");
-                  setGithubTokenInput("saved");
-                } else {
-                  toast.error("Failed to save token. Try again.");
-                }
-              }}
-              style={{
-                width: "100%",
-                padding: "10px",
-                background: "rgba(201, 162, 76, 0.12)",
-                border: "1px solid rgba(201, 162, 76, 0.3)",
-                borderRadius: "8px",
-                color: "var(--atlas-gold)",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Save GitHub Token
-            </button>
+            {githubError && (
+              <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginBottom: 8 }}>
+                {githubError}
+              </div>
+            )}
+            {githubConnected ? (
+              <button
+                onClick={async () => {
+                  await disconnectGitHub();
+                  toast.success("GitHub disconnected.");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.24)",
+                  borderRadius: "8px",
+                  color: "rgba(252,165,165,0.9)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Disconnect GitHub
+              </button>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (!githubTokenInput?.trim()) return;
+                  const ok = await connectGitHub(githubTokenInput.trim());
+                  if (ok) {
+                    toast.success("GitHub connected.");
+                    setGithubTokenInput("");
+                  } else {
+                    toast.error("Failed to verify GitHub token.");
+                  }
+                }}
+                disabled={githubLoading || !githubTokenInput.trim()}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  background: githubTokenInput.trim() ? "rgba(201, 162, 76, 0.12)" : "rgba(201, 162, 76, 0.04)",
+                  border: "1px solid rgba(201, 162, 76, 0.3)",
+                  borderRadius: "8px",
+                  color: githubTokenInput.trim() ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: githubTokenInput.trim() && !githubLoading ? "pointer" : "not-allowed",
+                }}
+              >
+                Save GitHub Token
+              </button>
+            )}
           </div>
 
           {/* ── Actions section ───────────────────────────────────────────── */}

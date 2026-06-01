@@ -10,7 +10,6 @@ import {
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useGitHub } from "@/hooks/useGitHub";
-import { GitHubConnect } from "@/components/GitHubConnect";
 import { Switch } from "@/components/ui/switch";
 import {
   type LinkedRepo,
@@ -27,6 +26,8 @@ import {
   buildTree,
 } from "@/components/workspace/CommitHistory";
 import { getLinkedRepoFullName, parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
+
+const GITHUB_RECONNECT_MESSAGE = "GitHub token needs to be reconnected.";
 
 function DbUrlInput({ projectId, onSave }: { projectId: number; onSave: (url: string) => void }) {
   const [value, setValue] = useState("");
@@ -151,6 +152,7 @@ export function FilesPanel({
   onZipTrigger,
   zipLoaded,
   zipFileName,
+  onOpenConnections,
 }: {
   projectId: number;
   onFileContext: (ctx: string | null) => void;
@@ -160,6 +162,7 @@ export function FilesPanel({
   onZipTrigger?: () => void;
   zipLoaded?: boolean;
   zipFileName?: string;
+  onOpenConnections?: () => void;
 }) {
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
@@ -170,7 +173,7 @@ export function FilesPanel({
   });
   const { data: allProjects } = useListProjects();
 
-  const { isConnected, isLoading } = useGitHub();
+  const { isConnected, isLoading, error: githubConnectionError } = useGitHub();
   const token = isConnected ? "__account__" : null;
   const [showModelPicker, setShowModelPicker] =
     useState(() =>
@@ -293,6 +296,7 @@ export function FilesPanel({
     const res = await fetch(path, { headers: githubHeaders(token) });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
+      if (res.status === 401) throw new Error(GITHUB_RECONNECT_MESSAGE);
       throw new Error(d.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -568,8 +572,38 @@ export function FilesPanel({
             Drop a ZIP of your project and Atlas reads the code directly. No repo required.
           </div>
         </div>
-        {/* —— GitHub connect —— */}
-        <GitHubConnect onSuccess={() => window.location.reload()} />
+        <div style={{
+          padding: "12px 13px",
+          borderRadius: 8,
+          background: "rgba(239,68,68,0.06)",
+          border: "1px solid rgba(239,68,68,0.18)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}>
+          <div style={{ fontSize: 12, color: "rgba(252,165,165,0.9)", fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
+            {githubConnectionError ?? GITHUB_RECONNECT_MESSAGE}
+          </div>
+          <button
+            type="button"
+            onClick={onOpenConnections}
+            style={{
+              alignSelf: "flex-start",
+              padding: "7px 12px",
+              borderRadius: 6,
+              background: "rgba(201,162,76,0.12)",
+              border: "1px solid rgba(201,162,76,0.3)",
+              color: "var(--atlas-gold)",
+              fontSize: 10,
+              fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+            }}
+          >
+            Open connections
+          </button>
+        </div>
       </div>
     );
   }
@@ -640,7 +674,9 @@ export function FilesPanel({
               {isUnlinking ? "unlinking…" : "unlink"}
             </button>
           )}
-          <GitHubConnect />
+          <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", color: "#34d399", opacity: 0.75 }}>
+            GitHub connected
+          </span>
         </div>
       </div>
 
@@ -784,8 +820,28 @@ export function FilesPanel({
             </div>
           )}
           {reposError && (
-            <div style={{ padding: "16px 12px", textAlign: "center", fontSize: 11, color: "var(--atlas-ember)", fontFamily: "var(--app-font-mono)" }}>
-              {reposError}
+            <div style={{ padding: "16px 12px", textAlign: "center", fontSize: 11, color: "var(--atlas-ember)", fontFamily: "var(--app-font-mono)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <span>{reposError}</span>
+              {reposError === GITHUB_RECONNECT_MESSAGE && (
+                <button
+                  type="button"
+                  onClick={onOpenConnections}
+                  style={{
+                    padding: "7px 12px",
+                    borderRadius: 6,
+                    background: "rgba(201,162,76,0.12)",
+                    border: "1px solid rgba(201,162,76,0.3)",
+                    color: "var(--atlas-gold)",
+                    fontSize: 10,
+                    fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                  }}
+                >
+                  Open connections
+                </button>
+              )}
             </div>
           )}
           {linkRepoError && (
