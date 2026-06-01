@@ -18,9 +18,13 @@ import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
 import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import type { ProjectNodeState } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { computeScoreFromNodeState, MODE_META, READINESS_MODE_KEY, computeBlendedScore, type ReadinessMode } from "@/components/ReadinessRing";
-
-
+import {
+  computeScoreFromNodeState,
+  MODE_META,
+  READINESS_MODE_KEY,
+  computeBlendedScore,
+  type ReadinessMode,
+} from "@/components/ReadinessRing";
 
 type ShellDepth = "ambient" | "active" | "operational";
 
@@ -29,6 +33,8 @@ type ShellState = {
   setDepth: (depth: ShellDepth) => void;
   activeProjectId: number | null;
   setActiveProjectId: (id: number | null) => void;
+  activeConversationTitle: string | null;
+  setActiveConversationTitle: (title: string | null) => void;
 };
 
 type ShellNavIcon =
@@ -434,6 +440,46 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
           </svg>
         </button>
       )}
+    </div>
+  );
+}
+
+
+function ShellConversationTitle({ title }: { title: string | null }) {
+  const resolvedTitle = title?.trim();
+  if (!resolvedTitle) return null;
+
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          flexShrink: 0,
+          background: "var(--atlas-gold)",
+          boxShadow: "0 0 6px rgba(201,162,76,0.45)",
+        }}
+      />
+      <span
+        title={resolvedTitle}
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+          color: "var(--atlas-fg)",
+          fontFamily: "var(--app-font-sans)",
+          fontSize: "var(--ts-body)",
+          fontWeight: 500,
+          lineHeight: "var(--lh-snug)",
+          letterSpacing: "var(--ls-tight)",
+          opacity: 0.92,
+        }}
+      >
+        {resolvedTitle}
+      </span>
     </div>
   );
 }
@@ -1281,12 +1327,14 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [currentDepth, setCurrentDepth] = useState<ShellDepth>(() => depthFromPath(location));
   const [activeProjectId, setActiveProjectIdState] = useState<number | null>(() => projectIdFromPath(location));
+  const [activeConversationTitle, setActiveConversationTitleState] = useState<string | null>(null);
 
   useEffect(() => {
     const projectId = projectIdFromPath(location);
     if (projectId != null) {
       setCurrentDepth("operational");
       setActiveProjectIdState(projectId);
+      setActiveConversationTitleState(null);
     } else {
       setActiveProjectIdState(null);
     }
@@ -1300,12 +1348,18 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
     setActiveProjectIdState(id);
   }, []);
 
+  const setActiveConversationTitle = useCallback((title: string | null) => {
+    setActiveConversationTitleState(title);
+  }, []);
+
   const value = useMemo<ShellState>(() => ({
     currentDepth,
     setDepth,
     activeProjectId,
     setActiveProjectId,
-  }), [activeProjectId, currentDepth, setActiveProjectId, setDepth]);
+    activeConversationTitle,
+    setActiveConversationTitle,
+  }), [activeConversationTitle, activeProjectId, currentDepth, setActiveConversationTitle, setActiveProjectId, setDepth]);
 
   const shellBackgroundImage = currentDepth === "operational"
     ? "none"
@@ -1409,7 +1463,11 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
               zIndex: 1,
             }}
           >
-            <ShellProjectSwitcher projectId={activeProjectId} />
+            {activeProjectId != null ? (
+              <ShellProjectSwitcher projectId={activeProjectId} />
+            ) : (
+              <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellReadinessChip projectId={activeProjectId} />
@@ -1440,4 +1498,3 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
     </ShellStateContext.Provider>
   );
 }
-
