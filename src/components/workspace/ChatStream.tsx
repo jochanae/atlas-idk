@@ -187,35 +187,28 @@ export function ChatStream(props: ChatStreamProps) {
       {messages.length === 0 && !chatPending && priorLoaded !== false && !(isHomeHandoff && homeHandoffMeta) && (
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "flex-start",
-          flex: 1, padding: "28px 16px", gap: 8,
+          padding: "32px 4px 8px", gap: 8,
         }}>
           {greetingLoading ? (
-            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-              Atlas is thinking…
-            </div>
-          ) : atlasGreeting ? (
-            <div style={{
-              maxWidth: 480, background: "var(--atlas-surface)",
-              border: "1px solid var(--atlas-border)", borderRadius: 12,
-              padding: "14px 16px", color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.65,
-            }}>
-              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.18em", color: "var(--atlas-gold)", textTransform: "uppercase", marginBottom: 8 }}>
-                Atlas
-              </div>
-              {atlasGreeting}
+            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+              Atlas is here…
             </div>
           ) : (
             <div style={{
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              flex: 1, padding: "40px 24px", gap: 12, textAlign: "center", width: "100%",
+              maxWidth: 540,
+              color: "var(--atlas-fg)",
+              fontSize: 17,
+              lineHeight: 1.55,
+              fontWeight: 400,
+              letterSpacing: "-0.005em",
+              opacity: 0.92,
             }}>
-              <div style={{ fontSize: 17, fontWeight: 600, color: "var(--atlas-fg)", lineHeight: 1.4 }}>
-                What are we solving today?
-              </div>
+              {atlasGreeting?.trim() || "What are we shaping here?"}
             </div>
           )}
         </div>
       )}
+
 
       {messages.map((msg, i) =>
         msg.role === "user" ? (

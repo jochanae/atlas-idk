@@ -272,6 +272,18 @@ export function ChatComposer(props: ChatComposerProps) {
   const [planMode, setPlanMode] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
+  // When the project is empty, focus the composer so Atlas feels "already in the room".
+  // Skip on mobile to avoid yanking the keyboard up uninvited.
+  useEffect(() => {
+    if (isMobile) return;
+    if (messages.length !== 0) return;
+
+    const t = setTimeout(() => { textareaRef.current?.focus(); }, 120);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length, isMobile]);
+
+
   return (
 
     <>
@@ -391,75 +403,9 @@ export function ChatComposer(props: ChatComposerProps) {
           />
         )}
 
-        {/* ── First-run onboarding overlay ── */}
-        {!firstRunDismissed && !sessionsLoading && !projectLoading && sessions !== undefined && messages.length === 0 && (sessions.length === 0) && (entries?.length ?? 0) === 0 && !linkedRepo && (
-          <div style={{
-            marginBottom: 12, borderRadius: 12, background: "rgba(201,162,76,0.05)",
-            border: "1px solid rgba(201,162,76,0.18)", padding: "16px 16px 14px",
-            flexShrink: 0,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--atlas-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.85 }}>
-                  <circle cx="8" cy="8" r="7" /><path d="M8 5v4M8 11.5v.5" />
-                </svg>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--atlas-gold)", letterSpacing: "0.06em", textTransform: "uppercase", opacity: 0.9 }}>New workspace</span>
-              </div>
-              <button onClick={() => setFirstRunDismissed(true)} aria-label="Dismiss" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--atlas-muted)", padding: "2px 4px", lineHeight: 1, fontSize: 16, opacity: 0.5 }}>×</button>
-            </div>
-            <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--atlas-fg)", lineHeight: 1.6, opacity: 0.8 }}>
-              What are you building?
-            </p>
-            <textarea
-              value={firstRunInput}
-              onChange={e => setFirstRunInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (firstRunInput.trim() && sessionId) {
-                    const initCtx = `[WORKSPACE INIT] The user just described what they are building. Use this to immediately initialize project memory with PROJECT_MEMORY: tags (MEMORY_T1 for the core idea, MEMORY_T4 for stack/context if mentioned). Then greet them, confirm you've captured it, and suggest linking their GitHub repo in the Files tab to unlock code-aware features.`;
-                    doSend(firstRunInput.trim(), sessionId, messages, initCtx);
-                    setFirstRunDismissed(true);
-                    setFirstRunInput("");
-                  }
-                }
-              }}
-              placeholder="e.g. A SaaS to let agencies manage client portals…"
-              rows={2}
-              style={{
-                width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(201,162,76,0.18)",
-                borderRadius: 8, color: "var(--atlas-fg)", fontSize: 13, fontFamily: "var(--app-font-sans)",
-                lineHeight: 1.6, padding: "8px 11px", resize: "none", boxSizing: "border-box",
-                outline: "none",
-              }}
-            />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10, gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--atlas-muted)", opacity: 0.6 }}>
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22" />
-                </svg>
-                Link a repo in <strong style={{ color: "var(--atlas-gold)", fontWeight: 500, opacity: 0.8 }}>Files</strong> to unlock code features
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setFirstRunDismissed(true)} style={{ background: "none", border: "1px solid var(--atlas-border)", borderRadius: 7, color: "var(--atlas-muted)", fontSize: 12, padding: "5px 12px", cursor: "pointer" }}>Skip</button>
-                <button
-                  onClick={() => {
-                    if (firstRunInput.trim() && sessionId) {
-                      const initCtx = `[WORKSPACE INIT] The user just described what they are building. Use this to immediately initialize project memory with PROJECT_MEMORY: tags (MEMORY_T1 for the core idea, MEMORY_T4 for stack/context if mentioned). Then greet them, confirm you've captured it, and suggest linking their GitHub repo in the Files tab to unlock code-aware features.`;
-                      doSend(firstRunInput.trim(), sessionId, messages, initCtx);
-                      setFirstRunDismissed(true);
-                      setFirstRunInput("");
-                    }
-                  }}
-                  disabled={!firstRunInput.trim() || !sessionId}
-                  style={{ background: "var(--atlas-ember)", border: "none", borderRadius: 7, color: "#fff", fontSize: 12, fontWeight: 600, padding: "5px 14px", cursor: (firstRunInput.trim() && sessionId) ? "pointer" : "not-allowed", opacity: (firstRunInput.trim() && sessionId) ? 1 : 0.4 }}
-                >
-                  Start →
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* First-run banner removed — empty state now lives in the conversation surface
+            as a single Atlas-voiced shaping question. No wizard, no setup card. */}
+
 
         {/* Generate Blueprint pill — only surfaces when Atlas explicitly offers it */}
         {(() => {
