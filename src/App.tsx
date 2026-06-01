@@ -32,6 +32,7 @@ import MasterMap from "./pages/master-map";
 import OnboardingPage from "./pages/onboarding";
 import { getListProjectsQueryKey, useListProjects } from "@workspace/api-client-react";
 import { fetchMe } from "@/hooks/useAuth";
+import { apiUrl } from "@/lib/api";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────
 // Noisy background endpoints — a single 401 here should never boot the user.
@@ -262,16 +263,78 @@ function UnifiedShellRoutes() {
   );
 }
 
+async function exchangeBridgeToken(token: string): Promise<void> {
+  const verifyResponse = await fetch(apiUrl("/api/auth/verify-token"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+
+  if (verifyResponse.ok) return;
+
+  if (verifyResponse.status === 404 || verifyResponse.status === 405) {
+    const exchangeResponse = await fetch(apiUrl(`/api/auth/session/exchange?token=${encodeURIComponent(token)}`), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (exchangeResponse.ok) return;
+  }
+
+  throw new Error(`Token bridge failed with status ${verifyResponse.status}`);
+}
+
 function TokenBridge() {
   const [, navigate] = useLocation();
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token");
-    if (token) {
-      localStorage.setItem("atlas-token", token);
-    }
-    navigate("/home", { replace: true });
+    let cancelled = false;
+    (async () => {
+      const token = new URLSearchParams(window.location.search).get("token");
+      if (!token) {
+        navigate("/login?reason=missing_token", { replace: true });
+        return;
+      }
+
+      try {
+        await exchangeBridgeToken(token);
+      } catch (err) {
+        const user = await fetchMe().catch(() => null);
+        if (!user) throw err;
+      }
+
+      if (cancelled) return;
+      try { localStorage.setItem("atlas-token", token); } catch {}
+      try { sessionStorage.setItem("atlas-just-authed", "1"); } catch {}
+      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      navigate("/home", { replace: true });
+    })().catch((err: unknown) => {
+      if (cancelled) return;
+      setError(err instanceof Error ? err.message : "Unable to complete sign in");
+      navigate("/login?reason=token_bridge_failed", { replace: true });
+    });
+
+    return () => { cancelled = true; };
   }, [navigate]);
-  return null;
+
+  return (
+    <div style={{
+      minHeight: "100dvh", width: "100%", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 16,
+      background: "var(--atlas-bg)", color: "var(--atlas-fg)",
+    }}>
+      <LoadingSpinner size="md" />
+      <p style={{
+        margin: 0, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)",
+        fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase",
+      }}>
+        {error ? "Sign in failed" : "Signing you in"}
+      </p>
+    </div>
+  );
 }
 
 function Router() {
