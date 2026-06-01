@@ -2821,6 +2821,9 @@ export default function Home() {
                     borderRadius: reflectionLocked ? 8 : undefined,
                     padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
                     paddingTop: 56, scrollPaddingTop: 56,
+                    paddingBottom: 96,
+                    WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",
                   }}
                 >
