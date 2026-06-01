@@ -131,7 +131,7 @@ export default function Login() {
       sessionStorage.setItem("atlas-just-authed", "1");
       navigate("/home");
     } catch (err: unknown) {
-      setError(toAuthErrorMessage(err, mode));
+      setError(toAuthErrorMessage(err, mode === "signup" ? "signup" : "login"));
     } finally {
       setLoading(false);
     }
