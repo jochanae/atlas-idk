@@ -227,7 +227,18 @@ function PageTransition() {
 // ── First-login onboarding redirect ───────────────────────────────────────────
 function OnboardingGate() {
   const [location, setLocation] = useLocation();
-  const shouldCheck = location !== "/" && !["/landing", "/login", "/auth/", "/reset-password", "/onboarding", "/terms", "/privacy", "/help"].some((path) => location.startsWith(path));
+  const shouldCheck =
+    location !== "/" &&
+    ![
+      "/landing",
+      "/login",
+      "/auth/",
+      "/reset-password",
+      "/onboarding",
+      "/terms",
+      "/privacy",
+      "/help",
+    ].some((path) => location.startsWith(path));
   const { data: projects, isLoading } = useListProjects({
     query: { enabled: shouldCheck, queryKey: getListProjectsQueryKey() },
   });
