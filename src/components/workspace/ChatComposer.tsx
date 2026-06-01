@@ -295,7 +295,7 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         />
 
-        {/* Hidden input dedicated to server-side code-context zip upload */}
+        {/* Hidden input dedicated to server-side code-context zip upload (persistent project context) */}
         <input
           id="ws-code-context-input"
           type="file"
@@ -307,6 +307,49 @@ export function ChatComposer(props: ChatComposerProps) {
             e.target.value = "";
           }}
         />
+
+        {/* Hidden input — Camera (mobile rear camera capture) */}
+        <input
+          id="ws-camera-input"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
+            e.target.value = "";
+          }}
+        />
+
+        {/* Hidden input — Photo / Image library */}
+        <input
+          id="ws-photo-input"
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
+            e.target.value = "";
+          }}
+        />
+
+        {/* Hidden input — File / Document (non-image, non-zip) */}
+        <input
+          id="ws-doc-input"
+          type="file"
+          accept=".pdf,.txt,.md,.csv,.json,.docx,.xlsx,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json"
+          multiple
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
+            e.target.value = "";
+          }}
+        />
+
 
         {/* Server code-context status badge */}
         {codeContextStatus && (
