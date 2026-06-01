@@ -5908,7 +5908,16 @@ export default function Workspace() {
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
                 onHomeNav={() => setLocation("/home")}
-                forceTab={mobileTab === "map" ? "map" : mobileTab === "files" ? "files" : mobileTab === "preview" ? "preview" : mobileTab === "blueprints" ? "blueprints" : mobileTab === "memory" ? "memory" : mobileTab === "connections" ? "connections" : undefined}
+                forceTab={
+                  mobileTab === "ledger" ? "ledger" :
+                  mobileTab === "map" ? "map" :
+                  mobileTab === "files" ? "files" :
+                  mobileTab === "preview" ? "preview" :
+                  mobileTab === "blueprints" ? "blueprints" :
+                  mobileTab === "memory" ? "memory" :
+                  mobileTab === "connections" ? "connections" :
+                  undefined
+                }
                 onSendIntent={sendFromIntentCapture}
                 onFillIntent={(text) => { setInput(text); setTimeout(() => autoResize(), 0); }}
                 onBackToChat={mobileTab === "map" ? () => { setMobileTab("chat"); setRightOpen(false); } : undefined}
@@ -5962,7 +5971,10 @@ export default function Workspace() {
           onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
           onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
 
-          onLedger={() => setMobileTab("ledger")}
+          onLedger={() => {
+            setMobileTab("ledger");
+            setRightOpen(true);
+          }}
           onPreview={() => setMobileTab("preview")}
           onFlow={() => setLocation("/map")}
           entryCount={entryCount}
