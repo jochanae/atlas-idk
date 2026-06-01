@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 
 const STREAM_TIMEOUT_MS = 30_000;
+const PENDING_SAFETY_RESET_MS = 35_000;
 
 export interface NexusMessage {
   id?: string;
@@ -89,6 +90,7 @@ export function useNexusChatStream(
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const isPendingRef = useRef(false);
   const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: string } | null>(null);
   const [shapingPayload, setShapingPayload] = useState<NexusShapingPayload | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
@@ -103,8 +105,31 @@ export function useNexusChatStream(
   const streamingIdRef = useRef<string | null>(null);
   const cleanedUpRef = useRef(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSafetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPendingSafetyReset = useCallback(() => {
+    if (pendingSafetyTimeoutRef.current) {
+      clearTimeout(pendingSafetyTimeoutRef.current);
+      pendingSafetyTimeoutRef.current = null;
+    }
+  }, []);
+
+  const markPendingActivity = useCallback(() => {
+    if (!isPendingRef.current) return;
+
+    clearPendingSafetyReset();
+    pendingSafetyTimeoutRef.current = setTimeout(() => {
+      if (!isPendingRef.current) return;
+
+      isPendingRef.current = false;
+      setIsPending(false);
+      pendingSafetyTimeoutRef.current = null;
+    }, PENDING_SAFETY_RESET_MS);
+  }, [clearPendingSafetyReset]);
 
   const resetStreamState = useCallback(() => {
+    console.log("resetStreamState called, setting isPending false");
+    clearPendingSafetyReset();
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -112,9 +137,10 @@ export function useNexusChatStream(
     streamingIdRef.current = null;
     cleanedUpRef.current = true;
     setIsStreaming(false);
+    isPendingRef.current = false;
     setIsPending(false);
     setLiveStep(null);
-  }, []);
+  }, [clearPendingSafetyReset]);
 
   const abort = useCallback(() => {
     abortStream();
@@ -138,7 +164,7 @@ export function useNexusChatStream(
     imageMimeType?: string;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => {
-    if (!text.trim() || isPending) return;
+    if (!text.trim() || isPendingRef.current) return;
 
     const resolved = {
       focusProjectId: overrideOptions?.focusProjectId ?? focusProjectId,
@@ -149,7 +175,9 @@ export function useNexusChatStream(
       projectContext: overrideOptions?.projectContext ?? projectContext,
     };
 
+    isPendingRef.current = true;
     setIsPending(true);
+    markPendingActivity();
     setIsStreaming(true);
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
@@ -208,6 +236,7 @@ export function useNexusChatStream(
         },
         callbacks: {
           onToken: (released) => {
+            markPendingActivity();
             const cleaned = released
               .split('\n')
               .filter(line => {
@@ -227,6 +256,7 @@ export function useNexusChatStream(
             ));
           },
           onStep: (step) => {
+            markPendingActivity();
             setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
           },
           onDone: (fullText, meta) => {
@@ -384,7 +414,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [isPending, focusProjectId, model, mode, conversationId, onConversationId, projectContext, stream, abortStream, resetStreamState]);
+  }, [focusProjectId, model, mode, conversationId, onConversationId, projectContext, stream, abortStream, resetStreamState, markPendingActivity]);
 
   return {
     messages,
