@@ -502,75 +502,141 @@ export function ChatComposer(props: ChatComposerProps) {
           <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, flexWrap: "nowrap", gap: 4 }}>
 
 
-            {/* Left: paperclip + vault (tiny screens) + wrench (read Atlas source) */}
+            {/* Left: unified "+" attach menu + wrench (read Atlas source) */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
-              <label
-                htmlFor="ws-file-input"
-                title="Attach image or project ZIP"
-                aria-label="Attach file"
-                style={{
-                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
-                  background: (attachedFiles.length > 0 || zipFiles.length > 0) ? "rgba(201,162,76,0.08)" : "transparent",
-                  border: (attachedFiles.length > 0 || zipFiles.length > 0) ? "1px solid rgba(201,162,76,0.2)" : "1px solid transparent",
-                  color: (attachedFiles.length > 0 || zipFiles.length > 0) ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  opacity: (attachedFiles.length > 0 || zipFiles.length > 0) ? 1 : 0.4, transition: "all var(--motion-fast) var(--ease-standard)",
-                  flexShrink: 0, userSelect: "none",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </label>
+              {(() => {
+                const hasAttachment = attachedFiles.length > 0 || zipFiles.length > 0 || !!codeContextStatus;
+                return (
+                  <div style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowAttachMenu(v => !v)}
+                      title="Attach"
+                      aria-label="Attach"
+                      aria-expanded={showAttachMenu}
+                      style={{
+                        minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
+                        background: showAttachMenu
+                          ? "rgba(201,162,76,0.12)"
+                          : hasAttachment ? "rgba(201,162,76,0.08)" : "transparent",
+                        border: (showAttachMenu || hasAttachment)
+                          ? "1px solid rgba(201,162,76,0.25)"
+                          : "1px solid transparent",
+                        color: (showAttachMenu || hasAttachment) ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: (showAttachMenu || hasAttachment) ? 1 : 0.55,
+                        transition: "all var(--motion-fast) var(--ease-standard)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    </button>
 
-              <label
-                htmlFor="ws-code-context-input"
-                title="Upload project ZIP for code context"
-                aria-label="Upload code context"
-                style={{
-                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
-                  background: codeContextStatus ? "rgba(201,162,76,0.08)" : "transparent",
-                  border: codeContextStatus ? "1px solid rgba(201,162,76,0.2)" : "1px solid transparent",
-                  color: codeContextStatus ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  cursor: codeContextUploading ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  opacity: codeContextUploading ? 0.5 : (codeContextStatus ? 1 : 0.4),
-                  transition: "all var(--motion-fast) var(--ease-standard)",
-                  flexShrink: 0, userSelect: "none",
-                  pointerEvents: codeContextUploading ? "none" : "auto",
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-                  <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                  <line x1="12" y1="22.08" x2="12" y2="12" />
-                </svg>
-              </label>
+                    {showAttachMenu && (
+                      <>
+                        <div
+                          onClick={() => setShowAttachMenu(false)}
+                          style={{ position: "fixed", inset: 0, zIndex: 59 }}
+                        />
+                        <div
+                          className="atlas-popover"
+                          style={{ position: "absolute", bottom: "calc(100% + 8px)", left: 0, zIndex: 60, minWidth: 230 }}
+                        >
+                          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(201,162,76,0.5)", padding: "4px 10px 6px", borderBottom: "1px solid rgba(201,162,76,0.08)", marginBottom: 4 }}>
+                            Attach
+                          </div>
 
-              {/* Vault — shown in input bar only on tiny screens */}
-              {isTinyScreen && (
-                <button
-                  title="Visual Vault"
-                  aria-label="Open visual vault"
-                  onClick={() => setShowVault(true)}
-                  style={{
-                    minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
-                    background: "transparent", border: "1px solid transparent",
-                    color: "var(--atlas-muted)", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    opacity: 0.4, transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.opacity = "1"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.opacity = "0.4"; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
-                  </svg>
-                </button>
-              )}
+                          <label
+                            htmlFor="ws-file-input"
+                            onClick={() => setShowAttachMenu(false)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 10, width: "100%",
+                              padding: "8px 10px", borderRadius: 5, cursor: "pointer",
+                              color: "var(--atlas-fg)",
+                              transition: "background var(--motion-instant) var(--ease-standard)",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                              <path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500 }}>Image or ZIP</div>
+                              <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 1, fontFamily: "var(--app-font-mono)" }}>
+                                Attach to this message
+                              </div>
+                            </div>
+                          </label>
+
+                          <label
+                            htmlFor="ws-code-context-input"
+                            onClick={() => setShowAttachMenu(false)}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 10, width: "100%",
+                              padding: "8px 10px", borderRadius: 5,
+                              cursor: codeContextUploading ? "wait" : "pointer",
+                              pointerEvents: codeContextUploading ? "none" : "auto",
+                              color: "var(--atlas-fg)",
+                              transition: "background var(--motion-instant) var(--ease-standard)",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                              <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                              <line x1="12" y1="22.08" x2="12" y2="12" />
+                            </svg>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500 }}>
+                                {codeContextStatus ? "Replace project ZIP" : "Project ZIP for code context"}
+                              </div>
+                              <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 1, fontFamily: "var(--app-font-mono)" }}>
+                                {codeContextUploading ? "Uploading…" : codeContextStatus ? (codeContextStatus.summary || `${codeContextStatus.fileCount} files loaded`) : "Persistent across messages"}
+                              </div>
+                            </div>
+                          </label>
+
+                          {isTinyScreen && (
+                            <button
+                              type="button"
+                              onClick={() => { setShowAttachMenu(false); setShowVault(true); }}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 10, width: "100%",
+                                padding: "8px 10px", borderRadius: 5, cursor: "pointer",
+                                background: "transparent", border: "none", textAlign: "left",
+                                color: "var(--atlas-fg)",
+                                transition: "background var(--motion-instant) var(--ease-standard)",
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                <rect x="14" y="14" width="7" height="7" rx="1"/>
+                              </svg>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 12, fontWeight: 500 }}>Visual Vault</div>
+                                <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 1, fontFamily: "var(--app-font-mono)" }}>
+                                  Pick a saved image
+                                </div>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+
+
 
               {/* Wrench — read Atlas source into context */}
               <button
