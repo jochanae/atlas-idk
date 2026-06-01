@@ -23,6 +23,7 @@ import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
+import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
@@ -45,9 +46,8 @@ import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { NewProjectModal } from "../components/NewProjectModal";
-import { ChevronUp, RefreshCw, TerminalSquare } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
 import { useThemeMode } from "@/lib/theme";
 import { getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
@@ -2618,7 +2618,6 @@ export default function Workspace() {
   const isMobile = useIsMobile() && !isDesktop;
   const isTinyScreen = useIsTinyScreen();
   useRequireAuth();
-  const { collapsed: subheaderCollapsed, toggle: toggleSubheader } = useCollapsibleSubheader("workspace");
 
 
   const {
@@ -2681,7 +2680,22 @@ export default function Workspace() {
     sendCtxRef,
     scenarioStartIdxRef,
   } = useChatLens(id);
-  const [leftTab, setLeftTab] = useState<WorkspaceLeftTab>("chat");
+  const [leftTab, setLeftTab] = useState<WorkspaceLeftTab>(() => {
+    try {
+      const stored = sessionStorage.getItem("atlas-open-left-tab");
+      if (
+        stored === "chat" ||
+        stored === "diff" ||
+        stored === "blueprints" ||
+        stored === "artifacts" ||
+        stored === "terminal"
+      ) {
+        sessionStorage.removeItem("atlas-open-left-tab");
+        return stored;
+      }
+    } catch {}
+    return "chat";
+  });
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
@@ -4488,6 +4502,37 @@ export default function Workspace() {
     // switch the right panel into other views.
   }, []);
 
+  const unifiedSubheaderTab: UnifiedSubheaderTab =
+    leftTab === "diff" || leftTab === "review" ? "changes"
+    : leftTab === "blueprints" ? "blueprints"
+    : leftTab === "artifacts" ? "artifacts"
+    : leftTab === "terminal" ? "console"
+    : "chat";
+
+  const handleUnifiedSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
+    if (tab === "chat") {
+      setLeftTab("chat");
+      if (isMobile) {
+        setMobileTab("chat");
+        setRightOpen(false);
+      }
+      return;
+    }
+    if (tab === "changes") {
+      setLeftTab("diff");
+      return;
+    }
+    if (tab === "blueprints") {
+      setLeftTab("blueprints");
+      return;
+    }
+    if (tab === "artifacts") {
+      setLeftTab("artifacts");
+      return;
+    }
+    setLeftTab("terminal");
+  }, [isMobile]);
+
   const handleReviewPushSuccess = useCallback((records: PushRecord[]) => {
     haptic.double();
     setPushHistory((prev) => {
@@ -4831,284 +4876,12 @@ export default function Workspace() {
       />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
-      {/* ── Workspace subheader (always visible; readiness lives in the top shell) ── */}
-      {(
-
-      <div
-        className="atlas-workspace-header"
-        style={{
-          marginTop: 50,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          background: "transparent",
-          backdropFilter: "none",
-          WebkitBackdropFilter: "none",
-          borderBottom: "none",
-          boxShadow: "none",
-        }}
-      >
-        {/* ChatTrayHeader removed from workspace — the zero-trace shield
-            and quiet header live only on Nexus home. This also closes the
-            extra vertical gap above the tabs row. */}
-        <div
-          className="atlas-app-header-row"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            minHeight: 44,
-            padding: isMobile ? "10px 16px 8px" : "12px 22px 10px",
-          }}
-        >
-          <nav aria-label="Workspace sections" className="scrollbar-none" style={{ display: "flex", alignItems: "center", gap: isTinyScreen ? 14 : 22, minWidth: 0, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", flex: 1 }}>
-            {([
-              "chat",
-              ...(showReviewTab ? ["review" as const] : []),
-              "diff",
-              // On mobile there's no side rail, so surface the rail-only tabs here too.
-              ...(isMobile ? ["blueprints" as const, "artifacts" as const, "terminal" as const] : []),
-            ] as WorkspaceLeftTab[]).map((tab) => {
-              const active = leftTab === tab;
-              const label = tab === "chat" ? "Chat" : tab === "review" ? "Review" : tab === "diff" ? "Changes" : tab === "blueprints" ? "Blueprints" : tab === "artifacts" ? "Artifacts" : tab === "terminal" ? "Console" : tab;
-              const badge = tab === "diff" && pushHistory.length > 0 ? pushHistory.length : tab === "review" && pendingReviewCount > 0 ? pendingReviewCount : undefined;
-              const showPulse = tab === "review" && pendingReviewCount > 0 && leftTab !== "review";
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setLeftTab(tab)}
-                  aria-label={tab === "terminal" ? "Open console" : tab === "diff" ? "View changes" : tab === "review" ? "Open review" : tab === "blueprints" ? "Open blueprints" : tab === "artifacts" ? "Open artifacts" : "Open chat"}
-                  style={{
-                    position: "relative",
-                    padding: "6px 2px 10px",
-                    background: "transparent",
-                    border: "none",
-                    color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
-                    fontSize: isTinyScreen ? 10 : 11,
-                    fontFamily: "var(--app-font-sans)",
-                    fontWeight: active ? 700 : 500,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                    transition: "color 200ms ease, opacity 200ms ease",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    opacity: active ? 1 : 0.5,
-                    whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => { if (!active) e.currentTarget.style.opacity = "0.82"; }}
-                  onMouseLeave={(e) => { if (!active) e.currentTarget.style.opacity = "0.5"; }}
-                >
-                  {tab === "terminal" && <TerminalSquare size={12} strokeWidth={1.7} />}
-                  {label}
-                  {showPulse && (
-                    <span
-                      aria-hidden
-                      style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: "var(--atlas-gold)",
-                        boxShadow: "0 0 8px var(--atlas-gold)",
-                        animation: "atlas-pulse 1.6s ease-in-out infinite",
-                        marginLeft: 2,
-                      }}
-                    />
-                  )}
-                  {badge !== undefined && (
-                    <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", background: "transparent", color: "var(--atlas-gold)", padding: "0 2px", letterSpacing: "0.05em" }}>
-                      {badge}
-                    </span>
-                  )}
-                  {active && (
-                    <span
-                      aria-hidden
-                      style={{
-                        position: "absolute",
-                        bottom: 2,
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        width: 3,
-                        height: 3,
-                        borderRadius: "50%",
-                        background: "var(--atlas-gold)",
-                        boxShadow: "0 0 6px rgba(201,162,76,0.6)",
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: isTinyScreen ? 3 : 7, minWidth: 0 }}>
-            {/* Lens chip removed */}
-
-
-            {sessionPrUrl ? (
-              <a
-                href={sessionPrUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="View Pull Request"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 8px", borderRadius: 6,
-                  background: "rgba(134,239,172,0.08)",
-                  border: "1px solid rgba(134,239,172,0.25)",
-                  color: "rgba(134,239,172,0.85)",
-                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)",
-                  textDecoration: "none", letterSpacing: "0.06em",
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
-                </svg>
-                PR
-              </a>
-            ) : pushHistory.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setLeftTab("diff")}
-                title="Open Pull Request"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 8px", borderRadius: 6,
-                  background: "rgba(201,162,76,0.06)",
-                  border: "1px solid rgba(201,162,76,0.2)",
-                  color: "var(--atlas-gold)",
-                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)",
-                  cursor: "pointer", letterSpacing: "0.06em",
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
-                </svg>
-                PR
-              </button>
-            ) : null}
-
-            {/* Readiness ring + mode pill moved to the top shell */}
-
-
-
-
-            {!isMobile && (
-              <LongPressTip tip="Dashboard view">
-                <button
-                  title="Visual Vault"
-                  aria-label="Open visual vault"
-                  type="button"
-                  onClick={() => setShowVault(true)}
-                  style={{
-                    width: 26,
-                    height: 26,
-                    padding: 0,
-                    borderRadius: 6,
-                    background: "transparent",
-                    border: "none",
-                    color: "rgba(201,162,76,0.55)",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "color 160ms ease",
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-gold)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(201,162,76,0.55)")}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
-                  </svg>
-                </button>
-              </LongPressTip>
-            )}
-
-            {hasLinkedRepo && !isMobile && (
-              <LongPressTip tip="Rescan GitHub repo and update readiness score">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isScanning) return;
-                    toast.info("Rescanning repository", {
-                      description: hasLinkedRepo
-                        ? "Pulling the latest from GitHub to refresh your readiness score."
-                        : "No GitHub repo linked yet — connect one in the Files tab.",
-                      className: "atlas-toast-pill",
-                    });
-                    void runScan(false);
-                  }}
-                  disabled={isScanning}
-                  title={isScanning ? "Scanning your repo…" : "Rescan repo · refresh readiness score"}
-                  aria-label="Rescan readiness"
-                  style={{
-                    width: isTinyScreen ? 20 : 22,
-                    height: isTinyScreen ? 20 : 22,
-                    padding: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "transparent",
-                    border: "1px solid rgba(201,162,76,0.25)",
-                    borderRadius: "50%",
-                    color: "var(--atlas-gold)",
-                    cursor: isScanning ? "default" : "pointer",
-                    opacity: isScanning ? 1 : 0.6,
-                    transition: "opacity 160ms ease, border-color 160ms ease",
-                    flexShrink: 0,
-                  }}
-                >
-                  <RefreshCw
-                    size={isTinyScreen ? 10 : 11}
-                    style={{ animation: isScanning ? "atlas-rescan-spin 1.4s linear infinite" : undefined }}
-                  />
-                </button>
-              </LongPressTip>
-            )}
-            {isMobile && (() => {
-              const moreActive = ["memory","blueprints","connections","files"].includes(mobileTab);
-              return (
-                <button
-                  type="button"
-                  onClick={() => setShowMoreSheet(true)}
-                  title="More tools"
-                  aria-label="More tools"
-                  style={{
-                    background: moreActive ? "rgba(201,162,76,0.10)" : "transparent",
-                    border: moreActive ? "1px solid rgba(201,162,76,0.32)" : "1px solid transparent",
-                    borderRadius: 6,
-                    padding: "4px 4px",
-                    cursor: "pointer",
-                    color: moreActive ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                    opacity: moreActive ? 1 : 0.7,
-                    lineHeight: 0,
-                    display: "inline-flex",
-                    flexShrink: 0,
-                    WebkitTapHighlightColor: "transparent",
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                    <circle cx="12" cy="5" r="1.8" />
-                    <circle cx="12" cy="12" r="1.8" />
-                    <circle cx="12" cy="19" r="1.8" />
-                  </svg>
-                </button>
-              );
-            })()}
-            {/* Collapse toggle removed — subheader is always visible */}
-
-          </div>
-        </div>
-
-      </div>
-      )}
+      <UnifiedSubheader
+        activeTab={unifiedSubheaderTab}
+        onTabChange={handleUnifiedSubheaderTabChange}
+        hasProject={Boolean(project)}
+        isMobile={isMobile}
+      />
 
       {/* ── Spec → Build handoff modal ── */}
       {showHandoffModal && (() => {

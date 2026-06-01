@@ -18,12 +18,12 @@ import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
+import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { VisualVault } from "../components/VisualVault";
-import { ChatTrayHeader } from "../components/ChatTrayHeader";
 import { InviteModal } from "../components/InviteModal";
 
 import { extractApiErrorMessage } from "../lib/atlas-utils";
@@ -41,8 +41,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, ChevronDown, MoreVertical } from "lucide-react";
-import { useCollapsibleSubheader } from "../hooks/useCollapsibleSubheader";
+import { Briefcase } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
@@ -50,6 +49,7 @@ import { LongPressTip } from "../lib/long-press-tip";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1275,6 +1275,7 @@ export default function Home() {
   const [showVault, setShowVault] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
+  const isMobile = useIsMobile();
   const briefingRequestRef = useRef(0);
   const conversationsRequestRef = useRef(0);
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
@@ -1398,8 +1399,6 @@ export default function Home() {
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
   const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: "ok" | "warn" | "fail" } | null>(null);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [showChatMenu, setShowChatMenu] = useState(false);
   // Home lens state removed — lenses live in workspace only
 
   // Earned title: identity emerges, never derived from latest message.
@@ -1418,7 +1417,7 @@ export default function Home() {
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
-  const { setDepth, setActiveProjectId } = useShellState();
+  const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
   const previousHomeMessageCountRef = useRef(0);
 
   useEffect(() => {
@@ -1430,6 +1429,20 @@ export default function Home() {
     }
     previousHomeMessageCountRef.current = nexusChat.messages.length;
   }, [nexusChat.messages.length, setDepth]);
+
+  useEffect(() => {
+    setActiveProjectId(homeFocus);
+    return () => setActiveProjectId(null);
+  }, [homeFocus, setActiveProjectId]);
+
+  const homeConversationTitle = homeFocus == null && nexusChat.messages.length > 0
+    ? earnedTitle ?? "Untitled conversation"
+    : null;
+
+  useEffect(() => {
+    setActiveConversationTitle(homeConversationTitle);
+    return () => setActiveConversationTitle(null);
+  }, [homeConversationTitle, setActiveConversationTitle]);
 
   // Derive first name from auth (updates when /me resolves)
   {
@@ -1456,7 +1469,6 @@ export default function Home() {
 
   // ── Reflection mode ────────────────────────────────────────────────────────
   const [reflectionLocked, setReflectionLocked] = useState(false);
-  const { collapsed: subheaderCollapsed, toggle: toggleSubheader } = useCollapsibleSubheader("home");
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
@@ -1728,6 +1740,18 @@ export default function Home() {
     }, null);
     return latest?.id ?? null;
   }, [projects]);
+  const homeHasProject = homeFocus != null;
+  const handleHomeSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
+    if (tab === "chat" || homeFocus == null) return;
+    const workspaceTab =
+      tab === "changes" ? "diff"
+      : tab === "console" ? "terminal"
+      : tab;
+    try {
+      sessionStorage.setItem("atlas-open-left-tab", workspaceTab);
+    } catch {}
+    setLocation(`/project/${homeFocus}`);
+  }, [homeFocus, setLocation]);
   const createProject = useCreateProject();
   const createEntry = useCreateEntry();
 
@@ -2278,16 +2302,6 @@ export default function Home() {
     }
   }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, queryClient, setLocation]);
 
-  const handleClearThread = useCallback(async () => {
-    if (activeConversationId) {
-      await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { method: "DELETE", credentials: "include" }).catch(() => {});
-    }
-    nexusChat.setMessages([]);
-    setReviewingPlanIds(new Set());
-    setShowClearConfirm(false);
-    toast("Conversation cleared");
-  }, [activeConversationId, nexusChat.setMessages]);
-
   const handleNewConversation = useCallback(() => {
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
@@ -2324,25 +2338,6 @@ export default function Home() {
       setEarnedTitle(null);
     }
   }, [activeConversationId]);
-
-  const persistEarnedTitle = useCallback((title: string | null) => {
-    setEarnedTitle(title);
-    if (!activeConversationId) return;
-    try {
-      if (title && title.trim()) {
-        localStorage.setItem(`atlas-thread-title:${activeConversationId}`, title.trim());
-      } else {
-        localStorage.removeItem(`atlas-thread-title:${activeConversationId}`);
-      }
-    } catch {}
-  }, [activeConversationId]);
-
-  const handleRenameThread = useCallback(() => {
-    const next = window.prompt("Name this thread", earnedTitle ?? "");
-    if (next === null) return; // cancelled
-    const trimmed = next.trim();
-    persistEarnedTitle(trimmed ? trimmed : null);
-  }, [earnedTitle, persistEarnedTitle]);
 
   const handleOpenHistory = useCallback(async () => {
     setShowHistory(true);
@@ -2404,20 +2399,6 @@ export default function Home() {
     try { localStorage.removeItem(`atlas-thread-title:${id}`); } catch {}
     toast("Conversation deleted");
   }, [activeConversationId, handleNewConversation]);
-
-  const handleDownloadThread = useCallback(() => {
-    if (nexusChat.messages.length === 0) return;
-    const lines = nexusChat.messages
-      .map(m => `## ${m.role === 'user' ? 'You' : 'Atlas'}\n${m.content}`)
-      .join("\n\n---\n\n");
-    const blob = new Blob([`# Atlas Conversation\n${new Date().toLocaleDateString()}\n\n---\n\n${lines}`], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `atlas-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [nexusChat.messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // On touch devices Enter inserts a newline — user submits via the Send button.
@@ -2616,119 +2597,12 @@ export default function Home() {
         </div>
       )}
 
-      {/* ATLAS subheader — visible only when conversation is active. Lock now lives in the global header. */}
-      {nexusChat.messages.length > 0 && subheaderCollapsed && (
-        <div
-          style={{
-            position: "sticky", top: 50, zIndex: 20, height: 14, width: "100%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            background: "transparent",
-            cursor: "pointer",
-          }}
-          onClick={toggleSubheader}
-          title="Show header"
-          aria-label="Show header"
-        >
-          <ChevronDown size={11} strokeWidth={2} style={{ color: "var(--atlas-gold)", opacity: 0.5 }} />
-        </div>
-      )}
-
-      {nexusChat.messages.length > 0 && !subheaderCollapsed && (
-        <div style={{ position: "sticky", top: 50, zIndex: 20, width: "100%", background: "transparent" }}>
-          <ChatTrayHeader
-            showTrust={false}
-            active={reflectionLocked}
-            onGrabHandleClick={toggleSubheader}
-
-            projectSlot={earnedTitle ? (
-              <span style={{
-                fontSize: "var(--ts-label)", fontFamily: "var(--app-font-sans)",
-                color: "var(--atlas-fg)", opacity: 0.85, fontWeight: 400,
-                letterSpacing: "-0.005em",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                maxWidth: "100%",
-              }}>
-                {earnedTitle.length > 38 ? earnedTitle.slice(0, 36).trimEnd() + "…" : earnedTitle}
-              </span>
-            ) : null}
-            rightSlot={showClearConfirm ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", color: "rgba(239,68,68,0.65)", letterSpacing: "0.04em" }}>Clear?</span>
-                <button
-                  onClick={handleClearThread}
-                  style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 4, padding: "3px 9px", fontSize: "var(--ts-micro)", color: "rgba(252,165,165,0.9)", cursor: "pointer", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}
-                >Clear</button>
-                <button
-                  onClick={() => setShowClearConfirm(false)}
-                  style={{ background: "transparent", border: "none", padding: "3px 6px", fontSize: "var(--ts-caption)", color: "var(--atlas-muted)", cursor: "pointer" }}
-                >Cancel</button>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowVault(true)}
-                  title="Visual Vault"
-                  aria-label="Open visual vault"
-                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.6, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.6")}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                    <rect x="14" y="14" width="7" height="7" rx="1"/>
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setShowBriefingPanel(true)}
-                  title="Show briefing"
-                  aria-label="Show briefing"
-                  style={{ background: "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: 0.7, lineHeight: 0, transition: "opacity 140ms", display: "inline-flex" }}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = "0.7")}
-                >
-                  <Briefcase size={13} strokeWidth={1.75} />
-                </button>
-                <div style={{ position: "relative" }}>
-                  <button
-                    onClick={() => setShowChatMenu(v => !v)}
-                    title="Conversation actions"
-                    aria-label="Conversation actions"
-                    style={{ background: showChatMenu ? "rgba(201,162,76,0.12)" : "transparent", border: "none", padding: "4px 6px", cursor: "pointer", color: "var(--atlas-gold)", opacity: showChatMenu ? 1 : 0.7, lineHeight: 0, transition: "opacity 140ms, background 140ms", display: "inline-flex", borderRadius: 4 }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = showChatMenu ? "1" : "0.7")}
-                  >
-                    <MoreVertical size={14} strokeWidth={1.85} />
-                  </button>
-                  {showChatMenu && (
-                    <>
-                      <div onClick={() => setShowChatMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 49 }} />
-                      <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 10, padding: "4px 0", minWidth: 200, boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}>
-                        {([
-                          { label: earnedTitle ? "Rename" : "Name this thread", action: () => { setShowChatMenu(false); handleRenameThread(); } },
-                          { label: "Conversation history", action: () => { handleOpenHistory(); setShowChatMenu(false); } },
-                          { label: "New conversation", action: () => { handleNewConversation(); setShowChatMenu(false); } },
-                          { label: "Download", action: () => { handleDownloadThread(); setShowChatMenu(false); } },
-                          { label: "Clear conversation", action: () => { setShowClearConfirm(true); setShowChatMenu(false); }, danger: true },
-                        ] as Array<{ label: string; action: () => void; danger?: boolean }>).map(item => (
-                          <button
-                            key={item.label}
-                            onClick={item.action}
-                            style={{ display: "flex", width: "100%", background: "transparent", border: "none", padding: "9px 14px", cursor: "pointer", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)", color: item.danger ? "rgba(239,68,68,0.8)" : "var(--atlas-fg)", letterSpacing: "0.04em", textAlign: "left" }}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-          />
-        </div>
-      )}
+      <UnifiedSubheader
+        activeTab="chat"
+        onTabChange={handleHomeSubheaderTabChange}
+        hasProject={homeHasProject}
+        isMobile={isMobile}
+      />
       
 
 
