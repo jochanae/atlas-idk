@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 
 export interface AuthUser {
   id: string;
@@ -42,7 +43,62 @@ function toAuthUser(u: User | null): AuthUser | null {
   };
 }
 
+function readString(record: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return null;
+}
+
+function readBoolean(record: Record<string, unknown>, keys: string[]): boolean | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "boolean") return value;
+  }
+  return null;
+}
+
+function toBackendAuthUser(payload: unknown): AuthUser | null {
+  const root = payload && typeof payload === "object" ? payload as Record<string, unknown> : null;
+  const source = root?.user && typeof root.user === "object" ? root.user as Record<string, unknown> : root;
+  if (!source) return null;
+
+  const id = readString(source, ["id", "userId", "sub"]);
+  const email = readString(source, ["email"]);
+  if (!id || !email) return null;
+
+  const role = readString(source, ["role"]);
+  return {
+    id,
+    email,
+    name: readString(source, ["name", "displayName", "fullName"]) ?? null,
+    avatarUrl: readString(source, ["avatarUrl", "avatar_url", "picture"]) ?? null,
+    role: role === "admin" || role === "super_admin" ? role : "user",
+    subscriptionTier: readString(source, ["subscriptionTier", "subscription_tier", "tier"]) ?? "free",
+    googleLinked: readBoolean(source, ["googleLinked", "google_linked"]) ?? true,
+    hasPassword: readBoolean(source, ["hasPassword", "has_password"]) ?? false,
+  };
+}
+
+async function fetchBackendMe(): Promise<AuthUser | null> {
+  try {
+    const response = await fetch(apiUrl("/api/auth/me"), {
+      credentials: "include",
+      headers: getAuthHeaders(),
+    });
+    if (response.status === 401 || response.status === 403 || response.status === 404) return null;
+    if (!response.ok) return null;
+    return toBackendAuthUser(await response.json());
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchMe(): Promise<AuthUser | null> {
+  const backendUser = await fetchBackendMe();
+  if (backendUser) return backendUser;
+
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
   return toAuthUser(data.user);
@@ -59,7 +115,13 @@ export function useAuth() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      queryClient.setQueryData(["auth", "me"], toAuthUser(session?.user ?? null));
+      if (session?.user) {
+        queryClient.setQueryData(["auth", "me"], toAuthUser(session.user));
+        return;
+      }
+      void fetchBackendMe().then((user) => {
+        queryClient.setQueryData(["auth", "me"], user);
+      });
     });
     return () => subscription.unsubscribe();
   }, [queryClient]);
