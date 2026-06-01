@@ -1,14 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetProject,
-  useListProjects,
-  useUpdateProject,
-  useCreateProject,
-  getGetProjectQueryKey,
-  getListProjectsQueryKey,
-} from "@workspace/api-client-react";
 import { useGitHub } from "@/hooks/useGitHub";
 import { Switch } from "@/components/ui/switch";
 import {

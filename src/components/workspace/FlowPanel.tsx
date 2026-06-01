@@ -6,11 +6,6 @@ import type { ArchNode as SystemMapNode } from "../SystemMap";
 
 import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
-import {
-  useGetProject,
-  useUpdateProject,
-  getGetProjectQueryKey,
-} from "@workspace/api-client-react";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../../lib/errorReporter";
 

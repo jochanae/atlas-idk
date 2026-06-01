@@ -1,11 +1,6 @@
 import { useState } from "react";
 import type React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  getGetProjectQueryKey,
-  useGetProject,
-  useUpdateProject,
-} from "@workspace/api-client-react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 export function MemoryTab({ projectId }: { projectId: number }) {

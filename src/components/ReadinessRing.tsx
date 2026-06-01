@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type React from "react";
 import { LongPressTip } from "@/lib/long-press-tip";
-import type { ProjectNodeState } from "@workspace/api-client-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

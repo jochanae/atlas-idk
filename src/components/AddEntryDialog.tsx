@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { useCreateEntry } from "@workspace/api-client-react";
-import type { Project } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListEntriesQueryKey } from "@workspace/api-client-react";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 
 type Props = {

@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetProject,
-  useCreateEntry,
-  getGetProjectQueryKey,
-  getListEntriesQueryKey,
-} from "@workspace/api-client-react";
-import type { Entry } from "@workspace/api-client-react";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
 import { PushDiffCard } from "@/components/workspace/ReviewCards";

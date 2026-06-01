@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import type { Entry } from "@workspace/api-client-react";
 import type React from "react";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 

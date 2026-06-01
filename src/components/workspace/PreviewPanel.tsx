@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetProject,
-  useUpdateProject,
-  getGetProjectQueryKey,
-} from "@workspace/api-client-react";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 
