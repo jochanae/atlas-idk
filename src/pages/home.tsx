@@ -2468,7 +2468,7 @@ export default function Home() {
       ref={ptrContainerRef}
       className="atlas-home-bg"
       style={{
-        height: "100vh",
+        height: "100dvh",
         backgroundColor: "var(--atlas-bg)",
         display: "flex",
         flexDirection: "column",
@@ -2729,7 +2729,7 @@ export default function Home() {
           mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
-              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
+              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)", display: nexusChat.messages.length > 0 ? "flex" : undefined, flexDirection: nexusChat.messages.length > 0 ? "column" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, minHeight: nexusChat.messages.length > 0 ? 0 : undefined }}>
                 {stream}
               </div>
             </div>
@@ -2737,7 +2737,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", height: nexusChat.messages.length > 0 ? "100%" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
+          <div style={{ minHeight: nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", height: nexusChat.messages.length > 0 ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -2801,7 +2801,7 @@ export default function Home() {
                 <LoadingSpinner size="sm" color="atlas" />
               </div>
             ) : (
-              <div>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                 {/* Messages */}
                 <div
                   ref={chatScrollRef}
@@ -2812,9 +2812,9 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
-                    flex: 1, maxHeight: "min(55vh, 360px)", overflowY: "auto", overflowX: "hidden",
+                    flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
-                    minHeight: 0,
+                    
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
