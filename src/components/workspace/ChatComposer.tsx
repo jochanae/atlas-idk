@@ -270,6 +270,7 @@ export function ChatComposer(props: ChatComposerProps) {
   } = props;
 
   const [planMode, setPlanMode] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   return (
 
