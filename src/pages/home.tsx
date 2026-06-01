@@ -3334,6 +3334,27 @@ export default function Home() {
                   <path d="M3 8h10" />
                 </svg>
               </label>
+
+              {/* History — past conversations */}
+              <button
+                type="button"
+                onClick={handleOpenHistory}
+                title="Conversation history"
+                aria-label="Conversation history"
+                style={{
+                  width: 32, height: 32, borderRadius: 8, background: "transparent",
+                  border: "none", color: "rgba(201,162,76,0.72)", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "color 160ms ease", flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(201,162,76,0.72)"; }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+              </button>
               </div>
 
               {/* Mic + Send — pinned to right via auto left margin */}
