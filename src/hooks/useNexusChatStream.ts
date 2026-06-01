@@ -104,14 +104,12 @@ export function useNexusChatStream(
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetStreamState = useCallback(() => {
-    if (cleanedUpRef.current) return;
-
-    cleanedUpRef.current = true;
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
     streamingIdRef.current = null;
+    cleanedUpRef.current = true;
     setIsStreaming(false);
     setIsPending(false);
     setLiveStep(null);
@@ -195,7 +193,7 @@ export function useNexusChatStream(
 
     try {
       await stream({
-        endpoint: "/api/nexus/chat",
+        endpoint: "/api/chat",
         body: {
           message: text,
           model: resolved.model,
@@ -205,6 +203,7 @@ export function useNexusChatStream(
           imageMimeType,
           conversationId: resolved.conversationId,
           projectContext: resolved.projectContext ?? null,
+          global: true,
         },
         callbacks: {
           onToken: (released) => {
