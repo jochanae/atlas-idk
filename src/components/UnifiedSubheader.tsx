@@ -74,6 +74,7 @@ export function UnifiedSubheader({
   isMobile,
   showWorkspaceMenu = false,
   onMenuAction,
+  hasConversation = true,
 }: UnifiedSubheaderProps) {
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
