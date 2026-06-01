@@ -8,12 +8,14 @@ import {
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 
-export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger }: {
+export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, onSwitchToFiles }: {
   projectId: number;
   sandboxCode?: string | null;
   onSandboxConsumed?: () => void;
   refreshTrigger?: number;
+  onSwitchToFiles?: () => void;
 }) {
+
   const queryClient = useQueryClient();
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const updateProject = useUpdateProject();
