@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { createTextPacer } from "@/lib/textPacer";
 
 export interface AtlasStreamEvent {
-  type: "token" | "step" | "done" | "error";
+  type: "token" | "step" | "narration" | "done" | "error";
   data: unknown;
 }
 
@@ -121,12 +121,18 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                   status?: "ok" | "warn" | "fail";
                 };
                 if (step?.verb) callbacks.onStep?.(step);
+              } else if (evtName === "narration") {
+                const narration = JSON.parse(evtData) as string;
+                if (narration) callbacks.onStep?.({ verb: narration });
               } else if (evtName === "done") {
                 const meta = JSON.parse(evtData) as Record<string, unknown>;
                 await pacer.finish();
                 // Use content from meta if available (already cleaned)
                 // otherwise use accumulated streamedText
-                const finalText = (meta.content as string | undefined) ?? streamedText;
+                const finalText =
+                  (meta.content as string | undefined)
+                  ?? (meta.response as string | undefined)
+                  ?? streamedText;
                 callbacks.onDone(finalText, meta);
               } else if (evtName === "error") {
                 pacer.abort();

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
+import { loadProfile, profileToString } from "@/lib/userProfile";
 
 const STREAM_TIMEOUT_MS = 30_000;
 
@@ -139,13 +140,10 @@ export function useNexusChatStream(
   }) => {
     if (!text.trim() || isPending) return;
 
-    const resolved = {
-      focusProjectId: overrideOptions?.focusProjectId ?? focusProjectId,
-      model: overrideOptions?.model ?? model,
-      mode: overrideOptions?.mode ?? mode,
-      conversationId: overrideOptions?.conversationId ?? conversationId,
-      projectContext: overrideOptions?.projectContext ?? projectContext,
-    };
+    const resolvedModel = overrideOptions?.model ?? model;
+    const resolvedMode = overrideOptions?.mode ?? mode;
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const userProfile = profileToString(loadProfile());
 
     setIsPending(true);
     setIsStreaming(true);
@@ -186,7 +184,7 @@ export function useNexusChatStream(
       content: "",
       createdAt: new Date().toISOString(),
       streaming: true,
-      model: resolved.model,
+      model: resolvedModel,
       isNew: true,
     };
     setMessages(prev => [...prev, assistantMsg]);
@@ -195,15 +193,12 @@ export function useNexusChatStream(
       await stream({
         endpoint: "/api/chat",
         body: {
-          message: text,
-          model: resolved.model,
-          focusProjectId: resolved.focusProjectId,
-          mode: resolved.mode,
-          imageBase64,
-          imageMimeType,
-          conversationId: resolved.conversationId,
-          projectContext: resolved.projectContext ?? null,
           global: true,
+          message: text,
+          model: resolvedModel,
+          history,
+          mode: resolvedMode,
+          userProfile,
         },
         callbacks: {
           onToken: (released) => {
@@ -375,7 +370,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [isPending, focusProjectId, model, mode, conversationId, projectContext, stream, abortStream, resetStreamState]);
+  }, [isPending, model, mode, messages, stream, abortStream, resetStreamState]);
 
   return {
     messages,
