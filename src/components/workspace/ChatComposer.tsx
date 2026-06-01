@@ -277,7 +277,7 @@ export function ChatComposer(props: ChatComposerProps) {
   useEffect(() => {
     if (isMobile) return;
     if (messages.length !== 0) return;
-    if (messages.length !== 0) return;
+
     const t = setTimeout(() => { textareaRef.current?.focus(); }, 120);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
