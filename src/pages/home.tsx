@@ -2064,35 +2064,6 @@ export default function Home() {
 
     appendUserMessageIfMissing();
 
-    // ── Auto-create a shaping project on the first message of an ambient thread.
-    // Doctrine: shaping is real enough to preserve context, but never pollutes
-    // the system of record. Fire-and-forget — failure must not block the send.
-    {
-      const shell = useShellStore.getState();
-      const noActiveProject =
-        homeFocus == null && shell.activeThread.projectId == null;
-      const isFirstMessage = nexusChat.messages.length === 0;
-      if (noActiveProject && isFirstMessage) {
-        const provisionalName = "Untitled";
-        createProject
-          .mutateAsync({
-            data: {
-              name: provisionalName,
-              status: "shaping",
-              surfaceMode: "ambient",
-              workingTitle: provisionalName,
-            },
-          })
-          .then((proj) => {
-            useShellStore.getState().setProjectId(proj.id);
-            useShellStore.getState().setShellMode("active");
-          })
-          .catch((err) => {
-            console.warn("[home] shaping project auto-create failed:", err);
-          });
-      }
-    }
-
     let imageBase64: string | undefined;
     let imageMimeType: string | undefined;
     if (imageFiles.length > 0) {
