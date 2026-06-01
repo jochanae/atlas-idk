@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
+
 
 
 type Mode = "login" | "signup" | "forgot";
@@ -140,23 +140,8 @@ export default function Login() {
   const handleOAuth = async (provider: "google" | "apple") => {
     setError(null);
     setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: `${window.location.origin}/auth/callback`,
-      });
-
-      const err = result.error;
-
-      if (err) {
-        setError(err.message || `Could not start ${provider} sign-in`);
-        setLoading(false);
-        return;
-      }
-      // Browser is redirecting to the OAuth provider — nothing else to do.
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Could not start ${provider} sign-in`);
-      setLoading(false);
-    }
+    // Custom backend OAuth — redirect to Axiom Cloud Run endpoint.
+    window.location.href = `https://www.axiomsystem.app/api/auth/${provider}`;
   };
 
   if (isLoading) return (
