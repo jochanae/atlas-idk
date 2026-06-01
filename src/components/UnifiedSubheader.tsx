@@ -11,6 +11,7 @@ type UnifiedSubheaderProps = {
   isMobile: boolean;
   showWorkspaceMenu?: boolean;
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
+  hasConversation?: boolean;
 };
 
 const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }> = [
