@@ -126,7 +126,7 @@ export default function Projects() {
   const [githubTokenInput, setGithubTokenInput] = useState("");
   // When set, sheet links directly to that project (bypasses name-match logic)
   const [targetProjectId, setTargetProjectId] = useState<number | null>(null);
-  const backendReady = API_BASE.length > 0;
+  const backendReady = true;
 
   const getStoredToken = useCallback((
     currentProjects?: Array<{ githubToken?: string | null }>,
