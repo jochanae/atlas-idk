@@ -106,7 +106,9 @@ html, body {
   /* Unified shell layout tokens */
   --atlas-header-height: 50px;
   --atlas-dock-height: 64px;
-  --atlas-dock-clearance: calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px) + 24px);
+  --atlas-center-button-lift: 40px;
+  --atlas-composer-bottom-offset: calc(var(--atlas-dock-height) + env(safe-area-inset-bottom, 0px) + var(--atlas-center-button-lift));
+  --atlas-dock-clearance: calc(var(--atlas-composer-bottom-offset) + 24px);
 
   /* Type scale — mono-forward, 4-step minor */
   --ts-tiny:    10px;  /* promoted: was 8px → now meets iOS legibility floor */
