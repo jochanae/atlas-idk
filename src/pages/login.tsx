@@ -133,18 +133,13 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
+        await postJson("/api/auth/login", { email, password });
       } else {
-        const { error: err } = await supabase.auth.signUp({
+        await postJson("/api/auth/signup", {
           email,
           password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: name.trim() ? { display_name: name.trim() } : undefined,
-          },
+          name: name.trim() || undefined,
         });
-        if (err) throw err;
       }
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       sessionStorage.setItem("atlas-just-authed", "1");
