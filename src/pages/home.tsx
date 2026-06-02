@@ -1336,6 +1336,7 @@ export default function Home() {
   }, [activeConversationId, rememberActiveConversationId]);
   // ── Home context: repo / branch / model ────────────────────────────────────
   const [homeFocus, setHomeFocus] = useState<number | null>(null);
+  const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
@@ -1734,7 +1735,7 @@ export default function Home() {
     return latest?.id ?? null;
   }, [projects]);
   const handleHomeSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
-    if (tab === "chat" || homeFocus == null) return;
+    if (tab === "chat" || homeFocus == null || !homeFocusUserInitiatedRef.current) return;
     const workspaceTab =
       tab === "changes" ? "diff"
       : tab === "console" ? "terminal"
@@ -3270,7 +3271,7 @@ export default function Home() {
                   {(projects ?? []).filter((p: any) => p.status !== "shaping" && p.status !== "archived").map((p: any) => (
                     <button
                       key={p.id}
-                      onClick={() => { setHomeFocus(p.id); setShowFocusPicker(false); }}
+                      onClick={() => { homeFocusUserInitiatedRef.current = true; setHomeFocus(p.id); setShowFocusPicker(false); }}
                       style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                     >
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(201,162,76,0.45)", flexShrink: 0 }} />
