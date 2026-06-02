@@ -1254,14 +1254,6 @@ function ShellFooter() {
         { label: "Flow", icon: "flow", action: () => openProjectTab("flow") },
       ];
     }
-    if (renderDepth === "active") {
-      return [
-        { label: "Map", icon: "map", action: () => setLocation("/map") },
-        { label: "Files", icon: "files", action: () => openProjectTab("files") },
-        { label: "Decisions", icon: "decisions", action: () => setLocation("/ledger") },
-        { label: "Forge", icon: "forge", action: () => openProjectTab("forge") },
-      ];
-    }
     return [
       { label: "Home", icon: "home", action: () => setLocation("/home") },
       {
