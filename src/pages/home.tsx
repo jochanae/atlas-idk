@@ -1350,7 +1350,7 @@ export default function Home() {
     model: homeModel,
     mode: homeMode,
     conversationId: activeConversationId,
-    onConversationId: handleStreamConversationId,
+    
     projectContext: homeFocus != null ? {
       projectId: homeFocus,
       memorySummary: homeProjectState.memorySummary,
