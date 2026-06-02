@@ -4,7 +4,28 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiUrl } from "@/lib/api";
+
+async function postJson(path: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data && typeof data === "object" && "error" in data && typeof (data as { error: unknown }).error === "string") {
+        message = (data as { error: string }).error;
+      } else if (data && typeof data === "object" && "message" in data && typeof (data as { message: unknown }).message === "string") {
+        message = (data as { message: string }).message;
+      }
+    } catch {}
+    throw new Error(message);
+  }
+}
 
 
 
