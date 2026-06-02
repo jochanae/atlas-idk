@@ -228,6 +228,7 @@ function PageTransition() {
 // ── First-login onboarding redirect ───────────────────────────────────────────
 function OnboardingGate() {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
   const shouldCheck =
     location !== "/" &&
     ![
@@ -243,7 +244,7 @@ function OnboardingGate() {
   const { data: projects, isLoading } = useQuery({
     queryKey: getListProjectsQueryKey(),
     queryFn: listProjects,
-    enabled: shouldCheck,
+    enabled: shouldCheck && !!user,
   });
 
   useEffect(() => {
