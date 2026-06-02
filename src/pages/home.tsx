@@ -1734,12 +1734,14 @@ export default function Home() {
     }, null);
     return latest?.id ?? null;
   }, [projects]);
+  const handleHomeFocusSelect = useCallback((projectId: number) => {
+    homeFocusUserInitiatedRef.current = true;
+    setHomeFocus(projectId);
+    setShowFocusPicker(false);
+  }, []);
   const handleHomeSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
-    if (
-      tab === "chat" ||
-      homeFocus == null ||
-      !homeFocusUserInitiatedRef.current
-    ) return;
+    const userInitiated = homeFocusUserInitiatedRef.current;
+    if (tab === "chat" || homeFocus == null || !userInitiated) return;
     const workspaceTab =
       tab === "changes" ? "diff"
       : tab === "console" ? "terminal"
@@ -3275,11 +3277,7 @@ export default function Home() {
                   {(projects ?? []).filter((p: any) => p.status !== "shaping" && p.status !== "archived").map((p: any) => (
                     <button
                       key={p.id}
-                      onClick={() => {
-                        homeFocusUserInitiatedRef.current = true;
-                        setHomeFocus(p.id);
-                        setShowFocusPicker(false);
-                      }}
+                      onClick={() => handleHomeFocusSelect(p.id)}
                       style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                     >
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(201,162,76,0.45)", flexShrink: 0 }} />
