@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Session } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";

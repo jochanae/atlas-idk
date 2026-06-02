@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Project } from "@workspace/api-client-react";
 import { toast } from "sonner";
 
 interface GalleryImage {

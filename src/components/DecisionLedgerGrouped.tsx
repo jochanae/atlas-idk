@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Entry } from "@workspace/api-client-react";
 import { relativeTime } from "../lib/atlas-utils";
 
 export interface DecisionLedgerGroupedProps {

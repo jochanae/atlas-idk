@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { collapseDiff, computeLineDiff, type DiffItem } from "@/components/workspace/chatShared";

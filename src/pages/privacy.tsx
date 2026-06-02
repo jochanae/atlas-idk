@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { Project } from "@workspace/api-client-react";
 import type { CSSProperties } from "react";
 
 const mono: CSSProperties = { fontFamily: "var(--app-font-mono)" };

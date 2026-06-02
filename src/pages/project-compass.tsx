@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { Project } from "@workspace/api-client-react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useListProjects, useListEntries } from "@workspace/api-client-react";
 import type { Entry } from "@workspace/api-client-react";

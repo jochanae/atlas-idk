@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Entry, updateEntry, useUpdateEntry, getListEntriesQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { timeAgo } from "@/lib/formatters";

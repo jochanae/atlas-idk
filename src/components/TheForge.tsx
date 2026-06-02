@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Project } from "@workspace/api-client-react";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
 import { parseLinkedRepo } from "@/lib/githubRepo";

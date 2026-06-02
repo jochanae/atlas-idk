@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { Session } from "@workspace/api-client-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { haptics } from "@/lib/haptics";

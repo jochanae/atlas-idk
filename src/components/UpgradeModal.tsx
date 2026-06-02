@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Session, Project } from "@workspace/api-client-react";
 import { useAtlasProducts, useCheckout, useCustomerPortal, useSubscription } from "../hooks/useSubscription";
 
 interface Props {

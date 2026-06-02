@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { Session, updateEntry, createEntry } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { useParams, useLocation, useSearch, Link } from "wouter";
 import { buildReopenChain } from "../components/EntryCard";

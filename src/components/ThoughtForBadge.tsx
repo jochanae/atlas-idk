@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Thought, Message } from "@workspace/api-client-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Project, Message } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";

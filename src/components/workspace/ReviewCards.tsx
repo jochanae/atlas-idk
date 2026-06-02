@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { PlanCard } from "@/components/PlanCard";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";

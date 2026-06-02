@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject } from "@workspace/api-client-react";
 import type React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";

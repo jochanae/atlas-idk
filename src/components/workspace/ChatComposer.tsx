@@ -1,4 +1,5 @@
 import type React from "react";
+import { Message } from "@workspace/api-client-react";
 import { useEffect, useRef, useState } from "react";
 import { ZipPanel } from "../ZipImport";
 import type { ZipEntry } from "../ZipImport";
