@@ -6286,6 +6286,7 @@ export default function Workspace() {
             </div>
             <div style={{ padding: "0 14px" }}>
               {([
+                { id: "multi", label: "Multi-Agent", sub: "Default · Atlas orchestrates Claude, GPT, Gemini & Haiku", available: true, icon: "★" },
                 { id: "claude", label: "Claude", sub: "Architect · Nuance & Strategy", available: true, icon: "C" },
                 { id: "gpt4o", label: "GPT-4o", sub: "Mechanic · Speed & Logic", available: true, icon: "G" },
                 { id: "gemini", label: "Gemini", sub: "Strategy · Long Context", available: true, icon: "Ge" },
