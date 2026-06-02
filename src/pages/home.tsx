@@ -2726,7 +2726,7 @@ export default function Home() {
           mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
-              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)", display: nexusChat.messages.length > 0 ? "flex" : undefined, flexDirection: nexusChat.messages.length > 0 ? "column" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, minHeight: nexusChat.messages.length > 0 ? 0 : undefined }}>
+              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
                 {stream}
               </div>
             </div>
