@@ -1248,6 +1248,15 @@ export function AxiomFlow({
       >
         {/* SVG edges */}
         <svg className="absolute inset-0 h-full w-full" style={{ overflow: "visible" }}>
+          <defs>
+            <filter id="edge-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
           {edges.map(edge => {
             const fromNode = nodes.find(n => n.id === edge.from);
             const toNode = nodes.find(n => n.id === edge.to);
@@ -1259,9 +1268,10 @@ export function AxiomFlow({
                 x1={fromNode.x} y1={fromNode.y}
                 x2={toNode.x} y2={toNode.y}
                 stroke={bothResolved ? palette.edgeGold : palette.edgeDim}
-                strokeWidth={bothResolved ? strokeWidth + 0.5 : strokeWidth}
-                strokeDasharray={bothResolved ? "4 4" : "6 4"}
-                style={bothResolved ? { animation: "edge-flow 1.5s linear infinite" } : undefined}
+                strokeWidth={bothResolved ? 1.25 : 0.75}
+                strokeLinecap="round"
+                opacity={bothResolved ? 0.95 : 0.55}
+                filter={bothResolved ? "url(#edge-glow)" : undefined}
               />
             );
           })}
