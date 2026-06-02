@@ -14,6 +14,8 @@ export interface AuthUser {
   hasPassword: boolean;
 }
 
+const STORED_AUTH_USER_KEY = "atlas-user";
+
 function readString(record: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
     const value = record[key];
@@ -52,15 +54,44 @@ function toBackendAuthUser(payload: unknown): AuthUser | null {
   };
 }
 
+function readStoredAuthUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORED_AUTH_USER_KEY);
+    return raw ? toBackendAuthUser(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredAuthUser(user: AuthUser) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORED_AUTH_USER_KEY, JSON.stringify(user));
+  } catch {}
+}
+
+function removeStoredAuthUser() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORED_AUTH_USER_KEY);
+  } catch {}
+}
+
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
     const response = await fetch(apiUrl("/api/auth/me"), {
       credentials: "include",
     });
-    if (!response.ok) return null;
-    return toBackendAuthUser(await response.json());
+    if (!response.ok) return readStoredAuthUser();
+    const user = toBackendAuthUser(await response.json());
+    if (user) {
+      writeStoredAuthUser(user);
+      return user;
+    }
+    return readStoredAuthUser();
   } catch {
-    return null;
+    return readStoredAuthUser();
   }
 }
 
@@ -110,6 +141,7 @@ export function useLogout() {
         credentials: "include",
       });
     } catch {}
+    removeStoredAuthUser();
     queryClient.setQueryData(["auth", "me"], null);
     navigate("/login");
   };
