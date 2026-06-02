@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
+import { loadProfile, profileToString } from "@/lib/userProfile";
 
 const STREAM_TIMEOUT_MS = 30_000;
-const PENDING_SAFETY_RESET_MS = 35_000;
 
 export interface NexusMessage {
   id?: string;
@@ -53,7 +53,6 @@ export interface UseNexusChatStreamOptions {
   model?: string;
   mode?: string;
   conversationId?: string | null;
-  onConversationId?: (conversationId: string) => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -85,12 +84,12 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onConversationId, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
+  const messagesRef = useRef<NexusMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const isPendingRef = useRef(false);
   const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: string } | null>(null);
   const [shapingPayload, setShapingPayload] = useState<NexusShapingPayload | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
@@ -101,35 +100,16 @@ export function useNexusChatStream(
     shapingHeldRef.current = shapingHeld;
   }, [shapingHeld]);
 
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const { stream, abort: abortStream } = useAtlasStream();
   const streamingIdRef = useRef<string | null>(null);
   const cleanedUpRef = useRef(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSafetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearPendingSafetyReset = useCallback(() => {
-    if (pendingSafetyTimeoutRef.current) {
-      clearTimeout(pendingSafetyTimeoutRef.current);
-      pendingSafetyTimeoutRef.current = null;
-    }
-  }, []);
-
-  const markPendingActivity = useCallback(() => {
-    if (!isPendingRef.current) return;
-
-    clearPendingSafetyReset();
-    pendingSafetyTimeoutRef.current = setTimeout(() => {
-      if (!isPendingRef.current) return;
-
-      isPendingRef.current = false;
-      setIsPending(false);
-      pendingSafetyTimeoutRef.current = null;
-    }, PENDING_SAFETY_RESET_MS);
-  }, [clearPendingSafetyReset]);
 
   const resetStreamState = useCallback(() => {
-    console.log("resetStreamState called, setting isPending false");
-    clearPendingSafetyReset();
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -137,10 +117,9 @@ export function useNexusChatStream(
     streamingIdRef.current = null;
     cleanedUpRef.current = true;
     setIsStreaming(false);
-    isPendingRef.current = false;
     setIsPending(false);
     setLiveStep(null);
-  }, [clearPendingSafetyReset]);
+  }, []);
 
   const abort = useCallback(() => {
     abortStream();
@@ -164,20 +143,14 @@ export function useNexusChatStream(
     imageMimeType?: string;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => {
-    if (!text.trim() || isPendingRef.current) return;
+    if (!text.trim() || isPending) return;
 
-    const resolved = {
-      focusProjectId: overrideOptions?.focusProjectId ?? focusProjectId,
-      model: overrideOptions?.model ?? model,
-      mode: overrideOptions?.mode ?? mode,
-      conversationId: overrideOptions?.conversationId ?? conversationId,
-      onConversationId: overrideOptions?.onConversationId ?? onConversationId,
-      projectContext: overrideOptions?.projectContext ?? projectContext,
-    };
+    const resolvedModel = overrideOptions?.model ?? model;
+    const resolvedMode = overrideOptions?.mode ?? mode;
+    const history = messagesRef.current.map((m) => ({ role: m.role, content: m.content }));
+    const userProfile = profileToString(loadProfile());
 
-    isPendingRef.current = true;
     setIsPending(true);
-    markPendingActivity();
     setIsStreaming(true);
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
@@ -216,7 +189,7 @@ export function useNexusChatStream(
       content: "",
       createdAt: new Date().toISOString(),
       streaming: true,
-      model: resolved.model,
+      model: resolvedModel,
       isNew: true,
     };
     setMessages(prev => [...prev, assistantMsg]);
@@ -225,18 +198,15 @@ export function useNexusChatStream(
       await stream({
         endpoint: "/api/chat",
         body: {
+          global: true,
           message: text,
-          model: resolved.model,
-          ...(resolved.focusProjectId != null ? { projectId: resolved.focusProjectId } : {}),
-          mode: resolved.mode,
-          ...(imageBase64 ? { imageBase64 } : {}),
-          ...(imageMimeType ? { imageMimeType } : {}),
-          ...(resolved.conversationId ? { conversationId: resolved.conversationId } : {}),
-          ...(resolved.projectContext ? { projectContext: resolved.projectContext } : {}),
+          model: resolvedModel,
+          history,
+          mode: resolvedMode,
+          userProfile,
         },
         callbacks: {
           onToken: (released) => {
-            markPendingActivity();
             const cleaned = released
               .split('\n')
               .filter(line => {
@@ -256,18 +226,9 @@ export function useNexusChatStream(
             ));
           },
           onStep: (step) => {
-            markPendingActivity();
             setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
           },
           onDone: (fullText, meta) => {
-            const returnedConversationId =
-              typeof meta.conversationId === "string" && meta.conversationId.trim()
-                ? meta.conversationId
-                : null;
-            if (returnedConversationId) {
-              resolved.onConversationId?.(returnedConversationId);
-            }
-
             // Parse NAVIGATE_TO
             let displayText = fullText;
             const navMatch = displayText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
@@ -414,7 +375,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [focusProjectId, model, mode, conversationId, onConversationId, projectContext, stream, abortStream, resetStreamState, markPendingActivity]);
+  }, [isPending, model, mode, stream, abortStream, resetStreamState]);
 
   return {
     messages,
