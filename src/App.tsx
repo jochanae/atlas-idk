@@ -37,7 +37,7 @@ import { useQuery } from "@tanstack/react-query";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────
 // Noisy background endpoints — a single 401 here should never boot the user.
-const SILENT_401_PATTERNS = ["/api/nexus/activity", "/api/nexus/briefing", "/api/stripe/"];
+const SILENT_401_PATTERNS = ["/api/nexus/activity", "/api/nexus/briefing", "/api/stripe/", "/api/connections"];
 
 let _401redirectPending = false;
 
