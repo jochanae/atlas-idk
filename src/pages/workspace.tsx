@@ -88,6 +88,7 @@ import { McpPanel } from "@/components/workspace/McpPanel";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
+import { extractStrategicIntent } from "@/lib/forgeExtract";
 
 
 export interface CatchPayload {
