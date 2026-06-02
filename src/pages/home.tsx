@@ -3186,10 +3186,11 @@ export default function Home() {
           {/* Input shell */}
           <div className="atlas-input-shell" style={{
             position: "fixed",
-            left: 0, right: 0, bottom: 0,
-            padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
+            left: 0, right: 0,
+            bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+            padding: "14px 20px 14px",
             flexShrink: 0,
-            zIndex: 50,
+            zIndex: 260,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
