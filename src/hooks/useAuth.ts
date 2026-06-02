@@ -88,7 +88,6 @@ export async function fetchMe(): Promise<AuthUser | null> {
       credentials: "include",
     });
     if (response.status === 401) {
-      // Server explicitly rejected the session — clear local fallback
       removeStoredAuthUser();
       localStorage.removeItem("atlas-token");
       return null;
