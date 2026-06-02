@@ -1424,7 +1424,7 @@ export default function Home() {
     const previousCount = previousHomeMessageCountRef.current;
     if (nexusChat.messages.length === 0) {
       setDepth("ambient");
-    } else if (previousCount === 0 && nexusChat.messages.length === 1) {
+    } else if (previousCount === 0 && nexusChat.messages.length === 1 && !reflectionLocked) {
       setDepth("active");
     }
     previousHomeMessageCountRef.current = nexusChat.messages.length;
