@@ -1367,25 +1367,27 @@ export default function Home() {
     return () => { document.body.removeAttribute("data-axiom-thread"); };
   }, [nexusChat.messages.length]);
 
-  // Keep showScrollBtn in sync as streaming content grows the scroll container.
-  // Without this, the arrow only updates on user scroll events and can miss
-  // backlog produced while Atlas streams a reply.
+  // Show the scroll-to-latest arrow when the end-of-messages sentinel
+  // is below the viewport on the OUTER page scroller (.atlas-home-bg).
+  // Shared pattern with workspace so the two surfaces behave identically
+  // after they merge.
   useEffect(() => {
-    const el = chatScrollRef.current;
-    if (!el) return;
-    const recompute = () => {
-      setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-    };
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    Array.from(el.children).forEach((c) => ro.observe(c as Element));
-    const mo = new MutationObserver(() => {
-      Array.from(el.children).forEach((c) => ro.observe(c as Element));
-      recompute();
-    });
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-    return () => { ro.disconnect(); mo.disconnect(); };
+    if (nexusChat.messages.length === 0) {
+      setShowScrollBtn(false);
+      return;
+    }
+    const sentinel = messagesEndRef.current;
+    if (!sentinel) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        // Sentinel visible => user is at (or near) the bottom of the thread.
+        setShowScrollBtn(!entry.isIntersecting);
+      },
+      { root: null, rootMargin: "0px 0px -80px 0px", threshold: 0 }
+    );
+    io.observe(sentinel);
+    return () => io.disconnect();
   }, [nexusChat.messages.length]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
