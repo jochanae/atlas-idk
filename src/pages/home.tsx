@@ -43,6 +43,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { fileToBase64Safe } from "@/lib/image-resize";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -62,6 +63,7 @@ const HOME_PENDING_PHRASES = [
 ];
 
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
+const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 
 type HomeHandoffSignal = {
   readyToHandoff: boolean;
@@ -1276,6 +1278,7 @@ export default function Home() {
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
   const demoRunSummaryActiveRef = useRef(false);
+  const thinkOutLoudInlineRef = useRef(false);
   useEffect(() => {
     const handler = () => setIsTinyScreen(window.innerWidth < 390);
     window.addEventListener("resize", handler);
@@ -2080,13 +2083,14 @@ export default function Home() {
     const text = liveText.trim();
     const hasImages = attachedFiles.some((f) => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
-    if (!backendReady) {
+    const shouldStayOnHome = reflectionLocked || thinkOutLoudInlineRef.current;
+    if (!shouldStayOnHome && !backendReady) {
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
       );
       return;
     }
-    if (isFree && (projects?.length ?? 0) >= 1) {
+    if (!shouldStayOnHome && isFree && (projects?.length ?? 0) >= 1) {
       setShowUpgrade(true);
       return;
     }
@@ -2103,7 +2107,7 @@ export default function Home() {
       otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map((f) => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
 
-    // Preserve the existing text note for multi-image starts; the workspace owns the actual send.
+    // Preserve the existing text note for multi-image starts; inline home sends attach the first image.
     const imageNote =
       imageFiles.length > 1
         ? ` [${imageFiles.length} images attached — showing first]`
@@ -2114,6 +2118,24 @@ export default function Home() {
     setIsAtlasStreaming(true);
     setIsSending(true);
     try {
+      if (shouldStayOnHome) {
+        let imageBase64: string | undefined;
+        let imageMimeType: string | undefined;
+        if (imageFiles.length > 0) {
+          try {
+            const safe = await fileToBase64Safe(imageFiles[0]);
+            imageBase64 = safe.base64;
+            imageMimeType = safe.mediaType;
+          } catch {}
+        }
+        await nexusChat.send({
+          text: messageText,
+          imageBase64,
+          imageMimeType,
+        });
+        return;
+      }
+
       const createRes = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2162,10 +2184,12 @@ export default function Home() {
     input,
     attachedFiles,
     isSending,
+    reflectionLocked,
     backendReady,
     isFree,
     projects,
     queryClient,
+    nexusChat.send,
     setActiveProjectId,
     setLocation,
   ]);
@@ -2349,6 +2373,7 @@ export default function Home() {
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
+    thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
     nexusChat.setMessages([]);
     setReviewingPlanIds(new Set());
@@ -3344,7 +3369,13 @@ export default function Home() {
               <textarea
                 ref={textareaRef}
                 value={input}
-                onChange={(e) => { setInput(e.target.value); autoResize(); if (createError) setCreateError(null); }}
+                onChange={(e) => {
+                  const nextInput = e.target.value;
+                  setInput(nextInput);
+                  if (!nextInput.trim()) thinkOutLoudInlineRef.current = false;
+                  autoResize();
+                  if (createError) setCreateError(null);
+                }}
                 onKeyDown={handleKeyDown}
                 onFocus={() => { setInputFocused(true); setTypewriterPaused(true); }}
                 onBlur={() => setInputFocused(false)}
@@ -3485,7 +3516,8 @@ export default function Home() {
           {/* Intent row — soft orientation under the input. Permission, not features. */}
 
           {nexusChat.messages.length === 0 && (() => {
-            const pickStarter = (starter: string) => {
+            const pickStarter = (starter: string, inlineOnHome = false) => {
+              thinkOutLoudInlineRef.current = inlineOnHome;
               setInput(starter);
               // Do NOT focus the textarea — that opens the mobile keyboard.
               // Let the user tap the input themselves when they've picked a line.
@@ -3495,7 +3527,7 @@ export default function Home() {
             };
 
             const intents: Array<{ label: string; action: () => void }> = [
-              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
+              { label: "Think out loud", action: () => pickStarter(THINK_OUT_LOUD_STARTER, true) },
               { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
               { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
               { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
