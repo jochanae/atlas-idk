@@ -32,7 +32,7 @@ import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
 import { fetchMe } from "@/hooks/useAuth";
-import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { useListProjects, getListProjectsQueryKey } from "@/hooks/useProjectState";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────
 // Noisy background endpoints — a single 401 here should never boot the user.
