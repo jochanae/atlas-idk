@@ -4,7 +4,28 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { apiUrl } from "@/lib/api";
+
+async function postJson(path: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data && typeof data === "object" && "error" in data && typeof (data as { error: unknown }).error === "string") {
+        message = (data as { error: string }).error;
+      } else if (data && typeof data === "object" && "message" in data && typeof (data as { message: unknown }).message === "string") {
+        message = (data as { message: string }).message;
+      }
+    } catch {}
+    throw new Error(message);
+  }
+}
 
 
 
@@ -97,10 +118,7 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (err) throw err;
+      await postJson("/api/auth/forgot-password", { email });
       setForgotSent(true);
     } catch (err) {
       setError(toAuthErrorMessage(err, "login"));
@@ -115,18 +133,13 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
+        await postJson("/api/auth/login", { email, password });
       } else {
-        const { error: err } = await supabase.auth.signUp({
+        await postJson("/api/auth/signup", {
           email,
           password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: name.trim() ? { display_name: name.trim() } : undefined,
-          },
+          name: name.trim() || undefined,
         });
-        if (err) throw err;
       }
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       sessionStorage.setItem("atlas-just-authed", "1");
