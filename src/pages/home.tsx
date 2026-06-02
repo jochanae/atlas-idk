@@ -3451,12 +3451,13 @@ export default function Home() {
             };
             return (
               <div style={{
-                marginTop: 14,
+                marginTop: 28,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 10,
               }}>
+
                 <div className="suggestion-chips-row" style={{
                   display: "flex",
                   flexWrap: "nowrap",
@@ -3538,8 +3539,9 @@ export default function Home() {
             );
           })()}
 
-          {/* Continuity strip — status + expand CTA anchored below the suggestion chips */}
-          {projects && projects.length > 0 && (() => {
+          {/* Continuity strip — status + expand CTA anchored below the suggestion chips.
+              Empty-state only: once a conversation starts, the scroll space belongs to the thread. */}
+          {nexusChat.messages.length === 0 && projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
             const mostRecent = [...activeProjects].sort((a, b) => {
               const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
@@ -3669,13 +3671,16 @@ export default function Home() {
         </aside>
       </div>
 
-      {/* Below-the-fold: Recent Activity / Discovery section */}
-      <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
-        <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
+      {/* Below-the-fold: Recent Activity / Discovery section.
+          Empty-state only: once a conversation starts, hide the dashboard so the scroll space is all conversation. */}
+      {nexusChat.messages.length === 0 && (
+        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
+          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
+          </div>
+          {renderOverviewDashboard()}
         </div>
-        {renderOverviewDashboard()}
-      </div>
+      )}
 
       {showBriefingPanel && (
         <div
