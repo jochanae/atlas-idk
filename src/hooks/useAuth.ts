@@ -163,8 +163,15 @@ export function useRequireAuth() {
       if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
+    try {
+      if (sessionStorage.getItem("atlas-just-authed") === "1") {
+        setSettled(true);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        return;
+      }
+    } catch {}
     if (!isLoading && !settled) {
-      timerRef.current = setTimeout(() => setSettled(true), 3000);
+      timerRef.current = setTimeout(() => setSettled(true), 5000);
     }
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [user, isLoading, settled]);
