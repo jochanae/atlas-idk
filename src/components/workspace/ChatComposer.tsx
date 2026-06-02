@@ -168,6 +168,11 @@ export interface ChatComposerProps {
   showParkingDrawer: boolean;
   setShowParkingDrawer: (v: boolean) => void;
   refreshParkedEntries: () => Promise<unknown> | unknown;
+
+  // Model picker (only renders chip when showModelPicker is true)
+  showModelPicker?: boolean;
+  wsModel?: string;
+  onOpenModelSheet?: () => void;
 }
 
 export function ChatComposer(props: ChatComposerProps) {
@@ -223,7 +228,21 @@ export function ChatComposer(props: ChatComposerProps) {
     showParkingDrawer,
     setShowParkingDrawer,
     refreshParkedEntries,
+    showModelPicker,
+    wsModel,
+    onOpenModelSheet,
   } = props;
+
+  const modelChipLabel = (() => {
+    switch (wsModel) {
+      case "claude": return "Claude";
+      case "gpt4o": return "GPT-4o";
+      case "gemini": return "Gemini";
+      case "multi":
+      default: return "Multi-Agent";
+    }
+  })();
+  const isMultiAgent = !wsModel || wsModel === "multi";
 
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
@@ -578,6 +597,41 @@ export function ChatComposer(props: ChatComposerProps) {
                 );
               })()}
             </div>
+
+            {/* Model chip — only renders when the setting is enabled */}
+            {showModelPicker && onOpenModelSheet && (
+              <button
+                type="button"
+                onClick={onOpenModelSheet}
+                title={isMultiAgent ? "Multi-Agent orchestration (default) — tap to change" : `Forced: ${modelChipLabel} — tap to change`}
+                aria-label={`Model: ${modelChipLabel}`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 10px", borderRadius: 999,
+                  background: isMultiAgent ? "rgba(201,162,76,0.08)" : "rgba(201,162,76,0.14)",
+                  border: `1px solid ${isMultiAgent ? "rgba(201,162,76,0.22)" : "rgba(201,162,76,0.4)"}`,
+                  color: "var(--atlas-gold)",
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
+                  whiteSpace: "nowrap", flexShrink: 0,
+                  marginLeft: 4,
+                }}
+              >
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%",
+                  background: isMultiAgent ? "var(--atlas-gold)" : "var(--atlas-ember)",
+                  boxShadow: isMultiAgent
+                    ? "0 0 8px rgba(201,162,76,0.6)"
+                    : "0 0 8px rgba(146,64,14,0.55)",
+                }} />
+                {modelChipLabel}
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" style={{ opacity: 0.55 }}>
+                  <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+
 
             {/* Right: voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>

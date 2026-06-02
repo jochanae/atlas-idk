@@ -264,11 +264,13 @@ export function useChatStream(
 
       const lensCtx = sendCtxRef.current;
       const isScenario = lensCtx.wsLens === "scenario";
+      const effectiveModel = lensCtx.wsModel && lensCtx.wsModel !== "multi" ? lensCtx.wsModel : undefined;
       const body = {
         sessionId: sid,
         projectId,
         message: text,
-        model: lensCtx.wsModel,
+        ...(effectiveModel ? { model: effectiveModel } : {}),
+        orchestrate: !effectiveModel,
         workspaceLens: lensCtx.wsLens,
         scenarioMode: isScenario,
         history,

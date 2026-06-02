@@ -3,14 +3,20 @@ import { useState, useRef } from "react";
 export type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
 export function useChatLens(projectId: number | string | undefined) {
-  const [wsModel, setWsModel] = useState<string>(() => {
+  const [wsModel, setWsModelRaw] = useState<string>(() => {
     try {
+      const stored = localStorage.getItem("atlas-ws-model");
+      if (stored) return stored;
       const r = localStorage.getItem("atlas-home-context");
-      return r ? (JSON.parse(r).model ?? "claude") : "claude";
+      return r ? (JSON.parse(r).model ?? "multi") : "multi";
     } catch {
-      return "claude";
+      return "multi";
     }
   });
+  const setWsModel = (m: string) => {
+    setWsModelRaw(m);
+    try { localStorage.setItem("atlas-ws-model", m); } catch {}
+  };
   const [wsLens, setWsLensRaw] = useState<WorkspaceLens>(() => {
     try {
       return (localStorage.getItem(`atlas-ws-lens-v2-${projectId}`) as WorkspaceLens) || "flow";
