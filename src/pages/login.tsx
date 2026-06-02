@@ -142,7 +142,7 @@ export default function Login() {
     setError(null);
     setLoading(true);
     // Custom backend OAuth — redirect to Axiom Cloud Run endpoint.
-    window.location.href = `https://axiomsystem.app/api/auth/${provider}`;
+    window.location.href = `https://axiom-atlas-689827072865.us-east1.run.app/api/auth/${provider}`;
   };
 
   if (isLoading) return (
