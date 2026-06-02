@@ -2800,10 +2800,6 @@ export default function Home() {
                 <div
                   ref={chatScrollRef}
                   className="atlas-home-chat-messages-scroll"
-                  onScroll={(e) => {
-                    const el = e.currentTarget;
-                    setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-                  }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
                     overflow: "visible",
