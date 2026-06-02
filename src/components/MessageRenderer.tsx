@@ -67,18 +67,19 @@ export function CodeBlockCard({ language, code }: { language: string; code: stri
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const PREVIEW_LINES = 8;
-  const lines = code ? code.split("\n") : [];
+  const codeContent = code ?? "";
+  const lines = codeContent ? codeContent.split("\n") : [];
   const lineCount = lines.length;
   const isOverflow = lineCount > PREVIEW_LINES;
   const visibleCode = !isOverflow || expanded
-    ? code
+    ? codeContent
     : lines.slice(0, PREVIEW_LINES).join("\n");
   const hiddenCount = isOverflow && !expanded ? lineCount - PREVIEW_LINES : 0;
   const label = language ? language.toUpperCase() : "CODE";
 
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(codeContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
