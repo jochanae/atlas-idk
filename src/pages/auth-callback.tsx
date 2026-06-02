@@ -1,23 +1,15 @@
 import { useEffect } from "react";
-import { getSession } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { supabase } from "@/integrations/supabase/client";
 
-// Supabase OAuth lands back on window.location.origin and the SDK hydrates the
-// session automatically. This page is kept as a thin redirect so any stale
-// links to /auth/callback still land somewhere sensible.
+// OAuth providers redirect back to the backend, which sets the `atlas-session`
+// cookie and bounces the browser to /home. This page is kept as a thin
+// fallback redirect for any stale links.
 export default function AuthCallback() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Give the SDK a tick to process any hash/code in the URL.
-      await supabase.auth.getSession().catch(() => null);
-      if (!cancelled) navigate("/home", { replace: true });
-    })();
-    return () => { cancelled = true; };
+    navigate("/home", { replace: true });
   }, [navigate]);
 
   return (
