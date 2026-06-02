@@ -250,7 +250,7 @@ export function ChatComposer(props: ChatComposerProps) {
           id="ws-file-input"
           type="file"
           accept="image/jpeg,image/png,image/gif,image/webp,.zip,application/zip"
-          style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, overflow: "hidden" }}
           multiple
           onChange={async (e) => {
             const files = Array.from(e.target.files ?? []);
@@ -267,7 +267,7 @@ export function ChatComposer(props: ChatComposerProps) {
           id="ws-code-context-input"
           type="file"
           accept=".zip,application/zip"
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
           onChange={async (e) => {
             const f = e.target.files?.[0];
             if (f) await uploadCodeContextZip(f);
@@ -281,7 +281,7 @@ export function ChatComposer(props: ChatComposerProps) {
           type="file"
           accept="image/*"
           capture="environment"
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
             if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
@@ -295,7 +295,7 @@ export function ChatComposer(props: ChatComposerProps) {
           type="file"
           accept="image/jpeg,image/png,image/gif,image/webp"
           multiple
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
             if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
@@ -309,7 +309,7 @@ export function ChatComposer(props: ChatComposerProps) {
           type="file"
           accept=".pdf,.txt,.md,.csv,.json,.docx,.xlsx,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json"
           multiple
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
             if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
