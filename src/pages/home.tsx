@@ -2726,7 +2726,7 @@ export default function Home() {
           mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
-              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)", display: nexusChat.messages.length > 0 ? "flex" : undefined, flexDirection: nexusChat.messages.length > 0 ? "column" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, minHeight: nexusChat.messages.length > 0 ? 0 : undefined }}>
+              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
                 {stream}
               </div>
             </div>
@@ -2734,7 +2734,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", height: nexusChat.messages.length > 0 ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))" : undefined, flex: nexusChat.messages.length > 0 ? 1 : undefined, justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: nexusChat.messages.length > 0 ? 0 : "var(--atlas-dock-clearance)" }}>
+          <div style={{ minHeight: "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)" }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -2804,18 +2804,14 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
-                    flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
-                    overscrollBehaviorY: "contain",
-                    
+                    overflow: "visible",
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
                     borderRadius: reflectionLocked ? 8 : undefined,
                     padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
                     paddingTop: nexusChat.messages.length > 0 ? 16 : 56, scrollPaddingTop: nexusChat.messages.length > 0 ? 16 : 56,
-                    paddingBottom: 320,
-                    WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    paddingBottom: 24,
                     transition: "border-color 200ms",
                   }}
                 >
