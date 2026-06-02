@@ -118,10 +118,7 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (err) throw err;
+      await postJson("/api/auth/forgot-password", { email });
       setForgotSent(true);
     } catch (err) {
       setError(toAuthErrorMessage(err, "login"));
