@@ -63,6 +63,7 @@ const HOME_PENDING_PHRASES = [
 ];
 
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
+const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 
 type HomeHandoffSignal = {
@@ -1415,6 +1416,8 @@ export default function Home() {
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
   const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const previousHomeMessageCountRef = useRef(0);
 
   useEffect(() => {
@@ -1501,12 +1504,62 @@ export default function Home() {
     }
   }, [reflectionLocked, vibrate, callReflectionMode]);
 
-  const handleKeepIt = useCallback(() => {
+  const handleKeepIt = useCallback(async () => {
+    const messagesToKeep = nexusChat.messages;
     vibrate([50, 50, 50]);
     void callReflectionMode(false);
     setReflectionLocked(false);
     setShowShredChoice(false);
-  }, [vibrate, callReflectionMode]);
+    setCreateError(null);
+
+    try {
+      const createRes = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: "New Project" }),
+      });
+      const project = (await createRes.json().catch(() => null)) as {
+        id?: number | string;
+        error?: string;
+        message?: string;
+      } | null;
+      if (!createRes.ok || !project?.id) {
+        const err = new Error(
+          project?.error ?? project?.message ?? "Failed to create project",
+        ) as Error & { status?: number };
+        err.status = createRes.status;
+        throw err;
+      }
+      const projectId = Number(project.id);
+      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+      try {
+        sessionStorage.setItem(THINK_FREELY_THREAD_STORAGE_KEY, JSON.stringify(messagesToKeep));
+      } catch {}
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      setActiveProjectId(projectId);
+      setLocation(`/project/${projectId}`);
+    } catch (err) {
+      const msg =
+        extractApiErrorMessage(err) ??
+        (err instanceof Error ? err.message : "Failed to create project");
+      if (
+        msg?.includes("PROJECT_LIMIT_REACHED") ||
+        (err as { status?: number } | null)?.status === 402
+      ) {
+        setShowUpgrade(true);
+      } else {
+        setCreateError(msg);
+      }
+    }
+  }, [
+    callReflectionMode,
+    nexusChat.messages,
+    queryClient,
+    setActiveProjectId,
+    setLocation,
+    vibrate,
+  ]);
 
   const handleShredIt = useCallback(() => {
     vibrate(200);
@@ -1573,11 +1626,9 @@ export default function Home() {
       demoRunSummaryActiveRef.current = false;
     };
   }, [isAtlasStreaming]);
-  const [, setLocation] = useLocation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
-  const queryClient = useQueryClient();
   const ptrContainerRef = useRef<HTMLDivElement>(null);
   const {
     pulling: ptr_pulling,

@@ -203,11 +203,54 @@ type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" |
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
+const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
 type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking";
 
 type ForgeState = { forged: boolean; dismissed: boolean };
+
+type StoredThinkFreelyMessage = Omit<Partial<ChatMessage>, "id" | "role" | "content" | "sentAt"> & {
+  id?: unknown;
+  role?: unknown;
+  content?: unknown;
+  createdAt?: unknown;
+  sentAt?: unknown;
+};
+
+function normalizeThinkFreelyThread(raw: unknown): ChatMessage[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((item): ChatMessage[] => {
+    if (!item || typeof item !== "object") return [];
+    const message = item as StoredThinkFreelyMessage;
+    if (message.role !== "user" && message.role !== "assistant") return [];
+    if (typeof message.content !== "string") return [];
+
+    const normalized: ChatMessage = {
+      role: message.role,
+      content: message.content,
+    };
+    if (typeof message.id === "number") normalized.id = message.id;
+    const sentAt = typeof message.sentAt === "string"
+      ? message.sentAt
+      : typeof message.createdAt === "string"
+        ? message.createdAt
+        : undefined;
+    if (sentAt) normalized.sentAt = sentAt;
+    if (message.terminalCmd !== undefined) normalized.terminalCmd = message.terminalCmd;
+    if (message.terminalResult !== undefined) normalized.terminalResult = message.terminalResult;
+    if (typeof message.intentType === "string" || message.intentType === null) normalized.intentType = message.intentType;
+    if (typeof message.model === "string") normalized.model = message.model;
+    if (typeof message.modelUsed === "string" || message.modelUsed === null) normalized.modelUsed = message.modelUsed;
+    if (typeof message.executionTimeMs === "number" || message.executionTimeMs === null) normalized.executionTimeMs = message.executionTimeMs;
+    if (typeof message.inputTokens === "number" || message.inputTokens === null) normalized.inputTokens = message.inputTokens;
+    if (typeof message.outputTokens === "number" || message.outputTokens === null) normalized.outputTokens = message.outputTokens;
+    if (typeof message.costUsd === "number" || message.costUsd === null) normalized.costUsd = message.costUsd;
+    if (message.plan) normalized.plan = message.plan;
+    if (message.surface !== undefined) normalized.surface = message.surface;
+    return [normalized];
+  });
+}
 
 
 const LENS_CONFIG: Record<WorkspaceLens, {
@@ -2767,6 +2810,36 @@ export default function Workspace() {
       });
     },
   });
+
+  const thinkFreelyThreadLoadedRef = useRef(false);
+  useEffect(() => {
+    if (thinkFreelyThreadLoadedRef.current) return;
+    thinkFreelyThreadLoadedRef.current = true;
+
+    let storedThread: string | null = null;
+    try {
+      storedThread = sessionStorage.getItem(THINK_FREELY_THREAD_STORAGE_KEY);
+      if (storedThread !== null) {
+        sessionStorage.removeItem(THINK_FREELY_THREAD_STORAGE_KEY);
+      }
+    } catch {
+      storedThread = null;
+    }
+    if (!storedThread) return;
+
+    let parsedThread: unknown = null;
+    try {
+      parsedThread = JSON.parse(storedThread);
+    } catch {
+      parsedThread = null;
+    }
+    const transferredMessages = normalizeThinkFreelyThread(parsedThread);
+    if (transferredMessages.length === 0) return;
+
+    priorLoaded.current = true;
+    historyMsgCountRef.current = transferredMessages.length;
+    setMessages(transferredMessages);
+  }, [historyMsgCountRef, priorLoaded, setMessages]);
 
   useEffect(() => {
     if (messages.length > 0 || greetingLoading || atlasGreeting) return;
