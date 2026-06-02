@@ -88,6 +88,7 @@ import { McpPanel } from "@/components/workspace/McpPanel";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
+import { extractStrategicIntent } from "@/lib/forgeExtract";
 
 
 export interface CatchPayload {
@@ -5465,7 +5466,7 @@ export default function Workspace() {
               onPreviewCode: handlePreviewCode,
               onRunCommand: handleRunCommand,
               onPrCreated: (url) => { setSessionPrUrl(url); setLeftTab("diff"); },
-              onExtractToForge: (content) => { setForgePreloadContent(content); setShowForgeExternal(true); },
+              onExtractToForge: (content) => { setForgePreloadContent(extractStrategicIntent(content)); setShowForgeExternal(true); },
               onReviewDiff: () => setLeftTab("diff"),
               onOpenArtifact: (_title: string) => {
                 setLeftTab("artifacts");
