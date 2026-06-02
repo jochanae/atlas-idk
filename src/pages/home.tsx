@@ -2736,7 +2736,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)" }}>
+          <div style={{ minHeight: nexusChat.messages.length > 0 ? "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))" : "calc(100svh - var(--atlas-header-height) - var(--atlas-composer-bottom-offset))", display: "flex", flexDirection: "column", justifyContent: nexusChat.messages.length > 0 ? "flex-start" : "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)" }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -2753,7 +2753,7 @@ export default function Home() {
 
             {/* Greeting */}
             {nexusChat.messages.length === 0 && (
-              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
+              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 0, position: "relative", zIndex: 1 }}>
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
@@ -3186,7 +3186,7 @@ export default function Home() {
           <div className="atlas-input-shell" style={{
             position: "fixed",
             left: 0, right: 0,
-            bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+            bottom: "var(--atlas-composer-bottom-offset)",
             margin: 0,
             padding: "14px 20px 14px",
             flexShrink: 0,
@@ -3468,7 +3468,7 @@ export default function Home() {
       {/* Below-the-fold: Recent Activity / Discovery section.
           Empty-state only: once a conversation starts, hide the dashboard so the scroll space is all conversation. */}
       {nexusChat.messages.length === 0 && (
-        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 24px 140px", gap: 18 }}>
+        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 24px calc(var(--atlas-dock-clearance) + 52px)", gap: 18 }}>
           {/* "need a starting point?" rotate — first below the fold */}
           {(() => {
             const pickStarter = (starter: string) => {
@@ -3478,7 +3478,6 @@ export default function Home() {
             const rotate = () => {
               const next = (starterIdx + 1) % PLACEHOLDERS.length;
               setStarterIdx(next);
-              pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
             };
             const intents: Array<{ label: string; action: () => void }> = [
               { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
