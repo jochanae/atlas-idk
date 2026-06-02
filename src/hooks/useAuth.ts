@@ -68,14 +68,18 @@ function writeStoredAuthUser(user: AuthUser) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORED_AUTH_USER_KEY, JSON.stringify(user));
-  } catch {}
+  } catch {
+    // Ignore storage failures; auth can still rely on the in-memory query cache.
+  }
 }
 
 function removeStoredAuthUser() {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(STORED_AUTH_USER_KEY);
-  } catch {}
+  } catch {
+    // Ignore storage failures during logout and continue clearing the query cache.
+  }
 }
 
 export async function fetchMe(): Promise<AuthUser | null> {
@@ -140,7 +144,9 @@ export function useLogout() {
         method: "POST",
         credentials: "include",
       });
-    } catch {}
+    } catch {
+      // Even if the server logout call fails, clear local auth state.
+    }
     removeStoredAuthUser();
     queryClient.setQueryData(["auth", "me"], null);
     navigate("/login");

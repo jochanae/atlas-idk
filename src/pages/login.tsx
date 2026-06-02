@@ -21,7 +21,9 @@ async function postJson(path: string, body: Record<string, unknown>): Promise<Re
       } else if (data && typeof data === "object" && "message" in data && typeof (data as { message: unknown }).message === "string") {
         message = (data as { message: string }).message;
       }
-    } catch {}
+    } catch {
+      // Keep the generic status message if the error response is not JSON.
+    }
     throw new Error(message);
   }
   try {
@@ -144,7 +146,9 @@ export default function Login() {
         if (loggedInUser) {
           try {
             localStorage.setItem("atlas-user", JSON.stringify(loggedInUser));
-          } catch {}
+          } catch {
+            // Keep login flowing if localStorage is unavailable.
+          }
         }
       } else {
         await postJson("/api/auth/signup", {
