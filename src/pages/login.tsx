@@ -145,12 +145,12 @@ export default function Login() {
           ? { email, password }
           : { email, password, name: name.trim() || undefined }
       );
+      const token = (data as any)?.token ?? (data as any)?.sessionToken;
+      if (token) localStorage.setItem("atlas-token", token);
       const loggedInUser = data?.user ?? data;
       if (loggedInUser) {
         try {
           localStorage.setItem("atlas-user", JSON.stringify(loggedInUser));
-          const token = (data?.token || data?.sessionToken) as string | undefined;
-          if (token) localStorage.setItem("atlas-token", token);
         } catch {
           // Keep login flowing if localStorage is unavailable.
         }
