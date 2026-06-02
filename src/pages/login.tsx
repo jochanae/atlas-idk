@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { Session } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 
-async function postJson(path: string, body: Record<string, unknown>): Promise<void> {
+async function postJson(path: string, body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
   const res = await fetch(apiUrl(path), {
     method: "POST",
     credentials: "include",
@@ -22,8 +21,16 @@ async function postJson(path: string, body: Record<string, unknown>): Promise<vo
       } else if (data && typeof data === "object" && "message" in data && typeof (data as { message: unknown }).message === "string") {
         message = (data as { message: string }).message;
       }
-    } catch {}
+    } catch {
+      // Keep the generic status message if the error response is not JSON.
+    }
     throw new Error(message);
+  }
+  try {
+    const data = await res.json();
+    return data && typeof data === "object" ? data as Record<string, unknown> : null;
+  } catch {
+    return null;
   }
 }
 
@@ -133,7 +140,16 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        await postJson("/api/auth/login", { email, password });
+        const data = await postJson("/api/auth/login", { email, password });
+        const loggedInUser = data?.user ?? data;
+        queryClient.setQueryData(["auth", "me"], loggedInUser);
+        if (loggedInUser) {
+          try {
+            localStorage.setItem("atlas-user", JSON.stringify(loggedInUser));
+          } catch {
+            // Keep login flowing if localStorage is unavailable.
+          }
+        }
       } else {
         await postJson("/api/auth/signup", {
           email,
