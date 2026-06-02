@@ -13,6 +13,9 @@ export default function AuthCallback() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const token = new URLSearchParams(window.location.search).get("token");
+      if (token) localStorage.setItem("atlas-token", token);
+
       // Give the SDK a tick to process any hash/code in the URL.
       await supabase.auth.getSession().catch(() => null);
       if (!cancelled) navigate("/home", { replace: true });

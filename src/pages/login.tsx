@@ -115,8 +115,19 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+
+        // Save token for Authorization header
+        if (data.token) {
+          localStorage.setItem("atlas-token", data.token);
+        }
       } else {
         const { error: err } = await supabase.auth.signUp({
           email,
@@ -132,7 +143,11 @@ export default function Login() {
       sessionStorage.setItem("atlas-just-authed", "1");
       navigate("/home");
     } catch (err: unknown) {
-      setError(toAuthErrorMessage(err, mode === "signup" ? "signup" : "login"));
+      setError(
+        mode === "login"
+          ? err instanceof Error ? err.message : "Login failed"
+          : toAuthErrorMessage(err, "signup"),
+      );
     } finally {
       setLoading(false);
     }
