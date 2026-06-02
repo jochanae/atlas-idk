@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Project, Session, Entry } from "@workspace/api-client-react";
 import { useShellStore } from "@/store/shellStore";
 
 export type ProjectForgeState = {

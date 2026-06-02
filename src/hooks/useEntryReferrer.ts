@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Entry, Project } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { popPrev, peekPrev } from "@/lib/nav-history";
 

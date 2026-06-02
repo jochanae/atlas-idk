@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Project } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import type { CSSProperties } from "react";
 

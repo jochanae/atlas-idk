@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { Project } from "@workspace/api-client-react";
 /**
  * ChatTrayHeader — shared, ultra-quiet header for the Nexus Home chat tray
  * and the Project Workspace chat. One indicator per view: a tiny shield

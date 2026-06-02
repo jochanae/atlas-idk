@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { getSession } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { supabase } from "@/integrations/supabase/client";

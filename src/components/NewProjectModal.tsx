@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { Session, Project } from "@workspace/api-client-react";
 import { API_BASE } from "@/lib/api";
 
 const POETIC_NAMES = [

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { HealthStatus } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 

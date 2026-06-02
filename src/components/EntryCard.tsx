@@ -1,3 +1,4 @@
+import { Entry } from "@workspace/api-client-react";
 /**
  * EntryCard — the single, unified card component for both Ledger and Parking Lot.
  * Status (entry.status) decides the posture:

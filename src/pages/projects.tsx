@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { createProject, createEntry, Project } from "@workspace/api-client-react";
 import { Link, useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { useListProjects, useCreateProject, useCreateEntry, getListProjectsQueryKey } from "@workspace/api-client-react";

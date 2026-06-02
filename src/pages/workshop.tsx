@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Session, Entry, createEntry, updateEntry, deleteEntry, updateProject, Project } from "@workspace/api-client-react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import {

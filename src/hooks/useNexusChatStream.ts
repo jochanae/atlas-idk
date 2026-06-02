@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { NexusMessage } from "@workspace/api-client-react";
 import { useAtlasStream } from "./useAtlasStream";
 
 const STREAM_TIMEOUT_MS = 30_000;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Entry, EntryContext } from "@workspace/api-client-react";
 import type React from "react";
 
 type ParkingLotDetailPanelProps = {

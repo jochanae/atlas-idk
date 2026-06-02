@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Project, UpdateProjectBody, updateProject, useUpdateProject } from "@workspace/api-client-react";
 import { X } from "lucide-react";
 import { parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
 

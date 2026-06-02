@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { getListEntriesQueryKey, getListSessionsQueryKey } from "@workspace/api-client-react";
 import type { QueryClient } from "@tanstack/react-query";
 
 type ProjectStateLike = {

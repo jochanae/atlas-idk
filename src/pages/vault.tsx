@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { VaultSave, Project } from "@workspace/api-client-react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import type { CSSProperties } from "react";
