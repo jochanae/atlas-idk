@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { apiUrl, getAuthHeaders } from "@/lib/api";
@@ -132,9 +132,23 @@ export function useAuth() {
 export function useRequireAuth() {
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
+  const [settled, setSettled] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    if (!isLoading && !user) navigate("/login");
-  }, [user, isLoading, navigate]);
+    if (user) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setSettled(false);
+    } else if (!settled && !timerRef.current) {
+      timerRef.current = setTimeout(() => setSettled(true), 3000);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [user, isLoading, settled]);
+
+  useEffect(() => {
+    if (settled && !isLoading && !user) navigate("/login");
+  }, [settled, user, isLoading, navigate]);
+
   return { user, isLoading };
 }
 
