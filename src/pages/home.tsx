@@ -2804,18 +2804,14 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
-                    flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
-                    overscrollBehaviorY: "contain",
-                    
+                    overflow: "visible",
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
                     border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
                     borderRadius: reflectionLocked ? 8 : undefined,
                     padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
                     paddingTop: nexusChat.messages.length > 0 ? 16 : 56, scrollPaddingTop: nexusChat.messages.length > 0 ? 16 : 56,
-                    paddingBottom: 320,
-                    WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    paddingBottom: 24,
                     transition: "border-color 200ms",
                   }}
                 >
