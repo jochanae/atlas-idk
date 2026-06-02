@@ -3423,121 +3423,124 @@ export default function Home() {
                 </button>
               </div>
             </div>
+
+            {/* Intent row — soft orientation under the input. Permission, not features.
+                Lives inside the fixed input shell so it sits directly under the composer
+                rather than floating up into the hero and clipping the placeholder. */}
+            {nexusChat.messages.length === 0 && (() => {
+              const pickStarter = (starter: string) => {
+                setInput(starter);
+                // Do NOT focus the textarea — that opens the mobile keyboard.
+                // Let the user tap the input themselves when they've picked a line.
+                setTimeout(() => {
+                  autoResize();
+                }, 0);
+              };
+
+              const intents: Array<{ label: string; action: () => void }> = [
+                { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
+                { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
+                { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
+                { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
+              ];
+              const rotate = () => {
+                const next = (starterIdx + 1) % PLACEHOLDERS.length;
+                setStarterIdx(next);
+                pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
+              };
+              return (
+                <div style={{
+                  marginTop: 12,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                }}>
+
+                  <div className="suggestion-chips-row" style={{
+                    display: "flex",
+                    flexWrap: "nowrap",
+                    justifyContent: "center",
+                    gap: 6,
+                    overflowX: "auto",
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none",
+                    WebkitOverflowScrolling: "touch",
+                    fontFamily: "var(--app-font-sans)",
+                    fontSize: "var(--ts-label)",
+                    letterSpacing: "0.01em",
+                    color: "var(--atlas-muted)",
+                    width: "100%",
+                  }}>
+                    {intents.map((it) => (
+                      <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={it.action}
+                          style={{
+                            background: isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
+                            border: isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
+                            backdropFilter: "blur(8px)",
+                            WebkitBackdropFilter: "blur(8px)",
+                            borderRadius: 20,
+                            padding: "5px 12px",
+                            color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            fontSize: "var(--ts-caption)",
+                            letterSpacing: "inherit",
+                            fontWeight: isParchment ? 600 : 400,
+                            transition: "color 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+                            whiteSpace: "nowrap",
+                          }}
+                          onMouseEnter={(e) => {
+                            const el = e.currentTarget as HTMLButtonElement;
+                            el.style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)";
+                            el.style.boxShadow = isParchment ? "0 2px 10px rgba(17,17,17,0.06)" : "0 0 10px rgba(212,175,55,0.15)";
+                            if (isParchment) el.style.borderColor = "rgba(17,17,17,0.25)";
+                          }}
+                          onMouseLeave={(e) => {
+                            const el = e.currentTarget as HTMLButtonElement;
+                            el.style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)";
+                            el.style.boxShadow = "none";
+                            if (isParchment) el.style.borderColor = "rgba(17,17,17,0.12)";
+                          }}
+                        >
+                          {it.label}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={rotate}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: "2px 6px",
+                      color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
+                      cursor: "pointer",
+                      fontFamily: "var(--app-font-sans)",
+                      fontSize: "var(--ts-caption)",
+                      letterSpacing: "0.01em",
+                      fontWeight: isParchment ? 600 : 400,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      transition: "color 160ms ease",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)"; }}
+                  >
+                    <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
+                    need a starting point? <span style={{ fontSize: "var(--ts-label)", color: "inherit" }}>↻</span>
+                  </button>
+
+                </div>
+              );
+            })()}
           </div>
 
-
-          {/* Intent row — soft orientation under the input. Permission, not features. */}
-
-          {nexusChat.messages.length === 0 && (() => {
-            const pickStarter = (starter: string) => {
-              setInput(starter);
-              // Do NOT focus the textarea — that opens the mobile keyboard.
-              // Let the user tap the input themselves when they've picked a line.
-              setTimeout(() => {
-                autoResize();
-              }, 0);
-            };
-
-            const intents: Array<{ label: string; action: () => void }> = [
-              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
-              { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
-              { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
-              { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
-            ];
-            const rotate = () => {
-              const next = (starterIdx + 1) % PLACEHOLDERS.length;
-              setStarterIdx(next);
-              pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
-            };
-            return (
-              <div style={{
-                marginTop: 28,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 10,
-              }}>
-
-                <div className="suggestion-chips-row" style={{
-                  display: "flex",
-                  flexWrap: "nowrap",
-                  justifyContent: "center",
-                  gap: 6,
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
-                  WebkitOverflowScrolling: "touch",
-                  fontFamily: "var(--app-font-sans)",
-                  fontSize: "var(--ts-label)",
-                  letterSpacing: "0.01em",
-                  color: "var(--atlas-muted)",
-                }}>
-                  {intents.map((it, i) => (
-                    <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
-                      <button
-                        type="button"
-                        onClick={it.action}
-                        style={{
-                          background: isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
-                          border: isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
-                          backdropFilter: "blur(8px)",
-                          WebkitBackdropFilter: "blur(8px)",
-                          borderRadius: 20,
-                          padding: "5px 12px",
-                          color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
-                          cursor: "pointer",
-                          fontFamily: "inherit",
-                          fontSize: "var(--ts-caption)",
-                          letterSpacing: "inherit",
-                          fontWeight: isParchment ? 600 : 400,
-                          transition: "color 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          const el = e.currentTarget as HTMLButtonElement;
-                          el.style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)";
-                          el.style.boxShadow = isParchment ? "0 2px 10px rgba(17,17,17,0.06)" : "0 0 10px rgba(212,175,55,0.15)";
-                          if (isParchment) el.style.borderColor = "rgba(17,17,17,0.25)";
-                        }}
-                        onMouseLeave={(e) => {
-                          const el = e.currentTarget as HTMLButtonElement;
-                          el.style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)";
-                          el.style.boxShadow = "none";
-                          if (isParchment) el.style.borderColor = "rgba(17,17,17,0.12)";
-                        }}
-                      >
-                        {it.label}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={rotate}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: "2px 6px",
-                    color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-sans)",
-                    fontSize: "var(--ts-caption)",
-                    letterSpacing: "0.01em",
-                    fontWeight: isParchment ? 600 : 400,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    transition: "color 160ms ease",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)"; }}
-                >
-                  <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
-                  need a starting point? <span style={{ fontSize: "var(--ts-label)", color: "inherit" }}>↻</span>
-                </button>
-
-              </div>
-            );
-          })()}
 
           {/* Continuity strip — status + expand CTA anchored below the suggestion chips.
               Empty-state only: once a conversation starts, the scroll space belongs to the thread. */}
