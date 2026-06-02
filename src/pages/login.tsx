@@ -86,7 +86,22 @@ export default function Login() {
   const sessionExpired = typeof window !== "undefined"
     && new URLSearchParams(window.location.search).get("reason") === "session_expired";
 
-  const googleEmailConflict = false; // Removed: server now auto-links Google to existing email accounts
+  const googleEmailConflict = false;
+
+  // Handle OAuth token from Google sign-in callback
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      try { localStorage.setItem("atlas-token", token); } catch {}
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", cleanUrl);
+      queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      sessionStorage.setItem("atlas-just-authed", "1");
+      navigate("/home");
+    }
+  }, [navigate, queryClient]);
 
   useEffect(() => {
     if (!isLoading && user) {
