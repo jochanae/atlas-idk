@@ -31,7 +31,7 @@ import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
-import { fetchMe } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -277,6 +277,18 @@ function UnifiedShellRoutes() {
   );
 }
 
+function RootRouteGate() {
+  const [, nav] = useLocation();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) return;
+    nav(user?.id ? "/home" : "/landing", { replace: true });
+  }, [isLoading, nav, user]);
+
+  return null;
+}
+
 function Router() {
   const [location] = useLocation();
 
@@ -294,15 +306,7 @@ function Router() {
         <UnifiedShellRoutes />
       ) : (
         <Switch>
-          <Route path="/" component={() => {
-            const [, nav] = useLocation();
-            useEffect(() => {
-               void fetchMe()
-                 .then((user) => nav(user?.id ? "/home" : "/landing", { replace: true }))
-                 .catch(() => nav("/landing", { replace: true }));
-            }, []);
-            return null;
-          }} />
+          <Route path="/" component={RootRouteGate} />
           <Route path="/landing" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/auth/callback" component={AuthCallback} />
