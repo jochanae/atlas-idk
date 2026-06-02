@@ -3424,220 +3424,11 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Intent row — soft orientation under the input. Permission, not features.
-                Lives inside the fixed input shell so it sits directly under the composer
-                rather than floating up into the hero and clipping the placeholder. */}
-            {nexusChat.messages.length === 0 && (() => {
-              const pickStarter = (starter: string) => {
-                setInput(starter);
-                // Do NOT focus the textarea — that opens the mobile keyboard.
-                // Let the user tap the input themselves when they've picked a line.
-                setTimeout(() => {
-                  autoResize();
-                }, 0);
-              };
-
-              const intents: Array<{ label: string; action: () => void }> = [
-                { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
-                { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
-                { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
-                { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
-              ];
-              const rotate = () => {
-                const next = (starterIdx + 1) % PLACEHOLDERS.length;
-                setStarterIdx(next);
-                pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
-              };
-              return (
-                <div style={{
-                  marginTop: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 8,
-                }}>
-
-                  <div className="suggestion-chips-row" style={{
-                    display: "flex",
-                    flexWrap: "nowrap",
-                    justifyContent: "center",
-                    gap: 6,
-                    overflowX: "auto",
-                    scrollbarWidth: "none",
-                    msOverflowStyle: "none",
-                    WebkitOverflowScrolling: "touch",
-                    fontFamily: "var(--app-font-sans)",
-                    fontSize: "var(--ts-label)",
-                    letterSpacing: "0.01em",
-                    color: "var(--atlas-muted)",
-                    width: "100%",
-                  }}>
-                    {intents.map((it) => (
-                      <span key={it.label} style={{ display: "inline-flex", alignItems: "center" }}>
-                        <button
-                          type="button"
-                          onClick={it.action}
-                          style={{
-                            background: isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
-                            border: isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
-                            backdropFilter: "blur(8px)",
-                            WebkitBackdropFilter: "blur(8px)",
-                            borderRadius: 20,
-                            padding: "5px 12px",
-                            color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
-                            cursor: "pointer",
-                            fontFamily: "inherit",
-                            fontSize: "var(--ts-caption)",
-                            letterSpacing: "inherit",
-                            fontWeight: isParchment ? 600 : 400,
-                            transition: "color 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                            whiteSpace: "nowrap",
-                          }}
-                          onMouseEnter={(e) => {
-                            const el = e.currentTarget as HTMLButtonElement;
-                            el.style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)";
-                            el.style.boxShadow = isParchment ? "0 2px 10px rgba(17,17,17,0.06)" : "0 0 10px rgba(212,175,55,0.15)";
-                            if (isParchment) el.style.borderColor = "rgba(17,17,17,0.25)";
-                          }}
-                          onMouseLeave={(e) => {
-                            const el = e.currentTarget as HTMLButtonElement;
-                            el.style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)";
-                            el.style.boxShadow = "none";
-                            if (isParchment) el.style.borderColor = "rgba(17,17,17,0.12)";
-                          }}
-                        >
-                          {it.label}
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={rotate}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      padding: "2px 6px",
-                      color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
-                      cursor: "pointer",
-                      fontFamily: "var(--app-font-sans)",
-                      fontSize: "var(--ts-caption)",
-                      letterSpacing: "0.01em",
-                      fontWeight: isParchment ? 600 : 400,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      transition: "color 160ms ease",
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)"; }}
-                  >
-                    <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
-                    need a starting point? <span style={{ fontSize: "var(--ts-label)", color: "inherit" }}>↻</span>
-                  </button>
-
-                </div>
-              );
-            })()}
           </div>
 
 
-          {/* Continuity strip — status + expand CTA anchored below the suggestion chips.
-              Empty-state only: once a conversation starts, the scroll space belongs to the thread. */}
-          {nexusChat.messages.length === 0 && projects && projects.length > 0 && (() => {
-            const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
-            const mostRecent = [...activeProjects].sort((a, b) => {
-              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
-              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
-              return bt - at;
-            })[0];
-            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
-            const formatAgo = (ts: number) => {
-              const diff = Math.max(0, Date.now() - ts);
-              const m = Math.floor(diff / 60000);
-              if (m < 1) return "just now";
-              if (m < 60) return `${m}m ago`;
-              const h = Math.floor(m / 60);
-              if (h < 24) return `${h}h ago`;
-              const d = Math.floor(h / 24);
-              return `${d}d ago`;
-            };
-            const lastTouched = lastTs ? formatAgo(lastTs) : null;
-            const jumpToOverview = () => {
-              const el = document.getElementById("atlas-home-overview");
-              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-              else window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" });
-            };
-            return (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 14 }}>
-                {/* Tappable status pill + chevron — jumps to overview */}
-                <button
-                  type="button"
-                  onClick={jumpToOverview}
-                  aria-label="Jump to overview"
-                  className="atlas-home-status-jump"
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "transparent",
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    WebkitTapHighlightColor: "transparent",
-                    maxWidth: "100%",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexWrap: "wrap",
-                      gap: 8,
-                      padding: "6px 14px",
-                      background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
-                      border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
-                      borderRadius: 999,
-                      backdropFilter: "blur(6px)",
-                      WebkitBackdropFilter: "blur(6px)",
-                      boxSizing: "border-box",
-                      maxWidth: "100%",
-                      transition: "border-color 180ms var(--ease-standard), background 180ms var(--ease-standard)",
-                    }}
-                  >
-                    <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
-                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
-                      <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
-                    </span>
-                    <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
-                      {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
-                      &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
-                    </span>
-                  </span>
 
-                  <span
-                    aria-hidden
-                    className="atlas-home-scroll-hint"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 28,
-                      height: 28,
-                      color: isParchment ? "rgba(120,52,8,0.55)" : "rgba(201,162,76,0.55)",
-                      animation: "atlasScrollHintBob 2.2s ease-in-out infinite",
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </span>
-                </button>
-              </div>
-            );
-          })()}
+
 
 
 
@@ -3677,13 +3468,142 @@ export default function Home() {
       {/* Below-the-fold: Recent Activity / Discovery section.
           Empty-state only: once a conversation starts, hide the dashboard so the scroll space is all conversation. */}
       {nexusChat.messages.length === 0 && (
-        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
-          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
+        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 24px 140px", gap: 18 }}>
+          {/* "need a starting point?" rotate — first below the fold */}
+          {(() => {
+            const pickStarter = (starter: string) => {
+              setInput(starter);
+              setTimeout(() => { autoResize(); }, 0);
+            };
+            const rotate = () => {
+              const next = (starterIdx + 1) % PLACEHOLDERS.length;
+              setStarterIdx(next);
+              pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
+            };
+            const intents: Array<{ label: string; action: () => void }> = [
+              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
+              { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
+              { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
+              { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
+            ];
+
+            const activeProjects = projects ? (projects as Project[]).filter((p: Project) => p.status !== "archived") : [];
+            const mostRecent = [...activeProjects].sort((a, b) => {
+              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+              return bt - at;
+            })[0];
+            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
+            const formatAgo = (ts: number) => {
+              const diff = Math.max(0, Date.now() - ts);
+              const m = Math.floor(diff / 60000);
+              if (m < 1) return "just now";
+              if (m < 60) return `${m}m ago`;
+              const h = Math.floor(m / 60);
+              if (h < 24) return `${h}h ago`;
+              const d = Math.floor(h / 24);
+              return `${d}d ago`;
+            };
+            const lastTouched = lastTs ? formatAgo(lastTs) : null;
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, width: "100%" }}>
+                {/* 1) need a starting point? */}
+                <button
+                  type="button"
+                  onClick={rotate}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 6px",
+                    color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-sans)",
+                    fontSize: "var(--ts-label)",
+                    letterSpacing: "0.01em",
+                    fontWeight: isParchment ? 600 : 400,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
+                  need a starting point? <span style={{ fontSize: "var(--ts-label)" }}>↻</span>
+                </button>
+
+                {/* 2) Last touched pill */}
+                {activeProjects.length > 0 && (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      padding: "6px 14px",
+                      background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
+                      border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
+                      borderRadius: 999,
+                      backdropFilter: "blur(6px)",
+                      WebkitBackdropFilter: "blur(6px)",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
+                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
+                      <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
+                    </span>
+                    <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4 }}>
+                      {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                      &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
+                    </span>
+                  </span>
+                )}
+
+                {/* 3) Intent chips */}
+                <div style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: 8,
+                  width: "100%",
+                }}>
+                  {intents.map((it) => (
+                    <button
+                      key={it.label}
+                      type="button"
+                      onClick={it.action}
+                      style={{
+                        background: isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
+                        border: isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
+                        backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                        borderRadius: 20,
+                        padding: "6px 14px",
+                        color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)",
+                        cursor: "pointer",
+                        fontFamily: "var(--app-font-sans)",
+                        fontSize: "var(--ts-caption)",
+                        letterSpacing: "0.01em",
+                        fontWeight: isParchment ? 600 : 400,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {it.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginTop: 8 }}>
             <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
           </div>
           {renderOverviewDashboard()}
         </div>
       )}
+
 
       {showBriefingPanel && (
         <div
