@@ -1,10 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useEffect, useRef, useState } from "react";
-import { apiUrl } from "@/lib/api";
+import { useEffect } from "react";
 
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
   name: string | null;
   avatarUrl: string | null;
@@ -14,94 +13,32 @@ export interface AuthUser {
   hasPassword: boolean;
 }
 
-const STORED_AUTH_USER_KEY = "atlas-user";
+export const AUTH_TOKEN_KEY = "atlas-token";
 
-function readString(record: Record<string, unknown>, keys: string[]): string | null {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim()) return value;
-  }
-  return null;
+export function getAuthToken(): string | null {
+  try { return localStorage.getItem(AUTH_TOKEN_KEY); } catch { return null; }
 }
 
-function readBoolean(record: Record<string, unknown>, keys: string[]): boolean | null {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "boolean") return value;
-  }
-  return null;
+export function setAuthToken(token: string | null) {
+  try { token ? localStorage.setItem(AUTH_TOKEN_KEY, token) : localStorage.removeItem(AUTH_TOKEN_KEY); } catch { }
 }
 
-function toBackendAuthUser(payload: unknown): AuthUser | null {
-  const root = payload && typeof payload === "object" ? payload as Record<string, unknown> : null;
-  const source = root?.user && typeof root.user === "object" ? root.user as Record<string, unknown> : root;
-  if (!source) return null;
-
-  const id = readString(source, ["id", "userId", "sub"]);
-  const email = readString(source, ["email"]);
-  if (!id || !email) return null;
-
-  const role = readString(source, ["role"]);
-  return {
-    id,
-    email,
-    name: readString(source, ["name", "displayName", "fullName"]) ?? null,
-    avatarUrl: readString(source, ["avatarUrl", "avatar_url", "picture"]) ?? null,
-    role: role === "admin" || role === "super_admin" ? role : "user",
-    subscriptionTier: readString(source, ["subscriptionTier", "subscription_tier", "tier"]) ?? "free",
-    googleLinked: readBoolean(source, ["googleLinked", "google_linked"]) ?? false,
-    hasPassword: readBoolean(source, ["hasPassword", "has_password"]) ?? false,
-  };
+export function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function readStoredAuthUser(): AuthUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORED_AUTH_USER_KEY);
-    return raw ? toBackendAuthUser(JSON.parse(raw)) : null;
-  } catch {
+async function fetchMe(): Promise<AuthUser | null> {
+  const res = await fetch("/api/auth/me", {
+    credentials: "include",
+    headers: { ...authHeaders() },
+  });
+  if (res.status === 401) {
+    setAuthToken(null);
     return null;
   }
-}
-
-function writeStoredAuthUser(user: AuthUser) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORED_AUTH_USER_KEY, JSON.stringify(user));
-  } catch {
-    // Ignore storage failures; auth can still rely on the in-memory query cache.
-  }
-}
-
-function removeStoredAuthUser() {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(STORED_AUTH_USER_KEY);
-  } catch {
-    // Ignore storage failures during logout and continue clearing the query cache.
-  }
-}
-
-export async function fetchMe(): Promise<AuthUser | null> {
-  try {
-    const response = await fetch(apiUrl("/api/auth/me"), {
-      credentials: "include",
-    });
-    if (response.status === 401) {
-      removeStoredAuthUser();
-      localStorage.removeItem("atlas-token");
-      return null;
-    }
-    if (!response.ok) return readStoredAuthUser();
-    const user = toBackendAuthUser(await response.json());
-    if (user) {
-      writeStoredAuthUser(user);
-      return user;
-    }
-    return readStoredAuthUser();
-  } catch {
-    return readStoredAuthUser();
-  }
+  if (!res.ok) throw new Error("Auth check failed");
+  return res.json() as Promise<AuthUser>;
 }
 
 export function useAuth() {
@@ -111,32 +48,15 @@ export function useAuth() {
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
-
   return { user: user ?? null, isLoading };
 }
 
 export function useRequireAuth() {
   const { user, isLoading } = useAuth();
   const [, navigate] = useLocation();
-  const [settled, setSettled] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
-    if (user) {
-      setSettled(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      return;
-    }
-    if (!isLoading && !settled) {
-      timerRef.current = setTimeout(() => setSettled(true), 5000);
-    }
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [user, isLoading, settled]);
-
-  useEffect(() => {
-    if (settled && !isLoading && !user) navigate("/login");
-  }, [settled, user, isLoading, navigate]);
-
+    if (!isLoading && !user) navigate("/login");
+  }, [user, isLoading, navigate]);
   return { user, isLoading };
 }
 
@@ -144,16 +64,8 @@ export function useLogout() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   return async () => {
-    try {
-      await fetch(apiUrl("/api/auth/logout"), {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch {
-      // Even if the server logout call fails, clear local auth state.
-    }
-    removeStoredAuthUser();
-    localStorage.removeItem("atlas-token");
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    setAuthToken(null);
     queryClient.setQueryData(["auth", "me"], null);
     navigate("/login");
   };
