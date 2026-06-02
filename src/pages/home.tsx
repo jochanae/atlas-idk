@@ -1435,15 +1435,6 @@ export default function Home() {
     return () => setActiveProjectId(null);
   }, [homeFocus, setActiveProjectId]);
 
-  const homeConversationTitle = homeFocus == null && nexusChat.messages.length > 0
-    ? earnedTitle ?? "Untitled conversation"
-    : null;
-
-  useEffect(() => {
-    setActiveConversationTitle(homeConversationTitle);
-    return () => setActiveConversationTitle(null);
-  }, [homeConversationTitle, setActiveConversationTitle]);
-
   // Derive first name from auth (updates when /me resolves)
   {
     const fullName = (authUser?.name ?? "").trim();
@@ -1472,7 +1463,15 @@ export default function Home() {
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
-  
+
+  const homeConversationTitle = !reflectionLocked && homeFocus == null && nexusChat.messages.length > 0
+    ? earnedTitle ?? "Untitled conversation"
+    : null;
+
+  useEffect(() => {
+    setActiveConversationTitle(homeConversationTitle);
+    return () => setActiveConversationTitle(null);
+  }, [homeConversationTitle, setActiveConversationTitle]);
 
   const vibrate = useCallback((pattern: number | number[]) => {
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
@@ -2168,8 +2167,30 @@ export default function Home() {
     setCreateError(null);
     setIsAtlasStreaming(true);
     setIsSending(true);
-    try {
-      if (shouldStayOnHome) {
+
+    const handleSubmitError = (err: unknown) => {
+      const msg =
+        extractApiErrorMessage(err) ??
+        (err instanceof Error ? err.message : "Failed to create project");
+      if (
+        msg?.includes("PROJECT_LIMIT_REACHED") ||
+        (err as { status?: number } | null)?.status === 402
+      ) {
+        setShowUpgrade(true);
+      } else {
+        setCreateError(msg);
+      }
+    };
+
+    const resetSubmitState = () => {
+      setIsAtlasStreaming(false);
+      setIsSending(false);
+      setLiveStep(null);
+      document.body.dataset.voiceActive = "false";
+    };
+
+    if (shouldStayOnHome) {
+      try {
         let imageBase64: string | undefined;
         let imageMimeType: string | undefined;
         if (imageFiles.length > 0) {
@@ -2184,9 +2205,15 @@ export default function Home() {
           imageBase64,
           imageMimeType,
         });
-        return;
+      } catch (err) {
+        handleSubmitError(err);
+      } finally {
+        resetSubmitState();
       }
+      return;
+    }
 
+    try {
       const createRes = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2214,22 +2241,9 @@ export default function Home() {
       setActiveProjectId(projectId);
       setLocation(`/project/${projectId}`);
     } catch (err) {
-      const msg =
-        extractApiErrorMessage(err) ??
-        (err instanceof Error ? err.message : "Failed to create project");
-      if (
-        msg?.includes("PROJECT_LIMIT_REACHED") ||
-        (err as { status?: number } | null)?.status === 402
-      ) {
-        setShowUpgrade(true);
-      } else {
-        setCreateError(msg);
-      }
+      handleSubmitError(err);
     } finally {
-      setIsAtlasStreaming(false);
-      setIsSending(false);
-      setLiveStep(null);
-      document.body.dataset.voiceActive = "false";
+      resetSubmitState();
     }
   }, [
     input,
