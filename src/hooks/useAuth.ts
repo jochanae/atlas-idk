@@ -137,9 +137,11 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (user) {
+      setSettled(true);
       if (timerRef.current) clearTimeout(timerRef.current);
-      setSettled(false);
-    } else if (!settled && !timerRef.current) {
+      return;
+    }
+    if (!isLoading && !settled) {
       timerRef.current = setTimeout(() => setSettled(true), 3000);
     }
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
