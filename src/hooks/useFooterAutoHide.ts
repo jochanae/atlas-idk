@@ -7,19 +7,36 @@ import { useEffect } from "react";
  * Sets `body[data-atlas-footer="hidden"]` while scrolling, removes it after
  * `idleMs` of inactivity. Shared between /home and /workspace so the merge
  * lands with identical behavior.
+ *
+ * Pass either a ref or a CSS selector string for the scroll container.
  */
 export function useFooterAutoHide(
-  scrollRef: React.RefObject<HTMLElement | null>,
+  source: React.RefObject<HTMLElement | null> | string,
   options: { idleMs?: number; enabled?: boolean } = {}
 ) {
   const { idleMs = 350, enabled = true } = options;
 
   useEffect(() => {
     if (!enabled) return;
-    const el = scrollRef.current;
-    if (!el) return;
 
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    const resolve = (): HTMLElement | null => {
+      if (typeof source === "string") {
+        return document.querySelector<HTMLElement>(source);
+      }
+      return source.current ?? null;
+    };
+
+    let el = resolve();
+    // If the element isn't mounted yet, poll briefly.
+    let attachTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!el) {
+      attachTimer = setTimeout(() => {
+        el = resolve();
+        if (el) el.addEventListener("scroll", onScroll, { passive: true });
+      }, 200);
+    }
+
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const show = () => {
       document.body.removeAttribute("data-atlas-footer");
@@ -30,15 +47,18 @@ export function useFooterAutoHide(
 
     const onScroll = () => {
       hide();
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(show, idleMs);
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(show, idleMs);
     };
 
-    el.addEventListener("scroll", onScroll, { passive: true });
+    if (el) el.addEventListener("scroll", onScroll, { passive: true });
+
     return () => {
-      el.removeEventListener("scroll", onScroll);
-      if (timer) clearTimeout(timer);
+      if (attachTimer) clearTimeout(attachTimer);
+      if (idleTimer) clearTimeout(idleTimer);
+      const cur = resolve();
+      if (cur) cur.removeEventListener("scroll", onScroll);
       show();
     };
-  }, [scrollRef, idleMs, enabled]);
+  }, [source, idleMs, enabled]);
 }
