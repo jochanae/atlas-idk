@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { apiUrl } from "@/lib/api";
 
 const SESSION_TOKEN_STORAGE_KEY = "atlas-token";
 
@@ -10,26 +11,46 @@ export default function TokenBridge() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token");
-    if (!token) {
-      navigate("/login?reason=missing_token", { replace: true });
-      return;
-    }
+    const bridgeToken = async () => {
+      const token = new URLSearchParams(window.location.search).get("token");
+      if (!token) {
+        navigate("/login?reason=missing_token", { replace: true });
+        return;
+      }
 
-    try {
-      localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, token);
-    } catch {
-      navigate("/login?reason=token_storage_failed", { replace: true });
-      return;
-    }
+      try {
+        localStorage.setItem(SESSION_TOKEN_STORAGE_KEY, token);
+      } catch {
+        navigate("/login?reason=token_storage_failed", { replace: true });
+        return;
+      }
 
-    try {
-      sessionStorage.setItem("atlas-just-authed", "1");
-    } catch {
-      // This flag only controls the welcome toast, so storage failures are non-blocking.
-    }
-    queryClient.removeQueries({ queryKey: ["auth", "me"] });
-    navigate("/home", { replace: true });
+      try {
+        sessionStorage.setItem("atlas-just-authed", "1");
+      } catch {
+        // This flag only controls the welcome toast, so storage failures are non-blocking.
+      }
+      queryClient.removeQueries({ queryKey: ["auth", "me"] });
+
+      // Exchange the token for a session cookie
+      try {
+        const exchange = await fetch(
+          `${apiUrl("/api/auth/session/exchange")}?token=${encodeURIComponent(token)}`,
+          {
+            credentials: "include",
+          },
+        );
+        if (!exchange.ok) {
+          console.error("Session exchange failed", exchange.status);
+        }
+      } catch (e) {
+        console.error("Session exchange error", e);
+      }
+
+      navigate("/home", { replace: true });
+    };
+
+    void bridgeToken();
   }, [navigate, queryClient]);
 
   return (
