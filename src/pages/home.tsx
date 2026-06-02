@@ -2813,7 +2813,7 @@ export default function Home() {
                     borderRadius: reflectionLocked ? 8 : undefined,
                     padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
                     paddingTop: nexusChat.messages.length > 0 ? 16 : 56, scrollPaddingTop: nexusChat.messages.length > 0 ? 16 : 56,
-                    paddingBottom: 260,
+                    paddingBottom: 320,
                     WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",

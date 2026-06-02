@@ -1283,7 +1283,7 @@ function ShellFooter() {
   if (!isMobile) return null;
 
   return (
-    <footer className="atlas-mobile-footer" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 250, overflow: "visible" }}>
+    <footer className="atlas-mobile-footer" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 270, overflow: "visible" }}>
       <svg
         style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 76, overflow: "visible", pointerEvents: "none" }}
         preserveAspectRatio="none"
