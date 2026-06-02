@@ -3185,11 +3185,11 @@ export default function Home() {
 
           {/* Input shell */}
           <div className="atlas-input-shell" style={{
-            position: nexusChat.messages.length > 0 ? "absolute" : "relative",
+            position: "fixed",
             left: 0, right: 0, bottom: 0,
             padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
-            zIndex: 5,
+            zIndex: 50,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
