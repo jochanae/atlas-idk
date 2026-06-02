@@ -4684,16 +4684,42 @@ export default function Workspace() {
   );
 
   // ── Project not found ────────────────────────────────────────────────────
+  // Do NOT redirect on fetch failure — stay on the workspace and show an inline
+  // notice. Auto-redirecting back to /home masked real backend errors.
   const projectNotFound = !projectLoading && !sessionsLoading && !!id && !project;
-  useEffect(() => {
-    if (projectNotFound) {
-      setLocation("/home", { replace: true });
-    }
-  }, [projectNotFound, setLocation]);
 
   if (projectNotFound) {
-    return null;
+    return (
+      <div style={{
+        position: "fixed", inset: 0, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 14, padding: 24,
+        background: "var(--atlas-bg)", color: "var(--atlas-fg)", textAlign: "center",
+      }}>
+        <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.6 }}>
+          Workspace
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 400, letterSpacing: "-0.01em", maxWidth: 360 }}>
+          Couldn't load this project right now.
+        </div>
+        <div style={{ fontSize: 12, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, maxWidth: 320, lineHeight: 1.6 }}>
+          The backend didn't respond. Check your connection and retry — you won't be redirected.
+        </div>
+        <button
+          onClick={() => queryClient.invalidateQueries()}
+          style={{
+            marginTop: 4, padding: "9px 20px", borderRadius: 8,
+            background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+            border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)",
+            fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+            textTransform: "uppercase", cursor: "pointer",
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
+
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (projectLoading || (sessionsLoading && !sessionId)) {
