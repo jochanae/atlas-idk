@@ -87,6 +87,12 @@ export async function fetchMe(): Promise<AuthUser | null> {
     const response = await fetch(apiUrl("/api/auth/me"), {
       credentials: "include",
     });
+    if (response.status === 401) {
+      // Server explicitly rejected the session — clear local fallback
+      removeStoredAuthUser();
+      localStorage.removeItem("atlas-token");
+      return null;
+    }
     if (!response.ok) return readStoredAuthUser();
     const user = toBackendAuthUser(await response.json());
     if (user) {
@@ -148,6 +154,7 @@ export function useLogout() {
       // Even if the server logout call fails, clear local auth state.
     }
     removeStoredAuthUser();
+    localStorage.removeItem("atlas-token");
     queryClient.setQueryData(["auth", "me"], null);
     navigate("/login");
   };

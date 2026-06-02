@@ -139,24 +139,23 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      if (mode === "login") {
-        const data = await postJson("/api/auth/login", { email, password });
-        const loggedInUser = data?.user ?? data;
-        queryClient.setQueryData(["auth", "me"], loggedInUser);
-        if (loggedInUser) {
-          try {
-            localStorage.setItem("atlas-user", JSON.stringify(loggedInUser));
-          } catch {
-            // Keep login flowing if localStorage is unavailable.
-          }
+      const data = await postJson(
+        mode === "login" ? "/api/auth/login" : "/api/auth/signup",
+        mode === "login"
+          ? { email, password }
+          : { email, password, name: name.trim() || undefined }
+      );
+      const loggedInUser = data?.user ?? data;
+      if (loggedInUser) {
+        try {
+          localStorage.setItem("atlas-user", JSON.stringify(loggedInUser));
+          const token = (data?.token || data?.sessionToken) as string | undefined;
+          if (token) localStorage.setItem("atlas-token", token);
+        } catch {
+          // Keep login flowing if localStorage is unavailable.
         }
-      } else {
-        await postJson("/api/auth/signup", {
-          email,
-          password,
-          name: name.trim() || undefined,
-        });
       }
+      queryClient.setQueryData(["auth", "me"], loggedInUser);
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       sessionStorage.setItem("atlas-just-authed", "1");
       navigate("/home");
