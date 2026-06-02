@@ -1680,7 +1680,8 @@ export default function Home() {
   const [inputFocused, setInputFocused] = useState(false);
   const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
-  const { data: projects, isLoading } = useListProjects();
+  const { data: projectsRaw, isLoading } = useListProjects();
+  const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
   useEffect(() => {
     if (!projects || projects.length === 0) return;
     const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
