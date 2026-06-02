@@ -202,6 +202,7 @@ export interface LinkedRepo {
 type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "jobs" | "mcp" | "forge" | "artifacts" | "workbench";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
+const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
 type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking";
@@ -3859,6 +3860,26 @@ export default function Workspace() {
       sentAt: new Date().toISOString(),
     }]);
   }, [id, messages.length, sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || initialSent.current) return;
+    let openingMessage: string | null = null;
+    try {
+      const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
+      if (storedOpeningMessage !== null) {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        openingMessage = storedOpeningMessage;
+      }
+    } catch {
+      openingMessage = null;
+    }
+    if (!openingMessage) return;
+    initialSent.current = true;
+    setTimeout(() => {
+      setInput("");
+      doSend(openingMessage, sessionId, []);
+    }, 80);
+  }, [sessionId, doSend]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;

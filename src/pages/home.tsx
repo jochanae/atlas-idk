@@ -24,7 +24,6 @@ import { InviteModal } from "../components/InviteModal";
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { ingestRepository } from "../lib/repoIngest";
 import { chooseGreeting, readLastActive, markActiveNow } from "../lib/atlas-voice";
-import { fileToBase64Safe } from "../lib/image-resize";
 import { useRequireAuth } from "../hooks/useAuth";
 import { useThemeMode } from "../lib/theme";
 import { useSubscription } from "../hooks/useSubscription";
@@ -61,6 +60,8 @@ const HOME_PENDING_PHRASES = [
   "Reviewing your portfolio…",
   "Composing a response…",
 ];
+
+const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 
 type HomeHandoffSignal = {
   readyToHandoff: boolean;
@@ -2006,7 +2007,7 @@ export default function Home() {
       }
       setLocation(`/project/${projectId}`);
     },
-    [input, setLocation]
+    [input, setLocation],
   );
 
   const openOverviewSheet = useCallback(() => {
@@ -2067,12 +2068,21 @@ export default function Home() {
     />
   );
 
-
   const handleSubmit = useCallback(async () => {
     const liveText = textareaRef.current?.value ?? input;
     const text = liveText.trim();
-    const hasImages = attachedFiles.some(f => f.type.startsWith("image/"));
+    const hasImages = attachedFiles.some((f) => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
+    if (!backendReady) {
+      setCreateError(
+        "Project creation is unavailable in this preview because the backend API URL is not configured.",
+      );
+      return;
+    }
+    if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowUpgrade(true);
+      return;
+    }
     // Block PTR and double-sends immediately — before any async work
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
@@ -2080,43 +2090,78 @@ export default function Home() {
     setInput("");
     setAttachedFiles([]);
 
-    const imageFiles = files.filter(f => f.type.startsWith("image/"));
-    const otherFiles = files.filter(f => !f.type.startsWith("image/"));
-    const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
+    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+    const otherFiles = files.filter((f) => !f.type.startsWith("image/"));
+    const suffix =
+      otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map((f) => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
 
-    // Safe-resize the first image for API (always caps at 7000px — no raw fallback)
-    // Append image count note if multiple were attached
-    const imageNote = imageFiles.length > 1 ? ` [${imageFiles.length} images attached — showing first]` : "";
+    // Preserve the existing text note for multi-image starts; the workspace owns the actual send.
+    const imageNote =
+      imageFiles.length > 1
+        ? ` [${imageFiles.length} images attached — showing first]`
+        : "";
     const messageText = fullText + imageNote;
 
-    let imageBase64: string | undefined;
-    let imageMimeType: string | undefined;
-    if (imageFiles.length > 0) {
-      try {
-        const safe = await fileToBase64Safe(imageFiles[0]);
-        imageBase64 = safe.base64;
-        imageMimeType = safe.mediaType;
-      } catch {
-        // If resize fails entirely, skip the image and continue with text only
-      }
-    }
-
+    setCreateError(null);
     setIsAtlasStreaming(true);
     setIsSending(true);
     try {
-      await nexusChat.send({
-        text: messageText,
-        imageBase64,
-        imageMimeType,
+      const createRes = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: "New Project" }),
       });
+      const project = (await createRes.json().catch(() => null)) as {
+        id?: number | string;
+        error?: string;
+        message?: string;
+      } | null;
+      if (!createRes.ok || !project?.id) {
+        const err = new Error(
+          project?.error ?? project?.message ?? "Failed to create project",
+        ) as Error & { status?: number };
+        err.status = createRes.status;
+        throw err;
+      }
+      const projectId = Number(project.id);
+      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+      try {
+        sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, messageText);
+      } catch {}
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      setActiveProjectId(projectId);
+      setLocation(`/project/${projectId}`);
+    } catch (err) {
+      const msg =
+        extractApiErrorMessage(err) ??
+        (err instanceof Error ? err.message : "Failed to create project");
+      if (
+        msg?.includes("PROJECT_LIMIT_REACHED") ||
+        (err as { status?: number } | null)?.status === 402
+      ) {
+        setShowUpgrade(true);
+      } else {
+        setCreateError(msg);
+      }
     } finally {
       setIsAtlasStreaming(false);
       setIsSending(false);
       setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     }
-  }, [input, attachedFiles, isSending, homeFocus, nexusChat.messages.length, createProject, nexusChat.send]);
+  }, [
+    input,
+    attachedFiles,
+    isSending,
+    backendReady,
+    isFree,
+    projects,
+    queryClient,
+    setActiveProjectId,
+    setLocation,
+  ]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
