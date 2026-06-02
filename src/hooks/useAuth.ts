@@ -106,9 +106,31 @@ export async function fetchMe(): Promise<AuthUser | null> {
 
 export function useAuth() {
   const queryClient = useQueryClient();
-  const { data: user, isLoading } = useQuery({
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const restoredUser = toAuthUser(data.session?.user ?? null);
+      if (restoredUser) {
+        queryClient.setQueryData(["auth", "me"], restoredUser);
+      }
+      setAuthReady(true);
+    }).catch(() => {
+      if (active) setAuthReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [queryClient]);
+
+  const { data: user, isLoading: queryLoading } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: fetchMe,
+    enabled: authReady,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -126,7 +148,7 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, [queryClient]);
 
-  return { user: user ?? null, isLoading };
+  return { user: user ?? null, isLoading: !authReady || queryLoading };
 }
 
 export function useRequireAuth() {
