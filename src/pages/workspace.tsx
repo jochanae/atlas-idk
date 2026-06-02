@@ -56,7 +56,6 @@ import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
-import { supabase } from "@/integrations/supabase/client";
 import type { Plan, PlanExecution } from "../lib/plan";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -3054,21 +3053,10 @@ export default function Workspace() {
     }
   }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
 
-  const handleArchiveAndNew = useCallback(async (reason: string) => {
-    const trimmed = reason.trim();
-    if (!trimmed || !sessionId || sessionActionBusy) return;
+  const handleArchiveAndNew = useCallback(async (_reason: string) => {
+    if (sessionActionBusy) return;
     setSessionActionBusy(true);
     try {
-      // Archive current session: status='archived' + reason appended to title.
-      // RLS (sessions_owner_all) allows the owning user to update directly.
-      const existingTitle = (sessions?.find((s) => s.id === sessionId)?.title) ?? "Session";
-      const newTitle = `${existingTitle} — archived: ${trimmed}`.slice(0, 240);
-      const { error: updErr } = await supabase
-        .from("sessions")
-        .update({ status: "archived", title: newTitle })
-        .eq("id", String(sessionId));
-      if (updErr) throw updErr;
-      // Create fresh session and switch to it.
       const s = await createSession.mutateAsync({ projectId: id, data: { title: "New session", mode: "think" } });
       setMessages([]);
       priorLoaded.current = false;
@@ -3077,14 +3065,14 @@ export default function Workspace() {
       queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
       setArchiveReasonDraft(null);
       setShowProjectMenu(false);
-      toast.success("Session archived. Started a new one.");
+      toast.success("Started a new session.");
     } catch (e) {
       reportError(e, { projectId: id });
-      toast.error("Could not archive session");
+      toast.error("Could not start new session");
     } finally {
       setSessionActionBusy(false);
     }
-  }, [sessionId, sessions, createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
+  }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
 
 
   // Close portaled header dropdowns on scroll/resize so they don't float off their anchors.
