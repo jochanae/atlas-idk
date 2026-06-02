@@ -163,16 +163,16 @@ export function useRequireAuth() {
       if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
-    try {
-      if (sessionStorage.getItem("atlas-just-authed") === "1") {
+    // Check Supabase session directly before starting timer
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
         setSettled(true);
-        if (timerRef.current) clearTimeout(timerRef.current);
         return;
       }
-    } catch {}
-    if (!isLoading && !settled) {
-      timerRef.current = setTimeout(() => setSettled(true), 5000);
-    }
+      if (!isLoading && !settled) {
+        timerRef.current = setTimeout(() => setSettled(true), 5000);
+      }
+    });
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [user, isLoading, settled]);
 
