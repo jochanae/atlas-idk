@@ -3538,8 +3538,9 @@ export default function Home() {
             );
           })()}
 
-          {/* Continuity strip — status + expand CTA anchored below the suggestion chips */}
-          {projects && projects.length > 0 && (() => {
+          {/* Continuity strip — status + expand CTA anchored below the suggestion chips.
+              Empty-state only: once a conversation starts, the scroll space belongs to the thread. */}
+          {nexusChat.messages.length === 0 && projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
             const mostRecent = [...activeProjects].sort((a, b) => {
               const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
