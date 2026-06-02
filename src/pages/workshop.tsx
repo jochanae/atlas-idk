@@ -1,20 +1,8 @@
 import { useEffect, useState } from "react";
-import { Session, Entry, createEntry, updateEntry, deleteEntry, updateProject, Project } from "@workspace/api-client-react";
+import { Session, createEntry, updateEntry, deleteEntry, updateProject, Project } from "@workspace/api-client-react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
-import {
-  useListProjects,
-  useListEntries,
-  useCreateEntry,
-  useUpdateEntry,
-  useDeleteEntry,
-  useUpdateProject,
-  useListSessions,
-  useGetSession,
-  getListEntriesQueryKey,
-  getListSessionsQueryKey,
-  getGetSessionQueryKey,
-} from "@workspace/api-client-react";
+import { useListProjects, useListEntries, useCreateEntry, useUpdateEntry, useDeleteEntry, useUpdateProject, useListSessions, useGetSession, getListEntriesQueryKey, getListSessionsQueryKey, getGetSessionQueryKey,  } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 type Tool = "decision-editor" | "context-builder" | "diff-review" | "session-exporter" | "bulk-import" | "atlas-selfmap" | "connections";

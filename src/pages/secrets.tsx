@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Project } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import type { CSSProperties } from "react";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
