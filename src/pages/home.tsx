@@ -3451,12 +3451,13 @@ export default function Home() {
             };
             return (
               <div style={{
-                marginTop: 14,
+                marginTop: 28,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 10,
               }}>
+
                 <div className="suggestion-chips-row" style={{
                   display: "flex",
                   flexWrap: "nowrap",
