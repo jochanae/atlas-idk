@@ -3468,13 +3468,142 @@ export default function Home() {
       {/* Below-the-fold: Recent Activity / Discovery section.
           Empty-state only: once a conversation starts, hide the dashboard so the scroll space is all conversation. */}
       {nexusChat.messages.length === 0 && (
-        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
-          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
+        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 24px 140px", gap: 18 }}>
+          {/* "need a starting point?" rotate — first below the fold */}
+          {(() => {
+            const pickStarter = (starter: string) => {
+              setInput(starter);
+              setTimeout(() => { autoResize(); }, 0);
+            };
+            const rotate = () => {
+              const next = (starterIdx + 1) % PLACEHOLDERS.length;
+              setStarterIdx(next);
+              pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
+            };
+            const intents: Array<{ label: string; action: () => void }> = [
+              { label: "Think out loud", action: () => pickStarter("I've been turning something over and want to think it through out loud — ") },
+              { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
+              { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
+              { label: "Where were we", action: () => pickStarter("Where did we leave things last?") },
+            ];
+
+            const activeProjects = projects ? (projects as Project[]).filter((p: Project) => p.status !== "archived") : [];
+            const mostRecent = [...activeProjects].sort((a, b) => {
+              const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
+              const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
+              return bt - at;
+            })[0];
+            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
+            const formatAgo = (ts: number) => {
+              const diff = Math.max(0, Date.now() - ts);
+              const m = Math.floor(diff / 60000);
+              if (m < 1) return "just now";
+              if (m < 60) return `${m}m ago`;
+              const h = Math.floor(m / 60);
+              if (h < 24) return `${h}h ago`;
+              const d = Math.floor(h / 24);
+              return `${d}d ago`;
+            };
+            const lastTouched = lastTs ? formatAgo(lastTs) : null;
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, width: "100%" }}>
+                {/* 1) need a starting point? */}
+                <button
+                  type="button"
+                  onClick={rotate}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 6px",
+                    color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-sans)",
+                    fontSize: "var(--ts-label)",
+                    letterSpacing: "0.01em",
+                    fontWeight: isParchment ? 600 : 400,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
+                  need a starting point? <span style={{ fontSize: "var(--ts-label)" }}>↻</span>
+                </button>
+
+                {/* 2) Last touched pill */}
+                {activeProjects.length > 0 && (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      padding: "6px 14px",
+                      background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
+                      border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
+                      borderRadius: 999,
+                      backdropFilter: "blur(6px)",
+                      WebkitBackdropFilter: "blur(6px)",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
+                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
+                      <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
+                    </span>
+                    <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4 }}>
+                      {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                      &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
+                    </span>
+                  </span>
+                )}
+
+                {/* 3) Intent chips */}
+                <div style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: 8,
+                  width: "100%",
+                }}>
+                  {intents.map((it) => (
+                    <button
+                      key={it.label}
+                      type="button"
+                      onClick={it.action}
+                      style={{
+                        background: isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
+                        border: isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
+                        backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                        borderRadius: 20,
+                        padding: "6px 14px",
+                        color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)",
+                        cursor: "pointer",
+                        fontFamily: "var(--app-font-sans)",
+                        fontSize: "var(--ts-caption)",
+                        letterSpacing: "0.01em",
+                        fontWeight: isParchment ? 600 : 400,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {it.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginTop: 8 }}>
             <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
           </div>
           {renderOverviewDashboard()}
         </div>
       )}
+
 
       {showBriefingPanel && (
         <div
