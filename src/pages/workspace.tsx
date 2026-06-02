@@ -5573,6 +5573,9 @@ export default function Workspace() {
               showParkingDrawer,
               setShowParkingDrawer,
               refreshParkedEntries,
+              showModelPicker,
+              wsModel,
+              onOpenModelSheet: () => setShowWsModelSheet(true),
             }}
           />
 
