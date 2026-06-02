@@ -72,6 +72,7 @@ export interface UseNexusChatStreamReturn {
   shapingHeld: boolean;
   setShapingHeld: React.Dispatch<React.SetStateAction<boolean>>;
   handoffSignal: NexusHandoffSignal | null;
+  autoName: string | null;
   send: (options: {
     text: string;
     imageBase64?: string;
@@ -96,6 +97,7 @@ export function useNexusChatStream(
   const [shapingHeld, setShapingHeld] = useState(false);
   const shapingHeldRef = useRef(false);
   const [handoffSignal, setHandoffSignal] = useState<NexusHandoffSignal | null>(null);
+  const [autoName, setAutoName] = useState<string | null>(null);
 
   useEffect(() => {
     shapingHeldRef.current = shapingHeld;
@@ -151,6 +153,7 @@ export function useNexusChatStream(
     setMessages([]);
     setShapingPayload(null);
     setHandoffSignal(null);
+    setAutoName(null);
   }, []);
 
   const send = useCallback(async ({
@@ -282,6 +285,12 @@ export function useNexusChatStream(
             const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
             if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeldRef.current) {
               setShapingPayload(shapingFromMeta);
+            }
+
+            // Parse autoName from meta
+            const autoNameFromMeta = meta.autoName as string | undefined;
+            if (autoNameFromMeta) {
+              setAutoName(autoNameFromMeta);
             }
 
             // Parse VISUALIZE marker
@@ -427,6 +436,7 @@ export function useNexusChatStream(
     shapingHeld,
     setShapingHeld,
     handoffSignal,
+    autoName,
     send,
     abort,
     clearMessages,

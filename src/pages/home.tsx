@@ -2115,13 +2115,32 @@ export default function Home() {
         imageBase64,
         imageMimeType,
       });
+      // If AI returned an autoName, create a project with that name instead of "Untitled"
+      if (nexusChat.autoName && !homeFocus) {
+        try {
+          const newProject = await createProject.mutateAsync({
+            data: {
+              name: nexusChat.autoName,
+              description: "Created from conversation",
+              status: "idea",
+              entity_type: "idea",
+            }
+          });
+          if (newProject?.id) {
+            setHomeFocus(newProject.id);
+            toast.success(`Project "${nexusChat.autoName}" created`);
+          }
+        } catch {
+          // Non-fatal — project creation failed but chat still worked
+        }
+      }
     } finally {
       setIsAtlasStreaming(false);
       setIsSending(false);
       setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     }
-  }, [input, attachedFiles, isSending, homeFocus, nexusChat.messages.length, createProject, nexusChat.send]);
+  }, [input, attachedFiles, isSending, homeFocus, nexusChat.messages.length, nexusChat.autoName, createProject, nexusChat.send]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
