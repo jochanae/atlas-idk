@@ -3411,6 +3411,17 @@ export default function Workspace() {
     };
   }, []);
   const initialSent = useRef(false);
+  const [openingMessage, setOpeningMessage] = useState<string | null>(() => {
+    try {
+      const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
+      if (storedOpeningMessage !== null) {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+      }
+      return storedOpeningMessage;
+    } catch {
+      return null;
+    }
+  });
   // abortControllerRef owned by useChatStream.
   const importPrimed = useRef(false);
   const touchStartX = useRef(0);
@@ -3926,24 +3937,15 @@ export default function Workspace() {
   }, [id, messages.length, sessionId]);
 
   useEffect(() => {
-    if (!sessionId || initialSent.current) return;
-    let openingMessage: string | null = null;
-    try {
-      const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
-      if (storedOpeningMessage !== null) {
-        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
-        openingMessage = storedOpeningMessage;
-      }
-    } catch {
-      openingMessage = null;
-    }
-    if (!openingMessage) return;
+    if (openingMessage === null || initialSent.current) return;
+    if (!sessionId || sessionsLoading || createSession.isPending || chatPending) return;
+    const trimmedOpeningMessage = openingMessage.trim();
+    setOpeningMessage(null);
+    if (!trimmedOpeningMessage) return;
     initialSent.current = true;
-    setTimeout(() => {
-      setInput("");
-      doSend(openingMessage, sessionId, []);
-    }, 80);
-  }, [sessionId, doSend]);
+    setInput("");
+    doSend(trimmedOpeningMessage, sessionId, []);
+  }, [openingMessage, sessionId, sessionsLoading, createSession.isPending, chatPending, doSend]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;

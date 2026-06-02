@@ -163,12 +163,8 @@ export function useRequireAuth() {
       if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
-    // Check Supabase session directly before starting timer
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setSettled(true);
-        return;
-      }
+      if (data.session) { setSettled(true); return; }
       if (!isLoading && !settled) {
         timerRef.current = setTimeout(() => setSettled(true), 5000);
       }
