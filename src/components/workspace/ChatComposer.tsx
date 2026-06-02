@@ -168,6 +168,11 @@ export interface ChatComposerProps {
   showParkingDrawer: boolean;
   setShowParkingDrawer: (v: boolean) => void;
   refreshParkedEntries: () => Promise<unknown> | unknown;
+
+  // Model picker (only renders chip when showModelPicker is true)
+  showModelPicker?: boolean;
+  wsModel?: string;
+  onOpenModelSheet?: () => void;
 }
 
 export function ChatComposer(props: ChatComposerProps) {
