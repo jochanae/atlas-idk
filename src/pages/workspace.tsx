@@ -3298,6 +3298,7 @@ export default function Workspace() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
+  useFooterAutoHide(chatPanelScrollRef);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
 
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow
