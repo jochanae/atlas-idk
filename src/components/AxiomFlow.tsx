@@ -1057,17 +1057,19 @@ export function AxiomFlow({
               transform: "translateX(-50%)",
               zIndex: 12,
               width: "min(520px, calc(100% - 28px))",
-              background: palette.panelBg,
-              border: `1px solid rgba(${palette.goldRgb},0.38)`,
+              background: "rgba(10,10,12,0.78)",
+              border: `1px solid rgba(${palette.goldRgb},0.18)`,
               borderRadius: 12,
               padding: "12px 14px",
-              boxShadow: palette.panelShadow,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.03)",
+              backdropFilter: "blur(20px) saturate(140%)",
+              WebkitBackdropFilter: "blur(20px) saturate(140%)",
               pointerEvents: "auto",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: palette.goldText, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: palette.goldText }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: palette.goldText, flexShrink: 0, boxShadow: `0 0 8px ${palette.goldText}` }} />
+              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(231,229,226,0.85)" }}>
                 {isEmptyMap ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
               </span>
               <button
@@ -1080,11 +1082,11 @@ export function AxiomFlow({
                 ×
               </button>
             </div>
-            <div style={{ color: palette.fgText, fontSize: 12, lineHeight: 1.55, opacity: 0.88, marginBottom: 10 }}>
+            <div style={{ color: "rgba(200,200,205,0.78)", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
               {isEmptyMap ? (
-                <>Atlas hasn't extracted anything for <b>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b>Get started</b> and tell Atlas what you're building.</>
+                <>Atlas hasn't extracted anything for <b style={{ color: "rgba(231,229,226,0.95)", fontWeight: 600 }}>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b style={{ color: palette.goldText, fontWeight: 600 }}>Get started</b> and tell Atlas what you're building.</>
               ) : (
-                <>Your goal is <b>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
+                <>Your goal is <b style={{ color: "rgba(231,229,226,0.95)", fontWeight: 600 }}>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1096,17 +1098,18 @@ export function AxiomFlow({
                     onNodeFocus(`Let's map ${projectLabel}. What does winning look like, and what are the must-haves to get there?`);
                   }}
                   style={{
-                    padding: "6px 11px",
+                    padding: "7px 12px",
                     borderRadius: 7,
-                    background: `rgba(${palette.goldRgb},0.28)`,
+                    background: `linear-gradient(180deg, ${palette.goldText} 0%, #B8942A 100%)`,
                     border: `1px solid rgba(${palette.goldRgb},0.55)`,
-                    color: palette.goldText,
+                    color: "#0C0A09",
                     cursor: "pointer",
                     fontFamily: "var(--app-font-mono)",
                     fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
                     textTransform: "uppercase",
+                    boxShadow: `0 0 16px rgba(${palette.goldRgb},0.25)`,
                   }}
                 >
                   Get started
@@ -1118,16 +1121,16 @@ export function AxiomFlow({
                   try { localStorage.setItem(mapSeenKey, "1"); } catch {}
                 }}
                 style={{
-                  padding: "6px 11px",
+                  padding: "7px 12px",
                   borderRadius: 7,
-                  background: `rgba(${palette.goldRgb},0.18)`,
-                  border: `1px solid rgba(${palette.goldRgb},0.45)`,
-                  color: palette.goldText,
+                  background: "transparent",
+                  border: `1px solid rgba(255,255,255,0.10)`,
+                  color: "rgba(231,229,226,0.7)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
                   fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: "0.08em",
+                  fontWeight: 600,
+                  letterSpacing: "0.1em",
                   textTransform: "uppercase",
                 }}
               >
