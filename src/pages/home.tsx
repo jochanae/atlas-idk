@@ -1464,9 +1464,11 @@ export default function Home() {
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
 
-  const homeConversationTitle = !reflectionLocked && homeFocus == null && nexusChat.messages.length > 0
-    ? earnedTitle ?? "Untitled conversation"
-    : null;
+  const homeConversationTitle = reflectionLocked
+    ? "Think Freely"
+    : homeFocus == null && nexusChat.messages.length > 0
+      ? earnedTitle ?? "Untitled conversation"
+      : null;
 
   useEffect(() => {
     setActiveConversationTitle(homeConversationTitle);
@@ -2208,7 +2210,10 @@ export default function Home() {
       } catch (err) {
         handleSubmitError(err);
       } finally {
-        resetSubmitState();
+        setIsAtlasStreaming(false);
+        setIsSending(false);
+        setLiveStep(null);
+        document.body.dataset.voiceActive = "false";
       }
       return;
     }
