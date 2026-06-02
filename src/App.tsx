@@ -35,12 +35,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { useQuery } from "@tanstack/react-query";
 
-// ── Global 401 interceptor ────────────────────────────────────────────────────
-// Noisy background endpoints — a single 401 here should never boot the user.
-const SILENT_401_PATTERNS = ["/api/nexus/activity", "/api/nexus/briefing", "/api/stripe/"];
-
-let _401redirectPending = false;
-
 // When VITE_API_BASE_URL is set (e.g. Railway backend URL), all relative /api/
 // calls are automatically rewritten to hit that origin. This makes the frontend
 // work correctly when deployed to a different domain (Vercel, Netlify, etc.)
@@ -72,35 +66,10 @@ window.fetch = async (...args) => {
       args[1] = { ...(args[1] ?? {}), credentials: (args[1] as RequestInit | undefined)?.credentials ?? "include" };
     }
   }
-  const res = await _originalFetch(...args);
-  if (res.status === 401) {
-    const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
-    if (url.includes("/api/") && !url.includes("/api/auth/")) {
-      // Skip silent/polling endpoints — they shouldn't boot the user
-      const isSilent = SILENT_401_PATTERNS.some((p) => url.includes(p));
-      const alreadyOnLogin = window.location.pathname.includes("/login");
-      if (!isSilent && !alreadyOnLogin && !_401redirectPending) {
-        _401redirectPending = true;
-        // Wait 1.5 s and confirm the session is still gone before redirecting.
-        // This prevents transient server hiccups (restart, slow DB) from kicking
-        // the user out of a live conversation.
-        setTimeout(async () => {
-          try {
-            const check = await _originalFetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
-            if (check.status === 401) {
-              const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-              window.location.href = `${base}/login?reason=session_expired`;
-            } else {
-              _401redirectPending = false;
-            }
-          } catch {
-            _401redirectPending = false;
-          }
-        }, 1500);
-      }
-    }
-  }
-  return res;
+  // Backend auth can fail independently from the Supabase browser session.
+  // Leave 401 handling to individual callers so a failed backend token/cookie
+  // check does not eject users from an otherwise valid workspace session.
+  return _originalFetch(...args);
 };
 
 const queryClient = new QueryClient({
