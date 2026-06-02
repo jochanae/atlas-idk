@@ -3142,15 +3142,18 @@ export default function Home() {
 
                   {showScrollBtn && (
                     <button
-                      onClick={() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" })}
+                      onClick={() => {
+                        // Scroll the end-of-messages sentinel into view on the
+                        // OUTER page scroller (.atlas-home-bg). Mirrors workspace.
+                        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+                      }}
                       aria-label="Scroll to latest"
                       style={{
-                        position: "sticky",
-                        bottom: 12,
-                        left: "100%",
-                        transform: "translateX(-100%)",
-                        width: 32,
-                        height: 32,
+                        position: "fixed",
+                        bottom: "calc(var(--atlas-dock-clearance) + 64px)",
+                        right: 16,
+                        width: 36,
+                        height: 36,
                         borderRadius: "50%",
                         background: "var(--atlas-surface)",
                         border: "1px solid var(--atlas-gold)",
@@ -3160,7 +3163,7 @@ export default function Home() {
                         justifyContent: "center",
                         cursor: "pointer",
                         boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                        zIndex: 10,
+                        zIndex: 265,
                         flexShrink: 0,
                       }}
                     >
