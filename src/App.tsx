@@ -31,7 +31,8 @@ import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
-import { authHeaders, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { authHeaders } from "./hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -60,7 +61,6 @@ function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
 const _originalFetch = window.fetch.bind(window);
 window.fetch = async (...args) => {
   args[0] = resolveApiUrl(args[0]);
-
   const url = typeof args[0] === "string"
     ? args[0]
     : args[0] instanceof URL
@@ -70,12 +70,9 @@ window.fetch = async (...args) => {
   if (isApiCall) {
     const tokenHeaders = authHeaders();
     if (Object.keys(tokenHeaders).length > 0) {
-      const headers = new Headers(args[0] instanceof Request ? args[0].headers : undefined);
-      new Headers(args[1]?.headers).forEach((value, key) => headers.set(key, value));
-      Object.entries(tokenHeaders).forEach(([key, value]) => headers.set(key, value));
       args[1] = {
         ...(args[1] ?? {}),
-        headers,
+        headers: { ...(args[1]?.headers ?? {}), ...tokenHeaders },
       };
     }
     if (API_BASE && args[1]?.credentials === undefined) {
