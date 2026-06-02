@@ -44,6 +44,7 @@ import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useFooterAutoHide } from "@/hooks/useFooterAutoHide";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1243,6 +1244,7 @@ function FirstRunOverlay({
 // ── Home ─────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [input, setInput] = useState("");
+  useFooterAutoHide(".atlas-home-bg");
   const [starterIdx, setStarterIdx] = useState(0);
   const [createError, setCreateError] = useState<string | null>(null);
   const backendReady = API_BASE.length > 0;

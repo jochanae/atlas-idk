@@ -13,6 +13,7 @@ import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
 import { useForceDesktop, useIsMobile, useIsTinyScreen, useIsDesktop } from "@/hooks/useBreakpoints";
+import { useFooterAutoHide } from "@/hooks/useFooterAutoHide";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useGitHub } from "@/hooks/useGitHub";
 import { AxiomFlow } from "../components/AxiomFlow";
@@ -3298,6 +3299,7 @@ export default function Workspace() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
+  useFooterAutoHide(chatPanelScrollRef);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
 
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow

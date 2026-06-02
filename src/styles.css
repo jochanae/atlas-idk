@@ -512,6 +512,23 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
   background: rgba(245, 241, 232, 0.96);
 }
 
+/* Auto-hide footer during active scroll (home + workspace share this) */
+.atlas-mobile-footer {
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+body[data-atlas-footer="hidden"] .atlas-mobile-footer {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+/* Composer follows the footer down so it claims the freed space */
+.atlas-input-shell {
+  transition: bottom 220ms ease;
+}
+body[data-atlas-footer="hidden"] .atlas-input-shell {
+  bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+
 /* ── App header (workspace top bar — theme-aware, frosted glass) ── */
 .atlas-app-header {
   background: color-mix(in oklab, var(--atlas-bg) 55%, transparent);
