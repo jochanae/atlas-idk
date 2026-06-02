@@ -565,7 +565,7 @@ export function ChatComposer(props: ChatComposerProps) {
                                   ? "Uploading…"
                                   : codeContextStatus
                                     ? (codeContextStatus.summary || `${codeContextStatus.fileCount} files loaded`)
-                                    : "Persists across every message"}
+                                    : "Available for the full session. Re-upload to update."}
                               </div>
                             </div>
                           </label>

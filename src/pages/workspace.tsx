@@ -5271,7 +5271,10 @@ export default function Workspace() {
             zipLoaded={zipFiles.length > 0}
             zipFileName={zipName}
             showModelPicker={showModelPicker}
-            onShowModelPickerChange={setShowModelPicker}
+            onShowModelPickerChange={(val: boolean) => {
+              setShowModelPicker(val);
+              try { localStorage.setItem("atlas-power-model-picker", val ? "1" : "0"); } catch {}
+            }}
           />
         ) : undefined}
         showFlow={!isMobile}
@@ -5729,7 +5732,10 @@ export default function Workspace() {
                 zipLoaded={zipFiles.length > 0}
                 zipFileName={zipName}
                 showModelPicker={showModelPicker}
-                onShowModelPickerChange={setShowModelPicker}
+                onShowModelPickerChange={(val: boolean) => {
+                  setShowModelPicker(val);
+                  try { localStorage.setItem("atlas-power-model-picker", val ? "1" : "0"); } catch {}
+                }}
               />
             </div>
           </div>
