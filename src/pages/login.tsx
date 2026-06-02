@@ -477,12 +477,12 @@ export default function Login() {
                 padding: "13px 16px",
                 borderRadius: 10,
                 background: loading || !email || !password
-                  ? "rgba(201,162,76,0.12)"
+                  ? "rgba(255,255,255,0.04)"
                   : "linear-gradient(180deg, #D4AF37 0%, #B8942A 100%)",
                 border: loading || !email || !password
-                  ? "1px solid rgba(201,162,76,0.15)"
+                  ? "1px solid rgba(255,255,255,0.06)"
                   : "1px solid rgba(212,175,55,0.4)",
-                color: loading || !email || !password ? "rgba(201,162,76,0.3)" : "#0C0A09",
+                color: loading || !email || !password ? "rgba(231,229,226,0.35)" : "#0C0A09",
                 fontSize: 11,
                 fontWeight: 700,
                 ...mono,
