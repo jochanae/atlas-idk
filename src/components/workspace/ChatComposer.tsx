@@ -228,7 +228,21 @@ export function ChatComposer(props: ChatComposerProps) {
     showParkingDrawer,
     setShowParkingDrawer,
     refreshParkedEntries,
+    showModelPicker,
+    wsModel,
+    onOpenModelSheet,
   } = props;
+
+  const modelChipLabel = (() => {
+    switch (wsModel) {
+      case "claude": return "Claude";
+      case "gpt4o": return "GPT-4o";
+      case "gemini": return "Gemini";
+      case "multi":
+      default: return "Multi-Agent";
+    }
+  })();
+  const isMultiAgent = !wsModel || wsModel === "multi";
 
   const [showAttachMenu, setShowAttachMenu] = useState(false);
 
