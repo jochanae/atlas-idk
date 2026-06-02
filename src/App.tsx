@@ -32,7 +32,8 @@ import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
 import { fetchMe } from "@/hooks/useAuth";
-import { useListProjects, getListProjectsQueryKey } from "@/hooks/useProjectState";
+import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
+import { useQuery } from "@tanstack/react-query";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────
 // Noisy background endpoints — a single 401 here should never boot the user.
@@ -239,8 +240,10 @@ function OnboardingGate() {
       "/privacy",
       "/help",
     ].some((path) => location.startsWith(path));
-  const { data: projects, isLoading } = useListProjects({
-    query: { enabled: shouldCheck, queryKey: getListProjectsQueryKey() },
+  const { data: projects, isLoading } = useQuery({
+    queryKey: getListProjectsQueryKey(),
+    queryFn: listProjects,
+    enabled: shouldCheck,
   });
 
   useEffect(() => {
