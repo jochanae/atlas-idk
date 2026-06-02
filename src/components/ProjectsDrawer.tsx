@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, Hammer, Compass, Archive, LayoutDashboard, Globe, Wand2, KeyRound, LayoutGrid } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
+import { LifecycleGlyph } from "./LifecycleGlyph";
 
 export type DrawerProject = {
   id: number;
@@ -284,7 +285,14 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                       {(() => {
                         const isUnnamed = p.name === "New Project" || p.name === "New Idea" || p.name === "My Project";
                         return (
-                          <span style={{ fontSize: 12.5, fontWeight: p.id === activeProjectId ? 600 : 400, color: isUnnamed ? "var(--atlas-muted)" : "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4, fontStyle: isUnnamed ? "italic" : "normal" }}>
+                          <span style={{ fontSize: 12.5, fontWeight: p.id === activeProjectId ? 600 : 400, color: isUnnamed ? "var(--atlas-muted)" : "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5, fontStyle: isUnnamed ? "italic" : "normal" }}>
+                            <LifecycleGlyph
+                              projectId={p.id}
+                              projectName={p.name}
+                              status={p.status}
+                              readinessScore={p.latestSnapshotScore ?? null}
+                              size={12}
+                            />
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
                             {isUnnamed && <span style={{ opacity: 0.55, fontSize: 9.5, flexShrink: 0 }}>✎</span>}
                           </span>
