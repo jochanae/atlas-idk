@@ -5,7 +5,15 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 
-async function postJson(path: string, body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+type AuthPostResponse = {
+  error?: string;
+  message?: string;
+  token?: string;
+  sessionToken?: string;
+  user?: unknown;
+} & Record<string, unknown>;
+
+async function postJson(path: string, body: Record<string, unknown>): Promise<AuthPostResponse | null> {
   const res = await fetch(apiUrl(path), {
     method: "POST",
     credentials: "include",
@@ -27,8 +35,8 @@ async function postJson(path: string, body: Record<string, unknown>): Promise<Re
     throw new Error(message);
   }
   try {
-    const data = await res.json();
-    return data && typeof data === "object" ? data as Record<string, unknown> : null;
+    const data = await res.json() as AuthPostResponse;
+    return data && typeof data === "object" ? data : null;
   } catch {
     return null;
   }
@@ -145,8 +153,14 @@ export default function Login() {
           ? { email, password }
           : { email, password, name: name.trim() || undefined }
       );
-      const token = (data as any)?.token ?? (data as any)?.sessionToken;
-      if (token) localStorage.setItem("atlas-token", token);
+      const token = data?.token ?? data?.sessionToken;
+      if (token) {
+        try {
+          localStorage.setItem("atlas-token", token);
+        } catch {
+          // Keep login flowing if localStorage is unavailable.
+        }
+      }
       const loggedInUser = data?.user ?? data;
       if (loggedInUser) {
         try {

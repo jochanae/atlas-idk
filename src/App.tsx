@@ -31,7 +31,7 @@ import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
-import { useAuth } from "@/hooks/useAuth";
+import { authHeaders, useAuth } from "@/hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -60,16 +60,26 @@ function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
 const _originalFetch = window.fetch.bind(window);
 window.fetch = async (...args) => {
   args[0] = resolveApiUrl(args[0]);
-  // Ensure cookies are sent on every /api/* call so the session cookie set
-  // at login is included on subsequent authenticated requests. Without this,
-  // backends that use cookie sessions return 401 for every call.
-  const url = typeof args[0] === "string" ? args[0] : (args[0] as Request | URL).toString();
-  if (url.includes("/api/")) {
-    if (args[0] instanceof Request) {
-      // Request objects bake in credentials; rebuild with include
-      args[0] = new Request(args[0], { credentials: "include" });
-    } else {
-      args[1] = { ...(args[1] ?? {}), credentials: (args[1] as RequestInit | undefined)?.credentials ?? "include" };
+
+  const url = typeof args[0] === "string"
+    ? args[0]
+    : args[0] instanceof URL
+      ? args[0].toString()
+      : args[0].url;
+  const isApiCall = new URL(url, location.origin).pathname.startsWith("/api/");
+  if (isApiCall) {
+    const tokenHeaders = authHeaders();
+    if (Object.keys(tokenHeaders).length > 0) {
+      const headers = new Headers(args[0] instanceof Request ? args[0].headers : undefined);
+      new Headers(args[1]?.headers).forEach((value, key) => headers.set(key, value));
+      Object.entries(tokenHeaders).forEach(([key, value]) => headers.set(key, value));
+      args[1] = {
+        ...(args[1] ?? {}),
+        headers,
+      };
+    }
+    if (API_BASE && args[1]?.credentials === undefined) {
+      args[1] = { ...(args[1] ?? {}), credentials: "include" };
     }
   }
   const res = await _originalFetch(...args);
