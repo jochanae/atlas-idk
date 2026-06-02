@@ -3558,67 +3558,82 @@ export default function Home() {
               return `${d}d ago`;
             };
             const lastTouched = lastTs ? formatAgo(lastTs) : null;
+            const jumpToOverview = () => {
+              const el = document.getElementById("atlas-home-overview");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              else window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" });
+            };
             return (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 14 }}>
-                {/* Static status pill — data only */}
-                <div
+                {/* Tappable status pill + chevron — jumps to overview */}
+                <button
+                  type="button"
+                  onClick={jumpToOverview}
+                  aria-label="Jump to overview"
+                  className="atlas-home-status-jump"
                   style={{
-                    display: "inline-flex",
+                    display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
-                    justifyContent: "center",
-                    flexWrap: "wrap",
                     gap: 8,
-                    padding: "6px 14px",
-                    background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
-                    border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
-                    borderRadius: 999,
-                    backdropFilter: "blur(6px)",
-                    WebkitBackdropFilter: "blur(6px)",
-                    boxSizing: "border-box",
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    WebkitTapHighlightColor: "transparent",
                     maxWidth: "100%",
                   }}
                 >
-                  <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
-                    <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
-                    <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      padding: "6px 14px",
+                      background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
+                      border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
+                      borderRadius: 999,
+                      backdropFilter: "blur(6px)",
+                      WebkitBackdropFilter: "blur(6px)",
+                      boxSizing: "border-box",
+                      maxWidth: "100%",
+                      transition: "border-color 180ms var(--ease-standard), background 180ms var(--ease-standard)",
+                    }}
+                  >
+                    <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
+                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)", animation: "atlas-pulse 2.4s ease-in-out infinite" }} />
+                      <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
+                    </span>
+                    <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
+                      {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
+                      &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
+                    </span>
                   </span>
-                  <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
-                    {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
-                    &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
-                  </span>
-                </div>
 
-                {/* Subtle scroll hint — mobile only; dashboard sits right below */}
-                <button
-                  type="button"
-                  aria-label="Scroll to overview"
-                  className="atlas-home-scroll-hint"
-                  onClick={() => {
-                    const el = document.getElementById("atlas-home-overview");
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    else window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" });
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 28,
-                    height: 28,
-                    marginTop: 2,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: isParchment ? "rgba(120,52,8,0.55)" : "rgba(201,162,76,0.55)",
-                    animation: "atlasScrollHintBob 2.2s ease-in-out infinite",
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                  <span
+                    aria-hidden
+                    className="atlas-home-scroll-hint"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      color: isParchment ? "rgba(120,52,8,0.55)" : "rgba(201,162,76,0.55)",
+                      animation: "atlasScrollHintBob 2.2s ease-in-out infinite",
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
                 </button>
               </div>
             );
           })()}
+
 
 
           {/* Inline create error */}

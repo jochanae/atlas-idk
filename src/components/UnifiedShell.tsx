@@ -1149,7 +1149,7 @@ function ShellCenterButton({
           boxShadow: ringSpread,
         }}
       >
-        <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, pointerEvents: "none" }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", overflow: "hidden", flexShrink: 0, pointerEvents: "none", transform: "translateY(-3px)" }}>
           <svg viewBox="0 0 512 512" width="52" height="52" display="block">
             <defs>
               <radialGradient id="shell-center-purple" cx="50%" cy="50%" r="50%">
