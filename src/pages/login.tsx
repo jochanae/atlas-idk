@@ -341,9 +341,9 @@ export default function Login() {
                     disabled={loading || !email}
                     style={{
                       width: "100%", padding: "13px 16px", borderRadius: 10,
-                      background: loading || !email ? "rgba(201,162,76,0.12)" : "linear-gradient(180deg, #D4AF37 0%, #B8942A 100%)",
-                      border: loading || !email ? "1px solid rgba(201,162,76,0.15)" : "1px solid rgba(212,175,55,0.4)",
-                      color: loading || !email ? "rgba(201,162,76,0.3)" : "#0C0A09",
+                      background: loading || !email ? "rgba(255,255,255,0.04)" : "linear-gradient(180deg, #D4AF37 0%, #B8942A 100%)",
+                      border: loading || !email ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(212,175,55,0.4)",
+                      color: loading || !email ? "rgba(231,229,226,0.35)" : "#0C0A09",
                       fontSize: 11, fontWeight: 700, ...mono, letterSpacing: "0.18em", textTransform: "uppercase",
                       cursor: loading || !email ? "not-allowed" : "pointer", transition: "all 240ms ease", marginTop: 4,
                     }}
