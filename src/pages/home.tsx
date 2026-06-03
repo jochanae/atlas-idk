@@ -3341,7 +3341,11 @@ export default function Home() {
             left: 0, right: 0, bottom: 0,
             padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
-            zIndex: 50,
+            // Must be above the fixed bottom dock (z-index 200) so the Send
+            // button always wins the tap — otherwise on short viewports
+            // (keyboard open / mobile) the touch falls through to the dock's
+            // "You" button and opens the account panel instead.
+            zIndex: 250,
             pointerEvents: "auto",
           }}>
   
