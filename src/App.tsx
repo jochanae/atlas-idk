@@ -46,7 +46,7 @@ let _401redirectPending = false;
 // calls are automatically rewritten to hit that origin. This makes the frontend
 // work correctly when deployed to a different domain (Vercel, Netlify, etc.)
 // without touching any individual fetch call in the codebase.
-const API_BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "https://axiom-atlas-689827072865.us-east1.run.app").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 function resolveApiUrl(input: RequestInfo | URL): RequestInfo | URL {
   if (!API_BASE) return input;
@@ -92,7 +92,8 @@ window.fetch = async (...args) => {
         // the user out of a live conversation.
         setTimeout(async () => {
           try {
-            const check = await _originalFetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+            const baseUrl = API_BASE || window.location.origin;
+            const check = await _originalFetch(`${baseUrl}/api/auth/me`, { credentials: "include" });
             if (check.status === 401) {
               const base = import.meta.env.BASE_URL.replace(/\/$/, "");
               window.location.href = `${base}/login?reason=session_expired`;
