@@ -835,13 +835,15 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const remove = async (id: number) => {
-    setDeleting(id);
+  const remove = async (connection: Connection) => {
+    setDeleting(connection.id);
     try {
-      await fetch(`/api/connections/${id}`, { method: "DELETE", credentials: "include" });
-      const removed = connections.find((conn) => conn.id === id);
-      setConnections((prev) => prev.filter((c) => c.id !== id));
-      if (removed) setStatuses((prev) => prev.filter((s) => s.type !== removed.type));
+      await fetch(
+        connection.type === "github" ? "/api/github/token" : `/api/connections/${connection.id}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      await fetchConnections();
+      setStatuses((prev) => prev.filter((s) => s.type !== connection.type));
     } finally {
       setDeleting(null);
     }
@@ -1050,7 +1052,7 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
                 <button
                   type="button"
                   disabled={deleting === conn.id}
-                  onClick={() => { if (confirm(`Remove ${conn.label}?`)) void remove(conn.id); }}
+                  onClick={() => { if (confirm(`Remove ${conn.label}?`)) void remove(conn); }}
                   style={{ fontSize: 11, color: "var(--atlas-ember)", background: "transparent", border: "1px solid rgba(146,64,14,0.3)", borderRadius: 5, padding: "3px 8px", cursor: "pointer", flexShrink: 0, opacity: deleting === conn.id ? 0.5 : 1 }}
                 >
                   {deleting === conn.id ? "…" : "Remove"}

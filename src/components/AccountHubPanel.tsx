@@ -18,6 +18,13 @@ type AccountConnection = {
   type?: string | null;
   label?: string | null;
   url?: string | null;
+  username?: string | null;
+};
+
+type GitHubTokenResponse = {
+  connected?: boolean;
+  username?: string;
+  error?: string;
 };
 
 function loadAtlasProfile(): AtlasProfile {
@@ -277,6 +284,10 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   const [githubConnectionsLoading, setGithubConnectionsLoading] = useState(true);
   const [githubConnectionsError, setGithubConnectionsError] = useState<string | null>(null);
   const [removingGithubConnectionId, setRemovingGithubConnectionId] = useState<string | number | null>(null);
+  const [githubToken, setGithubToken] = useState("");
+  const [savingGithubToken, setSavingGithubToken] = useState(false);
+  const [githubTokenError, setGithubTokenError] = useState<string | null>(null);
+  const [savedGithubUsername, setSavedGithubUsername] = useState<string | null>(null);
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -298,6 +309,11 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
 
   const avatarSrc = pendingAvatar ?? authUser?.avatarUrl ?? null;
   const displayName = authUser?.name || authUser?.email?.split("@")[0] || "Account";
+  const visibleGithubConnections = githubConnections.length > 0
+    ? githubConnections
+    : savedGithubUsername
+      ? [{ id: "github", type: "github", username: savedGithubUsername }]
+      : [];
 
   const handleGoogleReconnect = useCallback(() => {
     // Backend OAuth start — same endpoint used on /login.
@@ -325,20 +341,44 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     void loadGithubConnections();
   }, [loadGithubConnections]);
 
-  const handleRemoveGithubConnection = async (id: AccountConnection["id"]) => {
-    const previousConnections = githubConnections;
-    setRemovingGithubConnectionId(id);
-    setGithubConnections((connections) => connections.filter((connection) => String(connection.id) !== String(id)));
+  const handleSaveGithubToken = async () => {
+    const token = githubToken.trim();
+    if (!token) return;
+    setSavingGithubToken(true);
+    setGithubTokenError(null);
     try {
-      const res = await fetch(`/api/connections/${encodeURIComponent(String(id))}`, {
-        method: "DELETE",
+      const res = await fetch("/api/github/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ token }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      toast.success("GitHub repo link removed.");
+      const data = await res.json().catch(() => ({})) as GitHubTokenResponse;
+      if (!res.ok || !data.connected) {
+        setGithubTokenError(res.status === 422 ? data.error ?? "Failed to save token" : "Failed to save token");
+        return;
+      }
+      setGithubToken("");
+      setSavedGithubUsername(data.username ?? null);
+      await loadGithubConnections();
+      toast.success("GitHub token saved.");
     } catch {
-      setGithubConnections(previousConnections);
-      toast.error("Failed to remove GitHub repo link.");
+      setGithubTokenError("Failed to save token");
+    } finally {
+      setSavingGithubToken(false);
+    }
+  };
+
+  const handleRemoveGithubConnection = async (id: AccountConnection["id"]) => {
+    setRemovingGithubConnectionId(id);
+    try {
+      const res = await fetch("/api/github/token", { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSavedGithubUsername(null);
+      await loadGithubConnections();
+      toast.success("GitHub token removed.");
+    } catch {
+      toast.error("Failed to remove GitHub token.");
     } finally {
       setRemovingGithubConnectionId(null);
     }
@@ -745,15 +785,62 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               marginBottom: "12px",
               lineHeight: 1.5,
             }}>
-              GitHub repos are linked per-project from a workspace.
+              Save a GitHub token for your account so Atlas can read and write code across projects.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              <input
+                type="password"
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSaveGithubToken(); }}
+                placeholder="ghp_..."
+                autoComplete="off"
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  background: "var(--atlas-glass-bg)",
+                  border: "1px solid var(--atlas-border)",
+                  color: "var(--atlas-fg)",
+                  fontSize: 11,
+                  fontFamily: "var(--app-font-mono)",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => void handleSaveGithubToken()}
+                disabled={!githubToken.trim() || savingGithubToken}
+                style={{
+                  alignSelf: "flex-start",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  background: githubToken.trim() ? "var(--atlas-gold)" : "var(--atlas-surface)",
+                  border: "none",
+                  color: githubToken.trim() ? "#0D0B09" : "var(--atlas-muted)",
+                  fontSize: 10,
+                  fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  cursor: githubToken.trim() && !savingGithubToken ? "pointer" : "not-allowed",
+                }}
+              >
+                {savingGithubToken ? "Saving..." : "Save GitHub Token"}
+              </button>
+              {githubTokenError && (
+                <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>
+                  {githubTokenError}
+                </div>
+              )}
             </div>
             {githubConnectionsLoading ? (
               <div style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.7 }}>
-                Checking linked GitHub repos...
+                Checking GitHub connection...
               </div>
-            ) : githubConnections.length > 0 ? (
+            ) : visibleGithubConnections.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {githubConnections.map((connection) => (
+                {visibleGithubConnections.map((connection) => (
                   <div key={connection.id} style={{
                     display: "flex",
                     alignItems: "center",
@@ -775,7 +862,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
                         Linked
                       </div>
                       <div style={{ fontSize: 12, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {connection.url || "GitHub repo"}
+                        {connection.username || savedGithubUsername || connection.label || connection.url || "GitHub"}
                       </div>
                     </div>
                     <button
@@ -800,7 +887,7 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               </div>
             ) : (
               <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.6 }}>
-                GitHub repos are linked per-project. Open a workspace and use the Files tab to link a repo and add your personal access token.
+                No GitHub token saved yet.
               </div>
             )}
             {githubConnectionsError && (

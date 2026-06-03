@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { getAuthHeaders } from "@/lib/api";
 
 export type GitHubConnectionStatus = "connected" | "read-only" | "not-connected";
 
@@ -26,8 +25,6 @@ type GitHubState = {
   disconnect: () => Promise<void>;
 };
 
-const GITHUB_STATUS_ERROR = "Token saved but GitHub returned an error — check your token has repo access.";
-
 const NOT_CONNECTED_STATUS: NormalizedGitHubStatus = {
   canRead: false,
   canWrite: false,
@@ -41,6 +38,12 @@ type GitHubStatusResponse = {
   canRead?: boolean | null;
   canWrite?: boolean | null;
   hasServerToken?: boolean | null;
+};
+
+type GitHubTokenResponse = {
+  connected?: boolean;
+  username?: string;
+  error?: string;
 };
 
 function githubStatusUrl(projectId?: number | null): string {
@@ -104,53 +107,41 @@ export function useGitHub(projectId?: number | null): GitHubState {
   const connect = useCallback(async (token: string): Promise<boolean> => {
     setError(null);
     try {
-      const res = await fetch("/api/connections", {
+      const res = await fetch("/api/github/token", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          type: "github",
-          label: "GitHub",
-          token: token.trim(),
-        }),
+        body: JSON.stringify({ token: token.trim() }),
       });
+      const data = await res.json().catch(() => ({})) as GitHubTokenResponse;
       if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(d.error ?? `HTTP ${res.status}`);
-      }
-      const status = await fetchGitHubStatus(projectId);
-      setGithubStatus(status);
-      if (!status.canWrite) {
-        setError(GITHUB_STATUS_ERROR);
+        setError(res.status === 422 ? data.error ?? "Failed to save token" : "Failed to save token");
         return false;
       }
+      if (!data.connected) {
+        setError("Failed to save token");
+        return false;
+      }
+      setGithubStatus({
+        canRead: true,
+        canWrite: true,
+        hasServerToken: true,
+        status: "connected",
+        label: data.username ? `GitHub connected (${data.username})` : "GitHub connected",
+        tokenHeader: "__account__",
+      });
       return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect");
+    } catch {
+      setError("Failed to save token");
       return false;
     }
-  }, [projectId]);
+  }, []);
 
   const disconnect = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch("/api/connections", {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
+      const res = await fetch("/api/github/token", { method: "DELETE", credentials: "include" });
       if (!res.ok) return;
-      const data = await res.json();
-      const connections = (Array.isArray(data) ? data : data?.connections ?? []) as Array<{ id: number; type?: string | null }>;
-      const github = connections.find((c) => c.type === "github");
-      if (!github) { await check(); return; }
-      await fetch(`/api/connections/${github.id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
       await check();
     } catch {}
   }, [check]);

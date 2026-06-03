@@ -670,9 +670,16 @@ function ConnectionsDock() {
     return () => clearInterval(t);
   }, []);
 
-  const handleDelete = async (id: Connection["id"]) => {
-    setConnections((cs) => cs.filter((c) => c.id !== id));
-    try { await fetch(`/api/connections/${id}`, { method: "DELETE", credentials: "include" }); } catch {}
+  const handleDelete = async (connection: Connection) => {
+    setConnections((cs) => cs.filter((c) => c.id !== connection.id));
+    try {
+      await fetch(
+        connection.type === "github" ? "/api/github/token" : `/api/connections/${connection.id}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      const nextConnections = await loadConnections();
+      await loadStatus(nextConnections);
+    } catch {}
   };
 
   const handleSaved = () => {
@@ -784,7 +791,7 @@ function ConnectionsDock() {
                 </div>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}
+                  onClick={(e) => { e.stopPropagation(); void handleDelete(c); }}
                   aria-label={`Remove ${meta.name}`}
                   style={{
                     width: 16, height: 16, borderRadius: 4, flexShrink: 0,
