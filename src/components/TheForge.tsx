@@ -111,9 +111,67 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   // future shape keys (identity / constraints / format / …) can be surfaced
   // without a schema change here.
   const [projectShape, setProjectShape] = useState<Record<string, unknown>>({});
+  const [editingDnaKey, setEditingDnaKey] = useState<string | null>(null);
+  const [dnaDraft, setDnaDraft] = useState("");
+  const [dnaSaving, setDnaSaving] = useState(false);
+  const [dnaError, setDnaError] = useState<string | null>(null);
+  const [dnaCopied, setDnaCopied] = useState(false);
   const dnaValue = (key: string): string => {
     const v = projectShape[key];
-    return typeof v === "string" ? v : "";
+    if (typeof v === "string") return v;
+    if (Array.isArray(v)) return v.filter(x => typeof x === "string").join("\n");
+    return "";
+  };
+  const startEditDna = (key: string) => {
+    setDnaError(null);
+    setDnaDraft(dnaValue(key));
+    setEditingDnaKey(key);
+  };
+  const cancelEditDna = () => {
+    setEditingDnaKey(null);
+    setDnaDraft("");
+    setDnaError(null);
+  };
+  const saveDna = async () => {
+    if (!projectId || !editingDnaKey) return;
+    setDnaSaving(true);
+    setDnaError(null);
+    const key = editingDnaKey;
+    const nextShape = { ...projectShape, [key]: dnaDraft };
+    try {
+      const r = await fetch(`/api/projects/${projectId}/shape`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shape: nextShape }),
+      });
+      if (!r.ok) throw new Error(`Save failed (${r.status})`);
+      const data = await r.json().catch(() => null) as { shape?: Record<string, unknown> } | null;
+      setProjectShape(data?.shape && typeof data.shape === "object" ? data.shape : nextShape);
+      setEditingDnaKey(null);
+      setDnaDraft("");
+      haptics.light();
+    } catch (e) {
+      setDnaError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setDnaSaving(false);
+    }
+  };
+  const copyStrategicPayload = async () => {
+    const parts: string[] = [];
+    const id = dnaValue("identity");
+    const co = dnaValue("constraints");
+    const fmt = dnaValue("format");
+    if (id) parts.push(`# Identity\n${id}`);
+    if (co) parts.push(`# Constraints\n${co}`);
+    if (fmt) parts.push(`# Format\n${fmt}`);
+    const payload = parts.join("\n\n") || "(No Project DNA defined yet)";
+    try {
+      await navigator.clipboard.writeText(payload);
+      setDnaCopied(true);
+      haptics.light();
+      setTimeout(() => setDnaCopied(false), 1600);
+    } catch { /* silent */ }
   };
 
   // Quick Prompt state — auto-detect platform from hostname; respect prop override
