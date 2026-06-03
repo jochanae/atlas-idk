@@ -219,9 +219,12 @@ export default function MasterMap() {
     if (params.get("view") === "workspace") {
       const projectId = params.get("project");
       if (projectId) {
-        const target = params.get("tab") === "chat"
-          ? `/project/${projectId}`
-          : `/project/${projectId}`;
+        if (params.get("tab") === "chat") {
+          try {
+            sessionStorage.setItem("atlas-open-left-tab", "chat");
+          } catch {}
+        }
+        const target = `/project/${projectId}`;
         window.history.replaceState({}, "", target);
         setLocation(target);
       } else {
