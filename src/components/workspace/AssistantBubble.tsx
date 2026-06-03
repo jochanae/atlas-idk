@@ -1248,18 +1248,18 @@ export function AssistantBubble({
           )}
         </div>
 
-        {message.imageGen && (
-          <>
+        {message.imageGen?.images?.map((img, i) => (
+          <div key={i} style={{ marginTop: 12 }}>
             <img
-              src={message.imageGen.imageUrl}
-              alt={message.imageGen.prompt}
-              style={{ maxWidth: "100%", borderRadius: 8, marginTop: 12 }}
+              src={img.imageUrl}
+              alt={img.prompt}
+              style={{ width: "100%", borderRadius: 8, display: "block" }}
             />
-            <p style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
-              Generated with {message.imageGen.model}
+            <p style={{ fontSize: 11, opacity: 0.4, marginTop: 4, marginBottom: 0 }}>
+              {img.mode === "render" ? "Render" : "Schematic"} · {img.model}
             </p>
-          </>
-        )}
+          </div>
+        ))}
 
         {message.streaming && message.planMode && !message.artifact && (
           <div

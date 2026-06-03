@@ -20,27 +20,9 @@ import { createTextPacer, type TextPacer } from "@/lib/textPacer";
 type PriorMessage = Message;
 
 type LedgerEntryLike = { id: number | string; title: string; status: string };
-type ImageGenPayload = { imageUrl: string; prompt: string; model: string };
 
 const ARTIFACT_LINE_RE = /^ARTIFACT:\s*(\{.+\})$/m;
 const HTML_CODE_BLOCK_RE = /```html\n([\s\S]*?)```/;
-
-function normalizeImageGen(raw: unknown): ImageGenPayload | null {
-  if (!raw || typeof raw !== "object") return null;
-  const payload = raw as Partial<ImageGenPayload>;
-  if (
-    typeof payload.imageUrl === "string" &&
-    typeof payload.prompt === "string" &&
-    typeof payload.model === "string"
-  ) {
-    return {
-      imageUrl: payload.imageUrl,
-      prompt: payload.prompt,
-      model: payload.model,
-    };
-  }
-  return null;
-}
 
 function processPreviewableContent(
   content: string,
@@ -61,7 +43,7 @@ function processPreviewableContent(
 
   const htmlMatch = content.match(HTML_CODE_BLOCK_RE);
   const html = htmlMatch?.[1];
-  if (html && html.split("\n").length > 20) {
+  if (html && html.split("\n").length > 15) {
     onPreviewCode?.(html);
   }
 
@@ -415,7 +397,6 @@ export function useChatStream(
             const aff = res.autoFetchedFiles ?? [];
             const rawChips = res.memoryChips ?? [];
             const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
-            const imageGen = normalizeImageGen(res.imageGen);
             setMessages((prev) => [...prev, {
               id: res.messageId ?? Date.now(), role: "assistant",
               content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(),
@@ -431,7 +412,7 @@ export function useChatStream(
               ...(lps.length > 0 ? { linePatches: lps } : {}),
               ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
               ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
-              ...(imageGen ? { imageGen } : {}),
+              imageGen: res.imageGen ?? null,
               ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
               surface: res.surface ?? null,
               executionTimeMs: res.executionTimeMs ?? null,
@@ -615,7 +596,6 @@ export function useChatStream(
           const aff = res.autoFetchedFiles ?? [];
           const rawChips = res.memoryChips ?? [];
           const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
-          const imageGen = normalizeImageGen(res.imageGen);
           setMessages((prev) => [...prev, {
             id: res.messageId, role: "assistant",
             content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType, catchPayload: cp,
@@ -630,7 +610,7 @@ export function useChatStream(
             ...(lps.length > 0 ? { linePatches: lps } : {}),
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
             ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
-            ...(imageGen ? { imageGen } : {}),
+            imageGen: res.imageGen ?? null,
             ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
             surface: res.surface ?? null,
             executionTimeMs: res.executionTimeMs ?? null,
