@@ -231,7 +231,9 @@ export function ChatComposer(props: ChatComposerProps) {
     chatPending,
     handleSend,
     createSessionPending,
+    onAbort,
     sendPreparingSession,
+
     parkedCount,
     showParkingDrawer,
     setShowParkingDrawer,
