@@ -1324,7 +1324,53 @@ function getTerminalSuccessExplanation(command: string) {
   return TERMINAL_SUCCESS_EXPLANATIONS.find(({ pattern }) => pattern.test(command))?.explanation;
 }
 
+function buildAtlasCommitMessage(files: string[]): string {
+  if (files.length === 0) return "";
+  const buckets = {
+    styles: 0, components: 0, pages: 0, hooks: 0, lib: 0,
+    api: 0, db: 0, docs: 0, config: 0, tests: 0, other: 0,
+  };
+  for (const f of files) {
+    const lower = f.toLowerCase();
+    if (/\.(css|scss|sass)$/.test(lower) || lower.includes("/styles")) buckets.styles++;
+    else if (lower.includes("/components/")) buckets.components++;
+    else if (lower.includes("/pages/") || lower.includes("/routes/")) buckets.pages++;
+    else if (lower.includes("/hooks/")) buckets.hooks++;
+    else if (lower.includes("/lib/") || lower.includes("/utils/")) buckets.lib++;
+    else if (lower.includes("/api/") || lower.includes("functions/")) buckets.api++;
+    else if (lower.includes("migrations/") || lower.endsWith(".sql")) buckets.db++;
+    else if (/\.(md|mdx)$/.test(lower)) buckets.docs++;
+    else if (/\.(json|toml|yml|yaml)$/.test(lower) || lower.endsWith(".config.ts") || lower.endsWith(".config.js")) buckets.config++;
+    else if (lower.includes(".test.") || lower.includes(".spec.")) buckets.tests++;
+    else buckets.other++;
+  }
+  const parts: string[] = [];
+  if (buckets.styles) parts.push(`refined styling`);
+  if (buckets.components) parts.push(`updated ${buckets.components} component${buckets.components === 1 ? "" : "s"}`);
+  if (buckets.pages) parts.push(`reworked ${buckets.pages} page${buckets.pages === 1 ? "" : "s"}`);
+  if (buckets.hooks) parts.push(`adjusted hooks`);
+  if (buckets.lib) parts.push(`tidied helpers`);
+  if (buckets.api) parts.push(`updated backend logic`);
+  if (buckets.db) parts.push(`evolved the database`);
+  if (buckets.docs) parts.push(`refreshed docs`);
+  if (buckets.config) parts.push(`tuned configuration`);
+  if (buckets.tests) parts.push(`added tests`);
+  if (parts.length === 0) {
+    const sample = files.slice(0, 2).map(f => f.split("/").pop()).filter(Boolean).join(", ");
+    parts.push(`updated ${files.length} file${files.length === 1 ? "" : "s"}${sample ? ` (${sample}${files.length > 2 ? "…" : ""})` : ""}`);
+  }
+  const summary = parts.length === 1
+    ? parts[0]
+    : parts.length === 2
+      ? `${parts[0]} and ${parts[1]}`
+      : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+  // Capitalize first letter
+  const cap = summary.charAt(0).toUpperCase() + summary.slice(1);
+  return `Atlas: ${cap}`;
+}
+
 function TerminalPanel({
+
   pendingCommand,
   onCommandConsumed,
   onCommandComplete,
