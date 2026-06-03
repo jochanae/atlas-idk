@@ -183,16 +183,17 @@ export function ReadinessRing({
           className="atlas-readiness-pill"
           style={{
             display: "inline-flex", alignItems: "center", gap: pillGap,
-            background: "rgba(201,162,76,0.08)",
-            border: "1px solid rgba(201,162,76,0.22)",
+            background: "transparent",
+            border: "none",
             borderRadius: 999,
             padding: pillPadding,
             cursor: onClick ? "pointer" : "default",
-            transition: "background 160ms ease, border-color 160ms ease",
+            transition: "opacity 160ms ease, text-shadow 160ms ease",
             flexShrink: 0,
+            opacity: 0.9,
           }}
-          onMouseEnter={(e) => { if (onClick) e.currentTarget.style.background = "rgba(201,162,76,0.14)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
+          onMouseEnter={(e) => { if (onClick) e.currentTarget.style.opacity = "1"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.9"; }}
         >
           <RingSvg score={score} size={ringSize} radius={ringRadius} strokeWidth={2} pulse />
           <span
