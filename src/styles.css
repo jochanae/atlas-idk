@@ -525,22 +525,7 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
   /* Safe-area padding — respects iOS notch / Dynamic Island / Android status bar */
   padding-top: env(safe-area-inset-top, 0px);
 }
-/* Soft gradient fade beneath the header so scrolling content diffuses into
-   the glass instead of hitting a hard cutoff line. */
-.atlas-app-header::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 20px;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--atlas-bg) 70%, transparent) 0%,
-    color-mix(in oklab, var(--atlas-bg) 0%, transparent) 100%
-  );
-}
+/* Header bottom fade removed — was rendering as a visible blurred line. */
 
 [data-theme="parchment"] .atlas-app-header {
   background: color-mix(in oklab, var(--atlas-bg) 55%, transparent);
