@@ -124,6 +124,47 @@ function detectPlatform(): string {
   return "WEB";
 }
 
+function FlowCopyButton({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText(content).catch(() => {});
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }}
+      title={copied ? "Copied!" : "Copy response"}
+      aria-label="Copy response"
+      style={{
+        marginLeft: 4,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 7px",
+        borderRadius: 6,
+        background: "transparent",
+        border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+        color: copied ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.75)",
+        cursor: "pointer",
+        fontFamily: "var(--app-font-mono)",
+        fontSize: 9,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        transition: "color 160ms ease, border-color 160ms ease",
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      {copied ? (
+        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
+      ) : (
+        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5" /><path d="M9 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v5a1 1 0 001 1h2" /></svg>
+      )}
+      <span>{copied ? "Copied" : "Copy"}</span>
+    </button>
+  );
+}
+
 export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, onBackToChat, onNavLedger, onNavPreview, onMapReadinessChange, displayedReadinessScore, onSystemNodeMessage, onHandover, handoverPending, lastHandoverHash, resolvedNodeIds, onResolvedConsumed, onSnapshotChange, handoverOpen, onHandoverOpenChange, isMobile, onOpenForge, externalForgeNodes, onForgeNodesConsumed, onForgeCompleted, entryCount, activeCatch }: { projectId?: number; onHomeNav: () => void; onSendIntent?: (text: string) => void; onFillIntent?: (text: string) => void; onBackToChat?: () => void; onNavLedger?: () => void; onNavPreview?: () => void; onMapReadinessChange?: (score: number) => void; displayedReadinessScore?: number; onSystemNodeMessage?: (text: string) => void; onHandover?: (payload: { snapshot: HandoverSnapshot; title: string }) => void; handoverPending?: boolean; lastHandoverHash?: string | null; resolvedNodeIds?: string[]; onResolvedConsumed?: () => void; onSnapshotChange?: (s: HandoverSnapshot | null) => void; handoverOpen?: boolean; onHandoverOpenChange?: (open: boolean) => void; isMobile?: boolean; onOpenForge?: () => void; externalForgeNodes?: ArchNode[]; onForgeNodesConsumed?: () => void; onForgeCompleted?: () => void; entryCount?: number; activeCatch?: boolean }) {
   const [readinessScore, setReadinessScore] = useState(0);
   useEffect(() => { onMapReadinessChange?.(readinessScore); }, [readinessScore, onMapReadinessChange]);
