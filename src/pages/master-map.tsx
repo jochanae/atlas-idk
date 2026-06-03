@@ -217,6 +217,32 @@ export default function MasterMap() {
 
   const theme = useThemeMode();
   const palette = paletteFor(theme);
+
+  // ── Workspace overlay state ─────────────────────────────────────────────
+  // /map?project=X&view=workspace mounts <Workspace/> as a full-screen
+  // overlay so legacy /project/:id deep links keep working without leaving
+  // the satellite scene. Back button + popstate reverse cleanly.
+  const readOverlayFromUrl = (): string | null => {
+    if (typeof window === "undefined") return null;
+    const p = new URLSearchParams(window.location.search);
+    return p.get("view") === "workspace" ? p.get("project") : null;
+  };
+  const [overlayProjectId, setOverlayProjectId] = useState<string | null>(readOverlayFromUrl);
+  useEffect(() => {
+    const onPop = () => setOverlayProjectId(readOverlayFromUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const openWorkspaceOverlay = (pid: number | string) => {
+    const url = `/map?project=${pid}&view=workspace`;
+    window.history.pushState({}, "", url);
+    setOverlayProjectId(String(pid));
+  };
+  const closeWorkspaceOverlay = () => {
+    window.history.pushState({}, "", "/map");
+    setOverlayProjectId(null);
+  };
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
