@@ -81,9 +81,14 @@ export function useAtlasStream(): UseAtlasStreamReturn {
       });
 
       if (!res.ok) {
+        let bodyText = "";
+        try { bodyText = await res.text(); } catch { /* ignore */ }
+        console.error(`[useAtlasStream] ${endpoint} -> HTTP ${res.status}`, bodyText.slice(0, 500));
         const errText = res.status === 413
           ? "Images are too large to send. Try fewer or smaller images."
-          : "Something went wrong. Try again.";
+          : res.status === 401
+            ? "Session expired. Please sign in again."
+            : `Atlas couldn't respond (HTTP ${res.status}). Try again.`;
         callbacks.onError?.(errText);
         return;
       }

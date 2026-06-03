@@ -318,7 +318,12 @@ export function useChatStream(
             body: JSON.stringify(body),
             signal: controller.signal,
           });
-          if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`);
+          if (!r.ok || !r.body) {
+            let bodyText = "";
+            try { bodyText = await r.text(); } catch { /* ignore */ }
+            console.error(`[useChatStream] ${endpoint} -> HTTP ${r.status}`, bodyText.slice(0, 500));
+            throw new Error(`HTTP ${r.status}${bodyText ? `: ${bodyText.slice(0, 200)}` : ""}`);
+          }
 
           const placeholderId = -Date.now();
           streamingId = placeholderId;
