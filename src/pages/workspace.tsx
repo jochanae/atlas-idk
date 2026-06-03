@@ -1398,6 +1398,11 @@ function TerminalPanel({
   const inputRef = useRef<HTMLInputElement>(null);
   const fromAtlasRef = useRef(false);
   const abortCtrlRef = useRef<AbortController | null>(null);
+  const isDesktopView = useIsDesktop();
+  const [nlMode, setNlMode] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [nlPending, setNlPending] = useState(false);
+
 
   const killCommand = useCallback(() => {
     if (abortCtrlRef.current) {
