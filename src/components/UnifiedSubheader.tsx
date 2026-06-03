@@ -11,6 +11,7 @@ type UnifiedSubheaderProps = {
   isMobile: boolean;
   showWorkspaceMenu?: boolean;
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
+  onLaunch?: () => void;
   hasConversation?: boolean;
 };
 
