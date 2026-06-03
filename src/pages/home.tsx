@@ -3498,12 +3498,12 @@ export default function Home() {
                 </svg>
               </label>
 
-              {/* History — past conversations */}
+              {/* Recent projects — fast-lane back into active work */}
               <button
                 type="button"
-                onClick={handleOpenHistory}
-                title="Conversation history"
-                aria-label="Conversation history"
+                onClick={() => setShowHistory(true)}
+                title="Recent projects"
+                aria-label="Recent projects"
                 style={{
                   width: 32, height: 32, borderRadius: 8, background: "transparent",
                   border: "none", color: "rgba(201,162,76,0.72)", cursor: "pointer",
