@@ -163,7 +163,7 @@ export function ChatStream(props: ChatStreamProps) {
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
-    padding: isMobile ? "56px 14px 140px 14px" : "56px 104px 120px 24px",
+    padding: isMobile ? "32px 14px 20px 14px" : "56px 104px 28px 24px",
     position: "relative", scrollbarWidth: "none",
   };
   const liveStepText = liveStep
@@ -332,6 +332,8 @@ export function ChatStream(props: ChatStreamProps) {
 
       <div ref={bottomRef} />
 
+
+    </div>
       {showScrollBtn && (
         <button
           onPointerDown={(e) => {
@@ -345,10 +347,9 @@ export function ChatStream(props: ChatStreamProps) {
           }}
           aria-label="Scroll to latest"
           style={{
-            position: "sticky",
-            bottom: 12,
-            left: "100%",
-            transform: "translateX(-100%)",
+            position: "absolute",
+            bottom: 10,
+            right: 12,
             width: 32,
             height: 32,
             borderRadius: "50%",
@@ -362,7 +363,6 @@ export function ChatStream(props: ChatStreamProps) {
             boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
             zIndex: 50,
             pointerEvents: "auto",
-            flexShrink: 0,
           }}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -370,8 +370,6 @@ export function ChatStream(props: ChatStreamProps) {
           </svg>
         </button>
       )}
-
-    </div>
       <TimelineRail bottomOffset={isMobile ? 170 : 110} messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
     </div>
   );
