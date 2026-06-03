@@ -4397,7 +4397,7 @@ export default function Workspace() {
     setInput("");
     doSend(trimmedOpeningMessage, sessionId, []);
     setOpeningMessage(null);
-  }, [openingMessage, sessionId, sessionsLoading, chatPending, doSend]);
+  }, [openingMessage, sessionId, sessionsLoading, chatPending, doSend, setInput]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;
