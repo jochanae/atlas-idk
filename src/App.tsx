@@ -67,22 +67,14 @@ window.fetch = async (...args) => {
       ? args[0].toString()
       : args[0].url;
   const isApiCall = new URL(url, location.origin).pathname.startsWith("/api/");
-  if (isApiCall) {
-    const token = localStorage.getItem("atlas-token");
-    if (token) {
-      args[1] = {
-        ...(args[1] ?? {}),
-        headers: {
-          ...(((args[1] as RequestInit | undefined)?.headers) ?? {}),
-          Authorization: `Bearer ${token}`,
-        },
-      };
-    }
+  if (isApiCall && args[1]?.credentials === undefined) {
+    const token = localStorage.getItem("atlas-auth-token");
     args[1] = {
       ...(args[1] ?? {}),
       credentials: "include",
       headers: {
-        ...(((args[1] as RequestInit | undefined)?.headers) ?? {}),
+        ...(args[1]?.headers ?? {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     };
   }
@@ -369,7 +361,7 @@ function App() {
   useEffect(() => {
     setAuthTokenGetter(() => {
       try {
-        return localStorage.getItem("atlas-token") ?? localStorage.getItem("atlas-auth-token");
+        return localStorage.getItem("atlas-auth-token");
       } catch {
         return null;
       }

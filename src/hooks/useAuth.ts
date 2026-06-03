@@ -77,6 +77,11 @@ export function useLogout() {
   const [, navigate] = useLocation();
   return async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    try {
+      localStorage.removeItem("atlas-auth-token");
+    } catch {
+      // Continue logout even if storage is unavailable.
+    }
     setAuthToken(null);
     queryClient.setQueryData(["auth", "me"], null);
     navigate("/login");

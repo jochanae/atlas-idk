@@ -14,11 +14,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
     if (token) {
-      try {
-        localStorage.setItem("atlas-token", token);
-      } catch {
-        // Keep sign-in flowing if localStorage is unavailable.
-      }
       setAuthToken(token);
       try {
         sessionStorage.setItem("atlas-just-authed", "1");

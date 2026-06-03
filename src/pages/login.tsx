@@ -171,7 +171,7 @@ export default function Login() {
       const token = (data as any)?.token ?? (data as any)?.sessionToken;
       if (token) {
         try {
-          localStorage.setItem("atlas-token", token);
+          localStorage.setItem("atlas-auth-token", token);
         } catch {
           // Keep login flowing if localStorage is unavailable.
         }

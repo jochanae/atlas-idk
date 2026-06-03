@@ -1516,7 +1516,7 @@ export default function Home() {
     setCreateError(null);
 
     try {
-      const authToken = localStorage.getItem("atlas-token");
+      const authToken = localStorage.getItem("atlas-auth-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
         headers: {
@@ -2225,7 +2225,7 @@ export default function Home() {
     }
 
     try {
-      const authToken = localStorage.getItem("atlas-token");
+      const authToken = localStorage.getItem("atlas-auth-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
         headers: {
@@ -2300,7 +2300,7 @@ export default function Home() {
         }
         if (!name) name = "New Project";
       }
-      const authToken = localStorage.getItem("atlas-token");
+      const authToken = localStorage.getItem("atlas-auth-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
         headers: {
