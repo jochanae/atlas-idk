@@ -220,19 +220,17 @@ export function ReadinessRing({
           aria-label={`Readiness mode: ${MODE_META[mode].label}. Click to cycle modes.`}
           className="atlas-mix-btn"
           style={{
-            background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.18)",
+            background: "transparent", border: "none",
             borderRadius: 3, cursor: "pointer", padding: modePadding,
             fontFamily: "var(--app-font-mono)", fontSize: modeFontSize, fontWeight: 700, letterSpacing: "0.08em",
             color: "var(--atlas-muted)", lineHeight: 1, userSelect: "none", flexShrink: 0,
-            transition: "color 150ms ease, border-color 150ms ease",
+            transition: "color 150ms ease",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = "var(--atlas-gold)";
-            e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = "var(--atlas-muted)";
-            e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)";
           }}
         >
           {MODE_META[mode].abbr}
