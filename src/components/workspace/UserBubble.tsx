@@ -34,16 +34,25 @@ function formatTimestamp(iso?: string): string {
 export function UserBubble({
   content,
   sentAt,
+  imageB64,
+  imageMimeType,
   onCopy,
   onEdit,
 }: {
   content: string;
   sentAt?: string;
+  imageB64?: string;
+  imageMimeType?: string;
   onCopy: () => void;
   onEdit: () => void;
 }) {
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const imageUrl = imageB64
+    ? `data:${imageMimeType || "image/png"};base64,${imageB64}`
+    : null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).catch(() => {});
@@ -85,6 +94,44 @@ export function UserBubble({
           >
             {content}
           </CollapsibleMessageText>
+
+          {/* Committed attachment badge — paperclip + thumbnail, opens preview */}
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={() => { haptic.short(); setPreviewOpen(true); }}
+              aria-label="Open attached image"
+              title="View attachment"
+              style={{
+                marginTop: 8,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "3px 7px 3px 4px",
+                borderRadius: 999,
+                background: "rgba(201,162,76,0.08)",
+                border: "0.5px solid rgba(201,162,76,0.25)",
+                cursor: "pointer",
+                color: "var(--atlas-gold)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                lineHeight: 1,
+              }}
+            >
+              <img
+                src={imageUrl}
+                alt=""
+                style={{
+                  width: 22, height: 22, borderRadius: 4, objectFit: "cover",
+                  flexShrink: 0, display: "block",
+                }}
+              />
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M13 7.5l-5 5a3 3 0 01-4.24-4.24l6-6a2 2 0 012.83 2.83l-6 6a1 1 0 11-1.41-1.41L9.5 5" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Timestamp — BELOW bubble, matches home/nexus */}
@@ -125,6 +172,53 @@ export function UserBubble({
           </button>
         </div>
       </div>
+
+      {previewOpen && imageUrl && (
+        <div
+          onClick={() => setPreviewOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Attachment preview"
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.92)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, cursor: "zoom-out",
+            animation: "fadeIn 160ms ease",
+          }}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setPreviewOpen(false); }}
+            aria-label="Close preview"
+            style={{
+              position: "absolute", top: 18, right: 18,
+              width: 36, height: 36, borderRadius: 999,
+              background: "rgba(255,255,255,0.08)",
+              border: "0.5px solid rgba(201,162,76,0.3)",
+              color: "var(--atlas-gold)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
+          </button>
+          <img
+            src={imageUrl}
+            alt="Attached"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "100%", maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: 8,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+              cursor: "default",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
