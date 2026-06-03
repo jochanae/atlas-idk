@@ -20,6 +20,53 @@ import { createTextPacer, type TextPacer } from "@/lib/textPacer";
 type PriorMessage = Message;
 
 type LedgerEntryLike = { id: number | string; title: string; status: string };
+type ImageGenPayload = { imageUrl: string; prompt: string; model: string };
+
+const ARTIFACT_LINE_RE = /^ARTIFACT:\s*(\{.+\})$/m;
+const HTML_CODE_BLOCK_RE = /```html\n([\s\S]*?)```/;
+
+function normalizeImageGen(raw: unknown): ImageGenPayload | null {
+  if (!raw || typeof raw !== "object") return null;
+  const payload = raw as Partial<ImageGenPayload>;
+  if (
+    typeof payload.imageUrl === "string" &&
+    typeof payload.prompt === "string" &&
+    typeof payload.model === "string"
+  ) {
+    return {
+      imageUrl: payload.imageUrl,
+      prompt: payload.prompt,
+      model: payload.model,
+    };
+  }
+  return null;
+}
+
+function processPreviewableContent(
+  content: string,
+  onPreviewCode?: (code: string) => void,
+): string {
+  const artifactMatch = content.match(ARTIFACT_LINE_RE);
+  if (artifactMatch) {
+    try {
+      const artifact = JSON.parse(artifactMatch[1]) as { type?: unknown; title?: unknown; content?: unknown };
+      if (typeof artifact.content === "string") {
+        onPreviewCode?.(artifact.content);
+        return content.replace(ARTIFACT_LINE_RE, "").trim();
+      }
+    } catch {
+      // Leave malformed artifact text visible so the response is not silently lost.
+    }
+  }
+
+  const htmlMatch = content.match(HTML_CODE_BLOCK_RE);
+  const html = htmlMatch?.[1];
+  if (html && html.split("\n").length > 20) {
+    onPreviewCode?.(html);
+  }
+
+  return content;
+}
 
 export interface UseChatStreamOptions {
   sessions: Session[] | undefined;
@@ -47,6 +94,7 @@ export interface UseChatStreamOptions {
   getGetProjectQueryKey: (projectId: number) => QueryKey;
   getListProjectsQueryKey: () => QueryKey;
   reportError: (err: unknown, ctx?: { projectId?: number }) => void;
+  onPreviewCode?: (code: string) => void;
   onFlowNodes?: (nodes: Array<{ id: string; type: string; label: string; question?: string; x: number; y: number }>) => void;
 }
 
@@ -143,6 +191,7 @@ export function useChatStream(
     getGetProjectQueryKey,
     getListProjectsQueryKey,
     reportError,
+    onPreviewCode,
     onFlowNodes,
   } = opts;
 
@@ -357,12 +406,16 @@ export function useChatStream(
             } else if (ghStatus) {
               res.content = ghStatus;
             }
+            if (typeof res.content === "string") {
+              res.content = processPreviewableContent(res.content, onPreviewCode);
+            }
             const cp = res.catchPayload ?? null;
             const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
             const lps = res.linePatches ?? [];
             const aff = res.autoFetchedFiles ?? [];
             const rawChips = res.memoryChips ?? [];
             const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
+            const imageGen = normalizeImageGen(res.imageGen);
             setMessages((prev) => [...prev, {
               id: res.messageId ?? Date.now(), role: "assistant",
               content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(),
@@ -378,6 +431,7 @@ export function useChatStream(
               ...(lps.length > 0 ? { linePatches: lps } : {}),
               ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
               ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
+              ...(imageGen ? { imageGen } : {}),
               ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
               surface: res.surface ?? null,
               executionTimeMs: res.executionTimeMs ?? null,
@@ -552,12 +606,16 @@ export function useChatStream(
           } else if (githubAutoLinkStatus) {
             res.content = githubAutoLinkStatus;
           }
+          if (typeof res.content === "string") {
+            res.content = processPreviewableContent(res.content, onPreviewCode);
+          }
           const cp = res.catchPayload ?? null;
           const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
           const lps = res.linePatches ?? [];
           const aff = res.autoFetchedFiles ?? [];
           const rawChips = res.memoryChips ?? [];
           const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
+          const imageGen = normalizeImageGen(res.imageGen);
           setMessages((prev) => [...prev, {
             id: res.messageId, role: "assistant",
             content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType, catchPayload: cp,
@@ -572,6 +630,7 @@ export function useChatStream(
             ...(lps.length > 0 ? { linePatches: lps } : {}),
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
             ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
+            ...(imageGen ? { imageGen } : {}),
             ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
             surface: res.surface ?? null,
             executionTimeMs: res.executionTimeMs ?? null,
@@ -646,7 +705,7 @@ export function useChatStream(
         }
       })();
     },
-    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onFlowNodes],
+    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onPreviewCode, onFlowNodes],
   );
 
   const handleRegenerate = useCallback(
