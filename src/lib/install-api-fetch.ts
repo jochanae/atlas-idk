@@ -57,7 +57,7 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
     const target = rewriteUrl(input);
     let nextInit = init;
     if (isApiTarget(target)) {
-      const token = localStorage.getItem("atlas-token");
+      const token = localStorage.getItem("atlas-auth-token");
       if (token) {
         const headers = new Headers(init?.headers ?? (target instanceof Request ? target.headers : undefined));
         if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);

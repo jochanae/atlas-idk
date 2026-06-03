@@ -32,7 +32,6 @@ import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
 import { useAuth } from "@/hooks/useAuth";
-import { authHeaders } from "./hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -68,16 +67,15 @@ window.fetch = async (...args) => {
       : args[0].url;
   const isApiCall = new URL(url, location.origin).pathname.startsWith("/api/");
   if (isApiCall) {
-    const tokenHeaders = authHeaders();
-    if (Object.keys(tokenHeaders).length > 0) {
-      args[1] = {
-        ...(args[1] ?? {}),
-        headers: { ...(args[1]?.headers ?? {}), ...tokenHeaders },
-      };
-    }
-    if (API_BASE && args[1]?.credentials === undefined) {
-      args[1] = { ...(args[1] ?? {}), credentials: "include" };
-    }
+    const token = localStorage.getItem("atlas-auth-token");
+    args[1] = {
+      ...(args[1] ?? {}),
+      credentials: "include",
+      headers: {
+        ...(args[1]?.headers ?? {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
   }
   const res = await _originalFetch(...args);
   if (res.status === 401) {

@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { apiUrl } from "@/lib/api";
 
-const SESSION_TOKEN_STORAGE_KEY = "atlas-token";
+const SESSION_TOKEN_STORAGE_KEY = "atlas-auth-token";
 
 export default function TokenBridge() {
   const [, navigate] = useLocation();
