@@ -623,20 +623,29 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                   <div key={i} style={{
                     alignSelf: m.role === "user" ? "flex-end" : "flex-start",
                     maxWidth: "86%",
-                    background: m.role === "user"
-                      ? "rgba(var(--atlas-gold-rgb),0.12)"
-                      : "var(--atlas-surface)",
-                    border: m.role === "user"
-                      ? "1px solid rgba(var(--atlas-gold-rgb),0.28)"
-                      : "1px solid rgba(var(--atlas-gold-rgb),0.10)",
-                    borderRadius: m.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
-                    padding: "7px 10px",
-                    fontSize: 12, lineHeight: 1.55,
-                    color: m.role === "user" ? "#E7E5E4" : "var(--atlas-fg)",
-                    fontFamily: "inherit",
-                    whiteSpace: "pre-wrap", wordBreak: "break-word",
+                    display: "flex", flexDirection: "column",
+                    alignItems: m.role === "user" ? "flex-end" : "flex-start",
+                    gap: 4,
                   }}>
-                    {m.content}
+                    <div style={{
+                      background: m.role === "user"
+                        ? "rgba(var(--atlas-gold-rgb),0.12)"
+                        : "var(--atlas-surface)",
+                      border: m.role === "user"
+                        ? "1px solid rgba(var(--atlas-gold-rgb),0.28)"
+                        : "1px solid rgba(var(--atlas-gold-rgb),0.10)",
+                      borderRadius: m.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
+                      padding: "7px 10px",
+                      fontSize: 12, lineHeight: 1.55,
+                      color: m.role === "user" ? "#E7E5E4" : "var(--atlas-fg)",
+                      fontFamily: "inherit",
+                      whiteSpace: "pre-wrap", wordBreak: "break-word",
+                    }}>
+                      {m.content}
+                    </div>
+                    {m.role === "assistant" && m.content.trim().length > 0 && (
+                      <FlowCopyButton content={m.content} />
+                    )}
                   </div>
                 ))}
                 {flowLoading && (
@@ -926,3 +935,44 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   );
 }
 
+
+function FlowCopyButton({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText(content).catch(() => {});
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }}
+      title={copied ? "Copied!" : "Copy response"}
+      aria-label="Copy response"
+      style={{
+        marginLeft: 4,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 7px",
+        borderRadius: 6,
+        background: "transparent",
+        border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+        color: copied ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.75)",
+        cursor: "pointer",
+        fontFamily: "var(--app-font-mono)",
+        fontSize: 9,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        transition: "color 160ms ease, border-color 160ms ease",
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      {copied ? (
+        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
+      ) : (
+        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5" /><path d="M9 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v5a1 1 0 001 1h2" /></svg>
+      )}
+      <span>{copied ? "Copied" : "Copy"}</span>
+    </button>
+  );
+}
