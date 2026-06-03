@@ -5306,21 +5306,18 @@ export default function Workspace() {
         isMobile={isMobile}
         showWorkspaceMenu
         onLaunch={() => {
-          // Contextual full-screen launcher — state-aware maximize engine.
-          // Detects the active workspace surface and explodes it into an
-          // edge-to-edge modal display.
-          const mt = mobileTab;
-          let mode: LaunchMode;
-          if (mt === "files" || mt === "artifacts" || leftTab === "artifacts") {
-            mode = "files";
-          } else if (mt === "preview") {
-            mode = "preview";
-          } else if (leftTab === "terminal" || leftTab === "diff" || leftTab === "review") {
-            mode = "code";
-          } else {
-            mode = "activity";
+          // Preview-first toggle. Play ALWAYS surfaces the running app preview,
+          // regardless of which tab/module is currently active. Panel maximize
+          // is handled by each panel's own expand control — not here.
+          // If preview is already open in the launcher, close it (return to
+          // the previous view / acts as a publish-sheet placeholder toggle).
+          if (launchModal.open && launchModal.mode === "preview") {
+            setLaunchModal((s) => ({ ...s, open: false }));
+            return;
           }
-          setLaunchModal({ open: true, mode });
+          // Also reflect intent in mobile tab so closing returns to preview tab.
+          if (isMobile) setMobileTab("preview");
+          setLaunchModal({ open: true, mode: "preview" });
         }}
       />
 
