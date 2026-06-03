@@ -237,7 +237,9 @@ export function ChatComposer(props: ChatComposerProps) {
     showModelPicker,
     wsModel,
     onOpenModelSheet,
+    onComposerMenuAction,
   } = props;
+
 
   const modelChipLabel = (() => {
     switch (wsModel) {
