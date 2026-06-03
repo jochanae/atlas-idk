@@ -3497,7 +3497,7 @@ export default function Home() {
 
               <ComposerActions
                 scope="home"
-                hasProjectContext={false}
+                hasProjectContext
                 hasAttachments={attachedFiles.length > 0}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);
@@ -3507,9 +3507,12 @@ export default function Home() {
                 onMenuAction={(action) => {
                   if (action === "history") { setShowHistory(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
-                  if (action === "more:forge") { setLocation("/projects"); return; }
-                  // Project-only actions are hidden on home (hasProjectContext=false),
-                  // but other "more:*" items fall through to a soft toast.
+                  // Project-scoped items: route the user to the projects list so
+                  // whatever they pick up at home (attachments, intent) carries
+                  // into the same workspace. Keeps home + workspace menus identical.
+                  if (action === "files" || action === "code" || action === "share" ||
+                      action === "publish" || action === "connectors" ||
+                      action === "more:forge") { setLocation("/projects"); return; }
                   toast("Open a project to use that");
                 }}
               />
