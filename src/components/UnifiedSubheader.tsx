@@ -58,35 +58,19 @@ export function UnifiedSubheader({
   hasProject,
   isMobile,
   showWorkspaceMenu = false,
-  onMenuAction,
+  onLaunch,
   hasConversation = true,
 }: UnifiedSubheaderProps) {
   const [expanded, setExpanded] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [menuOpen]);
+  const [launchHover, setLaunchHover] = useState(false);
+  const [launchActive, setLaunchActive] = useState(false);
 
   const selectTab = (tab: UnifiedSubheaderTab) => {
     onTabChange(tab);
-    setMenuOpen(false);
   };
 
   const showRow = expanded && hasProject;
+
 
   return (
     <div
