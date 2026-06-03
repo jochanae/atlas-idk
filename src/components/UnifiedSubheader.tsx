@@ -156,78 +156,41 @@ export function UnifiedSubheader({
           </nav>
 
           {showWorkspaceMenu && (
-            <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((open) => !open)}
-                title="Workspace menu"
-                aria-label="Workspace menu"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                style={{
-                  background: menuOpen ? "rgba(201,162,76,0.10)" : "transparent",
-                  border: menuOpen ? "1px solid rgba(201,162,76,0.32)" : "1px solid transparent",
-                  borderRadius: 6,
-                  padding: "4px",
-                  cursor: "pointer",
-                  color: menuOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: menuOpen ? 1 : 0.7,
-                  lineHeight: 0,
-                  display: "inline-flex",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                <MoreVertical size={16} strokeWidth={1.85} aria-hidden />
-              </button>
-              {menuOpen && (
-                <div
-                  role="menu"
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    right: 0,
-                    zIndex: 60,
-                    minWidth: 176,
-                    padding: "6px 0",
-                    borderRadius: 10,
-                    background: "var(--atlas-surface)",
-                    border: "1px solid var(--atlas-border)",
-                    boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  {MENU_ITEMS.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onMenuAction?.(item.id);
-                      }}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "9px 12px",
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--atlas-fg)",
-                        cursor: "pointer",
-                        fontFamily: "var(--app-font-mono)",
-                        fontSize: "var(--ts-caption)",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                        textAlign: "left",
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => onLaunch?.()}
+              onMouseEnter={() => setLaunchHover(true)}
+              onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
+              onMouseDown={() => setLaunchActive(true)}
+              onMouseUp={() => setLaunchActive(false)}
+              title="Launch full screen"
+              aria-label="Launch full screen"
+              style={{
+                flexShrink: 0,
+                background: launchActive
+                  ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
+                  : launchHover
+                  ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+                  : "transparent",
+                border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
+                borderRadius: 8,
+                padding: "5px 6px",
+                cursor: "pointer",
+                color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
+                opacity: launchHover || launchActive ? 1 : 0.85,
+                lineHeight: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease",
+                WebkitTapHighlightColor: "transparent",
+                boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
+              }}
+            >
+              <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
+            </button>
           )}
+
         </div>
       </div>
 
