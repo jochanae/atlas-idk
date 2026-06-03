@@ -244,13 +244,6 @@ export function ChatStream(props: ChatStreamProps) {
                 <AtlasActivityBar content={activityStream.content} lens={wsLens} />
               )
             )}
-            {liveStepText && chatPending && i === messages.length - 1 && (
-              <div style={{ fontSize: 11, color: "var(--atlas-muted)", margin: "0 0 8px" }}>
-                {liveStepText}
-              </div>
-            )}
-
-
             <AssistantBubble
               message={msg}
               isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
