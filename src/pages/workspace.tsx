@@ -85,6 +85,7 @@ import { BlueprintsTab } from "@/components/workspace/BlueprintsTab";
 import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import { JobsPanel } from "@/components/workspace/JobsPanel";
 import { McpPanel } from "@/components/workspace/McpPanel";
+import { LaunchModal, type LaunchMode } from "@/components/workspace/LaunchModal";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
@@ -2654,6 +2655,7 @@ export default function Workspace() {
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
     try { return localStorage.getItem("atlas-power-model-picker") === "1"; } catch { return false; }
   });
@@ -4876,20 +4878,30 @@ export default function Workspace() {
         isMobile={isMobile}
         showWorkspaceMenu
         onLaunch={() => {
-          // Context-aware full-screen launcher:
-          // - Files / Artifacts tabs → open the file/editor panel
-          // - Blueprints / Diff / Chat / Console → open Live Preview
-          // - Default → Live Preview
-          const target: "files" | "preview" =
-            leftTab === "artifacts" ? "files" : "preview";
-          if (isMobile) {
-            setMobileTab(target);
-            setRightOpen(true);
+          // Contextual full-screen launcher — state-aware maximize engine.
+          // Detects the active workspace surface and explodes it into an
+          // edge-to-edge modal display.
+          const mt = mobileTab;
+          let mode: LaunchMode;
+          if (mt === "files" || mt === "artifacts" || leftTab === "artifacts") {
+            mode = "files";
+          } else if (mt === "preview") {
+            mode = "preview";
+          } else if (leftTab === "terminal" || leftTab === "diff" || leftTab === "review") {
+            mode = "code";
           } else {
-            setDesktopForceTab(target);
-            setTimeout(() => setDesktopForceTab(undefined), 120);
+            mode = "activity";
           }
+          setLaunchModal({ open: true, mode });
         }}
+      />
+
+      <LaunchModal
+        open={launchModal.open}
+        mode={launchModal.mode}
+        onClose={() => setLaunchModal((s) => ({ ...s, open: false }))}
+        linkedRepo={linkedRepo}
+        previewUrl={project?.previewUrl ?? null}
       />
 
       {/* ── Spec → Build handoff modal ── */}
