@@ -4497,30 +4497,8 @@ export default function Workspace() {
     setLeftTab("terminal");
   }, [isMobile]);
 
-  const handleUnifiedSubheaderMenuAction = useCallback((action: UnifiedSubheaderMenuAction) => {
-    if (action === "forge") {
-      setShowForgeExternal(true);
-      return;
-    }
-    if (action === "rescan-repo") {
-      if (isScanning) return;
-      toast.info("Rescanning repository", {
-        description: "Pulling the latest from GitHub to refresh your readiness score.",
-        className: "atlas-toast-pill",
-      });
-      void runScan(false);
-      return;
-    }
+  // (legacy subheader menu actions removed — those entries live in the composer ... menu now)
 
-    if (isMobile) {
-      setMobileTab(action);
-      setRightOpen(true);
-      return;
-    }
-
-    setDesktopForceTab(action);
-    setTimeout(() => setDesktopForceTab(undefined), 120);
-  }, [isMobile, isScanning, runScan]);
 
   const handleReviewPushSuccess = useCallback((records: PushRecord[]) => {
     haptic.double();
