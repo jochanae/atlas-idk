@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import * as THREE from "three";
@@ -6,10 +6,6 @@ import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useMapStore, type MapNode } from "@/lib/master-map-store";
 import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
-
-// Workspace mounts as a full-screen overlay when /map?view=workspace&project=ID.
-// Lazy-loaded so the master map remains snappy when the overlay isn't open.
-const Workspace = lazy(() => import("@/pages/workspace"));
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
@@ -218,30 +214,21 @@ export default function MasterMap() {
   const theme = useThemeMode();
   const palette = paletteFor(theme);
 
-  // ── Workspace overlay state ─────────────────────────────────────────────
-  // /map?project=X&view=workspace mounts <Workspace/> as a full-screen
-  // overlay so legacy /project/:id deep links keep working without leaving
-  // the satellite scene. Back button + popstate reverse cleanly.
-  const readOverlayFromUrl = (): string | null => {
-    if (typeof window === "undefined") return null;
-    const p = new URLSearchParams(window.location.search);
-    return p.get("view") === "workspace" ? p.get("project") : null;
-  };
-  const [overlayProjectId, setOverlayProjectId] = useState<string | null>(readOverlayFromUrl);
   useEffect(() => {
-    const onPop = () => setOverlayProjectId(readOverlayFromUrl());
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-  const openWorkspaceOverlay = (pid: number | string) => {
-    const url = `/map?project=${pid}&view=workspace`;
-    window.history.pushState({}, "", url);
-    setOverlayProjectId(String(pid));
-  };
-  const closeWorkspaceOverlay = () => {
-    window.history.pushState({}, "", "/map");
-    setOverlayProjectId(null);
-  };
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "workspace") {
+      const projectId = params.get("project");
+      if (projectId) {
+        const target = params.get("tab") === "chat"
+          ? `/project/${projectId}`
+          : `/project/${projectId}`;
+        window.history.replaceState({}, "", target);
+        setLocation(target);
+      } else {
+        window.history.replaceState({}, "", "/map");
+      }
+    }
+  }, [setLocation]);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
