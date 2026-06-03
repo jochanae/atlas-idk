@@ -14,6 +14,7 @@ import {
 import { StatCard } from "./stat-card";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
+import { fetchGitHubStatus } from "@/hooks/useGitHub";
 
 type RecentProject = {
   id: number;
@@ -584,6 +585,9 @@ function dotForStatus(type: ConnType, st?: ConnStatus): { color: string; pulse: 
     return { color: "rgba(160,160,160,0.5)", pulse: false, label: "Loading…" };
   }
   if (type === "github") {
+    if (st.state === "read-only") return { color: "rgba(201,162,76,0.85)", pulse: false, label: "Read-only (no personal token)" };
+    if (st.state === "not-connected") return { color: "rgba(248,113,113,0.85)", pulse: false, label: "Not connected" };
+    if (st.state === "connected") return { color: "rgba(74,222,128,0.7)", pulse: true, label: "GitHub connected" };
     if (st.state === "error" || st.state === "failed") return { color: "rgba(248,113,113,0.85)", pulse: false, label: st.message ?? "Error" };
     const msg = st.lastCommitMessage ? truncate(st.lastCommitMessage, 40) : "Active";
     const when = st.lastCommitAt ? formatRelative(st.lastCommitAt) : "";
@@ -607,29 +611,36 @@ function ConnectionsDock() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
-  const loadConnections = async () => {
+  const loadConnections = async (): Promise<Connection[]> => {
     try {
       const res = await fetch("/api/connections", { credentials: "include" });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       const list: Connection[] = Array.isArray(data) ? data : (data.connections ?? []);
       setConnections(list);
+      return list;
     } catch {
       setConnections([]);
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  const loadStatus = async () => {
+  const loadStatus = async (currentConnections = connections) => {
     try {
-      const res = await fetch("/api/connections/status", { credentials: "include" });
-      if (!res.ok) return;
-      const data = await res.json();
+      const [connectionsResult, githubStatus] = await Promise.all([
+        fetch("/api/connections/status", { credentials: "include" }),
+        fetchGitHubStatus().catch(() => null),
+      ]);
+      if (!connectionsResult.ok) return;
+      const data = await connectionsResult.json();
       const raw: Record<string, any> = data.statuses ?? data ?? {};
       const map: Record<string, ConnStatus> = {};
+      const connectionTypeById = new Map(currentConnections.map((connection) => [String(connection.id), connection.type]));
       for (const [id, s] of Object.entries(raw)) {
         if (!s || typeof s !== "object") continue;
+        if (connectionTypeById.get(id) === "github" || s.type === "github") continue;
         map[id] = {
           state: s.status ?? s.state,
           message: s.message ?? s.lastCommit?.message ?? null,
@@ -640,13 +651,21 @@ function ConnectionsDock() {
           lastDeployAt: s.lastDeploy?.timestamp ?? s.lastDeployAt ?? null,
         };
       }
+      if (githubStatus) {
+        for (const connection of currentConnections) {
+          if (connection.type !== "github") continue;
+          map[String(connection.id)] = {
+            state: githubStatus.status,
+            message: githubStatus.label,
+          };
+        }
+      }
       setStatuses(map);
     } catch { /* ignore */ }
   };
 
   useEffect(() => {
-    loadConnections();
-    loadStatus();
+    void loadConnections().then((list) => loadStatus(list));
     const t = setInterval(loadStatus, 60_000);
     return () => clearInterval(t);
   }, []);

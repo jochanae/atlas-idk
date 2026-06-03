@@ -4,6 +4,7 @@ import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import { useListProjects, useListEntries, useCreateEntry, useUpdateEntry, useDeleteEntry, useUpdateProject, useListSessions, useGetSession, getListEntriesQueryKey, getListSessionsQueryKey, getGetSessionQueryKey,  } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { fetchGitHubStatus } from "@/hooks/useGitHub";
 
 type Tool = "decision-editor" | "context-builder" | "diff-review" | "session-exporter" | "bulk-import" | "atlas-selfmap" | "connections";
 
@@ -739,10 +740,18 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 function statusColor(status: string): string {
-  if (status === "active" || status === "linked") return "#4ade80";
+  if (status === "active" || status === "linked" || status === "connected") return "#4ade80";
+  if (status === "read-only") return "var(--atlas-gold)";
   if (status === "building") return "var(--atlas-gold)";
-  if (status === "failed" || status === "missing") return "var(--atlas-ember)";
+  if (status === "failed" || status === "missing" || status === "not-connected") return "var(--atlas-ember)";
   return "var(--atlas-muted)";
+}
+
+function statusLabel(status: string): string {
+  if (status === "connected") return "GitHub connected";
+  if (status === "read-only") return "Read-only (no personal token)";
+  if (status === "not-connected") return "Not connected";
+  return status.toUpperCase();
 }
 
 function ConnectionsTool({ onBack }: { onBack: () => void }) {
@@ -841,11 +850,17 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
   const checkStatus = async () => {
     setCheckingStatus(true);
     try {
-      const res = await fetch("/api/connections/status", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json() as { connections: ConnectionStatus[] };
-        setStatuses(data.connections);
+      const [connectionsResult, githubStatus] = await Promise.all([
+        fetch("/api/connections/status", { credentials: "include" }),
+        fetchGitHubStatus().catch(() => null),
+      ]);
+      if (!connectionsResult.ok) return;
+      const data = await connectionsResult.json() as { connections: ConnectionStatus[] };
+      const nextStatuses = (data.connections ?? []).filter((status) => status.type !== "github");
+      if (githubStatus) {
+        nextStatuses.push({ type: "github", status: githubStatus.status });
       }
+      setStatuses(nextStatuses);
     } finally {
       setCheckingStatus(false);
     }
@@ -1021,7 +1036,7 @@ function ConnectionsTool({ onBack }: { onBack: () => void }) {
                   </div>
                   <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-muted)", opacity: 0.55, marginBottom: conn.url ? 2 : 0 }}>
                     {conn.type.toUpperCase()}
-                    {liveStatus ? ` · ${liveStatus.status.toUpperCase()}` : ""}
+                    {liveStatus ? ` · ${statusLabel(liveStatus.status)}` : ""}
                   </div>
                   {conn.url && (
                     <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conn.url}</div>

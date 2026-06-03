@@ -1,8 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { getAuthHeaders } from "@/lib/api";
 
+export type GitHubConnectionStatus = "connected" | "read-only" | "not-connected";
+
+export type NormalizedGitHubStatus = {
+  canRead: boolean;
+  canWrite: boolean;
+  hasServerToken: boolean;
+  status: GitHubConnectionStatus;
+  label: string;
+  tokenHeader: string | null;
+};
+
 type GitHubState = {
   isConnected: boolean;
+  canRead: boolean;
+  canWrite: boolean;
+  hasServerToken: boolean;
+  status: GitHubConnectionStatus;
+  statusLabel: string;
+  tokenHeader: string | null;
   isLoading: boolean;
   error: string | null;
   connect: (token: string) => Promise<boolean>;
@@ -11,86 +28,76 @@ type GitHubState = {
 
 const GITHUB_STATUS_ERROR = "Token saved but GitHub returned an error — check your token has repo access.";
 
-type ConnectionStatus = {
-  type?: string | null;
-  status?: string | null;
-  state?: string | null;
+const NOT_CONNECTED_STATUS: NormalizedGitHubStatus = {
+  canRead: false,
+  canWrite: false,
+  hasServerToken: false,
+  status: "not-connected",
+  label: "Not connected",
+  tokenHeader: null,
 };
 
-function isFailedStatus(status: unknown): boolean {
-  if (typeof status !== "string") return false;
-  return ["failed", "error", "unauthorized", "invalid"].includes(status.toLowerCase());
+type GitHubStatusResponse = {
+  canRead?: boolean | null;
+  canWrite?: boolean | null;
+  hasServerToken?: boolean | null;
+};
+
+function githubStatusUrl(projectId?: number | null): string {
+  if (projectId == null) return "/api/github/status";
+  return `/api/github/status?projectId=${encodeURIComponent(String(projectId))}`;
 }
 
-function githubStatusFailed(data: unknown): boolean {
-  if (!data || typeof data !== "object") return false;
+function normalizeGitHubStatus(data: GitHubStatusResponse): NormalizedGitHubStatus {
+  const canRead = !!data.canRead;
+  const canWrite = !!data.canWrite;
+  const hasServerToken = !!data.hasServerToken;
+  const status: GitHubConnectionStatus = canWrite
+    ? "connected"
+    : canRead && hasServerToken
+      ? "read-only"
+      : "not-connected";
 
-  const payload = data as {
-    connections?: ConnectionStatus[];
-    statuses?: Record<string, ConnectionStatus | string> | ConnectionStatus[];
-    github?: ConnectionStatus | string;
+  return {
+    canRead,
+    canWrite,
+    hasServerToken,
+    status,
+    label: status === "connected"
+      ? "GitHub connected"
+      : status === "read-only"
+        ? "Read-only (no personal token)"
+        : "Not connected",
+    tokenHeader: canWrite ? "__account__" : canRead && hasServerToken ? "__server__" : null,
   };
-
-  const statuses: ConnectionStatus[] = [];
-  if (Array.isArray(payload.connections)) {
-    statuses.push(...payload.connections.filter((entry) => entry?.type === "github"));
-  }
-  if (Array.isArray(payload.statuses)) {
-    statuses.push(...payload.statuses.filter((entry) => entry?.type === "github"));
-  } else if (payload.statuses && typeof payload.statuses === "object") {
-    for (const [key, value] of Object.entries(payload.statuses)) {
-      if (typeof value === "string") {
-        if (key === "github") statuses.push({ type: "github", status: value });
-      } else if (key === "github" || value.type === "github") {
-        statuses.push(value);
-      }
-    }
-  }
-  if (payload.github) {
-    statuses.push(typeof payload.github === "string" ? { type: "github", status: payload.github } : payload.github);
-  }
-
-  return statuses.some((entry) => isFailedStatus(entry.status ?? entry.state));
 }
 
-async function verifyGithubStatus(): Promise<boolean> {
-  const res = await fetch("/api/connections/status", {
-    headers: getAuthHeaders(),
+export async function fetchGitHubStatus(projectId?: number | null): Promise<NormalizedGitHubStatus> {
+  const res = await fetch(githubStatusUrl(projectId), {
     credentials: "include",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  return !githubStatusFailed(data);
+  const data = await res.json() as GitHubStatusResponse;
+  return normalizeGitHubStatus(data);
 }
 
-export function useGitHub(): GitHubState {
-  const [isConnected, setIsConnected] = useState(false);
+export function useGitHub(projectId?: number | null): GitHubState {
+  const [githubStatus, setGithubStatus] = useState<NormalizedGitHubStatus>(NOT_CONNECTED_STATUS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const check = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch("/api/connections", {
-        headers: getAuthHeaders(),
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const connections = (Array.isArray(data) ? data : data?.connections ?? []) as Array<{ type?: string | null }>;
-      const hasGitHub = connections.some((c) => c.type === "github");
-      if (!hasGitHub) {
-        setIsConnected(false);
-        return;
-      }
-      const statusOk = await verifyGithubStatus();
-      setIsConnected(statusOk);
-      setError(statusOk ? null : GITHUB_STATUS_ERROR);
+      const status = await fetchGitHubStatus(projectId);
+      setGithubStatus(status);
+      setError(null);
     } catch {
-      setIsConnected(false);
+      setGithubStatus(NOT_CONNECTED_STATUS);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => { void check(); }, [check]);
 
@@ -114,19 +121,18 @@ export function useGitHub(): GitHubState {
         const d = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(d.error ?? `HTTP ${res.status}`);
       }
-      const statusOk = await verifyGithubStatus();
-      if (!statusOk) {
-        setIsConnected(false);
+      const status = await fetchGitHubStatus(projectId);
+      setGithubStatus(status);
+      if (!status.canWrite) {
         setError(GITHUB_STATUS_ERROR);
         return false;
       }
-      setIsConnected(true);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to connect");
       return false;
     }
-  }, []);
+  }, [projectId]);
 
   const disconnect = useCallback(async () => {
     setError(null);
@@ -139,15 +145,27 @@ export function useGitHub(): GitHubState {
       const data = await res.json();
       const connections = (Array.isArray(data) ? data : data?.connections ?? []) as Array<{ id: number; type?: string | null }>;
       const github = connections.find((c) => c.type === "github");
-      if (!github) { setIsConnected(false); return; }
+      if (!github) { await check(); return; }
       await fetch(`/api/connections/${github.id}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
         credentials: "include",
       });
-      setIsConnected(false);
+      await check();
     } catch {}
-  }, []);
+  }, [check]);
 
-  return { isConnected, isLoading, error, connect, disconnect };
+  return {
+    isConnected: githubStatus.canWrite,
+    canRead: githubStatus.canRead,
+    canWrite: githubStatus.canWrite,
+    hasServerToken: githubStatus.hasServerToken,
+    status: githubStatus.status,
+    statusLabel: githubStatus.label,
+    tokenHeader: githubStatus.tokenHeader,
+    isLoading,
+    error,
+    connect,
+    disconnect,
+  };
 }

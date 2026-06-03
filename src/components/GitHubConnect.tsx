@@ -8,7 +8,7 @@ export function GitHubConnect({
   onSuccess?: () => void;
   onCancel?: () => void;
 }) {
-  const { connect, disconnect, isConnected, error } = useGitHub();
+  const { connect, disconnect, isConnected, isLoading, status, statusLabel, error } = useGitHub();
   const [token, setToken] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -55,6 +55,21 @@ export function GitHubConnect({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {!isLoading && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          fontFamily: "var(--app-font-mono)", fontSize: 11,
+          color: status === "read-only" ? "var(--atlas-gold)" : "rgba(248,113,113,0.85)",
+          opacity: 0.8,
+        }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: status === "read-only" ? "var(--atlas-gold)" : "rgba(248,113,113,0.85)",
+            flexShrink: 0,
+          }} />
+          {statusLabel}
+        </div>
+      )}
       <div style={{
         fontSize: 12, color: "var(--atlas-muted)",
         lineHeight: 1.6, opacity: 0.7,
