@@ -1344,6 +1344,7 @@ function TerminalPanel({
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncFiles, setSyncFiles] = useState<string[]>([]);
   const [syncMsg, setSyncMsg] = useState("");
+  const [syncMsgTouched, setSyncMsgTouched] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"idle" | "pushing" | "done" | "error">("idle");
   const [syncResult, setSyncResult] = useState<{ url: string; shortSha: string; filesCommitted: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -1363,6 +1364,13 @@ function TerminalPanel({
     return () => clearInterval(id);
   }, []);
 
+  // Auto-suggest a plain-English commit message describing Atlas's recent edits.
+  useEffect(() => {
+    if (syncMsgTouched) return;
+    if (syncFiles.length === 0) { setSyncMsg(""); return; }
+    setSyncMsg(buildAtlasCommitMessage(syncFiles));
+  }, [syncFiles, syncMsgTouched]);
+
   const handlePush = async () => {
     if (syncStatus === "pushing") return;
     setSyncStatus("pushing");
@@ -1381,11 +1389,13 @@ function TerminalPanel({
       setSyncResult({ url: d.url, shortSha: d.shortSha, filesCommitted: d.filesCommitted });
       setSyncFiles([]);
       setSyncMsg("");
+      setSyncMsgTouched(false);
     } catch (err) {
       setSyncStatus("error");
       setSyncError(err instanceof Error ? err.message : "Network error");
     }
   };
+
 
   const [input, setInput] = useState("");
   const [lines, setLines] = useState<TerminalLine[]>([
