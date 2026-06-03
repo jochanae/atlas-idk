@@ -548,17 +548,18 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
         aria-label={`Readiness mode ${meta.label}, ${score} percent. Tap to switch mode, long-press for breakdown.`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "4px 10px", borderRadius: 999, cursor: "pointer",
-          background: "rgba(201,162,76,0.10)",
-          border: "1px solid rgba(201,162,76,0.28)",
+          padding: "4px 8px", borderRadius: 999, cursor: "pointer",
+          background: "transparent",
+          border: "none",
           color: "var(--atlas-gold)", flexShrink: 0,
-          transition: "background 160ms ease, border-color 160ms ease",
+          transition: "opacity 160ms ease",
           userSelect: "none",
           WebkitUserSelect: "none",
           touchAction: "manipulation",
+          opacity: 0.9,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.18)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.10)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.9"; }}
       >
         <span style={{
           fontFamily: "var(--app-font-mono)", fontSize: 8.5, fontWeight: 700,
