@@ -3336,6 +3336,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
+          <div style={{ position: "relative", zIndex: 200, isolation: "isolate" }}>
           <div className="atlas-input-shell" style={{
             position: "relative",
             left: 0, right: 0, bottom: 0,
@@ -3555,6 +3556,7 @@ export default function Home() {
                   // cause the synthesized click to land on a different element).
                   onPointerDown={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     if (!isSending && canSubmitNow()) void handleSubmit();
                   }}
                   onClick={(e) => {
@@ -3568,6 +3570,7 @@ export default function Home() {
                     border: canSubmit ? "none" : "1px solid var(--atlas-border)",
                     boxShadow: canSubmit && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
                     opacity: isSending ? 0.5 : 1,
+                    touchAction: "none",
                   }}
                 >
                   {isSending ? (
@@ -3585,6 +3588,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
+          </div>
           </div>
 
 
