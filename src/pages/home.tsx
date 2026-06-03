@@ -3947,10 +3947,10 @@ export default function Home() {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)" }}>
-                CONVERSATION HISTORY
+                RECENT PROJECTS
               </div>
               <button
-                onClick={handleNewConversation}
+                onClick={() => { setShowHistory(false); setShowNewProjectModal(true); }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   background: "transparent",
@@ -3963,78 +3963,102 @@ export default function Home() {
                   letterSpacing: "0.05em",
                   cursor: "pointer",
                 }}
-                aria-label="Start new conversation"
+                aria-label="Start new project"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 NEW
               </button>
             </div>
-            {historyLoading ? (
-              <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-label)" }}>Loading...</div>
-            ) : conversations.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-label)", fontFamily: "var(--app-font-mono)" }}>No saved conversations yet.</div>
-            ) : conversations.map(c => (
-              <div
-                key={c.id}
-                style={{
-                  padding: "12px 0",
-                  borderBottom: "1px solid var(--atlas-border)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSwitchConversation(c.id)}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    background: "transparent",
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    color: "inherit",
-                  }}
-                >
-                  <div style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", marginBottom: 2 }}>{c.title}</div>
-                  <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
-                    {new Date(c.createdAt).toLocaleDateString()} · {c.messageCount} messages
+            {(() => {
+              const recent = ((projects ?? []) as Project[])
+                .filter((p) => (p as { status?: string }).status !== "archived")
+                .slice()
+                .sort((a, b) => {
+                  const at = new Date((a as { updatedAt?: string }).updatedAt ?? a.createdAt ?? 0).getTime();
+                  const bt = new Date((b as { updatedAt?: string }).updatedAt ?? b.createdAt ?? 0).getTime();
+                  return bt - at;
+                })
+                .slice(0, 5);
+
+              if (isLoading) {
+                return <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-label)" }}>Loading…</div>;
+              }
+              if (recent.length === 0) {
+                return (
+                  <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--atlas-muted)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>
+                    Your active workspaces will appear here.
+                    <br />
+                    <span style={{ opacity: 0.7 }}>Start a conversation above to create your first project.</span>
                   </div>
-                </button>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                );
+              }
+              return (
+                <>
+                  {recent.map((p) => {
+                    const ts = new Date((p as { updatedAt?: string }).updatedAt ?? p.createdAt ?? Date.now()).getTime();
+                    const mins = Math.max(1, Math.round((Date.now() - ts) / 60000));
+                    const rel = mins < 60
+                      ? `${mins}m ago`
+                      : mins < 1440
+                      ? `${Math.round(mins / 60)}h ago`
+                      : `${Math.round(mins / 1440)}d ago`;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { setShowHistory(false); navigateToProject(p.id); }}
+                        style={{
+                          width: "100%",
+                          padding: "12px 0",
+                          borderBottom: "1px solid var(--atlas-border)",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12,
+                          background: "transparent",
+                          border: "none",
+                          borderBottomWidth: 1,
+                          borderBottomStyle: "solid",
+                          borderBottomColor: "var(--atlas-border)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          color: "inherit",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                          <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
+                            Active {rel}
+                          </div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </button>
+                    );
+                  })}
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void handleDeleteConversation(c.id);
-                    }}
-                    aria-label="Delete conversation"
-                    title="Delete conversation"
+                    onClick={() => { setShowHistory(false); setLocation("/projects"); }}
                     style={{
+                      width: "100%",
+                      marginTop: 14,
+                      padding: "10px 0",
                       background: "transparent",
                       border: "none",
-                      padding: "4px",
+                      color: "var(--atlas-gold)",
+                      fontSize: "var(--ts-caption)",
+                      fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
                       cursor: "pointer",
-                      color: "rgba(239,68,68,0.7)",
-                      lineHeight: 0,
                     }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18"/>
-                      <path d="M8 6V4h8v2"/>
-                      <path d="M19 6l-1 14H6L5 6"/>
-                      <path d="M10 11v6M14 11v6"/>
-                    </svg>
+                    View all projects →
                   </button>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 18 15 12 9 6"/>
-                  </svg>
-                </div>
-              </div>
-            ))}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
