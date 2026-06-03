@@ -1514,9 +1514,13 @@ export default function Home() {
     setCreateError(null);
 
     try {
+      const authToken = localStorage.getItem("atlas-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         credentials: "include",
         body: JSON.stringify({ name: "New Project" }),
       });
@@ -2219,9 +2223,13 @@ export default function Home() {
     }
 
     try {
+      const authToken = localStorage.getItem("atlas-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         credentials: "include",
         body: JSON.stringify({ name: "New Project" }),
       });
@@ -2290,9 +2298,13 @@ export default function Home() {
         }
         if (!name) name = "New Project";
       }
+      const authToken = localStorage.getItem("atlas-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         credentials: "include",
         body: JSON.stringify({ name }),
       });
