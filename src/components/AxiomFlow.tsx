@@ -595,8 +595,34 @@ export function AxiomFlow({
     if (!pendingNodes || pendingNodes.length === 0 || pendingConsumedRef.current) return;
     pendingConsumedRef.current = true;
 
+    // Cleanup: when Forge delivers real nodes, drop untouched seed placeholders
+    // (unresolved, no strategicAnswer, label still default). Preserve the goal.
+    const SEED_IDS = new Set(["must-1", "must-2", "should-1", "sprint-1", "blocker-1", "decision-1"]);
+    const SEED_DEFAULT_LABELS: Record<string, string> = {
+      "must-1": "Core requirement",
+      "must-2": "Foundation",
+      "should-1": "Should-have",
+      "sprint-1": "Initial Milestone",
+      "blocker-1": "Open blocker",
+      "decision-1": "Open decision",
+    };
+    setNodes(prev => {
+      const survivors = prev.filter(n => {
+        if (!SEED_IDS.has(n.id)) return true;
+        const untouched = !n.resolved
+          && !n.strategicAnswer
+          && n.label === SEED_DEFAULT_LABELS[n.id];
+        return !untouched;
+      });
+      if (survivors.length === prev.length) return prev;
+      const survivorIds = new Set(survivors.map(n => n.id));
+      setEdges(eprev => eprev.filter(e => survivorIds.has(e.from) && survivorIds.has(e.to)));
+      return survivors;
+    });
+
     let delay = 0;
     const goalNode = nodes.find(n => n.type === "goal") || nodes[0];
+
 
     pendingNodes.forEach(newNode => {
       setTimeout(() => {
