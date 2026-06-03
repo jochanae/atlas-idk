@@ -162,8 +162,10 @@ export interface ChatComposerProps {
   chatPending: boolean;
   handleSend: (opts?: { planMode?: boolean }) => void;
   createSessionPending: boolean;
+  onAbort?: () => void;
 
   sendPreparingSession: boolean;
+
 
   // Parking trigger
   parkedCount: number;
