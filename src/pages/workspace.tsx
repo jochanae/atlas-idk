@@ -190,7 +190,7 @@ export interface ChatMessage {
   outputTokens?: number | null;
   costUsd?: number | null;
   artifact?: { type: string; title: string; content: string } | null;
-  imageGen?: { imageUrl: string; prompt: string; model: string };
+  imageGen?: { images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }> } | null;
 }
 
 export type MemoryChip = { label: string; insight?: string };
