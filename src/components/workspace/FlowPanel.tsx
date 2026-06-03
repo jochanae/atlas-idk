@@ -13,9 +13,55 @@ import { reportError } from "../../lib/errorReporter";
 const FLOW_NODE_TYPES = new Set<ArchNode["type"]>(["goal", "requirement", "blocker", "priority", "decision", "sprint", "wont"]);
 const FLOW_NODE_META = new Set(["must", "should", "could", "wont"]);
 const SYSTEM_NODE_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
+const FLOW_MESSAGES_LIMIT = 50;
+
+type FlowMessage = { role: "user" | "assistant"; content: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function isFlowMessage(value: unknown): value is FlowMessage {
+  return (
+    isRecord(value) &&
+    (value.role === "user" || value.role === "assistant") &&
+    typeof value.content === "string"
+  );
+}
+
+function flowMessagesStorageKey(projectId?: number): string | null {
+  return typeof projectId === "number" ? `axiom-flow-messages-${projectId}` : null;
+}
+
+function loadFlowMessages(projectId?: number): FlowMessage[] {
+  const storageKey = flowMessagesStorageKey(projectId);
+  if (!storageKey || typeof window === "undefined") return [];
+
+  try {
+    const storedMessages = window.localStorage.getItem(storageKey);
+    if (!storedMessages) return [];
+
+    const parsedMessages: unknown = JSON.parse(storedMessages);
+    if (!Array.isArray(parsedMessages)) return [];
+
+    return parsedMessages.filter(isFlowMessage).slice(-FLOW_MESSAGES_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function saveFlowMessages(projectId: number | undefined, messages: FlowMessage[]): FlowMessage[] {
+  const limitedMessages = messages.slice(-FLOW_MESSAGES_LIMIT);
+  const storageKey = flowMessagesStorageKey(projectId);
+  if (!storageKey || typeof window === "undefined") return limitedMessages;
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(limitedMessages));
+  } catch {
+    // localStorage can be unavailable in privacy-restricted contexts.
+  }
+
+  return limitedMessages;
 }
 
 export function asFlowNodeType(value: unknown): ArchNode["type"] | null {
@@ -102,7 +148,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   const setIntent = (val: string) => setSignals(prev => prev.map((s, i) => i === activeSignalIdx ? val : s));
 
   const [flowChatTab, setFlowChatTab] = useState<"flow" | "intent">("flow");
-  const [flowMessages, setFlowMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [flowMessages, setFlowMessages] = useState<FlowMessage[]>(() => loadFlowMessages(projectId));
   const [flowAttachedFiles, setFlowAttachedFiles] = useState<File[]>([]);
   const flowFileInputRef = useRef<HTMLInputElement>(null);
   const [chatFullscreen, setChatFullscreen] = useState(false);
@@ -111,6 +157,14 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   const flowScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => { if (sentFlashTimerRef.current) clearTimeout(sentFlashTimerRef.current); }, []);
+
+  useEffect(() => {
+    setFlowMessages(loadFlowMessages(projectId));
+  }, [projectId]);
+
+  const addFlowMessage = useCallback((message: FlowMessage) => {
+    setFlowMessages(prev => saveFlowMessages(projectId, [...prev, message]));
+  }, [projectId]);
 
   useEffect(() => {
     if (flowScrollRef.current) {
@@ -126,7 +180,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     const otherFiles = files.filter(f => f !== imageFile);
     const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
-    setFlowMessages(prev => [...prev, { role: "user", content: fullText }]);
+    addFlowMessage({ role: "user", content: fullText });
     setFlowInput("");
     setFlowLoading(true);
     try {
@@ -179,15 +233,15 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         return finalPayload;
       });
       const incoming = (res.flowNodes ?? []) as ArchNode[];
-      setFlowMessages(prev => [...prev, { role: "assistant", content: res.content ?? "" }]);
+      addFlowMessage({ role: "assistant", content: res.content ?? "" });
       if (incoming.length > 0) setPendingNodes(incoming);
     } catch (error) {
       void reportError(error, { projectId });
-      setFlowMessages(prev => [...prev, { role: "assistant", content: "Something went wrong. Try again." }]);
+      addFlowMessage({ role: "assistant", content: "Something went wrong. Try again." });
     } finally {
       setFlowLoading(false);
     }
-  }, [flowMessages, flowAttachedFiles, flowLoading, nodes, projectId]);
+  }, [addFlowMessage, flowMessages, flowAttachedFiles, flowLoading, nodes, projectId]);
 
   const handleSend = useCallback(() => {
     if (!intent.trim()) return;
