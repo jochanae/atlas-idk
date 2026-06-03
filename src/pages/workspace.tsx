@@ -1324,7 +1324,53 @@ function getTerminalSuccessExplanation(command: string) {
   return TERMINAL_SUCCESS_EXPLANATIONS.find(({ pattern }) => pattern.test(command))?.explanation;
 }
 
+function buildAtlasCommitMessage(files: string[]): string {
+  if (files.length === 0) return "";
+  const buckets = {
+    styles: 0, components: 0, pages: 0, hooks: 0, lib: 0,
+    api: 0, db: 0, docs: 0, config: 0, tests: 0, other: 0,
+  };
+  for (const f of files) {
+    const lower = f.toLowerCase();
+    if (/\.(css|scss|sass)$/.test(lower) || lower.includes("/styles")) buckets.styles++;
+    else if (lower.includes("/components/")) buckets.components++;
+    else if (lower.includes("/pages/") || lower.includes("/routes/")) buckets.pages++;
+    else if (lower.includes("/hooks/")) buckets.hooks++;
+    else if (lower.includes("/lib/") || lower.includes("/utils/")) buckets.lib++;
+    else if (lower.includes("/api/") || lower.includes("functions/")) buckets.api++;
+    else if (lower.includes("migrations/") || lower.endsWith(".sql")) buckets.db++;
+    else if (/\.(md|mdx)$/.test(lower)) buckets.docs++;
+    else if (/\.(json|toml|yml|yaml)$/.test(lower) || lower.endsWith(".config.ts") || lower.endsWith(".config.js")) buckets.config++;
+    else if (lower.includes(".test.") || lower.includes(".spec.")) buckets.tests++;
+    else buckets.other++;
+  }
+  const parts: string[] = [];
+  if (buckets.styles) parts.push(`refined styling`);
+  if (buckets.components) parts.push(`updated ${buckets.components} component${buckets.components === 1 ? "" : "s"}`);
+  if (buckets.pages) parts.push(`reworked ${buckets.pages} page${buckets.pages === 1 ? "" : "s"}`);
+  if (buckets.hooks) parts.push(`adjusted hooks`);
+  if (buckets.lib) parts.push(`tidied helpers`);
+  if (buckets.api) parts.push(`updated backend logic`);
+  if (buckets.db) parts.push(`evolved the database`);
+  if (buckets.docs) parts.push(`refreshed docs`);
+  if (buckets.config) parts.push(`tuned configuration`);
+  if (buckets.tests) parts.push(`added tests`);
+  if (parts.length === 0) {
+    const sample = files.slice(0, 2).map(f => f.split("/").pop()).filter(Boolean).join(", ");
+    parts.push(`updated ${files.length} file${files.length === 1 ? "" : "s"}${sample ? ` (${sample}${files.length > 2 ? "…" : ""})` : ""}`);
+  }
+  const summary = parts.length === 1
+    ? parts[0]
+    : parts.length === 2
+      ? `${parts[0]} and ${parts[1]}`
+      : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+  // Capitalize first letter
+  const cap = summary.charAt(0).toUpperCase() + summary.slice(1);
+  return `Atlas: ${cap}`;
+}
+
 function TerminalPanel({
+
   pendingCommand,
   onCommandConsumed,
   onCommandComplete,
@@ -1344,6 +1390,7 @@ function TerminalPanel({
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncFiles, setSyncFiles] = useState<string[]>([]);
   const [syncMsg, setSyncMsg] = useState("");
+  const [syncMsgTouched, setSyncMsgTouched] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"idle" | "pushing" | "done" | "error">("idle");
   const [syncResult, setSyncResult] = useState<{ url: string; shortSha: string; filesCommitted: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -1363,6 +1410,13 @@ function TerminalPanel({
     return () => clearInterval(id);
   }, []);
 
+  // Auto-suggest a plain-English commit message describing Atlas's recent edits.
+  useEffect(() => {
+    if (syncMsgTouched) return;
+    if (syncFiles.length === 0) { setSyncMsg(""); return; }
+    setSyncMsg(buildAtlasCommitMessage(syncFiles));
+  }, [syncFiles, syncMsgTouched]);
+
   const handlePush = async () => {
     if (syncStatus === "pushing") return;
     setSyncStatus("pushing");
@@ -1381,11 +1435,13 @@ function TerminalPanel({
       setSyncResult({ url: d.url, shortSha: d.shortSha, filesCommitted: d.filesCommitted });
       setSyncFiles([]);
       setSyncMsg("");
+      setSyncMsgTouched(false);
     } catch (err) {
       setSyncStatus("error");
       setSyncError(err instanceof Error ? err.message : "Network error");
     }
   };
+
 
   const [input, setInput] = useState("");
   const [lines, setLines] = useState<TerminalLine[]>([
@@ -1714,27 +1770,53 @@ function TerminalPanel({
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: termBg, overflow: "hidden", position: "relative" }}>
       {/* ── Sync to GitHub bar ─────────────────────────────────────────── */}
-      {!scenarioLens && (
-        <div style={{ borderBottom: `1px solid ${termBorder}`, flexShrink: 0 }}>
-          {/* Collapsed bar */}
+      {!scenarioLens && (() => {
+        const expanded = syncOpen || isDesktopView;
+        const hasChanges = syncFiles.length > 0;
+        const pulseColor = syncStatus === "pushing"
+          ? "rgba(201,162,76,0.9)"
+          : syncStatus === "done"
+            ? "#34d399"
+            : hasChanges
+              ? "var(--atlas-gold)"
+              : "rgba(var(--atlas-muted-rgb),0.45)";
+        return (
+        <div style={{
+          borderBottom: `1px solid ${termBorder}`, flexShrink: 0,
+          background: isDesktopView
+            ? "linear-gradient(180deg, color-mix(in oklab, var(--atlas-gold) 5%, transparent), transparent 70%)"
+            : "transparent",
+        }}>
+          {/* Header / toggle */}
           <button
-            onClick={() => { setSyncOpen(o => !o); setSyncStatus("idle"); setSyncError(null); setSyncResult(null); }}
+            onClick={() => {
+              if (isDesktopView) return;
+              setSyncOpen(o => !o); setSyncStatus("idle"); setSyncError(null); setSyncResult(null);
+            }}
+            aria-expanded={expanded}
             style={{
-              width: "100%", display: "flex", alignItems: "center", gap: 7,
-              padding: "7px 13px", background: "transparent", border: "none",
-              cursor: "pointer", textAlign: "left",
+              width: "100%", display: "flex", alignItems: "center", gap: 8,
+              padding: "9px 13px", background: "transparent", border: "none",
+              cursor: isDesktopView ? "default" : "pointer", textAlign: "left",
             }}
           >
+            {/* Live status dot */}
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+              background: pulseColor,
+              boxShadow: `0 0 8px ${pulseColor}`,
+              animation: hasChanges || syncStatus === "pushing" ? "atlas-pulse 1.8s ease-in-out infinite" : "none",
+            }} />
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style={{ flexShrink: 0 }}>
               <path d="M5.5 1v9M1 5.5l4.5-4.5 4.5 4.5" stroke={isParchment ? "#8B5E3C" : "rgba(201,162,76,0.7)"} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.1em", color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.7)", textTransform: "uppercase" }}>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.12em", color: isParchment ? "#8B5E3C" : "rgba(201,162,76,0.78)", textTransform: "uppercase" }}>
               Sync to GitHub
             </span>
-            {syncFiles.length > 0 && (
+            {hasChanges && (
               <span style={{
-                marginLeft: "auto", padding: "1px 6px", borderRadius: 3,
-                background: "rgba(201,162,76,0.12)", border: "0.5px solid rgba(201,162,76,0.3)",
+                marginLeft: 8, padding: "1px 7px", borderRadius: 999,
+                background: "rgba(201,162,76,0.14)", border: "0.5px solid rgba(201,162,76,0.35)",
                 fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                 color: "var(--atlas-gold)",
               }}>
@@ -1743,28 +1825,47 @@ function TerminalPanel({
             )}
             {syncStatus === "done" && syncResult && (
               <span style={{
-                marginLeft: "auto", padding: "1px 6px", borderRadius: 3,
-                background: "rgba(52,211,153,0.08)", border: "0.5px solid rgba(52,211,153,0.25)",
+                marginLeft: 8, padding: "1px 7px", borderRadius: 999,
+                background: "rgba(52,211,153,0.10)", border: "0.5px solid rgba(52,211,153,0.28)",
                 fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                 color: "#34d399",
               }}>
                 ✓ pushed {syncResult.shortSha}
               </span>
             )}
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ marginLeft: syncFiles.length > 0 || (syncStatus === "done" && syncResult) ? 6 : "auto", flexShrink: 0, transform: syncOpen ? "rotate(180deg)" : "none", transition: "transform 160ms ease" }}>
-              <path d="M1 2.5l3 3 3-3" stroke={isParchment ? "#8B5E3C" : "rgba(201,162,76,0.5)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {!isDesktopView && (
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ marginLeft: "auto", flexShrink: 0, transform: syncOpen ? "rotate(180deg)" : "none", transition: "transform 160ms ease" }}>
+                <path d="M1 2.5l3 3 3-3" stroke={isParchment ? "#8B5E3C" : "rgba(201,162,76,0.5)"} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+            {isDesktopView && (
+              <span style={{
+                marginLeft: "auto",
+                fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)",
+                letterSpacing: "0.1em", color: "rgba(var(--atlas-muted-rgb),0.55)",
+                textTransform: "uppercase",
+              }}>
+                {hasChanges ? "Awaiting push" : "In sync"}
+              </span>
+            )}
           </button>
 
           {/* Expanded panel */}
-          {syncOpen && (
+          {expanded && (
             <div style={{ padding: "0 13px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              {/* File list */}
-              {syncFiles.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {/* File list — visual receipt */}
+              {hasChanges ? (
+                <div style={{
+                  display: "flex", flexDirection: "column", gap: 3,
+                  maxHeight: isDesktopView ? 120 : 160, overflowY: "auto",
+                  padding: "6px 8px", borderRadius: 6,
+                  border: `1px solid ${termBorder}`,
+                  background: isParchment ? "rgba(240,228,210,0.4)" : "rgba(255,255,255,0.02)",
+                }}>
                   {syncFiles.map(f => (
-                    <div key={f} style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(100,70,40,0.7)" : "rgba(var(--atlas-muted-rgb),0.7)", letterSpacing: "0.04em", padding: "2px 0" }}>
-                      · {f}
+                    <div key={f} style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: isParchment ? "rgba(100,70,40,0.78)" : "rgba(var(--atlas-muted-rgb),0.78)", letterSpacing: "0.04em", padding: "2px 0", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ color: "var(--atlas-gold)" }}>·</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -1774,22 +1875,38 @@ function TerminalPanel({
                 </div>
               )}
 
-              {/* Commit message input */}
-              <input
-                value={syncMsg}
-                onChange={e => setSyncMsg(e.target.value)}
-                placeholder="Commit message (optional)"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                style={{
-                  background: isParchment ? "rgba(240,228,210,0.6)" : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${termBorder}`,
-                  borderRadius: 5, padding: "6px 9px",
-                  fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)",
-                  color: termFgText, outline: "none",
-                }}
-              />
+              {/* Commit message input (auto-suggested in plain English) */}
+              <div style={{ position: "relative" }}>
+                <input
+                  value={syncMsg}
+                  onChange={e => { setSyncMsg(e.target.value); setSyncMsgTouched(true); }}
+                  placeholder={hasChanges ? "Atlas: …" : "Commit message (optional)"}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    background: isParchment ? "rgba(240,228,210,0.6)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${termBorder}`,
+                    borderRadius: 6, padding: "8px 10px",
+                    fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)",
+                    color: termFgText, outline: "none",
+                  }}
+                />
+                {hasChanges && !syncMsgTouched && (
+                  <span style={{
+                    position: "absolute", top: -7, right: 8,
+                    padding: "1px 6px", borderRadius: 999,
+                    background: "color-mix(in oklab, var(--atlas-gold) 18%, var(--atlas-bg))",
+                    border: "0.5px solid rgba(201,162,76,0.4)",
+                    fontSize: "var(--ts-tiny)", fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.08em", color: "var(--atlas-gold)",
+                    textTransform: "uppercase",
+                  }}>
+                    Atlas suggested
+                  </span>
+                )}
+              </div>
 
               {/* Error / result */}
               {syncStatus === "error" && syncError && (
@@ -1808,26 +1925,53 @@ function TerminalPanel({
                 </a>
               )}
 
-              {/* Push button */}
+              {/* Golden deploy button */}
               <button
                 onClick={handlePush}
-                disabled={syncStatus === "pushing" || syncFiles.length === 0}
+                disabled={syncStatus === "pushing" || !hasChanges}
+                onMouseEnter={(e) => { if (hasChanges) e.currentTarget.style.boxShadow = "0 0 24px rgba(201,162,76,0.45), inset 0 0 0 1px rgba(201,162,76,0.5)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = hasChanges ? "0 0 14px rgba(201,162,76,0.22), inset 0 0 0 1px rgba(201,162,76,0.28)" : "none"; }}
                 style={{
-                  padding: "7px", borderRadius: 5,
-                  background: syncFiles.length === 0 ? "transparent" : "rgba(146,64,14,0.22)",
-                  border: `1px solid ${syncFiles.length === 0 ? termBorder : "rgba(146,64,14,0.4)"}`,
-                  color: syncFiles.length === 0 ? "rgba(var(--atlas-muted-rgb),0.4)" : "rgba(230,150,90,0.9)",
-                  fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
-                  textTransform: "uppercase", cursor: syncFiles.length === 0 ? "not-allowed" : "pointer",
-                  transition: "all 160ms ease",
+                  padding: "10px 14px", borderRadius: 8,
+                  background: hasChanges
+                    ? "linear-gradient(180deg, color-mix(in oklab, var(--atlas-gold) 22%, transparent), color-mix(in oklab, var(--atlas-gold) 10%, transparent))"
+                    : "transparent",
+                  border: `1px solid ${hasChanges ? "rgba(201,162,76,0.55)" : termBorder}`,
+                  color: hasChanges ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.4)",
+                  fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.16em", fontWeight: 600,
+                  textTransform: "uppercase",
+                  cursor: hasChanges && syncStatus !== "pushing" ? "pointer" : "not-allowed",
+                  backdropFilter: "blur(14px)",
+                  boxShadow: hasChanges ? "0 0 14px rgba(201,162,76,0.22), inset 0 0 0 1px rgba(201,162,76,0.28)" : "none",
+                  transition: "all 200ms ease",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}
               >
-                {syncStatus === "pushing" ? "Pushing…" : "Push to GitHub"}
+                {syncStatus === "pushing" ? (
+                  <>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: "50%",
+                      background: "var(--atlas-gold)",
+                      animation: "atlas-pulse 1.2s ease-in-out infinite",
+                    }} />
+                    Pushing…
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M6 1v8M2.5 4.5L6 1l3.5 3.5M2 11h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Push to GitHub
+                  </>
+                )}
               </button>
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
+
 
       {/* ── Command Deck (macros + NL toggle + help) ──────────────────── */}
       <div style={{
