@@ -177,19 +177,16 @@ function isUnifiedShellPath(pathname: string): boolean {
 // so old shortcuts and external links keep working without rebuilding the workspace
 // page at a separate URL.
 function ProjectRedirect() {
-  const [, nav] = useLocation();
   useEffect(() => {
     const match = window.location.pathname.match(/\/project\/(\d+)/);
-    const id = match?.[1];
-    if (id) {
-      // Use history.replaceState so the query string survives — wouter's
-      // setLocation can strip search params on some builds.
-      window.history.replaceState({}, "", `/map?project=${id}&view=workspace`);
-      nav("/map", { replace: true });
-    } else {
-      nav("/home", { replace: true });
-    }
-  }, [nav]);
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const target = match?.[1]
+      ? `${base}/map?project=${match[1]}&view=workspace`
+      : `${base}/home`;
+    // Full replace so the query string is preserved and wouter re-mounts on
+    // the new path with search intact.
+    window.location.replace(target);
+  }, []);
   return null;
 }
 
