@@ -1575,10 +1575,10 @@ export default function MasterMap() {
                     </div>
 
                     {/* Quick actions */}
-                    <div style={{ display: "flex", gap: 8, marginTop: 2, flexWrap: "wrap", justifyContent: "center" }}>
+                    <div style={{ display: "flex", gap: 8, marginTop: 2, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
                       <button
                         type="button"
-                        onClick={() => { if (projectId) window.location.href = `/project/${projectId}`; }}
+                        onClick={() => { if (projectId) window.location.href = `/project/${projectId}?view=flow`; }}
                         style={{
                           padding: "6px 14px",
                           background: "rgba(201,162,76,0.12)",
@@ -1593,8 +1593,31 @@ export default function MasterMap() {
                           pointerEvents: "auto",
                         }}
                       >
-                        {committed === 0 ? "Start first decision →" : "Open workspace →"}
+                        {committed === 0 ? "Start first decision →" : "Open flow map →"}
                       </button>
+                      {projectId && (
+                        <button
+                          type="button"
+                          title="Open workspace"
+                          aria-label="Open workspace"
+                          onClick={() => { window.location.href = `/project/${projectId}`; }}
+                          style={{
+                            width: 30, height: 30,
+                            display: "inline-flex", alignItems: "center", justifyContent: "center",
+                            background: "transparent",
+                            border: `1px solid ${palette.panelBorder}`,
+                            borderRadius: 6,
+                            color: palette.goldText,
+                            fontSize: 13,
+                            fontFamily: "var(--app-font-mono)",
+                            cursor: "pointer",
+                            pointerEvents: "auto",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ↗
+                        </button>
+                      )}
                       {committed > 0 && projectId && (
                         <button
                           type="button"
