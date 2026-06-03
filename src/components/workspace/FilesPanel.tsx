@@ -1198,7 +1198,7 @@ export function FilesPanel({
           )}
         </div>
       )}
-      <div style={{ flexShrink: 0, padding: "0 10px 12px" }}>
+      <div id={`atlas-db-section-${projectId}`} style={{ flexShrink: 0, padding: "0 10px 12px" }}>
         <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
         {modelPickerToggleRow}
       </div>
