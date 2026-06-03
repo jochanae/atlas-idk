@@ -1248,6 +1248,19 @@ export function AssistantBubble({
           )}
         </div>
 
+        {message.imageGen && (
+          <>
+            <img
+              src={message.imageGen.imageUrl}
+              alt={message.imageGen.prompt}
+              style={{ maxWidth: "100%", borderRadius: 8, marginTop: 12 }}
+            />
+            <p style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+              Generated with {message.imageGen.model}
+            </p>
+          </>
+        )}
+
         {message.streaming && message.planMode && !message.artifact && (
           <div
             style={{

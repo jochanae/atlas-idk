@@ -190,6 +190,7 @@ export interface ChatMessage {
   outputTokens?: number | null;
   costUsd?: number | null;
   artifact?: { type: string; title: string; content: string } | null;
+  imageGen?: { imageUrl: string; prompt: string; model: string };
 }
 
 export type MemoryChip = { label: string; insight?: string };
@@ -3117,6 +3118,26 @@ export default function Workspace() {
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
+  const [rightOpen, setRightOpen] = useState(() =>
+    new URLSearchParams(window.location.search).get("view") === "flow"
+  );
+  const [desktopForceTab, setDesktopForceTab] = useState<RightTab | undefined>(() =>
+    new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : undefined
+  );
+  const [sandboxCode, setSandboxCode] = useState<string | null>(null);
+  const openPreviewPanel = useCallback(() => {
+    if (isMobile) {
+      setMobileTab("preview");
+      setRightOpen(true);
+    } else {
+      setDesktopForceTab("preview");
+      setTimeout(() => setDesktopForceTab(undefined), 120);
+    }
+  }, [isMobile]);
+  const handlePreviewCode = useCallback((code: string) => {
+    setSandboxCode(code);
+    openPreviewPanel();
+  }, [openPreviewPanel]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
@@ -3332,9 +3353,6 @@ export default function Workspace() {
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
   const [latestPlanArtifact, setLatestPlanArtifact] = useState<{ type: string; title: string; content: string } | null>(null);
   void latestPlanArtifact;
-  const [rightOpen, setRightOpen] = useState(() =>
-    new URLSearchParams(window.location.search).get("view") === "flow"
-  );
   const [showProfile, setShowProfile] = useState(false);
   useEffect(() => {
     const open = () => setShowProfile(true);
@@ -4876,9 +4894,6 @@ export default function Workspace() {
   }, [id, hasLinkedRepo, project?.latestSnapshotScore, runScan]);
 
   // pendingResolvedNodeIds moved above (consumed by useChatStream).
-  const [desktopForceTab, setDesktopForceTab] = useState<RightTab | undefined>(() =>
-    new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : undefined
-  );
   useEffect(() => {
     if (!isHomeHandoff || !Number.isFinite(id) || homeHandoffDbLoadedRef.current === id) return;
     homeHandoffDbLoadedRef.current = id;
@@ -4922,21 +4937,6 @@ export default function Workspace() {
     })();
     return () => controller.abort();
   }, [id, isHomeHandoff, isMobile, parkedEntries.length]);
-  const openPreviewPanel = useCallback(() => {
-    if (isMobile) {
-      setMobileTab("preview");
-      setRightOpen(true);
-    } else {
-      setDesktopForceTab("preview");
-      setTimeout(() => setDesktopForceTab(undefined), 120);
-    }
-  }, [isMobile]);
-  const [sandboxCode, setSandboxCode] = useState<string | null>(null);
-  const handlePreviewCode = useCallback((code: string) => {
-    setSandboxCode(code);
-    openPreviewPanel();
-  }, [openPreviewPanel]);
-
   const [pendingTerminalCommand, setPendingTerminalCommand] = useState<string | null>(null);
   const handleRunCommand = useCallback((command: string) => {
     setPendingTerminalCommand(command);
