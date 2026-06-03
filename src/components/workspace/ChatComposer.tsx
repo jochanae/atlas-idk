@@ -162,8 +162,10 @@ export interface ChatComposerProps {
   chatPending: boolean;
   handleSend: (opts?: { planMode?: boolean }) => void;
   createSessionPending: boolean;
+  onAbort?: () => void;
 
   sendPreparingSession: boolean;
+
 
   // Parking trigger
   parkedCount: number;
@@ -229,7 +231,9 @@ export function ChatComposer(props: ChatComposerProps) {
     chatPending,
     handleSend,
     createSessionPending,
+    onAbort,
     sendPreparingSession,
+
     parkedCount,
     showParkingDrawer,
     setShowParkingDrawer,
@@ -514,18 +518,30 @@ export function ChatComposer(props: ChatComposerProps) {
 
               <button
                 className="atlas-send-btn"
-                onClick={() => handleSend()}
-                disabled={!hasInput || createSessionPending || chatPending}
-                aria-label={sendPreparingSession ? "Preparing session" : "Send message"}
+                onClick={() => {
+                  if (chatPending && onAbort) { onAbort(); return; }
+                  handleSend();
+                }}
+                disabled={chatPending ? !onAbort : (!hasInput || createSessionPending)}
+                aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
+                title={chatPending ? "Stop" : "Send"}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 3,
-                  background: hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "transparent",
-                  border: hasInput ? "none" : "1px solid transparent",
-                  boxShadow: hasInput ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
-                  opacity: chatPending ? 0.55 : 1,
+                  background: chatPending
+                    ? "var(--atlas-ember)"
+                    : (hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "transparent"),
+                  border: (chatPending || hasInput) ? "none" : "1px solid transparent",
+                  boxShadow: (chatPending || hasInput) ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
+                  borderRadius: 10,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: chatPending ? "pointer" : (hasInput ? "pointer" : "default"),
                 }}
               >
-                {sendPreparingSession || chatPending ? (
+                {chatPending ? (
+                  <svg viewBox="0 0 16 16" width={13} height={13} aria-hidden>
+                    <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="var(--atlas-fg)" />
+                  </svg>
+                ) : sendPreparingSession ? (
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ animation: "spin 1s linear infinite" }}>
                     <circle cx="8" cy="8" r="6" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeDasharray="10 6" />
                   </svg>
@@ -539,6 +555,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   </svg>
                 )}
               </button>
+
             </div>
           </div>
         </div>
