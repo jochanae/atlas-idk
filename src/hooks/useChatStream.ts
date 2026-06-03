@@ -28,7 +28,7 @@ export interface UseChatStreamOptions {
   queryClient: QueryClient;
   getListSessionsQueryKey: (projectId: number) => QueryKey;
   mapPriorMessage: (m: PriorMessage) => ChatMessage;
-  endpoint?: "/api/chat" | "/api/nexus/chat";
+  endpoint?: "/api/chat";
 
   // B2c deps
   entries: LedgerEntryLike[] | undefined;
