@@ -517,7 +517,7 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
   background: color-mix(in oklab, var(--atlas-bg) 55%, transparent);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: none;
   position: sticky;
   top: 0;
   z-index: 60;
@@ -531,7 +531,7 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
   background: color-mix(in oklab, var(--atlas-bg) 55%, transparent);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border-bottom: 1px solid rgba(17, 17, 17, 0.05);
+  border-bottom: none;
 }
 [data-theme="parchment"] .atlas-app-header * {
   --atlas-surface: #EDE9DF;
