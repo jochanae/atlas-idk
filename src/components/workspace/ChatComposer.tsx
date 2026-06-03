@@ -398,7 +398,7 @@ export function ChatComposer(props: ChatComposerProps) {
         <div
           className="atlas-input-shell"
           style={{
-            padding: "4px 4px",
+            padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             transition: "none",
           }}
         >
@@ -427,7 +427,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
                   resize: "none", fontFamily: "var(--app-font-sans)",
                   position: "relative", zIndex: 1,
-                  minHeight: 24, maxHeight: 180, overflowY: "hidden", display: "block",
+                  minHeight: 52, maxHeight: 180, overflowY: "hidden", display: "block",
                   padding: "2px 2px",
                 }}
               />
