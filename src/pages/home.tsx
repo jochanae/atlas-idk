@@ -3367,19 +3367,20 @@ export default function Home() {
               ref={fileInputRef}
               id="home-file-input"
               type="file"
-              accept="image/*,application/pdf,text/plain,.zip,application/zip,.md,.csv,.json,.docx,.xlsx,.pptx,text/markdown,text/csv,application/json"
+              accept="*/*"
               style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, pointerEvents: "none", overflow: "hidden" }}
               multiple
               onChange={(e) => {
                 const incoming = Array.from(e.target.files ?? []);
                 const combined = [...attachedFiles, ...incoming].slice(0, 10);
                 if (incoming.length + attachedFiles.length > 10) {
-                  toast("Max 10 images at a time");
+                  toast("Max 10 items at a time");
                 }
                 setAttachedFiles(combined);
                 e.target.value = "";
               }}
             />
+
 
             {/* Project focus picker sheet */}
             {showFocusPicker && (
