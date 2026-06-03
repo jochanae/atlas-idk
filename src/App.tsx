@@ -182,7 +182,10 @@ function ProjectRedirect() {
     const match = window.location.pathname.match(/\/project\/(\d+)/);
     const id = match?.[1];
     if (id) {
-      nav(`/map?project=${id}&view=workspace`, { replace: true });
+      // Use history.replaceState so the query string survives — wouter's
+      // setLocation can strip search params on some builds.
+      window.history.replaceState({}, "", `/map?project=${id}&view=workspace`);
+      nav("/map", { replace: true });
     } else {
       nav("/home", { replace: true });
     }
