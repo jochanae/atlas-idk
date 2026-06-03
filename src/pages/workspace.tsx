@@ -4897,7 +4897,21 @@ export default function Workspace() {
         hasProject={Boolean(project)}
         isMobile={isMobile}
         showWorkspaceMenu
-        onMenuAction={handleUnifiedSubheaderMenuAction}
+        onLaunch={() => {
+          // Context-aware full-screen launcher:
+          // - Files / Artifacts tabs → open the file/editor panel
+          // - Blueprints / Diff / Chat / Console → open Live Preview
+          // - Default → Live Preview
+          const target: "files" | "preview" =
+            leftTab === "artifacts" ? "files" : "preview";
+          if (isMobile) {
+            setMobileTab(target);
+            setRightOpen(true);
+          } else {
+            setDesktopForceTab(target);
+            setTimeout(() => setDesktopForceTab(undefined), 120);
+          }
+        }}
       />
 
       {/* ── Spec → Build handoff modal ── */}
