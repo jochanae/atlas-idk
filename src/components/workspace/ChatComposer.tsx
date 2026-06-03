@@ -268,7 +268,7 @@ export function ChatComposer(props: ChatComposerProps) {
           ref={fileInputRef}
           id="ws-file-input"
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,.zip,application/zip"
+          accept="image/*,application/pdf,text/plain,.zip,application/zip"
           style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, overflow: "hidden" }}
           multiple
           onChange={async (e) => {

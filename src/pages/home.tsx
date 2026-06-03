@@ -3367,7 +3367,7 @@ export default function Home() {
               ref={fileInputRef}
               id="home-file-input"
               type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp,.zip,application/zip,.pdf,.txt,.md,.csv,.json,.docx,.xlsx,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json"
+              accept="image/*,application/pdf,text/plain,.zip,application/zip,.md,.csv,.json,.docx,.xlsx,.pptx,text/markdown,text/csv,application/json"
               style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, pointerEvents: "none", overflow: "hidden" }}
               multiple
               onChange={(e) => {
