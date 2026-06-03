@@ -25,7 +25,7 @@ import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
-import { UnifiedSubheader, type UnifiedSubheaderMenuAction, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
+import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
