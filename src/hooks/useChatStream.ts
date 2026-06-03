@@ -325,6 +325,107 @@ export function useChatStream(
             throw new Error(`HTTP ${r.status}${bodyText ? `: ${bodyText.slice(0, 200)}` : ""}`);
           }
 
+          // Fallback: server returned JSON instead of SSE. Synthesize a single
+          // assistant message so the rest of the pipeline still completes.
+          const _contentType = r.headers.get("content-type") ?? "";
+          if (!_contentType.includes("text/event-stream")) {
+            const res = await r.json().catch(() => null) as any;
+            if (!res) throw new Error("Empty response from chat endpoint");
+            streamingFinished = true;
+            let ghStatus: string | null = null;
+            const { found: ghFound } = stripGithubAutoLinkToolCall(typeof res.content === "string" ? res.content : "");
+            if (ghFound) {
+              try {
+                const gr = await fetch("/api/github/auto-link", {
+                  method: "POST", credentials: "include", headers: getAuthHeaders(),
+                });
+                ghStatus = gr.ok ? GITHUB_AUTO_LINK_SUCCESS : GITHUB_AUTO_LINK_FAILURE;
+              } catch { ghStatus = GITHUB_AUTO_LINK_FAILURE; }
+            }
+            if (typeof res.content === "string") {
+              const { content: stripped } = stripGithubAutoLinkToolCall(res.content);
+              const driftMatch = stripped.match(/LENS_DRIFT:\s*(flow|build|look|scenario)/i);
+              if (driftMatch) {
+                const drifted = driftMatch[1].toLowerCase();
+                if (drifted !== sendCtxRef.current.wsLens) setDetectedLens(drifted as any);
+                res.content = stripped.replace(/\n?LENS_DRIFT:\s*(flow|build|look|scenario)\s*$/i, "").trim();
+              } else {
+                setDetectedLens(null);
+                res.content = stripped;
+              }
+              res.content = appendGithubAutoLinkStatus(res.content, ghStatus);
+            } else if (ghStatus) {
+              res.content = ghStatus;
+            }
+            const cp = res.catchPayload ?? null;
+            const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
+            const lps = res.linePatches ?? [];
+            const aff = res.autoFetchedFiles ?? [];
+            const rawChips = res.memoryChips ?? [];
+            const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
+            setMessages((prev) => [...prev, {
+              id: res.messageId ?? Date.now(), role: "assistant",
+              content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(),
+              intentType: res.intentType, catchPayload: cp,
+              terminalCmd: res.terminalCmd ?? res.terminal_cmd,
+              terminalResult: res.terminalResult ?? res.terminal_result,
+              modelUsed: res.modelUsed ?? res.model_used ?? null,
+              ...(res.plan ? { plan: res.plan } : {}),
+              sentAt: new Date().toISOString(),
+              model: res.model ?? sendCtxRef.current.wsModel,
+              isDeepDive: !!res.isDeepDive,
+              ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
+              ...(lps.length > 0 ? { linePatches: lps } : {}),
+              ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
+              ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
+              ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
+              surface: res.surface ?? null,
+              executionTimeMs: res.executionTimeMs ?? null,
+              inputTokens: res.inputTokens ?? null,
+              outputTokens: res.outputTokens ?? null,
+              costUsd: res.costUsd != null ? Number(res.costUsd) : null,
+            }]);
+            setActivityStream({ active: false, content: "" });
+            if (isScenario) {
+              setScenarioBuffer((prev) => [
+                ...prev,
+                { role: "user", content: text },
+                { role: "assistant", content: res.content ?? "" },
+              ]);
+            }
+            if (cp) { playCatch(); setActiveCatch(cp); }
+            if (normalizedChips.length > 0) {
+              setMemoryChips((prev) => {
+                const merged = [...prev];
+                for (const c of normalizedChips) {
+                  if (!merged.some((m) => m.label === c.label)) merged.push(c);
+                }
+                return merged.slice(-12);
+              });
+            }
+            if (res.resolvedNodes?.length) {
+              setPendingResolvedNodeIds((prev) => {
+                const merged = [...prev];
+                for (const nodeId of res.resolvedNodes) {
+                  if (!merged.includes(nodeId)) merged.push(nodeId);
+                }
+                return merged;
+              });
+            }
+            if (res.flowNodes && res.flowNodes.length > 0 && onFlowNodes) {
+              onFlowNodes(res.flowNodes);
+            }
+            if (res.autoName) {
+              setAutoNameKey((k) => k + 1);
+              queryClient.setQueryData(getGetProjectQueryKey(projectId), (old: unknown) => {
+                if (old && typeof old === "object" && "name" in old) return { ...(old as object), name: res.autoName };
+                return old;
+              });
+              queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+            }
+            return;
+          }
+
           const placeholderId = -Date.now();
           streamingId = placeholderId;
           let streamedText = "";
