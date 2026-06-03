@@ -5581,7 +5581,7 @@ export default function Workspace() {
               onOpenModelSheet: () => setShowWsModelSheet(true),
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
-                if (action === "history") { navigate({ to: "/ledger" }); return; }
+                if (action === "history") { window.location.href = "/ledger"; return; }
                 if (action === "files") {
                   if (isMobile) { setMobileTab("files"); setRightOpen(true); }
                   else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
