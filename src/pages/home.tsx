@@ -18,6 +18,8 @@ import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
+import { ComposerActions } from "../components/composer/ComposerActions";
+
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
 
