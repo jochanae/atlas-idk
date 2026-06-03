@@ -25,7 +25,7 @@ import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
-import { UnifiedSubheader, type UnifiedSubheaderMenuAction, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
+import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
@@ -4497,30 +4497,8 @@ export default function Workspace() {
     setLeftTab("terminal");
   }, [isMobile]);
 
-  const handleUnifiedSubheaderMenuAction = useCallback((action: UnifiedSubheaderMenuAction) => {
-    if (action === "forge") {
-      setShowForgeExternal(true);
-      return;
-    }
-    if (action === "rescan-repo") {
-      if (isScanning) return;
-      toast.info("Rescanning repository", {
-        description: "Pulling the latest from GitHub to refresh your readiness score.",
-        className: "atlas-toast-pill",
-      });
-      void runScan(false);
-      return;
-    }
+  // (legacy subheader menu actions removed — those entries live in the composer ... menu now)
 
-    if (isMobile) {
-      setMobileTab(action);
-      setRightOpen(true);
-      return;
-    }
-
-    setDesktopForceTab(action);
-    setTimeout(() => setDesktopForceTab(undefined), 120);
-  }, [isMobile, isScanning, runScan]);
 
   const handleReviewPushSuccess = useCallback((records: PushRecord[]) => {
     haptic.double();
@@ -4897,7 +4875,21 @@ export default function Workspace() {
         hasProject={Boolean(project)}
         isMobile={isMobile}
         showWorkspaceMenu
-        onMenuAction={handleUnifiedSubheaderMenuAction}
+        onLaunch={() => {
+          // Context-aware full-screen launcher:
+          // - Files / Artifacts tabs → open the file/editor panel
+          // - Blueprints / Diff / Chat / Console → open Live Preview
+          // - Default → Live Preview
+          const target: "files" | "preview" =
+            leftTab === "artifacts" ? "files" : "preview";
+          if (isMobile) {
+            setMobileTab(target);
+            setRightOpen(true);
+          } else {
+            setDesktopForceTab(target);
+            setTimeout(() => setDesktopForceTab(undefined), 120);
+          }
+        }}
       />
 
       {/* ── Spec → Build handoff modal ── */}
