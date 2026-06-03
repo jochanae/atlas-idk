@@ -271,20 +271,21 @@ export function ChatComposer(props: ChatComposerProps) {
     <>
       {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
       {leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" && <div className="atlas-composer-glass" style={{ padding: "12px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30 }}>
-        {/* Hidden file input — handles both images and ZIP files */}
+        {/* Hidden file input — unrestricted multi-mime; used by drag-drop/legacy callers.
+            Primary picker is the unified ComposerActions sheet below. */}
         <input
           ref={fileInputRef}
           id="ws-file-input"
           type="file"
-          accept="image/*,application/pdf,text/plain,.zip,application/zip"
+          accept="*/*"
           style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, overflow: "hidden" }}
           multiple
           onChange={async (e) => {
             const files = Array.from(e.target.files ?? []);
             const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
-            const imgFiles = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
+            const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
             if (zipFile) await processZip(zipFile);
-            if (imgFiles.length > 0) setAttachedFiles(prev => [...prev, ...imgFiles].slice(0, 10));
+            if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
             e.target.value = "";
           }}
         />
@@ -302,47 +303,7 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         />
 
-        {/* Hidden input — Camera (mobile rear camera capture) */}
-        <input
-          id="ws-camera-input"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
-            e.target.value = "";
-          }}
-        />
 
-        {/* Hidden input — Photo / Image library */}
-        <input
-          id="ws-photo-input"
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          multiple
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
-            e.target.value = "";
-          }}
-        />
-
-        {/* Hidden input — File / Document (non-image, non-zip) */}
-        <input
-          id="ws-doc-input"
-          type="file"
-          accept=".pdf,.txt,.md,.csv,.json,.docx,.xlsx,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json"
-          multiple
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
-            e.target.value = "";
-          }}
-        />
 
 
         {/* Server code-context status badge */}
