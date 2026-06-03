@@ -209,7 +209,6 @@ export function UnifiedSubheader({
             type="button"
             onClick={() => {
               setExpanded((open) => !open);
-              setMenuOpen(false);
             }}
             title={expanded ? "Hide tabs" : "Show tabs"}
             aria-label={expanded ? "Hide tabs" : "Show tabs"}
