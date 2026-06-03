@@ -34,16 +34,25 @@ function formatTimestamp(iso?: string): string {
 export function UserBubble({
   content,
   sentAt,
+  imageB64,
+  imageMimeType,
   onCopy,
   onEdit,
 }: {
   content: string;
   sentAt?: string;
+  imageB64?: string;
+  imageMimeType?: string;
   onCopy: () => void;
   onEdit: () => void;
 }) {
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const imageUrl = imageB64
+    ? `data:${imageMimeType || "image/png"};base64,${imageB64}`
+    : null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).catch(() => {});
