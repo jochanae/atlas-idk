@@ -17,6 +17,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
+import { LifecycleGlyph } from "@/components/LifecycleGlyph";
+import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
@@ -341,19 +343,41 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
-      <span
-        aria-hidden
-        title={hasActive ? "Session active" : "No active session"}
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          flexShrink: 0,
-          background: hasActive ? "var(--atlas-accent, #4ade80)" : "transparent",
-          border: hasActive ? "none" : "1.5px solid rgba(var(--atlas-muted-rgb),0.5)",
-          boxShadow: hasActive ? "0 0 6px rgba(74,222,128,0.6)" : "none",
-        }}
-      />
+      {(() => {
+        const proj = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null }) | null;
+        const state = deriveLifecycle({
+          status: proj?.status ?? null,
+          readinessScore: proj?.latestSnapshotScore ?? null,
+          decisionCount: ps.decisions?.length ?? 0,
+          hasRepo: Boolean(proj?.linkedRepo),
+        });
+        const meta = LIFECYCLE_META[state];
+        return (
+          <span
+            title={`${meta.label} — ${meta.description}${hasActive ? " · session active" : ""}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              borderRadius: "50%",
+              boxShadow: `0 0 10px color-mix(in srgb, ${meta.color} 55%, transparent)`,
+              animation: state === "built" ? undefined : "atlas-lifecycle-pulse 2.6s ease-in-out infinite",
+            }}
+          >
+            <style>{`@keyframes atlas-lifecycle-pulse { 0%,100% { filter: drop-shadow(0 0 2px ${meta.color}); opacity: 0.85; } 50% { filter: drop-shadow(0 0 7px ${meta.color}); opacity: 1; } }`}</style>
+            <LifecycleGlyph
+              projectId={projectId}
+              projectName={name || "Project"}
+              status={(proj?.status as "shaping" | "committed" | "archived" | undefined) ?? undefined}
+              readinessScore={proj?.latestSnapshotScore ?? null}
+              decisionCount={ps.decisions?.length ?? 0}
+              hasRepo={Boolean(proj?.linkedRepo)}
+              size={13}
+            />
+          </span>
+        );
+      })()}
       {renaming ? (
         <div style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
           <input
