@@ -6,6 +6,8 @@ import type { ZipEntry } from "../ZipImport";
 import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
+import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
   flow: [
