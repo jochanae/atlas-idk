@@ -224,6 +224,8 @@ export function ChatStream(props: ChatStreamProps) {
               <UserBubble
                 content={msg.content}
                 sentAt={msg.sentAt}
+                imageB64={msg.imageB64}
+                imageMimeType={msg.imageMimeType}
                 onCopy={() => {}}
                 onEdit={() => onEditUserMessage(msg.content)}
               />
