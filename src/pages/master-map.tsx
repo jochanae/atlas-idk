@@ -213,26 +213,6 @@ export default function MasterMap() {
 
   const theme = useThemeMode();
   const palette = paletteFor(theme);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "workspace") {
-      const projectId = params.get("project");
-      if (projectId) {
-        if (params.get("tab") === "chat") {
-          try {
-            sessionStorage.setItem("atlas-open-left-tab", "chat");
-          } catch {}
-        }
-        const target = `/project/${projectId}`;
-        window.history.replaceState({}, "", target);
-        setLocation(target);
-      } else {
-        window.history.replaceState({}, "", "/map");
-      }
-    }
-  }, [setLocation]);
-
   const [projects, setProjects] = useState<Project[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1594,14 +1574,11 @@ export default function MasterMap() {
                         : <>Drill deeper or keep building from where you left off.</>}
                     </div>
 
-                    {/* Two buttons: Open workspace (map overlay) + Chat */}
-                    <div style={{ display: "flex", gap: 8, marginTop: 2, width: "100%", justifyContent: "center" }}>
+                    {/* Quick actions */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 2, flexWrap: "wrap", justifyContent: "center" }}>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!projectId) return;
-                          setLocation(`/project/${projectId}`);
-                        }}
+                        onClick={() => { if (projectId) window.location.href = `/project/${projectId}`; }}
                         style={{
                           padding: "6px 14px",
                           background: "rgba(201,162,76,0.12)",
@@ -1618,56 +1595,28 @@ export default function MasterMap() {
                       >
                         {committed === 0 ? "Start first decision →" : "Open workspace →"}
                       </button>
-                      <button
-                        type="button"
-                        aria-label="Chat with Atlas"
-                        onClick={() => {
-                          if (!projectId) return;
-                          try {
-                            sessionStorage.setItem("atlas-open-left-tab", "chat");
-                          } catch {}
-                          setLocation(`/project/${projectId}`);
-                        }}
-                        style={{
-                          padding: "6px 14px",
-                          background: "transparent",
-                          border: `1px solid ${palette.panelBorder}`,
-                          borderRadius: 6,
-                          color: palette.goldTextStrong,
-                          fontSize: 10.5,
-                          fontFamily: "var(--app-font-mono)",
-                          letterSpacing: "0.06em",
-                          cursor: "pointer",
-                          textTransform: "uppercase",
-                          pointerEvents: "auto",
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                        }}
-                      >
-                        <span>💬</span><span>Chat</span>
-                      </button>
+                      {committed > 0 && projectId && (
+                        <button
+                          type="button"
+                          onClick={() => { window.location.href = `/ledger/${projectId}`; }}
+                          style={{
+                            padding: "6px 14px",
+                            background: "transparent",
+                            border: `1px solid ${palette.panelBorder}`,
+                            borderRadius: 6,
+                            color: palette.goldText,
+                            fontSize: 10.5,
+                            fontFamily: "var(--app-font-mono)",
+                            letterSpacing: "0.06em",
+                            cursor: "pointer",
+                            textTransform: "uppercase",
+                            pointerEvents: "auto",
+                          }}
+                        >
+                          Ledger →
+                        </button>
+                      )}
                     </div>
-
-                    {committed > 0 && projectId && (
-                      <button
-                        type="button"
-                        onClick={() => { window.location.href = `/ledger/${projectId}`; }}
-                        style={{
-                          padding: "4px 10px",
-                          background: "transparent",
-                          border: "none",
-                          color: palette.mutedText,
-                          fontSize: 9.5,
-                          fontFamily: "var(--app-font-mono)",
-                          letterSpacing: "0.08em",
-                          cursor: "pointer",
-                          textTransform: "uppercase",
-                          pointerEvents: "auto",
-                        }}
-                      >
-                        View ledger →
-                      </button>
-                    )}
-
                   </div>
                 );
               })()}

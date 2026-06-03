@@ -170,11 +170,8 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
 
 function isUnifiedShellPath(pathname: string): boolean {
-  return pathname === "/home";
+  return pathname === "/home" || pathname.startsWith("/project/");
 }
-
-// /project/:id opens the full workspace directly (original behavior).
-// Map-overlay drill-down lives inside /map when a node is clicked there.
 
 function PageTransition() {
   const [location] = useLocation();
@@ -281,6 +278,7 @@ function UnifiedShellRoutes() {
     <UnifiedShell>
       <Switch>
         <Route path="/home" component={Home} />
+        <Route path="/project/:projectId" component={Workspace} />
       </Switch>
     </UnifiedShell>
   );
@@ -341,7 +339,6 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
-          <Route path="/project/:projectId" component={Workspace} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>

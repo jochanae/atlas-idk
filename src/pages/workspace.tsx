@@ -2997,13 +2997,10 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
 
 // ── Workspace ────────────────────────────────────────────────────────────────
 export default function Workspace() {
-  const params = useParams<{ projectId?: string }>();
+  const { projectId } = useParams();
   const [, setLocation] = useLocation();
-  // Fall back to ?project= search param so the workspace can be mounted
-  // both at the legacy /project/:id route AND as an overlay inside /map.
-  const searchParams = new URLSearchParams(window.location.search);
-  const projectId = params.projectId ?? searchParams.get("project") ?? undefined;
   const id = Number(projectId);
+  const searchParams = new URLSearchParams(window.location.search);
   const [showIntake, setShowIntake] = useState(searchParams.get("intake") === "true");
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [createProjectError, setCreateProjectError] = useState<string | null>(null);
