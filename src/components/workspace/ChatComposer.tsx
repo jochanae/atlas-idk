@@ -608,8 +608,9 @@ export function ChatComposer(props: ChatComposerProps) {
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   padding: "6px 10px", borderRadius: 999,
-                  background: isMultiAgent ? "rgba(201,162,76,0.08)" : "rgba(201,162,76,0.14)",
-                  border: `1px solid ${isMultiAgent ? "rgba(201,162,76,0.22)" : "rgba(201,162,76,0.4)"}`,
+                  background: "rgba(255,255,255,0.03)",
+                  backdropFilter: "blur(10px) saturate(140%)",
+                  border: "none",
                   color: "var(--atlas-gold)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
