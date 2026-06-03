@@ -10,12 +10,7 @@ function atlasActivityStatus(content: string): string {
   return "";
 }
 
-export function AtlasActivityBar({
-  content,
-}: {
-  content: string;
-  lens?: string;
-}) {
+export function AtlasActivityBar({ content }: { content: string; lens?: string }) {
   const resolved = atlasActivityStatus(content);
   const displayed = resolved || "Atlas is thinking...";
 
