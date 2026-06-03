@@ -55,6 +55,8 @@ export interface ActivityStreamState {
   content: string;
 }
 
+export type LiveStepState = { verb: string; target?: string; status?: string } | null;
+
 export interface UseChatStreamReturn {
   messages: ChatMessage[];
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
@@ -68,6 +70,7 @@ export interface UseChatStreamReturn {
   setChatPending: Dispatch<SetStateAction<boolean>>;
   activityStream: ActivityStreamState;
   setActivityStream: Dispatch<SetStateAction<ActivityStreamState>>;
+  liveStep: LiveStepState;
   abortControllerRef: MutableRefObject<AbortController | null>;
   handleStop: () => void;
   memoryChips: MemoryChip[];
@@ -160,10 +163,12 @@ export function useChatStream(
   // ---- chat-pending / activity stream / abort ----
   const [chatPending, setChatPending] = useState(false);
   const [activityStream, setActivityStream] = useState<ActivityStreamState>({ active: false, content: "" });
+  const [liveStep, setLiveStep] = useState<LiveStepState>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleStop = useCallback(() => {
     abortControllerRef.current?.abort();
+    setLiveStep(null);
   }, []);
 
   // ---- memory chips (B2c) ----
@@ -180,6 +185,7 @@ export function useChatStream(
     abortControllerRef.current = null;
     setChatPending(false);
     setActivityStream({ active: false, content: "" });
+    setLiveStep(null);
   }, [projectId]);
 
   // Prior-message hydration.
@@ -237,6 +243,7 @@ export function useChatStream(
       setMessages((prev) => [...prev, userMsg]);
       setChatPending(true);
       setActivityStream({ active: true, content: "" });
+      setLiveStep(null);
 
       const userProfileStr = profileToString(loadProfile());
 
@@ -398,6 +405,13 @@ export function useChatStream(
                 } else if (evtName === "narration") {
                   const text = JSON.parse(evtData) as string;
                   setActivityStream({ active: true, content: text });
+                } else if (evtName === "step") {
+                  const step = JSON.parse(evtData) as {
+                    verb?: string;
+                    target?: string;
+                    status?: string;
+                  };
+                  if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
                 } else if (evtName === "done") {
                   const res = JSON.parse(evtData);
                   streamingFinished = true;
@@ -514,6 +528,7 @@ export function useChatStream(
             setMessages((prev) => prev.filter((m) => m.id !== streamingId));
           }
           setChatPending(false);
+          setLiveStep(null);
           abortControllerRef.current = null;
         }
       })();
@@ -567,6 +582,7 @@ export function useChatStream(
     setChatPending,
     activityStream,
     setActivityStream,
+    liveStep,
     abortControllerRef,
     handleStop,
     memoryChips,
