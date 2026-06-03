@@ -150,7 +150,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       setProjectShape(data?.shape && typeof data.shape === "object" ? data.shape : nextShape);
       setEditingDnaKey(null);
       setDnaDraft("");
-      haptics.light();
+      haptics.tap();
     } catch (e) {
       setDnaError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -169,7 +169,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     try {
       await navigator.clipboard.writeText(payload);
       setDnaCopied(true);
-      haptics.light();
+      haptics.tap();
       setTimeout(() => setDnaCopied(false), 1600);
     } catch { /* silent */ }
   };
