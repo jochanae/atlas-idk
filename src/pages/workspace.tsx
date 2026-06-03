@@ -4390,14 +4390,14 @@ export default function Workspace() {
 
   useEffect(() => {
     if (openingMessage === null || initialSent.current) return;
-    if (!sessionId || sessionsLoading || createSession.isPending || chatPending) return;
+    if (!sessionId || sessionsLoading || chatPending) return;
     const trimmedOpeningMessage = openingMessage.trim();
-    setOpeningMessage(null);
     if (!trimmedOpeningMessage) return;
     initialSent.current = true;
     setInput("");
     doSend(trimmedOpeningMessage, sessionId, []);
-  }, [openingMessage, sessionId, sessionsLoading, createSession.isPending, chatPending, doSend]);
+    setOpeningMessage(null);
+  }, [openingMessage, sessionId, sessionsLoading, chatPending, doSend]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;
