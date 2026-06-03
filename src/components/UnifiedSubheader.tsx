@@ -22,13 +22,6 @@ const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }>
   { id: "console", label: "CONSOLE", ariaLabel: "Open console" },
 ];
 
-const MENU_ITEMS: Array<{ id: UnifiedSubheaderMenuAction; label: string }> = [
-  { id: "files", label: "FILES" },
-  { id: "memory", label: "MEMORY" },
-  { id: "connections", label: "CONNECTIONS" },
-  { id: "forge", label: "FORGE" },
-  { id: "rescan-repo", label: "RESCAN REPO" },
-];
 
 function tabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
   return {
