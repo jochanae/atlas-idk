@@ -17,6 +17,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
+import { LifecycleGlyph } from "@/components/LifecycleGlyph";
+import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
