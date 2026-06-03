@@ -3788,7 +3788,7 @@ export default function Home() {
           })()}
 
 
-          {/* Inline create error */}
+          {/* Inline create error (kept for in-flow context) */}
           {createError && (
             <div style={{
               marginTop: 8, padding: "6px 12px", borderRadius: 5, fontSize: "var(--ts-caption)",
@@ -3801,6 +3801,54 @@ export default function Home() {
               {createError}
             </div>
           )}
+
+          {/* Floating create-error banner — always visible above the dock */}
+          {createError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              style={{
+                position: "fixed",
+                left: 12,
+                right: 12,
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+                zIndex: 260,
+                padding: "10px 14px",
+                borderRadius: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "rgba(40,16,8,0.96)",
+                border: "1px solid rgba(var(--atlas-gold-rgb),0.35)",
+                color: "var(--atlas-ember)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: "var(--ts-caption)",
+                lineHeight: 1.4,
+                boxShadow: "0 12px 32px rgba(0,0,0,0.55)",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>{createError}</span>
+              <button
+                type="button"
+                onClick={() => setCreateError(null)}
+                aria-label="Dismiss error"
+                style={{
+                  flexShrink: 0,
+                  width: 24, height: 24, borderRadius: 12,
+                  border: "1px solid rgba(var(--atlas-gold-rgb),0.3)",
+                  background: "transparent",
+                  color: "var(--atlas-ember)",
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 14, lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
+
 
           {/* Gradient fade — clipped to hero, fades bottom into background */}
           <div aria-hidden style={{
