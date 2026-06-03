@@ -83,24 +83,44 @@ const SHEET_OVERLAY: React.CSSProperties = {
   background: "rgba(0,0,0,0.55)",
   backdropFilter: "blur(6px)",
   WebkitBackdropFilter: "blur(6px)",
+  display: "flex",
+  alignItems: "flex-end",
+  justifyContent: "center",
+  // Float clear of fixed bottom tab bar + device safe-area
+  padding: "0 14px calc(env(safe-area-inset-bottom, 0px) + 96px)",
 };
 
+// Floating centered canvas — NOT edge-to-edge. Sized for mobile readability,
+// hovers above the persistent bottom navigation bar, isolates its own scroll.
 const SHEET_PANEL: React.CSSProperties = {
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: 0,
+  position: "relative",
   zIndex: 9999,
-  background: "color-mix(in oklab, var(--atlas-surface) 92%, transparent)",
-  backdropFilter: "blur(24px) saturate(140%)",
-  WebkitBackdropFilter: "blur(24px) saturate(140%)",
-  borderTop: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
-  borderRadius: "20px 20px 0 0",
+  width: "100%",
+  maxWidth: 440,
+  background: "color-mix(in oklab, var(--atlas-surface) 94%, transparent)",
+  backdropFilter: "blur(28px) saturate(150%)",
+  WebkitBackdropFilter: "blur(28px) saturate(150%)",
+  border: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
+  borderRadius: 22,
   boxShadow:
-    "0 -20px 60px rgba(0,0,0,0.55), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-  padding: "10px 18px 28px",
-  maxHeight: "82vh",
+    "0 24px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(0,0,0,0.4), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+  padding: "10px 14px 14px",
+  display: "flex",
+  flexDirection: "column",
+  maxHeight: "min(60vh, 560px)",
+  overflow: "hidden",
+};
+
+// Inner scroll container — isolates overflow inside the floating canvas so
+// the Settings row and expanded "More" items always reach the viewport.
+const SHEET_SCROLL: React.CSSProperties = {
   overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  maxHeight: "60vh",
+  paddingBottom: "4rem",
+  margin: "0 -4px",
+  paddingLeft: 4,
+  paddingRight: 4,
 };
 
 const SHEET_HANDLE: React.CSSProperties = {
@@ -108,7 +128,8 @@ const SHEET_HANDLE: React.CSSProperties = {
   height: 4,
   borderRadius: 999,
   background: "rgba(201,162,76,0.35)",
-  margin: "6px auto 14px",
+  margin: "2px auto 10px",
+  flexShrink: 0,
 };
 
 export function ComposerActions({
@@ -203,48 +224,56 @@ export function ComposerActions({
 
       {/* PLUS sheet — Camera + Attach (only two nodes) */}
       {showPlus && (
-        <>
-          <div style={SHEET_OVERLAY} onClick={() => setShowPlus(false)} />
-          <div role="dialog" aria-label="Attach" style={SHEET_PANEL}>
+        <div style={SHEET_OVERLAY} onClick={() => setShowPlus(false)}>
+          <div
+            role="dialog"
+            aria-label="Attach"
+            style={SHEET_PANEL}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={SHEET_HANDLE} />
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 14,
-                maxWidth: 520,
-                margin: "8px auto 4px",
-              }}
-            >
-              <BigNode
-                label="Camera"
-                icon={<Camera size={36} strokeWidth={1.4} />}
-                onClick={() => {
-                  setShowPlus(false);
-                  // Defer to let the sheet unmount before opening the native picker
-                  setTimeout(() => cameraRef.current?.click(), 50);
+            <div style={SHEET_SCROLL}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 14,
+                  margin: "4px 0",
                 }}
-              />
-              <BigNode
-                label="Attach"
-                icon={<Paperclip size={36} strokeWidth={1.4} />}
-                onClick={() => {
-                  setShowPlus(false);
-                  setTimeout(() => attachRef.current?.click(), 50);
-                }}
-              />
+              >
+                <BigNode
+                  label="Camera"
+                  icon={<Camera size={36} strokeWidth={1.4} />}
+                  onClick={() => {
+                    setShowPlus(false);
+                    setTimeout(() => cameraRef.current?.click(), 50);
+                  }}
+                />
+                <BigNode
+                  label="Attach"
+                  icon={<Paperclip size={36} strokeWidth={1.4} />}
+                  onClick={() => {
+                    setShowPlus(false);
+                    setTimeout(() => attachRef.current?.click(), 50);
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* MORE sheet — Files, Connectors, Code, History, Share, Publish, Settings, More */}
       {showMore && (
-        <>
-          <div style={SHEET_OVERLAY} onClick={() => setShowMore(false)} />
-          <div role="dialog" aria-label="Workspace menu" style={SHEET_PANEL}>
+        <div style={SHEET_OVERLAY} onClick={() => setShowMore(false)}>
+          <div
+            role="dialog"
+            aria-label="Workspace menu"
+            style={SHEET_PANEL}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={SHEET_HANDLE} />
-            <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <div style={SHEET_SCROLL}>
               {visiblePrimary.map((item) => (
                 <MenuRow
                   key={item.id}
@@ -304,7 +333,7 @@ export function ComposerActions({
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </>
   );
