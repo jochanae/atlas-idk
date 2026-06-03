@@ -33,6 +33,7 @@ import TokenBridge from "./pages/token-bridge";
 import OnboardingPage from "./pages/onboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 
 // ── Global 401 interceptor ────────────────────────────────────────────────────
@@ -363,6 +364,16 @@ function App() {
         document.documentElement.dataset.theme = "parchment";
       }
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    setAuthTokenGetter(() => {
+      try {
+        return localStorage.getItem("atlas-token") ?? localStorage.getItem("atlas-auth-token");
+      } catch {
+        return null;
+      }
+    });
   }, []);
 
   return (
