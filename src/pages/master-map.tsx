@@ -1645,69 +1645,55 @@ export default function MasterMap() {
                         : <>Drill deeper or keep building from where you left off.</>}
                     </div>
 
-                    {/* Split CTA — 70% primary (state-driven) / 30% chat shortcut */}
-                    {(() => {
-                      const primaryLabel =
-                        tension > 0 ? "Resolve architecture tension" :
-                        (score ?? 0) >= 100 ? "Review final spec" :
-                        (score ?? 0) <= 0 || committed === 0 ? "Initialize blueprint" :
-                        "Resume system flow";
-                      return (
-                        <div style={{ display: "flex", gap: 6, marginTop: 2, width: "100%", alignItems: "stretch" }}>
-                          <button
-                            type="button"
-                            onClick={() => { if (projectId) openWorkspaceOverlay(projectId); }}
-                            style={{
-                              flex: "0 0 70%",
-                              padding: "8px 12px",
-                              background: tension > 0
-                                ? "linear-gradient(180deg, rgba(201,82,76,0.20), rgba(201,82,76,0.10))"
-                                : "linear-gradient(180deg, rgba(201,162,76,0.20), rgba(201,162,76,0.10))",
-                              border: `1px solid ${tension > 0 ? "rgba(201,82,76,0.55)" : palette.goldText}`,
-                              borderRadius: 7,
-                              color: palette.goldTextStrong,
-                              fontSize: 10.5,
-                              fontWeight: 700,
-                              fontFamily: "var(--app-font-mono)",
-                              letterSpacing: "0.08em",
-                              cursor: "pointer",
-                              textTransform: "uppercase",
-                              pointerEvents: "auto",
-                              lineHeight: 1.25,
-                            }}
-                          >
-                            {primaryLabel} →
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Chat with Atlas"
-                            onClick={() => {
-                              if (!projectId) return;
-                              const url = `/map?project=${projectId}&view=workspace&tab=chat`;
-                              window.history.pushState({}, "", url);
-                              setOverlayProjectId(String(projectId));
-                            }}
-                            style={{
-                              flex: "0 0 calc(30% - 6px)",
-                              padding: "8px 6px",
-                              background: "transparent",
-                              border: `1px solid ${palette.panelBorder}`,
-                              borderRadius: 7,
-                              color: palette.goldTextStrong,
-                              fontSize: 10.5,
-                              fontFamily: "var(--app-font-mono)",
-                              letterSpacing: "0.06em",
-                              cursor: "pointer",
-                              textTransform: "uppercase",
-                              pointerEvents: "auto",
-                              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                            }}
-                          >
-                            <span>💬</span><span>Chat</span>
-                          </button>
-                        </div>
-                      );
-                    })()}
+                    {/* Two buttons: Open workspace (map overlay) + Chat */}
+                    <div style={{ display: "flex", gap: 8, marginTop: 2, width: "100%", justifyContent: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => { if (projectId) openWorkspaceOverlay(projectId); }}
+                        style={{
+                          padding: "6px 14px",
+                          background: "rgba(201,162,76,0.12)",
+                          border: `1px solid ${palette.goldText}`,
+                          borderRadius: 6,
+                          color: palette.goldTextStrong,
+                          fontSize: 10.5,
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          pointerEvents: "auto",
+                        }}
+                      >
+                        {committed === 0 ? "Start first decision →" : "Open workspace →"}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Chat with Atlas"
+                        onClick={() => {
+                          if (!projectId) return;
+                          const url = `/map?project=${projectId}&view=workspace&tab=chat`;
+                          window.history.pushState({}, "", url);
+                          setOverlayProjectId(String(projectId));
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          background: "transparent",
+                          border: `1px solid ${palette.panelBorder}`,
+                          borderRadius: 6,
+                          color: palette.goldTextStrong,
+                          fontSize: 10.5,
+                          fontFamily: "var(--app-font-mono)",
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          pointerEvents: "auto",
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                        }}
+                      >
+                        <span>💬</span><span>Chat</span>
+                      </button>
+                    </div>
+
                     {committed > 0 && projectId && (
                       <button
                         type="button"
