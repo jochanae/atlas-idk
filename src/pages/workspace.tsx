@@ -5579,7 +5579,44 @@ export default function Workspace() {
               showModelPicker,
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
+              onComposerMenuAction: (action) => {
+                if (action === "settings") { setShowProjectSettings(true); return; }
+                if (action === "history") { window.location.href = "/ledger"; return; }
+                if (action === "files") {
+                  if (isMobile) { setMobileTab("files"); setRightOpen(true); }
+                  else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
+                if (action === "connectors") {
+                  if (isMobile) { setMobileTab("connections"); setRightOpen(true); }
+                  else { setDesktopForceTab("connections" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
+                if (action === "code") { window.location.href = "/workshop"; return; }
+                if (action === "share") { setShowProjectSettings(true); return; }
+                if (action === "publish") { window.open("https://lovable.dev/publish", "_blank"); return; }
+                if (action === "more:forge") { setShowForgeExternal(true); return; }
+                if (action === "more:rescan") { if (!isScanning) void runScan(false); return; }
+                if (action === "more:memory") {
+                  if (isMobile) { setMobileTab("memory"); setRightOpen(true); }
+                  else { setDesktopForceTab("memory" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
+                if (action === "more:blueprints") {
+                  if (isMobile) { setMobileTab("blueprints"); setRightOpen(true); }
+                  else { setDesktopForceTab("blueprints" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
+                if (action === "more:artifacts") {
+                  if (isMobile) { setMobileTab("artifacts"); setRightOpen(true); }
+                  else { setDesktopForceTab("artifacts" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
+                if (action === "more:console") { setLeftTab("terminal"); return; }
+                if (action === "more:changes") { setLeftTab("diff"); return; }
+              },
             }}
+
           />
 
           {showParkingDrawer && (

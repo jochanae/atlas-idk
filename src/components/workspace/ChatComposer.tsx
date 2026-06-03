@@ -6,6 +6,8 @@ import type { ZipEntry } from "../ZipImport";
 import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
+import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
   flow: [
@@ -173,7 +175,11 @@ export interface ChatComposerProps {
   showModelPicker?: boolean;
   wsModel?: string;
   onOpenModelSheet?: () => void;
+
+  // Universal "..." menu action routing
+  onComposerMenuAction?: (action: ComposerMenuAction) => void;
 }
+
 
 export function ChatComposer(props: ChatComposerProps) {
   const {
@@ -231,7 +237,9 @@ export function ChatComposer(props: ChatComposerProps) {
     showModelPicker,
     wsModel,
     onOpenModelSheet,
+    onComposerMenuAction,
   } = props;
+
 
   const modelChipLabel = (() => {
     switch (wsModel) {
@@ -244,7 +252,7 @@ export function ChatComposer(props: ChatComposerProps) {
   })();
   const isMultiAgent = !wsModel || wsModel === "multi";
 
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  
 
   // When the project is empty, focus the composer so Atlas feels "already in the room".
   // Skip on mobile to avoid yanking the keyboard up uninvited.
@@ -263,20 +271,21 @@ export function ChatComposer(props: ChatComposerProps) {
     <>
       {/* Input — hidden when Terminal tab is active (terminal has its own input row) */}
       {leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts" && <div className="atlas-composer-glass" style={{ padding: "12px 14px 14px", flexShrink: 0, position: "sticky", bottom: 0, zIndex: 30 }}>
-        {/* Hidden file input — handles both images and ZIP files */}
+        {/* Hidden file input — unrestricted multi-mime; used by drag-drop/legacy callers.
+            Primary picker is the unified ComposerActions sheet below. */}
         <input
           ref={fileInputRef}
           id="ws-file-input"
           type="file"
-          accept="image/*,application/pdf,text/plain,.zip,application/zip"
+          accept="*/*"
           style={{ position: "absolute", width: "1px", height: "1px", opacity: 0, overflow: "hidden" }}
           multiple
           onChange={async (e) => {
             const files = Array.from(e.target.files ?? []);
             const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
-            const imgFiles = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
+            const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
             if (zipFile) await processZip(zipFile);
-            if (imgFiles.length > 0) setAttachedFiles(prev => [...prev, ...imgFiles].slice(0, 10));
+            if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
             e.target.value = "";
           }}
         />
@@ -294,47 +303,7 @@ export function ChatComposer(props: ChatComposerProps) {
           }}
         />
 
-        {/* Hidden input — Camera (mobile rear camera capture) */}
-        <input
-          id="ws-camera-input"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
-            e.target.value = "";
-          }}
-        />
 
-        {/* Hidden input — Photo / Image library */}
-        <input
-          id="ws-photo-input"
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          multiple
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
-            e.target.value = "";
-          }}
-        />
-
-        {/* Hidden input — File / Document (non-image, non-zip) */}
-        <input
-          id="ws-doc-input"
-          type="file"
-          accept=".pdf,.txt,.md,.csv,.json,.docx,.xlsx,.pptx,application/pdf,text/plain,text/markdown,text/csv,application/json"
-          multiple
-          style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            if (files.length > 0) setAttachedFiles(prev => [...prev, ...files].slice(0, 10));
-            e.target.value = "";
-          }}
-        />
 
 
         {/* Server code-context status badge */}
@@ -465,138 +434,22 @@ export function ChatComposer(props: ChatComposerProps) {
           <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, flexWrap: "nowrap", gap: 4 }}>
 
 
-            {/* Left: unified "+" attach menu. Keep this group open for one future adjacent control. */}
+            {/* Universal composer actions: [+] + [...] */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
-              {(() => {
-                const hasAttachment = attachedFiles.length > 0 || zipFiles.length > 0 || !!codeContextStatus;
-                return (
-                  <div style={{ position: "relative" }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowAttachMenu(v => !v)}
-                      title="Attach"
-                      aria-label="Attach"
-                      aria-expanded={showAttachMenu}
-                      style={{
-                        minWidth: 44, minHeight: 44, padding: 7, borderRadius: 7,
-                        background: showAttachMenu
-                          ? "rgba(201,162,76,0.12)"
-                          : hasAttachment ? "rgba(201,162,76,0.08)" : "transparent",
-                        border: (showAttachMenu || hasAttachment)
-                          ? "1px solid rgba(201,162,76,0.25)"
-                          : "1px solid transparent",
-                        color: (showAttachMenu || hasAttachment) ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                        opacity: (showAttachMenu || hasAttachment) ? 1 : 0.55,
-                        transition: "all var(--motion-fast) var(--ease-standard)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                      </svg>
-                    </button>
-
-                    {showAttachMenu && (
-                      <>
-                        <div
-                          onClick={() => setShowAttachMenu(false)}
-                          style={{ position: "fixed", inset: 0, zIndex: 59, background: "rgba(0,0,0,0.25)" }}
-                        />
-                        <div
-                          className="atlas-popover"
-                          style={{ position: "absolute", bottom: "calc(100% + 8px)", left: 0, zIndex: 60, minWidth: 260, padding: "6px 0" }}
-                          role="menu"
-                          aria-label="Attach"
-                        >
-                          {/* Section: For this message */}
-                          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(201,162,76,0.55)", padding: "6px 12px 4px" }}>
-                            For this message
-                          </div>
-
-                          {[
-                            { htmlFor: "ws-camera-input", label: "Camera", sub: "Take a photo now",
-                              icon: (<><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></>) },
-                            { htmlFor: "ws-photo-input", label: "Photo / Image", sub: "From your library",
-                              icon: (<><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></>) },
-                            { htmlFor: "ws-doc-input", label: "File / Document", sub: "PDF, text, CSV, JSON…",
-                              icon: (<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></>) },
-                          ].map(item => (
-                            <label
-                              key={item.htmlFor}
-                              htmlFor={item.htmlFor}
-                              onClick={() => setShowAttachMenu(false)}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 12, width: "100%",
-                                padding: "10px 12px", cursor: "pointer",
-                                color: "var(--atlas-fg)",
-                                transition: "background var(--motion-instant) var(--ease-standard)",
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
-                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                            >
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.85 }}>
-                                {item.icon}
-                              </svg>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.2 }}>{item.label}</div>
-                                <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", marginTop: 2, fontFamily: "var(--app-font-mono)" }}>
-                                  {item.sub}
-                                </div>
-                              </div>
-                            </label>
-                          ))}
-
-                          {/* Divider */}
-                          <div style={{ height: 1, background: "rgba(201,162,76,0.1)", margin: "6px 0" }} />
-
-                          {/* Section: For the project (persistent) */}
-                          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(201,162,76,0.55)", padding: "6px 12px 4px" }}>
-                            For the whole project
-                          </div>
-
-                          <label
-                            htmlFor="ws-code-context-input"
-                            onClick={() => setShowAttachMenu(false)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 12, width: "100%",
-                              padding: "10px 12px",
-                              cursor: codeContextUploading ? "wait" : "pointer",
-                              pointerEvents: codeContextUploading ? "none" : "auto",
-                              color: "var(--atlas-fg)",
-                              transition: "background var(--motion-instant) var(--ease-standard)",
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.07)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                          >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.85 }}>
-                              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-                              <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-                              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                              <line x1="12" y1="22.08" x2="12" y2="12" />
-                            </svg>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.2 }}>
-                                {codeContextStatus ? "Replace Code ZIP" : "Code ZIP"}
-                              </div>
-                              <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", marginTop: 2, fontFamily: "var(--app-font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {codeContextUploading
-                                  ? "Uploading…"
-                                  : codeContextStatus
-                                    ? (codeContextStatus.summary || `${codeContextStatus.fileCount} files loaded`)
-                                    : "Available for the full session. Re-upload to update."}
-                              </div>
-                            </div>
-                          </label>
-
-                        </div>
-                      </>
-                    )}
-
-                  </div>
-                );
-              })()}
+              <ComposerActions
+                scope="ws"
+                hasProjectContext
+                hasAttachments={attachedFiles.length > 0 || zipFiles.length > 0 || !!codeContextStatus}
+                onFiles={async (files) => {
+                  const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
+                  const others = files.filter(f => !f.name.endsWith(".zip") && f.type !== "application/zip");
+                  if (zipFile) await processZip(zipFile);
+                  if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
+                }}
+                onMenuAction={(action) => onComposerMenuAction?.(action)}
+              />
             </div>
+
 
             {/* Model chip — only renders when the setting is enabled */}
             {showModelPicker && onOpenModelSheet && (
