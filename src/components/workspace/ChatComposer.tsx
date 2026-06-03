@@ -252,7 +252,7 @@ export function ChatComposer(props: ChatComposerProps) {
   })();
   const isMultiAgent = !wsModel || wsModel === "multi";
 
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  
 
   // When the project is empty, focus the composer so Atlas feels "already in the room".
   // Skip on mobile to avoid yanking the keyboard up uninvited.
