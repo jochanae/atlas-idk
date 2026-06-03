@@ -93,9 +93,29 @@ export function useAtlasStream(): UseAtlasStreamReturn {
         return;
       }
 
+      // Fallback: server returned JSON instead of SSE stream.
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("text/event-stream")) {
+        try {
+          const json = await res.json() as Record<string, unknown>;
+          const text = (json.response ?? json.content ?? json.message ?? "") as string;
+          if (text) {
+            streamedText = text;
+            pacer.push(text);
+          }
+          await pacer.finish();
+          callbacks.onDone(streamedText, json);
+        } catch (e) {
+          pacer.abort();
+          callbacks.onError?.("Couldn't parse Atlas response.");
+        }
+        return;
+      }
+
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buf = "";
+
 
       try {
         while (true) {

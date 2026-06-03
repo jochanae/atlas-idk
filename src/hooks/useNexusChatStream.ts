@@ -196,7 +196,7 @@ export function useNexusChatStream(
 
     try {
       await stream({
-        endpoint: "/api/chat",
+        endpoint: "/api/nexus/chat",
         body: {
           global: true,
           message: text,
@@ -205,6 +205,7 @@ export function useNexusChatStream(
           mode: resolvedMode,
           userProfile,
         },
+
         callbacks: {
           onToken: (released) => {
             const cleaned = released
