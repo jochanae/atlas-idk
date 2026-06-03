@@ -205,7 +205,14 @@ type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" |
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
-const DEFAULT_NAMES = new Set(["New Project", "New Idea", "My Project", "Untitled", "Untitled project", ""]);
+const DEFAULT_NAMES = new Set([
+  "New Project",
+  "New Idea",
+  "My Project",
+  "Untitled",
+  "Untitled project",
+  "",
+]);
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
 type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking";
@@ -3864,8 +3871,10 @@ export default function Workspace() {
       .some(k => !["auth", "db", "api", "state", "ui", "logic"].includes(k));
   const isBrandNewProject = messages.length === 0 && !chatPending && (priorLoaded.current || !sessionId) && !hasForgeNodes;
   const projectName = project?.name?.trim() ?? "";
-  const isFirstMessage = chatPending && messages.filter((message) => message.role === "user").length === 1;
-  const showProjectNameSkeleton = isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
+  const isFirstMessage =
+    chatPending && messages.filter((message) => message.role === "user").length === 1;
+  const showProjectNameSkeleton =
+    isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
 
   useEffect(() => {
     const handler = () => {
@@ -3878,7 +3887,9 @@ export default function Workspace() {
   }, [project?.name]);
 
   useEffect(() => {
-    const titleSpan = document.querySelector<HTMLSpanElement>(".atlas-app-header button[title^='Tap to switch project'] > span");
+    const titleSpan = document.querySelector<HTMLSpanElement>(
+      ".atlas-app-header button[title^='Tap to switch project'] > span",
+    );
     if (!titleSpan) return;
     if (showProjectNameSkeleton) {
       titleSpan.classList.add("atlas-project-name-autoname-pulse");
