@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import * as THREE from "three";
@@ -6,10 +6,6 @@ import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useMapStore, type MapNode } from "@/lib/master-map-store";
 import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
-
-// Workspace mounts as a full-screen overlay when /map?view=workspace&project=ID.
-// Lazy-loaded so the master map remains snappy when the overlay isn't open.
-const Workspace = lazy(() => import("@/pages/workspace"));
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
@@ -218,30 +214,24 @@ export default function MasterMap() {
   const theme = useThemeMode();
   const palette = paletteFor(theme);
 
-  // ── Workspace overlay state ─────────────────────────────────────────────
-  // /map?project=X&view=workspace mounts <Workspace/> as a full-screen
-  // overlay so legacy /project/:id deep links keep working without leaving
-  // the satellite scene. Back button + popstate reverse cleanly.
-  const readOverlayFromUrl = (): string | null => {
-    if (typeof window === "undefined") return null;
-    const p = new URLSearchParams(window.location.search);
-    return p.get("view") === "workspace" ? p.get("project") : null;
-  };
-  const [overlayProjectId, setOverlayProjectId] = useState<string | null>(readOverlayFromUrl);
   useEffect(() => {
-    const onPop = () => setOverlayProjectId(readOverlayFromUrl());
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-  const openWorkspaceOverlay = (pid: number | string) => {
-    const url = `/map?project=${pid}&view=workspace`;
-    window.history.pushState({}, "", url);
-    setOverlayProjectId(String(pid));
-  };
-  const closeWorkspaceOverlay = () => {
-    window.history.pushState({}, "", "/map");
-    setOverlayProjectId(null);
-  };
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "workspace") {
+      const projectId = params.get("project");
+      if (projectId) {
+        if (params.get("tab") === "chat") {
+          try {
+            sessionStorage.setItem("atlas-open-left-tab", "chat");
+          } catch {}
+        }
+        const target = `/project/${projectId}`;
+        window.history.replaceState({}, "", target);
+        setLocation(target);
+      } else {
+        window.history.replaceState({}, "", "/map");
+      }
+    }
+  }, [setLocation]);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -1393,47 +1383,6 @@ export default function MasterMap() {
     <div style={{ position: "fixed", inset: 0, background: palette.pageBg, fontFamily: "var(--app-font-sans)" }}>
       <style>{STYLES}</style>
 
-      {/* Workspace overlay — full-screen cinematic mount when ?view=workspace */}
-      {overlayProjectId && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 1000,
-            background: "var(--atlas-bg)",
-            animation: "mm-workspace-in 380ms cubic-bezier(0.22,1,0.36,1) both",
-            overflow: "auto",
-          }}
-        >
-          <button
-            onClick={closeWorkspaceOverlay}
-            aria-label="Back to satellite"
-            style={{
-              position: "fixed", top: 12, right: 12, zIndex: 1010,
-              padding: "8px 14px",
-              background: "rgba(20,18,15,0.72)",
-              border: `1px solid ${palette.panelBorder}`,
-              borderRadius: 999,
-              color: palette.goldTextStrong,
-              fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-              letterSpacing: "0.12em", textTransform: "uppercase",
-              cursor: "pointer", backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-            }}
-          >
-            ← Satellite
-          </button>
-          <Suspense fallback={
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: palette.mutedText, fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.14em" }}>
-              Entering workspace…
-            </div>
-          }>
-            <Workspace />
-          </Suspense>
-          <style>{`@keyframes mm-workspace-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }`}</style>
-        </div>
-      )}
-
-
-
       <canvas
         ref={canvasRef}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }}
@@ -1649,7 +1598,10 @@ export default function MasterMap() {
                     <div style={{ display: "flex", gap: 8, marginTop: 2, width: "100%", justifyContent: "center" }}>
                       <button
                         type="button"
-                        onClick={() => { if (projectId) openWorkspaceOverlay(projectId); }}
+                        onClick={() => {
+                          if (!projectId) return;
+                          setLocation(`/project/${projectId}`);
+                        }}
                         style={{
                           padding: "6px 14px",
                           background: "rgba(201,162,76,0.12)",
@@ -1671,9 +1623,10 @@ export default function MasterMap() {
                         aria-label="Chat with Atlas"
                         onClick={() => {
                           if (!projectId) return;
-                          const url = `/map?project=${projectId}&view=workspace&tab=chat`;
-                          window.history.pushState({}, "", url);
-                          setOverlayProjectId(String(projectId));
+                          try {
+                            sessionStorage.setItem("atlas-open-left-tab", "chat");
+                          } catch {}
+                          setLocation(`/project/${projectId}`);
                         }}
                         style={{
                           padding: "6px 14px",
