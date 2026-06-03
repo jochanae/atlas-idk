@@ -6003,7 +6003,11 @@ export default function Workspace() {
               chatPending,
               handleSend,
               createSessionPending: createSession.isPending,
+              onAbort: () => {
+                try { abortControllerRef.current?.abort(); } catch { /* noop */ }
+              },
               sendPreparingSession,
+
               parkedCount,
               showParkingDrawer,
               setShowParkingDrawer,
