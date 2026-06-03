@@ -623,20 +623,29 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                   <div key={i} style={{
                     alignSelf: m.role === "user" ? "flex-end" : "flex-start",
                     maxWidth: "86%",
-                    background: m.role === "user"
-                      ? "rgba(var(--atlas-gold-rgb),0.12)"
-                      : "var(--atlas-surface)",
-                    border: m.role === "user"
-                      ? "1px solid rgba(var(--atlas-gold-rgb),0.28)"
-                      : "1px solid rgba(var(--atlas-gold-rgb),0.10)",
-                    borderRadius: m.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
-                    padding: "7px 10px",
-                    fontSize: 12, lineHeight: 1.55,
-                    color: m.role === "user" ? "#E7E5E4" : "var(--atlas-fg)",
-                    fontFamily: "inherit",
-                    whiteSpace: "pre-wrap", wordBreak: "break-word",
+                    display: "flex", flexDirection: "column",
+                    alignItems: m.role === "user" ? "flex-end" : "flex-start",
+                    gap: 4,
                   }}>
-                    {m.content}
+                    <div style={{
+                      background: m.role === "user"
+                        ? "rgba(var(--atlas-gold-rgb),0.12)"
+                        : "var(--atlas-surface)",
+                      border: m.role === "user"
+                        ? "1px solid rgba(var(--atlas-gold-rgb),0.28)"
+                        : "1px solid rgba(var(--atlas-gold-rgb),0.10)",
+                      borderRadius: m.role === "user" ? "10px 10px 2px 10px" : "10px 10px 10px 2px",
+                      padding: "7px 10px",
+                      fontSize: 12, lineHeight: 1.55,
+                      color: m.role === "user" ? "#E7E5E4" : "var(--atlas-fg)",
+                      fontFamily: "inherit",
+                      whiteSpace: "pre-wrap", wordBreak: "break-word",
+                    }}>
+                      {m.content}
+                    </div>
+                    {m.role === "assistant" && m.content.trim().length > 0 && (
+                      <FlowCopyButton content={m.content} />
+                    )}
                   </div>
                 ))}
                 {flowLoading && (
