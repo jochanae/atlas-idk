@@ -67,11 +67,11 @@ window.fetch = async (...args) => {
       ? args[0].toString()
       : args[0].url;
   const isApiCall = new URL(url, location.origin).pathname.startsWith("/api/");
-  if (isApiCall && args[1]?.credentials === undefined) {
+  if (isApiCall) {
     const token = localStorage.getItem("atlas-auth-token");
     args[1] = {
       ...(args[1] ?? {}),
-      credentials: "include",
+      credentials: args[1]?.credentials ?? "include",
       headers: {
         ...(args[1]?.headers ?? {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
