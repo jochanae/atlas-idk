@@ -170,7 +170,27 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
 
 function isUnifiedShellPath(pathname: string): boolean {
-  return pathname === "/home" || pathname.startsWith("/project/");
+  return pathname === "/home";
+}
+
+// Legacy /project/:id deep links — silently rewrite to /map?project=:id&view=workspace
+// so old shortcuts and external links keep working without rebuilding the workspace
+// page at a separate URL.
+function ProjectRedirect() {
+  const [, nav] = useLocation();
+  useEffect(() => {
+    const match = window.location.pathname.match(/\/project\/(\d+)/);
+    const id = match?.[1];
+    if (id) {
+      // Use history.replaceState so the query string survives — wouter's
+      // setLocation can strip search params on some builds.
+      window.history.replaceState({}, "", `/map?project=${id}&view=workspace`);
+      nav("/map", { replace: true });
+    } else {
+      nav("/home", { replace: true });
+    }
+  }, [nav]);
+  return null;
 }
 
 function PageTransition() {
@@ -278,7 +298,6 @@ function UnifiedShellRoutes() {
     <UnifiedShell>
       <Switch>
         <Route path="/home" component={Home} />
-        <Route path="/project/:projectId" component={Workspace} />
       </Switch>
     </UnifiedShell>
   );
@@ -339,6 +358,7 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
+          <Route path="/project/:projectId" component={ProjectRedirect} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>

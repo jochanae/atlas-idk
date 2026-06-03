@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import * as THREE from "three";
@@ -6,6 +6,10 @@ import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useMapStore, type MapNode } from "@/lib/master-map-store";
 import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
+
+// Workspace mounts as a full-screen overlay when /map?view=workspace&project=ID.
+// Lazy-loaded so the master map remains snappy when the overlay isn't open.
+const Workspace = lazy(() => import("@/pages/workspace"));
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
@@ -213,6 +217,32 @@ export default function MasterMap() {
 
   const theme = useThemeMode();
   const palette = paletteFor(theme);
+
+  // ── Workspace overlay state ─────────────────────────────────────────────
+  // /map?project=X&view=workspace mounts <Workspace/> as a full-screen
+  // overlay so legacy /project/:id deep links keep working without leaving
+  // the satellite scene. Back button + popstate reverse cleanly.
+  const readOverlayFromUrl = (): string | null => {
+    if (typeof window === "undefined") return null;
+    const p = new URLSearchParams(window.location.search);
+    return p.get("view") === "workspace" ? p.get("project") : null;
+  };
+  const [overlayProjectId, setOverlayProjectId] = useState<string | null>(readOverlayFromUrl);
+  useEffect(() => {
+    const onPop = () => setOverlayProjectId(readOverlayFromUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const openWorkspaceOverlay = (pid: number | string) => {
+    const url = `/map?project=${pid}&view=workspace`;
+    window.history.pushState({}, "", url);
+    setOverlayProjectId(String(pid));
+  };
+  const closeWorkspaceOverlay = () => {
+    window.history.pushState({}, "", "/map");
+    setOverlayProjectId(null);
+  };
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1363,6 +1393,47 @@ export default function MasterMap() {
     <div style={{ position: "fixed", inset: 0, background: palette.pageBg, fontFamily: "var(--app-font-sans)" }}>
       <style>{STYLES}</style>
 
+      {/* Workspace overlay — full-screen cinematic mount when ?view=workspace */}
+      {overlayProjectId && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "var(--atlas-bg)",
+            animation: "mm-workspace-in 380ms cubic-bezier(0.22,1,0.36,1) both",
+            overflow: "auto",
+          }}
+        >
+          <button
+            onClick={closeWorkspaceOverlay}
+            aria-label="Back to satellite"
+            style={{
+              position: "fixed", top: 12, right: 12, zIndex: 1010,
+              padding: "8px 14px",
+              background: "rgba(20,18,15,0.72)",
+              border: `1px solid ${palette.panelBorder}`,
+              borderRadius: 999,
+              color: palette.goldTextStrong,
+              fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              cursor: "pointer", backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
+            ← Satellite
+          </button>
+          <Suspense fallback={
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: palette.mutedText, fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.14em" }}>
+              Entering workspace…
+            </div>
+          }>
+            <Workspace />
+          </Suspense>
+          <style>{`@keyframes mm-workspace-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }`}</style>
+        </div>
+      )}
+
+
+
       <canvas
         ref={canvasRef}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }}
@@ -1574,49 +1645,90 @@ export default function MasterMap() {
                         : <>Drill deeper or keep building from where you left off.</>}
                     </div>
 
-                    {/* Quick actions */}
-                    <div style={{ display: "flex", gap: 8, marginTop: 2, flexWrap: "wrap", justifyContent: "center" }}>
+                    {/* Split CTA — 70% primary (state-driven) / 30% chat shortcut */}
+                    {(() => {
+                      const primaryLabel =
+                        tension > 0 ? "Resolve architecture tension" :
+                        (score ?? 0) >= 100 ? "Review final spec" :
+                        (score ?? 0) <= 0 || committed === 0 ? "Initialize blueprint" :
+                        "Resume system flow";
+                      return (
+                        <div style={{ display: "flex", gap: 6, marginTop: 2, width: "100%", alignItems: "stretch" }}>
+                          <button
+                            type="button"
+                            onClick={() => { if (projectId) openWorkspaceOverlay(projectId); }}
+                            style={{
+                              flex: "0 0 70%",
+                              padding: "8px 12px",
+                              background: tension > 0
+                                ? "linear-gradient(180deg, rgba(201,82,76,0.20), rgba(201,82,76,0.10))"
+                                : "linear-gradient(180deg, rgba(201,162,76,0.20), rgba(201,162,76,0.10))",
+                              border: `1px solid ${tension > 0 ? "rgba(201,82,76,0.55)" : palette.goldText}`,
+                              borderRadius: 7,
+                              color: palette.goldTextStrong,
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              fontFamily: "var(--app-font-mono)",
+                              letterSpacing: "0.08em",
+                              cursor: "pointer",
+                              textTransform: "uppercase",
+                              pointerEvents: "auto",
+                              lineHeight: 1.25,
+                            }}
+                          >
+                            {primaryLabel} →
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Chat with Atlas"
+                            onClick={() => {
+                              if (!projectId) return;
+                              const url = `/map?project=${projectId}&view=workspace&tab=chat`;
+                              window.history.pushState({}, "", url);
+                              setOverlayProjectId(String(projectId));
+                            }}
+                            style={{
+                              flex: "0 0 calc(30% - 6px)",
+                              padding: "8px 6px",
+                              background: "transparent",
+                              border: `1px solid ${palette.panelBorder}`,
+                              borderRadius: 7,
+                              color: palette.goldTextStrong,
+                              fontSize: 10.5,
+                              fontFamily: "var(--app-font-mono)",
+                              letterSpacing: "0.06em",
+                              cursor: "pointer",
+                              textTransform: "uppercase",
+                              pointerEvents: "auto",
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                            }}
+                          >
+                            <span>💬</span><span>Chat</span>
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {committed > 0 && projectId && (
                       <button
                         type="button"
-                        onClick={() => { if (projectId) window.location.href = `/project/${projectId}`; }}
+                        onClick={() => { window.location.href = `/ledger/${projectId}`; }}
                         style={{
-                          padding: "6px 14px",
-                          background: "rgba(201,162,76,0.12)",
-                          border: `1px solid ${palette.goldText}`,
-                          borderRadius: 6,
-                          color: palette.goldTextStrong,
-                          fontSize: 10.5,
+                          padding: "4px 10px",
+                          background: "transparent",
+                          border: "none",
+                          color: palette.mutedText,
+                          fontSize: 9.5,
                           fontFamily: "var(--app-font-mono)",
-                          letterSpacing: "0.06em",
+                          letterSpacing: "0.08em",
                           cursor: "pointer",
                           textTransform: "uppercase",
                           pointerEvents: "auto",
                         }}
                       >
-                        {committed === 0 ? "Start first decision →" : "Open workspace →"}
+                        View ledger →
                       </button>
-                      {committed > 0 && projectId && (
-                        <button
-                          type="button"
-                          onClick={() => { window.location.href = `/ledger/${projectId}`; }}
-                          style={{
-                            padding: "6px 14px",
-                            background: "transparent",
-                            border: `1px solid ${palette.panelBorder}`,
-                            borderRadius: 6,
-                            color: palette.goldText,
-                            fontSize: 10.5,
-                            fontFamily: "var(--app-font-mono)",
-                            letterSpacing: "0.06em",
-                            cursor: "pointer",
-                            textTransform: "uppercase",
-                            pointerEvents: "auto",
-                          }}
-                        >
-                          Ledger →
-                        </button>
-                      )}
-                    </div>
+                    )}
+
                   </div>
                 );
               })()}
