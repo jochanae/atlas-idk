@@ -1616,23 +1616,82 @@ function TerminalPanel({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [lines]);
 
+  const runNaturalLanguage = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || nlPending || running) return;
+    addLine(`▸ ${trimmed}`, "input");
+    setNlPending(true);
+    try {
+      const r = await fetch("/api/terminal/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ command: trimmed, ...(projectId != null ? { projectId } : {}) }),
+        credentials: "include",
+      });
+      const data = await r.json() as { explanation?: string; error?: string };
+      if (data.explanation) addLine(`[ATLAS] ${data.explanation}`, "commentary");
+      else addLine(`Error: ${data.error ?? "Atlas could not translate that request"}`, "error");
+    } catch (err) {
+      addLine(`Error: ${err instanceof Error ? err.message : String(err)}`, "error");
+    } finally {
+      setNlPending(false);
+    }
+  }, [addLine, nlPending, running, projectId]);
+
+  const submitInput = useCallback(() => {
+    const value = input;
+    setInput("");
+    if (nlMode) runNaturalLanguage(value);
+    else runCommand(value);
+  }, [input, nlMode, runCommand, runNaturalLanguage]);
+
+  const runMacro = useCallback((cmd: string) => {
+    if (cmd === "__clear__") { setLines(welcomeLines()); return; }
+    setNlMode(false);
+    runCommand(cmd);
+  }, [runCommand, welcomeLines]);
+
+  const MACROS: { label: string; icon: string; cmd: string }[] = [
+    { label: "Build Project",         icon: "🛠️", cmd: "npm run build" },
+    { label: "Test Server",           icon: "🔄", cmd: "curl -s -o /dev/null -w 'HTTP %{http_code}\\n' http://localhost:5173 || echo offline" },
+    { label: "Install Dependencies",  icon: "📦", cmd: "npm install" },
+    { label: "Clear Terminal",        icon: "🧹", cmd: "__clear__" },
+  ];
+
+  const HELP_GROUPS: { title: string; items: { cmd: string; desc: string }[] }[] = [
+    { title: "Working with Files", items: [
+      { cmd: "ls",          desc: "List files in this folder" },
+      { cmd: "pwd",         desc: "Show current location" },
+      { cmd: "cat <file>",  desc: "Read a file's contents" },
+    ]},
+    { title: "Checking Logs & Status", items: [
+      { cmd: "git status",  desc: "See what changed in your repo" },
+      { cmd: "git log",     desc: "See recent commits" },
+      { cmd: "git diff",    desc: "See exact line changes" },
+    ]},
+    { title: "Fixed Actions", items: [
+      { cmd: "git push",    desc: "Send changes to GitHub → deploy" },
+      { cmd: "git pull",    desc: "Pull latest from GitHub" },
+      { cmd: "clear",       desc: "Clear the terminal" },
+    ]},
+  ];
+
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      const cmd = input;
-      setInput("");
-      runCommand(cmd);
-    } else if (e.key === "ArrowUp") {
+      submitInput();
+    } else if (!nlMode && e.key === "ArrowUp") {
       e.preventDefault();
       const next = Math.min(histIdx + 1, cmdHistory.length - 1);
       setHistIdx(next);
       setInput(cmdHistory[next] ?? "");
-    } else if (e.key === "ArrowDown") {
+    } else if (!nlMode && e.key === "ArrowDown") {
       e.preventDefault();
       const next = Math.max(histIdx - 1, -1);
       setHistIdx(next);
       setInput(next === -1 ? "" : cmdHistory[next] ?? "");
     }
   };
+
 
   // ── Theme-aware terminal palette ──────────────────────────────────────────
   const termBg      = isParchment ? "#F4EFE6" : "#0A0908";
