@@ -1393,6 +1393,47 @@ export default function MasterMap() {
     <div style={{ position: "fixed", inset: 0, background: palette.pageBg, fontFamily: "var(--app-font-sans)" }}>
       <style>{STYLES}</style>
 
+      {/* Workspace overlay — full-screen cinematic mount when ?view=workspace */}
+      {overlayProjectId && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "var(--atlas-bg)",
+            animation: "mm-workspace-in 380ms cubic-bezier(0.22,1,0.36,1) both",
+            overflow: "auto",
+          }}
+        >
+          <button
+            onClick={closeWorkspaceOverlay}
+            aria-label="Back to satellite"
+            style={{
+              position: "fixed", top: 12, right: 12, zIndex: 1010,
+              padding: "8px 14px",
+              background: "rgba(20,18,15,0.72)",
+              border: `1px solid ${palette.panelBorder}`,
+              borderRadius: 999,
+              color: palette.goldTextStrong,
+              fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              cursor: "pointer", backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            }}
+          >
+            ← Satellite
+          </button>
+          <Suspense fallback={
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: palette.mutedText, fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.14em" }}>
+              Entering workspace…
+            </div>
+          }>
+            <Workspace />
+          </Suspense>
+          <style>{`@keyframes mm-workspace-in { from { opacity: 0; transform: scale(1.06); } to { opacity: 1; transform: scale(1); } }`}</style>
+        </div>
+      )}
+
+
+
       <canvas
         ref={canvasRef}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "grab" }}
