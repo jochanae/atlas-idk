@@ -94,6 +94,44 @@ export function UserBubble({
           >
             {content}
           </CollapsibleMessageText>
+
+          {/* Committed attachment badge — paperclip + thumbnail, opens preview */}
+          {imageUrl && (
+            <button
+              type="button"
+              onClick={() => { haptic.short(); setPreviewOpen(true); }}
+              aria-label="Open attached image"
+              title="View attachment"
+              style={{
+                marginTop: 8,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "3px 7px 3px 4px",
+                borderRadius: 999,
+                background: "rgba(201,162,76,0.08)",
+                border: "0.5px solid rgba(201,162,76,0.25)",
+                cursor: "pointer",
+                color: "var(--atlas-gold)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                lineHeight: 1,
+              }}
+            >
+              <img
+                src={imageUrl}
+                alt=""
+                style={{
+                  width: 22, height: 22, borderRadius: 4, objectFit: "cover",
+                  flexShrink: 0, display: "block",
+                }}
+              />
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M13 7.5l-5 5a3 3 0 01-4.24-4.24l6-6a2 2 0 012.83 2.83l-6 6a1 1 0 11-1.41-1.41L9.5 5" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Timestamp — BELOW bubble, matches home/nexus */}
