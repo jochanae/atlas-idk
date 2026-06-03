@@ -1712,7 +1712,7 @@ function TerminalPanel({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: termBg, overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: termBg, overflow: "hidden", position: "relative" }}>
       {/* ── Sync to GitHub bar ─────────────────────────────────────────── */}
       {!scenarioLens && (
         <div style={{ borderBottom: `1px solid ${termBorder}`, flexShrink: 0 }}>
