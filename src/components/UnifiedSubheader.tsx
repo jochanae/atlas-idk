@@ -252,8 +252,8 @@ export function UnifiedSubheader({
           style={{
             display: "flex",
             justifyContent: "center",
-            alignItems: "center",
-            height: 18,
+            alignItems: "flex-start",
+            height: expanded ? 14 : 10,
             pointerEvents: "none",
           }}
         >
@@ -268,19 +268,19 @@ export function UnifiedSubheader({
             aria-expanded={expanded}
             style={{
               pointerEvents: "auto",
-              width: 44,
-              height: 18,
+              width: 36,
+              height: expanded ? 14 : 10,
               padding: 0,
-              borderRadius: "0 0 10px 10px",
-              background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+              borderRadius: "0 0 8px 8px",
+              background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
               borderTop: "none",
               color: "var(--atlas-gold)",
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 11,
+              fontSize: 9,
               lineHeight: 1,
               WebkitTapHighlightColor: "transparent",
             }}
