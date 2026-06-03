@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import { useLocation } from "wouter";
 import * as THREE from "three";
@@ -6,6 +6,10 @@ import { haptics } from "@/lib/haptics";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useMapStore, type MapNode } from "@/lib/master-map-store";
 import { LayerStack, type LayerNodeRecord } from "@/lib/master-map-layers";
+
+// Workspace mounts as a full-screen overlay when /map?view=workspace&project=ID.
+// Lazy-loaded so the master map remains snappy when the overlay isn't open.
+const Workspace = lazy(() => import("@/pages/workspace"));
 
 // ── Theme palette for the 3D scene + HUD ─────────────────────────────────────
 type ScenePalette = {
