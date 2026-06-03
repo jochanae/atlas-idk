@@ -205,6 +205,7 @@ type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" |
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
+const DEFAULT_NAMES = new Set(["New Project", "New Idea", "My Project", "Untitled", "Untitled project", ""]);
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
 type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking";
@@ -3290,6 +3291,7 @@ export default function Workspace() {
     initialSent.current = false;
     importPrimed.current = false;
     homeHandoffPrimed.current = false;
+    setAutoNameKey(0);
   }, [id]);
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
@@ -3861,6 +3863,9 @@ export default function Workspace() {
     Object.keys((project?.nodeState ?? {}) as Record<string, unknown>)
       .some(k => !["auth", "db", "api", "state", "ui", "logic"].includes(k));
   const isBrandNewProject = messages.length === 0 && !chatPending && (priorLoaded.current || !sessionId) && !hasForgeNodes;
+  const projectName = project?.name?.trim() ?? "";
+  const isFirstMessage = chatPending && messages.filter((message) => message.role === "user").length === 1;
+  const showProjectNameSkeleton = isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
 
   useEffect(() => {
     const handler = () => {
@@ -3871,6 +3876,22 @@ export default function Workspace() {
     window.addEventListener("axiom:rename-project", handler);
     return () => window.removeEventListener("axiom:rename-project", handler);
   }, [project?.name]);
+
+  useEffect(() => {
+    const titleSpan = document.querySelector<HTMLSpanElement>(".atlas-app-header button[title^='Tap to switch project'] > span");
+    if (!titleSpan) return;
+    if (showProjectNameSkeleton) {
+      titleSpan.classList.add("atlas-project-name-autoname-pulse");
+      titleSpan.setAttribute("data-atlas-autoname-placeholder", "Naming project");
+    } else {
+      titleSpan.classList.remove("atlas-project-name-autoname-pulse");
+      titleSpan.removeAttribute("data-atlas-autoname-placeholder");
+    }
+    return () => {
+      titleSpan.classList.remove("atlas-project-name-autoname-pulse");
+      titleSpan.removeAttribute("data-atlas-autoname-placeholder");
+    };
+  }, [autoNameKey, showProjectNameSkeleton]);
 
 
   useEffect(() => {
@@ -5284,6 +5305,24 @@ export default function Workspace() {
           overflow-y: auto !important;
           padding-top: 8px !important;
           scroll-padding-top: 8px;
+        }
+        @keyframes atlas-project-name-autoname-pulse {
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.78; }
+        }
+        .atlas-project-name-autoname-pulse {
+          color: transparent !important;
+          opacity: 1 !important;
+          position: relative;
+        }
+        .atlas-project-name-autoname-pulse::before {
+          animation: atlas-project-name-autoname-pulse 1.4s ease-in-out infinite;
+          color: var(--atlas-fg);
+          content: attr(data-atlas-autoname-placeholder);
+          left: 0;
+          opacity: 0.45;
+          position: absolute;
+          top: 0;
         }
       `}</style>
       <div
