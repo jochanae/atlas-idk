@@ -224,48 +224,56 @@ export function ComposerActions({
 
       {/* PLUS sheet — Camera + Attach (only two nodes) */}
       {showPlus && (
-        <>
-          <div style={SHEET_OVERLAY} onClick={() => setShowPlus(false)} />
-          <div role="dialog" aria-label="Attach" style={SHEET_PANEL}>
+        <div style={SHEET_OVERLAY} onClick={() => setShowPlus(false)}>
+          <div
+            role="dialog"
+            aria-label="Attach"
+            style={SHEET_PANEL}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={SHEET_HANDLE} />
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 14,
-                maxWidth: 520,
-                margin: "8px auto 4px",
-              }}
-            >
-              <BigNode
-                label="Camera"
-                icon={<Camera size={36} strokeWidth={1.4} />}
-                onClick={() => {
-                  setShowPlus(false);
-                  // Defer to let the sheet unmount before opening the native picker
-                  setTimeout(() => cameraRef.current?.click(), 50);
+            <div style={SHEET_SCROLL}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 14,
+                  margin: "4px 0",
                 }}
-              />
-              <BigNode
-                label="Attach"
-                icon={<Paperclip size={36} strokeWidth={1.4} />}
-                onClick={() => {
-                  setShowPlus(false);
-                  setTimeout(() => attachRef.current?.click(), 50);
-                }}
-              />
+              >
+                <BigNode
+                  label="Camera"
+                  icon={<Camera size={36} strokeWidth={1.4} />}
+                  onClick={() => {
+                    setShowPlus(false);
+                    setTimeout(() => cameraRef.current?.click(), 50);
+                  }}
+                />
+                <BigNode
+                  label="Attach"
+                  icon={<Paperclip size={36} strokeWidth={1.4} />}
+                  onClick={() => {
+                    setShowPlus(false);
+                    setTimeout(() => attachRef.current?.click(), 50);
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* MORE sheet — Files, Connectors, Code, History, Share, Publish, Settings, More */}
       {showMore && (
-        <>
-          <div style={SHEET_OVERLAY} onClick={() => setShowMore(false)} />
-          <div role="dialog" aria-label="Workspace menu" style={SHEET_PANEL}>
+        <div style={SHEET_OVERLAY} onClick={() => setShowMore(false)}>
+          <div
+            role="dialog"
+            aria-label="Workspace menu"
+            style={SHEET_PANEL}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={SHEET_HANDLE} />
-            <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <div style={SHEET_SCROLL}>
               {visiblePrimary.map((item) => (
                 <MenuRow
                   key={item.id}
@@ -325,7 +333,7 @@ export function ComposerActions({
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </>
   );
