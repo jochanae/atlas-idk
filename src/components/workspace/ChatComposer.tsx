@@ -175,7 +175,11 @@ export interface ChatComposerProps {
   showModelPicker?: boolean;
   wsModel?: string;
   onOpenModelSheet?: () => void;
+
+  // Universal "..." menu action routing
+  onComposerMenuAction?: (action: ComposerMenuAction) => void;
 }
+
 
 export function ChatComposer(props: ChatComposerProps) {
   const {
