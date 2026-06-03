@@ -1829,13 +1829,106 @@ function TerminalPanel({
         </div>
       )}
 
+      {/* ── Command Deck (macros + NL toggle + help) ──────────────────── */}
+      <div style={{
+        flexShrink: 0,
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "8px 12px",
+        borderBottom: `1px solid ${termBorder}`,
+        background: isParchment ? "rgba(255,250,240,0.5)" : "rgba(255,255,255,0.02)",
+        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+      }}>
+        <div
+          style={{
+            flex: 1, minWidth: 0,
+            display: isDesktopView ? "grid" : "flex",
+            gridTemplateColumns: isDesktopView ? "repeat(4, minmax(0,1fr))" : undefined,
+            gap: 6,
+            overflowX: isDesktopView ? "visible" : "auto",
+            scrollbarWidth: "none",
+          }}
+        >
+          {MACROS.map(m => (
+            <button
+              key={m.label}
+              onClick={() => runMacro(m.cmd)}
+              disabled={running}
+              style={{
+                flexShrink: 0,
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+                padding: isDesktopView ? "8px 10px" : "6px 10px",
+                borderRadius: 999,
+                border: "1px solid rgba(201,162,76,0.35)",
+                background: "color-mix(in oklab, var(--atlas-gold) 7%, transparent)",
+                color: "var(--atlas-gold)",
+                fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)",
+                letterSpacing: "0.05em", cursor: running ? "not-allowed" : "pointer",
+                backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+                whiteSpace: "nowrap",
+                boxShadow: "inset 0 0 0 1px rgba(201,162,76,0.08)",
+                transition: "all 160ms ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 0 12px rgba(201,162,76,0.28), inset 0 0 0 1px rgba(201,162,76,0.18)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(201,162,76,0.08)"; }}
+            >
+              <span aria-hidden>{m.icon}</span>{m.label}
+            </button>
+          ))}
+        </div>
+        {/* NL toggle */}
+        <button
+          onClick={() => setNlMode(v => !v)}
+          title={nlMode ? "Switch to Bash" : "Switch to Atlas Natural Language"}
+          style={{
+            flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "6px 10px", borderRadius: 999,
+            border: `1px solid ${nlMode ? "var(--atlas-gold)" : termBorder}`,
+            background: nlMode ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)" : "transparent",
+            color: nlMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
+            fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)",
+            letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer",
+          }}
+        >
+          <span style={{
+            width: 22, height: 12, borderRadius: 999, position: "relative",
+            background: nlMode ? "var(--atlas-gold)" : "rgba(255,255,255,0.12)",
+            transition: "background 160ms ease",
+          }}>
+            <span style={{
+              position: "absolute", top: 1, left: nlMode ? 11 : 1,
+              width: 10, height: 10, borderRadius: "50%",
+              background: nlMode ? "#0A0908" : "rgba(255,255,255,0.85)",
+              transition: "left 160ms ease",
+            }} />
+          </span>
+          {nlMode ? "Atlas" : "Bash"}
+        </button>
+        {/* Help button */}
+        <button
+          onClick={() => setHelpOpen(true)}
+          aria-label="Open help cheat sheet"
+          title="Help"
+          style={{
+            flexShrink: 0, width: 30, height: 30, borderRadius: "50%",
+            border: "1px solid rgba(201,162,76,0.5)",
+            background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+            color: "var(--atlas-gold)", cursor: "pointer",
+            fontFamily: "var(--app-font-mono)", fontSize: 14, fontWeight: 700,
+            boxShadow: "0 0 10px rgba(201,162,76,0.2)",
+          }}
+        >?</button>
+      </div>
+
+      {/* ── Main row: terminal (left) + optional desktop sidebar (right) ── */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row" }}>
       {/* Output log */}
       <div
         onClick={() => inputRef.current?.focus()}
         style={{
-          flex: 1, overflowY: "auto", padding: "12px 14px",
+          flex: isDesktopView ? "0 0 70%" : 1, minWidth: 0,
+          overflowY: "auto", padding: "12px 14px",
           fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-label)", lineHeight: 1.7,
-          cursor: "text",
+          cursor: "text", position: "relative",
         }}
       >
         {lines.map((ln, i) => (
@@ -1856,26 +1949,34 @@ function TerminalPanel({
             </div>
           )
         ))}
-        {running && (
+        {(running || nlPending) && (
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3, color: "rgba(var(--atlas-muted-rgb),0.6)" }}>
             <span style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(201,162,76,0.55)", display: "inline-block", animation: "atlas-pulse 1.2s ease-in-out infinite" }} />
-            running…
+            {nlPending ? "atlas thinking…" : "running…"}
           </div>
         )}
-        {/* Inline active input row — lives inside the scroll feed so it stays directly under the last log line, above the mobile nav */}
+        {/* Inline active input row */}
         <div style={{
           marginTop: 10, paddingTop: 8,
           borderTop: `1px dashed ${termBorder}`,
           display: "flex", alignItems: "center", gap: 8,
         }}>
-          <span style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-body)", color: termPrompt, flexShrink: 0 }}>$</span>
+          <span style={{
+            fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-body)",
+            color: nlMode ? "var(--atlas-gold)" : termPrompt, flexShrink: 0,
+          }}>{nlMode ? "▸" : "$"}</span>
           <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            disabled={running}
-            placeholder={running ? "running…" : "enter command"}
+            disabled={running || nlPending}
+            placeholder={
+              running ? "running…" :
+              nlPending ? "atlas thinking…" :
+              nlMode ? "Tell Atlas what to do in plain English..." :
+              "enter command"
+            }
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
@@ -1905,23 +2006,142 @@ function TerminalPanel({
             </button>
           ) : input.trim() && (
             <button
-              onClick={() => { const cmd = input; setInput(""); runCommand(cmd); }}
+              onClick={submitInput}
               style={{
                 flexShrink: 0, padding: "3px 10px", borderRadius: 4,
-                background: "rgba(146,64,14,0.22)", border: "1px solid rgba(146,64,14,0.4)",
-                color: "rgba(230,150,90,0.88)", fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
+                background: nlMode ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)" : "rgba(146,64,14,0.22)",
+                border: `1px solid ${nlMode ? "var(--atlas-gold)" : "rgba(146,64,14,0.4)"}`,
+                color: nlMode ? "var(--atlas-gold)" : "rgba(230,150,90,0.88)",
+                fontSize: "var(--ts-sm)", fontFamily: "var(--app-font-mono)",
                 fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer",
               }}
             >
-              run
+              {nlMode ? "ask" : "run"}
             </button>
           )}
         </div>
         <div ref={bottomRef} />
       </div>
+
+      {/* Desktop right sidebar — Atlas Assistant + Help Center */}
+      {isDesktopView && (
+        <aside style={{
+          flex: "0 0 30%", minWidth: 280,
+          borderLeft: `1px solid ${termBorder}`,
+          background: isParchment ? "rgba(255,250,240,0.4)" : "rgba(255,255,255,0.02)",
+          backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+          overflowY: "auto", padding: "14px 14px 18px",
+          display: "flex", flexDirection: "column", gap: 14,
+        }}>
+          <div>
+            <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 6 }}>
+              Atlas Assistant
+            </div>
+            <p style={{ margin: 0, fontSize: "var(--ts-sm)", color: "var(--atlas-muted)", lineHeight: 1.5 }}>
+              {nlMode
+                ? "Plain-English mode is on. Type what you want and Atlas translates it."
+                : "Flip the toggle to switch the prompt into plain English."}
+            </p>
+          </div>
+          {HELP_GROUPS.map(group => (
+            <div key={group.title}>
+              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 6 }}>
+                {group.title}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {group.items.map(it => (
+                  <button
+                    key={it.cmd}
+                    onClick={() => runMacro(it.cmd.replace(/\s*<.*?>$/, ""))}
+                    style={{
+                      textAlign: "left", padding: "8px 10px", borderRadius: 8,
+                      border: `1px solid ${termBorder}`,
+                      background: "rgba(255,255,255,0.02)",
+                      cursor: "pointer", display: "flex", flexDirection: "column", gap: 2,
+                    }}
+                  >
+                    <code style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-gold)" }}>{it.cmd}</code>
+                    <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)" }}>{it.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </aside>
+      )}
+      </div>
+
+      {/* ── Help drawer overlay (mobile + desktop) ──────────────────── */}
+      {helpOpen && (
+        <div
+          onClick={() => setHelpOpen(false)}
+          style={{
+            position: "absolute", inset: 0, zIndex: 50,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+            display: "flex", alignItems: "flex-start", justifyContent: "center",
+            padding: "60px 16px 16px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 460, maxHeight: "80vh", overflowY: "auto",
+              background: isParchment ? "#FBF6EC" : "rgba(15,12,10,0.94)",
+              border: "1px solid rgba(201,162,76,0.4)",
+              borderRadius: 16,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,162,76,0.18)",
+              backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+              padding: 18,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-label)", color: "var(--atlas-gold)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Console Cheat Sheet
+              </div>
+              <button
+                onClick={() => setHelpOpen(false)}
+                aria-label="Close help"
+                style={{
+                  width: 26, height: 26, borderRadius: "50%",
+                  border: `1px solid ${termBorder}`, background: "transparent",
+                  color: "var(--atlas-muted)", cursor: "pointer",
+                }}
+              >×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {HELP_GROUPS.map(group => (
+                <div key={group.title}>
+                  <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-micro)", letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--atlas-gold)", marginBottom: 6 }}>
+                    {group.title}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {group.items.map(it => (
+                      <button
+                        key={it.cmd}
+                        onClick={() => { setHelpOpen(false); runMacro(it.cmd.replace(/\s*<.*?>$/, "")); }}
+                        style={{
+                          textAlign: "left", padding: "8px 10px", borderRadius: 8,
+                          border: `1px solid ${termBorder}`,
+                          background: "rgba(255,255,255,0.03)",
+                          cursor: "pointer", display: "flex", flexDirection: "column", gap: 2,
+                        }}
+                      >
+                        <code style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-sm)", color: "var(--atlas-gold)" }}>{it.cmd}</code>
+                        <span style={{ fontSize: "var(--ts-xs)", color: "var(--atlas-muted)" }}>{it.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 
 // ── MobileTabBar ─────────────────────────────────────────────────────────────
