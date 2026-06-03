@@ -173,22 +173,8 @@ function isUnifiedShellPath(pathname: string): boolean {
   return pathname === "/home";
 }
 
-// Legacy /project/:id deep links — silently rewrite to /map?project=:id&view=workspace
-// so old shortcuts and external links keep working without rebuilding the workspace
-// page at a separate URL.
-function ProjectRedirect() {
-  useEffect(() => {
-    const match = window.location.pathname.match(/\/project\/(\d+)/);
-    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-    const target = match?.[1]
-      ? `${base}/map?project=${match[1]}&view=workspace`
-      : `${base}/home`;
-    // Full replace so the query string is preserved and wouter re-mounts on
-    // the new path with search intact.
-    window.location.replace(target);
-  }, []);
-  return null;
-}
+// /project/:id opens the full workspace directly (original behavior).
+// Map-overlay drill-down lives inside /map when a node is clicked there.
 
 function PageTransition() {
   const [location] = useLocation();
@@ -355,7 +341,7 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
-          <Route path="/project/:projectId" component={ProjectRedirect} />
+          <Route path="/project/:projectId" component={Workspace} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>
