@@ -754,200 +754,314 @@ export function FilesPanel({
         </div>
       )}
 
-      {/* Repos list */}
-      {filesSubTab === "files" && view === "repos" && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }} className="scrollbar-none">
+      {/* Repos list — Luxury Obsidian dashboard layout */}
+      {filesSubTab === "files" && view === "repos" && (() => {
+        const linkedFullName = getLinkedRepoFullName(filesProject?.linkedRepo);
+        const linkedRepo = repos.find(r => r.fullName === linkedFullName) ?? null;
+        const glassCard: React.CSSProperties = {
+          background: "rgba(10,10,10,0.55)",
+          backdropFilter: "blur(20px) saturate(140%)",
+          WebkitBackdropFilter: "blur(20px) saturate(140%)",
+          border: "1px solid rgba(38,38,38,0.85)",
+          borderRadius: 16,
+          transition: "border-color 240ms ease, background 240ms ease",
+        };
+        const sectionLabel: React.CSSProperties = {
+          fontSize: 10,
+          fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          fontWeight: 700,
+          color: "var(--atlas-muted)",
+          opacity: 0.85,
+        };
+        const goldGradient: React.CSSProperties = {
+          background: "linear-gradient(90deg, #fde68a 0%, #facc15 45%, #c9a24c 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        };
 
-          {/* Auto-link all projects button — appears when repos are loaded */}
-          {!reposLoading && repos.length > 0 && (allProjects ?? []).some(p => !p.linkedRepo) && (
-            <div style={{ margin: "0 0 8px", padding: "8px 10px", borderRadius: 6, background: "rgba(201,162,76,0.04)", border: "1px solid rgba(201,162,76,0.14)" }}>
-              {autoLinkStatus !== "done" && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", lineHeight: 1.4, opacity: 0.75 }}>
-                    {(allProjects ?? []).filter(p => !p.linkedRepo).length} project{(allProjects ?? []).filter(p => !p.linkedRepo).length !== 1 ? "s" : ""} need a repo
-                  </div>
+        const browseHub: Array<{ key: string; idx: string; label: string; sub: string; onClick: () => void; active?: boolean }> = [
+          {
+            key: "repos",
+            idx: "01",
+            label: "Active Repos",
+            sub: `${repos.length} connected`,
+            onClick: () => {},
+            active: true,
+          },
+          {
+            key: "zip",
+            idx: "02",
+            label: zipLoaded ? "ZIP Loaded" : "Upload ZIP",
+            sub: zipLoaded ? (zipFileName ?? "Active") : "No repo needed",
+            onClick: () => onZipTrigger?.(),
+            active: !!zipLoaded,
+          },
+          {
+            key: "db",
+            idx: "03",
+            label: dbUrl ? "Database Linked" : "Database",
+            sub: dbUrl ? "Connected" : "Connect Postgres",
+            onClick: () => {
+              const el = document.getElementById(`atlas-db-section-${projectId}`);
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            },
+            active: !!dbUrl,
+          },
+        ];
+
+        return (
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px 20px", display: "flex", flexDirection: "column", gap: 22 }} className="scrollbar-none">
+
+            {/* ── 1. BROWSE HUB ────────────────────────────────────────── */}
+            <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <h2 style={{ ...sectionLabel, ...goldGradient, margin: 0, fontWeight: 700 }}>Browse Hub</h2>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  overflowX: "auto",
+                  scrollSnapType: "x mandatory",
+                  paddingBottom: 4,
+                  margin: "0 -14px",
+                  padding: "0 14px 4px",
+                }}
+                className="scrollbar-none"
+              >
+                {browseHub.map((card) => (
                   <button
-                    onClick={handleAutoLink}
-                    disabled={autoLinkStatus === "running"}
+                    key={card.key}
+                    type="button"
+                    onClick={card.onClick}
                     style={{
-                      flexShrink: 0, padding: "4px 10px", borderRadius: 4,
-                      background: autoLinkStatus === "running" ? "rgba(201,162,76,0.08)" : "rgba(201,162,76,0.14)",
-                      border: "1px solid rgba(201,162,76,0.3)",
-                      color: "var(--atlas-gold)", fontSize: 10, fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.06em", cursor: autoLinkStatus === "running" ? "not-allowed" : "pointer",
-                      opacity: autoLinkStatus === "running" ? 0.6 : 1, transition: "opacity 140ms ease",
+                      ...glassCard,
+                      flexShrink: 0,
+                      minWidth: 220,
+                      scrollSnapAlign: "start",
+                      padding: 18,
+                      textAlign: "left",
+                      cursor: "pointer",
+                      position: "relative",
+                      overflow: "hidden",
+                      borderColor: card.active ? "rgba(201,162,76,0.35)" : "rgba(38,38,38,0.85)",
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = card.active ? "rgba(201,162,76,0.35)" : "rgba(38,38,38,0.85)"; }}
                   >
-                    {autoLinkStatus === "running" ? "Linking…" : "Auto-link all →"}
+                    <span style={{
+                      position: "absolute", top: -20, right: -20, width: 110, height: 110,
+                      borderRadius: "50%", background: "rgba(201,162,76,0.08)", filter: "blur(28px)", pointerEvents: "none",
+                    }} />
+                    <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.55, letterSpacing: "0.12em", marginBottom: 4 }}>
+                      {card.idx} / CATEGORY
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.01em" }}>
+                      {card.label}
+                    </div>
+                    <div style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, marginTop: 6 }}>
+                      {card.sub}
+                    </div>
                   </button>
-                </div>
-              )}
-              {autoLinkStatus === "done" && autoLinkResult && (
-                <div style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", lineHeight: 1.7 }}>
-                  {autoLinkResult.linked.length > 0 && (
-                    <div style={{ color: "#34d399" }}>
-                      ✓ Linked: {autoLinkResult.linked.map(l => l.projectName).join(", ")}
-                    </div>
-                  )}
-                  {autoLinkResult.skipped.length > 0 && (
-                    <div style={{ color: "var(--atlas-muted)", opacity: 0.65 }}>
-                      — No match: {autoLinkResult.skipped.join(", ")}
-                    </div>
-                  )}
-                  {autoLinkResult.linked.length === 0 && autoLinkResult.skipped.length === 0 && (
-                    <div style={{ color: "var(--atlas-muted)" }}>All projects already linked.</div>
-                  )}
-                </div>
-              )}
-              {autoLinkStatus === "error" && autoLinkResult && (
-                <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>
-                  ✗ {autoLinkResult.skipped[0] ?? "Auto-link failed"}
-                </div>
-              )}
-            </div>
-          )}
+                ))}
+              </div>
+            </section>
 
-          {reposLoading && (
-            <div style={{ padding: "24px 12px", textAlign: "center", fontSize: 10, ...sMuted, opacity: 0.4 }}>
-              Loading repos…
-            </div>
-          )}
-          {reposError && (
-            <div style={{ padding: "16px 12px", textAlign: "center", fontSize: 11, color: "var(--atlas-ember)", fontFamily: "var(--app-font-mono)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-              <span>{reposError}</span>
-              {reposError === GITHUB_RECONNECT_MESSAGE && (
+            {/* Auto-link banner */}
+            {!reposLoading && repos.length > 0 && (allProjects ?? []).some(p => !p.linkedRepo) && (
+              <div style={{ ...glassCard, padding: "10px 14px", borderColor: "rgba(201,162,76,0.2)" }}>
+                {autoLinkStatus !== "done" && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.4, opacity: 0.8 }}>
+                      {(allProjects ?? []).filter(p => !p.linkedRepo).length} project{(allProjects ?? []).filter(p => !p.linkedRepo).length !== 1 ? "s" : ""} need a repo
+                    </div>
+                    <button
+                      onClick={handleAutoLink}
+                      disabled={autoLinkStatus === "running"}
+                      style={{
+                        flexShrink: 0, padding: "5px 11px", borderRadius: 6,
+                        background: "rgba(201,162,76,0.14)",
+                        border: "1px solid rgba(201,162,76,0.35)",
+                        color: "var(--atlas-gold)", fontSize: 10, fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.06em", cursor: autoLinkStatus === "running" ? "not-allowed" : "pointer",
+                        opacity: autoLinkStatus === "running" ? 0.6 : 1,
+                      }}
+                    >
+                      {autoLinkStatus === "running" ? "Linking…" : "Auto-link all →"}
+                    </button>
+                  </div>
+                )}
+                {autoLinkStatus === "done" && autoLinkResult && (
+                  <div style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.7 }}>
+                    {autoLinkResult.linked.length > 0 && (
+                      <div style={{ color: "#34d399" }}>✓ Linked: {autoLinkResult.linked.map(l => l.projectName).join(", ")}</div>
+                    )}
+                    {autoLinkResult.skipped.length > 0 && (
+                      <div style={{ color: "var(--atlas-muted)", opacity: 0.65 }}>— No match: {autoLinkResult.skipped.join(", ")}</div>
+                    )}
+                    {autoLinkResult.linked.length === 0 && autoLinkResult.skipped.length === 0 && (
+                      <div style={{ color: "var(--atlas-muted)" }}>All projects already linked.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {reposLoading && (
+              <div style={{ padding: "32px 12px", textAlign: "center", fontSize: 10, ...sMuted, opacity: 0.4 }}>Loading repos…</div>
+            )}
+            {reposError && (
+              <div style={{ padding: "20px 12px", textAlign: "center", fontSize: 11, color: "var(--atlas-ember)", fontFamily: "var(--app-font-mono)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <span>{reposError}</span>
+                {reposError === GITHUB_RECONNECT_MESSAGE && (
+                  <button type="button" onClick={onOpenConnections} style={{ padding: "7px 12px", borderRadius: 6, background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer" }}>
+                    Open connections
+                  </button>
+                )}
+              </div>
+            )}
+            {linkRepoError && (
+              <div style={{ padding: "8px 12px", borderRadius: 6, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 10.5, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>
+                {linkRepoError}
+              </div>
+            )}
+
+            {/* ── 2. FEATURED ASSETS ───────────────────────────────────── */}
+            {!reposLoading && linkedRepo && (
+              <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <h2 style={{ ...sectionLabel, margin: 0 }}>Featured</h2>
+                  <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", opacity: 0.8 }}>Visual View</span>
+                </div>
                 <button
                   type="button"
-                  onClick={onOpenConnections}
-                  style={{
-                    padding: "7px 12px",
-                    borderRadius: 6,
-                    background: "rgba(201,162,76,0.12)",
-                    border: "1px solid rgba(201,162,76,0.3)",
-                    color: "var(--atlas-gold)",
-                    fontSize: 10,
-                    fontFamily: "var(--app-font-mono)",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    cursor: "pointer",
-                  }}
+                  onClick={() => pickRepo(linkedRepo)}
+                  style={{ ...glassCard, aspectRatio: "16 / 9", padding: 4, display: "flex", flexDirection: "column", justifyContent: "space-between", cursor: "pointer", textAlign: "left", overflow: "hidden", position: "relative" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(38,38,38,0.85)"; }}
                 >
-                  Open connections
-                </button>
-              )}
-            </div>
-          )}
-          {linkRepoError && (
-            <div style={{ margin: "4px 4px 2px", padding: "7px 10px", borderRadius: 5, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.4 }}>
-              {linkRepoError}
-            </div>
-          )}
-          {!reposLoading && repos.map((repo) => {
-            const linkedFullName = getLinkedRepoFullName(filesProject?.linkedRepo);
-            const isLinked = linkedFullName === repo.fullName;
-            return (
-              <div
-                key={repo.id}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", gap: 4,
-                  marginBottom: 2,
-                }}
-              >
-                {/* Main repo row — browse / link to current project */}
-                <button
-                  onClick={() => pickRepo(repo)}
-                  style={{
-                    flex: 1, display: "flex", flexDirection: "column", gap: 3,
-                    padding: "8px 10px", borderRadius: 5,
-                    background: isLinked ? "rgba(52,211,153,0.04)" : "transparent",
-                    border: `1px solid ${isLinked ? "rgba(52,211,153,0.15)" : "transparent"}`,
-                    cursor: "pointer", textAlign: "left",
-                    transition: "all 120ms ease", minWidth: 0,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isLinked) { e.currentTarget.style.background = "rgba(201,162,76,0.04)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.12)"; }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isLinked) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {isLinked && (
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />
-                    )}
-                    <span style={{ fontSize: 12, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)", fontWeight: isLinked ? 600 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{repo.name}</span>
-                    {repo.private && (
-                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 3, background: "rgba(var(--atlas-muted-rgb),0.12)", color: "var(--atlas-muted)", border: "0.5px solid rgba(var(--atlas-muted-rgb),0.2)", flexShrink: 0 }}>
-                        private
-                      </span>
-                    )}
-                    {repo.language && (
-                      <span style={{ fontSize: 8.5, color: "var(--atlas-muted)", marginLeft: "auto", fontFamily: "var(--app-font-mono)", opacity: 0.55, flexShrink: 0 }}>{repo.language}</span>
-                    )}
-                  </div>
-                  {repo.description && (
-                    <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: isLinked ? 11 : 0 }}>
-                      {repo.description}
+                  <div style={{
+                    flex: 1, borderRadius: 12,
+                    background: "linear-gradient(135deg, rgba(201,162,76,0.08) 0%, rgba(10,10,10,0.9) 60%, rgba(0,0,0,0.95) 100%)",
+                    border: "1px solid rgba(38,38,38,0.6)",
+                    position: "relative", overflow: "hidden",
+                  }}>
+                    <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 20%, rgba(201,162,76,0.15), transparent 50%)" }} />
+                    <div style={{ position: "absolute", bottom: 10, left: 14, fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                      {linkedRepo.defaultBranch} · {linkedRepo.language ?? "—"}
                     </div>
-                  )}
+                  </div>
+                  <div style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{linkedRepo.name}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.6 }}>Linked Repository</p>
+                    </div>
+                    <span style={{ flexShrink: 0, fontSize: 9, color: "#34d399", padding: "3px 9px", background: "rgba(52,211,153,0.1)", borderRadius: 999, border: "1px solid rgba(52,211,153,0.25)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em" }}>Live</span>
+                  </div>
                 </button>
+              </section>
+            )}
 
-                {/* Import → New project button */}
-                <button
-                  title={`Create a new Axiom project for ${repo.name}`}
-                  onClick={() => {
-                    createProject.mutate(
-                      { data: { name: repo.name } },
-                      {
-                        onSuccess: (newProject) => {
-                          const repoJson = serializeLinkedRepo(repo);
-                          updateProject.mutate(
-                            { id: newProject.id, data: { linkedRepo: repoJson } },
-                            {
-                              onSuccess: () => {
-                                queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-                                navigate(`/project/${newProject.id}`);
-                              },
-                            }
-                          );
-                        },
-                      }
+            {/* ── 3. ALL FILES (Repos dense grid) ──────────────────────── */}
+            {!reposLoading && repos.length > 0 && (
+              <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderBottom: "1px solid rgba(38,38,38,0.7)", paddingBottom: 8 }}>
+                  <h2 style={{ ...sectionLabel, margin: 0 }}>All Repositories</h2>
+                  <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6 }}>Data Density</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                  {repos.map((repo) => {
+                    const isLinked = linkedFullName === repo.fullName;
+                    const emblem = (repo.language ?? repo.name).charAt(0).toUpperCase();
+                    return (
+                      <div
+                        key={repo.id}
+                        style={{
+                          ...glassCard,
+                          padding: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          borderColor: isLinked ? "rgba(52,211,153,0.28)" : "rgba(38,38,38,0.85)",
+                          background: isLinked ? "rgba(52,211,153,0.04)" : "rgba(10,10,10,0.55)",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => pickRepo(repo)}
+                          style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                        >
+                          {/* Glowing emblem */}
+                          <div style={{
+                            width: 38, height: 38, borderRadius: 10,
+                            background: "rgba(201,162,76,0.06)",
+                            border: "1px solid rgba(201,162,76,0.22)",
+                            boxShadow: "0 0 14px rgba(201,162,76,0.06)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            flexShrink: 0,
+                          }}>
+                            <span style={{ fontSize: 13, fontFamily: "var(--app-font-mono)", fontWeight: 700, color: "var(--atlas-gold)" }}>{emblem}</span>
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              {isLinked && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />}
+                              <span style={{ fontSize: 13, color: "var(--atlas-fg)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{repo.name}</span>
+                              {repo.private && (
+                                <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 3, background: "rgba(120,113,108,0.15)", color: "var(--atlas-muted)", border: "0.5px solid rgba(120,113,108,0.25)", flexShrink: 0 }}>private</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.55, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {repo.language ?? "—"}{repo.description ? ` · ${repo.description}` : ""}
+                            </div>
+                          </div>
+                        </button>
+                        <button
+                          title={`Create a new Axiom project for ${repo.name}`}
+                          onClick={() => {
+                            createProject.mutate(
+                              { data: { name: repo.name } },
+                              {
+                                onSuccess: (newProject) => {
+                                  const repoJson = serializeLinkedRepo(repo);
+                                  updateProject.mutate(
+                                    { id: newProject.id, data: { linkedRepo: repoJson } },
+                                    {
+                                      onSuccess: () => {
+                                        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                                        navigate(`/project/${newProject.id}`);
+                                      },
+                                    }
+                                  );
+                                },
+                              }
+                            );
+                          }}
+                          disabled={createProject.isPending}
+                          style={{
+                            flexShrink: 0, display: "flex", alignItems: "center", gap: 4,
+                            padding: "6px 9px", borderRadius: 6,
+                            background: "rgba(201,162,76,0.06)",
+                            border: "1px solid rgba(201,162,76,0.22)",
+                            cursor: createProject.isPending ? "not-allowed" : "pointer",
+                            color: "rgba(201,162,76,0.85)",
+                            opacity: createProject.isPending ? 0.4 : 1,
+                          }}
+                        >
+                          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                            <path d="M6 1v10M1 6h10" />
+                          </svg>
+                          <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em" }}>project</span>
+                        </button>
+                      </div>
                     );
-                  }}
-                  disabled={createProject.isPending}
-                  style={{
-                    flexShrink: 0, display: "flex", alignItems: "center", gap: 3,
-                    padding: "5px 7px", borderRadius: 5,
-                    background: "rgba(201,162,76,0.05)",
-                    border: "1px solid rgba(201,162,76,0.15)",
-                    cursor: createProject.isPending ? "not-allowed" : "pointer",
-                    color: "rgba(201,162,76,0.55)",
-                    transition: "all 140ms ease",
-                    opacity: createProject.isPending ? 0.4 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!createProject.isPending) {
-                      e.currentTarget.style.background = "rgba(201,162,76,0.12)";
-                      e.currentTarget.style.borderColor = "rgba(201,162,76,0.35)";
-                      e.currentTarget.style.color = "rgba(201,162,76,0.9)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "rgba(201,162,76,0.05)";
-                    e.currentTarget.style.borderColor = "rgba(201,162,76,0.15)";
-                    e.currentTarget.style.color = "rgba(201,162,76,0.55)";
-                  }}
-                >
-                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M6 1v10M1 6h10" />
-                  </svg>
-                  <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>project</span>
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+        );
+      })()}
 
       {/* File tree */}
       {filesSubTab === "files" && view === "tree" && (
@@ -1084,7 +1198,7 @@ export function FilesPanel({
           )}
         </div>
       )}
-      <div style={{ flexShrink: 0, padding: "0 10px 12px" }}>
+      <div id={`atlas-db-section-${projectId}`} style={{ flexShrink: 0, padding: "0 10px 12px" }}>
         <DatabaseConnectionSection projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
         {modelPickerToggleRow}
       </div>
