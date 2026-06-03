@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth, useLogout } from "@/hooks/useAuth";
-import { useGitHub } from "@/hooks/useGitHub";
 import { apiUrl } from "@/lib/api";
 
 // ── Local Atlas profile (mirrors workspace.tsx UserProfile for localStorage) ──
@@ -13,6 +12,13 @@ interface AtlasProfile {
   notes: string;
   photoUrl?: string;
 }
+
+type AccountConnection = {
+  id: string | number;
+  type?: string | null;
+  label?: string | null;
+  url?: string | null;
+};
 
 function loadAtlasProfile(): AtlasProfile {
   try {
@@ -267,16 +273,10 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
 
   // ── Atlas context (localStorage) ──────────────────────────────────────────
   const [atlasProfile, setAtlasProfile] = useState<AtlasProfile>(loadAtlasProfile);
-  const [githubTokenInput, setGithubTokenInput] = useState("");
-  const {
-    connect: connectGitHub,
-    disconnect: disconnectGitHub,
-    isConnected: githubConnected,
-    isLoading: githubLoading,
-    status: githubStatus,
-    statusLabel: githubStatusLabel,
-    error: githubError,
-  } = useGitHub();
+  const [githubConnections, setGithubConnections] = useState<AccountConnection[]>([]);
+  const [githubConnectionsLoading, setGithubConnectionsLoading] = useState(true);
+  const [githubConnectionsError, setGithubConnectionsError] = useState<string | null>(null);
+  const [removingGithubConnectionId, setRemovingGithubConnectionId] = useState<string | number | null>(null);
 
   // ── Save ──────────────────────────────────────────────────────────────────
   const [saving, setSaving] = useState(false);
@@ -303,6 +303,46 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     // Backend OAuth start — same endpoint used on /login.
     window.location.href = apiUrl("/api/auth/google");
   }, []);
+
+  const loadGithubConnections = useCallback(async () => {
+    setGithubConnectionsLoading(true);
+    setGithubConnectionsError(null);
+    try {
+      const res = await fetch("/api/connections", { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const connections = (Array.isArray(data) ? data : data?.connections ?? []) as AccountConnection[];
+      setGithubConnections(connections.filter((connection) => connection?.type === "github"));
+    } catch {
+      setGithubConnections([]);
+      setGithubConnectionsError("Could not load linked GitHub repos.");
+    } finally {
+      setGithubConnectionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadGithubConnections();
+  }, [loadGithubConnections]);
+
+  const handleRemoveGithubConnection = async (id: AccountConnection["id"]) => {
+    const previousConnections = githubConnections;
+    setRemovingGithubConnectionId(id);
+    setGithubConnections((connections) => connections.filter((connection) => String(connection.id) !== String(id)));
+    try {
+      const res = await fetch(`/api/connections/${encodeURIComponent(String(id))}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.success("GitHub repo link removed.");
+    } catch {
+      setGithubConnections(previousConnections);
+      toast.error("Failed to remove GitHub repo link.");
+    } finally {
+      setRemovingGithubConnectionId(null);
+    }
+  };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -703,116 +743,70 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               fontSize: "13px",
               color: "var(--atlas-muted)",
               marginBottom: "12px",
+              lineHeight: 1.5,
             }}>
-              Connect GitHub once to enable file reading and
-              code editing across all projects.
+              GitHub repos are linked per-project from a workspace.
             </div>
-            {!githubLoading && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-                fontSize: 11,
-                fontFamily: "var(--app-font-mono)",
-                color: githubConnected
-                  ? "#4ade80"
-                  : githubStatus === "read-only"
-                    ? "var(--atlas-gold)"
-                    : "rgba(248,113,113,0.85)",
-                marginBottom: 10,
-              }}>
-                <span style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: githubConnected
-                    ? "#4ade80"
-                    : githubStatus === "read-only"
-                      ? "var(--atlas-gold)"
-                      : "rgba(248,113,113,0.85)",
-                  flexShrink: 0,
-                }} />
-                {githubStatusLabel}
+            {githubConnectionsLoading ? (
+              <div style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.7 }}>
+                Checking linked GitHub repos...
               </div>
-            )}
-            <input
-              type="password"
-              disabled={githubConnected || githubLoading}
-              placeholder={githubConnected
-                ? "✓ GitHub connected"
-                : githubLoading
-                  ? "Checking GitHub connection..."
-                  : githubStatus === "read-only"
-                    ? "Read-only (no personal token)"
-                : "ghp_.... or github_pat_..."}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                background: "var(--atlas-bg)",
-                border: "1px solid var(--atlas-border)",
-                borderRadius: "8px",
-                color: githubConnected
-                  ? "var(--atlas-gold)"
-                  : "var(--atlas-fg)",
-                fontSize: "13px",
-                marginBottom: "8px",
-                boxSizing: "border-box",
-              }}
-              onChange={(e) => setGithubTokenInput(e.target.value)}
-              value={githubConnected ? "" : githubTokenInput}
-            />
-            {githubError && (
-              <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginBottom: 8 }}>
-                {githubError}
+            ) : githubConnections.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {githubConnections.map((connection) => (
+                  <div key={connection.id} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    background: "rgba(74,222,128,0.08)",
+                    border: "1px solid rgba(74,222,128,0.22)",
+                    borderRadius: "8px",
+                  }}>
+                    <span style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: "#4ade80",
+                      flexShrink: 0,
+                    }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 10, color: "#4ade80", fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 3 }}>
+                        Linked
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {connection.url || "GitHub repo"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleRemoveGithubConnection(connection.id)}
+                      disabled={String(removingGithubConnectionId) === String(connection.id)}
+                      style={{
+                        padding: "6px 9px",
+                        background: "rgba(239,68,68,0.08)",
+                        border: "1px solid rgba(239,68,68,0.24)",
+                        borderRadius: "6px",
+                        color: "rgba(252,165,165,0.9)",
+                        fontSize: 10,
+                        fontFamily: "var(--app-font-mono)",
+                        cursor: String(removingGithubConnectionId) === String(connection.id) ? "wait" : "pointer",
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
-            {githubConnected ? (
-              <button
-                onClick={async () => {
-                  await disconnectGitHub();
-                  toast.success("GitHub disconnected.");
-                }}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.24)",
-                  borderRadius: "8px",
-                  color: "rgba(252,165,165,0.9)",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Disconnect GitHub
-              </button>
             ) : (
-              <button
-                onClick={async () => {
-                  if (!githubTokenInput?.trim()) return;
-                  const ok = await connectGitHub(githubTokenInput.trim());
-                  if (ok) {
-                    toast.success("GitHub connected.");
-                    setGithubTokenInput("");
-                  } else {
-                    toast.error("Failed to verify GitHub token.");
-                  }
-                }}
-                disabled={githubLoading || !githubTokenInput.trim()}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: githubTokenInput.trim() ? "rgba(201, 162, 76, 0.12)" : "rgba(201, 162, 76, 0.04)",
-                  border: "1px solid rgba(201, 162, 76, 0.3)",
-                  borderRadius: "8px",
-                  color: githubTokenInput.trim() ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  cursor: githubTokenInput.trim() && !githubLoading ? "pointer" : "not-allowed",
-                }}
-              >
-                Save GitHub Token
-              </button>
+              <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.6 }}>
+                GitHub repos are linked per-project. Open a workspace and use the Files tab to link a repo and add your personal access token.
+              </div>
+            )}
+            {githubConnectionsError && (
+              <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", marginTop: 8 }}>
+                {githubConnectionsError}
+              </div>
             )}
           </div>
 
