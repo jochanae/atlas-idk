@@ -3495,44 +3495,25 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
-              {/* Plus — opens attachments for now, leaves room for a menu later */}
-              <label
-                htmlFor="home-file-input"
-                title="Add attachment"
-                aria-label="Add attachment"
-                style={{
-                  width: 32, height: 32, borderRadius: 8, background: "transparent",
-                  color: attachedFiles.length > 0 ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "color 160ms ease", flexShrink: 0, userSelect: "none",
+              <ComposerActions
+                scope="home"
+                hasProjectContext={false}
+                hasAttachments={attachedFiles.length > 0}
+                onFiles={(files) => {
+                  const combined = [...attachedFiles, ...files].slice(0, 10);
+                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
+                  setAttachedFiles(combined);
                 }}
-              >
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M8 3v10" />
-                  <path d="M3 8h10" />
-                </svg>
-              </label>
+                onMenuAction={(action) => {
+                  if (action === "history") { setShowHistory(true); return; }
+                  if (action === "settings") { setLocation("/account"); return; }
+                  if (action === "more:forge") { setLocation("/projects"); return; }
+                  // Project-only actions are hidden on home (hasProjectContext=false),
+                  // but other "more:*" items fall through to a soft toast.
+                  toast("Open a project to use that");
+                }}
+              />
 
-              {/* Recent projects — fast-lane back into active work */}
-              <button
-                type="button"
-                onClick={() => setShowHistory(true)}
-                title="Recent projects"
-                aria-label="Recent projects"
-                style={{
-                  width: 32, height: 32, borderRadius: 8, background: "transparent",
-                  border: "none", color: "rgba(201,162,76,0.72)", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "color 160ms ease", flexShrink: 0,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--atlas-gold)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(201,162,76,0.72)"; }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" />
-                </svg>
-              </button>
               </div>
 
               {/* Mic + Send — pinned to right via auto left margin */}
