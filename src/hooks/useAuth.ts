@@ -13,7 +13,7 @@ export interface AuthUser {
   hasPassword: boolean;
 }
 
-export const AUTH_TOKEN_KEY = "atlas-token";
+export const AUTH_TOKEN_KEY = "atlas-auth-token";
 
 export function getAuthToken(): string | null {
   try {

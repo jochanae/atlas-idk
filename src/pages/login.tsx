@@ -94,7 +94,7 @@ export default function Login() {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     if (token) {
-      try { localStorage.setItem("atlas-token", token); } catch {}
+      try { localStorage.setItem("atlas-auth-token", token); } catch {}
       const cleanUrl = window.location.pathname + window.location.hash;
       window.history.replaceState({}, "", cleanUrl);
       queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
@@ -168,10 +168,10 @@ export default function Login() {
           ? { email, password }
           : { email, password, name: name.trim() || undefined }
       );
-      const token = data?.token ?? data?.sessionToken;
+      const token = data?.token;
       if (token) {
         try {
-          localStorage.setItem("atlas-token", token);
+          localStorage.setItem("atlas-auth-token", token);
         } catch {
           // Keep login flowing if localStorage is unavailable.
         }
