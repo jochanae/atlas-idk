@@ -172,6 +172,53 @@ export function UserBubble({
           </button>
         </div>
       </div>
+
+      {previewOpen && imageUrl && (
+        <div
+          onClick={() => setPreviewOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Attachment preview"
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.92)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, cursor: "zoom-out",
+            animation: "fadeIn 160ms ease",
+          }}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setPreviewOpen(false); }}
+            aria-label="Close preview"
+            style={{
+              position: "absolute", top: 18, right: 18,
+              width: 36, height: 36, borderRadius: 999,
+              background: "rgba(255,255,255,0.08)",
+              border: "0.5px solid rgba(201,162,76,0.3)",
+              color: "var(--atlas-gold)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
+          </button>
+          <img
+            src={imageUrl}
+            alt="Attached"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "100%", maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: 8,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+              cursor: "default",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
