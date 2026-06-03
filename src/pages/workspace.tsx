@@ -4873,8 +4873,8 @@ export default function Workspace() {
           flex: 1 !important;
           min-height: 0 !important;
           overflow-y: auto !important;
-          padding-top: 56px !important;
-          scroll-padding-top: 56px;
+          padding-top: 8px !important;
+          scroll-padding-top: 8px;
         }
       `}</style>
       <div
