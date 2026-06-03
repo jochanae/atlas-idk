@@ -183,16 +183,17 @@ export function ReadinessRing({
           className="atlas-readiness-pill"
           style={{
             display: "inline-flex", alignItems: "center", gap: pillGap,
-            background: "rgba(201,162,76,0.08)",
-            border: "1px solid rgba(201,162,76,0.22)",
+            background: "transparent",
+            border: "none",
             borderRadius: 999,
             padding: pillPadding,
             cursor: onClick ? "pointer" : "default",
-            transition: "background 160ms ease, border-color 160ms ease",
+            transition: "opacity 160ms ease, text-shadow 160ms ease",
             flexShrink: 0,
+            opacity: 0.9,
           }}
-          onMouseEnter={(e) => { if (onClick) e.currentTarget.style.background = "rgba(201,162,76,0.14)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
+          onMouseEnter={(e) => { if (onClick) e.currentTarget.style.opacity = "1"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.9"; }}
         >
           <RingSvg score={score} size={ringSize} radius={ringRadius} strokeWidth={2} pulse />
           <span
@@ -219,19 +220,17 @@ export function ReadinessRing({
           aria-label={`Readiness mode: ${MODE_META[mode].label}. Click to cycle modes.`}
           className="atlas-mix-btn"
           style={{
-            background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.18)",
+            background: "transparent", border: "none",
             borderRadius: 3, cursor: "pointer", padding: modePadding,
             fontFamily: "var(--app-font-mono)", fontSize: modeFontSize, fontWeight: 700, letterSpacing: "0.08em",
             color: "var(--atlas-muted)", lineHeight: 1, userSelect: "none", flexShrink: 0,
-            transition: "color 150ms ease, border-color 150ms ease",
+            transition: "color 150ms ease",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = "var(--atlas-gold)";
-            e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = "var(--atlas-muted)";
-            e.currentTarget.style.borderColor = "rgba(201,162,76,0.18)";
           }}
         >
           {MODE_META[mode].abbr}
