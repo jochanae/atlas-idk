@@ -592,7 +592,14 @@ function ConnectionsTab({
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
   const updateProject = useUpdateProject();
-  const { isConnected: githubConnected, isLoading: githubLoading, error: githubError } = useGitHub();
+  const {
+    canRead: githubCanRead,
+    canWrite: githubCanWrite,
+    isLoading: githubLoading,
+    error: githubError,
+    status: githubStatus,
+    statusLabel: githubStatusLabel,
+  } = useGitHub(projectId);
 
   const [dbUrl, setDbUrl] = useState<string | null>(null);
 
@@ -607,6 +614,7 @@ function ConnectionsTab({
 
   const DOT_GREEN = "rgba(74,222,128,0.9)";
   const DOT_RED = "rgba(248,113,113,0.85)";
+  const DOT_GOLD = "rgba(201,162,76,0.85)";
 
   const rowStyle: React.CSSProperties = {
     display: "flex",
@@ -616,14 +624,16 @@ function ConnectionsTab({
     borderBottom: "1px solid var(--atlas-border)",
   };
 
-  const dotStyle = (connected: boolean): React.CSSProperties => ({
+  const dotStyle = (connected: boolean, colorOverride?: string): React.CSSProperties => ({
     width: 7,
     height: 7,
     borderRadius: "50%",
     flexShrink: 0,
     marginTop: 4,
-    background: connected ? DOT_GREEN : DOT_RED,
-    boxShadow: connected
+    background: colorOverride ?? (connected ? DOT_GREEN : DOT_RED),
+    boxShadow: colorOverride
+      ? `0 0 6px ${colorOverride}`
+      : connected
       ? "0 0 6px rgba(74,222,128,0.4)"
       : "0 0 6px rgba(248,113,113,0.3)",
   });
@@ -652,6 +662,12 @@ function ConnectionsTab({
     fontSize: 11,
     color: "rgba(248,113,113,0.75)",
     fontStyle: "italic",
+  };
+  const readOnlyStyle: React.CSSProperties = {
+    fontSize: 11.5,
+    color: DOT_GOLD,
+    opacity: 0.9,
+    fontFamily: "var(--app-font-mono)",
   };
 
   const actionBtn: React.CSSProperties = {
@@ -741,15 +757,26 @@ function ConnectionsTab({
         </div>
 
         <div style={rowStyle}>
-          <div style={dotStyle(githubConnected)} />
+          <div
+            style={dotStyle(
+              githubCanWrite,
+              githubLoading
+                ? "rgba(160,160,160,0.5)"
+                : githubStatus === "read-only"
+                  ? DOT_GOLD
+                  : undefined,
+            )}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={labelStyle}>GitHub</div>
-            {githubConnected ? (
-              <div style={valueStyle}>Connected at account level</div>
-            ) : githubLoading ? (
+            {githubLoading ? (
               <div style={missingStyle}>Checking connection...</div>
+            ) : githubStatus === "read-only" ? (
+              <div style={readOnlyStyle}>{githubStatusLabel}</div>
+            ) : githubCanWrite ? (
+              <div style={valueStyle}>{githubStatusLabel}</div>
             ) : (
-              <div style={missingStyle}>Not connected</div>
+              <div style={missingStyle}>{githubStatusLabel}</div>
             )}
             <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.5, marginTop: 4 }}>
               Projects inherit the user-level GitHub connection automatically.
@@ -797,7 +824,7 @@ function ConnectionsTab({
             marginTop: 4,
           }}
         >
-          {[!!repoName, githubConnected, !!dbUrl].every(Boolean) ? (
+          {[!!repoName, githubCanRead, !!dbUrl].every(Boolean) ? (
             <div
               style={{
                 fontSize: 11,
@@ -819,7 +846,7 @@ function ConnectionsTab({
             >
               {[
                 !repoName && "Link a GitHub repo so Atlas can read and write files.",
-                !githubConnected && "Connect GitHub to enable file reading.",
+                !githubCanRead && "Connect GitHub to enable file reading.",
                 !dbUrl && "Connect a database so Atlas can reference your schema.",
               ]
                 .filter(Boolean)

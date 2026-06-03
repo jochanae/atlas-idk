@@ -273,6 +273,8 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     disconnect: disconnectGitHub,
     isConnected: githubConnected,
     isLoading: githubLoading,
+    status: githubStatus,
+    statusLabel: githubStatusLabel,
     error: githubError,
   } = useGitHub();
 
@@ -705,6 +707,34 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               Connect GitHub once to enable file reading and
               code editing across all projects.
             </div>
+            {!githubLoading && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                fontSize: 11,
+                fontFamily: "var(--app-font-mono)",
+                color: githubConnected
+                  ? "#4ade80"
+                  : githubStatus === "read-only"
+                    ? "var(--atlas-gold)"
+                    : "rgba(248,113,113,0.85)",
+                marginBottom: 10,
+              }}>
+                <span style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: githubConnected
+                    ? "#4ade80"
+                    : githubStatus === "read-only"
+                      ? "var(--atlas-gold)"
+                      : "rgba(248,113,113,0.85)",
+                  flexShrink: 0,
+                }} />
+                {githubStatusLabel}
+              </div>
+            )}
             <input
               type="password"
               disabled={githubConnected || githubLoading}
@@ -712,6 +742,8 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
                 ? "✓ GitHub connected"
                 : githubLoading
                   ? "Checking GitHub connection..."
+                  : githubStatus === "read-only"
+                    ? "Read-only (no personal token)"
                 : "ghp_.... or github_pat_..."}
               style={{
                 width: "100%",

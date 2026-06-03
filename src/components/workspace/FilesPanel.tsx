@@ -166,8 +166,14 @@ export function FilesPanel({
   });
   const { data: allProjects } = useListProjects();
 
-  const { isConnected, isLoading, error: githubConnectionError } = useGitHub();
-  const token = isConnected ? "__account__" : null;
+  const {
+    canRead,
+    isLoading,
+    error: githubConnectionError,
+    statusLabel: githubStatusLabel,
+    tokenHeader,
+  } = useGitHub(projectId);
+  const token = tokenHeader;
   const [showModelPicker, setShowModelPicker] =
     useState(() =>
       localStorage.getItem("atlas-power-model-picker")
@@ -465,7 +471,7 @@ export function FilesPanel({
     </div>
   );
 
-  if (!isConnected) {
+  if (!canRead) {
     if (isLoading) return (
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.5 }}>connecting…</div>
@@ -667,8 +673,8 @@ export function FilesPanel({
               {isUnlinking ? "unlinking…" : "unlink"}
             </button>
           )}
-          <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", color: "#34d399", opacity: 0.75 }}>
-            GitHub connected
+          <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", color: githubStatusLabel === "GitHub connected" ? "#34d399" : "var(--atlas-gold)", opacity: 0.75 }}>
+            {githubStatusLabel}
           </span>
         </div>
       </div>

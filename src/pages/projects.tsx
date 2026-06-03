@@ -9,6 +9,7 @@ import { NewProjectModal } from "../components/NewProjectModal";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "../lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { fetchGitHubStatus, type NormalizedGitHubStatus } from "@/hooks/useGitHub";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
 const sSans = { fontFamily: "var(--app-font-sans)" } as const;
@@ -24,20 +25,6 @@ type GithubRepo = {
   updatedAt: string;
   url: string;
 };
-
-function getStoredToken(
-  projects?: Array<{ githubToken?: string | null }>,
-  secretToken?: string | null,
-  accountToken?: string | null,
-): string | null {
-  if (secretToken) return secretToken;
-  if (accountToken) return accountToken;
-  try {
-    const local = localStorage.getItem("atlas-github-token");
-    if (local) return local;
-  } catch {}
-  return projects?.find(p => p.githubToken)?.githubToken ?? null;
-}
 
 async function fetchGithubAccountToken(): Promise<string | null> {
   try {
@@ -120,7 +107,8 @@ export default function Projects() {
   const [recentlyLinked, setRecentlyLinked] = useState<string | null>(null);
   const [secretToken, setSecretToken] = useState<string | null>(null);
   const [accountToken, setAccountToken] = useState<string | null>(null);
-  const [hasGithubToken, setHasGithubToken] = useState<boolean>(false);
+  const [githubStatus, setGithubStatus] = useState<NormalizedGitHubStatus | null>(null);
+  const hasGithubAccess = !!githubStatus?.canRead;
   const [repoSearch, setRepoSearch] = useState("");
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [githubTokenInput, setGithubTokenInput] = useState("");
@@ -129,7 +117,7 @@ export default function Projects() {
   const backendReady = true;
 
   const getStoredToken = useCallback((
-    currentProjects?: Array<{ githubToken?: string | null }>,
+    _currentProjects?: unknown[],
     currentSecretToken?: string | null,
     currentAccountToken?: string | null,
   ): string | null => {
@@ -139,8 +127,8 @@ export default function Projects() {
       const local = localStorage.getItem("atlas-github-token");
       if (local) return local;
     } catch {}
-    return currentProjects?.find(p => p.githubToken)?.githubToken ?? (backendReady ? "__server__" : null);
-  }, [backendReady]);
+    return githubStatus?.tokenHeader ?? (backendReady ? "__server__" : null);
+  }, [backendReady, githubStatus?.tokenHeader]);
 
   const loadGithubRepos = useCallback(async (force = false, tokenOverride?: string | null) => {
     if (!backendReady) {
@@ -164,17 +152,17 @@ export default function Projects() {
     }
   }, [projects, githubRepos.length, secretToken, accountToken, backendReady, getStoredToken]);
 
-  // Check for GITHUB_TOKEN in /api/secrets or account connections on mount
+  // Check for GitHub access on mount
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchGithubSecret(), fetchGithubAccountToken()]).then(([secretTok, accountTok]) => {
+    Promise.all([fetchGithubSecret(), fetchGithubAccountToken(), fetchGitHubStatus()]).then(([secretTok, accountTok, status]) => {
       if (cancelled) return;
       setSecretToken(secretTok);
       setAccountToken(accountTok);
-      setHasGithubToken(!!getStoredToken(projects, secretTok, accountTok));
+      setGithubStatus(status);
     });
     return () => { cancelled = true; };
-  }, [projects, getStoredToken]);
+  }, []);
 
   const openGithubSheet = useCallback(async (forProjectId?: number) => {
     if (!backendReady) {
@@ -408,7 +396,7 @@ export default function Projects() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {/* Link Repos */}
-          {hasGithubToken && backendReady && (
+          {hasGithubAccess && backendReady && (
             <button
               onClick={() => openGithubSheet()}
               style={{
@@ -527,7 +515,7 @@ export default function Projects() {
                   onCancelDelete={() => setConfirmDeleteId(null)}
                   onConfirmDelete={() => handleDelete(p.id)}
                   onArchive={() => handleArchive(p.id, true)}
-                  onLinkRepo={hasGithubToken && backendReady ? () => openGithubSheet(p.id) : undefined}
+                  onLinkRepo={hasGithubAccess && backendReady ? () => openGithubSheet(p.id) : undefined}
                 />
               ))}
             </div>
@@ -699,7 +687,6 @@ export default function Projects() {
                         const token = githubTokenInput.trim();
                         try { localStorage.setItem("atlas-github-token", token); } catch {}
                         setSecretToken(token);
-                        setHasGithubToken(true);
                         setGithubRepos([]);
                         setShowTokenInput(false);
                         void loadGithubRepos(true, token);
@@ -733,7 +720,6 @@ export default function Projects() {
                         if (!token) return;
                         try { localStorage.setItem("atlas-github-token", token); } catch {}
                         setSecretToken(token);
-                        setHasGithubToken(true);
                         setGithubRepos([]);
                         setShowTokenInput(false);
                         void loadGithubRepos(true, token);
@@ -758,10 +744,10 @@ export default function Projects() {
                     The app has no backend API URL configured right now, so repo browsing and linking cannot work from this screen.
                   </p>
                 </div>
-              ) : !getStoredToken(projects, secretToken, accountToken) ? (
+              ) : githubStatus && !githubStatus.canRead ? (
                 <div style={{ padding: "32px 24px", textAlign: "center" }}>
                   <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "var(--atlas-fg)", marginBottom: 6 }}>
-                    No GitHub token connected.
+                    {githubStatus.label}
                   </p>
                   <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.04em", marginBottom: 16 }}>
                     Add your GitHub token in Secrets to browse your repositories.
