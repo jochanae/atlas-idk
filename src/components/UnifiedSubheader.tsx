@@ -54,7 +54,7 @@ export function UnifiedSubheader({
   onLaunch,
   hasConversation = true,
 }: UnifiedSubheaderProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [launchHover, setLaunchHover] = useState(false);
   const [launchActive, setLaunchActive] = useState(false);
 
