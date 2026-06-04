@@ -111,6 +111,15 @@ export function extractPersistedFlowNodes(nodeState: unknown): ArchNode[] {
   });
 }
 
+function groupNodesForBuilder(nodes: ArchNode[]) {
+  const defined = nodes.filter(n => Boolean(n.strategicAnswer && n.strategicAnswer.trim()) && n.type !== "goal");
+  const open = nodes.filter(n => !(n.strategicAnswer && n.strategicAnswer.trim()) && n.type !== "goal" && n.type !== "blocker" && !(n.type === "priority" && (n.moscow ?? n.meta) === "wont") && n.type !== "wont");
+  const blockers = nodes.filter(n => n.type === "blocker");
+  const cut = nodes.filter(n => n.type === "wont" || (n.type === "priority" && (n.moscow ?? n.meta) === "wont"));
+  const goal = nodes.find(n => n.type === "goal") ?? null;
+  return { goal, defined, open, blockers, cut };
+}
+
 function orderNodesForStory(nodes: ArchNode[]): { goal: ArchNode | null; steps: ArchNode[] } {
   const goal = nodes.find(n => n.type === "goal") ?? null;
   const rest = nodes.filter(n => n.type !== "goal");
@@ -633,9 +642,48 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
             />
           )}
           {lensView === "builder" && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "rgba(var(--atlas-muted-rgb),0.5)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              <span>Builder lens</span>
-              <span style={{ fontSize: 9, opacity: 0.6 }}>Coming next</span>
+            <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "20px 18px 28px" }}>
+              {(() => {
+                const { goal, defined, open, blockers, cut } = groupNodesForBuilder(nodes);
+                const Section = ({ title, items, accent }: { title: string; items: ArchNode[]; accent: string }) => {
+                  if (items.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: accent, marginBottom: 8, opacity: 0.85 }}>{title}</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {items.map(n => {
+                          const m = n.moscow ?? n.meta;
+                          return (
+                            <div key={n.id} style={{ border: `1px solid ${accent}33`, borderRadius: 10, background: `${accent}0a`, padding: "10px 12px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 13, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", flex: 1, minWidth: 0 }}>{n.label}</span>
+                                {m && <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: accent, border: `1px solid ${accent}55`, borderRadius: 999, padding: "1px 6px" }}>{m === "wont" ? "won't" : m}</span>}
+                              </div>
+                              {n.strategicAnswer && n.strategicAnswer.trim() && (
+                                <div style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, marginTop: 6, fontFamily: "var(--app-font-mono)" }}>{n.strategicAnswer.trim()}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                };
+                const hasAny = defined.length || open.length || blockers.length || cut.length;
+                if (!hasAny) {
+                  return <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "rgba(var(--atlas-muted-rgb),0.5)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em", textAlign: "center", padding: "0 24px" }}>Nothing to build yet — define nodes with Atlas and they'll appear here as structure.</div>;
+                }
+                return (
+                  <>
+                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(var(--atlas-gold-rgb),0.55)", marginBottom: 6 }}>// the structure</div>
+                    {goal && <div style={{ fontSize: 18, fontWeight: 500, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", marginBottom: 18 }}>{goal.label}</div>}
+                    <Section title="Defined" items={defined} accent="rgb(var(--atlas-gold-rgb))" />
+                    <Section title="Open" items={open} accent="rgb(var(--atlas-muted-rgb))" />
+                    <Section title="Blockers" items={blockers} accent="rgb(239,120,80)" />
+                    <Section title="Out of scope" items={cut} accent="rgb(var(--atlas-muted-rgb))" />
+                  </>
+                );
+              })()}
             </div>
           )}
           {lensView === "storyteller" && (
