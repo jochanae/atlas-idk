@@ -1317,6 +1317,7 @@ function RightPanel({
           zipLoaded={zipLoaded}
           zipFileName={zipFileName}
           onOpenConnections={openConnections}
+          wsLens={wsLens}
         />
       )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} onOpenAccountSettings={onOpenAccountSettings} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
@@ -3597,7 +3598,7 @@ export default function Workspace() {
     }
     setWsLensRaw(newLens);
     setDetectedLens(null);
-    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); } catch {}
+    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
     if (newLens === "scenario") {
       scenarioStartIdxRef.current = currentMessages.length;
     } else {
@@ -7035,7 +7036,7 @@ export default function Workspace() {
                   if (pendingLensSwitch) {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
-                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); } catch {}
+                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     scenarioStartIdxRef.current = -1;
@@ -7058,7 +7059,7 @@ export default function Workspace() {
                   if (pendingLensSwitch) {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
-                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); } catch {}
+                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     setPendingLensSwitch(null);
