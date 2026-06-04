@@ -3476,7 +3476,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {reflectionLocked ? "This stays between us..." : placeholder}
+                  {reflectionLocked ? "Ask the global view..." : placeholder}
                   {!reflectionLocked && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
