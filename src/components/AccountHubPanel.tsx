@@ -506,7 +506,6 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
         height: "100%",
         background: "rgba(18,16,14,0.88)",
         backdropFilter: "blur(28px)",
-        WebkitBackdropFilter: "blur(28px)" as React.CSSProperties["backdropFilter"],
         borderLeft: "1px solid rgba(201,162,76,0.16)",
         boxShadow: "-12px 0 48px rgba(0,0,0,0.55), inset 1px 0 0 rgba(201,162,76,0.06)",
         display: "flex", flexDirection: "column",

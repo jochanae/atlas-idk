@@ -85,7 +85,6 @@ export function ParkingLotDetailPanel({
           zIndex: 220,
           background: "color-mix(in oklab, var(--atlas-bg) 72%, transparent)",
           backdropFilter: "blur(3px)",
-          WebkitBackdropFilter: "blur(3px)",
         }}
       />
       <aside

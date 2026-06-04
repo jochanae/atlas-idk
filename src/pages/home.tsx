@@ -3503,7 +3503,6 @@ export default function Home() {
               border: reflectionLocked ? "1px solid rgba(212,175,55,0.22)" : "none",
               boxShadow: reflectionLocked ? "0 18px 42px rgba(0,0,0,0.42)" : "none",
               backdropFilter: reflectionLocked ? "blur(22px)" : undefined,
-              WebkitBackdropFilter: reflectionLocked ? "blur(22px)" : undefined,
             }}>
               {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || reflectionLocked) && (
                 <div
@@ -3787,7 +3786,6 @@ export default function Home() {
                             ? "1px solid rgba(212,175,55,0.55)"
                             : isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
                           backdropFilter: "blur(8px)",
-                          WebkitBackdropFilter: "blur(8px)",
                           borderRadius: 20,
                           padding: "5px 12px",
                           color: premium
@@ -3871,7 +3869,6 @@ export default function Home() {
                     border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
                     borderRadius: 999,
                     backdropFilter: "blur(6px)",
-                    WebkitBackdropFilter: "blur(6px)",
                     boxSizing: "border-box",
                     maxWidth: "100%",
                   }}

@@ -11,7 +11,6 @@ export function StatusToggle({ deepWork, onToggle }: { deepWork: boolean; onTogg
         background: deepWork ? "rgba(80,30,5,0.55)" : "var(--atlas-surface)",
         border: `1px solid ${deepWork ? "rgba(201,162,76,0.5)" : "rgba(255,255,255,0.07)"}`,
         backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
         cursor: "pointer",
         transition: "all 600ms ease",
         flexShrink: 0,

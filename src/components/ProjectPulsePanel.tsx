@@ -63,7 +63,7 @@ export function ProjectPulsePanel(props: Props) {
       style={{
         position: "fixed", inset: 0, zIndex: 13000,
         background: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+        backdropFilter: "blur(10px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: 16,
         animation: "atlas-fade-in 180ms ease",

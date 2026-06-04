@@ -82,7 +82,6 @@ const SHEET_OVERLAY: React.CSSProperties = {
   zIndex: 9998,
   background: "rgba(0,0,0,0.55)",
   backdropFilter: "blur(6px)",
-  WebkitBackdropFilter: "blur(6px)",
   display: "flex",
   alignItems: "flex-end",
   justifyContent: "center",
@@ -99,7 +98,6 @@ const SHEET_PANEL: React.CSSProperties = {
   maxWidth: 440,
   background: "color-mix(in oklab, var(--atlas-surface) 94%, transparent)",
   backdropFilter: "blur(28px) saturate(150%)",
-  WebkitBackdropFilter: "blur(28px) saturate(150%)",
   border: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
   borderRadius: 22,
   boxShadow:
@@ -360,7 +358,6 @@ function iconBtnStyle(active: boolean, accent: boolean): React.CSSProperties {
       ? "1px solid rgba(201,162,76,0.28)"
       : "1px solid rgba(255,255,255,0.06)",
     backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
     color: active || accent ? "var(--atlas-gold)" : "var(--atlas-muted)",
     cursor: "pointer",
     display: "inline-flex",
@@ -398,7 +395,6 @@ function BigNode({
         background: "color-mix(in oklab, var(--atlas-bg) 80%, transparent)",
         border: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
         backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
         color: "var(--atlas-gold)",
         cursor: "pointer",
         transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",

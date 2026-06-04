@@ -201,7 +201,6 @@ export default function ParkingLot() {
         position: "sticky", top: 0, zIndex: 50,
         background: "var(--atlas-surface)",
         backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
         borderBottom: "1px solid var(--atlas-border)",
         padding: "0 20px",
         height: 50, display: "flex", alignItems: "center", gap: 10,

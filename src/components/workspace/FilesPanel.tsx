@@ -839,7 +839,6 @@ export function FilesPanel({
         const glassCard: React.CSSProperties = {
           background: "rgba(10,10,10,0.55)",
           backdropFilter: "blur(20px) saturate(140%)",
-          WebkitBackdropFilter: "blur(20px) saturate(140%)",
           border: "1px solid rgba(38,38,38,0.85)",
           borderRadius: 16,
           transition: "border-color 240ms ease, background 240ms ease",

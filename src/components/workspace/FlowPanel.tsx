@@ -530,7 +530,6 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               padding: 3,
               background: "rgba(var(--atlas-bg-rgb),0.55)",
               backdropFilter: "blur(14px) saturate(140%)",
-              WebkitBackdropFilter: "blur(14px) saturate(140%)",
               border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
               borderRadius: 999,
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
