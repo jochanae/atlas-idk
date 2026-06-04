@@ -3363,7 +3363,10 @@ export default function Workspace() {
   void latestPlanArtifact;
   const [showProfile, setShowProfile] = useState(false);
   useEffect(() => {
-    const open = () => setShowProfile(true);
+    const mountedAt = Date.now();
+    const open = () => {
+      if (Date.now() - mountedAt > 400) setShowProfile(true);
+    };
     window.addEventListener("axiom:open-account-hub", open);
     return () => window.removeEventListener("axiom:open-account-hub", open);
   }, []);
