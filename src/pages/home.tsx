@@ -1448,6 +1448,22 @@ export default function Home() {
   }, [reflectionLocked, nexusChat.messages.length, setDepth]);
 
   useEffect(() => {
+    if (!reflectionLocked) return;
+    const el = reflectionComposerRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+      if (nextHeight > 0) setReflectionComposerHeight(nextHeight);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [reflectionLocked, input, attachedFiles.length, inputFocused]);
+
+  useEffect(() => {
     setActiveProjectId(homeFocus);
     return () => setActiveProjectId(null);
   }, [homeFocus, setActiveProjectId]);
