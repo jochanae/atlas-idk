@@ -1369,10 +1369,10 @@ export default function Home() {
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   useEffect(() => {
-    const active = nexusChat.messages.length > 0;
+    const active = reflectionLocked || nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [nexusChat.messages.length]);
+  }, [reflectionLocked, nexusChat.messages.length]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -1425,13 +1425,15 @@ export default function Home() {
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
-    if (nexusChat.messages.length === 0) {
+    if (reflectionLocked) {
+      setDepth("active");
+    } else if (nexusChat.messages.length === 0) {
       setDepth("ambient");
-    } else if (previousCount === 0 && nexusChat.messages.length === 1 && !reflectionLocked) {
+    } else if (previousCount === 0 && nexusChat.messages.length === 1) {
       setDepth("active");
     }
     previousHomeMessageCountRef.current = nexusChat.messages.length;
-  }, [nexusChat.messages.length, setDepth]);
+  }, [reflectionLocked, nexusChat.messages.length, setDepth]);
 
   useEffect(() => {
     setActiveProjectId(homeFocus);
@@ -1501,8 +1503,13 @@ export default function Home() {
       void callReflectionMode(false);
       setReflectionLocked(false);
     } else {
+      setShowOverviewSheet(false);
+      setShowBriefingPanel(false);
+      setShowHistory(false);
+      setShowFocusPicker(false);
       setReflectionLocked(true);
       void callReflectionMode(true);
+      window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Global Insight · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
