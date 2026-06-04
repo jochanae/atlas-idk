@@ -1368,6 +1368,11 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
+  // ── Reflection mode ────────────────────────────────────────────────────────
+  const [reflectionLocked, setReflectionLocked] = useState(false);
+  const [showShredChoice, setShowShredChoice] = useState(false);
+  const [isShredding, setIsShredding] = useState(false);
+  const [showGoneFlash, setShowGoneFlash] = useState(false);
   useEffect(() => {
     const active = reflectionLocked || nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
@@ -1462,12 +1467,6 @@ export default function Home() {
   });
   const [handoffProjectName, setHandoffProjectName] = useState("");
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
-
-  // ── Reflection mode ────────────────────────────────────────────────────────
-  const [reflectionLocked, setReflectionLocked] = useState(false);
-  const [showShredChoice, setShowShredChoice] = useState(false);
-  const [isShredding, setIsShredding] = useState(false);
-  const [showGoneFlash, setShowGoneFlash] = useState(false);
 
   const homeConversationTitle = reflectionLocked
     ? "Global Insight"
