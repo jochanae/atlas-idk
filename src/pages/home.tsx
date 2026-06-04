@@ -1320,11 +1320,14 @@ export default function Home() {
   const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  // Ambient home always starts clean. Prior conversations are only resumed
-  // when the user explicitly taps one from the Global Insight history drawer
-  // (handleSwitchConversation). Auto-hydrating from storage on mount would
-  // collapse the hero and pull below-the-fold content up — breaking ambient.
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem("atlas-home-conversation-id") ||
+        localStorage.getItem("atlas-home-conversation-id");
+    } catch {
+      return null;
+    }
+  });
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
     try { sessionStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -2512,7 +2515,7 @@ export default function Home() {
     setShowHistory(true);
     setHistoryLoading(true);
     try {
-      const res = await fetch("/api/nexus/conversations?global=true", { credentials: "include" });
+      const res = await fetch("/api/nexus/conversations", { credentials: "include" });
       const data = await res.json();
       setConversations(data.conversations ?? []);
     } catch {} finally {
@@ -2536,17 +2539,22 @@ export default function Home() {
           })
         : [];
 
-      nexusChat.setMessages(normalizedMessages as any);
-      setActiveConversationId(id);
-      setReviewingPlanIds(new Set());
-      try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      // Resuming a Global Insight thread should keep the gold strategic shell on.
-      setReflectionLocked(true);
-      void callReflectionMode(true);
+      if (normalizedMessages.length > 0) {
+        nexusChat.setMessages(normalizedMessages as any);
+        setActiveConversationId(id);
+        setReviewingPlanIds(new Set());
+        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
+        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      } else {
+        nexusChat.setMessages([]);
+        setActiveConversationId(id);
+        setReviewingPlanIds(new Set());
+        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
+        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      }
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, nexusChat.setMessages, callReflectionMode]);
+  }, [setActiveConversationId, nexusChat.setMessages]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
@@ -2864,7 +2872,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: nexusChat.messages.length === 0 && !reflectionLocked ? "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))" : 0, display: "flex", flexDirection: "column", height: (nexusChat.messages.length > 0 || reflectionLocked) ? "100%" : undefined, flex: (nexusChat.messages.length > 0 || reflectionLocked) ? 1 : undefined, justifyContent: (nexusChat.messages.length > 0 || reflectionLocked) ? "flex-start" : "center", position: "relative", paddingBottom: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "var(--atlas-dock-clearance)", minWidth: 0 }}>
+          <div style={{ minHeight: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", height: (nexusChat.messages.length > 0 || reflectionLocked) ? "100%" : undefined, flex: (nexusChat.messages.length > 0 || reflectionLocked) ? 1 : undefined, justifyContent: (nexusChat.messages.length > 0 || reflectionLocked) ? "flex-start" : "center", position: "relative", paddingBottom: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "var(--atlas-dock-clearance)", minWidth: 0 }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -4012,18 +4020,7 @@ export default function Home() {
                 GLOBAL INSIGHT · HISTORY
               </div>
               <button
-                onClick={() => {
-                  setShowHistory(false);
-                  handleNewConversation();
-                  // NEW from inside the Global Insight drawer should drop the
-                  // user straight into a fresh strategic thread — same as
-                  // tapping the sparkle.
-                  if (!reflectionLocked) {
-                    setReflectionLocked(true);
-                    void callReflectionMode(true);
-                  }
-                  window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
-                }}
+                onClick={() => { setShowHistory(false); handleNewConversation(); }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   background: "transparent",
