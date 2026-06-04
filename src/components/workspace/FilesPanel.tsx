@@ -293,7 +293,7 @@ export function FilesPanel({
     setTree([]);
     setSelectedPath(null);
     setFileContent(null);
-    setView("repos");
+    setView(isConnected ? "tree" : "repos");
     setFilesSubTab("files");
     setCommits([]);
     setCommitsError(null);
