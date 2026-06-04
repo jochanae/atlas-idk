@@ -4469,7 +4469,9 @@ export default function Workspace() {
       try {
         sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
         sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
-      } catch {}
+      } catch {
+        // Ignore storage failures; the in-memory opening message is cleared below.
+      }
       setOpeningMessage(null);
     } catch {
       setChatPending(false);
@@ -4477,7 +4479,9 @@ export default function Workspace() {
       try {
         sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
         sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
-      } catch {}
+      } catch {
+        // Ignore storage failures; the in-memory opening message is cleared below.
+      }
       setOpeningMessage(null);
     }
   }, [openingMessage, id, sessionId, sessionsLoading, chatPending, doSend, setInput, setChatPending, setActivityStream]);
