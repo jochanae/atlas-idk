@@ -3768,6 +3768,7 @@ export default function Workspace() {
   const renameEscapeRef = useRef(false);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
@@ -6122,7 +6123,7 @@ export default function Workspace() {
               onOpenModelSheet: () => setShowWsModelSheet(true),
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
-                if (action === "history") { window.location.href = "/ledger"; return; }
+                if (action === "history") { setShowHistorySheet(true); return; }
                 if (action === "files") {
                   if (isMobile) { setMobileTab("files"); setRightOpen(true); }
                   else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
