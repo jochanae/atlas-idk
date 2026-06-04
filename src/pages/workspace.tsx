@@ -4484,7 +4484,17 @@ export default function Workspace() {
       }
       setOpeningMessage(null);
     }
-  }, [openingMessage, id, sessionId, sessionsLoading, chatPending, doSend, setInput, setChatPending, setActivityStream]);
+  }, [
+    openingMessage,
+    id,
+    sessionId,
+    sessionsLoading,
+    chatPending,
+    doSend,
+    setInput,
+    setChatPending,
+    setActivityStream,
+  ]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;
