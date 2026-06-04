@@ -1648,6 +1648,47 @@ export function AssistantBubble({
         {!message.streaming && (
         <div style={{ display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
 
+          {/* Rollback hook arrow — time-travel to the snapshot for this message */}
+          {snapshotForMsg && !isReverted && (
+            <button
+              className="atlas-icon-action"
+              title="Roll back workspace to this point"
+              aria-label="Roll back to here"
+              style={{ ...ICON_TOUCH_TARGET_STYLE, color: "var(--atlas-gold, rgba(228,196,128,0.95))" }}
+              onClick={() => {
+                if (typeof window !== "undefined" &&
+                    !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
+                rollbackTo(projectId, snapshotForMsg.id);
+                if (message.id != null) {
+                  const el = document.querySelector(`[data-msg-id="${message.id}"]`);
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+              }}
+            >
+              <CornerUpLeft size={12} strokeWidth={1.8} />
+            </button>
+          )}
+          {/* Bookmark */}
+          {snapshotForMsg && (
+            <button
+              className="atlas-icon-action"
+              title={snapshotForMsg.isBookmarked ? "Bookmarked" : "Bookmark this snapshot"}
+              aria-label="Bookmark snapshot"
+              style={{
+                ...ICON_TOUCH_TARGET_STYLE,
+                color: snapshotForMsg.isBookmarked
+                  ? "var(--atlas-gold, rgba(228,196,128,0.95))"
+                  : undefined,
+              }}
+              onClick={() => toggleSnapshotBookmark(projectId, snapshotForMsg.id)}
+            >
+              {snapshotForMsg.isBookmarked
+                ? <BookmarkCheck size={12} strokeWidth={1.8} />
+                : <Bookmark size={12} strokeWidth={1.6} />
+              }
+            </button>
+          )}
+
           {/* Copy */}
           <button
             className={`atlas-icon-action${copied ? " copy-done" : ""}`}
