@@ -1066,10 +1066,35 @@ export function AssistantBubble({
   return (
     <div
       className="atlas-bubble-in"
-      style={{ display: "flex", justifyContent: "flex-start", marginBottom: 32 }}
+      data-msg-id={message.id ?? undefined}
+      style={{
+        display: "flex",
+        justifyContent: "flex-start",
+        marginBottom: 32,
+        opacity: isReverted ? 0.42 : 1,
+        filter: isReverted ? "grayscale(0.6)" : undefined,
+        transition: "opacity 220ms ease, filter 220ms ease",
+      }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
     >
+      {isReverted && (
+        <span
+          style={{
+            position: "absolute",
+            marginLeft: -6, marginTop: -2,
+            padding: "2px 7px",
+            fontSize: 9, fontWeight: 600, letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(228,196,128,0.95)",
+            background: "rgba(196,160,80,0.12)",
+            border: "1px solid rgba(196,160,80,0.35)",
+            borderRadius: 999,
+          }}
+        >
+          Reverted
+        </span>
+      )}
       <div style={{ maxWidth: "min(100%, 74ch)", width: "100%" }}>
         <div
           style={{
