@@ -3488,6 +3488,57 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
+              {/* Global Insight history — gold clock pill. Always visible so
+                  users can resume any prior Global Insight thread from the
+                  home composer, even on a fresh page load. Separate from the
+                  workspace/projects browser so the home chat isn't lost. */}
+              <button
+                type="button"
+                title="Where were we? · Resume Global Insight"
+                aria-label="Open Global Insight history"
+                onClick={() => { void handleOpenHistory(); }}
+                onFocus={(e) => {
+                  e.currentTarget.style.color = "var(--atlas-gold)";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.color = "rgba(212,175,55,0.85)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--atlas-gold)";
+                  e.currentTarget.style.background = "rgba(212,175,55,0.16)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "rgba(212,175,55,0.85)";
+                  e.currentTarget.style.background = "rgba(212,175,55,0.10)";
+                }}
+                style={{
+                  width: 34,
+                  height: 34,
+                  minWidth: 34,
+                  minHeight: 34,
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 999,
+                  background: "rgba(212,175,55,0.10)",
+                  border: "1px solid rgba(212,175,55,0.28)",
+                  color: "rgba(212,175,55,0.85)",
+                  cursor: "pointer",
+                  transition: "color 160ms ease, background 160ms ease, box-shadow 160ms ease",
+                  WebkitTapHighlightColor: "transparent",
+                  padding: 0,
+                  marginRight: 2,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <polyline points="12 7 12 12 15 14" />
+                </svg>
+              </button>
+
               <ComposerActions
                 scope="home"
                 hasProjectContext
@@ -3498,7 +3549,7 @@ export default function Home() {
                   setAttachedFiles(combined);
                 }}
                 onMenuAction={(action) => {
-                  if (action === "history") { setShowHistory(true); return; }
+                  if (action === "history") { void handleOpenHistory(); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   // Project-scoped items: route the user to the projects list so
                   // whatever they pick up at home (attachments, intent) carries
@@ -3509,6 +3560,7 @@ export default function Home() {
                   toast("Open a project to use that");
                 }}
               />
+
 
               </div>
 
