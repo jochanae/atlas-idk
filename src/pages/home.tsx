@@ -2926,7 +2926,7 @@ export default function Home() {
                       }
                     : { color: "var(--atlas-fg)", opacity: 0.85 }),
                 }}>
-                  {reflectionLocked ? "Think Freely" : greetingRef.current?.head}
+                  {reflectionLocked ? "Global Insight" : greetingRef.current?.head}
                 </h1>
                 <p style={{
                   fontSize: reflectionLocked ? 11 : ("var(--ts-body)" as any),
@@ -2938,7 +2938,7 @@ export default function Home() {
                   letterSpacing: reflectionLocked ? "0.1em" : undefined,
                   textTransform: reflectionLocked ? "uppercase" : undefined,
                 }}>
-                  {reflectionLocked ? "Private session · Zero-trace" : greetingRef.current?.sub}
+                  {reflectionLocked ? "Strategic view · All projects" : greetingRef.current?.sub}
                 </p>
               </div>
             )}
