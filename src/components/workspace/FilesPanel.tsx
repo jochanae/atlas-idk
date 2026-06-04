@@ -743,7 +743,7 @@ export function FilesPanel({
                   textTransform: "uppercase",
                 }}
               >
-                {tab === "files" ? "Files" : "History"}
+                {tab === "files" ? "Files" : "Commits"}
               </button>
             );
           })}
