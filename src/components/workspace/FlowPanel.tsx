@@ -521,13 +521,12 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           <div
             style={{
               position: "absolute",
-              bottom: 12,
-              left: "50%",
-              transform: "translateX(-50%)",
+              top: 46,
+              left: 10,
               zIndex: 14,
               display: "flex",
               gap: 2,
-              padding: 3,
+              padding: 2,
               background: "rgba(var(--atlas-bg-rgb),0.55)",
               backdropFilter: "blur(14px) saturate(140%)",
               border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
@@ -545,14 +544,14 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                   type="button"
                   onClick={() => setLensView(lens)}
                   style={{
-                    padding: "5px 12px",
+                    padding: "3px 9px",
                     borderRadius: 999,
                     border: "none",
                     cursor: "pointer",
                     background: active ? "rgba(var(--atlas-gold-rgb),0.16)" : "transparent",
                     color: active ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.6)",
                     fontFamily: "var(--app-font-mono)",
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: 700,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
