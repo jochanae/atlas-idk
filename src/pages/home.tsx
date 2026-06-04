@@ -1383,6 +1383,11 @@ export default function Home() {
     return () => { document.body.removeAttribute("data-axiom-thread"); };
   }, [reflectionLocked, nexusChat.messages.length]);
 
+  useEffect(() => {
+    document.body.setAttribute("data-axiom-reflection", reflectionLocked ? "true" : "false");
+    return () => { document.body.removeAttribute("data-axiom-reflection"); };
+  }, [reflectionLocked]);
+
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
   // backlog produced while Atlas streams a reply.
@@ -2889,7 +2894,18 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)", minWidth: 0 }}>
+          <div style={{
+            minHeight: reflectionLocked
+              ? "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
+              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))"),
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: reflectionLocked ? "flex-start" : "center",
+            position: "relative",
+            paddingBottom: reflectionLocked ? 0 : "var(--atlas-dock-clearance)",
+            paddingTop: reflectionLocked ? 12 : 0,
+            minWidth: 0,
+          }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
@@ -2938,7 +2954,14 @@ export default function Home() {
             )}
 
             {/* Chat thread */}
-            <div style={{ margin: nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px", minHeight: nexusChat.messages.length > 0 ? 60 : 0 }}>
+            <div style={{
+              margin: reflectionLocked
+                ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
+                : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
+              minHeight: nexusChat.messages.length > 0 ? 60 : 0,
+              flex: reflectionLocked ? 1 : undefined,
+              minWidth: 0,
+            }}>
               {nexusChat.messages.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
                   <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
@@ -2968,7 +2991,7 @@ export default function Home() {
               </div>
 
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: reflectionLocked ? 0 : undefined }}>
                 {/* Messages */}
                 <div
                   ref={chatScrollRef}
@@ -2982,15 +3005,15 @@ export default function Home() {
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
                     scrollbarWidth: "none", msOverflowStyle: "none",
-                    paddingRight: reflectionLocked ? 4 : 80,
-                    paddingLeft: reflectionLocked ? 4 : 0,
+                    paddingRight: reflectionLocked ? 0 : 80,
+                    paddingLeft: reflectionLocked ? 0 : 0,
                     position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    paddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
-                    scrollPaddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    paddingTop: reflectionLocked ? 8 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    scrollPaddingTop: reflectionLocked ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
                     paddingBottom: reflectionLocked
-                      ? `calc(${reflectionComposerHeight}px + 24px + env(safe-area-inset-bottom, 0px))`
+                      ? `calc(${reflectionComposerHeight}px + 16px + env(safe-area-inset-bottom, 0px))`
                       : 96,
                     WebkitMaskImage: reflectionLocked
                       ? "none"
@@ -3392,7 +3415,7 @@ export default function Home() {
             left: 0, right: 0,
             bottom: reflectionLocked ? "var(--atlas-dock-clearance)" : 0,
             padding: reflectionLocked
-              ? "0 20px calc(12px + env(safe-area-inset-bottom, 0px))"
+              ? "0 16px calc(10px + env(safe-area-inset-bottom, 0px))"
               : "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
             // Must be above the fixed bottom dock (z-index 200) so the Send
@@ -3402,6 +3425,8 @@ export default function Home() {
             zIndex: 250,
             pointerEvents: "auto",
             background: reflectionLocked ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
+            maxWidth: reflectionLocked ? 680 : undefined,
+            margin: reflectionLocked ? "0 auto" : undefined,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
