@@ -256,6 +256,10 @@ export function ChatComposer(props: ChatComposerProps) {
   })();
   const isMultiAgent = !wsModel || wsModel === "multi";
 
+  const [planMode, setPlanMode] = useState(false);
+
+  
+
   
 
   // When the project is empty, focus the composer so Atlas feels "already in the room".
