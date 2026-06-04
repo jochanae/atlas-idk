@@ -330,6 +330,9 @@ export function useChatStream(
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
+      const stallGuard = setTimeout(() => {
+        try { controller.abort(); } catch {}
+      }, 45000);
 
       void (async () => {
         let streamingId: number | null = null;
@@ -675,6 +678,7 @@ export function useChatStream(
           setMessages((prev) => [...prev, { role: "assistant", content: "Something went wrong. Please try again.", sentAt: new Date().toISOString() }]);
           setActivityStream({ active: false, content: "" });
         } finally {
+          clearTimeout(stallGuard);
           try { pacer?.abort(); } catch { /* noop */ }
           if (!streamingFinished && streamingId !== null) {
             setMessages((prev) => prev.filter((m) => m.id !== streamingId));

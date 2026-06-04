@@ -4455,7 +4455,7 @@ export default function Workspace() {
       setOpeningMessage(null);
       return;
     }
-    if (!sessionId || sessionsLoading || chatPending) return;
+    if (!sessionId || sessionsLoading) return;
     const trimmedOpeningMessage = openingMessage.message.trim();
     if (!trimmedOpeningMessage) {
       try {
@@ -4473,7 +4473,7 @@ export default function Workspace() {
       sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
     } catch {}
     setOpeningMessage(null);
-  }, [openingMessage, id, sessionId, sessionsLoading, chatPending, doSend, setInput]);
+  }, [openingMessage, id, sessionId, sessionsLoading, doSend, setInput]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;
