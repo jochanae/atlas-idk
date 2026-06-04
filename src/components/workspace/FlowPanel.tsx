@@ -111,6 +111,25 @@ export function extractPersistedFlowNodes(nodeState: unknown): ArchNode[] {
   });
 }
 
+function orderNodesForStory(nodes: ArchNode[]): { goal: ArchNode | null; steps: ArchNode[] } {
+  const goal = nodes.find(n => n.type === "goal") ?? null;
+  const rest = nodes.filter(n => n.type !== "goal");
+  const rank = (n: ArchNode): number => {
+    const m = n.moscow ?? n.meta;
+    if (n.type === "blocker") return 0;
+    if (m === "must") return 1;
+    if (n.type === "requirement") return 1;
+    if (m === "should") return 2;
+    if (n.type === "decision") return 3;
+    if (m === "could") return 4;
+    if (n.type === "sprint") return 5;
+    if (m === "wont" || n.type === "wont") return 6;
+    return 3;
+  };
+  const steps = [...rest].sort((a, b) => rank(a) - rank(b));
+  return { goal, steps };
+}
+
 
 function detectPlatform(): string {
   const host = typeof window !== "undefined" ? window.location.hostname : "";
@@ -613,25 +632,57 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               projectName={activeProjectName}
             />
           )}
-          {lensView !== "designer" && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                color: "rgba(var(--atlas-muted-rgb),0.5)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 11,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              <span>{lensView === "builder" ? "Builder lens" : "Storyteller lens"}</span>
+          {lensView === "builder" && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: "rgba(var(--atlas-muted-rgb),0.5)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <span>Builder lens</span>
               <span style={{ fontSize: 9, opacity: 0.6 }}>Coming next</span>
+            </div>
+          )}
+          {lensView === "storyteller" && (
+            <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "20px 22px 28px" }}>
+              {(() => {
+                const { goal, steps } = orderNodesForStory(nodes);
+                if (!goal && steps.length === 0) {
+                  return <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "rgba(var(--atlas-muted-rgb),0.5)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em" }}>Nothing mapped yet — talk to Atlas to build the story.</div>;
+                }
+                return (
+                  <>
+                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(var(--atlas-gold-rgb),0.55)", marginBottom: 10 }}>
+                      // the arc
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 500, lineHeight: 1.2, color: "var(--atlas-fg)", marginBottom: 24, fontFamily: "var(--app-font-serif, Georgia, serif)" }}>
+                      {goal ? goal.label : "Untitled"}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                      {steps.map((n, i) => {
+                        const m = n.moscow ?? n.meta;
+                        const isBlocker = n.type === "blocker";
+                        const isDecision = n.type === "decision";
+                        const accent = isBlocker ? "var(--atlas-ember, rgba(239,120,80,0.9))"
+                          : isDecision ? "rgba(230,130,80,0.9)"
+                          : "rgba(var(--atlas-gold-rgb),0.7)";
+                        return (
+                          <div key={n.id} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px 0", borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.06)" }}>
+                            <div style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: `1px solid ${accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--app-font-mono)", fontSize: 10, color: accent }}>
+                              {i + 1}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 16, lineHeight: 1.4, color: "var(--atlas-fg)", fontFamily: "var(--app-font-serif, Georgia, serif)" }}>
+                                {n.label}
+                              </div>
+                              {(m || isBlocker || isDecision) && (
+                                <div style={{ marginTop: 3, fontFamily: "var(--app-font-mono)", fontSize: 8, letterSpacing: "0.12em", textTransform: "uppercase", color: accent, opacity: 0.8 }}>
+                                  {isBlocker ? "blocker" : isDecision ? "open decision" : m}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
