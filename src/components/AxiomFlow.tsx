@@ -881,7 +881,8 @@ export function AxiomFlow({
       style: {
         color: theme === "parchment" ? "#F5F1E8" : "#0D0B09",
         background: palette.goldText,
-        border: `1px solid rgba(${palette.goldRgb},0.6)`,
+        border: "1px solid rgba(167,139,250,0.55)",
+        boxShadow: "0 0 0 1px rgba(167,139,250,0.22), 0 0 28px rgba(167,139,250,0.5), 0 0 60px rgba(139,92,246,0.32)",
         fontWeight: 700,
         letterSpacing: "0.04em",
       },
