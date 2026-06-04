@@ -2990,9 +2990,9 @@ export default function Home() {
                     
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
-                    border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
-                    borderRadius: reflectionLocked ? 8 : undefined,
-                    padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
+                    border: "none",
+                    borderRadius: 0,
+                    padding: reflectionLocked ? "10px 80px 10px 0" : undefined,
                     paddingTop: nexusChat.messages.length > 0 ? 16 : 56, scrollPaddingTop: nexusChat.messages.length > 0 ? 16 : 56,
                     paddingBottom: 96,
                     WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
