@@ -204,6 +204,7 @@ export function useNexusChatStream(
           history,
           mode: resolvedMode,
           userProfile,
+          conversationId: overrideOptions?.conversationId ?? conversationId ?? null,
         },
 
         callbacks: {

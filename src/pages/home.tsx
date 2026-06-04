@@ -2515,7 +2515,7 @@ export default function Home() {
     setShowHistory(true);
     setHistoryLoading(true);
     try {
-      const res = await fetch("/api/nexus/conversations", { credentials: "include" });
+      const res = await fetch("/api/nexus/conversations?global=true", { credentials: "include" });
       const data = await res.json();
       setConversations(data.conversations ?? []);
     } catch {} finally {
@@ -2539,22 +2539,17 @@ export default function Home() {
           })
         : [];
 
-      if (normalizedMessages.length > 0) {
-        nexusChat.setMessages(normalizedMessages as any);
-        setActiveConversationId(id);
-        setReviewingPlanIds(new Set());
-        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
-        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      } else {
-        nexusChat.setMessages([]);
-        setActiveConversationId(id);
-        setReviewingPlanIds(new Set());
-        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
-        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      }
+      nexusChat.setMessages(normalizedMessages as any);
+      setActiveConversationId(id);
+      setReviewingPlanIds(new Set());
+      try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      // Resuming a Global Insight thread should keep the gold strategic shell on.
+      setReflectionLocked(true);
+      void callReflectionMode(true);
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, nexusChat.setMessages]);
+  }, [setActiveConversationId, nexusChat.setMessages, callReflectionMode]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
@@ -4020,7 +4015,18 @@ export default function Home() {
                 GLOBAL INSIGHT · HISTORY
               </div>
               <button
-                onClick={() => { setShowHistory(false); handleNewConversation(); }}
+                onClick={() => {
+                  setShowHistory(false);
+                  handleNewConversation();
+                  // NEW from inside the Global Insight drawer should drop the
+                  // user straight into a fresh strategic thread — same as
+                  // tapping the sparkle.
+                  if (!reflectionLocked) {
+                    setReflectionLocked(true);
+                    void callReflectionMode(true);
+                  }
+                  window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
+                }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   background: "transparent",
