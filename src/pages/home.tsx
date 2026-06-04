@@ -3488,6 +3488,57 @@ export default function Home() {
             <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
+              {/* Global Insight history — gold clock pill. Always visible so
+                  users can resume any prior Global Insight thread from the
+                  home composer, even on a fresh page load. Separate from the
+                  workspace/projects browser so the home chat isn't lost. */}
+              <button
+                type="button"
+                title="Where were we? · Resume Global Insight"
+                aria-label="Open Global Insight history"
+                onClick={() => { void handleOpenHistory(); }}
+                onFocus={(e) => {
+                  e.currentTarget.style.color = "var(--atlas-gold)";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.color = "rgba(212,175,55,0.85)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--atlas-gold)";
+                  e.currentTarget.style.background = "rgba(212,175,55,0.16)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "rgba(212,175,55,0.85)";
+                  e.currentTarget.style.background = "rgba(212,175,55,0.10)";
+                }}
+                style={{
+                  width: 34,
+                  height: 34,
+                  minWidth: 34,
+                  minHeight: 34,
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 999,
+                  background: "rgba(212,175,55,0.10)",
+                  border: "1px solid rgba(212,175,55,0.28)",
+                  color: "rgba(212,175,55,0.85)",
+                  cursor: "pointer",
+                  transition: "color 160ms ease, background 160ms ease, box-shadow 160ms ease",
+                  WebkitTapHighlightColor: "transparent",
+                  padding: 0,
+                  marginRight: 2,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <polyline points="12 7 12 12 15 14" />
+                </svg>
+              </button>
+
               <ComposerActions
                 scope="home"
                 hasProjectContext
@@ -3498,7 +3549,7 @@ export default function Home() {
                   setAttachedFiles(combined);
                 }}
                 onMenuAction={(action) => {
-                  if (action === "history") { setShowHistory(true); return; }
+                  if (action === "history") { void handleOpenHistory(); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   // Project-scoped items: route the user to the projects list so
                   // whatever they pick up at home (attachments, intent) carries
@@ -3509,6 +3560,7 @@ export default function Home() {
                   toast("Open a project to use that");
                 }}
               />
+
 
               </div>
 
@@ -3949,10 +4001,10 @@ export default function Home() {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div style={{ fontSize: "var(--ts-caption)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-muted)" }}>
-                RECENT PROJECTS
+                GLOBAL INSIGHT · HISTORY
               </div>
               <button
-                onClick={() => { setShowHistory(false); setShowNewProjectModal(true); }}
+                onClick={() => { setShowHistory(false); handleNewConversation(); }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   background: "transparent",
@@ -3965,50 +4017,44 @@ export default function Home() {
                   letterSpacing: "0.05em",
                   cursor: "pointer",
                 }}
-                aria-label="Start new project"
+                aria-label="Start new Global Insight thread"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 NEW
               </button>
             </div>
             {(() => {
-              const recent = ((projects ?? []) as Project[])
-                .filter((p) => (p as { status?: string }).status !== "archived")
-                .slice()
-                .sort((a, b) => {
-                  const at = new Date((a as { updatedAt?: string }).updatedAt ?? a.createdAt ?? 0).getTime();
-                  const bt = new Date((b as { updatedAt?: string }).updatedAt ?? b.createdAt ?? 0).getTime();
-                  return bt - at;
-                })
-                .slice(0, 5);
-
-              if (isLoading) {
+              if (historyLoading && conversations.length === 0) {
                 return <div style={{ textAlign: "center", padding: 32, color: "var(--atlas-muted)", fontSize: "var(--ts-label)" }}>Loading…</div>;
               }
-              if (recent.length === 0) {
+              if (conversations.length === 0) {
                 return (
                   <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--atlas-muted)", fontSize: "var(--ts-label)", lineHeight: 1.5 }}>
-                    Your active workspaces will appear here.
+                    No saved Global Insight threads yet.
                     <br />
-                    <span style={{ opacity: 0.7 }}>Start a conversation above to create your first project.</span>
+                    <span style={{ opacity: 0.7 }}>Start a conversation above — it will appear here.</span>
                   </div>
                 );
               }
+              const sorted = [...conversations].sort((a, b) => {
+                const at = new Date(a.createdAt ?? 0).getTime();
+                const bt = new Date(b.createdAt ?? 0).getTime();
+                return bt - at;
+              });
               return (
                 <>
-                  {recent.map((p) => {
-                    const ts = new Date((p as { updatedAt?: string }).updatedAt ?? p.createdAt ?? Date.now()).getTime();
+                  {sorted.map((c) => {
+                    const ts = new Date(c.createdAt ?? Date.now()).getTime();
                     const mins = Math.max(1, Math.round((Date.now() - ts) / 60000));
                     const rel = mins < 60
                       ? `${mins}m ago`
                       : mins < 1440
                       ? `${Math.round(mins / 60)}h ago`
                       : `${Math.round(mins / 1440)}d ago`;
+                    const isActive = c.id === activeConversationId;
                     return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => { setShowHistory(false); navigateToProject(p.id); }}
+                      <div
+                        key={c.id}
                         style={{
                           width: "100%",
                           padding: "12px 0",
@@ -4017,50 +4063,67 @@ export default function Home() {
                           justifyContent: "space-between",
                           alignItems: "center",
                           gap: 12,
-                          background: "transparent",
-                          border: "none",
-                          borderBottomWidth: 1,
-                          borderBottomStyle: "solid",
-                          borderBottomColor: "var(--atlas-border)",
-                          cursor: "pointer",
-                          textAlign: "left",
-                          color: "inherit",
                         }}
                       >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: "var(--ts-body)", color: "var(--atlas-fg)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                          <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
-                            Active {rel}
+                        <button
+                          type="button"
+                          onClick={() => { void handleSwitchConversation(c.id); }}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            background: "transparent",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            color: "inherit",
+                          }}
+                        >
+                          <div style={{
+                            fontSize: "var(--ts-body)",
+                            color: isActive ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                            marginBottom: 2,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}>
+                            {c.title || "Untitled thread"}
                           </div>
-                        </div>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <polyline points="9 18 15 12 9 6"/>
-                        </svg>
-                      </button>
+                          <div style={{ fontSize: "var(--ts-micro)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
+                            {c.messageCount ?? 0} msg · {rel}
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); void handleDeleteConversation(c.id); }}
+                          aria-label="Delete conversation"
+                          title="Delete"
+                          style={{
+                            flexShrink: 0,
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--atlas-muted)",
+                            cursor: "pointer",
+                            padding: 6,
+                            borderRadius: 6,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                          </svg>
+                        </button>
+                      </div>
                     );
                   })}
-                  <button
-                    type="button"
-                    onClick={() => { setShowHistory(false); setLocation("/projects"); }}
-                    style={{
-                      width: "100%",
-                      marginTop: 14,
-                      padding: "10px 0",
-                      background: "transparent",
-                      border: "none",
-                      color: "var(--atlas-gold)",
-                      fontSize: "var(--ts-caption)",
-                      fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    View all projects →
-                  </button>
                 </>
               );
             })()}
+
           </div>
         </div>
       )}
