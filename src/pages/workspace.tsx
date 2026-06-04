@@ -3598,7 +3598,7 @@ export default function Workspace() {
     }
     setWsLensRaw(newLens);
     setDetectedLens(null);
-    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); } catch {}
+    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, newLens); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
     if (newLens === "scenario") {
       scenarioStartIdxRef.current = currentMessages.length;
     } else {
