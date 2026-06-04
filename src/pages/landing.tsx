@@ -120,10 +120,10 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(2.2rem, 7vw, 5.6rem)",
           letterSpacing: "-0.01em",
         }}>
-          Every great thing
+          Every great reality
           <br />
-          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>started</span>{" "}
-          as a conversation.
+          began as an idea that{" "}
+          <span style={{ fontStyle: "italic", color: "#D4AF37", fontWeight: 500 }}>held its shape</span>.
         </h1>
 
       <p className="mb-10 italic mx-auto" style={{
@@ -134,7 +134,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
         maxWidth: 480,
         lineHeight: 1.55,
       }}>
-        Axiom is where that conversation becomes architecture.
+        A workspace where ideas hold their shape long enough to become real.
       </p>
 
         {/* Mode pills */}
