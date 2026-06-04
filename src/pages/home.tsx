@@ -65,6 +65,7 @@ const HOME_PENDING_PHRASES = [
 ];
 
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
+const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 
@@ -2251,6 +2252,7 @@ export default function Home() {
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
       try {
         sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, messageText);
+        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
       } catch {}
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);

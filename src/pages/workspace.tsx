@@ -205,6 +205,7 @@ type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" |
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
+const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const DEFAULT_NAMES = new Set([
   "New Project",
@@ -3885,13 +3886,19 @@ export default function Workspace() {
     };
   }, []);
   const initialSent = useRef(false);
-  const [openingMessage, setOpeningMessage] = useState<string | null>(() => {
+  const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null } | null>(() => {
     try {
       const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
+      const storedProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
       if (storedOpeningMessage !== null) {
-        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        if (storedProjectId !== String(id)) {
+          sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+          sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+          return null;
+        }
+        return { message: storedOpeningMessage, projectId: storedProjectId };
       }
-      return storedOpeningMessage;
+      return null;
     } catch {
       return null;
     }
@@ -4435,14 +4442,33 @@ export default function Workspace() {
 
   useEffect(() => {
     if (openingMessage === null || initialSent.current) return;
+    if (openingMessage.projectId !== String(id)) {
+      try {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      } catch {}
+      setOpeningMessage(null);
+      return;
+    }
     if (!sessionId || sessionsLoading || chatPending) return;
-    const trimmedOpeningMessage = openingMessage.trim();
-    if (!trimmedOpeningMessage) return;
+    const trimmedOpeningMessage = openingMessage.message.trim();
+    if (!trimmedOpeningMessage) {
+      try {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      } catch {}
+      setOpeningMessage(null);
+      return;
+    }
     initialSent.current = true;
     setInput("");
     doSend(trimmedOpeningMessage, sessionId, []);
+    try {
+      sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+      sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+    } catch {}
     setOpeningMessage(null);
-  }, [openingMessage, sessionId, sessionsLoading, chatPending, doSend, setInput]);
+  }, [openingMessage, id, sessionId, sessionsLoading, chatPending, doSend, setInput]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;
