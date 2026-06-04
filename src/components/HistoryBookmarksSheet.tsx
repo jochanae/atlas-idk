@@ -30,7 +30,7 @@ const OVERLAY: React.CSSProperties = {
   inset: 0,
   background: "rgba(8, 8, 12, 0.72)",
   backdropFilter: "blur(8px)",
-  zIndex: 80,
+  zIndex: 10000,
   display: "flex",
   alignItems: "flex-end",
   justifyContent: "center",
