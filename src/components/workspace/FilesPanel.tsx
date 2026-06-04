@@ -237,7 +237,8 @@ export function FilesPanel({
   const [fileContent, setFileContent] = useState<GhFileContent | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [view, setView] = useState<"repos" | "tree" | "file">("repos");
+  const isConnected = !!filesProject?.linkedRepo || !!zipLoaded || !!dbUrl;
+  const [view, setView] = useState<"repos" | "tree" | "file">(isConnected ? "tree" : "repos");
   const [filesSubTab, setFilesSubTab] = useState<"files" | "history">("files");
   const [commits, setCommits] = useState<GhCommitSummary[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
@@ -258,6 +259,13 @@ export function FilesPanel({
   }, [wsLens]);
   const [recents, setRecents] = useState<string[]>(() => readRecents(projectId));
   useEffect(() => { setRecents(readRecents(projectId)); }, [projectId]);
+
+  // Auto-jump out of the hub the moment a source is connected
+  useEffect(() => {
+    if (isConnected && view === "repos") setView("tree");
+    if (!isConnected && view !== "repos") setView("repos");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   const runAutoScan = (repo: GhRepo, token: string) => {
     const scanKey = `atlas-scan-${projectId}`;
@@ -292,7 +300,7 @@ export function FilesPanel({
     setTree([]);
     setSelectedPath(null);
     setFileContent(null);
-    setView("repos");
+    setView(isConnected ? "tree" : "repos");
     setFilesSubTab("files");
     setCommits([]);
     setCommitsError(null);
@@ -667,9 +675,10 @@ export function FilesPanel({
       <div style={{ padding: "7px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
         <button
           onClick={() => { setFilesSubTab("files"); setView("repos"); setSelectedRepo(null); setSelectedPath(null); setFileContent(null); onFileContext(null); }}
-          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, color: view === "repos" ? "var(--atlas-fg)" : "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", opacity: view === "repos" ? 0.8 : 0.45, flexShrink: 0 }}
+          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, color: view === "repos" ? "var(--atlas-fg)" : "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", opacity: view === "repos" ? 0.8 : 0.55, flexShrink: 0 }}
+          title="Connect another source"
         >
-          repos
+          {view === "repos" ? "sources" : "+ source"}
         </button>
         {selectedRepo && (
           <>
