@@ -4638,6 +4638,13 @@ function ProjectsGridSheet({
           </button>
         </div>
       </div>
+
+      {/* Time-travel sheet (History | Bookmarks) — opened from composer More → History */}
+      <HistoryBookmarksSheet
+        projectId={0}
+        open={showTimeTravel}
+        onClose={() => setShowTimeTravel(false)}
+      />
     </>
   );
 }
