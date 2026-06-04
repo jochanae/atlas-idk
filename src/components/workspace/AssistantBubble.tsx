@@ -822,6 +822,37 @@ export function AssistantBubble({
   const planMessageId = message.id ?? 0;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const planGithubToken = useGithubPushToken(planProject?.githubToken);
+
+  // ── Time-travel snapshot (safeguard #1: capture AFTER stream closes) ──
+  const { items: historyItems } = useAtlasHistory(projectId);
+  const snapshotForMsg = useMemo(
+    () => historyItems.find((s) => s.associated_message_id === message.id),
+    [historyItems, message.id],
+  );
+  const isReverted = message.reverted === true;
+  useEffect(() => {
+    if (message.streaming) return;
+    if (message.role !== "assistant") return;
+    if (!message.id || !projectId) return;
+    if (snapshotForMsg) return;
+    const lens: AtlasLens =
+      (message.intentType === "BUILD" && "builder") ||
+      (message.intentType === "DECIDE" && "strategic") ||
+      "minimal";
+    const codeDelta = activeEdits.length
+      ? activeEdits.map((e) => `${e.path}\n${e.content ?? ""}`).join("\n---\n")
+      : undefined;
+    addSnapshot(projectId, {
+      associated_message_id: message.id,
+      title: (message.content || "").split("\n")[0].slice(0, 80) || "Atlas response",
+      lens,
+      payload: {
+        code_delta: codeDelta,
+        active_file: activeEdits[0]?.path,
+      },
+    });
+  }, [message.streaming, message.id, message.role, message.intentType, projectId, snapshotForMsg, message.content, activeEdits]);
+
   // Extract image URL from markdown image syntax in content if no base64
   const inlineImageUrl = !message.imageB64
     ? (() => {
