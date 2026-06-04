@@ -1416,6 +1416,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showTimeTravel, setShowTimeTravel] = useState(false);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
