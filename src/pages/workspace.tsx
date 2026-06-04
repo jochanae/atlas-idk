@@ -46,6 +46,7 @@ import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
+import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { RefreshCw } from "lucide-react";
@@ -6511,6 +6512,14 @@ export default function Workspace() {
           onSaved={() => { queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }); }}
         />
       )}
+
+      <HistoryBookmarksSheet
+        projectId={Number.isFinite(id) ? id : null}
+        open={showHistorySheet}
+        onClose={() => setShowHistorySheet(false)}
+      />
+
+
 
       {showForgeExternal && (
         <TheForge
