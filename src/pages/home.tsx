@@ -3372,9 +3372,9 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 200, isolation: "isolate" }}>
+          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
           <div className="atlas-input-shell" style={{
-            position: "relative",
+            position: "sticky",
             left: 0, right: 0, bottom: 0,
             padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
@@ -3384,6 +3384,7 @@ export default function Home() {
             // "You" button and opens the account panel instead.
             zIndex: 250,
             pointerEvents: "auto",
+            background: "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
