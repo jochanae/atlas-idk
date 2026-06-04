@@ -2854,8 +2854,9 @@ export default function Home() {
           padding: "0 24px",
           minHeight: 0,
           height: (nexusChat.messages.length > 0 || reflectionLocked)
-            ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
+            ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance) - 96px)"
             : undefined,
+          paddingBottom: (nexusChat.messages.length > 0 || reflectionLocked) ? 96 : undefined,
           overflow: (nexusChat.messages.length > 0 || reflectionLocked) ? "hidden" : undefined,
         }}
       >
