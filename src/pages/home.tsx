@@ -3567,20 +3567,28 @@ export default function Home() {
                   disabled={isSending}
                   style={{
                     width: 40, height: 40, flexShrink: 0,
-                    background: canSubmit && !isSending ? "var(--atlas-ember)" : "var(--atlas-surface-alt)",
-                    border: canSubmit ? "none" : "1px solid var(--atlas-border)",
-                    boxShadow: canSubmit && !isSending ? "0 0 18px -3px rgba(146,64,14,0.55)" : "none",
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    padding: 0,
                     opacity: isSending ? 0.5 : 1,
                     touchAction: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
                   {isSending ? (
                     <LoadingSpinner size="sm" color="ember" />
                   ) : (
-                    <svg viewBox="0 0 20 20" width={13} height={13}
-                      fill={canSubmit ? "var(--atlas-fg)" : "none"}
-                      stroke={canSubmit ? "var(--atlas-fg)" : "var(--atlas-muted)"}
-                      strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+                    <svg viewBox="0 0 20 20" width={18} height={18}
+                      fill="none"
+                      stroke={canSubmit ? "var(--atlas-gold)" : "var(--atlas-muted)"}
+                      strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"
+                      style={{
+                        filter: canSubmit ? "drop-shadow(0 0 6px rgba(201,162,76,0.45))" : "none",
+                        transition: "stroke 160ms ease, filter 160ms ease",
+                      }}
                     >
                       <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
                       <path d="M17 3 9.5 11.5" />
