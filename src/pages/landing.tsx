@@ -110,7 +110,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
           fontSize: "clamp(0.6rem, 1.2vw, 0.72rem)",
           color: "rgba(232,220,200,0.32)",
         }}>
-          Axiom // Where ideas become decisions become reality
+          Axiom // From spark to decision
         </p>
 
         <h1 className="leading-[0.95] mb-8" style={{
@@ -139,7 +139,7 @@ function HeroSection({ onEnter }: { onEnter: () => void }) {
 
         {/* Mode pills */}
         <div className="flex items-center justify-center gap-2 mb-12 flex-wrap">
-          {["Think it through", "Map it out", "Build it"].map((label) => (
+          {["Think it through", "Map it out", "Bring it to life"].map((label) => (
             <span key={label} style={{
               ...smallUiText,
               fontSize: "0.62rem",
