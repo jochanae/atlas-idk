@@ -555,7 +555,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 className="atlas-send-btn"
                 onClick={() => {
                   if (chatPending && onAbort) { onAbort(); return; }
-                  handleSend();
+                  handleSend({ planMode });
                 }}
                 disabled={chatPending ? !onAbort : (!hasInput || createSessionPending)}
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
