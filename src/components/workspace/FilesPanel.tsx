@@ -1345,3 +1345,138 @@ export function FilesPanel({
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// BucketsView — lens-aware "By Type" presentation
+// Images bucket leads, then Documents, then Archives, then collapsible Code.
+// In Look lens, Images render as a visual grid; otherwise as a compact list.
+// ─────────────────────────────────────────────────────────────────────
+function BucketsView({
+  files,
+  linkedRepo,
+  branch,
+  selectedPath,
+  onSelect,
+  lensIsVisual,
+}: {
+  files: Array<{ path: string; name: string }>;
+  linkedRepo: GhRepo | null;
+  branch: string;
+  selectedPath: string | null;
+  onSelect: (path: string) => void;
+  lensIsVisual: boolean;
+}) {
+  const [codeOpen, setCodeOpen] = useState(false);
+  const buckets = useMemo(() => {
+    const out: Record<"images"|"docs"|"archives"|"code", typeof files> = { images: [], docs: [], archives: [], code: [] };
+    for (const f of files) out[bucketOf(f.path)].push(f);
+    return out;
+  }, [files]);
+
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.16em",
+    textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.7,
+    margin: "0 0 8px",
+  };
+  const fileRow = (f: { path: string; name: string }) => {
+    const active = selectedPath === f.path;
+    return (
+      <button
+        key={f.path}
+        type="button"
+        onClick={() => onSelect(f.path)}
+        style={{
+          width: "100%", display: "flex", flexDirection: "column", gap: 2,
+          padding: "7px 12px", textAlign: "left",
+          background: active ? "rgba(201,162,76,0.08)" : "transparent",
+          border: "none", borderBottom: "1px solid rgba(38,38,38,0.6)",
+          cursor: "pointer", color: "var(--atlas-fg)",
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,162,76,0.04)")}
+        onMouseLeave={e => (e.currentTarget.style.background = active ? "rgba(201,162,76,0.08)" : "transparent")}
+      >
+        <span style={{ fontSize: 12, fontFamily: "var(--app-font-mono)" }}>{f.name}</span>
+        <span style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55, fontFamily: "var(--app-font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.path}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ overflowY: "auto", flex: 1, padding: "12px 12px 20px" }} className="scrollbar-none">
+      {/* IMAGES */}
+      {buckets.images.length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <h3 style={sectionLabel}>Images · {buckets.images.length}</h3>
+          {lensIsVisual && linkedRepo ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
+              {buckets.images.slice(0, 60).map((f) => (
+                <button
+                  key={f.path}
+                  type="button"
+                  onClick={() => onSelect(f.path)}
+                  title={f.path}
+                  style={{
+                    aspectRatio: "1 / 1", padding: 0, border: "1px solid rgba(38,38,38,0.85)",
+                    borderRadius: 10, overflow: "hidden", background: "rgba(10,10,10,0.6)",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  <img
+                    src={`https://raw.githubusercontent.com/${linkedRepo.fullName}/${branch}/${f.path}`}
+                    alt={f.name}
+                    loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div>{buckets.images.slice(0, 40).map(fileRow)}</div>
+          )}
+        </section>
+      )}
+
+      {/* DOCUMENTS */}
+      {buckets.docs.length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <h3 style={sectionLabel}>Documents · {buckets.docs.length}</h3>
+          <div>{buckets.docs.slice(0, 50).map(fileRow)}</div>
+        </section>
+      )}
+
+      {/* ARCHIVES */}
+      {buckets.archives.length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <h3 style={sectionLabel}>Archives · {buckets.archives.length}</h3>
+          <div>{buckets.archives.map(fileRow)}</div>
+        </section>
+      )}
+
+      {/* CODE (collapsed by default in non-Build lenses) */}
+      {buckets.code.length > 0 && (
+        <section>
+          <button
+            type="button"
+            onClick={() => setCodeOpen((v) => !v)}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: "transparent", border: "none", padding: 0,
+              color: "var(--atlas-muted)", cursor: "pointer", marginBottom: 8,
+            }}
+          >
+            <span style={{ fontSize: 11, color: "var(--atlas-gold)", opacity: 0.7 }}>{codeOpen ? "▾" : "▸"}</span>
+            <h3 style={{ ...sectionLabel, margin: 0 }}>Code · {buckets.code.length}</h3>
+          </button>
+          {codeOpen && <div>{buckets.code.slice(0, 200).map(fileRow)}</div>}
+        </section>
+      )}
+
+      {files.length === 0 && (
+        <div style={{ padding: "24px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, fontFamily: "var(--app-font-mono)", opacity: 0.6 }}>
+          No files yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
+
