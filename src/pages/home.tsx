@@ -4197,6 +4197,14 @@ export default function Home() {
         />
       )}
 
+      {/* Time-travel sheet (History | Bookmarks) — opened from composer More → History */}
+      <HistoryBookmarksSheet
+        projectId={homeFocus ?? 0}
+        open={showTimeTravel}
+        onClose={() => setShowTimeTravel(false)}
+      />
+
+
 
 
 
