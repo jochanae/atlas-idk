@@ -1498,9 +1498,19 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (reflectionLocked) {
-      // Exit Global Insight directly — no confirmation modal.
+      // Exit Global Insight → return to the ambient homepage, NOT a stranded
+      // "Untitled conversation" view. Clear the active thread and message
+      // stream so the hero/quick-actions come back.
       void callReflectionMode(false);
       setReflectionLocked(false);
+      try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
+      try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
+      conversationThreadRequestRef.current = null;
+      thinkOutLoudInlineRef.current = false;
+      setActiveConversationId(null);
+      nexusChat.setMessages([]);
+      setEarnedTitle(null);
+      setDepth("ambient");
     } else {
       setShowOverviewSheet(false);
       setShowBriefingPanel(false);
@@ -1514,7 +1524,7 @@ export default function Home() {
         description: "Macro view across every project.",
       });
     }
-  }, [reflectionLocked, vibrate, callReflectionMode]);
+  }, [reflectionLocked, vibrate, callReflectionMode, nexusChat.setMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
