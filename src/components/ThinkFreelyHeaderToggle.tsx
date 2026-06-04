@@ -106,11 +106,11 @@ export function ThinkFreelyHeaderToggle() {
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
         fill="none"
-        strokeWidth={2}
+        strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
-        width={15}
-        height={15}
+        width={16}
+        height={16}
         style={{
           position: "relative",
           zIndex: 1,
@@ -118,29 +118,9 @@ export function ThinkFreelyHeaderToggle() {
           transition: "stroke 280ms ease",
         }}
       >
-        <motion.path
-          animate={
-            active
-              ? { d: "M7 11V7a5 5 0 0 1 10 0v4" }
-              : { d: "M7 11V7a5 5 0 0 1 9.9-1" }
-          }
-          transition={{
-            type: "spring",
-            stiffness: active ? 450 : 300,
-            damping: active ? 22 : 25,
-          }}
-        />
-        <rect x="5" y="11" width="14" height="10" rx="2" ry="2" fill="transparent" />
-        <circle
-          cx="12"
-          cy="16"
-          r="1"
-          style={{
-            fill: active ? "var(--atlas-gold, #D4AF37)" : "rgba(168,162,158,0.7)",
-            transition: "fill 280ms ease",
-          }}
-          stroke="none"
-        />
+        {/* Sparkle — represents Global Insight */}
+        <path d="M12 3 L13.6 9.3 L20 11 L13.6 12.7 L12 19 L10.4 12.7 L4 11 L10.4 9.3 Z" />
+        <path d="M19 4 L19.6 5.8 L21.4 6.4 L19.6 7 L19 8.8 L18.4 7 L16.6 6.4 L18.4 5.8 Z" />
       </svg>
     </button>
   );
