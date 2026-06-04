@@ -1497,7 +1497,9 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (reflectionLocked) {
-      setShowShredChoice(true);
+      // Exit Global Insight directly — no confirmation modal.
+      void callReflectionMode(false);
+      setReflectionLocked(false);
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
@@ -2764,54 +2766,7 @@ export default function Home() {
       {/* Lens chips removed from home — lenses live in the workspace only */}
 
 
-      {/* First-run overlay — new users with no projects, once per session */}
-      {showShredChoice && (
-        <div
-          onClick={() => setShowShredChoice(false)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 60, display: "flex",
-            alignItems: "center", justifyContent: "center",
-            background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)",
-            animation: "fadeIn 160ms ease forwards",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--atlas-surface)",
-              border: "1px solid rgba(201,162,76,0.45)",
-              borderRadius: 12, padding: "20px 22px",
-              minWidth: 260, maxWidth: "85vw",
-              boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: "var(--ts-md)", color: "var(--atlas-fg)", lineHeight: 1.5, marginBottom: 16, fontFamily: "var(--app-font-sans)" }}>
-              Keep this conversation<br />or let it go?
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              <button
-                onClick={handleKeepIt}
-                style={{
-                  background: "transparent", border: "1px solid rgba(201,162,76,0.4)",
-                  borderRadius: 6, padding: "7px 14px", cursor: "pointer",
-                  fontSize: "var(--ts-label)", color: "var(--atlas-gold)",
-                  fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
-                }}
-              >Keep it</button>
-              <button
-                onClick={handleShredIt}
-                style={{
-                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.4)",
-                  borderRadius: 6, padding: "7px 14px", cursor: "pointer",
-                  fontSize: "var(--ts-label)", color: "rgba(252,165,165,0.95)",
-                  fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em",
-                }}
-              >Shred it</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Shred-It modal removed — exit Global Insight directly via the header sparkle. */}
 
       {showOverlay && (
         <FirstRunOverlay
@@ -2987,13 +2942,14 @@ export default function Home() {
                     display: "flex", flexDirection: "column", gap: 12,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
-                    
                     scrollbarWidth: "none", msOverflowStyle: "none",
-                    paddingRight: 80, position: "relative",
+                    paddingRight: reflectionLocked ? 4 : 80,
+                    paddingLeft: reflectionLocked ? 4 : 0,
+                    position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    padding: reflectionLocked ? "10px 80px 10px 0" : undefined,
-                    paddingTop: nexusChat.messages.length > 0 ? 16 : 56, scrollPaddingTop: nexusChat.messages.length > 0 ? 16 : 56,
+                    paddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    scrollPaddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
                     paddingBottom: 96,
                     WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
@@ -3024,7 +2980,7 @@ export default function Home() {
                             <span style={{
                               fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
-                              color: msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)",
+                              color: reflectionLocked ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
                             }}>Atlas</span>
                             {msg.intentType && (
                               <span style={{
@@ -3186,23 +3142,31 @@ export default function Home() {
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
-                          {!msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
+                          {!reflectionLocked && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: 2 }}>
                               {formatModelUsedLabel(msg.modelUsed)}
                             </div>
                           )}
                         </div>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", width: "100%", gap: 3 }}>
+                        <div style={{
+                          display: "flex", flexDirection: "column",
+                          alignItems: reflectionLocked ? "flex-end" : "stretch",
+                          width: "100%", gap: 3,
+                        }}>
                           <div style={{
                             fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                             textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
                             marginBottom: 4,
+                            alignSelf: reflectionLocked ? "flex-end" : undefined,
                           }}>You</div>
                           <div style={{
-                            padding: "2px 0",
-                            background: "transparent",
-                            border: "none",
+                            padding: reflectionLocked ? "10px 14px" : "2px 0",
+                            background: reflectionLocked ? "rgba(212,175,55,0.04)" : "transparent",
+                            border: reflectionLocked ? "1px solid rgba(212,175,55,0.25)" : "none",
+                            borderRadius: reflectionLocked ? 12 : 0,
+                            maxWidth: reflectionLocked ? "82%" : undefined,
+                            alignSelf: reflectionLocked ? "flex-end" : undefined,
                             fontSize: 16, lineHeight: 1.75, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
