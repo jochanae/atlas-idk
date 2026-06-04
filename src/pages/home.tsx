@@ -1468,7 +1468,7 @@ export default function Home() {
   const [showGoneFlash, setShowGoneFlash] = useState(false);
 
   const homeConversationTitle = reflectionLocked
-    ? "Think Freely"
+    ? "Global Insight"
     : homeFocus == null && nexusChat.messages.length > 0
       ? earnedTitle ?? "Untitled conversation"
       : null;
@@ -1501,9 +1501,9 @@ export default function Home() {
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
-      toast("Think Freely · Private session", {
+      toast("Global Insight · Strategic view", {
         className: "atlas-toast-premium",
-        description: "Zero-trace · nothing here is logged.",
+        description: "Macro view across every project.",
       });
     }
   }, [reflectionLocked, vibrate, callReflectionMode]);
@@ -2926,7 +2926,7 @@ export default function Home() {
                       }
                     : { color: "var(--atlas-fg)", opacity: 0.85 }),
                 }}>
-                  {reflectionLocked ? "Think Freely" : greetingRef.current?.head}
+                  {reflectionLocked ? "Global Insight" : greetingRef.current?.head}
                 </h1>
                 <p style={{
                   fontSize: reflectionLocked ? 11 : ("var(--ts-body)" as any),
@@ -2938,7 +2938,7 @@ export default function Home() {
                   letterSpacing: reflectionLocked ? "0.1em" : undefined,
                   textTransform: reflectionLocked ? "uppercase" : undefined,
                 }}>
-                  {reflectionLocked ? "Private session · Zero-trace" : greetingRef.current?.sub}
+                  {reflectionLocked ? "Strategic view · All projects" : greetingRef.current?.sub}
                 </p>
               </div>
             )}
@@ -3476,7 +3476,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {reflectionLocked ? "This stays between us..." : placeholder}
+                  {reflectionLocked ? "Ask the global view..." : placeholder}
                   {!reflectionLocked && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
@@ -3890,20 +3890,24 @@ export default function Home() {
           </>}
         />
 
-        <aside className="atlas-home-desktop-overview" aria-label="Overview">
-          <div className="atlas-home-desktop-overview-scroll">
-            {renderOverviewDashboard()}
-          </div>
-        </aside>
+        {!reflectionLocked && (
+          <aside className="atlas-home-desktop-overview" aria-label="Overview">
+            <div className="atlas-home-desktop-overview-scroll">
+              {renderOverviewDashboard()}
+            </div>
+          </aside>
+        )}
       </div>
 
-      {/* Below-the-fold: Recent Activity / Discovery section */}
-      <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
-        <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
-          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
+      {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
+      {!reflectionLocked && (
+        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
+          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
+          </div>
+          {renderOverviewDashboard()}
         </div>
-        {renderOverviewDashboard()}
-      </div>
+      )}
 
       {showBriefingPanel && (
         <div
