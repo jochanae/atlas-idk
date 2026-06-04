@@ -3382,7 +3382,7 @@ export default function Home() {
 
           {/* Input shell */}
           <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
-          <div className="atlas-input-shell" style={{
+          <div ref={reflectionLocked ? reflectionComposerRef : null} className="atlas-input-shell" style={{
             // Global Insight: pin the composer with `fixed` so it always floats
             // above the bottom dock — sticky doesn't work here because the
             // wrapper above is the same height as the composer, so sticky has
@@ -3391,7 +3391,9 @@ export default function Home() {
             position: reflectionLocked ? "fixed" : "sticky",
             left: 0, right: 0,
             bottom: reflectionLocked ? "var(--atlas-dock-clearance)" : 0,
-            padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
+            padding: reflectionLocked
+              ? "0 20px calc(12px + env(safe-area-inset-bottom, 0px))"
+              : "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
             // Must be above the fixed bottom dock (z-index 200) so the Send
             // button always wins the tap — otherwise on short viewports
@@ -3399,7 +3401,7 @@ export default function Home() {
             // "You" button and opens the account panel instead.
             zIndex: 250,
             pointerEvents: "auto",
-            background: "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
+            background: reflectionLocked ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
