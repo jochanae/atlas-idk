@@ -260,6 +260,13 @@ export function FilesPanel({
   const [recents, setRecents] = useState<string[]>(() => readRecents(projectId));
   useEffect(() => { setRecents(readRecents(projectId)); }, [projectId]);
 
+  // Auto-jump out of the hub the moment a source is connected
+  useEffect(() => {
+    if (isConnected && view === "repos") setView("tree");
+    if (!isConnected && view !== "repos") setView("repos");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
+
   const runAutoScan = (repo: GhRepo, token: string) => {
     const scanKey = `atlas-scan-${projectId}`;
     setScanStatus("scanning");
