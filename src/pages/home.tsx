@@ -3360,7 +3360,12 @@ export default function Home() {
           <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
           <div className="atlas-input-shell" style={{
             position: "sticky",
-            left: 0, right: 0, bottom: 0,
+            left: 0, right: 0,
+            // In Global Insight (reflectionLocked), the messages fill the viewport
+            // so sticky bottom:0 lands the composer behind the fixed bottom dock.
+            // Offset it above the dock so the input stays visible. Other modes
+            // keep the original bottom:0 behavior untouched.
+            bottom: reflectionLocked ? "var(--atlas-dock-clearance)" : 0,
             padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
             // Must be above the fixed bottom dock (z-index 200) so the Send
