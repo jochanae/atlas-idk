@@ -2989,9 +2989,15 @@ export default function Home() {
                     borderRadius: 0,
                     paddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
                     scrollPaddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
-                    paddingBottom: 96,
-                    WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    paddingBottom: reflectionLocked
+                      ? `calc(${reflectionComposerHeight}px + 24px + env(safe-area-inset-bottom, 0px))`
+                      : 96,
+                    WebkitMaskImage: reflectionLocked
+                      ? "none"
+                      : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    maskImage: reflectionLocked
+                      ? "none"
+                      : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",
                   }}
                 >
