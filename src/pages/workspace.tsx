@@ -7059,7 +7059,7 @@ export default function Workspace() {
                   if (pendingLensSwitch) {
                     setWsLensRaw(pendingLensSwitch);
                     setDetectedLens(null);
-                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); } catch {}
+                    try { localStorage.setItem(`atlas-ws-lens-v2-${id}`, pendingLensSwitch); window.dispatchEvent(new Event("atlas-lens-changed")); } catch {}
                     const cfg = LENS_CONFIG[pendingLensSwitch];
                     if (cfg.model) setWsModel(cfg.model);
                     setPendingLensSwitch(null);
