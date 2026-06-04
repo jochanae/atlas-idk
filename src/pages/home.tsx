@@ -1320,14 +1320,11 @@ export default function Home() {
   const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem("atlas-home-conversation-id") ||
-        localStorage.getItem("atlas-home-conversation-id");
-    } catch {
-      return null;
-    }
-  });
+  // Ambient home always starts clean. Prior conversations are only resumed
+  // when the user explicitly taps one from the Global Insight history drawer
+  // (handleSwitchConversation). Auto-hydrating from storage on mount would
+  // collapse the hero and pull below-the-fold content up — breaking ambient.
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
     try { sessionStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
