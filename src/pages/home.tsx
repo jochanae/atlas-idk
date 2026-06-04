@@ -2600,6 +2600,22 @@ export default function Home() {
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
+  useEffect(() => {
+    if (!reflectionLocked) return;
+    const el = reflectionComposerRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+      if (nextHeight > 0) setReflectionComposerHeight(nextHeight);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [reflectionLocked, input, attachedFiles.length, inputFocused]);
+
   const hasInput = input.trim().length > 0;
   const hasAttachments = attachedFiles.length > 0;
   const canSubmit = hasInput || hasAttachments;
