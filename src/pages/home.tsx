@@ -1972,21 +1972,54 @@ export default function Home() {
     followScrollIfNearBottom(container, 120);
   }, [nexusChat.messages]);
 
+  // Per-turn persistence: save after every completed assistant turn (not just on unload).
+  // Previously this only saved on beforeunload AND only when >=4 messages —
+  // mobile tab switches, navigation, and short threads all dropped history silently.
+  const lastSavedTurnRef = useRef<number>(0);
   useEffect(() => {
-    const handleBeforeUnload = async () => {
-      if (nexusChat.messages.length >= 4) {
-        await fetch("/api/nexus/conversation/save", {
+    const msgs = nexusChat.messages;
+    if (msgs.length < 2) return;
+    const last = msgs[msgs.length - 1] as any;
+    // Only save once per completed assistant turn.
+    if (last?.role !== "assistant" || last?.streaming) return;
+    if (msgs.length === lastSavedTurnRef.current) return;
+    lastSavedTurnRef.current = msgs.length;
+    const conversationId = activeConversationId;
+    fetch("/api/nexus/conversation/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ conversationId, messages: msgs }),
+    })
+      .then(r => r.ok ? r.json().catch(() => null) : null)
+      .then((data: any) => {
+        const newId = data?.conversationId ?? data?.id;
+        if (newId && newId !== activeConversationId) {
+          rememberActiveConversationId(newId);
+          setActiveConversationId(newId);
+        }
+      })
+      .catch(() => { /* non-fatal; next turn retries */ });
+  }, [nexusChat.messages, activeConversationId, rememberActiveConversationId]);
+
+  // Keep the unload save as a last-ditch safety net for in-flight streams.
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const msgs = nexusChat.messages;
+      if (msgs.length < 2) return;
+      try {
+        fetch("/api/nexus/conversation/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ messages: nexusChat.messages }),
+          body: JSON.stringify({ conversationId: activeConversationId, messages: msgs }),
           keepalive: true,
         });
-      }
+      } catch {}
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [nexusChat.messages]);
+  }, [nexusChat.messages, activeConversationId]);
 
   // Load the active conversation from DB (re-runs when conversationId changes)
   useEffect(() => {
