@@ -1317,6 +1317,7 @@ function RightPanel({
           zipLoaded={zipLoaded}
           zipFileName={zipFileName}
           onOpenConnections={openConnections}
+          wsLens={wsLens}
         />
       )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} onOpenAccountSettings={onOpenAccountSettings} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
