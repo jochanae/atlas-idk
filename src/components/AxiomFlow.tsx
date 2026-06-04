@@ -767,7 +767,12 @@ export function AxiomFlow({
     fitMap();
     toast("View Reset", {
       duration: 1000,
-      style: { color: palette.toastText, background: palette.toastBg, border: `1px solid ${palette.toastBorder}` },
+      style: {
+        color: palette.toastText,
+        background: palette.toastBg,
+        border: "1px solid rgba(167,139,250,0.45)",
+        boxShadow: "0 0 0 1px rgba(167,139,250,0.18), 0 0 28px rgba(167,139,250,0.45), 0 0 60px rgba(139,92,246,0.28)",
+      },
     });
   }, [fitMap]);
 
