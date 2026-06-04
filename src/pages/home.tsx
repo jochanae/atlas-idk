@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
+import { HistoryBookmarksSheet } from "@/components/HistoryBookmarksSheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
@@ -1416,6 +1417,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showTimeTravel, setShowTimeTravel] = useState(false);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
@@ -3559,7 +3561,7 @@ export default function Home() {
                   setAttachedFiles(combined);
                 }}
                 onMenuAction={(action) => {
-                  if (action === "history") { void handleOpenHistory(); return; }
+                  if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   // Project-scoped items: route the user to the projects list so
                   // whatever they pick up at home (attachments, intent) carries
@@ -4194,6 +4196,14 @@ export default function Home() {
           onClose={() => setShowQuickPrompt(false)}
         />
       )}
+
+      {/* Time-travel sheet (History | Bookmarks) — opened from composer More → History */}
+      <HistoryBookmarksSheet
+        projectId={homeFocus ?? 0}
+        open={showTimeTravel}
+        onClose={() => setShowTimeTravel(false)}
+      />
+
 
 
 

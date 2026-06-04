@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createEntry, useCreateEntry, getListEntriesQueryKey, useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
-import { Download, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, CornerUpLeft, Download, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type AtlasLens } from "@/lib/atlas-history";
 
 import { CommitCard } from "../CommitCard";
 import { PlanCard } from "../PlanCard";
@@ -821,6 +822,37 @@ export function AssistantBubble({
   const planMessageId = message.id ?? 0;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const planGithubToken = useGithubPushToken(planProject?.githubToken);
+
+  // ── Time-travel snapshot (safeguard #1: capture AFTER stream closes) ──
+  const { items: historyItems } = useAtlasHistory(projectId);
+  const snapshotForMsg = useMemo(
+    () => historyItems.find((s) => s.associated_message_id === message.id),
+    [historyItems, message.id],
+  );
+  const isReverted = message.reverted === true;
+  useEffect(() => {
+    if (message.streaming) return;
+    if (message.role !== "assistant") return;
+    if (!message.id || !projectId) return;
+    if (snapshotForMsg) return;
+    const lens: AtlasLens =
+      (message.intentType === "BUILD" && "builder") ||
+      (message.intentType === "DECIDE" && "strategic") ||
+      "minimal";
+    const codeDelta = activeEdits.length
+      ? activeEdits.map((e) => `${e.path}\n${e.content ?? ""}`).join("\n---\n")
+      : undefined;
+    addSnapshot(projectId, {
+      associated_message_id: message.id,
+      title: (message.content || "").split("\n")[0].slice(0, 80) || "Atlas response",
+      lens,
+      payload: {
+        code_delta: codeDelta,
+        active_file: activeEdits[0]?.path,
+      },
+    });
+  }, [message.streaming, message.id, message.role, message.intentType, projectId, snapshotForMsg, message.content, activeEdits]);
+
   // Extract image URL from markdown image syntax in content if no base64
   const inlineImageUrl = !message.imageB64
     ? (() => {
@@ -1034,10 +1066,35 @@ export function AssistantBubble({
   return (
     <div
       className="atlas-bubble-in"
-      style={{ display: "flex", justifyContent: "flex-start", marginBottom: 32 }}
+      data-msg-id={message.id ?? undefined}
+      style={{
+        display: "flex",
+        justifyContent: "flex-start",
+        marginBottom: 32,
+        opacity: isReverted ? 0.42 : 1,
+        filter: isReverted ? "grayscale(0.6)" : undefined,
+        transition: "opacity 220ms ease, filter 220ms ease",
+      }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
     >
+      {isReverted && (
+        <span
+          style={{
+            position: "absolute",
+            marginLeft: -6, marginTop: -2,
+            padding: "2px 7px",
+            fontSize: 9, fontWeight: 600, letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(228,196,128,0.95)",
+            background: "rgba(196,160,80,0.12)",
+            border: "1px solid rgba(196,160,80,0.35)",
+            borderRadius: 999,
+          }}
+        >
+          Reverted
+        </span>
+      )}
       <div style={{ maxWidth: "min(100%, 74ch)", width: "100%" }}>
         <div
           style={{
@@ -1615,6 +1672,47 @@ export function AssistantBubble({
         {/* Action row — icon-only cockpit buttons */}
         {!message.streaming && (
         <div style={{ display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+
+          {/* Rollback hook arrow — time-travel to the snapshot for this message */}
+          {snapshotForMsg && !isReverted && (
+            <button
+              className="atlas-icon-action"
+              title="Roll back workspace to this point"
+              aria-label="Roll back to here"
+              style={{ ...ICON_TOUCH_TARGET_STYLE, color: "var(--atlas-gold, rgba(228,196,128,0.95))" }}
+              onClick={() => {
+                if (typeof window !== "undefined" &&
+                    !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
+                rollbackTo(projectId, snapshotForMsg.id);
+                if (message.id != null) {
+                  const el = document.querySelector(`[data-msg-id="${message.id}"]`);
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+              }}
+            >
+              <CornerUpLeft size={12} strokeWidth={1.8} />
+            </button>
+          )}
+          {/* Bookmark */}
+          {snapshotForMsg && (
+            <button
+              className="atlas-icon-action"
+              title={snapshotForMsg.isBookmarked ? "Bookmarked" : "Bookmark this snapshot"}
+              aria-label="Bookmark snapshot"
+              style={{
+                ...ICON_TOUCH_TARGET_STYLE,
+                color: snapshotForMsg.isBookmarked
+                  ? "var(--atlas-gold, rgba(228,196,128,0.95))"
+                  : undefined,
+              }}
+              onClick={() => toggleSnapshotBookmark(projectId, snapshotForMsg.id)}
+            >
+              {snapshotForMsg.isBookmarked
+                ? <BookmarkCheck size={12} strokeWidth={1.8} />
+                : <Bookmark size={12} strokeWidth={1.6} />
+              }
+            </button>
+          )}
 
           {/* Copy */}
           <button

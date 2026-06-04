@@ -191,6 +191,11 @@ export interface ChatMessage {
   costUsd?: number | null;
   artifact?: { type: string; title: string; content: string } | null;
   imageGen?: { images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }> } | null;
+  /** Time-travel: snapshot id linking this message to a workspace state. */
+  snapshotId?: string;
+  /** Time-travel: messages bypassed by a rollback. Kept in-array but filtered
+   *  from upstream prompt history (safeguard #3) and dimmed in the UI. */
+  reverted?: boolean;
 }
 
 export type MemoryChip = { label: string; insight?: string };
