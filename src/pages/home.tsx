@@ -4115,7 +4115,13 @@ export default function Home() {
                 GLOBAL INSIGHT · HISTORY
               </div>
               <button
-                onClick={() => { setShowHistory(false); handleNewConversation(); }}
+                onClick={() => {
+                  setShowHistory(false);
+                  handleNewConversation();
+                  // Stay inside Global Insight — do NOT drop the user back to the ambient home.
+                  setReflectionLocked(true);
+                  setDepth("active");
+                }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   background: "transparent",
