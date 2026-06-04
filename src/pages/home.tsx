@@ -1497,7 +1497,9 @@ export default function Home() {
   const handleLockTap = useCallback(() => {
     vibrate(50);
     if (reflectionLocked) {
-      setShowShredChoice(true);
+      // Exit Global Insight directly — no confirmation modal.
+      void callReflectionMode(false);
+      setReflectionLocked(false);
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
