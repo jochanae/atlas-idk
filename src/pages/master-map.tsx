@@ -2074,7 +2074,7 @@ function ViewKey({ allProjects, palette, onRecenter, onDive, onNewIdea }: {
         <div style={{
           position: "absolute", top: 0, right: "calc(100% + 8px)",
           background: palette.pickerBg,
-          backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
+          backdropFilter: "blur(22px)",
           border: `1px solid ${palette.pickerBorder}`, borderRadius: 10,
           padding: "6px 0", minWidth: 188, maxHeight: 320, overflowY: "auto",
           boxShadow: palette.pickerShadow,

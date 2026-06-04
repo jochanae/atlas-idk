@@ -2024,7 +2024,7 @@ function TerminalPanel({
         padding: "8px 12px",
         borderBottom: `1px solid ${termBorder}`,
         background: isParchment ? "rgba(255,250,240,0.5)" : "rgba(255,255,255,0.02)",
-        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+        backdropFilter: "blur(14px)",
       }}>
         <div
           style={{
@@ -2051,7 +2051,7 @@ function TerminalPanel({
                 color: "var(--atlas-gold)",
                 fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)",
                 letterSpacing: "0.05em", cursor: running ? "not-allowed" : "pointer",
-                backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+                backdropFilter: "blur(10px)",
                 whiteSpace: "nowrap",
                 boxShadow: "inset 0 0 0 1px rgba(201,162,76,0.08)",
                 transition: "all 160ms ease",
@@ -2217,7 +2217,7 @@ function TerminalPanel({
           flex: "0 0 30%", minWidth: 280,
           borderLeft: `1px solid ${termBorder}`,
           background: isParchment ? "rgba(255,250,240,0.4)" : "rgba(255,255,255,0.02)",
-          backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+          backdropFilter: "blur(18px)",
           overflowY: "auto", padding: "14px 14px 18px",
           display: "flex", flexDirection: "column", gap: 14,
         }}>
@@ -2266,7 +2266,7 @@ function TerminalPanel({
           style={{
             position: "absolute", inset: 0, zIndex: 50,
             background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+            backdropFilter: "blur(6px)",
             display: "flex", alignItems: "flex-start", justifyContent: "center",
             padding: "60px 16px 16px",
           }}
@@ -2279,7 +2279,7 @@ function TerminalPanel({
               border: "1px solid rgba(201,162,76,0.4)",
               borderRadius: 16,
               boxShadow: "0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,162,76,0.18)",
-              backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+              backdropFilter: "blur(24px)",
               padding: 18,
             }}
           >

@@ -65,7 +65,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   return createPortal(
     <>
       {/* Scrim */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", zIndex: 12000 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(8px)", zIndex: 12000 }} />
 
       {/* Panel */}
       <aside
