@@ -1501,9 +1501,9 @@ export default function Home() {
     } else {
       setReflectionLocked(true);
       void callReflectionMode(true);
-      toast("Think Freely · Private session", {
+      toast("Global Insight · Strategic view", {
         className: "atlas-toast-premium",
-        description: "Zero-trace · nothing here is logged.",
+        description: "Macro view across every project.",
       });
     }
   }, [reflectionLocked, vibrate, callReflectionMode]);
