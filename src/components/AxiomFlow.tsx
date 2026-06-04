@@ -1028,7 +1028,6 @@ export function AxiomFlow({
             </svg>
           </button>
         )}
-        <span className="text-xs font-bold tracking-widest text-gold uppercase">AXIOM FLOW</span>
         <button
           onClick={(e) => { e.stopPropagation(); haptics.tap(); setLocation("/map"); }}
           onMouseDown={(e) => e.stopPropagation()}
@@ -1303,9 +1302,9 @@ export function AxiomFlow({
                 x1={fromNode.x} y1={fromNode.y}
                 x2={toNode.x} y2={toNode.y}
                 stroke={bothResolved ? palette.edgeGold : palette.edgeDim}
-                strokeWidth={bothResolved ? 1.25 : 0.75}
+                strokeWidth={bothResolved ? 1 : 0.5}
                 strokeLinecap="round"
-                opacity={bothResolved ? 0.95 : 0.55}
+                opacity={bothResolved ? 0.85 : 0.40}
                 filter={bothResolved ? "url(#edge-glow)" : undefined}
               />
             );
@@ -1465,6 +1464,17 @@ export function AxiomFlow({
       }}>
         TAP NODE · PINCH TO ZOOM · DOUBLE-TAP TO FIT
       </div>
+
+      <div style={{
+        position: "absolute", bottom: 10, left: 14,
+        pointerEvents: "none", zIndex: 5,
+        fontSize: 8, letterSpacing: "0.22em",
+        fontFamily: "var(--app-font-mono)",
+        textTransform: "uppercase",
+        color: theme === "parchment" ? "rgba(146,64,14,0.30)" : "rgba(201,162,76,0.28)",
+      }}>
+        Axiom Flow
+      </div>
     </div>
   );
 }
@@ -1518,8 +1528,8 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       bgColor: resolved ? `rgba(${G},0.18)` : `rgba(${G},0.06)`,
       textColor: goldText,
       textDecoration: "none",
-      shadow: resolved ? `0 0 24px rgba(${G},0.45), 0 0 8px rgba(${G},0.25)`
-        : `0 0 14px rgba(${G},0.22)`,
+      shadow: resolved ? `0 0 36px rgba(${G},0.40), 0 0 14px rgba(${G},0.22)`
+        : `0 0 26px rgba(${G},0.20), 0 0 10px rgba(${G},0.12)`,
       opacity: 1,
       pulse: !resolved,
       labelSize: 10,
