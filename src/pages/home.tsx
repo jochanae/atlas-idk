@@ -1468,7 +1468,7 @@ export default function Home() {
   const [showGoneFlash, setShowGoneFlash] = useState(false);
 
   const homeConversationTitle = reflectionLocked
-    ? "Think Freely"
+    ? "Global Insight"
     : homeFocus == null && nexusChat.messages.length > 0
       ? earnedTitle ?? "Untitled conversation"
       : null;
