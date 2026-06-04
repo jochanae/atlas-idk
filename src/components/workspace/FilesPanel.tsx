@@ -248,6 +248,16 @@ export function FilesPanel({
   const autoLoadedRef = useRef(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
   const [fileSearch, setFileSearch] = useState("");
+  const [treeViewMode, setTreeViewMode] = useState<"tree" | "buckets">(() => (wsLens === "build" ? "tree" : "buckets"));
+  const lastLensRef = useRef<WorkspaceLens>(wsLens);
+  useEffect(() => {
+    if (lastLensRef.current !== wsLens) {
+      lastLensRef.current = wsLens;
+      setTreeViewMode(wsLens === "build" ? "tree" : "buckets");
+    }
+  }, [wsLens]);
+  const [recents, setRecents] = useState<string[]>(() => readRecents(projectId));
+  useEffect(() => { setRecents(readRecents(projectId)); }, [projectId]);
 
   const runAutoScan = (repo: GhRepo, token: string) => {
     const scanKey = `atlas-scan-${projectId}`;
