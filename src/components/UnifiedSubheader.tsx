@@ -148,44 +148,49 @@ export function UnifiedSubheader({
             })}
           </nav>
 
-          {showWorkspaceMenu && (
-            <button
-              type="button"
-              onClick={() => onLaunch?.()}
-              onMouseEnter={() => setLaunchHover(true)}
-              onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
-              onMouseDown={() => setLaunchActive(true)}
-              onMouseUp={() => setLaunchActive(false)}
-              title="Launch full screen"
-              aria-label="Launch full screen"
-              style={{
-                flexShrink: 0,
-                background: launchActive
-                  ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
-                  : launchHover
-                  ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
-                  : "transparent",
-                border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
-                borderRadius: 8,
-                padding: "5px 6px",
-                cursor: "pointer",
-                color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
-                opacity: launchHover || launchActive ? 1 : 0.85,
-                lineHeight: 0,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease",
-                WebkitTapHighlightColor: "transparent",
-                boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
-              }}
-            >
-              <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
-            </button>
-          )}
-
         </div>
       </div>
+
+      {/* Play button — pinned, stays visible whether the row is expanded or collapsed */}
+      {showWorkspaceMenu && hasProject && (
+        <button
+          type="button"
+          onClick={() => onLaunch?.()}
+          onMouseEnter={() => setLaunchHover(true)}
+          onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
+          onMouseDown={() => setLaunchActive(true)}
+          onMouseUp={() => setLaunchActive(false)}
+          title="Launch full screen"
+          aria-label="Launch full screen"
+          style={{
+            position: "absolute",
+            top: expanded ? (isMobile ? 8 : 10) : 4,
+            right: isMobile ? 16 : 22,
+            zIndex: 2,
+            background: launchActive
+              ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
+              : launchHover
+              ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+              : "transparent",
+            border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
+            borderRadius: 8,
+            padding: "5px 6px",
+            cursor: "pointer",
+            color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
+            opacity: launchHover || launchActive ? 1 : 0.85,
+            lineHeight: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease, top 240ms ease",
+            WebkitTapHighlightColor: "transparent",
+            boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
+          }}
+        >
+          <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
+        </button>
+      )}
+
 
       {/* Centered collapse handle — sits directly below the row (or directly below main header when collapsed) */}
       {hasConversation && hasProject && (
