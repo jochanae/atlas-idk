@@ -2709,7 +2709,7 @@ export default function Home() {
         backgroundColor: "var(--atlas-bg)",
         display: "flex",
         flexDirection: "column",
-        overflowY: "auto",
+        overflowY: reflectionLocked ? "hidden" : "auto",
         overflowX: "hidden",
       }}
     >
@@ -2918,7 +2918,23 @@ export default function Home() {
           mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
-              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
+              <div
+                className="atlas-home-chat-inner"
+                style={{
+                  width: "100%",
+                  maxWidth: 560,
+                  paddingBottom: reflectionLocked ? 0 : "var(--atlas-dock-clearance)",
+                  display: reflectionLocked ? "flex" : undefined,
+                  flexDirection: reflectionLocked ? "column" : undefined,
+                  height: reflectionLocked
+                    ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
+                    : undefined,
+                  minHeight: reflectionLocked
+                    ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
+                    : undefined,
+                  minWidth: 0,
+                }}
+              >
 
                 {stream}
               </div>
@@ -2929,15 +2945,17 @@ export default function Home() {
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
           <div style={{
             minHeight: reflectionLocked
-              ? "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
+              ? 0
               : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))"),
+            height: reflectionLocked ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
             justifyContent: reflectionLocked ? "flex-start" : "center",
             position: "relative",
             paddingBottom: reflectionLocked ? 0 : "var(--atlas-dock-clearance)",
-            paddingTop: reflectionLocked ? 12 : 0,
+            paddingTop: reflectionLocked ? 0 : 0,
             minWidth: 0,
+            overflow: reflectionLocked ? "hidden" : "visible",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
@@ -3038,15 +3056,17 @@ export default function Home() {
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
                     scrollbarWidth: "none", msOverflowStyle: "none",
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
                     paddingRight: reflectionLocked ? 0 : 80,
                     paddingLeft: reflectionLocked ? 0 : 0,
                     position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    paddingTop: reflectionLocked ? 8 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    paddingTop: reflectionLocked ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
                     scrollPaddingTop: reflectionLocked ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
                     paddingBottom: reflectionLocked
-                      ? `calc(${reflectionComposerHeight}px + 16px + env(safe-area-inset-bottom, 0px))`
+                      ? "calc(24px + env(safe-area-inset-bottom, 0px))"
                       : 96,
                     WebkitMaskImage: reflectionLocked
                       ? "none"
@@ -3439,27 +3459,19 @@ export default function Home() {
           {/* Input shell */}
           <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
           <div ref={reflectionLocked ? reflectionComposerRef : null} className="atlas-input-shell" style={{
-            // Global Insight: pin the composer with `fixed` so it always floats
-            // above the bottom dock — sticky doesn't work here because the
-            // wrapper above is the same height as the composer, so sticky has
-            // no scroll range and falls back to its natural position (below
-            // the dock). Other modes keep the original sticky bottom:0.
-            position: reflectionLocked ? "fixed" : "sticky",
-            left: 0, right: 0,
-            bottom: reflectionLocked ? "var(--atlas-dock-clearance)" : 0,
+            position: reflectionLocked ? "relative" : "sticky",
+            left: reflectionLocked ? undefined : 0,
+            right: reflectionLocked ? undefined : 0,
+            bottom: reflectionLocked ? undefined : 0,
             padding: reflectionLocked
-              ? "0 16px calc(10px + env(safe-area-inset-bottom, 0px))"
+              ? "12px 0 0"
               : "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
-            // Must be above the fixed bottom dock (z-index 200) so the Send
-            // button always wins the tap — otherwise on short viewports
-            // (keyboard open / mobile) the touch falls through to the dock's
-            // "You" button and opens the account panel instead.
-            zIndex: 250,
+            zIndex: reflectionLocked ? 1 : 250,
             pointerEvents: "auto",
             background: reflectionLocked ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
-            maxWidth: reflectionLocked ? 680 : undefined,
-            margin: reflectionLocked ? "0 auto" : undefined,
+            maxWidth: reflectionLocked ? undefined : 680,
+            margin: reflectionLocked ? 0 : undefined,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
