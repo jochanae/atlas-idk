@@ -4015,7 +4015,18 @@ export default function Home() {
                 GLOBAL INSIGHT · HISTORY
               </div>
               <button
-                onClick={() => { setShowHistory(false); handleNewConversation(); }}
+                onClick={() => {
+                  setShowHistory(false);
+                  handleNewConversation();
+                  // NEW from inside the Global Insight drawer should drop the
+                  // user straight into a fresh strategic thread — same as
+                  // tapping the sparkle.
+                  if (!reflectionLocked) {
+                    setReflectionLocked(true);
+                    void callReflectionMode(true);
+                  }
+                  window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
+                }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   background: "transparent",
