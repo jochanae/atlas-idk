@@ -898,15 +898,10 @@ export function FilesPanel({
               <h2 style={{ ...sectionLabel, ...goldGradient, margin: 0, fontWeight: 700 }}>Browse Hub</h2>
               <div
                 style={{
-                  display: "flex",
-                  gap: 12,
-                  overflowX: "auto",
-                  scrollSnapType: "x mandatory",
-                  paddingBottom: 4,
-                  margin: "0 -14px",
-                  padding: "0 14px 4px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gap: 8,
                 }}
-                className="scrollbar-none"
               >
                 {browseHub.map((card) => (
                   <button
@@ -915,35 +910,34 @@ export function FilesPanel({
                     onClick={card.onClick}
                     style={{
                       ...glassCard,
-                      flexShrink: 0,
-                      minWidth: 220,
-                      scrollSnapAlign: "start",
-                      padding: 18,
+                      padding: 12,
                       textAlign: "left",
                       cursor: "pointer",
                       position: "relative",
                       overflow: "hidden",
+                      minWidth: 0,
                       borderColor: card.active ? "rgba(201,162,76,0.35)" : "rgba(38,38,38,0.85)",
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = card.active ? "rgba(201,162,76,0.35)" : "rgba(38,38,38,0.85)"; }}
                   >
                     <span style={{
-                      position: "absolute", top: -20, right: -20, width: 110, height: 110,
+                      position: "absolute", top: -20, right: -20, width: 80, height: 80,
                       borderRadius: "50%", background: "rgba(201,162,76,0.08)", filter: "blur(28px)", pointerEvents: "none",
                     }} />
-                    <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.55, letterSpacing: "0.12em", marginBottom: 4 }}>
-                      {card.idx} / CATEGORY
+                    <div style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.55, letterSpacing: "0.1em", marginBottom: 4 }}>
+                      {card.idx}
                     </div>
-                    <div style={{ fontSize: 17, fontWeight: 300, color: "var(--atlas-fg)", letterSpacing: "-0.01em" }}>
+                    <div style={{ fontSize: 13, fontWeight: 400, color: "var(--atlas-fg)", letterSpacing: "-0.01em", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis" }}>
                       {card.label}
                     </div>
-                    <div style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, marginTop: 6 }}>
+                    <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {card.sub}
                     </div>
                   </button>
                 ))}
               </div>
+
             </section>
 
             {/* Auto-link banner */}
