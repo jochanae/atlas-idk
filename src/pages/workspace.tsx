@@ -46,6 +46,7 @@ import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
+import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
 import { LiveGenerationCard } from "../components/LiveGenerationCard";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { RefreshCw } from "lucide-react";
@@ -3768,6 +3769,7 @@ export default function Workspace() {
   const renameEscapeRef = useRef(false);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
@@ -6122,7 +6124,7 @@ export default function Workspace() {
               onOpenModelSheet: () => setShowWsModelSheet(true),
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
-                if (action === "history") { window.location.href = "/ledger"; return; }
+                if (action === "history") { setShowHistorySheet(true); return; }
                 if (action === "files") {
                   if (isMobile) { setMobileTab("files"); setRightOpen(true); }
                   else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
@@ -6510,6 +6512,14 @@ export default function Workspace() {
           onSaved={() => { queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }); }}
         />
       )}
+
+      <HistoryBookmarksSheet
+        projectId={Number.isFinite(id) ? id : null}
+        open={showHistorySheet}
+        onClose={() => setShowHistorySheet(false)}
+      />
+
+
 
       {showForgeExternal && (
         <TheForge
