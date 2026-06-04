@@ -2952,12 +2952,27 @@ export default function Home() {
               )}
             {nexusChat.messages.length === 0 && !isAtlasStreaming && !threadLoading ? (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 10, opacity: 0.7, animation: "fadeIn 600ms ease forwards" }}>
-                <LoadingSpinner size="sm" color="atlas" />
+                <button
+                  type="button"
+                  aria-label="Focus composer"
+                  onClick={() => window.dispatchEvent(new Event("atlas:focus-composer"))}
+                  style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", borderRadius: 999, WebkitTapHighlightColor: "transparent" }}
+                >
+                  <LoadingSpinner size="sm" color="atlas" />
+                </button>
               </div>
             ) : nexusChat.messages.length === 0 && !isAtlasStreaming ? (
               <div style={{ display: "flex", justifyContent: "center" }}>
-                <LoadingSpinner size="sm" color="atlas" />
+                <button
+                  type="button"
+                  aria-label="Focus composer"
+                  onClick={() => window.dispatchEvent(new Event("atlas:focus-composer"))}
+                  style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", borderRadius: 999, WebkitTapHighlightColor: "transparent" }}
+                >
+                  <LoadingSpinner size="sm" color="atlas" />
+                </button>
               </div>
+
             ) : (
               <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                 {/* Messages */}
