@@ -344,19 +344,23 @@ function iconBtnStyle(active: boolean, accent: boolean): React.CSSProperties {
     minWidth: 44,
     minHeight: 44,
     padding: 7,
-    borderRadius: 8,
+    borderRadius: 10,
     background: active
       ? "rgba(201,162,76,0.14)"
       : accent
       ? "rgba(201,162,76,0.08)"
-      : "transparent",
-    border: active || accent ? "1px solid rgba(201,162,76,0.28)" : "1px solid transparent",
+      : "rgba(255,255,255,0.02)",
+    border: active || accent
+      ? "1px solid rgba(201,162,76,0.28)"
+      : "1px solid rgba(255,255,255,0.06)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
     color: active || accent ? "var(--atlas-gold)" : "var(--atlas-muted)",
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    opacity: active || accent ? 1 : 0.7,
+    opacity: active || accent ? 1 : 0.8,
     transition: "all 160ms ease",
     flexShrink: 0,
     WebkitTapHighlightColor: "transparent",
