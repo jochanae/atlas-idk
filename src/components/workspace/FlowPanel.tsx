@@ -178,6 +178,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   }, [externalForgeNodes, onForgeNodesConsumed]);
   const [nodes, setNodes] = useState<ArchNode[]>([]);
   const [pendingNodes, setPendingNodes] = useState<ArchNode[]>([]);
+  const [lensView, setLensView] = useState<"designer" | "builder" | "storyteller">("designer");
   const [showChat, setShowChat] = useState(true);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const [signals, setSignals] = useState<string[]>([""]);
@@ -517,6 +518,53 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         </div>
         {/* Axiom Flow canvas */}
         <div style={{ flex: 1, minHeight: 0, position: "relative", overflow: "hidden" }}>
+          <div
+            style={{
+              position: "absolute",
+              bottom: 12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 14,
+              display: "flex",
+              gap: 2,
+              padding: 3,
+              background: "rgba(var(--atlas-bg-rgb),0.55)",
+              backdropFilter: "blur(14px) saturate(140%)",
+              WebkitBackdropFilter: "blur(14px) saturate(140%)",
+              border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+              borderRadius: 999,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}
+          >
+            {(["designer", "builder", "storyteller"] as const).map((lens) => {
+              const active = lensView === lens;
+              const label =
+                lens === "designer" ? "Designer" : lens === "builder" ? "Builder" : "Storyteller";
+              return (
+                <button
+                  key={lens}
+                  type="button"
+                  onClick={() => setLensView(lens)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 999,
+                    border: "none",
+                    cursor: "pointer",
+                    background: active ? "rgba(var(--atlas-gold-rgb),0.16)" : "transparent",
+                    color: active ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.6)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    transition: "all 160ms ease",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           {/* Empty map nudge — show Forge prompt when canvas has no nodes yet */}
           {nodes.length === 0 && onOpenForge && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
@@ -544,27 +592,50 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               </button>
             </div>
           )}
-          <AxiomFlow
-            projectId={projectId}
-            onReadinessChange={setReadinessScore}
-            onNodesChange={handleNodesChange}
-            compact
-            onBackToChat={onBackToChat}
-            detectedBuilder={platform.toLowerCase()}
-            onNodeFocus={(text) => setIntent(text)}
-            initialNodeState={(activeProject?.nodeState as NodeStateMap | null) ?? null}
-            pendingNodes={pendingNodes}
-            onPendingConsumed={() => setPendingNodes([])}
-            onUnansweredQuestionOpen={({ mirror }) => onSystemNodeMessage?.(mirror)}
-            onHandover={onHandover}
-            handoverPending={handoverPending}
-            lastHandoverHash={lastHandoverHash}
-            onSnapshotChange={onSnapshotChange}
-            handoverOpen={handoverOpen}
-            onHandoverOpenChange={onHandoverOpenChange}
-            isMobile={isMobile}
-            projectName={activeProjectName}
-          />
+          {lensView === "designer" && (
+            <AxiomFlow
+              projectId={projectId}
+              onReadinessChange={setReadinessScore}
+              onNodesChange={handleNodesChange}
+              compact
+              onBackToChat={onBackToChat}
+              detectedBuilder={platform.toLowerCase()}
+              onNodeFocus={(text) => setIntent(text)}
+              initialNodeState={(activeProject?.nodeState as NodeStateMap | null) ?? null}
+              pendingNodes={pendingNodes}
+              onPendingConsumed={() => setPendingNodes([])}
+              onUnansweredQuestionOpen={({ mirror }) => onSystemNodeMessage?.(mirror)}
+              onHandover={onHandover}
+              handoverPending={handoverPending}
+              lastHandoverHash={lastHandoverHash}
+              onSnapshotChange={onSnapshotChange}
+              handoverOpen={handoverOpen}
+              onHandoverOpenChange={onHandoverOpenChange}
+              isMobile={isMobile}
+              projectName={activeProjectName}
+            />
+          )}
+          {lensView !== "designer" && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                color: "rgba(var(--atlas-muted-rgb),0.5)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              <span>{lensView === "builder" ? "Builder lens" : "Storyteller lens"}</span>
+              <span style={{ fontSize: 9, opacity: 0.6 }}>Coming next</span>
+            </div>
+          )}
         </div>
         {/* System Map — architecture layer readiness (auth/db/api/state/ui/logic)
             Hidden on mobile: its readiness score feeds the workspace header ring,
