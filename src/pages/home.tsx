@@ -3698,6 +3698,11 @@ export default function Home() {
                     );
                   })}
                 </div>
+              </div>
+            );
+          })()}
+
+
 
           {/* Continuity strip — status + expand CTA anchored below the suggestion chips */}
           {projects && projects.length > 0 && (() => {
