@@ -474,6 +474,8 @@ export function FilesPanel({
     if (!selectedRepo) return;
     setFilesSubTab("files");
     setSelectedPath(path);
+    pushRecent(projectId, path);
+    setRecents(readRecents(projectId));
     setView("file");
     setFileContent(null);
     setFileLoading(true);
