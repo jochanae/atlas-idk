@@ -3560,7 +3560,7 @@ export default function Home() {
                   setAttachedFiles(combined);
                 }}
                 onMenuAction={(action) => {
-                  if (action === "history") { void handleOpenHistory(); return; }
+                  if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   // Project-scoped items: route the user to the projects list so
                   // whatever they pick up at home (attachments, intent) carries
