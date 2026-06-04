@@ -1425,6 +1425,7 @@ export default function Home() {
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const reflectionComposerRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
@@ -1432,6 +1433,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const previousHomeMessageCountRef = useRef(0);
+  const [reflectionComposerHeight, setReflectionComposerHeight] = useState(148);
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
@@ -2598,6 +2600,22 @@ export default function Home() {
     el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
+  useEffect(() => {
+    if (!reflectionLocked) return;
+    const el = reflectionComposerRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+      if (nextHeight > 0) setReflectionComposerHeight(nextHeight);
+    };
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [reflectionLocked, input, attachedFiles.length, inputFocused]);
+
   const hasInput = input.trim().length > 0;
   const hasAttachments = attachedFiles.length > 0;
   const canSubmit = hasInput || hasAttachments;
@@ -2971,9 +2989,15 @@ export default function Home() {
                     borderRadius: 0,
                     paddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
                     scrollPaddingTop: reflectionLocked ? 24 : (nexusChat.messages.length > 0 ? 16 : 56),
-                    paddingBottom: 96,
-                    WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    paddingBottom: reflectionLocked
+                      ? `calc(${reflectionComposerHeight}px + 24px + env(safe-area-inset-bottom, 0px))`
+                      : 96,
+                    WebkitMaskImage: reflectionLocked
+                      ? "none"
+                      : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
+                    maskImage: reflectionLocked
+                      ? "none"
+                      : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",
                   }}
                 >
@@ -3358,7 +3382,7 @@ export default function Home() {
 
           {/* Input shell */}
           <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
-          <div className="atlas-input-shell" style={{
+          <div ref={reflectionLocked ? reflectionComposerRef : null} className="atlas-input-shell" style={{
             // Global Insight: pin the composer with `fixed` so it always floats
             // above the bottom dock — sticky doesn't work here because the
             // wrapper above is the same height as the composer, so sticky has
@@ -3367,7 +3391,9 @@ export default function Home() {
             position: reflectionLocked ? "fixed" : "sticky",
             left: 0, right: 0,
             bottom: reflectionLocked ? "var(--atlas-dock-clearance)" : 0,
-            padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
+            padding: reflectionLocked
+              ? "0 20px calc(12px + env(safe-area-inset-bottom, 0px))"
+              : "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
             // Must be above the fixed bottom dock (z-index 200) so the Send
             // button always wins the tap — otherwise on short viewports
@@ -3375,7 +3401,7 @@ export default function Home() {
             // "You" button and opens the account panel instead.
             zIndex: 250,
             pointerEvents: "auto",
-            background: "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
+            background: reflectionLocked ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
@@ -3444,7 +3470,16 @@ export default function Home() {
               </div>
             )}
 
-            <div style={{ position: "relative" }}>
+            <div style={{
+              position: "relative",
+              borderRadius: reflectionLocked ? 20 : 0,
+              padding: reflectionLocked ? "14px 16px 12px" : 0,
+              background: reflectionLocked ? "rgba(19, 14, 24, 0.94)" : "transparent",
+              border: reflectionLocked ? "1px solid rgba(212,175,55,0.22)" : "none",
+              boxShadow: reflectionLocked ? "0 18px 42px rgba(0,0,0,0.42)" : "none",
+              backdropFilter: reflectionLocked ? "blur(22px)" : undefined,
+              WebkitBackdropFilter: reflectionLocked ? "blur(22px)" : undefined,
+            }}>
               {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || reflectionLocked) && (
                 <div
                   style={{
