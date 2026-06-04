@@ -1136,8 +1136,8 @@ export function FilesPanel({
               {treeError}
             </div>
           )}
-          {/* Search input */}
-          <div style={{ padding: "8px 12px 6px", borderBottom: "1px solid var(--atlas-border)" }}>
+          {/* Search input + Tree/Type toggle */}
+          <div style={{ padding: "8px 12px 6px", borderBottom: "1px solid var(--atlas-border)", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: "var(--atlas-bg)", border: "1px solid var(--atlas-border)" }}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--atlas-muted)" strokeWidth="1.5" strokeLinecap="round">
                 <circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l2.5 2.5"/>
@@ -1161,9 +1161,78 @@ export function FilesPanel({
                 </button>
               )}
             </div>
+            {!fileSearch.trim() && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {(["tree", "buckets"] as const).map((m) => {
+                  const active = treeViewMode === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setTreeViewMode(m)}
+                      style={{
+                        padding: "3px 10px",
+                        borderRadius: 999,
+                        border: `1px solid ${active ? "var(--atlas-gold)" : "var(--atlas-border)"}`,
+                        background: active ? "rgba(201,162,76,0.10)" : "transparent",
+                        color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        cursor: "pointer",
+                        fontFamily: "var(--app-font-mono)",
+                        fontSize: 9,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {m === "tree" ? "Tree" : "By Type"}
+                    </button>
+                  );
+                })}
+                <span style={{ marginLeft: "auto", fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  {wsLens} lens
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* File list — search results or tree */}
+          {/* Recents strip (when not searching) */}
+          {!fileSearch.trim() && recents.length > 0 && (
+            <div style={{ padding: "10px 12px 6px", borderBottom: "1px solid var(--atlas-border)" }}>
+              <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.6, marginBottom: 6 }}>
+                Recent
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {recents.slice(0, 6).map((p) => {
+                  const name = p.split("/").pop() ?? p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => loadFile(p)}
+                      title={p}
+                      style={{
+                        maxWidth: 160,
+                        padding: "3px 9px",
+                        borderRadius: 999,
+                        background: "rgba(201,162,76,0.05)",
+                        border: "1px solid rgba(201,162,76,0.18)",
+                        color: "var(--atlas-fg)",
+                        fontSize: 10,
+                        fontFamily: "var(--app-font-mono)",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* File list — search results / tree / buckets */}
           {!treeLoading && (
             fileSearch.trim() ? (
               // Flat search results
@@ -1199,13 +1268,23 @@ export function FilesPanel({
                   </div>
                 )}
               </div>
-            ) : (
-              // Normal tree view
+            ) : treeViewMode === "tree" ? (
+              // Native folder tree (Build lens default)
               <div style={{ overflowY: "auto", flex: 1 }}>
                 {tree.map((node) => (
                   <GhTreeNodeRow key={node.path} node={node} depth={0} selectedPath={selectedPath} onSelect={loadFile} />
                 ))}
               </div>
+            ) : (
+              // By-Type buckets (Flow / Look / Scenario default)
+              <BucketsView
+                files={flatFiles}
+                linkedRepo={selectedRepo}
+                branch={repoBranch}
+                selectedPath={selectedPath}
+                onSelect={loadFile}
+                lensIsVisual={wsLens === "look"}
+              />
             )
           )}
         </div>
