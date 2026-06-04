@@ -172,6 +172,7 @@ export function FilesPanel({
   zipLoaded,
   zipFileName,
   onOpenConnections,
+  wsLens: wsLensProp,
 }: {
   projectId: number;
   onFileContext: (ctx: string | null) => void;
@@ -182,7 +183,22 @@ export function FilesPanel({
   zipLoaded?: boolean;
   zipFileName?: string;
   onOpenConnections?: () => void;
+  wsLens?: WorkspaceLens;
 }) {
+  // Live-subscribed lens: prefer prop, else read localStorage + listen for changes
+  const [lensLocal, setLensLocal] = useState<WorkspaceLens>(() => {
+    try { return (localStorage.getItem(`atlas-ws-lens-v2-${projectId}`) as WorkspaceLens) || "flow"; } catch { return "flow"; }
+  });
+  useEffect(() => {
+    const key = `atlas-ws-lens-v2-${projectId}`;
+    const onStorage = (e: StorageEvent) => { if (e.key === key && e.newValue) setLensLocal(e.newValue as WorkspaceLens); };
+    const onCustom = () => { try { const v = localStorage.getItem(key) as WorkspaceLens | null; if (v) setLensLocal(v); } catch {} };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("atlas-lens-changed", onCustom);
+    onCustom();
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("atlas-lens-changed", onCustom); };
+  }, [projectId]);
+  const wsLens: WorkspaceLens = wsLensProp ?? lensLocal;
   const updateProject = useUpdateProject();
   const createProject = useCreateProject();
   const queryClient = useQueryClient();
