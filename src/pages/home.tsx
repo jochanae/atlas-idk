@@ -2990,9 +2990,9 @@ export default function Home() {
                     
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     paddingRight: 80, position: "relative",
-                    border: reflectionLocked ? "0.5px solid rgba(201,162,76,0.15)" : undefined,
-                    borderRadius: reflectionLocked ? 8 : undefined,
-                    padding: reflectionLocked ? "10px 80px 10px 12px" : undefined,
+                    border: "none",
+                    borderRadius: 0,
+                    padding: reflectionLocked ? "10px 80px 10px 0" : undefined,
                     paddingTop: nexusChat.messages.length > 0 ? 16 : 56, scrollPaddingTop: nexusChat.messages.length > 0 ? 16 : 56,
                     paddingBottom: 96,
                     WebkitMaskImage: "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
@@ -3193,12 +3193,17 @@ export default function Home() {
                           )}
                         </div>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", maxWidth: "80%", gap: 3 }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", width: "100%", gap: 3 }}>
                           <div style={{
-                            padding: "9px 13px", borderRadius: "12px 12px 4px 12px",
-                            background: "rgba(201,162,76,0.12)",
-                            border: "0.5px solid rgba(201,162,76,0.3)",
-                            fontSize: "var(--ts-body)", lineHeight: 1.55, color: "var(--atlas-fg)",
+                            fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                            textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
+                            marginBottom: 4,
+                          }}>You</div>
+                          <div style={{
+                            padding: "2px 0",
+                            background: "transparent",
+                            border: "none",
+                            fontSize: 16, lineHeight: 1.75, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             {msg.imageUrl && (
@@ -3213,10 +3218,10 @@ export default function Home() {
                               />
                             )}
                             <CollapsibleMessageText
-                              fadeFromColor="rgba(201,162,76,0.12)"
+                              fadeFromColor="transparent"
                               textStyle={{
-                                fontSize: "var(--ts-body)",
-                                lineHeight: 1.55,
+                                fontSize: 16,
+                                lineHeight: 1.75,
                                 color: "var(--atlas-fg)",
                                 fontFamily: "var(--app-font-sans)",
                                 whiteSpace: "pre-wrap",
@@ -3367,9 +3372,9 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 200, isolation: "isolate" }}>
+          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
           <div className="atlas-input-shell" style={{
-            position: "relative",
+            position: "sticky",
             left: 0, right: 0, bottom: 0,
             padding: "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
@@ -3379,6 +3384,7 @@ export default function Home() {
             // "You" button and opens the account panel instead.
             zIndex: 250,
             pointerEvents: "auto",
+            background: "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
