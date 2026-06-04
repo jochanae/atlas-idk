@@ -2866,7 +2866,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)", minWidth: 0 }}>
+          <div style={{ minHeight: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)", minWidth: 0 }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
