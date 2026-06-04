@@ -313,6 +313,22 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   const activeProjectName = activeProject?.name;
   const updateProject = useUpdateProject();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nodeStateRef = useRef<Record<string, unknown>>({});
+  const nodeStateSeededRef = useRef(false);
+
+  useEffect(() => {
+    nodeStateSeededRef.current = false;
+    nodeStateRef.current = {};
+  }, [projectId]);
+
+  useEffect(() => {
+    if (nodeStateSeededRef.current) return;
+    const persisted = activeProject?.nodeState as Record<string, unknown> | null | undefined;
+    if (persisted && typeof persisted === "object") {
+      nodeStateRef.current = { ...persisted };
+      nodeStateSeededRef.current = true;
+    }
+  }, [activeProject?.nodeState]);
 
   const handleNodesChange = useCallback((updatedNodes: ArchNode[]) => {
     setNodes(updatedNodes);
@@ -346,13 +362,12 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
         ...(n.question ? { question: n.question } : {}),
       };
     });
+    nodeStateRef.current = { ...nodeStateRef.current, ...axiomState };
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      // Merge with existing nodeState so arch layer nodes (auth/db/api/state/ui/logic) are preserved
-      const currentNodeState = (activeProject?.nodeState as Record<string, unknown>) ?? {};
-      updateProject.mutate({ id: projectId, data: { nodeState: { ...currentNodeState, ...axiomState } } });
+      updateProject.mutate({ id: projectId, data: { nodeState: { ...nodeStateRef.current } } });
     }, 1000);
-  }, [projectId, updateProject, activeProject]);
+  }, [projectId, updateProject]);
 
   // Save architecture layer node state (SystemMap nodes: auth/db/api/state/ui/logic)
   // Merges with AxiomFlow's node state since both write to the same project.nodeState field
@@ -363,12 +378,12 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
     if (!projectId) return;
     const archState: Record<string, boolean> = {};
     updatedArchNodes.forEach(n => { archState[n.id] = n.resolved; });
+    nodeStateRef.current = { ...nodeStateRef.current, ...archState };
     if (archSaveTimerRef.current) clearTimeout(archSaveTimerRef.current);
     archSaveTimerRef.current = setTimeout(() => {
-      const currentNodeState = (activeProject?.nodeState as Record<string, boolean>) ?? {};
-      updateProject.mutate({ id: projectId, data: { nodeState: { ...currentNodeState, ...archState } } });
+      updateProject.mutate({ id: projectId, data: { nodeState: { ...nodeStateRef.current } } });
     }, 1000);
-  }, [projectId, updateProject, activeProject]);
+  }, [projectId, updateProject]);
 
   // Export Blueprint — copy / download the current map
   const [exportFlash, setExportFlash] = useState<null | "copied" | "downloaded">(null);
