@@ -1089,11 +1089,15 @@ export function AxiomFlow({
               transform: "translateX(-50%)",
               zIndex: 12,
               width: "min(520px, calc(100% - 28px))",
-              background: "rgba(10,10,12,0.78)",
-              border: `1px solid rgba(${palette.goldRgb},0.18)`,
+              background: theme === "parchment"
+                ? "linear-gradient(rgba(250,247,255,0.92), rgba(245,240,255,0.92)) padding-box, linear-gradient(135deg, rgba(139,92,246,0.55), rgba(167,139,250,0.25) 45%, rgba(139,92,246,0.55)) border-box"
+                : "linear-gradient(rgba(10,10,12,0.78), rgba(10,10,12,0.78)) padding-box, linear-gradient(135deg, rgba(167,139,250,0.75), rgba(139,92,246,0.35) 50%, rgba(167,139,250,0.75)) border-box",
+              border: "1.5px solid transparent",
               borderRadius: 12,
               padding: "12px 14px",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.03)",
+              boxShadow: theme === "parchment"
+                ? "0 0 0 1px rgba(167,139,250,0.18), 0 8px 28px rgba(139,92,246,0.18), 0 20px 60px rgba(139,92,246,0.12)"
+                : "0 0 24px rgba(139,92,246,0.35), 0 0 60px rgba(139,92,246,0.18), 0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(167,139,250,0.08)",
               backdropFilter: "blur(20px) saturate(140%)",
               WebkitBackdropFilter: "blur(20px) saturate(140%)",
               pointerEvents: "auto",
