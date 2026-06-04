@@ -2409,7 +2409,6 @@ function MobileTabBar({
         zIndex: 200,
         background: "var(--atlas-surface)",
         backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
         borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.12)",
         display: "flex",
         alignItems: "stretch",
@@ -2542,7 +2541,6 @@ function MobileTabBar({
               position: "fixed", inset: 0, zIndex: 290,
               background: "rgba(0,0,0,0.55)",
               backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
             }}
           />
           {/* Sheet */}
@@ -6360,7 +6358,6 @@ export default function Workspace() {
               position: "fixed", inset: 0, zIndex: 290,
               background: "rgba(0,0,0,0.55)",
               backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
             }}
           />
           <div

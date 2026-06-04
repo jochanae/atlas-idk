@@ -183,7 +183,6 @@ export function UserBubble({
             position: "fixed", inset: 0, zIndex: 9999,
             background: "rgba(0,0,0,0.92)",
             backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
             display: "flex", alignItems: "center", justifyContent: "center",
             padding: 16, cursor: "zoom-out",
             animation: "fadeIn 160ms ease",

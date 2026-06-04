@@ -48,7 +48,6 @@ function LedgerEntry({ entry }: { entry: Entry }) {
           borderRadius: 5.5,
           overflow: "hidden",
           backdropFilter: committed ? "blur(18px)" : "none",
-          WebkitBackdropFilter: committed ? "blur(18px)" : "none",
         }}
       >
         {/* Header */}

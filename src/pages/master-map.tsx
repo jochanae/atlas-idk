@@ -1453,7 +1453,6 @@ export default function MasterMap() {
             border: `1px solid ${palette.panelBorder}`,
             borderRadius: 999,
             backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
             fontFamily: "var(--app-font-mono)",
             fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
             color: palette.goldText,
@@ -1686,7 +1685,6 @@ export default function MasterMap() {
             borderRadius: 10,
             boxShadow: palette.panelShadow,
             backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
             fontFamily: "var(--app-font-sans)",
             color: palette.labelText,
             pointerEvents: "auto",
@@ -1798,7 +1796,6 @@ export default function MasterMap() {
             borderRadius: 9,
             boxShadow: palette.panelShadow,
             backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
             fontFamily: "var(--app-font-sans)",
             color: palette.labelText,
             pointerEvents: "none",
@@ -1831,7 +1828,6 @@ export default function MasterMap() {
         display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 10px",
         borderBottom: `1px solid ${palette.headerBorder}`,
         background: palette.headerBg, backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
       }}>
         <button onClick={() => exitToReferrer("/home")} style={{
           width: 32, height: 32, borderRadius: 8, border: `1px solid ${palette.panelBorder}`,
@@ -1875,7 +1871,6 @@ export default function MasterMap() {
             borderRadius: 999,
             boxShadow: palette.panelShadow,
             backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
             cursor: "pointer",
             fontFamily: "var(--app-font-mono)",
           }}
@@ -1923,7 +1918,6 @@ export default function MasterMap() {
             borderRadius: 10,
             boxShadow: palette.panelShadow,
             backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
             fontFamily: "var(--app-font-sans)",
             color: palette.labelText,
             animation: "picker-in 140ms cubic-bezier(0.22,1,0.36,1) both",
@@ -2023,7 +2017,6 @@ function ViewKey({ allProjects, palette, onRecenter, onDive, onNewIdea }: {
       <div style={{
         background: palette.panelBg,
         backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
         border: `1px solid ${palette.panelBorder}`,
         borderRadius: 12,
         overflow: "hidden",

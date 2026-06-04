@@ -1099,7 +1099,6 @@ export function AxiomFlow({
                 ? "0 0 0 1px rgba(167,139,250,0.18), 0 8px 28px rgba(139,92,246,0.18), 0 20px 60px rgba(139,92,246,0.12)"
                 : "0 0 24px rgba(139,92,246,0.35), 0 0 60px rgba(139,92,246,0.18), 0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(167,139,250,0.08)",
               backdropFilter: "blur(20px) saturate(140%)",
-              WebkitBackdropFilter: "blur(20px) saturate(140%)",
               pointerEvents: "auto",
             }}
           >

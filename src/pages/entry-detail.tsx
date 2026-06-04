@@ -375,7 +375,6 @@ export default function EntryDetail() {
           padding: "10px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
           background: "color-mix(in oklab, var(--background) 88%, transparent)",
           backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
           borderTop: "1px solid var(--border)",
           display: "flex",
           gap: 8,

@@ -924,7 +924,6 @@ function ShellStatusChip({ projectId }: { projectId: number | null }) {
             width: 280,
             background: "var(--atlas-bg)",
             backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
             border: "1px solid var(--atlas-border)",
             borderRadius: 12,
             boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
@@ -1459,7 +1458,6 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             opacity: 1,
             background: currentDepth === "ambient" ? "transparent" : undefined,
             backdropFilter: currentDepth === "ambient" ? "none" : undefined,
-            WebkitBackdropFilter: currentDepth === "ambient" ? "none" : undefined,
             transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft), border-color var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
