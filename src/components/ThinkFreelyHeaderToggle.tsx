@@ -52,8 +52,8 @@ export function ThinkFreelyHeaderToggle() {
     <button
       type="button"
       onClick={handleClick}
-      aria-label={active ? "Think Freely active — tap to end session" : "Enter Think Freely (private mode)"}
-      title={active ? "Think Freely · Zero Trace" : "Think Freely"}
+      aria-label={active ? "Global Insight active — tap to exit" : "Enter Global Insight mode"}
+      title={active ? "Global Insight · Strategic view" : "Global Insight"}
       style={{
         position: "relative",
         overflow: "hidden",
