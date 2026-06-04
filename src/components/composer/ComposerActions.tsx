@@ -341,9 +341,15 @@ export function ComposerActions({
 
 function iconBtnStyle(active: boolean, accent: boolean): React.CSSProperties {
   return {
-    minWidth: 44,
-    minHeight: 44,
+    width: 42,
+    height: 42,
+    minWidth: 42,
+    minHeight: 42,
+    maxWidth: 42,
+    maxHeight: 42,
+    flex: "0 0 42px",
     padding: 7,
+    boxSizing: "border-box",
     borderRadius: 10,
     background: active
       ? "rgba(201,162,76,0.14)"
