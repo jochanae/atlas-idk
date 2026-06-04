@@ -675,11 +675,20 @@ export function FilesPanel({
       <div style={{ padding: "7px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
         <button
           onClick={() => { setFilesSubTab("files"); setView("repos"); setSelectedRepo(null); setSelectedPath(null); setFileContent(null); onFileContext(null); }}
-          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, color: view === "repos" ? "var(--atlas-fg)" : "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", opacity: view === "repos" ? 0.8 : 0.55, flexShrink: 0 }}
-          title="Connect another source"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            background: view === "repos" ? "rgba(201,162,76,0.08)" : "rgba(255,255,255,0.04)",
+            border: `0.5px solid ${view === "repos" ? "rgba(201,162,76,0.3)" : "var(--atlas-border)"}`,
+            borderRadius: 4, cursor: "pointer", padding: "3px 7px",
+            color: view === "repos" ? "var(--atlas-gold)" : "var(--atlas-fg)",
+            fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+            flexShrink: 0, opacity: view === "repos" ? 1 : 0.75,
+          }}
+          title="Connect or switch source"
         >
           {view === "repos" ? "sources" : "+ source"}
         </button>
+
         {selectedRepo && (
           <>
             <span style={{ color: "var(--atlas-border)", fontSize: 10, flexShrink: 0 }}>/</span>
