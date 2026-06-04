@@ -2648,7 +2648,7 @@ export default function Home() {
         backgroundColor: "var(--atlas-bg)",
         display: "flex",
         flexDirection: "column",
-        overflowY: (nexusChat.messages.length > 0 || reflectionLocked) ? "hidden" : "auto",
+        overflowY: "auto",
         overflowX: "hidden",
       }}
     >
@@ -2853,18 +2853,14 @@ export default function Home() {
           justifyContent: "center",
           padding: "0 24px",
           minHeight: 0,
-          height: (nexusChat.messages.length > 0 || reflectionLocked)
-            ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance) - 96px)"
-            : undefined,
-          paddingBottom: (nexusChat.messages.length > 0 || reflectionLocked) ? 96 : undefined,
-          overflow: (nexusChat.messages.length > 0 || reflectionLocked) ? "hidden" : undefined,
         }}
       >
         <UnifiedConversationSurface
           mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
           hostShell={({ stream }) => (
             <div className="atlas-home-chat-column">
-              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "var(--atlas-dock-clearance)", display: (nexusChat.messages.length > 0 || reflectionLocked) ? "flex" : undefined, flexDirection: (nexusChat.messages.length > 0 || reflectionLocked) ? "column" : undefined, flex: (nexusChat.messages.length > 0 || reflectionLocked) ? 1 : undefined, minHeight: 0, height: (nexusChat.messages.length > 0 || reflectionLocked) ? "100%" : undefined }}>
+              <div className="atlas-home-chat-inner" style={{ width: "100%", maxWidth: 560, paddingBottom: "var(--atlas-dock-clearance)" }}>
+
                 {stream}
               </div>
             </div>
@@ -2872,7 +2868,7 @@ export default function Home() {
           streamSlot={<>
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
-          <div style={{ minHeight: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", height: (nexusChat.messages.length > 0 || reflectionLocked) ? "100%" : undefined, flex: (nexusChat.messages.length > 0 || reflectionLocked) ? 1 : undefined, justifyContent: (nexusChat.messages.length > 0 || reflectionLocked) ? "flex-start" : "center", position: "relative", paddingBottom: (nexusChat.messages.length > 0 || reflectionLocked) ? 0 : "var(--atlas-dock-clearance)", minWidth: 0 }}>
+          <div style={{ minHeight: "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", justifyContent: "center", position: "relative", paddingBottom: "var(--atlas-dock-clearance)", minWidth: 0 }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
               position: "absolute",
