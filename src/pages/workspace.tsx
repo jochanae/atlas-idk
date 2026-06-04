@@ -4462,13 +4462,39 @@ export default function Workspace() {
     }
     initialSent.current = true;
     setInput("");
-    doSend(trimmedOpeningMessage, sessionId, []);
     try {
-      sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
-      sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
-    } catch {}
-    setOpeningMessage(null);
-  }, [openingMessage, id, sessionId, sessionsLoading, chatPending, doSend, setInput]);
+      doSend(trimmedOpeningMessage, sessionId, []);
+      setChatPending(false);
+      setActivityStream({ active: false, content: "" });
+      try {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      } catch {
+        // Ignore storage failures; the in-memory opening message is cleared below.
+      }
+      setOpeningMessage(null);
+    } catch {
+      setChatPending(false);
+      setActivityStream({ active: false, content: "" });
+      try {
+        sessionStorage.removeItem(OPENING_MESSAGE_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      } catch {
+        // Ignore storage failures; the in-memory opening message is cleared below.
+      }
+      setOpeningMessage(null);
+    }
+  }, [
+    openingMessage,
+    id,
+    sessionId,
+    sessionsLoading,
+    chatPending,
+    doSend,
+    setInput,
+    setChatPending,
+    setActivityStream,
+  ]);
 
   useEffect(() => {
     if (!sessionId || initialSent.current) return;
