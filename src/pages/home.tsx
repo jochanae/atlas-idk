@@ -3470,7 +3470,16 @@ export default function Home() {
               </div>
             )}
 
-            <div style={{ position: "relative" }}>
+            <div style={{
+              position: "relative",
+              borderRadius: reflectionLocked ? 20 : 0,
+              padding: reflectionLocked ? "14px 16px 12px" : 0,
+              background: reflectionLocked ? "rgba(19, 14, 24, 0.94)" : "transparent",
+              border: reflectionLocked ? "1px solid rgba(212,175,55,0.22)" : "none",
+              boxShadow: reflectionLocked ? "0 18px 42px rgba(0,0,0,0.42)" : "none",
+              backdropFilter: reflectionLocked ? "blur(22px)" : undefined,
+              WebkitBackdropFilter: reflectionLocked ? "blur(22px)" : undefined,
+            }}>
               {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || reflectionLocked) && (
                 <div
                   style={{
