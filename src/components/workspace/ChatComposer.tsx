@@ -495,8 +495,39 @@ export function ChatComposer(props: ChatComposerProps) {
             )}
 
 
-            {/* Right: voice input + send */}
+            {/* Right: plan mode + voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
+              <button
+                onClick={() => setPlanMode(v => !v)}
+                title="Plan mode"
+                aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
+                style={{
+                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
+                  background: planMode ? "rgba(201,162,76,0.1)" : "transparent",
+                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "transparent"}`,
+                  color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
+                }}
+              >
+                {/* Checklist + gold dot — Plan mode signifier */}
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 6L4 7.5L6.5 5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M2.5 12L4 13.5L6.5 11" stroke="currentColor" strokeWidth="1.5" />
+                  <line x1="9" y1="6.5" x2="14" y2="6.5" stroke="currentColor" strokeWidth="1.5" />
+                  <line x1="9" y1="12.5" x2="13" y2="12.5" stroke="currentColor" strokeWidth="1.5" />
+                  <circle
+                    cx="16"
+                    cy="4"
+                    r={planMode ? 2.4 : 2}
+                    fill="#C9A24C"
+                    style={{
+                      filter: planMode ? "drop-shadow(0 0 4px rgba(201,162,76,0.75))" : "none",
+                      transition: "all var(--motion-fast) var(--ease-standard)",
+                    }}
+                  />
+                </svg>
+              </button>
               <button
                 onClick={toggleVoice}
                 disabled={!voiceSupported}
