@@ -237,7 +237,8 @@ export function FilesPanel({
   const [fileContent, setFileContent] = useState<GhFileContent | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [view, setView] = useState<"repos" | "tree" | "file">("repos");
+  const isConnected = !!filesProject?.linkedRepo || !!zipLoaded || !!dbUrl;
+  const [view, setView] = useState<"repos" | "tree" | "file">(isConnected ? "tree" : "repos");
   const [filesSubTab, setFilesSubTab] = useState<"files" | "history">("files");
   const [commits, setCommits] = useState<GhCommitSummary[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
