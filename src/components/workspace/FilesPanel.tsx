@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { updateProject, useUpdateProject, createProject, useCreateProject, useGetProject, getGetProjectQueryKey, useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGitHub } from "@/hooks/useGitHub";
 import { Switch } from "@/components/ui/switch";
+import type { WorkspaceLens } from "@/hooks/useChatLens";
 import {
   type LinkedRepo,
   type GhRepo,
@@ -19,6 +20,31 @@ import {
   buildTree,
 } from "@/components/workspace/CommitHistory";
 import { getLinkedRepoFullName, parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
+
+// ── Lens-aware file bucket helpers ─────────────────────────────────
+const IMAGE_EXT = new Set(["png","jpg","jpeg","gif","webp","svg","ico","avif","bmp","heic"]);
+const DOC_EXT   = new Set(["md","mdx","txt","pdf","doc","docx","rtf","csv","xlsx","xls"]);
+const ARCH_EXT  = new Set(["zip","tar","gz","tgz","rar","7z"]);
+function extOf(p: string) { const i = p.lastIndexOf("."); return i >= 0 ? p.slice(i+1).toLowerCase() : ""; }
+function bucketOf(p: string): "images"|"docs"|"archives"|"code" {
+  const e = extOf(p);
+  if (IMAGE_EXT.has(e)) return "images";
+  if (DOC_EXT.has(e))   return "docs";
+  if (ARCH_EXT.has(e))  return "archives";
+  return "code";
+}
+
+const RECENTS_CAP = 20;
+function readRecents(projectId: number): string[] {
+  try { return JSON.parse(localStorage.getItem(`atlas-recents-${projectId}`) ?? "[]") as string[]; } catch { return []; }
+}
+function pushRecent(projectId: number, path: string) {
+  try {
+    const cur = readRecents(projectId).filter(p => p !== path);
+    cur.unshift(path);
+    localStorage.setItem(`atlas-recents-${projectId}`, JSON.stringify(cur.slice(0, RECENTS_CAP)));
+  } catch {}
+}
 
 const GITHUB_RECONNECT_MESSAGE = "GitHub token needs to be reconnected.";
 
