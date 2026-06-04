@@ -2638,7 +2638,7 @@ export default function Home() {
         backgroundColor: "var(--atlas-bg)",
         display: "flex",
         flexDirection: "column",
-        overflowY: "auto",
+        overflowY: reflectionLocked ? "hidden" : "auto",
         overflowX: "hidden",
       }}
     >
