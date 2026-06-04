@@ -3148,16 +3148,24 @@ export default function Home() {
                           )}
                         </div>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", width: "100%", gap: 3 }}>
+                        <div style={{
+                          display: "flex", flexDirection: "column",
+                          alignItems: reflectionLocked ? "flex-end" : "stretch",
+                          width: "100%", gap: 3,
+                        }}>
                           <div style={{
                             fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                             textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
                             marginBottom: 4,
+                            alignSelf: reflectionLocked ? "flex-end" : undefined,
                           }}>You</div>
                           <div style={{
-                            padding: "2px 0",
-                            background: "transparent",
-                            border: "none",
+                            padding: reflectionLocked ? "10px 14px" : "2px 0",
+                            background: reflectionLocked ? "rgba(212,175,55,0.04)" : "transparent",
+                            border: reflectionLocked ? "1px solid rgba(212,175,55,0.25)" : "none",
+                            borderRadius: reflectionLocked ? 12 : 0,
+                            maxWidth: reflectionLocked ? "82%" : undefined,
+                            alignSelf: reflectionLocked ? "flex-end" : undefined,
                             fontSize: 16, lineHeight: 1.75, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
