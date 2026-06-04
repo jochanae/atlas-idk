@@ -461,6 +461,11 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
     margin-left: -24px;
     margin-right: -24px;
   }
+
+  body[data-axiom-thread="active"][data-axiom-reflection="true"] .atlas-input-shell {
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 [data-theme="parchment"] .atlas-input-shell,
 [data-theme="parchment"] .atlas-input-shell textarea,
