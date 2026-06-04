@@ -2979,7 +2979,7 @@ export default function Home() {
                             <span style={{
                               fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
-                              color: msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)",
+                              color: reflectionLocked ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
                             }}>Atlas</span>
                             {msg.intentType && (
                               <span style={{
