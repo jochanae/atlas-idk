@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
+import { HistoryBookmarksSheet } from "@/components/HistoryBookmarksSheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListProjects } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
