@@ -2848,11 +2848,9 @@ export default function Home() {
       <div
         className="atlas-home-responsive-shell"
         style={{
-          flex: 1,
           display: "flex",
           justifyContent: "center",
           padding: "0 24px",
-          minHeight: 0,
         }}
       >
         <UnifiedConversationSurface
