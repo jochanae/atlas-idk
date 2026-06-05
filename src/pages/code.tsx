@@ -754,9 +754,10 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function ToolButton({ icon, label, primary }: { icon: React.ReactNode; label: string; primary?: boolean }) {
+function ToolButton({ icon, label, primary, onClick }: { icon: React.ReactNode; label: string; primary?: boolean; onClick?: () => void }) {
   return (
     <button
+      onClick={onClick}
       style={{
         display: "inline-flex", alignItems: "center", gap: 6,
         padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500,
