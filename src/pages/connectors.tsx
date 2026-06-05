@@ -113,6 +113,9 @@ function ProviderIcon({ provider, size = 18 }: { provider: ActiveConnection["pro
     case "salesforce":      return <Briefcase {...props} />;
     case "twilio":          return <Phone {...props} />;
     case "hubspot":         return <Users {...props} />;
+    case "railway":         return <Train {...props} />;
+    case "lovable":         return <Sparkles {...props} />;
+    case "cursor":          return <MousePointerClick {...props} />;
     default:                return <Plug {...props} />;
   }
 }
