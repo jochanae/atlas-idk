@@ -1,10 +1,24 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Search, Plug, Github, Calendar, CreditCard, MessageSquare,
   Briefcase, Phone, Users, Plus, Globe, Train, Sparkles, MousePointerClick,
-  Check, ExternalLink, ShieldCheck, AlertCircle,
+  Check, ExternalLink, ShieldCheck, AlertCircle, Trash2, Loader2,
 } from "lucide-react";
+
+/* ─── Backend types (GET /api/connections) ─────────────────────────────── */
+type BackendConnection = {
+  id: number;
+  type: "github" | "railway" | "lovable" | "cursor";
+  label: string;
+  url: string | null;
+  metadata: Record<string, any> | null;
+  status: string;
+  hasToken: boolean;
+  lastCheckedAt: string | null;
+  createdAt: string;
+};
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Mock data — replace with API once Cursor wires the Neon backend.
