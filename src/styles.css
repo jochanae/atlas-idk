@@ -462,18 +462,18 @@ body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
     margin-right: -24px;
   }
 
-  body[data-axiom-thread="active"][data-axiom-reflection="true"] .atlas-input-shell {
+  body[data-axiom-thread="active"][data-axiom-global-insight="true"] .atlas-input-shell {
     margin-left: 0;
     margin-right: 0;
   }
 }
 
-body[data-axiom-reflection="true"] .atlas-home-chat-column,
-body[data-axiom-reflection="true"] .atlas-home-chat-inner {
+body[data-axiom-global-insight="true"] .atlas-home-chat-column,
+body[data-axiom-global-insight="true"] .atlas-home-chat-inner {
   min-height: 0;
 }
 
-body[data-axiom-reflection="true"] .atlas-home-chat-messages-scroll {
+body[data-axiom-global-insight="true"] .atlas-home-chat-messages-scroll {
   overscroll-behavior-y: contain;
   touch-action: pan-y;
 }
