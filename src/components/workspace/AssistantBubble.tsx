@@ -1675,7 +1675,23 @@ export function AssistantBubble({
         {!message.streaming && (
         <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
 
-          {/* ───── PRIMARY ───── Copy · Regenerate · Commit */}
+          {/* ───── PRIMARY ───── Roll back · Copy · Regenerate · Commit */}
+          {snapshotForMsg && !isReverted && (
+            <button
+              className="atlas-icon-action"
+              title="Roll back to here"
+              aria-label="Roll back to here"
+              style={{ ...ICON_TOUCH_TARGET_STYLE, color: "var(--atlas-gold)" }}
+              onClick={() => {
+                if (typeof window !== "undefined" &&
+                    !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
+                rollbackTo(projectId, snapshotForMsg.id);
+              }}
+            >
+              <CornerUpLeft size={13} strokeWidth={1.8} />
+            </button>
+          )}
+
           <button
             className={`atlas-icon-action${copied ? " copy-done" : ""}`}
             title={copied ? "Copied!" : "Copy response"}
