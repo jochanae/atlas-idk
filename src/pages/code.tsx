@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/api";
 import {
   ArrowLeft,
   Code2,
@@ -9,7 +11,6 @@ import {
   GitBranch,
   Github,
   Download,
-  Sparkles,
   RefreshCw,
   Search,
   Copy,
@@ -21,10 +22,7 @@ import {
   Hammer,
   Wand2,
   Activity,
-  History,
-  Diff,
-  Eye,
-  Terminal,
+  AlertTriangle,
 } from "lucide-react";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -83,178 +81,31 @@ export interface ProjectStub {
   defaultBranch?: string;
 }
 
-// ── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_PROJECT: ProjectStub = {
-  id: 42,
-  name: "Atlas — Decision Ledger",
-  repo: "shay/atlas-decision-ledger",
-  defaultBranch: "main",
-};
-
-const MOCK_RUNS: GenerationRun[] = [
-  {
-    id: "run_01HXYZ", projectId: 42, userId: 7,
-    prompt: "Add a Decision Catch banner that surfaces overlapping commits before a BUILD intent fires.",
-    intent: "BUILD", model: "atlas-codegen-v3",
-    status: "complete",
-    startedAt: "2026-06-05T14:21:08Z", finishedAt: "2026-06-05T14:21:42Z", durationMs: 34_120,
-    filesChanged: 4, linesAdded: 187, linesRemoved: 22,
-    summary: "Introduces DecisionCatchBanner, wires it through ChatStream, extends WhisperGate intent shape.",
-    commitSha: "a1f2c93", pushedToBranch: "main",
-  },
-  {
-    id: "run_01HXYY", projectId: 42, userId: 7,
-    prompt: "Refactor ledger grouping so Overridden entries live under their parent commit.",
-    intent: "REFACTOR", model: "atlas-codegen-v3",
-    status: "complete",
-    startedAt: "2026-06-05T11:02:51Z", finishedAt: "2026-06-05T11:03:19Z", durationMs: 28_004,
-    filesChanged: 2, linesAdded: 94, linesRemoved: 61,
-    summary: "DecisionLedgerGrouped now treats Overridden as a relationship, not a state.",
-    commitSha: "b73e10c", pushedToBranch: "main",
-  },
-  {
-    id: "run_01HXYX", projectId: 42, userId: 7,
-    prompt: "Sketch a cinematic empty state for the /code page.",
-    intent: "SKETCH", model: "atlas-codegen-v3",
-    status: "complete",
-    startedAt: "2026-06-04T22:48:00Z", finishedAt: "2026-06-04T22:48:11Z", durationMs: 11_200,
-    filesChanged: 1, linesAdded: 42, linesRemoved: 0,
-    summary: "Exploratory: gold gradient curtain + animated readiness ring.",
-    commitSha: null, pushedToBranch: null,
-  },
-];
-
-const ACTIVE_RUN = MOCK_RUNS[0];
-
-const MOCK_FILES: GeneratedFile[] = [
-  {
-    id: "gf_1", runId: ACTIVE_RUN.id,
-    path: "src/components/DecisionCatchBanner.tsx",
-    language: "tsx", bytes: 2384, lines: 78, status: "new",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    content: `import { AlertTriangle, ArrowRight } from "lucide-react";
-
-interface DecisionCatchBannerProps {
-  conflictingEntryId: string;
-  conflictTitle: string;
-  onProceed: () => void;
-  onAdjust: () => void;
+// ── API fetchers ─────────────────────────────────────────────────────────────
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(apiUrl(path), { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ""}`);
+  }
+  return res.json() as Promise<T>;
 }
 
-/**
- * Surfaces when a BUILD intent semantically overlaps a committed entry.
- * Shown ABOVE the assistant response, never replacing it.
- */
-export function DecisionCatchBanner({
-  conflictingEntryId,
-  conflictTitle,
-  onProceed,
-  onAdjust,
-}: DecisionCatchBannerProps) {
-  return (
-    <div className="rounded-2xl border border-amber-400/30 bg-amber-500/[0.06] p-4">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="size-5 text-amber-300 mt-0.5" />
-        <div className="flex-1">
-          <p className="text-sm font-medium text-amber-100">
-            Before you do — this overlaps a commitment.
-          </p>
-          <p className="mt-1 text-xs text-amber-200/70">
-            {conflictTitle}
-          </p>
-          <div className="mt-3 flex gap-2">
-            <button onClick={onAdjust} className="...">Adjust</button>
-            <button onClick={onProceed} className="...">
-              Proceed anyway <ArrowRight className="size-3" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}`,
-  },
-  {
-    id: "gf_2", runId: ACTIVE_RUN.id,
-    path: "src/components/workspace/ChatStream.tsx",
-    language: "tsx", bytes: 9120, lines: 312, status: "modified",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    previousContent: "// previous chat stream without DecisionCatch hook",
-    content: `// ChatStream.tsx — wires DecisionCatchBanner above streaming assistant bubble
-import { DecisionCatchBanner } from "@/components/DecisionCatchBanner";
-import { useDecisionCatch } from "@/lib/DecisionCatchEngine";
-
-// ... (existing imports)
-
-export function ChatStream({ messages }: Props) {
-  const catchSignal = useDecisionCatch(messages);
-
-  return (
-    <div className="flex flex-col gap-4">
-      {messages.map((m) => (
-        <Fragment key={m.id}>
-          {catchSignal?.messageId === m.id && (
-            <DecisionCatchBanner
-              conflictingEntryId={catchSignal.entryId}
-              conflictTitle={catchSignal.title}
-              onProceed={catchSignal.proceed}
-              onAdjust={catchSignal.adjust}
-            />
-          )}
-          <MessageBubble message={m} />
-        </Fragment>
-      ))}
-    </div>
-  );
-}`,
-  },
-  {
-    id: "gf_3", runId: ACTIVE_RUN.id,
-    path: "supabase/functions/_shared/whisper-gate.ts",
-    language: "typescript", bytes: 4501, lines: 142, status: "modified",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    content: `// whisper-gate.ts — extended intent envelope with overlap signal
-export type WhisperIntent = "THINK" | "BUILD" | "DECIDE";
-
-export interface WhisperEnvelope {
-  intent: WhisperIntent;
-  confidence: number;
-  action?: string;
-  overlap?: {
-    entryId: string;
-    title: string;
-    similarity: number;
-  } | null;
+function getProjectIdFromUrl(): number | null {
+  if (typeof window === "undefined") return null;
+  const sp = new URLSearchParams(window.location.search);
+  const raw = sp.get("projectId");
+  if (raw && /^\d+$/.test(raw)) return Number(raw);
+  const stored = window.localStorage.getItem("atlas:lastProjectId");
+  if (stored && /^\d+$/.test(stored)) return Number(stored);
+  return null;
 }
 
-export async function classifyWhisper(input: string): Promise<WhisperEnvelope> {
-  // ... model call elided
-  return { intent: "BUILD", confidence: 0.91, overlap: null };
-}`,
-  },
-  {
-    id: "gf_4", runId: ACTIVE_RUN.id,
-    path: "src/lib/DecisionCatchEngine.ts",
-    language: "typescript", bytes: 1820, lines: 64, status: "new",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    content: `import { useMemo } from "react";
-
-export interface DecisionCatchSignal {
-  messageId: string;
-  entryId: string;
-  title: string;
-  proceed: () => void;
-  adjust: () => void;
+function getRunIdFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("runId");
 }
 
-export function useDecisionCatch(messages: { id: string }[]): DecisionCatchSignal | null {
-  return useMemo(() => {
-    // Detect intent + confidence + action with semantic overlap to a committed entry
-    return null;
-  }, [messages]);
-}`,
-  },
-];
 
 // ── Tree builder ─────────────────────────────────────────────────────────────
 type TreeNode = {
@@ -458,7 +309,17 @@ function CodeViewer({ file }: { file: GeneratedFile }) {
 }
 
 // ── Activity rail (right) ────────────────────────────────────────────────────
-function ActivityRail({ run, files }: { run: GenerationRun; files: GeneratedFile[] }) {
+function ActivityRail({
+  run,
+  files,
+  runs,
+  onSelectRun,
+}: {
+  run: GenerationRun;
+  files: GeneratedFile[];
+  runs: GenerationRun[];
+  onSelectRun: (id: string) => void;
+}) {
   return (
     <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", height: "100%" }}>
       <div>
@@ -527,12 +388,19 @@ function ActivityRail({ run, files }: { run: GenerationRun; files: GeneratedFile
           Run History
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {MOCK_RUNS.map((r) => (
-            <div key={r.id} style={{
-              padding: "8px 10px", borderRadius: 8,
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-              background: r.id === run.id ? "rgba(230,198,135,0.04)" : "transparent",
-            }}>
+          {runs.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onSelectRun(r.id)}
+              style={{
+                textAlign: "left", cursor: "pointer",
+                padding: "8px 10px", borderRadius: 8,
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                background: r.id === run.id ? "rgba(230,198,135,0.04)" : "transparent",
+                color: "var(--atlas-fg)",
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{
                   ...MONO, fontSize: 9, padding: "1px 5px", borderRadius: 3,
@@ -553,7 +421,7 @@ function ActivityRail({ run, files }: { run: GenerationRun; files: GeneratedFile
               <p style={{ margin: 0, fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.8, lineHeight: 1.4 }}>
                 {r.prompt.slice(0, 84)}{r.prompt.length > 84 ? "…" : ""}
               </p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -580,25 +448,73 @@ function Stat({ label, value, tint }: { label: string; value: string; tint?: str
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function CodePage() {
   const [, navigate] = useLocation();
-  const [selectedId, setSelectedId] = useState(MOCK_FILES[0].id);
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [showRail, setShowRail] = useState(true);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(getRunIdFromUrl());
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
-  const file = useMemo(
-    () => MOCK_FILES.find((f) => f.id === selectedId) ?? MOCK_FILES[0],
-    [selectedId]
-  );
-  const tree = useMemo(() => buildTree(MOCK_FILES), []);
+  const projectId = useMemo(() => getProjectIdFromUrl(), []);
 
-  const toggleOpen = (p: string) => setOpenMap((m) => ({ ...m, [p]: !(m[p] ?? true) }));
+  // Persist projectId for return visits
+  useEffect(() => {
+    if (projectId != null) window.localStorage.setItem("atlas:lastProjectId", String(projectId));
+  }, [projectId]);
+
+  // 1. Project
+  const projectQ = useQuery<ProjectStub>({
+    queryKey: ["code", "project", projectId],
+    queryFn: () => fetchJson<ProjectStub>(`/api/projects/${projectId}`),
+    enabled: projectId != null,
+    staleTime: 60_000,
+  });
+
+  // 2. Runs
+  const runsQ = useQuery<GenerationRun[]>({
+    queryKey: ["code", "runs", projectId],
+    queryFn: () => fetchJson<GenerationRun[]>(`/api/projects/${projectId}/generation-runs`),
+    enabled: projectId != null,
+    refetchInterval: 10_000,
+  });
+
+  const runs = runsQ.data ?? [];
+  const activeRun = useMemo(() => {
+    if (!runs.length) return null;
+    if (selectedRunId) return runs.find((r) => r.id === selectedRunId) ?? runs[0];
+    return runs[0];
+  }, [runs, selectedRunId]);
+
+  // 3. Files for the active run
+  const filesQ = useQuery<GeneratedFile[]>({
+    queryKey: ["code", "files", projectId, activeRun?.id],
+    queryFn: () =>
+      fetchJson<GeneratedFile[]>(
+        `/api/projects/${projectId}/generation-runs/${activeRun!.id}/files`,
+      ),
+    enabled: projectId != null && !!activeRun,
+    refetchInterval: activeRun?.status === "streaming" ? 2_000 : false,
+  });
+
+  const files = filesQ.data ?? [];
+  const selectedFile = useMemo(() => {
+    if (!files.length) return null;
+    return files.find((f) => f.id === selectedFileId) ?? files[0];
+  }, [files, selectedFileId]);
+
+  const tree = useMemo(() => buildTree(files), [files]);
+  const toggleOpen = (p: string) =>
+    setOpenMap((m) => ({ ...m, [p]: !(m[p] ?? true) }));
+
+  // Loading / error / empty states
+  const loading = projectQ.isLoading || runsQ.isLoading || filesQ.isLoading;
+  const error = projectQ.error || runsQ.error || filesQ.error;
+  const isStreaming = activeRun?.status === "streaming";
 
   return (
     <div style={{
       display: "flex", flexDirection: "column", height: "100vh",
       background: "var(--atlas-bg)", color: "var(--atlas-fg)", overflow: "hidden",
     }}>
-      {/* Ambient gold curtain */}
       <div style={{
         position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
         width: 800, height: 400, pointerEvents: "none",
@@ -635,30 +551,42 @@ export default function CodePage() {
             <Code2 size={15} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>Generation Workspace</span>
+            <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>
+              Generation Workspace
+            </span>
             <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.04em" }}>
-              {MOCK_PROJECT.name} · {MOCK_PROJECT.repo}
+              {projectQ.data
+                ? `${projectQ.data.name}${projectQ.data.repo ? ` · ${projectQ.data.repo}` : ""}`
+                : projectId == null
+                  ? "No project selected"
+                  : `Project #${projectId}`}
             </span>
           </div>
         </div>
 
         <span style={{ flex: 1 }} />
 
-        {/* Live status pill */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "5px 10px", borderRadius: 99,
-          background: "rgba(124,227,160,0.08)",
-          border: "1px solid rgba(124,227,160,0.25)",
-          color: "#7CE3A0", fontSize: 11, ...MONO, letterSpacing: "0.06em",
+          background: isStreaming ? "rgba(124,227,160,0.08)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${isStreaming ? "rgba(124,227,160,0.25)" : "rgba(255,255,255,0.08)"}`,
+          color: isStreaming ? "#7CE3A0" : "var(--atlas-muted)",
+          fontSize: 11, ...MONO, letterSpacing: "0.06em",
         }}>
           <span style={{
-            width: 6, height: 6, borderRadius: 99, background: "#7CE3A0",
-            boxShadow: "0 0 8px #7CE3A0",
+            width: 6, height: 6, borderRadius: 99,
+            background: isStreaming ? "#7CE3A0" : "rgba(255,255,255,0.4)",
+            boxShadow: isStreaming ? "0 0 8px #7CE3A0" : "none",
           }} />
-          MIRRORING CHAT
+          {isStreaming ? "STREAMING" : "MIRRORING CHAT"}
         </div>
 
+        <ToolButton
+          icon={<RefreshCw size={13} />}
+          label="Refresh"
+          onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
+        />
         <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
         <ToolButton icon={<Hammer size={13} />} label="Extract to Forge" />
         <ToolButton icon={<Download size={13} />} label="Download .zip" />
@@ -695,7 +623,7 @@ export default function CodePage() {
               Files
             </span>
             <span style={{ flex: 1 }} />
-            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{MOCK_FILES.length}</span>
+            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{files.length}</span>
           </div>
           <div style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
             <div style={{
@@ -716,31 +644,60 @@ export default function CodePage() {
             </div>
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: "6px 6px 14px" }}>
-            <FileTree
-              node={tree} depth={0}
-              selectedPath={file.path}
-              onSelect={(f) => setSelectedId(f.id)}
-              openMap={openMap} toggleOpen={toggleOpen} query={query}
-            />
+            {selectedFile ? (
+              <FileTree
+                node={tree} depth={0}
+                selectedPath={selectedFile.path}
+                onSelect={(f) => setSelectedFileId(f.id)}
+                openMap={openMap} toggleOpen={toggleOpen} query={query}
+              />
+            ) : (
+              <EmptyHint label={loading ? "Loading files…" : "No files in this run yet."} />
+            )}
           </div>
-          <div style={{
-            padding: "8px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
-            display: "flex", alignItems: "center", gap: 6,
-            ...MONO, fontSize: 10, color: "var(--atlas-muted)",
-          }}>
-            <Clock size={10} /> Updated {new Date(ACTIVE_RUN.finishedAt!).toLocaleTimeString()}
-          </div>
+          {activeRun?.finishedAt && (
+            <div style={{
+              padding: "8px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
+              display: "flex", alignItems: "center", gap: 6,
+              ...MONO, fontSize: 10, color: "var(--atlas-muted)",
+            }}>
+              <Clock size={10} /> Updated {new Date(activeRun.finishedAt).toLocaleTimeString()}
+            </div>
+          )}
         </aside>
 
         {/* CENTER — viewer */}
         <main style={{ ...PANEL, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-          <CodeViewer file={file} />
+          {error ? (
+            <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); filesQ.refetch(); }} />
+          ) : projectId == null ? (
+            <EmptyState
+              title="No project selected"
+              hint="Open this page with ?projectId=<id> or select a project from the workspace."
+            />
+          ) : selectedFile ? (
+            <CodeViewer file={selectedFile} />
+          ) : (
+            <EmptyState
+              title={loading ? "Loading generation workspace…" : "No generation runs yet"}
+              hint={loading ? "Fetching runs from the backend." : "Start a build from the chat and files will appear here."}
+            />
+          )}
         </main>
 
         {/* RIGHT — activity */}
         {showRail && (
           <aside style={{ ...PANEL, overflow: "hidden" }}>
-            <ActivityRail run={ACTIVE_RUN} files={MOCK_FILES} />
+            {activeRun ? (
+              <ActivityRail
+                run={activeRun}
+                files={files}
+                runs={runs}
+                onSelectRun={(id) => { setSelectedRunId(id); setSelectedFileId(null); }}
+              />
+            ) : (
+              <EmptyHint label={loading ? "Loading runs…" : "No runs to show."} />
+            )}
           </aside>
         )}
       </div>
@@ -748,9 +705,59 @@ export default function CodePage() {
   );
 }
 
-function ToolButton({ icon, label, primary }: { icon: React.ReactNode; label: string; primary?: boolean }) {
+function EmptyHint({ label }: { label: string }) {
+  return (
+    <div style={{
+      padding: 20, ...MONO, fontSize: 11, color: "var(--atlas-muted)",
+      textAlign: "center",
+    }}>
+      {label}
+    </div>
+  );
+}
+
+function EmptyState({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div style={{
+      flex: 1, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 8, padding: 24, textAlign: "center",
+    }}>
+      <Code2 size={28} style={{ color: "var(--atlas-gold)", opacity: 0.6 }} />
+      <div style={{ fontSize: 14, color: "var(--atlas-fg)" }}>{title}</div>
+      <div style={{ ...MONO, fontSize: 11, color: "var(--atlas-muted)", maxWidth: 360 }}>{hint}</div>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div style={{
+      flex: 1, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 10, padding: 24, textAlign: "center",
+    }}>
+      <AlertTriangle size={26} style={{ color: "#FF8A8A" }} />
+      <div style={{ fontSize: 14, color: "var(--atlas-fg)" }}>Couldn't load this run</div>
+      <div style={{ ...MONO, fontSize: 11, color: "var(--atlas-muted)", maxWidth: 420 }}>{message}</div>
+      <button
+        onClick={onRetry}
+        style={{
+          marginTop: 6, padding: "6px 12px", borderRadius: 8,
+          background: "rgba(230,198,135,0.08)",
+          border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+          color: "var(--atlas-gold)", cursor: "pointer", fontSize: 12,
+          display: "inline-flex", alignItems: "center", gap: 6,
+        }}
+      >
+        <RefreshCw size={12} /> Retry
+      </button>
+    </div>
+  );
+}
+
+function ToolButton({ icon, label, primary, onClick }: { icon: React.ReactNode; label: string; primary?: boolean; onClick?: () => void }) {
   return (
     <button
+      onClick={onClick}
       style={{
         display: "inline-flex", alignItems: "center", gap: 6,
         padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500,
