@@ -81,178 +81,31 @@ export interface ProjectStub {
   defaultBranch?: string;
 }
 
-// ── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_PROJECT: ProjectStub = {
-  id: 42,
-  name: "Atlas — Decision Ledger",
-  repo: "shay/atlas-decision-ledger",
-  defaultBranch: "main",
-};
-
-const MOCK_RUNS: GenerationRun[] = [
-  {
-    id: "run_01HXYZ", projectId: 42, userId: 7,
-    prompt: "Add a Decision Catch banner that surfaces overlapping commits before a BUILD intent fires.",
-    intent: "BUILD", model: "atlas-codegen-v3",
-    status: "complete",
-    startedAt: "2026-06-05T14:21:08Z", finishedAt: "2026-06-05T14:21:42Z", durationMs: 34_120,
-    filesChanged: 4, linesAdded: 187, linesRemoved: 22,
-    summary: "Introduces DecisionCatchBanner, wires it through ChatStream, extends WhisperGate intent shape.",
-    commitSha: "a1f2c93", pushedToBranch: "main",
-  },
-  {
-    id: "run_01HXYY", projectId: 42, userId: 7,
-    prompt: "Refactor ledger grouping so Overridden entries live under their parent commit.",
-    intent: "REFACTOR", model: "atlas-codegen-v3",
-    status: "complete",
-    startedAt: "2026-06-05T11:02:51Z", finishedAt: "2026-06-05T11:03:19Z", durationMs: 28_004,
-    filesChanged: 2, linesAdded: 94, linesRemoved: 61,
-    summary: "DecisionLedgerGrouped now treats Overridden as a relationship, not a state.",
-    commitSha: "b73e10c", pushedToBranch: "main",
-  },
-  {
-    id: "run_01HXYX", projectId: 42, userId: 7,
-    prompt: "Sketch a cinematic empty state for the /code page.",
-    intent: "SKETCH", model: "atlas-codegen-v3",
-    status: "complete",
-    startedAt: "2026-06-04T22:48:00Z", finishedAt: "2026-06-04T22:48:11Z", durationMs: 11_200,
-    filesChanged: 1, linesAdded: 42, linesRemoved: 0,
-    summary: "Exploratory: gold gradient curtain + animated readiness ring.",
-    commitSha: null, pushedToBranch: null,
-  },
-];
-
-const ACTIVE_RUN = MOCK_RUNS[0];
-
-const MOCK_FILES: GeneratedFile[] = [
-  {
-    id: "gf_1", runId: ACTIVE_RUN.id,
-    path: "src/components/DecisionCatchBanner.tsx",
-    language: "tsx", bytes: 2384, lines: 78, status: "new",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    content: `import { AlertTriangle, ArrowRight } from "lucide-react";
-
-interface DecisionCatchBannerProps {
-  conflictingEntryId: string;
-  conflictTitle: string;
-  onProceed: () => void;
-  onAdjust: () => void;
+// ── API fetchers ─────────────────────────────────────────────────────────────
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(apiUrl(path), { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ""}`);
+  }
+  return res.json() as Promise<T>;
 }
 
-/**
- * Surfaces when a BUILD intent semantically overlaps a committed entry.
- * Shown ABOVE the assistant response, never replacing it.
- */
-export function DecisionCatchBanner({
-  conflictingEntryId,
-  conflictTitle,
-  onProceed,
-  onAdjust,
-}: DecisionCatchBannerProps) {
-  return (
-    <div className="rounded-2xl border border-amber-400/30 bg-amber-500/[0.06] p-4">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="size-5 text-amber-300 mt-0.5" />
-        <div className="flex-1">
-          <p className="text-sm font-medium text-amber-100">
-            Before you do — this overlaps a commitment.
-          </p>
-          <p className="mt-1 text-xs text-amber-200/70">
-            {conflictTitle}
-          </p>
-          <div className="mt-3 flex gap-2">
-            <button onClick={onAdjust} className="...">Adjust</button>
-            <button onClick={onProceed} className="...">
-              Proceed anyway <ArrowRight className="size-3" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}`,
-  },
-  {
-    id: "gf_2", runId: ACTIVE_RUN.id,
-    path: "src/components/workspace/ChatStream.tsx",
-    language: "tsx", bytes: 9120, lines: 312, status: "modified",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    previousContent: "// previous chat stream without DecisionCatch hook",
-    content: `// ChatStream.tsx — wires DecisionCatchBanner above streaming assistant bubble
-import { DecisionCatchBanner } from "@/components/DecisionCatchBanner";
-import { useDecisionCatch } from "@/lib/DecisionCatchEngine";
-
-// ... (existing imports)
-
-export function ChatStream({ messages }: Props) {
-  const catchSignal = useDecisionCatch(messages);
-
-  return (
-    <div className="flex flex-col gap-4">
-      {messages.map((m) => (
-        <Fragment key={m.id}>
-          {catchSignal?.messageId === m.id && (
-            <DecisionCatchBanner
-              conflictingEntryId={catchSignal.entryId}
-              conflictTitle={catchSignal.title}
-              onProceed={catchSignal.proceed}
-              onAdjust={catchSignal.adjust}
-            />
-          )}
-          <MessageBubble message={m} />
-        </Fragment>
-      ))}
-    </div>
-  );
-}`,
-  },
-  {
-    id: "gf_3", runId: ACTIVE_RUN.id,
-    path: "supabase/functions/_shared/whisper-gate.ts",
-    language: "typescript", bytes: 4501, lines: 142, status: "modified",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    content: `// whisper-gate.ts — extended intent envelope with overlap signal
-export type WhisperIntent = "THINK" | "BUILD" | "DECIDE";
-
-export interface WhisperEnvelope {
-  intent: WhisperIntent;
-  confidence: number;
-  action?: string;
-  overlap?: {
-    entryId: string;
-    title: string;
-    similarity: number;
-  } | null;
+function getProjectIdFromUrl(): number | null {
+  if (typeof window === "undefined") return null;
+  const sp = new URLSearchParams(window.location.search);
+  const raw = sp.get("projectId");
+  if (raw && /^\d+$/.test(raw)) return Number(raw);
+  const stored = window.localStorage.getItem("atlas:lastProjectId");
+  if (stored && /^\d+$/.test(stored)) return Number(stored);
+  return null;
 }
 
-export async function classifyWhisper(input: string): Promise<WhisperEnvelope> {
-  // ... model call elided
-  return { intent: "BUILD", confidence: 0.91, overlap: null };
-}`,
-  },
-  {
-    id: "gf_4", runId: ACTIVE_RUN.id,
-    path: "src/lib/DecisionCatchEngine.ts",
-    language: "typescript", bytes: 1820, lines: 64, status: "new",
-    createdAt: ACTIVE_RUN.startedAt, updatedAt: ACTIVE_RUN.finishedAt!,
-    content: `import { useMemo } from "react";
-
-export interface DecisionCatchSignal {
-  messageId: string;
-  entryId: string;
-  title: string;
-  proceed: () => void;
-  adjust: () => void;
+function getRunIdFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("runId");
 }
 
-export function useDecisionCatch(messages: { id: string }[]): DecisionCatchSignal | null {
-  return useMemo(() => {
-    // Detect intent + confidence + action with semantic overlap to a committed entry
-    return null;
-  }, [messages]);
-}`,
-  },
-];
 
 // ── Tree builder ─────────────────────────────────────────────────────────────
 type TreeNode = {
