@@ -2714,23 +2714,9 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {/* Global Insight — standalone overlay with isolated scroll + composer.
-          Mounts above the ambient home shell when globalInsightOpen is true. */}
-      <GlobalInsightSurface
-        open={globalInsightOpen}
-        messages={nexusChat.messages as any}
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-        isSending={isSending}
-        isStreaming={isAtlasStreaming}
-        pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
-        liveStep={nexusChat.liveStep as any}
-        isListening={isListening}
-        toggleVoice={toggleVoice}
-        onOpenHistory={handleOpenHistory}
-        onExit={() => setGlobalInsightOpen(false)}
-      />
+      {/* Global Insight runs inline through the ambient home shell.
+          The "● Global Insight" pill in the subheader is the only visual marker —
+          no overlay, no duplicate header, no separate composer. */}
 
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
