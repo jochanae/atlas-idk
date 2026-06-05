@@ -559,6 +559,20 @@ export function AxiomFlow({
   // derived from a non-empty strategicAnswer — legacy `Record<id, boolean>`
   // rows are intentionally NOT migrated to "resolved", so a previously-checked
   // node with no captured answer falls back to the amber-pulse unanswered state.
+  const dbLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!projectId || dbLoadedRef.current) return;
+    dbLoadedRef.current = true;
+    fetch(`/api/projects/${projectId}/flow`, { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: { nodes: ArchNode[]; edges: ArchEdge[] } | null) => {
+        if (!data || !Array.isArray(data.nodes) || data.nodes.length === 0) return;
+        setNodes(data.nodes);
+        setEdges(data.edges ?? []);
+      })
+      .catch(() => {});
+  }, [projectId]);
+
   const dbSyncedRef = useRef(false);
   useEffect(() => {
     if (dbSyncedRef.current || !initialNodeState) return;
@@ -702,6 +716,23 @@ export function AxiomFlow({
     onNodesChange?.(nodes);
     try { localStorage.setItem(storageKey, JSON.stringify(nodes)); } catch {}
   }, [nodes, onNodesChange, storageKey]);
+
+  const flowSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!projectId || !dbLoadedRef.current) return;
+    if (flowSaveTimerRef.current) clearTimeout(flowSaveTimerRef.current);
+    flowSaveTimerRef.current = setTimeout(() => {
+      fetch(`/api/projects/${projectId}/flow`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodes, edges }),
+      }).catch(() => {});
+    }, 1500);
+    return () => {
+      if (flowSaveTimerRef.current) clearTimeout(flowSaveTimerRef.current);
+    };
+  }, [nodes, edges, projectId]);
 
   useEffect(() => {
     try { localStorage.setItem(`${storageKey}-edges`, JSON.stringify(edges)); } catch {}
