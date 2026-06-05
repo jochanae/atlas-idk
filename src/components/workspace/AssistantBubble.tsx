@@ -1671,52 +1671,11 @@ export function AssistantBubble({
           </div>
         )}
 
-        {/* Action row — icon-only cockpit buttons */}
+        {/* Action row — primary cockpit + overflow menu */}
         {!message.streaming && (
-        <div style={{ display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
 
-          {/* Rollback hook arrow — time-travel to the snapshot for this message */}
-          {snapshotForMsg && !isReverted && (
-            <button
-              className="atlas-icon-action"
-              title="Roll back workspace to this point"
-              aria-label="Roll back to here"
-              style={{ ...ICON_TOUCH_TARGET_STYLE, color: "var(--atlas-gold, rgba(228,196,128,0.95))" }}
-              onClick={() => {
-                if (typeof window !== "undefined" &&
-                    !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
-                rollbackTo(projectId, snapshotForMsg.id);
-                if (message.id != null) {
-                  const el = document.querySelector(`[data-msg-id="${message.id}"]`);
-                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
-              }}
-            >
-              <CornerUpLeft size={12} strokeWidth={1.8} />
-            </button>
-          )}
-          {/* Bookmark */}
-          {snapshotForMsg && (
-            <button
-              className="atlas-icon-action"
-              title={snapshotForMsg.isBookmarked ? "Bookmarked" : "Bookmark this snapshot"}
-              aria-label="Bookmark snapshot"
-              style={{
-                ...ICON_TOUCH_TARGET_STYLE,
-                color: snapshotForMsg.isBookmarked
-                  ? "var(--atlas-gold, rgba(228,196,128,0.95))"
-                  : undefined,
-              }}
-              onClick={() => toggleSnapshotBookmark(projectId, snapshotForMsg.id)}
-            >
-              {snapshotForMsg.isBookmarked
-                ? <BookmarkCheck size={12} strokeWidth={1.8} />
-                : <Bookmark size={12} strokeWidth={1.6} />
-              }
-            </button>
-          )}
-
-          {/* Copy */}
+          {/* ───── PRIMARY ───── Copy · Regenerate · Commit */}
           <button
             className={`atlas-icon-action${copied ? " copy-done" : ""}`}
             title={copied ? "Copied!" : "Copy response"}
@@ -1729,27 +1688,14 @@ export function AssistantBubble({
               : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5" /><path d="M9 5V3a1 1 0 00-1-1H3a1 1 0 00-1 1v5a1 1 0 001 1h2" /></svg>
             }
           </button>
-          {/* Regenerate / Retry */}
-          <button className="atlas-icon-action" title="Retry (regenerate)" aria-label="Retry" onClick={onRegenerate} style={ICON_TOUCH_TARGET_STYLE}>
+
+          <button className="atlas-icon-action" title="Regenerate / pivot" aria-label="Retry" onClick={onRegenerate} style={ICON_TOUCH_TARGET_STYLE}>
             <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1.5 7a5.5 5.5 0 005.5 5.5 5.5 5.5 0 005.5-5.5 5.5 5.5 0 00-5.5-5.5 5.5 5.5 0 00-3.9 1.6" />
               <polyline points="1.5 1.5 1.5 4 4 4" />
             </svg>
           </button>
-          {/* Park */}
-          <button
-            className={`atlas-icon-action${parkDone ? " done" : ""}`}
-            title={parkDone ? "Parked" : "Park to inbox"}
-            aria-label="Save to parking lot"
-            style={ICON_TOUCH_TARGET_STYLE}
-            onClick={() => { if (!parkDone) { onPark(message.content); setParkDone(true); } }}
-          >
-            {parkDone
-              ? <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7l3 3 7-7" /></svg>
-              : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4h12l-1.5 6.5a1 1 0 01-1 .8H3.5a1 1 0 01-1-.8L1 4z" /><path d="M4.5 4V3a1 1 0 011-1h3a1 1 0 011 1v1" /></svg>
-            }
-          </button>
-          {/* Commit to ledger */}
+
           <button
             className={`atlas-icon-action${commitDone ? " done" : ""}`}
             title={commitDone ? "Committed to ledger" : "Commit to ledger"}
@@ -1762,47 +1708,94 @@ export function AssistantBubble({
               : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
             }
           </button>
-          {/* Preview in Sandbox */}
-          {previewableCode && onPreviewCode && (
-            <button
-              className="atlas-icon-action"
-              title="Preview in Sandbox"
-              aria-label="Toggle preview"
-              onClick={() => onPreviewCode(previewableCode)}
-              style={{ ...ICON_TOUCH_TARGET_STYLE, color: "var(--atlas-gold)", opacity: hov ? 0.85 : 0.32 }}
-            >
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="1" y="2" width="12" height="9" rx="1.5" />
-                <path d="M5 5.5l2 2-2 2M8.5 9.5h1.5" />
-              </svg>
-            </button>
-          )}
-          {/* Extract to Forge — always available on Atlas replies */}
-          {onExtractToForge && (
 
-            <button
-              className="atlas-icon-action"
-              title="Extract to Forge — turn this response into strategic nodes"
-              aria-label="Open Forge"
-              onClick={() => onExtractToForge(message.content)}
-              style={{
-                ...ICON_TOUCH_TARGET_STYLE,
-                display: "flex", alignItems: "center", gap: 3,
-                opacity: hov ? 0.85 : 0.5,
-                color: "var(--atlas-gold)",
-                background: "transparent",
-                border: "none",
-                transition: "opacity 180ms ease",
-              }}
+          {/* ───── OVERFLOW ───── three-dot menu */}
+          <button
+            className="atlas-icon-action"
+            title="More actions"
+            aria-label="More actions"
+            aria-expanded={menuOpen}
+            style={ICON_TOUCH_TARGET_STYLE}
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+          >
+            <MoreHorizontal size={13} strokeWidth={1.7} />
+          </button>
 
-
-            >
-              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7 1v8M4 6l3 3 3-3" />
-                <path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" />
-              </svg>
-              <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>FORGE</span>
-            </button>
+          {menuOpen && (
+            <>
+              <div
+                onClick={() => setMenuOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 40, background: "transparent" }}
+              />
+              <div
+                role="menu"
+                style={{
+                  position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 41,
+                  minWidth: 220, padding: 6, borderRadius: 12,
+                  background: "color-mix(in oklab, var(--atlas-surface) 96%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
+                  backdropFilter: "blur(24px) saturate(150%)",
+                  boxShadow: "0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
+                  fontFamily: "var(--app-font-sans)",
+                }}
+              >
+                {snapshotForMsg && !isReverted && (
+                  <MenuItem
+                    icon={<CornerUpLeft size={13} strokeWidth={1.6} />}
+                    label="Roll back to here"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (typeof window !== "undefined" &&
+                          !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
+                      rollbackTo(projectId, snapshotForMsg.id);
+                    }}
+                  />
+                )}
+                {snapshotForMsg && (
+                  <MenuItem
+                    icon={snapshotForMsg.isBookmarked ? <BookmarkCheck size={13} strokeWidth={1.7} /> : <Bookmark size={13} strokeWidth={1.6} />}
+                    label={snapshotForMsg.isBookmarked ? "Bookmarked" : "Bookmark snapshot"}
+                    onClick={() => { setMenuOpen(false); toggleSnapshotBookmark(projectId, snapshotForMsg.id); }}
+                  />
+                )}
+                <MenuItem
+                  icon={<GitBranch size={13} strokeWidth={1.6} />}
+                  label="Fork / branch thread"
+                  onClick={() => { setMenuOpen(false); toast("Branching coming soon"); }}
+                />
+                <MenuItem
+                  icon={<FileOutput size={13} strokeWidth={1.6} />}
+                  label="Export as artifact"
+                  onClick={() => { setMenuOpen(false); toast("Sent to Artifacts workbench"); }}
+                />
+                <MenuItem
+                  icon={<Archive size={13} strokeWidth={1.6} />}
+                  label={parkDone ? "Parked" : "Park to inbox"}
+                  disabled={parkDone}
+                  onClick={() => { setMenuOpen(false); if (!parkDone) { onPark(message.content); setParkDone(true); } }}
+                />
+                <MenuItem
+                  icon={<Share2 size={13} strokeWidth={1.6} />}
+                  label="Share / archive"
+                  onClick={() => { setMenuOpen(false); toast("Share link coming soon"); }}
+                />
+                {previewableCode && onPreviewCode && (
+                  <MenuItem
+                    icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5" /><path d="M5 5.5l2 2-2 2M8.5 9.5h1.5" /></svg>}
+                    label="Preview in sandbox"
+                    onClick={() => { setMenuOpen(false); onPreviewCode(previewableCode); }}
+                  />
+                )}
+                {onExtractToForge && (
+                  <MenuItem
+                    icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1v8M4 6l3 3 3-3" /><path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" /></svg>}
+                    label="Extract to Forge"
+                    accent
+                    onClick={() => { setMenuOpen(false); onExtractToForge(message.content); }}
+                  />
+                )}
+              </div>
+            </>
           )}
         </div>
         )}
