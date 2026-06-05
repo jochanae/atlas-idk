@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment, type ReactNode } from "react";
+import ReactMarkdown from "react-markdown";
 import { Project, getListProjectsQueryKey, createProject, useCreateProject, createEntry, useCreateEntry } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
@@ -43,7 +44,7 @@ import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useNexusChatStream } from "@/hooks/useNexusChatStream";
+import { useNexusChatStream, type NexusLiveStep } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
@@ -209,61 +210,403 @@ function normalizeLoadedHomeMessages(
     : trimmed.map((m) => ({ ...m, ...enrich(m) }));
 }
 
-function renderMarkdown(text: string): string {
-  return text
-    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_: string, _lang: string, code: string) =>
-      `<pre style="background:var(--atlas-surface);border:1px solid var(--atlas-surface);border-radius:6px;padding:9px 11px;overflow-x:auto;margin:6px 0"><code style="font-family:var(--app-font-mono);font-size:11px;color:var(--atlas-fg);white-space:pre">${code.trim().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code></pre>`)
-    .replace(/^### (.+)$/gm, '<div style="font-size:11px;font-weight:700;color:var(--atlas-gold);letter-spacing:0.07em;text-transform:uppercase;margin:10px 0 3px">$1</div>')
-    .replace(/^## (.+)$/gm, '<div style="font-size:13px;font-weight:700;color:var(--atlas-fg);margin:8px 0 3px">$1</div>')
-    .replace(/^# (.+)$/gm, '<div style="font-size:14px;font-weight:700;color:var(--atlas-fg);margin:8px 0 4px">$1</div>')
-    .replace(/\*\*\*(.*?)\*\*\*/g, "<strong><em>$1</em></strong>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/`([^`\n]+)`/g, '<code style="font-family:var(--app-font-mono);font-size:11px;background:var(--atlas-surface);padding:1px 5px;border-radius:3px;color:rgba(201,162,76,0.9)">$1</code>')
-    .replace(/^[-•*] (.+)$/gm, '<div style="display:flex;gap:7px;margin:2px 0"><span style="color:var(--atlas-gold);opacity:0.6;flex-shrink:0;margin-top:2px;font-size:10px">▸</span><span>$1</span></div>')
-    .replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:7px;margin:2px 0"><span style="color:var(--atlas-muted);font-family:var(--app-font-mono);font-size:10px;flex-shrink:0;min-width:14px;margin-top:1px">$1.</span><span>$2</span></div>')
-    .replace(/\n\n/g, "<br/><br/>")
-    .replace(/\n/g, "<br/>");
+const HOME_IMAGE_URL_RE = /(https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s<>"')]+)?)/gi;
+const HOME_CODE_BLOCK_RE = /```([\w+-]*)\n?([\s\S]*?)```/g;
+const HOME_CARD_TITLE_RE = /^(?:#{1,3}\s*)?(synthesis|analysis|surface|insight|decision_catch|decision catch|tension|conflict|file_edit|file edit|diff|code)\b[:\s-]*/i;
+
+function plainTextFromNode(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(plainTextFromNode).join("");
+  if (typeof node === "object" && "props" in node) {
+    return plainTextFromNode((node as { props?: { children?: ReactNode } }).props?.children);
+  }
+  return "";
+}
+
+function imageUrlParts(text: string): Array<{ type: "text"; value: string } | { type: "image"; value: string }> {
+  const parts: Array<{ type: "text"; value: string } | { type: "image"; value: string }> = [];
+  const re = new RegExp(HOME_IMAGE_URL_RE);
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push({ type: "text", value: text.slice(last, match.index) });
+    parts.push({ type: "image", value: match[1] });
+    last = match.index + match[1].length;
+  }
+  if (last < text.length) parts.push({ type: "text", value: text.slice(last) });
+  return parts;
+}
+
+function extractNumberedOptions(text: string): Array<{ number: string; label: string }> {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const optionRe = /(?:^|\s)(\d+)\.\s+(.+?)(?=\s+\d+\.\s+|$)/g;
+  const options: Array<{ number: string; label: string }> = [];
+  let match: RegExpExecArray | null;
+  while ((match = optionRe.exec(normalized)) !== null) {
+    const label = match[2].trim();
+    if (label) options.push({ number: match[1], label });
+  }
+  return options;
+}
+
+function isDecisionChoiceText(text: string): boolean {
+  const options = extractNumberedOptions(text);
+  return options.length >= 2 && /(\?|option|choice|choose|pick|write your own)/i.test(text);
+}
+
+function classifyHomeCard(text: string): {
+  title: string;
+  body: string;
+  kind: "decision" | "tension" | "file" | "code" | "thought";
+  alwaysOpen: boolean;
+} | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  if (isDecisionChoiceText(trimmed)) {
+    return { title: "Decision", body: trimmed, kind: "decision", alwaysOpen: true };
+  }
+  const firstLine = trimmed.split("\n", 1)[0] ?? "";
+  const match = firstLine.match(HOME_CARD_TITLE_RE);
+  if (!match) return null;
+  const normalized = match[1].replace(/\s+/g, "_").toUpperCase();
+  const body = trimmed.slice(firstLine.length).trim() || firstLine.replace(HOME_CARD_TITLE_RE, "").trim();
+  const title = normalized === "FILE_EDIT"
+    ? "File edit"
+    : normalized === "DECISION_CATCH"
+      ? "Tension"
+      : normalized.charAt(0) + normalized.slice(1).toLowerCase().replace(/_/g, " ");
+  const kind = normalized === "DECISION_CATCH" || normalized === "TENSION" || normalized === "CONFLICT"
+    ? "tension"
+    : normalized === "FILE_EDIT" || normalized === "DIFF"
+      ? "file"
+      : normalized === "CODE"
+        ? "code"
+        : "thought";
+  return {
+    title,
+    body: body || trimmed,
+    kind,
+    alwaysOpen: kind === "decision" || kind === "tension",
+  };
+}
+
+function HomeMarkdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => (
+          <p style={{ margin: "0 0 10px", lineHeight: 1.85 }}>{children}</p>
+        ),
+        strong: ({ children }) => <strong style={{ fontWeight: 650, color: "var(--atlas-fg)" }}>{children}</strong>,
+        em: ({ children }) => <em style={{ color: "var(--atlas-muted)" }}>{children}</em>,
+        h1: ({ children }) => <div style={{ fontSize: 14, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 4px" }}>{children}</div>,
+        h2: ({ children }) => <div style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-fg)", margin: "8px 0 3px" }}>{children}</div>,
+        h3: ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.07em", textTransform: "uppercase", margin: "10px 0 3px" }}>{children}</div>,
+        ul: ({ children }) => <ul style={{ margin: "4px 0 10px 18px", padding: 0 }}>{children}</ul>,
+        ol: ({ children }) => <ol style={{ margin: "4px 0 10px 18px", padding: 0 }}>{children}</ol>,
+        li: ({ children }) => <li style={{ margin: "2px 0", lineHeight: 1.75 }}>{children}</li>,
+        code: ({ children, className }) => {
+          const isBlock = Boolean(className);
+          if (isBlock) {
+            return <code style={{ fontFamily: "var(--app-font-mono)", fontSize: 12, whiteSpace: "pre-wrap" }}>{children}</code>;
+          }
+          return (
+            <code style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 11,
+              background: "var(--atlas-surface)",
+              padding: "1px 5px",
+              borderRadius: 3,
+              color: "rgba(201,162,76,0.9)",
+            }}>
+              {children}
+            </code>
+          );
+        },
+        pre: ({ children }) => {
+          const code = plainTextFromNode(children);
+          return <HomeThoughtCard title="Code" kind="code" text={code} defaultCollapsed alwaysOpen={code.replace(/\s+/g, " ").trim().length < 120} />;
+        },
+        a: ({ href, children }) => {
+          const imageUrl = href && /\.(?:png|jpe?g|webp|gif)(?:\?|$)/i.test(href);
+          if (imageUrl) return <HomeInlineImage src={href} alt={plainTextFromNode(children) || "Atlas image"} />;
+          return <a href={href} target="_blank" rel="noreferrer" style={{ color: "var(--atlas-gold)" }}>{children}</a>;
+        },
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
+
+function HomeInlineImage({ src, alt = "Atlas image" }: { src: string; alt?: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      style={{
+        display: "block",
+        maxWidth: "100%",
+        height: "auto",
+        borderRadius: 8,
+        border: "1px solid var(--atlas-border)",
+        margin: "10px 0",
+      }}
+    />
+  );
+}
+
+function HomeChoiceCard({ text }: { text: string }) {
+  const options = extractNumberedOptions(text);
+  const lead = text.replace(/(?:^|\s)\d+\.\s+.+?(?=\s+\d+\.\s+|$)/g, "").trim();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {lead && <HomeMarkdown text={lead} />}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {options.map((option) => (
+          <button
+            key={`${option.number}-${option.label}`}
+            type="button"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "7px 10px",
+              borderRadius: 999,
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 24%, var(--atlas-border))",
+              background: "color-mix(in oklab, var(--atlas-gold) 7%, var(--atlas-surface))",
+              color: "var(--atlas-fg)",
+              cursor: "pointer",
+              fontSize: 13,
+              lineHeight: 1.35,
+              textAlign: "left",
+            }}
+          >
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-gold)", opacity: 0.85 }}>
+              {option.number}.
+            </span>
+            <span>{option.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HomeThoughtCard({
+  title,
+  kind,
+  text,
+  defaultCollapsed,
+  alwaysOpen = false,
+}: {
+  title: string;
+  kind: "decision" | "tension" | "file" | "code" | "thought";
+  text: string;
+  defaultCollapsed?: boolean;
+  alwaysOpen?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const contentLength = text.replace(/\s+/g, " ").trim().length;
+  const canCollapse = !alwaysOpen && (defaultCollapsed || contentLength >= 120);
+  const open = !canCollapse || expanded;
+  const preview = contentLength > 80
+    ? `${text.replace(/\s+/g, " ").trim().slice(0, 80)}...`
+    : text.trim();
+  const isChoice = kind === "decision" && isDecisionChoiceText(text);
+  const isCodeLike = kind === "code" || kind === "file";
+  const tint = kind === "tension"
+    ? "color-mix(in oklab, #b91c1c 9%, var(--atlas-surface))"
+    : kind === "file" || kind === "code"
+      ? "color-mix(in oklab, var(--atlas-gold) 5%, var(--atlas-surface))"
+      : "color-mix(in oklab, white 6%, var(--atlas-surface))";
+
+  return (
+    <div
+      role={canCollapse ? "button" : undefined}
+      tabIndex={canCollapse ? 0 : undefined}
+      onClick={canCollapse ? () => setExpanded(value => !value) : undefined}
+      onKeyDown={canCollapse ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setExpanded(value => !value);
+        }
+      } : undefined}
+      className="atlas-home-thought-card"
+      style={{
+        margin: "10px 0",
+        padding: "12px 16px",
+        borderRadius: 14,
+        border: "1px solid color-mix(in oklab, var(--atlas-gold) 14%, var(--atlas-border))",
+        background: tint,
+        boxShadow: "0 8px 24px -20px rgba(0,0,0,0.55)",
+        cursor: canCollapse ? "pointer" : "default",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{
+          fontFamily: "var(--app-font-mono)",
+          fontSize: 10,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: kind === "tension" ? "#c56a6a" : "var(--atlas-gold)",
+          opacity: 0.86,
+        }}>
+          {title}
+        </div>
+        {canCollapse && (
+          <span
+            aria-hidden
+            style={{
+              color: "var(--atlas-muted)",
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 200ms ease-out",
+              lineHeight: 0,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </span>
+        )}
+      </div>
+      {canCollapse && (
+        <div
+          style={{
+            maxHeight: open ? 0 : 120,
+            opacity: open ? 0 : 1,
+            overflow: "hidden",
+            transition: "max-height 200ms ease-out, opacity 140ms ease-out",
+            marginTop: open ? 0 : 7,
+            color: "var(--atlas-muted)",
+            fontSize: 13,
+            lineHeight: 1.55,
+          }}
+        >
+          {preview}
+        </div>
+      )}
+      <div
+        style={{
+          maxHeight: open ? 8000 : 0,
+          opacity: open ? 1 : 0,
+          overflow: "hidden",
+          transition: "max-height 200ms ease-out, opacity 160ms ease-out",
+          marginTop: open ? 8 : 0,
+        }}
+      >
+        {isChoice ? (
+          <HomeChoiceCard text={text} />
+        ) : isCodeLike ? (
+          <pre style={{
+            margin: 0,
+            whiteSpace: "pre-wrap",
+            overflowX: "auto",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 12,
+            lineHeight: 1.6,
+            color: "var(--atlas-fg)",
+          }}>
+            <code>{text.trim()}</code>
+          </pre>
+        ) : (
+          <HomeRichText text={text} />
+        )}
+      </div>
+      )}
+    </div>
+  );
+}
+
+function HomeTextSegment({ text }: { text: string }) {
+  const card = classifyHomeCard(text);
+  if (card) {
+    return (
+      <HomeThoughtCard
+        title={card.title}
+        kind={card.kind}
+        text={card.body}
+        alwaysOpen={card.alwaysOpen || card.body.replace(/\s+/g, " ").trim().length < 120}
+        defaultCollapsed={card.kind === "code" || card.kind === "file" || card.body.replace(/\s+/g, " ").trim().length >= 120}
+      />
+    );
+  }
+
+  return (
+    <>
+      {imageUrlParts(text).map((part, index) => part.type === "image" ? (
+        <HomeInlineImage key={`${part.value}-${index}`} src={part.value} />
+      ) : part.value.trim() ? (
+        <HomeMarkdown key={index} text={part.value} />
+      ) : null)}
+    </>
+  );
+}
+
+function HomeRichText({ text }: { text: string }) {
+  const segments = useMemo(() => {
+    const output: Array<
+      | { type: "text"; value: string }
+      | { type: "code"; value: string; language: string }
+    > = [];
+    let last = 0;
+    let match: RegExpExecArray | null;
+    const re = new RegExp(HOME_CODE_BLOCK_RE);
+    while ((match = re.exec(text)) !== null) {
+      if (match.index > last) output.push({ type: "text", value: text.slice(last, match.index) });
+      output.push({ type: "code", value: match[2], language: match[1] || "code" });
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) output.push({ type: "text", value: text.slice(last) });
+    return output;
+  }, [text]);
+
+  return (
+    <>
+      {segments.map((segment, index) => segment.type === "code" ? (
+        <HomeThoughtCard
+          key={`code-${index}`}
+          title={segment.language || "Code"}
+          kind="code"
+          text={segment.value}
+          defaultCollapsed
+          alwaysOpen={segment.value.replace(/\s+/g, " ").trim().length < 120}
+        />
+      ) : (
+        <HomeTextSegment key={`text-${index}`} text={segment.value} />
+      ))}
+    </>
+  );
 }
 
 function HomeStreamingText({ text, animate, style }: { text: string; animate: boolean; style?: React.CSSProperties }) {
-  const [visibleCount, setVisibleCount] = useState(animate ? 0 : Infinity);
-  const words = useRef<string[]>([]);
-  const animateRef = useRef(animate);
+  if (!animate) return <div style={style}><HomeRichText text={text} /></div>;
 
-  // Reset only when animate flips, not on every text change.
-  useEffect(() => {
-    if (animateRef.current !== animate) {
-      animateRef.current = animate;
-      setVisibleCount(animate ? 0 : Infinity);
+  const parts = text.match(/\S+|\s+/g) ?? [];
+  let lastWordIndex = -1;
+  for (let i = parts.length - 1; i >= 0; i -= 1) {
+    if (/\S/.test(parts[i])) {
+      lastWordIndex = i;
+      break;
     }
-  }, [animate]);
+  }
 
-  // Keep the word list in sync with the (growing) text without resetting progress.
-  words.current = text.match(/\S+|\n/g) ?? [];
-
-  useEffect(() => {
-    if (!animate) return;
-    const total = words.current.length;
-    if (visibleCount >= total) {
-      // Wait for more tokens to arrive; re-check shortly.
-      const t = setTimeout(() => setVisibleCount(c => c), 60);
-      return () => clearTimeout(t);
-    }
-    const last = words.current[visibleCount - 1] ?? "";
-    const pause = /[.!?]$/.test(last) ? 140 : 28 + Math.random() * 24;
-    const t = setTimeout(
-      () => setVisibleCount(c => Math.min(c + (Math.random() > 0.7 ? 2 : 1), words.current.length)),
-      pause
-    );
-    return () => clearTimeout(t);
-  }, [visibleCount, animate, text]);
-
-  const total = words.current.length;
-  const done = !animate || (visibleCount >= total && total > 0);
-  if (done) return <div style={style} dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }} />;
-  const visible = words.current.slice(0, visibleCount).join(" ");
-  return <div style={style}>{visible}<span className="atlas-cursor" /></div>;
+  return (
+    <div style={{ ...style, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+      {parts.map((part, index) => /\S/.test(part) ? (
+        <span key={`${index}-${part}`} className={index === lastWordIndex ? "atlas-streaming-word-shimmer" : undefined}>
+          {part}
+        </span>
+      ) : (
+        <Fragment key={`${index}-space`}>{part}</Fragment>
+      ))}
+      <span className="atlas-cursor" />
+    </div>
+  );
 }
 
 function splitHomeChunks(text: string): string[] {
@@ -275,7 +618,9 @@ function splitHomeChunks(text: string): string[] {
   }, []);
 }
 
-function HomeChunkedBubbles({ text, isNew }: { text: string; isNew: boolean }) {
+function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew: boolean; isStreaming: boolean }) {
+  if (isStreaming) return <HomeStreamingText text={text} animate={true} />;
+
   const chunks = splitHomeChunks(text);
   const [revealed, setRevealed] = useState(isNew ? 0 : chunks.length);
 
@@ -292,11 +637,112 @@ function HomeChunkedBubbles({ text, isNew }: { text: string; isNew: boolean }) {
         <HomeStreamingText
           key={i}
           text={chunk}
-          animate={isNew && i === revealed && revealed < chunks.length}
+          animate={false}
           style={i < visible.length - 1 ? { marginBottom: 14 } : undefined}
         />
       ))}
     </>
+  );
+}
+
+function HomeThinkingStepCard({ step }: { step: NexusLiveStep }) {
+  const background = step.status === "fail"
+    ? "color-mix(in oklab, #b91c1c 12%, var(--atlas-surface))"
+    : step.status === "warn"
+      ? "color-mix(in oklab, #d97706 13%, var(--atlas-surface))"
+      : "color-mix(in oklab, white 9%, var(--atlas-surface))";
+  const border = step.status === "fail"
+    ? "color-mix(in oklab, #b91c1c 28%, var(--atlas-border))"
+    : step.status === "warn"
+      ? "color-mix(in oklab, #d97706 30%, var(--atlas-border))"
+      : "color-mix(in oklab, white 14%, var(--atlas-border))";
+
+  return (
+    <div
+      className="atlas-thinking-step-card"
+      style={{
+        borderRadius: 10,
+        padding: "8px 10px",
+        background,
+        border: `1px solid ${border}`,
+        boxShadow: "0 8px 20px -18px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.04) inset",
+        minWidth: 210,
+        maxWidth: 420,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+        <span style={{
+          color: "var(--atlas-fg)",
+          fontWeight: 650,
+          fontSize: 12,
+          lineHeight: 1.25,
+        }}>
+          {step.verb}
+        </span>
+        {step.target && (
+          <span style={{
+            borderRadius: 999,
+            padding: "2px 7px",
+            background: "color-mix(in oklab, var(--atlas-muted) 12%, transparent)",
+            color: "var(--atlas-muted)",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10,
+            lineHeight: 1.35,
+            maxWidth: 240,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}>
+            {step.target}
+          </span>
+        )}
+      </div>
+      {step.detail && (
+        <div style={{
+          marginTop: 4,
+          color: "var(--atlas-muted)",
+          fontSize: 11,
+          lineHeight: 1.45,
+          opacity: 0.78,
+        }}>
+          {step.detail}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HomeThinkingSteps({
+  steps,
+  pendingPhrase,
+}: {
+  steps: NexusLiveStep[];
+  pendingPhrase: string;
+}) {
+  if (steps.length === 0) {
+    return (
+      <span
+        style={{
+          fontFamily: "var(--app-font-mono)",
+          fontSize: "var(--ts-micro)",
+          color: "var(--atlas-muted)",
+          letterSpacing: "0.07em",
+          opacity: 0.7,
+          animation: "fadeIn 360ms ease",
+          display: "inline-block",
+        }}
+      >
+        {pendingPhrase}
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {steps.map((step) => (
+        <HomeThinkingStepCard key={step.id} step={step} />
+      ))}
+    </div>
   );
 }
 
@@ -1283,7 +1729,6 @@ export default function Home() {
   const conversationsRequestRef = useRef(0);
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
-  const demoRunSummaryActiveRef = useRef(false);
   const thinkOutLoudInlineRef = useRef(false);
   useEffect(() => {
     const handler = () => setIsTinyScreen(window.innerWidth < 390);
@@ -1413,7 +1858,6 @@ export default function Home() {
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
-  const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: "ok" | "warn" | "fail" } | null>(null);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   // Home lens state removed — lenses live in workspace only
 
@@ -1634,37 +2078,6 @@ export default function Home() {
     return () => clearInterval(t);
   }, [isAtlasStreaming]);
 
-  // Demo: simulate live step events when ?demo=runsummary or localStorage flag is set
-  useEffect(() => {
-    if (!isAtlasStreaming) {
-      demoRunSummaryActiveRef.current = false;
-      return;
-    }
-    if (demoRunSummaryActiveRef.current) return;
-    const demo = typeof window !== "undefined" &&
-      (window.location.search.includes("demo=runsummary") ||
-        window.localStorage.getItem("atlas_demo_runsummary") === "1");
-    if (!demo) return;
-    demoRunSummaryActiveRef.current = true;
-    const fakeSteps: Array<{ verb: string; target: string; status?: "ok" | "warn" }> = [
-      { verb: "Read", target: "chat_messages.ts" },
-      { verb: "Grepped", target: "codebase" },
-      { verb: "Read", target: "nexus.ts L1180–1420" },
-      { verb: "Updated", target: "nexus.ts" },
-      { verb: "Skipped", target: "_journal.json", status: "warn" },
-      { verb: "Pushed", target: "main" },
-    ];
-    let i = 0;
-    setLiveStep(fakeSteps[0]);
-    const t = setInterval(() => {
-      i = (i + 1) % fakeSteps.length;
-      setLiveStep(fakeSteps[i]);
-    }, 1600);
-    return () => {
-      clearInterval(t);
-      demoRunSummaryActiveRef.current = false;
-    };
-  }, [isAtlasStreaming]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -2258,7 +2671,6 @@ export default function Home() {
     const resetSubmitState = () => {
       setIsAtlasStreaming(false);
       setIsSending(false);
-      setLiveStep(null);
       document.body.dataset.voiceActive = "false";
     };
 
@@ -2283,7 +2695,6 @@ export default function Home() {
       } finally {
         setIsAtlasStreaming(false);
         setIsSending(false);
-        setLiveStep(null);
         document.body.dataset.voiceActive = "false";
       }
       return;
@@ -3128,7 +3539,7 @@ export default function Home() {
                             fontSize: 16, lineHeight: 1.85, color: "var(--atlas-fg)", opacity: 0.9,
                             fontFamily: "var(--app-font-sans)",
                           }}>
-                            <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} />
+                            <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                           </div>
 
                           {msg.visualLoading && (
@@ -3373,52 +3784,12 @@ export default function Home() {
                         <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
                           Atlas
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                           <LoadingSpinner size="sm" color="atlas" />
-                          {nexusChat.liveStep ? (
-                            <span
-                              key={`step-${nexusChat.liveStep.verb}-${nexusChat.liveStep.target ?? ""}`}
-                              style={{
-                                fontFamily: "var(--app-font-mono)",
-                                fontSize: "var(--ts-micro)",
-                                letterSpacing: "0.05em",
-                                animation: "fadeIn 320ms ease",
-                                display: "inline-flex",
-                                alignItems: "baseline",
-                                gap: 6,
-                              }}
-                            >
-                              <span style={{
-                                color: nexusChat.liveStep.status === "warn" ? "var(--atlas-gold)"
-                                  : nexusChat.liveStep.status === "fail" ? "#e25b5b"
-                                  : "var(--atlas-fg)",
-                                opacity: 0.9,
-                                fontWeight: 500,
-                              }}>
-                                {nexusChat.liveStep.verb}
-                              </span>
-                              {nexusChat.liveStep.target && (
-                                <span style={{ color: "var(--atlas-muted)", opacity: 0.75 }}>
-                                  {nexusChat.liveStep.target}
-                                </span>
-                              )}
-                            </span>
-                          ) : (
-                            <span
-                              key={pendingPhraseIdx}
-                              style={{
-                                fontFamily: "var(--app-font-mono)",
-                                fontSize: "var(--ts-micro)",
-                                color: "var(--atlas-muted)",
-                                letterSpacing: "0.07em",
-                                opacity: 0.7,
-                                animation: "fadeIn 360ms ease",
-                                display: "inline-block",
-                              }}
-                            >
-                              {HOME_PENDING_PHRASES[pendingPhraseIdx]}
-                            </span>
-                          )}
+                          <HomeThinkingSteps
+                            steps={nexusChat.liveSteps}
+                            pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
+                          />
                         </div>
                       </div>
                     </div>
@@ -4346,6 +4717,37 @@ export default function Home() {
         @keyframes ptr-spin { to { transform: rotate(360deg); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes atlasThinkingStepIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes atlasTokenShimmer {
+          from { background-position: 160% 50%; }
+          to   { background-position: -60% 50%; }
+        }
+        .atlas-thinking-step-card {
+          animation: atlasThinkingStepIn 50ms ease-out both;
+        }
+        .atlas-streaming-word-shimmer {
+          --atlas-token-shimmer-base: color-mix(in oklab, var(--atlas-gold) 78%, var(--atlas-fg));
+          --atlas-token-shimmer-glint: color-mix(in oklab, white 76%, var(--atlas-gold));
+          display: inline-block;
+          color: transparent;
+          background-image: linear-gradient(105deg, var(--atlas-token-shimmer-base) 0%, var(--atlas-token-shimmer-base) 34%, var(--atlas-token-shimmer-glint) 50%, var(--atlas-token-shimmer-base) 66%, var(--atlas-token-shimmer-base) 100%);
+          background-size: 220% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          text-shadow: 0 0 12px color-mix(in oklab, var(--atlas-gold) 26%, transparent);
+          animation: atlasTokenShimmer 600ms linear infinite;
+        }
+        [data-theme="parchment"] .atlas-streaming-word-shimmer {
+          --atlas-token-shimmer-base: color-mix(in oklab, var(--atlas-muted) 74%, var(--atlas-fg));
+          --atlas-token-shimmer-glint: color-mix(in oklab, var(--atlas-gold) 30%, #f6f1ea);
+          text-shadow: 0 0 8px rgba(139,94,60,0.12);
+        }
+        .atlas-home-thought-card:hover {
+          border-color: color-mix(in oklab, var(--atlas-gold) 24%, var(--atlas-border));
+        }
         @keyframes homeAxiomPulse {
           0%, 100% {
             box-shadow:

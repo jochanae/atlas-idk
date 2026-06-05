@@ -10,7 +10,7 @@ export interface AtlasStreamCallbacks {
   /** Called with each released text chunk from the pacer */
   onToken: (released: string) => void;
   /** Called when a step event arrives */
-  onStep?: (step: { verb?: string; target?: string; status?: "ok" | "warn" | "fail" }) => void;
+  onStep?: (step: { verb?: string; target?: string; detail?: string; status?: "ok" | "warn" | "fail" }) => void;
   /** Called when stream completes — receives final full text and raw meta */
   onDone: (fullText: string, meta: Record<string, unknown>) => void;
   /** Called on stream error */
@@ -143,6 +143,7 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                 const step = JSON.parse(evtData) as {
                   verb?: string;
                   target?: string;
+                  detail?: string;
                   status?: "ok" | "warn" | "fail";
                 };
                 if (step?.verb) callbacks.onStep?.(step);
