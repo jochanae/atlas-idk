@@ -343,14 +343,9 @@ export default function ConnectorsPage() {
           {/* Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14, marginTop: 16 }}>
             {filtered.map((dir) => (
-              <DirectoryCard
-                key={dir.id}
-                dir={dir}
-                connected={isActiveProvider(dir.provider)}
-                connecting={connectingId === dir.id}
-                onConnect={() => handleConnect(dir)}
-              />
+              <DirectoryCard key={dir.id} dir={dir} />
             ))}
+
             {filtered.length === 0 && (
               <div style={{ color: "var(--atlas-muted)", fontSize: 12, padding: 16 }}>
                 No matches for &ldquo;{query}&rdquo;.
