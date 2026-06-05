@@ -2977,35 +2977,26 @@ export default function Home() {
               zIndex: 0,
             }} />
 
-            {/* Greeting */}
+            {/* Greeting — same in ambient + Global Insight. GI is signaled
+                only by the subheader "● Global Insight" pill, so the home shell
+                stays visually identical. */}
             {nexusChat.messages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                  ...(globalInsightOpen
-                    ? {
-                        background: "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        backgroundClip: "text",
-                        opacity: 1,
-                      }
-                    : { color: "var(--atlas-fg)", opacity: 0.85 }),
+                  color: "var(--atlas-fg)", opacity: 0.85,
                 }}>
-                  {globalInsightOpen ? "Global Insight" : greetingRef.current?.head}
+                  {greetingRef.current?.head}
                 </h1>
                 <p style={{
-                  fontSize: globalInsightOpen ? 11 : ("var(--ts-body)" as any),
-                  color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: globalInsightOpen ? 0.8 : 0.55,
+                  fontSize: "var(--ts-body)" as any,
+                  color: "var(--atlas-muted)",
+                  opacity: 0.55,
                   margin: 0,
-                  fontStyle: globalInsightOpen ? "normal" : "italic",
-                  fontFamily: globalInsightOpen ? "var(--app-font-mono)" : undefined,
-                  letterSpacing: globalInsightOpen ? "0.1em" : undefined,
-                  textTransform: globalInsightOpen ? "uppercase" : undefined,
+                  fontStyle: "italic",
                 }}>
-                  {globalInsightOpen ? "Strategic view · All projects" : greetingRef.current?.sub}
+                  {greetingRef.current?.sub}
                 </p>
               </div>
             )}
