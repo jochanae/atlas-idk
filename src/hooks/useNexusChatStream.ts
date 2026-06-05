@@ -95,6 +95,11 @@ export function useNexusChatStream(
   const [shapingHeld, setShapingHeld] = useState(false);
   const shapingHeldRef = useRef(false);
   const [handoffSignal, setHandoffSignal] = useState<NexusHandoffSignal | null>(null);
+  const activeConversationIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeConversationIdRef.current = conversationId ?? null;
+  }, [conversationId]);
 
   useEffect(() => {
     shapingHeldRef.current = shapingHeld;
@@ -127,6 +132,7 @@ export function useNexusChatStream(
   }, [abortStream, resetStreamState]);
 
   const clearMessages = useCallback(() => {
+    activeConversationIdRef.current = null;
     setMessages([]);
     setShapingPayload(null);
     setHandoffSignal(null);
@@ -193,12 +199,14 @@ export function useNexusChatStream(
       isNew: true,
     };
     setMessages(prev => [...prev, assistantMsg]);
+    const activeConversationId = activeConversationIdRef.current;
 
     try {
       await stream({
         endpoint: "/api/nexus/chat",
         body: {
           global: true,
+          ...(activeConversationId ? { conversationId: activeConversationId } : {}),
           message: text,
           model: resolvedModel,
           history,
@@ -230,6 +238,11 @@ export function useNexusChatStream(
             setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
           },
           onDone: (fullText, meta) => {
+            const doneConversationId = meta.conversationId;
+            if (!activeConversationIdRef.current && typeof doneConversationId === "string" && doneConversationId) {
+              activeConversationIdRef.current = doneConversationId;
+            }
+
             // Parse NAVIGATE_TO
             let displayText = fullText;
             const navMatch = displayText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);

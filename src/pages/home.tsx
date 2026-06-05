@@ -2525,11 +2525,11 @@ export default function Home() {
     conversationThreadRequestRef.current = null;
     thinkOutLoudInlineRef.current = false;
     setActiveConversationId(null);
-    nexusChat.setMessages([]);
+    nexusChat.clearMessages();
     setReviewingPlanIds(new Set());
     setShowHistory(false);
     setEarnedTitle(null);
-  }, [nexusChat.setMessages]);
+  }, [nexusChat.clearMessages]);
 
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
