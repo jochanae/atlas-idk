@@ -47,7 +47,7 @@ import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
-import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
+
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
