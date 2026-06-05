@@ -606,10 +606,11 @@ function dotForStatus(type: ConnType, st?: ConnStatus): { color: string; pulse: 
 }
 
 function ConnectionsDock() {
+  const [, setLocation] = useLocation();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ConnStatus>>({});
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const goManage = () => setLocation("/connectors");
 
   const loadConnections = async (): Promise<Connection[]> => {
     try {
