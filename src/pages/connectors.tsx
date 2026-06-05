@@ -206,12 +206,12 @@ export default function ConnectorsPage() {
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, color: "var(--atlas-muted)", fontSize: 11 }}>
             <ShieldCheck size={14} strokeWidth={1.6} style={{ color: "var(--atlas-phosphor)" }} />
-            <span>{active.length} active · {MOCK_DIRECTORY.length} available</span>
+            <span>{active.length} active · {MOCK_DIRECTORY.length} available · scroll for more ↓</span>
           </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 18px 80px", display: "flex", flexDirection: "column", gap: 36 }}>
+      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 18px calc(env(safe-area-inset-bottom, 0px) + 160px)", display: "flex", flexDirection: "column", gap: 36, WebkitOverflowScrolling: "touch" }}>
         {/* ─── 1. ACTIVE CONNECTIONS ────────────────────────────────────── */}
         <section>
           <SectionHead
