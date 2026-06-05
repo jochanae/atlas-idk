@@ -1,19 +1,35 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Search, Plug, Github, Calendar, CreditCard, MessageSquare,
   Briefcase, Phone, Users, Plus, Globe, Train, Sparkles, MousePointerClick,
-  Check, ExternalLink, ShieldCheck, AlertCircle,
+  Check, ShieldCheck, AlertCircle, Trash2, Loader2,
 } from "lucide-react";
+
+/* ─── Backend types (GET /api/connections) ─────────────────────────────── */
+type BackendConnection = {
+  id: number;
+  type: "github" | "railway" | "lovable" | "cursor";
+  label: string;
+  url: string | null;
+  metadata: Record<string, any> | null;
+  status: string;
+  hasToken: boolean;
+  lastCheckedAt: string | null;
+  createdAt: string;
+};
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Mock data — replace with API once Cursor wires the Neon backend.
  * See "DEVELOPER HANDOFF SPEC" at the bottom of this file for payload shapes.
  * ───────────────────────────────────────────────────────────────────────── */
 
+
 type ActiveConnection = {
   id: string;
-  provider: "github" | "google_calendar" | "stripe" | "slack" | "salesforce" | "twilio" | "hubspot" | "custom";
+  numericId: number;
+  provider: "github" | "railway" | "lovable" | "cursor" | "google_calendar" | "stripe" | "slack" | "salesforce" | "twilio" | "hubspot" | "custom";
   label: string;
   account: string;
   status: "connected" | "read_only" | "degraded" | "expired";
@@ -21,7 +37,7 @@ type ActiveConnection = {
   scopesGranted: number;
   scopesAvailable: number;
   lastSyncIso: string;
-  meta?: Record<string, string>;
+  meta?: Record<string, any>;
 };
 
 type DirectoryConnector = {
@@ -37,22 +53,8 @@ type EndpointPreset = {
   id: "custom" | "railway" | "lovable" | "cursor";
   label: string;
   hint: string;
+  enabled: boolean;
 };
-
-const MOCK_ACTIVE: ActiveConnection[] = [
-  {
-    id: "conn_gh_01",
-    provider: "github",
-    label: "GitHub",
-    account: "axiom-systems/atlas",
-    status: "read_only",
-    statusLabel: "Read-only (no personal token)",
-    scopesGranted: 2,
-    scopesAvailable: 6,
-    lastSyncIso: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
-    meta: { repos: "12", lastPush: "2h ago" },
-  },
-];
 
 const MOCK_DIRECTORY: DirectoryConnector[] = [
   { id: "dir_gcal",   provider: "google_calendar", label: "Google Calendar", tagline: "Sync events into your Ledger.",           category: "Productivity", popular: true },
@@ -64,11 +66,41 @@ const MOCK_DIRECTORY: DirectoryConnector[] = [
 ];
 
 const ENDPOINT_PRESETS: EndpointPreset[] = [
-  { id: "custom",  label: "CUSTOM",  hint: "Any HTTPS endpoint" },
-  { id: "railway", label: "RAILWAY", hint: "Railway service URL" },
-  { id: "lovable", label: "LOVABLE", hint: "Lovable Cloud function" },
-  { id: "cursor",  label: "CURSOR",  hint: "Cursor MCP bridge" },
+  { id: "custom",  label: "CUSTOM",  hint: "Coming soon — backend not ready",     enabled: false },
+  { id: "railway", label: "RAILWAY", hint: "Coming soon — needs token field",     enabled: false },
+  { id: "lovable", label: "LOVABLE", hint: "Lovable Cloud function URL",          enabled: true },
+  { id: "cursor",  label: "CURSOR",  hint: "Cursor MCP bridge endpoint",          enabled: true },
 ];
+
+function statusToActive(s: string): ActiveConnection["status"] {
+  if (s === "failed") return "degraded";
+  if (s === "expired") return "expired";
+  if (s === "read_only") return "read_only";
+  return "connected";
+}
+function niceStatus(s: string): string {
+  if (s === "ok" || s === "connected") return "Connected";
+  if (s === "failed") return "Degraded";
+  if (s === "expired") return "Token expired";
+  if (s === "read_only") return "Read-only";
+  if (s === "pending") return "Pending check";
+  return s;
+}
+function mapBackend(c: BackendConnection): ActiveConnection {
+  return {
+    id: String(c.id),
+    numericId: c.id,
+    provider: c.type,
+    label: c.label,
+    account: c.url ?? c.metadata?.repo ?? "—",
+    status: statusToActive(c.status),
+    statusLabel: niceStatus(c.status),
+    scopesGranted: 0,
+    scopesAvailable: 0,
+    lastSyncIso: c.lastCheckedAt ?? c.createdAt,
+    meta: c.metadata ?? undefined,
+  };
+}
 
 /* ─── Icon mapping ──────────────────────────────────────────────────────── */
 function ProviderIcon({ provider, size = 18 }: { provider: ActiveConnection["provider"]; size?: number }) {
@@ -81,6 +113,9 @@ function ProviderIcon({ provider, size = 18 }: { provider: ActiveConnection["pro
     case "salesforce":      return <Briefcase {...props} />;
     case "twilio":          return <Phone {...props} />;
     case "hubspot":         return <Users {...props} />;
+    case "railway":         return <Train {...props} />;
+    case "lovable":         return <Sparkles {...props} />;
+    case "cursor":          return <MousePointerClick {...props} />;
     default:                return <Plug {...props} />;
   }
 }
@@ -99,14 +134,60 @@ function timeAgo(iso: string) {
 
 export default function ConnectorsPage() {
   const [, setLocation] = useLocation();
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState<ActiveConnection[]>(MOCK_ACTIVE);
-  const [connectingId, setConnectingId] = useState<string | null>(null);
 
-  const [endpointPreset, setEndpointPreset] = useState<EndpointPreset["id"]>("custom");
+  const [endpointPreset, setEndpointPreset] = useState<EndpointPreset["id"]>("lovable");
   const [customLabel, setCustomLabel] = useState("");
   const [customUrl, setCustomUrl] = useState("");
   const [customSaved, setCustomSaved] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const { data: active = [], isLoading, error } = useQuery<ActiveConnection[]>({
+    queryKey: ["connections"],
+    queryFn: async () => {
+      const res = await fetch("/api/connections", { credentials: "include" });
+      if (!res.ok) throw new Error(`GET /api/connections → ${res.status}`);
+      const rows = (await res.json()) as BackendConnection[];
+      return Array.isArray(rows) ? rows.map(mapBackend) : [];
+    },
+  });
+
+  const createMut = useMutation({
+    mutationFn: async (body: { type: "lovable" | "cursor"; label: string; url: string }) => {
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`POST /api/connections → ${res.status} ${txt}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["connections"] });
+      setCustomSaved(true);
+      setCustomLabel("");
+      setCustomUrl("");
+      setFormError(null);
+      setTimeout(() => setCustomSaved(false), 1800);
+    },
+    onError: (e: Error) => setFormError(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/connections/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`DELETE /api/connections/${id} → ${res.status}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["connections"] }),
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -116,52 +197,22 @@ export default function ConnectorsPage() {
     );
   }, [query]);
 
-  const handleConnect = (dir: DirectoryConnector) => {
-    setConnectingId(dir.id);
-    // Optimistic mock — backend will replace this with an OAuth handoff.
-    setTimeout(() => {
-      setActive((prev) => [
-        ...prev,
-        {
-          id: `conn_${dir.id}`,
-          provider: dir.provider,
-          label: dir.label,
-          account: "you@axiom.systems",
-          status: "connected",
-          statusLabel: "Connected",
-          scopesGranted: 4,
-          scopesAvailable: 4,
-          lastSyncIso: new Date().toISOString(),
-        },
-      ]);
-      setConnectingId(null);
-    }, 650);
-  };
-
   const handleSaveCustom = () => {
+    setFormError(null);
     if (!customLabel.trim() || !customUrl.trim()) return;
-    setActive((prev) => [
-      ...prev,
-      {
-        id: `conn_custom_${Date.now()}`,
-        provider: "custom",
-        label: customLabel.trim(),
-        account: customUrl.trim(),
-        status: "connected",
-        statusLabel: `${endpointPreset.toUpperCase()} endpoint`,
-        scopesGranted: 1,
-        scopesAvailable: 1,
-        lastSyncIso: new Date().toISOString(),
-      },
-    ]);
-    setCustomSaved(true);
-    setCustomLabel("");
-    setCustomUrl("");
-    setTimeout(() => setCustomSaved(false), 1800);
+    if (endpointPreset !== "lovable" && endpointPreset !== "cursor") return;
+    createMut.mutate({
+      type: endpointPreset,
+      label: customLabel.trim(),
+      url: customUrl.trim(),
+    });
   };
 
-  const isActiveProvider = (p: ActiveConnection["provider"]) =>
-    active.some((a) => a.provider === p);
+  const handleDelete = (conn: ActiveConnection) => {
+    if (!window.confirm(`Remove "${conn.label}" connection?`)) return;
+    deleteMut.mutate(conn.numericId);
+  };
+
 
   return (
     <div
@@ -221,20 +272,36 @@ export default function ConnectorsPage() {
           />
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14, marginTop: 14 }}>
-            {active.map((c) => (
-              <ActiveCard key={c.id} conn={c} />
+            {isLoading && (
+              <div style={{ border: "1px dashed var(--atlas-border)", borderRadius: 14, padding: 22, color: "var(--atlas-muted)", fontSize: 12, textAlign: "center", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Loader2 size={14} className="animate-spin" /> Loading connections…
+              </div>
+            )}
+            {error && !isLoading && (
+              <div style={{ border: "1px solid var(--atlas-gold-border)", borderRadius: 14, padding: 22, color: "var(--atlas-gold)", fontSize: 12, textAlign: "center" }}>
+                Couldn’t load connections. {(error as Error).message}
+              </div>
+            )}
+            {!isLoading && active.map((c) => (
+              <ActiveCard
+                key={c.id}
+                conn={c}
+                onDelete={() => handleDelete(c)}
+                deleting={deleteMut.isPending && deleteMut.variables === c.numericId}
+              />
             ))}
-            {active.length === 0 && (
+            {!isLoading && !error && active.length === 0 && (
               <div
                 style={{
                   border: "1px dashed var(--atlas-border)", borderRadius: 14, padding: 22,
                   color: "var(--atlas-muted)", fontSize: 12, textAlign: "center",
                 }}
               >
-                Nothing connected yet. Pick a workflow below to get started.
+                Nothing connected yet. Provision a Lovable or Cursor endpoint below.
               </div>
             )}
           </div>
+
         </section>
 
         {/* ─── 2. DISCOVERY GRID ────────────────────────────────────────── */}
@@ -279,14 +346,9 @@ export default function ConnectorsPage() {
           {/* Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14, marginTop: 16 }}>
             {filtered.map((dir) => (
-              <DirectoryCard
-                key={dir.id}
-                dir={dir}
-                connected={isActiveProvider(dir.provider)}
-                connecting={connectingId === dir.id}
-                onConnect={() => handleConnect(dir)}
-              />
+              <DirectoryCard key={dir.id} dir={dir} />
             ))}
+
             {filtered.length === 0 && (
               <div style={{ color: "var(--atlas-muted)", fontSize: 12, padding: 16 }}>
                 No matches for &ldquo;{query}&rdquo;.
@@ -323,30 +385,36 @@ export default function ConnectorsPage() {
                   p.id === "lovable" ? Sparkles :
                   p.id === "cursor"  ? MousePointerClick :
                   Globe;
+                const disabled = !p.enabled;
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setEndpointPreset(p.id)}
+                    onClick={() => !disabled && setEndpointPreset(p.id)}
+                    disabled={disabled}
+                    title={disabled ? "Coming soon" : undefined}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 7,
-                      padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                      padding: "7px 12px", borderRadius: 999,
+                      cursor: disabled ? "not-allowed" : "pointer",
                       fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
                       fontFamily: "var(--app-font-mono)",
                       border: `1px solid ${selected ? "var(--atlas-gold)" : "var(--atlas-border)"}`,
-                      color: selected ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                      color: disabled ? "var(--atlas-muted)" : selected ? "var(--atlas-gold)" : "var(--atlas-muted)",
                       background: selected
                         ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
                         : "transparent",
                       boxShadow: selected ? "0 0 0 3px var(--atlas-gold-dim)" : "none",
+                      opacity: disabled ? 0.45 : 1,
                       transition: "all 160ms ease",
                     }}
                   >
                     <Icon size={12} strokeWidth={1.8} />
-                    {p.label}
+                    {p.label}{disabled ? " · SOON" : ""}
                   </button>
                 );
               })}
             </div>
+
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
               <Field
@@ -379,8 +447,11 @@ export default function ConnectorsPage() {
                   <Check size={13} strokeWidth={2} /> Provisioned
                 </span>
               )}
+              {formError && (
+                <span style={{ color: "var(--atlas-gold)", fontSize: 11 }}>{formError}</span>
+              )}
               <button
-                disabled={!customLabel.trim() || !customUrl.trim()}
+                disabled={!customLabel.trim() || !customUrl.trim() || createMut.isPending}
                 onClick={handleSaveCustom}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
@@ -388,16 +459,17 @@ export default function ConnectorsPage() {
                   border: "1px solid var(--atlas-gold)",
                   color: "var(--atlas-gold)",
                   background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
-                  cursor: !customLabel.trim() || !customUrl.trim() ? "not-allowed" : "pointer",
-                  opacity: !customLabel.trim() || !customUrl.trim() ? 0.45 : 1,
+                  cursor: !customLabel.trim() || !customUrl.trim() || createMut.isPending ? "not-allowed" : "pointer",
+                  opacity: !customLabel.trim() || !customUrl.trim() || createMut.isPending ? 0.45 : 1,
                   fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
                   fontFamily: "var(--app-font-mono)",
                   boxShadow: "0 0 24px -10px var(--atlas-gold-glow)",
                 }}
               >
-                <Plus size={13} strokeWidth={2.2} />
-                Provision endpoint
+                {createMut.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} strokeWidth={2.2} />}
+                {createMut.isPending ? "Provisioning…" : "Provision endpoint"}
               </button>
+
             </div>
           </div>
         </section>
@@ -420,8 +492,9 @@ function SectionHead({ eyebrow, title, subtitle }: { eyebrow: string; title: str
   );
 }
 
-function ActiveCard({ conn }: { conn: ActiveConnection }) {
+function ActiveCard({ conn, onDelete, deleting }: { conn: ActiveConnection; onDelete: () => void; deleting: boolean }) {
   const warn = conn.status === "read_only" || conn.status === "degraded" || conn.status === "expired";
+  const showScopes = conn.scopesGranted > 0 || conn.scopesAvailable > 0;
   return (
     <article
       style={{
@@ -432,9 +505,9 @@ function ActiveCard({ conn }: { conn: ActiveConnection }) {
           "color-mix(in oklab, var(--atlas-surface) 92%, transparent))",
         backdropFilter: "blur(20px) saturate(150%)",
         boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -36px rgba(0,0,0,0.7), 0 0 0 1px rgba(230,198,135,0.04)",
+        opacity: deleting ? 0.5 : 1,
       }}
     >
-      {/* Top: icon + label + status pill */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div
           style={{
@@ -465,7 +538,6 @@ function ActiveCard({ conn }: { conn: ActiveConnection }) {
         </div>
       </div>
 
-      {/* Status badge */}
       <div
         style={{
           marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6,
@@ -480,26 +552,30 @@ function ActiveCard({ conn }: { conn: ActiveConnection }) {
         {conn.statusLabel}
       </div>
 
-      {/* Footer meta */}
-      <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--atlas-border)", fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em" }}>
-        <span>SCOPES · {conn.scopesGranted}/{conn.scopesAvailable}</span>
+      <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--atlas-border)", fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em", alignItems: "center" }}>
+        {showScopes && <span>SCOPES · {conn.scopesGranted}/{conn.scopesAvailable}</span>}
         <span>SYNCED · {timeAgo(conn.lastSyncIso)}</span>
-        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, color: "var(--atlas-muted)", cursor: "pointer" }}>
-          MANAGE <ExternalLink size={10} strokeWidth={1.8} />
-        </span>
+        <button
+          onClick={onDelete}
+          disabled={deleting}
+          style={{
+            marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4,
+            color: "var(--atlas-muted)", cursor: deleting ? "not-allowed" : "pointer",
+            background: "transparent", border: "none", padding: 0,
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+            fontFamily: "var(--app-font-mono)",
+          }}
+        >
+          {deleting ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} strokeWidth={1.8} />}
+          {deleting ? "Removing…" : "Remove"}
+        </button>
       </div>
     </article>
+
   );
 }
 
-function DirectoryCard({
-  dir, connected, connecting, onConnect,
-}: {
-  dir: DirectoryConnector;
-  connected: boolean;
-  connecting: boolean;
-  onConnect: () => void;
-}) {
+function DirectoryCard({ dir }: { dir: DirectoryConnector }) {
   const [hover, setHover] = useState(false);
   return (
     <article
@@ -556,28 +632,22 @@ function DirectoryCard({
       </p>
 
       <button
-        disabled={connected || connecting}
-        onClick={onConnect}
+        disabled
+        title="OAuth flow not built yet"
         style={{
-          width: "100%", padding: "9px 12px", borderRadius: 10, cursor: connected ? "default" : "pointer",
+          width: "100%", padding: "9px 12px", borderRadius: 10, cursor: "not-allowed",
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
           fontFamily: "var(--app-font-mono)",
-          border: `1px solid ${connected ? "var(--atlas-border)" : "var(--atlas-gold)"}`,
-          color: connected ? "var(--atlas-muted)" : "var(--atlas-gold)",
-          background: connected
-            ? "transparent"
-            : hover
-              ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
-              : "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
-          boxShadow: connected ? "none" : hover ? "0 0 24px -10px var(--atlas-gold-glow)" : "none",
-          transition: "all 160ms ease",
+          border: "1px solid var(--atlas-border)",
+          color: "var(--atlas-muted)",
+          background: "transparent",
+          opacity: 0.7,
           display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7,
         }}
       >
-        {connected ? <><Check size={12} strokeWidth={2.2} /> Connected</>
-          : connecting ? "Connecting…"
-          : <><Plus size={12} strokeWidth={2.2} /> Connect</>}
+        Coming soon
       </button>
+
     </article>
   );
 }
