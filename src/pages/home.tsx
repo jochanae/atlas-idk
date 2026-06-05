@@ -3544,7 +3544,7 @@ export default function Home() {
                           {msg.focusSuggestion && !msg.streaming && (
                             <div style={{ marginTop: 8, marginLeft: 4 }}>
                               <button
-                                onClick={() => setLocation(`/project/${msg.focusSuggestion.projectId}`)}
+                                onClick={() => setLocation(`/project/${msg.focusSuggestion!.projectId}`)}
                                 style={{
                                   background: "transparent",
                                   border: "1px solid rgba(201,162,76,0.35)",
