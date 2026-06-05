@@ -101,6 +101,7 @@ type HomeMessage = {
   id?: string;
   streaming?: boolean;
   handoffSignal?: HomeHandoffSignal;
+  focusSuggestion?: { projectId: number; projectName: string };
   plan?: Plan;
   createdAt?: string;
   executionTimeMs?: number | null;
@@ -3540,6 +3541,29 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                           </div>
+                          {msg.focusSuggestion && !msg.streaming && (
+                            <div style={{ marginTop: 8, marginLeft: 4 }}>
+                              <button
+                                onClick={() => setLocation(`/project/${msg.focusSuggestion!.projectId}`)}
+                                style={{
+                                  background: "transparent",
+                                  border: "1px solid rgba(201,162,76,0.35)",
+                                  borderRadius: "20px",
+                                  color: "var(--atlas-gold)",
+                                  fontSize: "12px",
+                                  padding: "6px 14px",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  fontFamily: "var(--app-font-sans)",
+                                  letterSpacing: "0.02em",
+                                }}
+                              >
+                                → Open {msg.focusSuggestion.projectName} workspace
+                              </button>
+                            </div>
+                          )}
 
                           {msg.visualLoading && (
                             <div style={{

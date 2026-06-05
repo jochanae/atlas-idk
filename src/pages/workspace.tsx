@@ -3121,6 +3121,7 @@ export default function Workspace() {
     } catch {}
     return "chat";
   });
+  const [subheaderOpen, setSubheaderOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench" | "mcp">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
@@ -5261,6 +5262,19 @@ export default function Workspace() {
     () => parseLiveGeneration(activityStream.content, chatPending),
     [activityStream.content, chatPending]
   );
+  useEffect(() => {
+    if (/FILE_EDIT/i.test(activityStream.content)) setSubheaderOpen(true);
+  }, [activityStream.content]);
+  useEffect(() => {
+    const msg = messages[messages.length - 1];
+    if (
+      msg?.role === "assistant" &&
+      !msg.streaming &&
+      ((msg.fileEdits?.length ?? 0) > 0 || /FILE_EDIT/i.test(msg.content ?? ""))
+    ) {
+      setSubheaderOpen(true);
+    }
+  }, [messages]);
 
   // ── Project not found ────────────────────────────────────────────────────
   // Do NOT redirect on fetch failure — stay on the workspace and show an inline
@@ -5431,6 +5445,8 @@ export default function Workspace() {
           if (isMobile) setMobileTab("preview");
           setLaunchModal({ open: true, mode: "preview" });
         }}
+        expanded={subheaderOpen}
+        onExpandedChange={setSubheaderOpen}
       />
 
       <LaunchModal
@@ -5902,7 +5918,9 @@ export default function Workspace() {
                   msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
                   msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
                 ].filter(Boolean).join("\n");
-                setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
+                const activityContent = [content, markers].filter(Boolean).join("\n");
+                if (/FILE_EDIT/i.test(activityContent)) setSubheaderOpen(true);
+                setActivityStream({ active: true, content: activityContent });
               }}
               onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
               onPushSuccess={handleReviewPushSuccess}
@@ -6038,7 +6056,9 @@ export default function Workspace() {
                   msg.fileEdits && msg.fileEdits.length > 0 ? "FILE_EDIT" : "",
                   msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
                 ].filter(Boolean).join("\n");
-                setActivityStream({ active: true, content: [content, markers].filter(Boolean).join("\n") });
+                const activityContent = [content, markers].filter(Boolean).join("\n");
+                if (/FILE_EDIT/i.test(activityContent)) setSubheaderOpen(true);
+                setActivityStream({ active: true, content: activityContent });
               },
               onStreamActivityComplete: () => setActivityStream({ active: false, content: "" }),
               onCommitCardDone: () => {

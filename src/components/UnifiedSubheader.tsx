@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import { Play } from "lucide-react";
 
 export type UnifiedSubheaderTab = "chat" | "changes" | "blueprints" | "artifacts" | "console";
@@ -13,6 +13,8 @@ type UnifiedSubheaderProps = {
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
   onLaunch?: () => void;
   hasConversation?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: Dispatch<SetStateAction<boolean>>;
 };
 
 const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }> = [
@@ -53,8 +55,12 @@ export function UnifiedSubheader({
   showWorkspaceMenu = false,
   onLaunch,
   hasConversation = true,
+  expanded: controlledExpanded,
+  onExpandedChange,
 }: UnifiedSubheaderProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const expanded = controlledExpanded ?? internalExpanded;
+  const setExpanded = onExpandedChange ?? setInternalExpanded;
   const [launchHover, setLaunchHover] = useState(false);
   const [launchActive, setLaunchActive] = useState(false);
 
