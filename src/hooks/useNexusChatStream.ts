@@ -15,6 +15,7 @@ export interface NexusMessage {
   intentType?: string | null;
   isNew?: boolean;
   handoffSignal?: NexusHandoffSignal | null;
+  focusSuggestion?: NexusFocusSuggestion;
   surface?: string | null;
   executionTimeMs?: number | null;
   inputTokens?: number | null;
@@ -39,6 +40,11 @@ export interface NexusHandoffSignal {
   reason?: string | null;
   readyToHandoff?: boolean;
   confidence?: string;
+}
+
+export interface NexusFocusSuggestion {
+  projectId: number;
+  projectName: string;
 }
 
 export interface NexusShapingPayload {
@@ -368,6 +374,7 @@ export function useNexusChatStream(
 
             const handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
             if (handoff) setHandoffSignal(handoff);
+            const focusSuggestion = meta.focusSuggestion as NexusFocusSuggestion | undefined;
 
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
@@ -376,6 +383,7 @@ export function useNexusChatStream(
                     content: displayText,
                     streaming: false,
                     handoffSignal: handoff ?? null,
+                    focusSuggestion,
                     surface: (meta.surface ?? null) as string | null,
                     executionTimeMs: (meta.executionTimeMs ?? meta.execution_time_ms ?? null) as number | null,
                     inputTokens: (meta.inputTokens ?? meta.input_tokens ?? null) as number | null,
