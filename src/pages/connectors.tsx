@@ -25,18 +25,6 @@ type BackendConnection = {
  * See "DEVELOPER HANDOFF SPEC" at the bottom of this file for payload shapes.
  * ───────────────────────────────────────────────────────────────────────── */
 
-type ActiveConnection = {
-  id: string;
-  provider: "github" | "google_calendar" | "stripe" | "slack" | "salesforce" | "twilio" | "hubspot" | "custom";
-  label: string;
-  account: string;
-  status: "connected" | "read_only" | "degraded" | "expired";
-  statusLabel: string;
-  scopesGranted: number;
-  scopesAvailable: number;
-  lastSyncIso: string;
-  meta?: Record<string, string>;
-};
 
 type ActiveConnection = {
   id: string;
