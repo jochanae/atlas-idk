@@ -501,6 +501,20 @@ body[data-axiom-thread="active"][data-axiom-global-insight="true"] .atlas-input-
   box-shadow: none !important;
   border: none !important;
 }
+/* GI must always win — strip composer chrome in both themes */
+body[data-axiom-global-insight="true"] .atlas-input-shell,
+[data-theme="parchment"] body[data-axiom-global-insight="true"] .atlas-input-shell {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+body[data-axiom-global-insight="true"] .atlas-input-shell textarea,
+body[data-axiom-global-insight="true"] .atlas-input-shell input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
 .atlas-input-shell:focus-within {
   animation: none;
   border: none;
