@@ -3880,7 +3880,7 @@ export default function Home() {
 
 
           {/* Continuity strip — status + expand CTA anchored below the suggestion chips */}
-          {projects && projects.length > 0 && (() => {
+          {!globalInsightOpen && projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
             const mostRecent = [...activeProjects].sort((a, b) => {
               const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
