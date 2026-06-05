@@ -3664,7 +3664,7 @@ export default function Home() {
 
               <ComposerActions
                 scope="home"
-                hasProjectContext
+                hasProjectContext={false}
                 hasAttachments={attachedFiles.length > 0}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);

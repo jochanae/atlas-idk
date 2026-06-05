@@ -211,7 +211,7 @@ export default function ConnectorsPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 18px 80px", display: "flex", flexDirection: "column", gap: 36 }}>
+      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 18px calc(env(safe-area-inset-bottom, 0px) + 160px)", display: "flex", flexDirection: "column", gap: 36, WebkitOverflowScrolling: "touch" }}>
         {/* ─── 1. ACTIVE CONNECTIONS ────────────────────────────────────── */}
         <section>
           <SectionHead
