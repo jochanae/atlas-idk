@@ -309,7 +309,17 @@ function CodeViewer({ file }: { file: GeneratedFile }) {
 }
 
 // ── Activity rail (right) ────────────────────────────────────────────────────
-function ActivityRail({ run, files }: { run: GenerationRun; files: GeneratedFile[] }) {
+function ActivityRail({
+  run,
+  files,
+  runs,
+  onSelectRun,
+}: {
+  run: GenerationRun;
+  files: GeneratedFile[];
+  runs: GenerationRun[];
+  onSelectRun: (id: string) => void;
+}) {
   return (
     <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", height: "100%" }}>
       <div>
@@ -378,12 +388,19 @@ function ActivityRail({ run, files }: { run: GenerationRun; files: GeneratedFile
           Run History
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {MOCK_RUNS.map((r) => (
-            <div key={r.id} style={{
-              padding: "8px 10px", borderRadius: 8,
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-              background: r.id === run.id ? "rgba(230,198,135,0.04)" : "transparent",
-            }}>
+          {runs.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onSelectRun(r.id)}
+              style={{
+                textAlign: "left", cursor: "pointer",
+                padding: "8px 10px", borderRadius: 8,
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                background: r.id === run.id ? "rgba(230,198,135,0.04)" : "transparent",
+                color: "var(--atlas-fg)",
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <span style={{
                   ...MONO, fontSize: 9, padding: "1px 5px", borderRadius: 3,
@@ -404,7 +421,7 @@ function ActivityRail({ run, files }: { run: GenerationRun; files: GeneratedFile
               <p style={{ margin: 0, fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.8, lineHeight: 1.4 }}>
                 {r.prompt.slice(0, 84)}{r.prompt.length > 84 ? "…" : ""}
               </p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
