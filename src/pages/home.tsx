@@ -2988,11 +2988,12 @@ export default function Home() {
                   color: globalInsightOpen ? undefined : "var(--atlas-fg)",
                   opacity: globalInsightOpen ? 1 : 0.85,
                   background: globalInsightOpen
-                    ? "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)"
+                    ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
                     : undefined,
                   WebkitBackgroundClip: globalInsightOpen ? "text" : undefined,
                   WebkitTextFillColor: globalInsightOpen ? "transparent" : undefined,
                   backgroundClip: globalInsightOpen ? "text" : undefined,
+                  filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                 }}>
                   {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
                 </h1>
