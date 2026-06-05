@@ -572,14 +572,7 @@ function ActiveCard({ conn, onDelete, deleting }: { conn: ActiveConnection; onDe
   );
 }
 
-function DirectoryCard({
-  dir, connected, connecting, onConnect,
-}: {
-  dir: DirectoryConnector;
-  connected: boolean;
-  connecting: boolean;
-  onConnect: () => void;
-}) {
+function DirectoryCard({ dir }: { dir: DirectoryConnector }) {
   const [hover, setHover] = useState(false);
   return (
     <article
@@ -636,28 +629,22 @@ function DirectoryCard({
       </p>
 
       <button
-        disabled={connected || connecting}
-        onClick={onConnect}
+        disabled
+        title="OAuth flow not built yet"
         style={{
-          width: "100%", padding: "9px 12px", borderRadius: 10, cursor: connected ? "default" : "pointer",
+          width: "100%", padding: "9px 12px", borderRadius: 10, cursor: "not-allowed",
           fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
           fontFamily: "var(--app-font-mono)",
-          border: `1px solid ${connected ? "var(--atlas-border)" : "var(--atlas-gold)"}`,
-          color: connected ? "var(--atlas-muted)" : "var(--atlas-gold)",
-          background: connected
-            ? "transparent"
-            : hover
-              ? "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"
-              : "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
-          boxShadow: connected ? "none" : hover ? "0 0 24px -10px var(--atlas-gold-glow)" : "none",
-          transition: "all 160ms ease",
+          border: "1px solid var(--atlas-border)",
+          color: "var(--atlas-muted)",
+          background: "transparent",
+          opacity: 0.7,
           display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7,
         }}
       >
-        {connected ? <><Check size={12} strokeWidth={2.2} /> Connected</>
-          : connecting ? "Connecting…"
-          : <><Plus size={12} strokeWidth={2.2} /> Connect</>}
+        Coming soon
       </button>
+
     </article>
   );
 }
