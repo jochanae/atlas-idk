@@ -47,6 +47,7 @@ import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
+import { ReflectionSurface } from "@/components/home/ReflectionSurface";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -2713,6 +2714,24 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
+      {/* Global Insight — standalone overlay with isolated scroll + composer.
+          Mounts above the ambient home shell when reflectionLocked is true. */}
+      <ReflectionSurface
+        open={reflectionLocked}
+        messages={nexusChat.messages as any}
+        input={input}
+        setInput={setInput}
+        onSubmit={handleSubmit}
+        isSending={isSending}
+        isStreaming={isAtlasStreaming}
+        pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
+        liveStep={nexusChat.liveStep as any}
+        isListening={isListening}
+        toggleVoice={toggleVoice}
+        onOpenHistory={handleOpenHistory}
+        onExit={() => setReflectionLocked(false)}
+      />
+
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
           onClick={async () => {
