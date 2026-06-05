@@ -868,21 +868,34 @@ function GlobalDecisionsView({
             {/* Gold spine */}
             <div aria-hidden style={{ position: "absolute", left: 7, top: 0, bottom: 0, width: 1, background: "linear-gradient(180deg, var(--accent-gold), color-mix(in oklab, var(--accent-gold) 20%, transparent))" }} />
 
-            {stream.map((entry) => {
+            {stream.map((group) => {
+              const entry = group.lead;
+              const count = group.occurrences.length;
               const cat = inferCategory(entry);
               const catCfg = CATEGORY_CONFIG[cat];
               const severityColor = entry.severity === "blocker" ? "var(--ember)" : entry.severity === "committed" ? "var(--phosphor)" : entry.severity === "parked" ? "var(--accent-gold)" : "var(--muted-text)";
+              const linkKey = `axiom:ledger:gh:${entry.id}`;
+              const storedLink = typeof window !== "undefined" ? window.localStorage.getItem(linkKey) : null;
               return (
                 <div
-                  key={entry.id}
+                  key={group.key}
                   style={{ marginBottom: 8, borderRadius: 8, border: "1px solid var(--border)", background: "transparent", padding: "11px 14px", display: "flex", flexDirection: "column" as const, gap: 5 }}
                 >
-                  {/* Top row: severity dot + title + project tag */}
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: severityColor, flexShrink: 0, marginTop: 4 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-                        {entry.title}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.01em", color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, flex: 1, minWidth: 0 }}>
+                          {entry.title}
+                        </div>
+                        {count > 1 && (
+                          <span
+                            title={`Logged ${count} times within 24h`}
+                            style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--accent-gold)", background: "color-mix(in oklab, var(--accent-gold) 14%, transparent)", border: "0.5px solid color-mix(in oklab, var(--accent-gold) 35%, transparent)", padding: "1px 6px", borderRadius: 10, flexShrink: 0, letterSpacing: "0.04em" }}
+                          >
+                            ×{count}
+                          </span>
+                        )}
                       </div>
                       {entry.summary && (
                         <div style={{ fontSize: 11.5, color: "var(--muted-text)", marginTop: 2, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>
@@ -891,7 +904,6 @@ function GlobalDecisionsView({
                       )}
                     </div>
                   </div>
-                  {/* Bottom row: project tag + category + time */}
                   <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 17, flexWrap: "wrap" as const }}>
                     {entry.projectName && (
                       <span
@@ -907,6 +919,40 @@ function GlobalDecisionsView({
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--muted-text)", letterSpacing: "0.04em", flexShrink: 0 }}>
                       {relativeTime(entry.createdAt)}
                     </span>
+                    {storedLink ? (
+                      <a
+                        href={storedLink}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--phosphor)", background: "color-mix(in oklab, var(--phosphor) 10%, transparent)", border: "0.5px solid color-mix(in oklab, var(--phosphor) 28%, transparent)", padding: "1px 7px", borderRadius: 3, textDecoration: "none", flexShrink: 0 }}
+                      >
+                        {(() => {
+                          const m = storedLink.match(/commit\/([a-f0-9]{7,40})/i);
+                          if (m) return `⌥ ${m[1].slice(0, 7)}`;
+                          const pr = storedLink.match(/pull\/(\d+)/);
+                          if (pr) return `PR #${pr[1]}`;
+                          return "GitHub";
+                        })()}
+                      </a>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const url = window.prompt("Paste GitHub commit or PR URL");
+                          if (url && /^https?:\/\/github\.com\//i.test(url)) {
+                            window.localStorage.setItem(linkKey, url);
+                            toast("Linked to GitHub");
+                            setLocation(window.location.pathname);
+                          } else if (url) {
+                            toast("Not a valid github.com URL");
+                          }
+                        }}
+                        style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.06em", color: "var(--muted-text)", background: "transparent", border: "0.5px dashed var(--border)", padding: "1px 7px", borderRadius: 3, cursor: "pointer", flexShrink: 0 }}
+                      >
+                        + Link commit
+                      </button>
+                    )}
                   </div>
                 </div>
               );
