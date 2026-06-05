@@ -111,14 +111,6 @@ export function extractPersistedFlowNodes(nodeState: unknown): ArchNode[] {
   });
 }
 
-function groupNodesForBuilder(nodes: ArchNode[]) {
-  const defined = nodes.filter(n => Boolean(n.strategicAnswer && n.strategicAnswer.trim()) && n.type !== "goal");
-  const open = nodes.filter(n => !(n.strategicAnswer && n.strategicAnswer.trim()) && n.type !== "goal" && n.type !== "blocker" && !(n.type === "priority" && (n.moscow ?? n.meta) === "wont") && n.type !== "wont");
-  const blockers = nodes.filter(n => n.type === "blocker");
-  const cut = nodes.filter(n => n.type === "wont" || (n.type === "priority" && (n.moscow ?? n.meta) === "wont"));
-  const goal = nodes.find(n => n.type === "goal") ?? null;
-  return { goal, defined, open, blockers, cut };
-}
 
 function orderNodesForStory(nodes: ArchNode[]): { goal: ArchNode | null; steps: ArchNode[] } {
   const goal = nodes.find(n => n.type === "goal") ?? null;
