@@ -1373,7 +1373,7 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Reflection mode ────────────────────────────────────────────────────────
+  // ── Global Insight mode ────────────────────────────────────────────────────────
   const [globalInsightOpen, setGlobalInsightOpen] = useState(false);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
@@ -1615,7 +1615,7 @@ export default function Home() {
   }, [vibrate, callGlobalInsightMode, nexusChat.setMessages]);
 
   // Bridge to the global header's Think Freely lock — listen for tap events and
-  // broadcast state changes so the header icon mirrors reflection mode.
+  // broadcast state changes so the header icon mirrors Global Insight mode.
   useEffect(() => {
     const onToggle = () => { handleLockTap(); };
     window.addEventListener("axiom:think-freely-toggle", onToggle);
