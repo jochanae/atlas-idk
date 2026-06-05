@@ -541,17 +541,17 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           <div
             style={{
               position: "absolute",
-              top: 46,
-              left: 10,
+              bottom: 8,
+              right: 10,
               zIndex: 14,
               display: "flex",
               gap: 2,
               padding: 2,
-              background: "rgba(var(--atlas-bg-rgb),0.55)",
+              background: "rgba(var(--atlas-bg-rgb),0.78)",
               backdropFilter: "blur(14px) saturate(140%)",
               border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
               borderRadius: 999,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
             }}
           >
             {(["designer", "builder", "storyteller"] as const).map((lens) => {
