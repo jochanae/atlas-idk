@@ -3678,8 +3678,9 @@ export default function Home() {
                   // whatever they pick up at home (attachments, intent) carries
                   // into the same workspace. Keeps home + workspace menus identical.
                   if (action === "code") { setLocation("/code"); return; }
+                  if (action === "connectors") { setLocation("/connectors"); return; }
                   if (action === "files" || action === "share" ||
-                      action === "publish" || action === "connectors" ||
+                      action === "publish" ||
                       action === "more:forge") { setLocation("/projects"); return; }
                   toast("Open a project to use that");
                 }}
