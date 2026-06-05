@@ -206,7 +206,7 @@ export default function ConnectorsPage() {
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, color: "var(--atlas-muted)", fontSize: 11 }}>
             <ShieldCheck size={14} strokeWidth={1.6} style={{ color: "var(--atlas-phosphor)" }} />
-            <span>{active.length} active · {MOCK_DIRECTORY.length} available</span>
+            <span>{active.length} active · {MOCK_DIRECTORY.length} available · scroll for more ↓</span>
           </div>
         </div>
       </header>
