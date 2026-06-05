@@ -654,16 +654,36 @@ function GlobalDecisionsView({
     }).filter((s) => s.count > 0).sort((a, b) => b.count - a.count),
   [allEntries, projects]);
 
-  // ── Filtered stream ──────────────────────────────────────────────
+  // ── Filtered stream, deduped + grouped (×N within 24h on same project+title) ──
   const stream = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return allEntries.filter((e) => {
+    const filtered = allEntries.filter((e) => {
       if (e.status !== "committed") return false;
+      if ((e.status as string) === "archived_duplicate") return false;
       if (focusProjectId && e.projectId !== focusProjectId) return false;
       if (categoryFilter !== "all" && inferCategory(e) !== categoryFilter) return false;
       if (q && !e.title.toLowerCase().includes(q) && !(e.summary ?? "").toLowerCase().includes(q)) return false;
       return true;
-    }).slice(0, 50);
+    });
+
+    const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+    const DAY = 86400000;
+    const groups: Array<{ key: string; lead: GlobalEntry; occurrences: GlobalEntry[] }> = [];
+
+    for (const entry of filtered) {
+      const norm = normalize(entry.title);
+      const ts = new Date(entry.createdAt).getTime();
+      const existing = groups.find(
+        (g) =>
+          g.lead.projectId === entry.projectId &&
+          normalize(g.lead.title) === norm &&
+          Math.abs(new Date(g.lead.createdAt).getTime() - ts) < DAY,
+      );
+      if (existing) existing.occurrences.push(entry);
+      else groups.push({ key: `${entry.projectId}:${norm}:${entry.id}`, lead: entry, occurrences: [entry] });
+    }
+
+    return groups.slice(0, 50);
   }, [allEntries, focusProjectId, categoryFilter, searchQuery]);
 
   const STAT_TILES = [
