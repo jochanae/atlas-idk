@@ -1814,3 +1814,37 @@ export function AssistantBubble({
     </div>
   );
 }
+
+function MenuItem({
+  icon, label, onClick, disabled, accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 10,
+        padding: "8px 10px", borderRadius: 8,
+        background: "transparent", border: "none",
+        color: accent ? "var(--atlas-gold)" : "var(--atlas-fg)",
+        opacity: disabled ? 0.5 : 0.92,
+        cursor: disabled ? "default" : "pointer",
+        fontSize: 12.5, fontFamily: "var(--app-font-sans)",
+        letterSpacing: "-0.005em", textAlign: "left",
+      }}
+      onPointerEnter={(e) => { if (!disabled) e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"; }}
+      onPointerLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+    >
+      <span style={{ display: "inline-flex", width: 18, justifyContent: "center", color: accent ? "var(--atlas-gold)" : "var(--atlas-muted)" }}>{icon}</span>
+      <span style={{ flex: 1 }}>{label}</span>
+    </button>
+  );
+}
