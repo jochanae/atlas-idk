@@ -2987,7 +2987,7 @@ export default function Home() {
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
                   color: "var(--atlas-fg)", opacity: 0.85,
                 }}>
-                  {greetingRef.current?.head}
+                  {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
                 </h1>
                 <p style={{
                   fontSize: "var(--ts-body)" as any,
@@ -2996,7 +2996,7 @@ export default function Home() {
                   margin: 0,
                   fontStyle: "italic",
                 }}>
-                  {greetingRef.current?.sub}
+                  {globalInsightOpen ? "Ask across every thread." : greetingRef.current?.sub}
                 </p>
               </div>
             )}
