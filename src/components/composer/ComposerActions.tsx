@@ -57,7 +57,7 @@ type PrimaryItem = {
 
 const PRIMARY_ITEMS: PrimaryItem[] = [
   { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} />, projectOnly: true },
-  { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} />, projectOnly: true },
+  { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} /> },
   { id: "code", label: "Code", icon: <Code2 size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "history", label: "History", icon: <History size={18} strokeWidth={1.6} /> },
   { id: "share", label: "Share", icon: <Share2 size={18} strokeWidth={1.6} />, projectOnly: true },

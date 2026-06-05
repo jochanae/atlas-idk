@@ -606,10 +606,11 @@ function dotForStatus(type: ConnType, st?: ConnStatus): { color: string; pulse: 
 }
 
 function ConnectionsDock() {
+  const [, setLocation] = useLocation();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ConnStatus>>({});
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const goManage = () => setLocation("/connectors");
 
   const loadConnections = async (): Promise<Connection[]> => {
     try {
@@ -682,10 +683,7 @@ function ConnectionsDock() {
     } catch {}
   };
 
-  const handleSaved = () => {
-    setShowAdd(false);
-    loadConnections().then(loadStatus);
-  };
+  // Add/manage flows live on /connectors now.
 
   const handleCardClick = (c: Connection) => {
     if ((c.type === "lovable" || c.type === "cursor") && c.url) {
@@ -706,21 +704,19 @@ function ConnectionsDock() {
             Your active ecosystem
           </span>
         </div>
-        {!isEmpty && (
-          <button
-            type="button"
-            onClick={() => setShowAdd(true)}
-            aria-label="Add connection"
-            style={{
-              width: 22, height: 22, borderRadius: 6, cursor: "pointer",
-              background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.25)",
-              color: "var(--atlas-gold)", fontSize: 14, lineHeight: 1, padding: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            +
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={goManage}
+          aria-label="Manage connectors"
+          style={{
+            padding: "4px 10px", borderRadius: 6, cursor: "pointer",
+            background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.25)",
+            color: "var(--atlas-gold)", fontSize: 9.5, lineHeight: 1,
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase",
+          }}
+        >
+          Manage →
+        </button>
       </div>
 
       {isEmpty ? (
@@ -730,7 +726,7 @@ function ConnectionsDock() {
           </p>
           <button
             type="button"
-            onClick={() => setShowAdd(true)}
+            onClick={goManage}
             style={{
               padding: "7px 14px", borderRadius: 8, cursor: "pointer",
               background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)",
@@ -738,7 +734,7 @@ function ConnectionsDock() {
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}
           >
-            + Add connection
+            Browse connectors →
           </button>
         </div>
       ) : (
@@ -809,7 +805,7 @@ function ConnectionsDock() {
         </div>
       )}
 
-      {showAdd && <AddConnectionModal onClose={() => setShowAdd(false)} onSaved={handleSaved} />}
+      
     </div>
   );
 }
