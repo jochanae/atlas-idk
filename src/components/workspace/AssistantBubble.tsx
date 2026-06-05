@@ -1740,13 +1740,14 @@ export function AssistantBubble({
           {menuOpen && (
             <>
               <div
+                onPointerDown={() => setMenuOpen(false)}
                 onClick={() => setMenuOpen(false)}
-                style={{ position: "fixed", inset: 0, zIndex: 40, background: "transparent" }}
+                style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.001)" }}
               />
               <div
                 role="menu"
                 style={{
-                  position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 41,
+                  position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 9999,
                   minWidth: 220, padding: 6, borderRadius: 12,
                   background: "color-mix(in oklab, var(--atlas-surface) 96%, transparent)",
                   border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
@@ -1755,18 +1756,24 @@ export function AssistantBubble({
                   fontFamily: "var(--app-font-sans)",
                 }}
               >
-                {snapshotForMsg && !isReverted && (
-                  <MenuItem
-                    icon={<CornerUpLeft size={13} strokeWidth={1.6} />}
-                    label="Roll back to here"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      if (typeof window !== "undefined" &&
-                          !window.confirm("Roll back to this message? Newer responses will move to Reverted edits.")) return;
-                      rollbackTo(projectId, snapshotForMsg.id);
+                <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 2px 4px" }}>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      width: 26, height: 26, borderRadius: 999,
+                      background: "transparent", border: "none",
+                      color: "var(--atlas-muted)", cursor: "pointer",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      WebkitTapHighlightColor: "transparent",
                     }}
-                  />
-                )}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4l8 8M12 4l-8 8" />
+                    </svg>
+                  </button>
+                </div>
                 {snapshotForMsg && (
                   <MenuItem
                     icon={snapshotForMsg.isBookmarked ? <BookmarkCheck size={13} strokeWidth={1.7} /> : <Bookmark size={13} strokeWidth={1.6} />}
