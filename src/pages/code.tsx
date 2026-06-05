@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { apiUrl } from "@/lib/api";
 import {
   ArrowLeft,
   Code2,
@@ -9,7 +11,6 @@ import {
   GitBranch,
   Github,
   Download,
-  Sparkles,
   RefreshCw,
   Search,
   Copy,
@@ -21,10 +22,7 @@ import {
   Hammer,
   Wand2,
   Activity,
-  History,
-  Diff,
-  Eye,
-  Terminal,
+  AlertTriangle,
 } from "lucide-react";
 
 /* ──────────────────────────────────────────────────────────────────────────
