@@ -48,6 +48,14 @@ export interface NexusShapingPayload {
   what: string;
 }
 
+export interface NexusLiveStep {
+  id: string;
+  verb: string;
+  target?: string;
+  detail?: string;
+  status?: "ok" | "warn" | "fail";
+}
+
 export interface UseNexusChatStreamOptions {
   focusProjectId?: number | null;
   model?: string;
@@ -65,7 +73,8 @@ export interface UseNexusChatStreamReturn {
   setMessages: React.Dispatch<React.SetStateAction<NexusMessage[]>>;
   isStreaming: boolean;
   isPending: boolean;
-  liveStep: { verb: string; target?: string; status?: string } | null;
+  liveStep: NexusLiveStep | null;
+  liveSteps: NexusLiveStep[];
   shapingPayload: NexusShapingPayload | null;
   setShapingPayload: React.Dispatch<React.SetStateAction<NexusShapingPayload | null>>;
   shapingHeld: boolean;
@@ -90,7 +99,8 @@ export function useNexusChatStream(
   const messagesRef = useRef<NexusMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [liveStep, setLiveStep] = useState<{ verb: string; target?: string; status?: string } | null>(null);
+  const [liveStep, setLiveStep] = useState<NexusLiveStep | null>(null);
+  const [liveSteps, setLiveSteps] = useState<NexusLiveStep[]>([]);
   const [shapingPayload, setShapingPayload] = useState<NexusShapingPayload | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
   const shapingHeldRef = useRef(false);
@@ -113,6 +123,7 @@ export function useNexusChatStream(
   const streamingIdRef = useRef<string | null>(null);
   const cleanedUpRef = useRef(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stepSeqRef = useRef(0);
 
   const resetStreamState = useCallback(() => {
     if (timeoutRef.current) {
@@ -124,6 +135,7 @@ export function useNexusChatStream(
     setIsStreaming(false);
     setIsPending(false);
     setLiveStep(null);
+    setLiveSteps([]);
   }, []);
 
   const abort = useCallback(() => {
@@ -160,6 +172,7 @@ export function useNexusChatStream(
     setIsStreaming(true);
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
+    stepSeqRef.current = 0;
     cleanedUpRef.current = false;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
@@ -235,7 +248,15 @@ export function useNexusChatStream(
             ));
           },
           onStep: (step) => {
-            setLiveStep({ verb: step.verb ?? "", target: step.target, status: step.status });
+            const nextStep: NexusLiveStep = {
+              id: `${streamingId}-${stepSeqRef.current++}`,
+              verb: step.verb ?? "",
+              target: step.target,
+              detail: step.detail,
+              status: step.status,
+            };
+            setLiveStep(nextStep);
+            setLiveSteps(prev => [...prev, nextStep].slice(-6));
           },
           onDone: (fullText, meta) => {
             const doneConversationId = meta.conversationId;
@@ -397,6 +418,7 @@ export function useNexusChatStream(
     isStreaming,
     isPending,
     liveStep,
+    liveSteps,
     shapingPayload,
     setShapingPayload,
     shapingHeld,
