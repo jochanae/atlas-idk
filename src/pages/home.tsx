@@ -2988,11 +2988,12 @@ export default function Home() {
                   color: globalInsightOpen ? undefined : "var(--atlas-fg)",
                   opacity: globalInsightOpen ? 1 : 0.85,
                   background: globalInsightOpen
-                    ? "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)"
+                    ? "linear-gradient(135deg, #FFD27A 0%, #E8843C 55%, #C2410C 100%)"
                     : undefined,
                   WebkitBackgroundClip: globalInsightOpen ? "text" : undefined,
                   WebkitTextFillColor: globalInsightOpen ? "transparent" : undefined,
                   backgroundClip: globalInsightOpen ? "text" : undefined,
+                  filter: globalInsightOpen ? "drop-shadow(0 0 18px rgba(232,132,60,0.35))" : undefined,
                 }}>
                   {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
                 </h1>
@@ -3833,16 +3834,16 @@ export default function Home() {
                         style={{
                           background: premium
                             ? "linear-gradient(135deg, rgba(212,175,55,0.18), rgba(201,162,76,0.08))"
-                            : isParchment ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.03)",
+                            : isParchment ? "rgba(255,255,255,0.9)" : (globalInsightOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)"),
                           border: premium
                             ? "1px solid rgba(212,175,55,0.55)"
-                            : isParchment ? "1px solid rgba(17,17,17,0.12)" : "1px solid rgba(255,255,255,0.08)",
+                            : isParchment ? "1px solid rgba(17,17,17,0.12)" : (globalInsightOpen ? "1px solid rgba(232,200,110,0.35)" : "1px solid rgba(255,255,255,0.08)"),
                           backdropFilter: "blur(8px)",
                           borderRadius: 20,
                           padding: "5px 12px",
                           color: premium
                             ? "rgba(232,200,110,1)"
-                            : isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)",
+                            : isParchment ? "rgba(146,64,14,0.95)" : (globalInsightOpen ? "rgba(232,200,110,0.95)" : "rgba(212,175,55,0.5)"),
                           cursor: "pointer",
                           fontFamily: "inherit",
                           fontSize: "var(--ts-caption)",
