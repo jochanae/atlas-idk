@@ -382,30 +382,36 @@ export default function ConnectorsPage() {
                   p.id === "lovable" ? Sparkles :
                   p.id === "cursor"  ? MousePointerClick :
                   Globe;
+                const disabled = !p.enabled;
                 return (
                   <button
                     key={p.id}
-                    onClick={() => setEndpointPreset(p.id)}
+                    onClick={() => !disabled && setEndpointPreset(p.id)}
+                    disabled={disabled}
+                    title={disabled ? "Coming soon" : undefined}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 7,
-                      padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                      padding: "7px 12px", borderRadius: 999,
+                      cursor: disabled ? "not-allowed" : "pointer",
                       fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
                       fontFamily: "var(--app-font-mono)",
                       border: `1px solid ${selected ? "var(--atlas-gold)" : "var(--atlas-border)"}`,
-                      color: selected ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                      color: disabled ? "var(--atlas-muted)" : selected ? "var(--atlas-gold)" : "var(--atlas-muted)",
                       background: selected
                         ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
                         : "transparent",
                       boxShadow: selected ? "0 0 0 3px var(--atlas-gold-dim)" : "none",
+                      opacity: disabled ? 0.45 : 1,
                       transition: "all 160ms ease",
                     }}
                   >
                     <Icon size={12} strokeWidth={1.8} />
-                    {p.label}
+                    {p.label}{disabled ? " · SOON" : ""}
                   </button>
                 );
               })}
             </div>
+
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
               <Field
