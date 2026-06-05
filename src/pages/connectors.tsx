@@ -444,8 +444,11 @@ export default function ConnectorsPage() {
                   <Check size={13} strokeWidth={2} /> Provisioned
                 </span>
               )}
+              {formError && (
+                <span style={{ color: "var(--atlas-gold)", fontSize: 11 }}>{formError}</span>
+              )}
               <button
-                disabled={!customLabel.trim() || !customUrl.trim()}
+                disabled={!customLabel.trim() || !customUrl.trim() || createMut.isPending}
                 onClick={handleSaveCustom}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
@@ -453,16 +456,17 @@ export default function ConnectorsPage() {
                   border: "1px solid var(--atlas-gold)",
                   color: "var(--atlas-gold)",
                   background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
-                  cursor: !customLabel.trim() || !customUrl.trim() ? "not-allowed" : "pointer",
-                  opacity: !customLabel.trim() || !customUrl.trim() ? 0.45 : 1,
+                  cursor: !customLabel.trim() || !customUrl.trim() || createMut.isPending ? "not-allowed" : "pointer",
+                  opacity: !customLabel.trim() || !customUrl.trim() || createMut.isPending ? 0.45 : 1,
                   fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
                   fontFamily: "var(--app-font-mono)",
                   boxShadow: "0 0 24px -10px var(--atlas-gold-glow)",
                 }}
               >
-                <Plus size={13} strokeWidth={2.2} />
-                Provision endpoint
+                {createMut.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} strokeWidth={2.2} />}
+                {createMut.isPending ? "Provisioning…" : "Provision endpoint"}
               </button>
+
             </div>
           </div>
         </section>
