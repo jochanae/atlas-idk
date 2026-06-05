@@ -2534,6 +2534,7 @@ export default function Home() {
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
+      setGlobalInsightOpen(false);
       handleNewConversation();
       setDepth("ambient");
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
