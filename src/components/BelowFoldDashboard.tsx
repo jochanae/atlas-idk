@@ -805,7 +805,7 @@ function ConnectionsDock() {
         </div>
       )}
 
-      {showAdd && <AddConnectionModal onClose={() => setShowAdd(false)} onSaved={handleSaved} />}
+      
     </div>
   );
 }
