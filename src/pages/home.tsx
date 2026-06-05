@@ -2985,14 +2985,21 @@ export default function Home() {
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                  color: "var(--atlas-fg)", opacity: 0.85,
+                  color: globalInsightOpen ? undefined : "var(--atlas-fg)",
+                  opacity: globalInsightOpen ? 1 : 0.85,
+                  background: globalInsightOpen
+                    ? "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)"
+                    : undefined,
+                  WebkitBackgroundClip: globalInsightOpen ? "text" : undefined,
+                  WebkitTextFillColor: globalInsightOpen ? "transparent" : undefined,
+                  backgroundClip: globalInsightOpen ? "text" : undefined,
                 }}>
                   {globalInsightOpen ? "Global Insight." : greetingRef.current?.head}
                 </h1>
                 <p style={{
                   fontSize: "var(--ts-body)" as any,
-                  color: "var(--atlas-muted)",
-                  opacity: 0.55,
+                  color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  opacity: globalInsightOpen ? 0.75 : 0.55,
                   margin: 0,
                   fontStyle: "italic",
                 }}>
