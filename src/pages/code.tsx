@@ -448,25 +448,73 @@ function Stat({ label, value, tint }: { label: string; value: string; tint?: str
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function CodePage() {
   const [, navigate] = useLocation();
-  const [selectedId, setSelectedId] = useState(MOCK_FILES[0].id);
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [showRail, setShowRail] = useState(true);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(getRunIdFromUrl());
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
-  const file = useMemo(
-    () => MOCK_FILES.find((f) => f.id === selectedId) ?? MOCK_FILES[0],
-    [selectedId]
-  );
-  const tree = useMemo(() => buildTree(MOCK_FILES), []);
+  const projectId = useMemo(() => getProjectIdFromUrl(), []);
 
-  const toggleOpen = (p: string) => setOpenMap((m) => ({ ...m, [p]: !(m[p] ?? true) }));
+  // Persist projectId for return visits
+  useEffect(() => {
+    if (projectId != null) window.localStorage.setItem("atlas:lastProjectId", String(projectId));
+  }, [projectId]);
+
+  // 1. Project
+  const projectQ = useQuery<ProjectStub>({
+    queryKey: ["code", "project", projectId],
+    queryFn: () => fetchJson<ProjectStub>(`/api/projects/${projectId}`),
+    enabled: projectId != null,
+    staleTime: 60_000,
+  });
+
+  // 2. Runs
+  const runsQ = useQuery<GenerationRun[]>({
+    queryKey: ["code", "runs", projectId],
+    queryFn: () => fetchJson<GenerationRun[]>(`/api/projects/${projectId}/generation-runs`),
+    enabled: projectId != null,
+    refetchInterval: 10_000,
+  });
+
+  const runs = runsQ.data ?? [];
+  const activeRun = useMemo(() => {
+    if (!runs.length) return null;
+    if (selectedRunId) return runs.find((r) => r.id === selectedRunId) ?? runs[0];
+    return runs[0];
+  }, [runs, selectedRunId]);
+
+  // 3. Files for the active run
+  const filesQ = useQuery<GeneratedFile[]>({
+    queryKey: ["code", "files", projectId, activeRun?.id],
+    queryFn: () =>
+      fetchJson<GeneratedFile[]>(
+        `/api/projects/${projectId}/generation-runs/${activeRun!.id}/files`,
+      ),
+    enabled: projectId != null && !!activeRun,
+    refetchInterval: activeRun?.status === "streaming" ? 2_000 : false,
+  });
+
+  const files = filesQ.data ?? [];
+  const selectedFile = useMemo(() => {
+    if (!files.length) return null;
+    return files.find((f) => f.id === selectedFileId) ?? files[0];
+  }, [files, selectedFileId]);
+
+  const tree = useMemo(() => buildTree(files), [files]);
+  const toggleOpen = (p: string) =>
+    setOpenMap((m) => ({ ...m, [p]: !(m[p] ?? true) }));
+
+  // Loading / error / empty states
+  const loading = projectQ.isLoading || runsQ.isLoading || filesQ.isLoading;
+  const error = projectQ.error || runsQ.error || filesQ.error;
+  const isStreaming = activeRun?.status === "streaming";
 
   return (
     <div style={{
       display: "flex", flexDirection: "column", height: "100vh",
       background: "var(--atlas-bg)", color: "var(--atlas-fg)", overflow: "hidden",
     }}>
-      {/* Ambient gold curtain */}
       <div style={{
         position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
         width: 800, height: 400, pointerEvents: "none",
@@ -503,30 +551,42 @@ export default function CodePage() {
             <Code2 size={15} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>Generation Workspace</span>
+            <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>
+              Generation Workspace
+            </span>
             <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.04em" }}>
-              {MOCK_PROJECT.name} · {MOCK_PROJECT.repo}
+              {projectQ.data
+                ? `${projectQ.data.name}${projectQ.data.repo ? ` · ${projectQ.data.repo}` : ""}`
+                : projectId == null
+                  ? "No project selected"
+                  : `Project #${projectId}`}
             </span>
           </div>
         </div>
 
         <span style={{ flex: 1 }} />
 
-        {/* Live status pill */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "5px 10px", borderRadius: 99,
-          background: "rgba(124,227,160,0.08)",
-          border: "1px solid rgba(124,227,160,0.25)",
-          color: "#7CE3A0", fontSize: 11, ...MONO, letterSpacing: "0.06em",
+          background: isStreaming ? "rgba(124,227,160,0.08)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${isStreaming ? "rgba(124,227,160,0.25)" : "rgba(255,255,255,0.08)"}`,
+          color: isStreaming ? "#7CE3A0" : "var(--atlas-muted)",
+          fontSize: 11, ...MONO, letterSpacing: "0.06em",
         }}>
           <span style={{
-            width: 6, height: 6, borderRadius: 99, background: "#7CE3A0",
-            boxShadow: "0 0 8px #7CE3A0",
+            width: 6, height: 6, borderRadius: 99,
+            background: isStreaming ? "#7CE3A0" : "rgba(255,255,255,0.4)",
+            boxShadow: isStreaming ? "0 0 8px #7CE3A0" : "none",
           }} />
-          MIRRORING CHAT
+          {isStreaming ? "STREAMING" : "MIRRORING CHAT"}
         </div>
 
+        <ToolButton
+          icon={<RefreshCw size={13} />}
+          label="Refresh"
+          onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
+        />
         <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
         <ToolButton icon={<Hammer size={13} />} label="Extract to Forge" />
         <ToolButton icon={<Download size={13} />} label="Download .zip" />
@@ -563,7 +623,7 @@ export default function CodePage() {
               Files
             </span>
             <span style={{ flex: 1 }} />
-            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{MOCK_FILES.length}</span>
+            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{files.length}</span>
           </div>
           <div style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
             <div style={{
@@ -584,34 +644,112 @@ export default function CodePage() {
             </div>
           </div>
           <div style={{ flex: 1, overflow: "auto", padding: "6px 6px 14px" }}>
-            <FileTree
-              node={tree} depth={0}
-              selectedPath={file.path}
-              onSelect={(f) => setSelectedId(f.id)}
-              openMap={openMap} toggleOpen={toggleOpen} query={query}
-            />
+            {selectedFile ? (
+              <FileTree
+                node={tree} depth={0}
+                selectedPath={selectedFile.path}
+                onSelect={(f) => setSelectedFileId(f.id)}
+                openMap={openMap} toggleOpen={toggleOpen} query={query}
+              />
+            ) : (
+              <EmptyHint label={loading ? "Loading files…" : "No files in this run yet."} />
+            )}
           </div>
-          <div style={{
-            padding: "8px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
-            display: "flex", alignItems: "center", gap: 6,
-            ...MONO, fontSize: 10, color: "var(--atlas-muted)",
-          }}>
-            <Clock size={10} /> Updated {new Date(ACTIVE_RUN.finishedAt!).toLocaleTimeString()}
-          </div>
+          {activeRun?.finishedAt && (
+            <div style={{
+              padding: "8px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
+              display: "flex", alignItems: "center", gap: 6,
+              ...MONO, fontSize: 10, color: "var(--atlas-muted)",
+            }}>
+              <Clock size={10} /> Updated {new Date(activeRun.finishedAt).toLocaleTimeString()}
+            </div>
+          )}
         </aside>
 
         {/* CENTER — viewer */}
         <main style={{ ...PANEL, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-          <CodeViewer file={file} />
+          {error ? (
+            <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); filesQ.refetch(); }} />
+          ) : projectId == null ? (
+            <EmptyState
+              title="No project selected"
+              hint="Open this page with ?projectId=<id> or select a project from the workspace."
+            />
+          ) : selectedFile ? (
+            <CodeViewer file={selectedFile} />
+          ) : (
+            <EmptyState
+              title={loading ? "Loading generation workspace…" : "No generation runs yet"}
+              hint={loading ? "Fetching runs from the backend." : "Start a build from the chat and files will appear here."}
+            />
+          )}
         </main>
 
         {/* RIGHT — activity */}
         {showRail && (
           <aside style={{ ...PANEL, overflow: "hidden" }}>
-            <ActivityRail run={ACTIVE_RUN} files={MOCK_FILES} />
+            {activeRun ? (
+              <ActivityRail
+                run={activeRun}
+                files={files}
+                runs={runs}
+                onSelectRun={(id) => { setSelectedRunId(id); setSelectedFileId(null); }}
+              />
+            ) : (
+              <EmptyHint label={loading ? "Loading runs…" : "No runs to show."} />
+            )}
           </aside>
         )}
       </div>
+    </div>
+  );
+}
+
+function EmptyHint({ label }: { label: string }) {
+  return (
+    <div style={{
+      padding: 20, ...MONO, fontSize: 11, color: "var(--atlas-muted)",
+      textAlign: "center",
+    }}>
+      {label}
+    </div>
+  );
+}
+
+function EmptyState({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div style={{
+      flex: 1, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 8, padding: 24, textAlign: "center",
+    }}>
+      <Code2 size={28} style={{ color: "var(--atlas-gold)", opacity: 0.6 }} />
+      <div style={{ fontSize: 14, color: "var(--atlas-fg)" }}>{title}</div>
+      <div style={{ ...MONO, fontSize: 11, color: "var(--atlas-muted)", maxWidth: 360 }}>{hint}</div>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div style={{
+      flex: 1, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 10, padding: 24, textAlign: "center",
+    }}>
+      <AlertTriangle size={26} style={{ color: "#FF8A8A" }} />
+      <div style={{ fontSize: 14, color: "var(--atlas-fg)" }}>Couldn't load this run</div>
+      <div style={{ ...MONO, fontSize: 11, color: "var(--atlas-muted)", maxWidth: 420 }}>{message}</div>
+      <button
+        onClick={onRetry}
+        style={{
+          marginTop: 6, padding: "6px 12px", borderRadius: 8,
+          background: "rgba(230,198,135,0.08)",
+          border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+          color: "var(--atlas-gold)", cursor: "pointer", fontSize: 12,
+          display: "inline-flex", alignItems: "center", gap: 6,
+        }}
+      >
+        <RefreshCw size={12} /> Retry
+      </button>
     </div>
   );
 }
