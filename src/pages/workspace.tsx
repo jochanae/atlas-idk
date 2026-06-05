@@ -6137,7 +6137,7 @@ export default function Workspace() {
                   else { setDesktopForceTab("connections" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
                   return;
                 }
-                if (action === "code") { window.location.href = "/workshop"; return; }
+                if (action === "code") { window.location.href = "/code"; return; }
                 if (action === "share") { setShowProjectSettings(true); return; }
                 if (action === "publish") { window.open("https://lovable.dev/publish", "_blank"); return; }
                 if (action === "more:forge") { setShowForgeExternal(true); return; }

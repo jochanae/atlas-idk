@@ -3677,7 +3677,8 @@ export default function Home() {
                   // Project-scoped items: route the user to the projects list so
                   // whatever they pick up at home (attachments, intent) carries
                   // into the same workspace. Keeps home + workspace menus identical.
-                  if (action === "files" || action === "code" || action === "share" ||
+                  if (action === "code") { setLocation("/code"); return; }
+                  if (action === "files" || action === "share" ||
                       action === "publish" || action === "connectors" ||
                       action === "more:forge") { setLocation("/projects"); return; }
                   toast("Open a project to use that");

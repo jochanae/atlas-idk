@@ -16,6 +16,7 @@ import Ledger from "./pages/ledger";
 import ParkingLot from "./pages/parking-lot";
 import EntryDetail from "./pages/entry-detail";
 import Workshop from "./pages/workshop";
+import CodePage from "./pages/code";
 import ProjectCompass from "./pages/project-compass";
 import Vault from "./pages/vault";
 import MasterMap from "./pages/master-map";
@@ -330,6 +331,7 @@ function Router() {
           <Route path="/sessions" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           
           <Route path="/workshop" component={Workshop} />
+          <Route path="/code" component={CodePage} />
           <Route path="/compass" component={ProjectCompass} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
