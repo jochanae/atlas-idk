@@ -47,7 +47,7 @@ import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
-import { ReflectionSurface } from "@/components/home/ReflectionSurface";
+import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -1373,21 +1373,21 @@ export default function Home() {
     what: string;
   } | null>(null);
   const [shapingHeld, setShapingHeld] = useState(false);
-  // ── Reflection mode ────────────────────────────────────────────────────────
-  const [reflectionLocked, setReflectionLocked] = useState(false);
+  // ── Global Insight mode ────────────────────────────────────────────────────────
+  const [globalInsightOpen, setGlobalInsightOpen] = useState(false);
   const [showShredChoice, setShowShredChoice] = useState(false);
   const [isShredding, setIsShredding] = useState(false);
   const [showGoneFlash, setShowGoneFlash] = useState(false);
   useEffect(() => {
-    const active = reflectionLocked || nexusChat.messages.length > 0;
+    const active = globalInsightOpen || nexusChat.messages.length > 0;
     document.body.setAttribute("data-axiom-thread", active ? "active" : "empty");
     return () => { document.body.removeAttribute("data-axiom-thread"); };
-  }, [reflectionLocked, nexusChat.messages.length]);
+  }, [globalInsightOpen, nexusChat.messages.length]);
 
   useEffect(() => {
-    document.body.setAttribute("data-axiom-reflection", reflectionLocked ? "true" : "false");
-    return () => { document.body.removeAttribute("data-axiom-reflection"); };
-  }, [reflectionLocked]);
+    document.body.setAttribute("data-axiom-global-insight", globalInsightOpen ? "true" : "false");
+    return () => { document.body.removeAttribute("data-axiom-global-insight"); };
+  }, [globalInsightOpen]);
 
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
@@ -1431,7 +1431,7 @@ export default function Home() {
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const reflectionComposerRef = useRef<HTMLDivElement>(null);
+  const globalInsightComposerRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
@@ -1439,11 +1439,11 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const previousHomeMessageCountRef = useRef(0);
-  const [reflectionComposerHeight, setReflectionComposerHeight] = useState(148);
+  const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
-    if (reflectionLocked) {
+    if (globalInsightOpen) {
       setDepth("active");
     } else if (nexusChat.messages.length === 0) {
       setDepth("ambient");
@@ -1451,7 +1451,7 @@ export default function Home() {
       setDepth("active");
     }
     previousHomeMessageCountRef.current = nexusChat.messages.length;
-  }, [reflectionLocked, nexusChat.messages.length, setDepth]);
+  }, [globalInsightOpen, nexusChat.messages.length, setDepth]);
 
   useEffect(() => {
     setActiveProjectId(homeFocus);
@@ -1481,7 +1481,7 @@ export default function Home() {
   const [handoffProjectName, setHandoffProjectName] = useState("");
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
 
-  const homeConversationTitle = reflectionLocked
+  const homeConversationTitle = globalInsightOpen
     ? "Global Insight"
     : homeFocus == null && nexusChat.messages.length > 0
       ? earnedTitle ?? "Untitled conversation"
@@ -1496,7 +1496,7 @@ export default function Home() {
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}
   }, []);
 
-  const callReflectionMode = useCallback(async (enabled: boolean) => {
+  const callGlobalInsightMode = useCallback(async (enabled: boolean) => {
     if (!activeConversationId) return;
     try {
       await fetch(`/api/sessions/${encodeURIComponent(activeConversationId)}/reflection-mode`, {
@@ -1510,12 +1510,12 @@ export default function Home() {
 
   const handleLockTap = useCallback(() => {
     vibrate(50);
-    if (reflectionLocked) {
+    if (globalInsightOpen) {
       // Exit Global Insight → return to the ambient homepage, NOT a stranded
       // "Untitled conversation" view. Clear the active thread and message
       // stream so the hero/quick-actions come back.
-      void callReflectionMode(false);
-      setReflectionLocked(false);
+      void callGlobalInsightMode(false);
+      setGlobalInsightOpen(false);
       try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
       try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
       conversationThreadRequestRef.current = null;
@@ -1529,21 +1529,21 @@ export default function Home() {
       setShowBriefingPanel(false);
       setShowHistory(false);
       setShowFocusPicker(false);
-      setReflectionLocked(true);
-      void callReflectionMode(true);
+      setGlobalInsightOpen(true);
+      void callGlobalInsightMode(true);
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Global Insight · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
     }
-  }, [reflectionLocked, vibrate, callReflectionMode, nexusChat.setMessages, setDepth]);
+  }, [globalInsightOpen, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
     vibrate([50, 50, 50]);
-    void callReflectionMode(false);
-    setReflectionLocked(false);
+    void callGlobalInsightMode(false);
+    setGlobalInsightOpen(false);
     setShowShredChoice(false);
     setCreateError(null);
 
@@ -1592,7 +1592,7 @@ export default function Home() {
       }
     }
   }, [
-    callReflectionMode,
+    callGlobalInsightMode,
     nexusChat.messages,
     queryClient,
     setActiveProjectId,
@@ -1602,20 +1602,20 @@ export default function Home() {
 
   const handleShredIt = useCallback(() => {
     vibrate(200);
-    void callReflectionMode(false);
+    void callGlobalInsightMode(false);
     setShowShredChoice(false);
     setIsShredding(true);
     setTimeout(() => {
       nexusChat.setMessages([]);
       setIsShredding(false);
-      setReflectionLocked(false);
+      setGlobalInsightOpen(false);
       setShowGoneFlash(true);
       setTimeout(() => setShowGoneFlash(false), 1500);
     }, 700);
-  }, [vibrate, callReflectionMode, nexusChat.setMessages]);
+  }, [vibrate, callGlobalInsightMode, nexusChat.setMessages]);
 
   // Bridge to the global header's Think Freely lock — listen for tap events and
-  // broadcast state changes so the header icon mirrors reflection mode.
+  // broadcast state changes so the header icon mirrors Global Insight mode.
   useEffect(() => {
     const onToggle = () => { handleLockTap(); };
     window.addEventListener("axiom:think-freely-toggle", onToggle);
@@ -1623,8 +1623,8 @@ export default function Home() {
   }, [handleLockTap]);
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent("axiom:think-freely-state", { detail: { active: reflectionLocked } }));
-  }, [reflectionLocked]);
+    window.dispatchEvent(new CustomEvent("axiom:think-freely-state", { detail: { active: globalInsightOpen } }));
+  }, [globalInsightOpen]);
 
 
   // Cycle pending phrases while Atlas is generating
@@ -2206,7 +2206,7 @@ export default function Home() {
     const text = liveText.trim();
     const hasImages = attachedFiles.some((f) => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
-    const shouldStayOnHome = reflectionLocked || thinkOutLoudInlineRef.current;
+    const shouldStayOnHome = globalInsightOpen || thinkOutLoudInlineRef.current;
     if (!shouldStayOnHome && !backendReady) {
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
@@ -2330,7 +2330,7 @@ export default function Home() {
     input,
     attachedFiles,
     isSending,
-    reflectionLocked,
+    globalInsightOpen,
     backendReady,
     isFree,
     projects,
@@ -2640,20 +2640,20 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (!reflectionLocked) return;
-    const el = reflectionComposerRef.current;
+    if (!globalInsightOpen) return;
+    const el = globalInsightComposerRef.current;
     if (!el) return;
 
     const recompute = () => {
       const nextHeight = Math.ceil(el.getBoundingClientRect().height);
-      if (nextHeight > 0) setReflectionComposerHeight(nextHeight);
+      if (nextHeight > 0) setGlobalInsightComposerHeight(nextHeight);
     };
 
     recompute();
     const ro = new ResizeObserver(recompute);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [reflectionLocked, input, attachedFiles.length, inputFocused]);
+  }, [globalInsightOpen, input, attachedFiles.length, inputFocused]);
 
   const hasInput = input.trim().length > 0;
   const hasAttachments = attachedFiles.length > 0;
@@ -2710,14 +2710,14 @@ export default function Home() {
         backgroundColor: "var(--atlas-bg)",
         display: "flex",
         flexDirection: "column",
-        overflowY: reflectionLocked ? "hidden" : "auto",
+        overflowY: globalInsightOpen ? "hidden" : "auto",
         overflowX: "hidden",
       }}
     >
       {/* Global Insight — standalone overlay with isolated scroll + composer.
-          Mounts above the ambient home shell when reflectionLocked is true. */}
-      <ReflectionSurface
-        open={reflectionLocked}
+          Mounts above the ambient home shell when globalInsightOpen is true. */}
+      <GlobalInsightSurface
+        open={globalInsightOpen}
         messages={nexusChat.messages as any}
         input={input}
         setInput={setInput}
@@ -2729,7 +2729,7 @@ export default function Home() {
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
-        onExit={() => setReflectionLocked(false)}
+        onExit={() => setGlobalInsightOpen(false)}
       />
 
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
@@ -2942,13 +2942,13 @@ export default function Home() {
                 style={{
                   width: "100%",
                   maxWidth: 560,
-                  paddingBottom: reflectionLocked ? 0 : "var(--atlas-dock-clearance)",
-                  display: reflectionLocked ? "flex" : undefined,
-                  flexDirection: reflectionLocked ? "column" : undefined,
-                  height: reflectionLocked
+                  paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
+                  display: globalInsightOpen ? "flex" : undefined,
+                  flexDirection: globalInsightOpen ? "column" : undefined,
+                  height: globalInsightOpen
                     ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
                     : undefined,
-                  minHeight: reflectionLocked
+                  minHeight: globalInsightOpen
                     ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
                     : undefined,
                   minWidth: 0,
@@ -2963,18 +2963,18 @@ export default function Home() {
 
           {/* Hero — fills the viewport above the mobile nav, content vertically centered */}
           <div style={{
-            minHeight: reflectionLocked
+            minHeight: globalInsightOpen
               ? 0
               : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))"),
-            height: reflectionLocked ? "100%" : undefined,
+            height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
-            justifyContent: reflectionLocked ? "flex-start" : "center",
+            justifyContent: globalInsightOpen ? "flex-start" : "center",
             position: "relative",
-            paddingBottom: reflectionLocked ? 0 : "var(--atlas-dock-clearance)",
-            paddingTop: reflectionLocked ? 0 : 0,
+            paddingBottom: globalInsightOpen ? 0 : "var(--atlas-dock-clearance)",
+            paddingTop: globalInsightOpen ? 0 : 0,
             minWidth: 0,
-            overflow: reflectionLocked ? "hidden" : "visible",
+            overflow: globalInsightOpen ? "hidden" : "visible",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
@@ -2996,7 +2996,7 @@ export default function Home() {
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                  ...(reflectionLocked
+                  ...(globalInsightOpen
                     ? {
                         background: "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)",
                         WebkitBackgroundClip: "text",
@@ -3006,30 +3006,30 @@ export default function Home() {
                       }
                     : { color: "var(--atlas-fg)", opacity: 0.85 }),
                 }}>
-                  {reflectionLocked ? "Global Insight" : greetingRef.current?.head}
+                  {globalInsightOpen ? "Global Insight" : greetingRef.current?.head}
                 </h1>
                 <p style={{
-                  fontSize: reflectionLocked ? 11 : ("var(--ts-body)" as any),
-                  color: reflectionLocked ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: reflectionLocked ? 0.8 : 0.55,
+                  fontSize: globalInsightOpen ? 11 : ("var(--ts-body)" as any),
+                  color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  opacity: globalInsightOpen ? 0.8 : 0.55,
                   margin: 0,
-                  fontStyle: reflectionLocked ? "normal" : "italic",
-                  fontFamily: reflectionLocked ? "var(--app-font-mono)" : undefined,
-                  letterSpacing: reflectionLocked ? "0.1em" : undefined,
-                  textTransform: reflectionLocked ? "uppercase" : undefined,
+                  fontStyle: globalInsightOpen ? "normal" : "italic",
+                  fontFamily: globalInsightOpen ? "var(--app-font-mono)" : undefined,
+                  letterSpacing: globalInsightOpen ? "0.1em" : undefined,
+                  textTransform: globalInsightOpen ? "uppercase" : undefined,
                 }}>
-                  {reflectionLocked ? "Strategic view · All projects" : greetingRef.current?.sub}
+                  {globalInsightOpen ? "Strategic view · All projects" : greetingRef.current?.sub}
                 </p>
               </div>
             )}
 
             {/* Chat thread */}
             <div style={{
-              margin: reflectionLocked
+              margin: globalInsightOpen
                 ? (nexusChat.messages.length > 0 ? "0 0 14px" : "0 0 12px")
                 : (nexusChat.messages.length > 0 ? "6px 0 26px" : "18px 0 26px"),
               minHeight: nexusChat.messages.length > 0 ? 60 : 0,
-              flex: reflectionLocked ? 1 : undefined,
+              flex: globalInsightOpen ? 1 : undefined,
               minWidth: 0,
             }}>
               {nexusChat.messages.length > 0 && (
@@ -3061,7 +3061,7 @@ export default function Home() {
               </div>
 
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: reflectionLocked ? 0 : undefined }}>
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: globalInsightOpen ? 0 : undefined }}>
                 {/* Messages */}
                 <div
                   ref={chatScrollRef}
@@ -3077,20 +3077,20 @@ export default function Home() {
                     scrollbarWidth: "none", msOverflowStyle: "none",
                     WebkitOverflowScrolling: "touch",
                     touchAction: "pan-y",
-                    paddingRight: reflectionLocked ? 0 : 80,
-                    paddingLeft: reflectionLocked ? 0 : 0,
+                    paddingRight: globalInsightOpen ? 0 : 80,
+                    paddingLeft: globalInsightOpen ? 0 : 0,
                     position: "relative",
                     border: "none",
                     borderRadius: 0,
-                    paddingTop: reflectionLocked ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
-                    scrollPaddingTop: reflectionLocked ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
-                    paddingBottom: reflectionLocked
+                    paddingTop: globalInsightOpen ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    scrollPaddingTop: globalInsightOpen ? 16 : (nexusChat.messages.length > 0 ? 16 : 56),
+                    paddingBottom: globalInsightOpen
                       ? "calc(24px + env(safe-area-inset-bottom, 0px))"
                       : 96,
-                    WebkitMaskImage: reflectionLocked
+                    WebkitMaskImage: globalInsightOpen
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
-                    maskImage: reflectionLocked
+                    maskImage: globalInsightOpen
                       ? "none"
                       : "linear-gradient(to bottom, #000 0, #000 calc(100% - 72px), rgba(0,0,0,0) 100%)",
                     transition: "border-color 200ms",
@@ -3120,7 +3120,7 @@ export default function Home() {
                             <span style={{
                               fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                               textTransform: "uppercase", opacity: 0.45,
-                              color: reflectionLocked ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
+                              color: globalInsightOpen ? "var(--atlas-gold)" : (msg.model === "gpt4o" ? "#10a37f" : msg.model === "gemini" ? "#4285f4" : "var(--atlas-gold)"),
                             }}>Atlas</span>
                             {msg.intentType && (
                               <span style={{
@@ -3282,7 +3282,7 @@ export default function Home() {
                               {formatMessageTime(msg.createdAt)}
                             </div>
                           )}
-                          {!reflectionLocked && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
+                          {!globalInsightOpen && !msg.streaming && formatModelUsedLabel(msg.modelUsed) && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(120,113,108,0.4)", marginTop: 2 }}>
                               {formatModelUsedLabel(msg.modelUsed)}
                             </div>
@@ -3291,22 +3291,22 @@ export default function Home() {
                       ) : (
                         <div style={{
                           display: "flex", flexDirection: "column",
-                          alignItems: reflectionLocked ? "flex-end" : "stretch",
+                          alignItems: globalInsightOpen ? "flex-end" : "stretch",
                           width: "100%", gap: 3,
                         }}>
                           <div style={{
                             fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                             textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
                             marginBottom: 4,
-                            alignSelf: reflectionLocked ? "flex-end" : undefined,
+                            alignSelf: globalInsightOpen ? "flex-end" : undefined,
                           }}>You</div>
                           <div style={{
-                            padding: reflectionLocked ? "10px 14px" : "2px 0",
-                            background: reflectionLocked ? "rgba(212,175,55,0.04)" : "transparent",
-                            border: reflectionLocked ? "1px solid rgba(212,175,55,0.25)" : "none",
-                            borderRadius: reflectionLocked ? 12 : 0,
-                            maxWidth: reflectionLocked ? "82%" : undefined,
-                            alignSelf: reflectionLocked ? "flex-end" : undefined,
+                            padding: globalInsightOpen ? "10px 14px" : "2px 0",
+                            background: globalInsightOpen ? "rgba(212,175,55,0.04)" : "transparent",
+                            border: globalInsightOpen ? "1px solid rgba(212,175,55,0.25)" : "none",
+                            borderRadius: globalInsightOpen ? 12 : 0,
+                            maxWidth: globalInsightOpen ? "82%" : undefined,
+                            alignSelf: globalInsightOpen ? "flex-end" : undefined,
                             fontSize: 16, lineHeight: 1.75, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
@@ -3477,20 +3477,20 @@ export default function Home() {
 
           {/* Input shell */}
           <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
-          <div ref={reflectionLocked ? reflectionComposerRef : null} className="atlas-input-shell" style={{
-            position: reflectionLocked ? "relative" : "sticky",
-            left: reflectionLocked ? undefined : 0,
-            right: reflectionLocked ? undefined : 0,
-            bottom: reflectionLocked ? undefined : 0,
-            padding: reflectionLocked
+          <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
+            position: globalInsightOpen ? "relative" : "sticky",
+            left: globalInsightOpen ? undefined : 0,
+            right: globalInsightOpen ? undefined : 0,
+            bottom: globalInsightOpen ? undefined : 0,
+            padding: globalInsightOpen
               ? "12px 0 0"
               : "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
-            zIndex: reflectionLocked ? 1 : 250,
+            zIndex: globalInsightOpen ? 1 : 250,
             pointerEvents: "auto",
-            background: reflectionLocked ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
-            maxWidth: reflectionLocked ? undefined : 680,
-            margin: reflectionLocked ? 0 : undefined,
+            background: globalInsightOpen ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
+            maxWidth: globalInsightOpen ? undefined : 680,
+            margin: globalInsightOpen ? 0 : undefined,
           }}>
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
@@ -3567,7 +3567,7 @@ export default function Home() {
               border: "none",
               boxShadow: "none",
             }}>
-              {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || reflectionLocked) && (
+              {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || globalInsightOpen) && (
                 <div
                   style={{
                     position: "absolute",
@@ -3589,8 +3589,8 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {reflectionLocked ? "Ask the global view..." : placeholder}
-                  {!reflectionLocked && !typewriterPaused && <span className="atlas-cursor" />}
+                  {globalInsightOpen ? "Ask the global view..." : placeholder}
+                  {!globalInsightOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
               <textarea
@@ -4053,7 +4053,7 @@ export default function Home() {
           </>}
         />
 
-        {!reflectionLocked && (
+        {!globalInsightOpen && (
           <aside className="atlas-home-desktop-overview" aria-label="Overview">
             <div className="atlas-home-desktop-overview-scroll">
               {renderOverviewDashboard()}
@@ -4063,7 +4063,7 @@ export default function Home() {
       </div>
 
       {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
-      {!reflectionLocked && (
+      {!globalInsightOpen && (
         <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
           <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
             <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
@@ -4149,7 +4149,7 @@ export default function Home() {
                   setShowHistory(false);
                   handleNewConversation();
                   // Stay inside Global Insight — do NOT drop the user back to the ambient home.
-                  setReflectionLocked(true);
+                  setGlobalInsightOpen(true);
                   setDepth("active");
                 }}
                 style={{

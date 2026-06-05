@@ -1,25 +1,25 @@
 /**
- * ReflectionSurface — standalone Global Insight chat surface.
+ * GlobalInsightSurface — standalone Global Insight chat surface.
  *
  * Owns its own fixed-overlay layout, isolated scroll container, and a
- * minimal composer. No `reflectionLocked` ternaries, no shared scroll
+ * minimal composer. No `globalInsightOpen` ternaries, no shared scroll
  * with the ambient home shell. Renders only when `open` is true.
  *
  * Layout invariants:
  *   - Fixed positioning below the page header (--atlas-header-height)
- *   - Scroll lives ONLY inside `.atlas-reflection-scroll`
+ *   - Scroll lives ONLY inside `.atlas-global-insight-scroll`
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef } from "react";
 
-export type ReflectionMessage = {
+export type GlobalInsightMessage = {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
   createdAt?: string;
 };
 
-export type ReflectionLiveStep = {
+export type GlobalInsightLiveStep = {
   verb: string;
   target?: string | null;
   status?: "ok" | "warn" | "fail" | string;
@@ -27,21 +27,21 @@ export type ReflectionLiveStep = {
 
 interface Props {
   open: boolean;
-  messages: ReflectionMessage[];
+  messages: GlobalInsightMessage[];
   input: string;
   setInput: (v: string) => void;
   onSubmit: () => void | Promise<void>;
   isSending: boolean;
   isStreaming: boolean;
   pendingPhrase: string;
-  liveStep?: ReflectionLiveStep;
+  liveStep?: GlobalInsightLiveStep;
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onExit: () => void;
 }
 
-export function ReflectionSurface({
+export function GlobalInsightSurface({
   open,
   messages,
   input,
@@ -85,7 +85,7 @@ export function ReflectionSurface({
 
   return (
     <div
-      className="atlas-reflection-surface"
+      className="atlas-global-insight-surface"
       role="dialog"
       aria-label="Global Insight"
       style={{
@@ -170,7 +170,7 @@ export function ReflectionSurface({
       {/* Isolated scroll container — the ONLY scroll surface in this view */}
       <div
         ref={scrollRef}
-        className="atlas-reflection-scroll"
+        className="atlas-global-insight-scroll"
         style={{
           flex: 1,
           minHeight: 0,
@@ -429,4 +429,4 @@ export function ReflectionSurface({
   );
 }
 
-export default ReflectionSurface;
+export default GlobalInsightSurface;

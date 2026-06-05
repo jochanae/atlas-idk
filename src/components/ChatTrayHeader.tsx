@@ -16,7 +16,7 @@ export interface ChatTrayHeaderProps {
   readinessScore?: number;
   /** Active session sovereignty state — colors the shield. */
   active?: boolean;
-  /** Optional click on the shield (e.g. toggle reflection mode). */
+  /** Optional click on the shield (e.g. toggle Global Insight mode). */
   onTrustClick?: () => void;
   /** Show the sovereignty shield. Defaults to false — only Nexus home opts in. */
   showTrust?: boolean;
