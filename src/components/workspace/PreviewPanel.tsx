@@ -56,6 +56,8 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [dsPort, setDsPort] = useState<number | null>(null);
   const [dsErrorMsg, setDsErrorMsg] = useState<string | null>(null);
   const [dsStarting, setDsStarting] = useState(false);
+  const [showEnvVars, setShowEnvVars] = useState(false);
+  const [devEnvVars, setDevEnvVars] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
   const dsLogsEndRef = useRef<HTMLDivElement>(null);
 
   // Poll status while active
@@ -86,12 +88,18 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
     setDsLogs([]);
     setDsErrorMsg(null);
     const token = project?.githubToken ?? "__server__";
+    const envVars = devEnvVars
+      .filter(({ key }) => key.trim())
+      .reduce<Record<string, string>>((acc, { key, value }) => {
+        acc[key.trim()] = value;
+        return acc;
+      }, {});
     try {
       const r = await fetch("/api/devserver/start", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-github-token": token },
         credentials: "include",
-        body: JSON.stringify({ repoFullName: linkedRepo.fullName, branch: linkedRepo.defaultBranch ?? "main" }),
+        body: JSON.stringify({ repoFullName: linkedRepo.fullName, branch: linkedRepo.defaultBranch ?? "main", envVars }),
       });
       const d = await r.json() as { status?: string; error?: string };
       if (!r.ok) throw new Error(d.error ?? "Failed to start");
@@ -123,6 +131,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const DS_STAGE_PROGRESS: Record<DsStatus, number> = {
     idle: 0, cloning: 20, installing: 50, starting: 80, running: 100, error: 0,
   };
+  const devError = dsErrorMsg;
 
   // Sync external refresh trigger (from push success) into local reloadKey
   const prevRefreshTrigger = useRef(refreshTrigger ?? 0);
@@ -816,6 +825,56 @@ ${t}
               <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid var(--atlas-border)" }}>
                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="var(--atlas-muted)" strokeWidth="1.3"/><path d="M8 5v3l2 1.5" stroke="var(--atlas-muted)" strokeWidth="1.3" strokeLinecap="round"/></svg>
                 <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, letterSpacing: "0.03em" }}>First boot takes ~1–2 min</span>
+              </div>
+              {devError && (
+                <div style={{ width: "100%", maxWidth: 360, maxHeight: 200, overflowY: "auto", background: "rgba(69,26,3,0.72)", border: "1px solid rgba(249,115,22,0.28)", borderRadius: 7, padding: "10px 12px", fontSize: 10, fontFamily: "var(--app-font-mono)", color: "rgba(254,215,170,0.9)", lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }} className="scrollbar-none">
+                  {devError}
+                </div>
+              )}
+              <div style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowEnvVars((show) => !show)}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}
+                >
+                  <span>Environment variables</span>
+                  <span>{showEnvVars ? "Hide" : "Show"}</span>
+                </button>
+                {showEnvVars && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, padding: "9px", borderRadius: 7, background: "rgba(12,10,9,0.6)", border: "1px solid var(--atlas-border)" }}>
+                    {devEnvVars.map((envVar, index) => (
+                      <div key={index} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 6 }}>
+                        <input
+                          value={envVar.key}
+                          onChange={(e) => setDevEnvVars((vars) => vars.map((item, i) => i === index ? { ...item, key: e.currentTarget.value } : item))}
+                          placeholder="KEY"
+                          style={{ minWidth: 0, padding: "7px 8px", borderRadius: 5, background: "rgba(0,0,0,0.25)", border: "1px solid var(--atlas-border)", color: "var(--atlas-fg)", fontSize: 10, fontFamily: "var(--app-font-mono)" }}
+                        />
+                        <input
+                          type="password"
+                          value={envVar.value}
+                          onChange={(e) => setDevEnvVars((vars) => vars.map((item, i) => i === index ? { ...item, value: e.currentTarget.value } : item))}
+                          placeholder="value"
+                          style={{ minWidth: 0, padding: "7px 8px", borderRadius: 5, background: "rgba(0,0,0,0.25)", border: "1px solid var(--atlas-border)", color: "var(--atlas-fg)", fontSize: 10, fontFamily: "var(--app-font-mono)" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDevEnvVars((vars) => vars.length === 1 ? [{ key: "", value: "" }] : vars.filter((_, i) => i !== index))}
+                          style={{ width: 28, borderRadius: 5, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.22)", color: "rgba(252,165,165,0.75)", cursor: "pointer", fontSize: 12, fontFamily: "var(--app-font-mono)" }}
+                        >
+                          x
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setDevEnvVars((vars) => [...vars, { key: "", value: "" }])}
+                      style={{ alignSelf: "flex-start", padding: "5px 8px", borderRadius: 5, background: "transparent", border: "1px solid rgba(201,162,76,0.22)", color: "var(--atlas-gold)", cursor: "pointer", fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}
+                    >
+                      Add variable
+                    </button>
+                  </div>
+                )}
               </div>
               {/* Launch button */}
               <button
