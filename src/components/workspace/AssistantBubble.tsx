@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createEntry, useCreateEntry, getListEntriesQueryKey, useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
-import { Bookmark, BookmarkCheck, CornerUpLeft, Download, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, CornerUpLeft, Download, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type AtlasLens } from "@/lib/atlas-history";
 
