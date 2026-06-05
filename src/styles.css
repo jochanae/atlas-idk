@@ -477,6 +477,17 @@ body[data-axiom-global-insight="true"] .atlas-home-chat-messages-scroll {
   overscroll-behavior-y: contain;
   touch-action: pan-y;
 }
+
+/* GI: kill the active-thread glass/border on the composer so it matches the
+   ambient home — no panel, no border, no rounded top. */
+body[data-axiom-global-insight="true"] .atlas-input-shell,
+body[data-axiom-thread="active"][data-axiom-global-insight="true"] .atlas-input-shell {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
 [data-theme="parchment"] .atlas-input-shell,
 [data-theme="parchment"] .atlas-input-shell textarea,
 [data-theme="parchment"] .atlas-input-shell input {
