@@ -269,20 +269,36 @@ export default function ConnectorsPage() {
           />
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14, marginTop: 14 }}>
-            {active.map((c) => (
-              <ActiveCard key={c.id} conn={c} />
+            {isLoading && (
+              <div style={{ border: "1px dashed var(--atlas-border)", borderRadius: 14, padding: 22, color: "var(--atlas-muted)", fontSize: 12, textAlign: "center", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Loader2 size={14} className="animate-spin" /> Loading connections…
+              </div>
+            )}
+            {error && !isLoading && (
+              <div style={{ border: "1px solid var(--atlas-gold-border)", borderRadius: 14, padding: 22, color: "var(--atlas-gold)", fontSize: 12, textAlign: "center" }}>
+                Couldn’t load connections. {(error as Error).message}
+              </div>
+            )}
+            {!isLoading && active.map((c) => (
+              <ActiveCard
+                key={c.id}
+                conn={c}
+                onDelete={() => handleDelete(c)}
+                deleting={deleteMut.isPending && deleteMut.variables === c.numericId}
+              />
             ))}
-            {active.length === 0 && (
+            {!isLoading && !error && active.length === 0 && (
               <div
                 style={{
                   border: "1px dashed var(--atlas-border)", borderRadius: 14, padding: 22,
                   color: "var(--atlas-muted)", fontSize: 12, textAlign: "center",
                 }}
               >
-                Nothing connected yet. Pick a workflow below to get started.
+                Nothing connected yet. Provision a Lovable or Cursor endpoint below.
               </div>
             )}
           </div>
+
         </section>
 
         {/* ─── 2. DISCOVERY GRID ────────────────────────────────────────── */}
