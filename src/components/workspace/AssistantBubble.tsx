@@ -815,6 +815,7 @@ export function AssistantBubble({
   const [showPlanPushModal, setShowPlanPushModal] = useState(false);
   const [planPushEdits, setPlanPushEdits] = useState<FileEdit[] | null>(null);
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [selfApplyStatus, setSelfApplyStatus] = useState<"idle" | "applying" | "done" | "error">("idle");
   const [selfApplyMsg, setSelfApplyMsg] = useState("");
   const [commitCardDone, setCommitCardDone] = useState(false);
