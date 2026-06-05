@@ -287,7 +287,7 @@ function classifyHomeCard(text: string): {
     title,
     body: body || trimmed,
     kind,
-    alwaysOpen: kind === "decision" || kind === "tension",
+    alwaysOpen: kind === "tension",
   };
 }
 
@@ -517,7 +517,6 @@ function HomeThoughtCard({
           <HomeRichText text={text} />
         )}
       </div>
-      )}
     </div>
   );
 }
