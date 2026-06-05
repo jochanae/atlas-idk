@@ -47,7 +47,7 @@ import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
-import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
+
 
 const PLACEHOLDERS = [
   "What are we actually trying to solve here…",
@@ -2534,6 +2534,7 @@ export default function Home() {
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
+      setGlobalInsightOpen(false);
       handleNewConversation();
       setDepth("ambient");
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
@@ -2714,23 +2715,9 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      {/* Global Insight — standalone overlay with isolated scroll + composer.
-          Mounts above the ambient home shell when globalInsightOpen is true. */}
-      <GlobalInsightSurface
-        open={globalInsightOpen}
-        messages={nexusChat.messages as any}
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-        isSending={isSending}
-        isStreaming={isAtlasStreaming}
-        pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
-        liveStep={nexusChat.liveStep as any}
-        isListening={isListening}
-        toggleVoice={toggleVoice}
-        onOpenHistory={handleOpenHistory}
-        onExit={() => setGlobalInsightOpen(false)}
-      />
+      {/* Global Insight runs inline through the ambient home shell.
+          The "● Global Insight" pill in the subheader is the only visual marker —
+          no overlay, no duplicate header, no separate composer. */}
 
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
@@ -2990,35 +2977,26 @@ export default function Home() {
               zIndex: 0,
             }} />
 
-            {/* Greeting */}
+            {/* Greeting — same in ambient + Global Insight. GI is signaled
+                only by the subheader "● Global Insight" pill, so the home shell
+                stays visually identical. */}
             {nexusChat.messages.length === 0 && (
               <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
-                  ...(globalInsightOpen
-                    ? {
-                        background: "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        backgroundClip: "text",
-                        opacity: 1,
-                      }
-                    : { color: "var(--atlas-fg)", opacity: 0.85 }),
+                  color: "var(--atlas-fg)", opacity: 0.85,
                 }}>
-                  {globalInsightOpen ? "Global Insight" : greetingRef.current?.head}
+                  {greetingRef.current?.head}
                 </h1>
                 <p style={{
-                  fontSize: globalInsightOpen ? 11 : ("var(--ts-body)" as any),
-                  color: globalInsightOpen ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                  opacity: globalInsightOpen ? 0.8 : 0.55,
+                  fontSize: "var(--ts-body)" as any,
+                  color: "var(--atlas-muted)",
+                  opacity: 0.55,
                   margin: 0,
-                  fontStyle: globalInsightOpen ? "normal" : "italic",
-                  fontFamily: globalInsightOpen ? "var(--app-font-mono)" : undefined,
-                  letterSpacing: globalInsightOpen ? "0.1em" : undefined,
-                  textTransform: globalInsightOpen ? "uppercase" : undefined,
+                  fontStyle: "italic",
                 }}>
-                  {globalInsightOpen ? "Strategic view · All projects" : greetingRef.current?.sub}
+                  {greetingRef.current?.sub}
                 </p>
               </div>
             )}
