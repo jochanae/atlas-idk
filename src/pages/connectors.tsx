@@ -38,6 +38,20 @@ type ActiveConnection = {
   meta?: Record<string, string>;
 };
 
+type ActiveConnection = {
+  id: string;
+  numericId: number;
+  provider: "github" | "railway" | "lovable" | "cursor" | "google_calendar" | "stripe" | "slack" | "salesforce" | "twilio" | "hubspot" | "custom";
+  label: string;
+  account: string;
+  status: "connected" | "read_only" | "degraded" | "expired";
+  statusLabel: string;
+  scopesGranted: number;
+  scopesAvailable: number;
+  lastSyncIso: string;
+  meta?: Record<string, any>;
+};
+
 type DirectoryConnector = {
   id: string;
   provider: ActiveConnection["provider"];
@@ -51,22 +65,8 @@ type EndpointPreset = {
   id: "custom" | "railway" | "lovable" | "cursor";
   label: string;
   hint: string;
+  enabled: boolean;
 };
-
-const MOCK_ACTIVE: ActiveConnection[] = [
-  {
-    id: "conn_gh_01",
-    provider: "github",
-    label: "GitHub",
-    account: "axiom-systems/atlas",
-    status: "read_only",
-    statusLabel: "Read-only (no personal token)",
-    scopesGranted: 2,
-    scopesAvailable: 6,
-    lastSyncIso: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
-    meta: { repos: "12", lastPush: "2h ago" },
-  },
-];
 
 const MOCK_DIRECTORY: DirectoryConnector[] = [
   { id: "dir_gcal",   provider: "google_calendar", label: "Google Calendar", tagline: "Sync events into your Ledger.",           category: "Productivity", popular: true },
@@ -78,11 +78,41 @@ const MOCK_DIRECTORY: DirectoryConnector[] = [
 ];
 
 const ENDPOINT_PRESETS: EndpointPreset[] = [
-  { id: "custom",  label: "CUSTOM",  hint: "Any HTTPS endpoint" },
-  { id: "railway", label: "RAILWAY", hint: "Railway service URL" },
-  { id: "lovable", label: "LOVABLE", hint: "Lovable Cloud function" },
-  { id: "cursor",  label: "CURSOR",  hint: "Cursor MCP bridge" },
+  { id: "custom",  label: "CUSTOM",  hint: "Coming soon — backend not ready",     enabled: false },
+  { id: "railway", label: "RAILWAY", hint: "Coming soon — needs token field",     enabled: false },
+  { id: "lovable", label: "LOVABLE", hint: "Lovable Cloud function URL",          enabled: true },
+  { id: "cursor",  label: "CURSOR",  hint: "Cursor MCP bridge endpoint",          enabled: true },
 ];
+
+function statusToActive(s: string): ActiveConnection["status"] {
+  if (s === "failed") return "degraded";
+  if (s === "expired") return "expired";
+  if (s === "read_only") return "read_only";
+  return "connected";
+}
+function niceStatus(s: string): string {
+  if (s === "ok" || s === "connected") return "Connected";
+  if (s === "failed") return "Degraded";
+  if (s === "expired") return "Token expired";
+  if (s === "read_only") return "Read-only";
+  if (s === "pending") return "Pending check";
+  return s;
+}
+function mapBackend(c: BackendConnection): ActiveConnection {
+  return {
+    id: String(c.id),
+    numericId: c.id,
+    provider: c.type,
+    label: c.label,
+    account: c.url ?? c.metadata?.repo ?? "—",
+    status: statusToActive(c.status),
+    statusLabel: niceStatus(c.status),
+    scopesGranted: 0,
+    scopesAvailable: 0,
+    lastSyncIso: c.lastCheckedAt ?? c.createdAt,
+    meta: c.metadata ?? undefined,
+  };
+}
 
 /* ─── Icon mapping ──────────────────────────────────────────────────────── */
 function ProviderIcon({ provider, size = 18 }: { provider: ActiveConnection["provider"]; size?: number }) {
