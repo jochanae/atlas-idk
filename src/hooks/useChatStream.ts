@@ -414,7 +414,17 @@ export function useChatStream(
               ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
               ...(lps.length > 0 ? { linePatches: lps } : {}),
               ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
-              ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
+              ...(res.imageB64
+                ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType }
+                : res.imageGen?.images?.[0]?.imageUrl
+                  ? (() => {
+                      const raw = res.imageGen.images[0].imageUrl as string;
+                      const match = raw.match(/^data:([^;]+);base64,(.+)$/);
+                      return match
+                        ? { imageB64: match[2], imageMimeType: match[1] }
+                        : {};
+                    })()
+                  : {}),
               imageGen: res.imageGen ?? null,
               ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
               surface: res.surface ?? null,
@@ -612,7 +622,17 @@ export function useChatStream(
             ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
             ...(lps.length > 0 ? { linePatches: lps } : {}),
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
-            ...(res.imageB64 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType } : {}),
+            ...(res.imageB64
+              ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType }
+              : res.imageGen?.images?.[0]?.imageUrl
+                ? (() => {
+                    const raw = res.imageGen.images[0].imageUrl as string;
+                    const match = raw.match(/^data:([^;]+);base64,(.+)$/);
+                    return match
+                      ? { imageB64: match[2], imageMimeType: match[1] }
+                      : {};
+                  })()
+                : {}),
             imageGen: res.imageGen ?? null,
             ...(aff.length > 0 ? { autoFetchedFiles: aff } : {}),
             surface: res.surface ?? null,
