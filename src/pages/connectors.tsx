@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Search, Plug, Github, Calendar, CreditCard, MessageSquare,
   Briefcase, Phone, Users, Plus, Globe, Train, Sparkles, MousePointerClick,
-  Check, ExternalLink, ShieldCheck, AlertCircle, Trash2, Loader2,
+  Check, ShieldCheck, AlertCircle, Trash2, Loader2,
 } from "lucide-react";
 
 /* ─── Backend types (GET /api/connections) ─────────────────────────────── */
