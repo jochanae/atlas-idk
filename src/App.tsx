@@ -332,6 +332,7 @@ function Router() {
           
           <Route path="/workshop" component={Workshop} />
           <Route path="/code" component={CodePage} />
+          <Route path="/connectors" component={require("./pages/connectors").default} />
           <Route path="/compass" component={ProjectCompass} />
           <Route path="/terms" component={Terms} />
           <Route path="/privacy" component={Privacy} />
