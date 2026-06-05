@@ -3121,7 +3121,7 @@ export default function Workspace() {
     } catch {}
     return "chat";
   });
-  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench">(() =>
+  const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench" | "mcp">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
   const [rightOpen, setRightOpen] = useState(() =>
@@ -6275,6 +6275,7 @@ export default function Workspace() {
                   mobileTab === "blueprints" ? "blueprints" :
                   mobileTab === "memory" ? "memory" :
                   mobileTab === "connections" ? "connections" :
+                  mobileTab === "mcp" ? "mcp" :
                   undefined
                 }
                 onSendIntent={sendFromIntentCapture}
@@ -6421,6 +6422,19 @@ export default function Workspace() {
                   </svg>
                 ),
                 onSelect: () => { setMobileTab("connections"); setShowMoreSheet(false); },
+              },
+              {
+                id: "mcp" as const,
+                label: "MCP",
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5" cy="12" r="2.5"/>
+                    <circle cx="19" cy="6" r="2.5"/>
+                    <circle cx="19" cy="18" r="2.5"/>
+                    <path d="M7.5 11l9-4M7.5 13l9 4"/>
+                  </svg>
+                ),
+                onSelect: () => { setMobileTab("mcp"); setShowMoreSheet(false); },
               },
               ...(hasLinkedRepo ? [{
                 id: "rescan" as const,
