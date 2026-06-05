@@ -1089,13 +1089,13 @@ export function AxiomFlow({
               zIndex: 12,
               width: "min(520px, calc(100% - 28px))",
               background: theme === "parchment"
-                ? "linear-gradient(rgba(250,247,255,0.92), rgba(245,240,255,0.92)) padding-box, linear-gradient(135deg, rgba(139,92,246,0.55), rgba(167,139,250,0.25) 45%, rgba(139,92,246,0.55)) border-box"
+                ? `linear-gradient(rgba(255,252,245,0.96), rgba(252,247,236,0.96)) padding-box, linear-gradient(135deg, rgba(${palette.goldRgb},0.55), rgba(${palette.goldRgb},0.18) 45%, rgba(${palette.goldRgb},0.55)) border-box`
                 : "linear-gradient(rgba(10,10,12,0.78), rgba(10,10,12,0.78)) padding-box, linear-gradient(135deg, rgba(167,139,250,0.75), rgba(139,92,246,0.35) 50%, rgba(167,139,250,0.75)) border-box",
               border: "1.5px solid transparent",
               borderRadius: 12,
               padding: "12px 14px",
               boxShadow: theme === "parchment"
-                ? "0 0 0 1px rgba(167,139,250,0.18), 0 8px 28px rgba(139,92,246,0.18), 0 20px 60px rgba(139,92,246,0.12)"
+                ? `0 0 0 1px rgba(${palette.goldRgb},0.16), 0 8px 24px rgba(146,64,14,0.08), 0 20px 50px rgba(146,64,14,0.06)`
                 : "0 0 24px rgba(139,92,246,0.35), 0 0 60px rgba(139,92,246,0.18), 0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(167,139,250,0.08)",
               backdropFilter: "blur(20px) saturate(140%)",
               pointerEvents: "auto",
@@ -1103,7 +1103,7 @@ export function AxiomFlow({
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: palette.goldText, flexShrink: 0, boxShadow: `0 0 8px ${palette.goldText}` }} />
-              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(231,229,226,0.85)" }}>
+              <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: theme === "parchment" ? "rgba(60,40,15,0.78)" : "rgba(231,229,226,0.85)" }}>
                 {isEmptyMap ? `${projectLabel} — nothing mapped yet` : "Here's what Atlas mapped from your conversation"}
               </span>
               <button
@@ -1116,11 +1116,11 @@ export function AxiomFlow({
                 ×
               </button>
             </div>
-            <div style={{ color: "rgba(200,200,205,0.78)", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
+            <div style={{ color: theme === "parchment" ? "rgba(60,40,15,0.72)" : "rgba(200,200,205,0.78)", fontSize: 12, lineHeight: 1.55, marginBottom: 12 }}>
               {isEmptyMap ? (
-                <>Atlas hasn't extracted anything for <b style={{ color: "rgba(231,229,226,0.95)", fontWeight: 600 }}>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b style={{ color: palette.goldText, fontWeight: 600 }}>Get started</b> and tell Atlas what you're building.</>
+                <>Atlas hasn't extracted anything for <b style={{ color: theme === "parchment" ? "rgba(40,25,8,0.95)" : "rgba(231,229,226,0.95)", fontWeight: 600 }}>{projectLabel}</b> yet — the nodes below are empty placeholders, not real content. Tap any node to define it, or tap <b style={{ color: palette.goldText, fontWeight: 600 }}>Get started</b> and tell Atlas what you're building.</>
               ) : (
-                <>Your goal is <b style={{ color: "rgba(231,229,226,0.95)", fontWeight: 600 }}>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
+                <>Your goal is <b style={{ color: theme === "parchment" ? "rgba(40,25,8,0.95)" : "rgba(231,229,226,0.95)", fontWeight: 600 }}>{goalForSummary?.label ?? "your first node"}</b>. So far Atlas has captured {definedCount} of {nodes.length} nodes — {mustCount} must-haves, {shouldCount} should-haves, {openDecisionCount} open decisions, {blockerCount} blockers. Tap any node to edit.</>
               )}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1454,15 +1454,21 @@ export function AxiomFlow({
         </div>
       )}
 
-      {/* Hint */}
-      <div style={{
-        position: "absolute", bottom: 10, left: 0, right: 0,
-        textAlign: "center", pointerEvents: "none",
-        fontSize: 9, letterSpacing: "0.15em",
-        color: theme === "parchment" ? "rgba(146,64,14,0.55)" : "rgba(201,162,76,0.52)",
-        fontFamily: "var(--app-font-mono)",
-      }}>
-        TAP NODE · PINCH TO ZOOM · DOUBLE-TAP TO FIT
+      {/* Hint — compact (?) icon, expands on hover/tap */}
+      <div
+        title="Tap node · Pinch to zoom · Double-tap to fit"
+        style={{
+          position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)",
+          width: 18, height: 18, borderRadius: "50%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 10, fontFamily: "var(--app-font-mono)",
+          color: theme === "parchment" ? "rgba(146,64,14,0.55)" : "rgba(201,162,76,0.55)",
+          border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
+          background: theme === "parchment" ? "rgba(255,252,245,0.55)" : "rgba(10,10,12,0.45)",
+          cursor: "help", zIndex: 6, userSelect: "none",
+        }}
+      >
+        ?
       </div>
 
       <div style={{
