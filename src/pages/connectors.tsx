@@ -131,14 +131,60 @@ function timeAgo(iso: string) {
 
 export default function ConnectorsPage() {
   const [, setLocation] = useLocation();
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState<ActiveConnection[]>(MOCK_ACTIVE);
-  const [connectingId, setConnectingId] = useState<string | null>(null);
 
-  const [endpointPreset, setEndpointPreset] = useState<EndpointPreset["id"]>("custom");
+  const [endpointPreset, setEndpointPreset] = useState<EndpointPreset["id"]>("lovable");
   const [customLabel, setCustomLabel] = useState("");
   const [customUrl, setCustomUrl] = useState("");
   const [customSaved, setCustomSaved] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const { data: active = [], isLoading, error } = useQuery<ActiveConnection[]>({
+    queryKey: ["connections"],
+    queryFn: async () => {
+      const res = await fetch("/api/connections", { credentials: "include" });
+      if (!res.ok) throw new Error(`GET /api/connections → ${res.status}`);
+      const rows = (await res.json()) as BackendConnection[];
+      return Array.isArray(rows) ? rows.map(mapBackend) : [];
+    },
+  });
+
+  const createMut = useMutation({
+    mutationFn: async (body: { type: "lovable" | "cursor"; label: string; url: string }) => {
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`POST /api/connections → ${res.status} ${txt}`);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["connections"] });
+      setCustomSaved(true);
+      setCustomLabel("");
+      setCustomUrl("");
+      setFormError(null);
+      setTimeout(() => setCustomSaved(false), 1800);
+    },
+    onError: (e: Error) => setFormError(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/connections/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`DELETE /api/connections/${id} → ${res.status}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["connections"] }),
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -148,52 +194,22 @@ export default function ConnectorsPage() {
     );
   }, [query]);
 
-  const handleConnect = (dir: DirectoryConnector) => {
-    setConnectingId(dir.id);
-    // Optimistic mock — backend will replace this with an OAuth handoff.
-    setTimeout(() => {
-      setActive((prev) => [
-        ...prev,
-        {
-          id: `conn_${dir.id}`,
-          provider: dir.provider,
-          label: dir.label,
-          account: "you@axiom.systems",
-          status: "connected",
-          statusLabel: "Connected",
-          scopesGranted: 4,
-          scopesAvailable: 4,
-          lastSyncIso: new Date().toISOString(),
-        },
-      ]);
-      setConnectingId(null);
-    }, 650);
-  };
-
   const handleSaveCustom = () => {
+    setFormError(null);
     if (!customLabel.trim() || !customUrl.trim()) return;
-    setActive((prev) => [
-      ...prev,
-      {
-        id: `conn_custom_${Date.now()}`,
-        provider: "custom",
-        label: customLabel.trim(),
-        account: customUrl.trim(),
-        status: "connected",
-        statusLabel: `${endpointPreset.toUpperCase()} endpoint`,
-        scopesGranted: 1,
-        scopesAvailable: 1,
-        lastSyncIso: new Date().toISOString(),
-      },
-    ]);
-    setCustomSaved(true);
-    setCustomLabel("");
-    setCustomUrl("");
-    setTimeout(() => setCustomSaved(false), 1800);
+    if (endpointPreset !== "lovable" && endpointPreset !== "cursor") return;
+    createMut.mutate({
+      type: endpointPreset,
+      label: customLabel.trim(),
+      url: customUrl.trim(),
+    });
   };
 
-  const isActiveProvider = (p: ActiveConnection["provider"]) =>
-    active.some((a) => a.provider === p);
+  const handleDelete = (conn: ActiveConnection) => {
+    if (!window.confirm(`Remove "${conn.label}" connection?`)) return;
+    deleteMut.mutate(conn.numericId);
+  };
+
 
   return (
     <div
