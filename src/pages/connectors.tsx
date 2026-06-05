@@ -489,8 +489,9 @@ function SectionHead({ eyebrow, title, subtitle }: { eyebrow: string; title: str
   );
 }
 
-function ActiveCard({ conn }: { conn: ActiveConnection }) {
+function ActiveCard({ conn, onDelete, deleting }: { conn: ActiveConnection; onDelete: () => void; deleting: boolean }) {
   const warn = conn.status === "read_only" || conn.status === "degraded" || conn.status === "expired";
+  const showScopes = conn.scopesGranted > 0 || conn.scopesAvailable > 0;
   return (
     <article
       style={{
@@ -501,9 +502,9 @@ function ActiveCard({ conn }: { conn: ActiveConnection }) {
           "color-mix(in oklab, var(--atlas-surface) 92%, transparent))",
         backdropFilter: "blur(20px) saturate(150%)",
         boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 60px -36px rgba(0,0,0,0.7), 0 0 0 1px rgba(230,198,135,0.04)",
+        opacity: deleting ? 0.5 : 1,
       }}
     >
-      {/* Top: icon + label + status pill */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div
           style={{
@@ -534,7 +535,6 @@ function ActiveCard({ conn }: { conn: ActiveConnection }) {
         </div>
       </div>
 
-      {/* Status badge */}
       <div
         style={{
           marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6,
@@ -549,15 +549,26 @@ function ActiveCard({ conn }: { conn: ActiveConnection }) {
         {conn.statusLabel}
       </div>
 
-      {/* Footer meta */}
-      <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--atlas-border)", fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em" }}>
-        <span>SCOPES · {conn.scopesGranted}/{conn.scopesAvailable}</span>
+      <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--atlas-border)", fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em", alignItems: "center" }}>
+        {showScopes && <span>SCOPES · {conn.scopesGranted}/{conn.scopesAvailable}</span>}
         <span>SYNCED · {timeAgo(conn.lastSyncIso)}</span>
-        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, color: "var(--atlas-muted)", cursor: "pointer" }}>
-          MANAGE <ExternalLink size={10} strokeWidth={1.8} />
-        </span>
+        <button
+          onClick={onDelete}
+          disabled={deleting}
+          style={{
+            marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4,
+            color: "var(--atlas-muted)", cursor: deleting ? "not-allowed" : "pointer",
+            background: "transparent", border: "none", padding: 0,
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+            fontFamily: "var(--app-font-mono)",
+          }}
+        >
+          {deleting ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} strokeWidth={1.8} />}
+          {deleting ? "Removing…" : "Remove"}
+        </button>
       </div>
     </article>
+
   );
 }
 
