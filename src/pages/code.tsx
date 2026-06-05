@@ -530,14 +530,14 @@ export default function CodePage() {
         backdropFilter: "blur(14px)",
       }}>
         <button
-          onClick={() => navigate("/workspace")}
+          onClick={() => navigate("/home")}
           style={{
             display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px",
             background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 8, color: "var(--atlas-muted)", cursor: "pointer", fontSize: 12,
           }}
         >
-          <ArrowLeft size={13} /> Workspace
+          <ArrowLeft size={13} /> Home
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
