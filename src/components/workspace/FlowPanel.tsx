@@ -644,43 +644,105 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
           {lensView === "builder" && (
             <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "20px 18px 28px" }}>
               {(() => {
-                const { goal, defined, open, blockers, cut } = groupNodesForBuilder(nodes);
-                const Section = ({ title, items, accent }: { title: string; items: ArchNode[]; accent: string }) => {
-                  if (items.length === 0) return null;
-                  return (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: accent, marginBottom: 8, opacity: 0.85 }}>{title}</div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {items.map(n => {
-                          const m = n.moscow ?? n.meta;
-                          return (
-                            <div key={n.id} style={{ border: `1px solid ${accent}33`, borderRadius: 10, background: `${accent}0a`, padding: "10px 12px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 13, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", flex: 1, minWidth: 0 }}>{n.label}</span>
-                                {m && <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 7.5, letterSpacing: "0.1em", textTransform: "uppercase", color: accent, border: `1px solid ${accent}55`, borderRadius: 999, padding: "1px 6px" }}>{m === "wont" ? "won't" : m}</span>}
-                              </div>
-                              {n.strategicAnswer && n.strategicAnswer.trim() && (
-                                <div style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, marginTop: 6, fontFamily: "var(--app-font-mono)" }}>{n.strategicAnswer.trim()}</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                };
-                const hasAny = defined.length || open.length || blockers.length || cut.length;
-                if (!hasAny) {
-                  return <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "rgba(var(--atlas-muted-rgb),0.5)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em", textAlign: "center", padding: "0 24px" }}>Nothing to build yet — define nodes with Atlas and they'll appear here as structure.</div>;
+                const goal = nodes.find(n => n.type === "goal") ?? null;
+                const rest = nodes.filter(n => n.type !== "goal");
+                if (!goal && rest.length === 0) {
+                  return <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "rgba(var(--atlas-muted-rgb),0.5)", fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.08em", textAlign: "center", padding: "0 24px" }}>Nothing to build yet — define nodes with Atlas and they'll appear here as schema.</div>;
                 }
+                const typeLabel = (t: ArchNode["type"]) => {
+                  if (t === "requirement") return "requirements";
+                  if (t === "decision") return "decisions";
+                  if (t === "sprint") return "sprints";
+                  if (t === "blocker") return "blockers";
+                  if (t === "priority") return "priorities";
+                  if (t === "wont") return "out_of_scope";
+                  return String(t);
+                };
+                const order: ArchNode["type"][] = ["requirement", "decision", "sprint", "priority", "blocker", "wont"];
+                const grouped = order
+                  .map(t => ({ type: t, name: typeLabel(t), items: rest.filter(n => n.type === t) }))
+                  .filter(g => g.items.length > 0);
+                const fieldType = (n: ArchNode): string => {
+                  const m = n.moscow ?? n.meta;
+                  if (n.type === "blocker") return "blocker";
+                  if (n.type === "decision") return n.resolved ? "decision" : "decision · open";
+                  if (m === "must") return "must";
+                  if (m === "should") return "should";
+                  if (m === "could") return "could";
+                  if (m === "wont" || n.type === "wont") return "won't";
+                  if (n.type === "sprint") return "sprint";
+                  return n.resolved ? "defined" : "open";
+                };
+                const trim = (s: string, n = 28) => s.length > n ? s.slice(0, n - 1) + "…" : s;
                 return (
                   <>
-                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(var(--atlas-gold-rgb),0.55)", marginBottom: 6 }}>// the structure</div>
-                    {goal && <div style={{ fontSize: 18, fontWeight: 500, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", marginBottom: 18 }}>{goal.label}</div>}
-                    <Section title="Defined" items={defined} accent="rgb(var(--atlas-gold-rgb))" />
-                    <Section title="Open" items={open} accent="rgb(var(--atlas-muted-rgb))" />
-                    <Section title="Blockers" items={blockers} accent="rgb(239,120,80)" />
-                    <Section title="Out of scope" items={cut} accent="rgb(var(--atlas-muted-rgb))" />
+                    <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(var(--atlas-gold-rgb),0.55)", marginBottom: 14 }}>
+                      // schema · v0.1
+                    </div>
+                    {goal && (
+                      <div style={{
+                        fontFamily: "var(--app-font-mono)",
+                        fontSize: 11,
+                        color: "var(--atlas-gold)",
+                        border: "1px dashed rgba(var(--atlas-gold-rgb),0.35)",
+                        borderRadius: 8,
+                        padding: "10px 14px",
+                        textAlign: "center" as const,
+                        marginBottom: 18,
+                        background: "rgba(var(--atlas-gold-rgb),0.03)",
+                      }}>
+                        // seed: {trim(goal.label, 64)}
+                      </div>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 14 }}>
+                      {grouped.map(g => (
+                        <div key={g.type} style={{
+                          border: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+                          borderRadius: 6,
+                          background: "rgba(255,255,255,0.015)",
+                          overflow: "hidden",
+                        }}>
+                          <div style={{
+                            fontFamily: "var(--app-font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.14em",
+                            color: "var(--atlas-gold)",
+                            padding: "8px 10px",
+                            borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.18)",
+                            background: "rgba(var(--atlas-gold-rgb),0.05)",
+                          }}>
+                            {g.name}
+                          </div>
+                          {g.items.map((n, i) => (
+                            <div key={n.id} style={{
+                              fontFamily: "var(--app-font-mono)",
+                              fontSize: 10.5,
+                              color: "rgba(var(--atlas-muted-rgb),0.85)",
+                              padding: "6px 10px",
+                              borderBottom: i < g.items.length - 1 ? "1px solid rgba(var(--atlas-gold-rgb),0.08)" : "none",
+                              display: "flex",
+                              gap: 8,
+                              alignItems: "baseline",
+                            }}>
+                              <span style={{ flex: 1, minWidth: 0, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{trim(n.label)}</span>
+                              <span style={{ color: "rgba(var(--atlas-muted-rgb),0.6)" }}>: {fieldType(n)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                    {goal && grouped.length > 0 && (
+                      <p style={{
+                        fontFamily: "var(--app-font-mono)",
+                        fontSize: 10,
+                        color: "rgb(95,169,161)",
+                        letterSpacing: "0.14em",
+                        textAlign: "center" as const,
+                        margin: 0,
+                      }}>
+                        ↳ join on goal_id
+                      </p>
+                    )}
                   </>
                 );
               })()}
