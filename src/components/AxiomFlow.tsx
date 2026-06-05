@@ -1454,15 +1454,21 @@ export function AxiomFlow({
         </div>
       )}
 
-      {/* Hint */}
-      <div style={{
-        position: "absolute", bottom: 10, left: 0, right: 0,
-        textAlign: "center", pointerEvents: "none",
-        fontSize: 9, letterSpacing: "0.15em",
-        color: theme === "parchment" ? "rgba(146,64,14,0.55)" : "rgba(201,162,76,0.52)",
-        fontFamily: "var(--app-font-mono)",
-      }}>
-        TAP NODE · PINCH TO ZOOM · DOUBLE-TAP TO FIT
+      {/* Hint — compact (?) icon, expands on hover/tap */}
+      <div
+        title="Tap node · Pinch to zoom · Double-tap to fit"
+        style={{
+          position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)",
+          width: 18, height: 18, borderRadius: "50%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 10, fontFamily: "var(--app-font-mono)",
+          color: theme === "parchment" ? "rgba(146,64,14,0.55)" : "rgba(201,162,76,0.55)",
+          border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
+          background: theme === "parchment" ? "rgba(255,252,245,0.55)" : "rgba(10,10,12,0.45)",
+          cursor: "help", zIndex: 6, userSelect: "none",
+        }}
+      >
+        ?
       </div>
 
       <div style={{
