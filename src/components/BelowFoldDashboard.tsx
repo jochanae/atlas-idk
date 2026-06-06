@@ -609,6 +609,11 @@ function ConnectionsDock() {
   const [, setLocation] = useLocation();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ConnStatus>>({});
+  const [githubStatus, setGithubStatus] = useState<{
+    connected: boolean;
+    username?: string;
+    error?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const goManage = () => setLocation("/connectors");
 
@@ -630,7 +635,7 @@ function ConnectionsDock() {
 
   const loadStatus = async (currentConnections = connections) => {
     try {
-      const [connectionsResult, githubStatus] = await Promise.all([
+      const [connectionsResult, normalizedGithubStatus] = await Promise.all([
         fetch("/api/connections/status", { credentials: "include" }),
         fetchGitHubStatus().catch(() => null),
       ]);
@@ -652,18 +657,49 @@ function ConnectionsDock() {
           lastDeployAt: s.lastDeploy?.timestamp ?? s.lastDeployAt ?? null,
         };
       }
-      if (githubStatus) {
+      if (normalizedGithubStatus) {
         for (const connection of currentConnections) {
           if (connection.type !== "github") continue;
           map[String(connection.id)] = {
-            state: githubStatus.status,
-            message: githubStatus.label,
+            state: normalizedGithubStatus.status,
+            message: normalizedGithubStatus.label,
           };
         }
       }
       setStatuses(map);
     } catch { /* ignore */ }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const githubConnected = params.get("github_connected");
+    const githubUser = params.get("github_user");
+    const githubError = params.get("github_error");
+
+    if (githubConnected === "true") {
+      setGithubStatus({ connected: true, username: githubUser ?? "GitHub" });
+      // Clean URL without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (githubError) {
+      setGithubStatus({ connected: false, error: githubError });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/github/status", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setGithubStatus((current) => current ?? {
+            connected: data.hasUserToken || data.hasAccountToken,
+            username: undefined,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     void loadConnections().then((list) => loadStatus(list));
@@ -691,7 +727,7 @@ function ConnectionsDock() {
     }
   };
 
-  const isEmpty = !loading && connections.length === 0;
+  const visibleConnections = connections.filter((connection) => connection.type !== "github");
 
   return (
     <div className="atlas-discovery-card">
@@ -719,32 +755,81 @@ function ConnectionsDock() {
         </button>
       </div>
 
-      {isEmpty ? (
-        <div style={{ padding: "20px 14px", textAlign: "center", border: "1px dashed rgba(201,162,76,0.15)", borderRadius: 10 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 11.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.75, lineHeight: 1.5 }}>
-            Connect your tools to make this your mission control
-          </p>
-          <button
-            type="button"
-            onClick={goManage}
-            style={{
-              padding: "7px 14px", borderRadius: 8, cursor: "pointer",
-              background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.4)",
-              color: "var(--atlas-gold)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-              letterSpacing: "0.06em", textTransform: "uppercase",
-            }}
-          >
-            Browse connectors →
-          </button>
-        </div>
-      ) : (
+      <div style={{
+        display: "flex", gap: 8, overflowX: "auto", padding: "2px 1px",
+        border: "1px solid rgba(201,162,76,0.08)", borderRadius: 10,
+        background: "rgba(255,255,255,0.015)",
+        scrollbarWidth: "none",
+      }}>
+        {/* GitHub Connection */}
         <div style={{
-          display: "flex", gap: 8, overflowX: "auto", padding: "2px 1px",
-          border: "1px solid rgba(201,162,76,0.08)", borderRadius: 10,
-          background: "rgba(255,255,255,0.015)",
-          scrollbarWidth: "none",
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${githubStatus?.connected ? "rgba(74,222,128,0.25)" : "rgba(255,255,255,0.08)"}`,
+          borderRadius: 12,
+          padding: "16px 18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
         }}>
-          {connections.map((c) => {
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* GitHub icon */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ color: "rgba(255,255,255,0.7)", flexShrink: 0 }}>
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+            </svg>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>
+                GitHub
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                {githubStatus?.connected
+                  ? `Connected${githubStatus.username ? ` · @${githubStatus.username}` : ""}`
+                  : githubStatus?.error
+                    ? "Connection failed — try again"
+                    : "Not connected"}
+              </div>
+            </div>
+          </div>
+
+          {githubStatus?.connected ? (
+            <button
+              onClick={async () => {
+                await fetch("/api/github/token", { method: "DELETE", credentials: "include" });
+                setGithubStatus({ connected: false });
+              }}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 8,
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 12,
+                padding: "5px 12px",
+                cursor: "pointer",
+              }}
+            >
+              Disconnect
+            </button>
+          ) : (
+            <a
+              href="/api/github/oauth/start"
+              style={{
+                background: "rgba(201,162,76,0.1)",
+                border: "1px solid rgba(201,162,76,0.3)",
+                borderRadius: 8,
+                color: "var(--atlas-gold, #C9A24C)",
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "5px 14px",
+                textDecoration: "none",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Connect →
+            </a>
+          )}
+        </div>
+          {visibleConnections.map((c) => {
             const st = statuses[String(c.id)];
             const d = dotForStatus(c.type, loading ? { state: "loading" } : st);
             const meta = CONN_META[c.type] ?? { name: c.type, initials: c.type.slice(0, 2).toUpperCase() };
@@ -802,8 +887,7 @@ function ConnectionsDock() {
               </div>
             );
           })}
-        </div>
-      )}
+      </div>
 
       
     </div>
