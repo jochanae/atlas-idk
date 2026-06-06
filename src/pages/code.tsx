@@ -148,6 +148,8 @@ const MONO: React.CSSProperties = {
   fontFamily: "var(--app-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
 };
 
+type MobilePane = "Files" | "Code" | "Activity";
+
 function statusColor(s: GeneratedFile["status"]) {
   if (s === "new") return "#7CE3A0";
   if (s === "modified") return "#E6C687";
@@ -451,10 +453,28 @@ export default function CodePage() {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState("");
   const [showRail, setShowRail] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("Code");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(getRunIdFromUrl());
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
 
   const projectId = useMemo(() => getProjectIdFromUrl(), []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const updateIsMobile = () => setIsMobile(mediaQuery.matches);
+
+    updateIsMobile();
+    mediaQuery.addEventListener("change", updateIsMobile);
+    window.addEventListener("resize", updateIsMobile);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateIsMobile);
+      window.removeEventListener("resize", updateIsMobile);
+    };
+  }, []);
 
   // Persist projectId for return visits
   useEffect(() => {
@@ -525,6 +545,7 @@ export default function CodePage() {
       <header style={{
         position: "relative", zIndex: 10,
         display: "flex", alignItems: "center", gap: 12, padding: "12px 18px",
+        flexWrap: isMobile ? "wrap" : undefined, rowGap: isMobile ? 8 : undefined,
         borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
         background: "color-mix(in oklab, var(--atlas-surface) 70%, transparent)",
         backdropFilter: "blur(14px)",
@@ -595,7 +616,7 @@ export default function CodePage() {
           onClick={() => setShowRail((v) => !v)}
           title="Toggle activity rail"
           style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            display: isMobile ? "none" : "inline-flex", alignItems: "center", justifyContent: "center",
             width: 30, height: 30, borderRadius: 7,
             background: showRail ? "rgba(230,198,135,0.1)" : "transparent",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -606,13 +627,57 @@ export default function CodePage() {
         </button>
       </header>
 
+      {isMobile && (
+        <div style={{
+          position: "relative", zIndex: 9,
+          padding: "8px 12px",
+          borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+          background: "color-mix(in oklab, var(--atlas-surface) 70%, transparent)",
+          backdropFilter: "blur(14px)",
+        }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4,
+            padding: 3, borderRadius: 10,
+            background: "color-mix(in oklab, var(--atlas-surface) 92%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+          }}>
+            {(["Files", "Code", "Activity"] as MobilePane[]).map((pane) => {
+              const active = mobilePane === pane;
+              return (
+                <button
+                  key={pane}
+                  type="button"
+                  onClick={() => setMobilePane(pane)}
+                  style={{
+                    padding: "7px 10px", borderRadius: 8,
+                    background: active
+                      ? "linear-gradient(135deg, rgba(230,198,135,0.9), rgba(230,198,135,0.7))"
+                      : "transparent",
+                    border: active
+                      ? "1px solid rgba(230,198,135,0.9)"
+                      : "1px solid transparent",
+                    color: active ? "#0B0A0F" : "var(--atlas-muted)",
+                    cursor: "pointer", fontSize: 11, letterSpacing: "0.08em",
+                    textTransform: "uppercase", ...MONO,
+                    boxShadow: active ? "0 4px 14px rgba(230,198,135,0.18)" : "none",
+                  }}
+                >
+                  {pane}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Body */}
       <div style={{
         flex: 1, minHeight: 0, display: "grid",
-        gridTemplateColumns: showRail ? "260px 1fr 340px" : "260px 1fr",
+        gridTemplateColumns: isMobile ? "1fr" : showRail ? "260px 1fr 340px" : "260px 1fr",
         gap: 12, padding: 12, position: "relative", zIndex: 1,
       }}>
         {/* LEFT — file tree */}
+        {(!isMobile || mobilePane === "Files") && (
         <aside style={{ ...PANEL, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div style={{
             padding: "10px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)",
@@ -665,8 +730,10 @@ export default function CodePage() {
             </div>
           )}
         </aside>
+        )}
 
         {/* CENTER — viewer */}
+        {(!isMobile || mobilePane === "Code") && (
         <main style={{ ...PANEL, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
           {error ? (
             <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); filesQ.refetch(); }} />
@@ -684,9 +751,10 @@ export default function CodePage() {
             />
           )}
         </main>
+        )}
 
         {/* RIGHT — activity */}
-        {showRail && (
+        {((isMobile && mobilePane === "Activity") || (!isMobile && showRail)) && (
           <aside style={{ ...PANEL, overflow: "hidden" }}>
             {activeRun ? (
               <ActivityRail
