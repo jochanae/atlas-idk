@@ -102,6 +102,7 @@ export interface ArchNode {
   resolved: boolean;
   x: number;
   y: number;
+  moved?: boolean;
   details?: string;
   meta?: FlowNodeMeta;
   moscow?: FlowNodeMeta;
@@ -251,6 +252,7 @@ export type PersistedNodeState = boolean | {
   type?: ArchNode["type"];
   x?: number;
   y?: number;
+  moved?: boolean;
   details?: string;
   meta?: FlowNodeMeta;
   moscow?: FlowNodeMeta;
@@ -340,6 +342,9 @@ const ZOOM_DEFAULT_MOBILE = 0.85;
 const ZOOM_DEFAULT_DESKTOP = 1.0;
 const TAP_THRESHOLD = 8;
 const CANVAS_PADDING = 80;
+const RADIAL_CENTER_X = 300;
+const RADIAL_CENTER_Y = 250;
+const RADIAL_RADIUS = 180;
 const BASE_STORAGE_KEY = "axiom-flow-nodes";
 
 // Seeded radial mission map — replaces the lonely-goal default so the canvas
@@ -379,6 +384,72 @@ const INITIAL_EDGES: ArchEdge[] = [
   { id: "e-goal-should-1",   from: "goal", to: "should-1" },
   { id: "e-goal-must-2",     from: "goal", to: "must-2" },
 ];
+
+export function layoutRadial(nodes: ArchNode[]): ArchNode[] {
+  const layoutableNodes = nodes.filter(n => n.type !== "goal" && !n.moved);
+  const count = layoutableNodes.length;
+  let ringIndex = 0;
+
+  return nodes.map(node => {
+    if (node.moved) return node;
+    if (node.type === "goal") {
+      return { ...node, x: RADIAL_CENTER_X, y: RADIAL_CENTER_Y };
+    }
+    const angle = (ringIndex / Math.max(count, 1)) * 2 * Math.PI - Math.PI / 2;
+    ringIndex += 1;
+    return {
+      ...node,
+      x: RADIAL_CENTER_X + Math.cos(angle) * RADIAL_RADIUS,
+      y: RADIAL_CENTER_Y + Math.sin(angle) * RADIAL_RADIUS,
+    };
+  });
+}
+
+function addEdgeIfMissing(edges: ArchEdge[], from: string, to: string): ArchEdge[] {
+  if (from === to || edges.some(e => e.from === from && e.to === to)) return edges;
+  return [...edges, { id: `e-${from}-${to}`, from, to }];
+}
+
+function normalizeGoalNodes(
+  nodes: ArchNode[],
+  edges: ArchEdge[],
+): { nodes: ArchNode[]; edges: ArchEdge[]; goalId?: string } {
+  const goals = nodes.filter(n => n.type === "goal");
+  if (goals.length <= 1) {
+    return { nodes, edges, goalId: goals[0]?.id };
+  }
+
+  const edgeCounts = new Map<string, number>();
+  for (const goal of goals) edgeCounts.set(goal.id, 0);
+  for (const edge of edges) {
+    if (edgeCounts.has(edge.from)) edgeCounts.set(edge.from, (edgeCounts.get(edge.from) ?? 0) + 1);
+    if (edgeCounts.has(edge.to)) edgeCounts.set(edge.to, (edgeCounts.get(edge.to) ?? 0) + 1);
+  }
+
+  const keptGoal = [...goals].sort((a, b) => {
+    const countDiff = (edgeCounts.get(b.id) ?? 0) - (edgeCounts.get(a.id) ?? 0);
+    return countDiff !== 0 ? countDiff : a.id.localeCompare(b.id);
+  })[0];
+  const droppedGoalIds = new Set(goals.filter(goal => goal.id !== keptGoal.id).map(goal => goal.id));
+  const edgeKeys = new Set<string>();
+  const normalizedEdges: ArchEdge[] = [];
+
+  for (const edge of edges) {
+    const from = droppedGoalIds.has(edge.from) ? keptGoal.id : edge.from;
+    const to = droppedGoalIds.has(edge.to) ? keptGoal.id : edge.to;
+    if (from === to) continue;
+    const key = `${from}\u0001${to}`;
+    if (edgeKeys.has(key)) continue;
+    edgeKeys.add(key);
+    normalizedEdges.push({ ...edge, from, to });
+  }
+
+  return {
+    nodes: nodes.filter(node => !droppedGoalIds.has(node.id)),
+    edges: normalizedEdges,
+    goalId: keptGoal.id,
+  };
+}
 
 // Detect the EXACT untouched legacy "lonely goal" default — every field must
 // match the original seed and no edges may exist. Any user-edited goal (label,
@@ -589,6 +660,7 @@ export function AxiomFlow({
         type: raw.type ?? n.type,
         x: typeof raw.x === "number" ? raw.x : n.x,
         y: typeof raw.y === "number" ? raw.y : n.y,
+        moved: typeof raw.moved === "boolean" ? raw.moved : n.moved,
         details: typeof raw.details === "string" ? raw.details : n.details,
         meta: raw.meta ?? n.meta,
         moscow: raw.moscow ?? n.moscow,
@@ -603,7 +675,8 @@ export function AxiomFlow({
   // Track newly-added node IDs for fly-in animation
   const [newlyAddedIds, setNewlyAddedIds] = useState<Set<string>>(new Set());
 
-  // Merge pending nodes from Forge with 60ms stagger + center-origin fly-in
+  // Merge pending nodes from Forge, then tidy them through the normal node state
+  // path so existing onNodesChange/local/DB persistence all observe the update.
   const pendingConsumedRef = useRef(false);
   useEffect(() => {
     if (!pendingNodes || pendingNodes.length === 0 || pendingConsumedRef.current) return;
@@ -620,61 +693,84 @@ export function AxiomFlow({
       "blocker-1": "Open blocker",
       "decision-1": "Open decision",
     };
-    setNodes(prev => {
-      const survivors = prev.filter(n => {
-        if (!SEED_IDS.has(n.id)) return true;
-        const untouched = !n.resolved
-          && !n.strategicAnswer
-          && n.label === SEED_DEFAULT_LABELS[n.id];
-        return !untouched;
-      });
-      if (survivors.length === prev.length) return prev;
-      const survivorIds = new Set(survivors.map(n => n.id));
-      setEdges(eprev => eprev.filter(e => survivorIds.has(e.from) && survivorIds.has(e.to)));
-      return survivors;
+    let nextNodes = nodes.filter(n => {
+      if (!SEED_IDS.has(n.id)) return true;
+      const untouched = !n.resolved
+        && !n.strategicAnswer
+        && n.label === SEED_DEFAULT_LABELS[n.id];
+      return !untouched;
     });
+    const survivorIds = new Set(nextNodes.map(n => n.id));
+    let nextEdges = edges.filter(e => survivorIds.has(e.from) && survivorIds.has(e.to));
+    let normalized = normalizeGoalNodes(nextNodes, nextEdges);
+    nextNodes = normalized.nodes;
+    nextEdges = normalized.edges;
 
-    let delay = 0;
-    const goalNode = nodes.find(n => n.type === "goal") || nodes[0];
+    const incomingGoals = pendingNodes.filter(n => n.type === "goal");
+    const incomingGoal = incomingGoals[incomingGoals.length - 1];
+    if (incomingGoal) {
+      const existingGoal = nextNodes.find(n => n.type === "goal");
+      if (existingGoal) {
+        nextNodes = nextNodes.map(n =>
+          n.id === existingGoal.id
+            ? { ...n, label: incomingGoal.label, details: incomingGoal.details }
+            : n
+        );
+      } else {
+        nextNodes = [{ ...incomingGoal, x: RADIAL_CENTER_X, y: RADIAL_CENTER_Y }, ...nextNodes];
+      }
+    }
 
-
-    pendingNodes.forEach(newNode => {
-      setTimeout(() => {
-        setNodes(prev => {
-          if (prev.find(n => n.id === newNode.id)) {
-            return prev.map(n => n.id === newNode.id
-              ? { ...n, ...newNode, strategicAnswer: newNode.strategicAnswer ?? n.strategicAnswer }
-              : n);
-          }
-          haptics.tap();
-          sounds.tap();
-          return [...prev, newNode];
+    const goalNode = nextNodes.find(n => n.type === "goal") || nextNodes[0];
+    const newlyAdded: string[] = [];
+    for (const newNode of pendingNodes) {
+      if (newNode.type === "goal") continue;
+      const existingNode = nextNodes.find(n => n.id === newNode.id);
+      if (existingNode) {
+        nextNodes = nextNodes.map(n => {
+          if (n.id !== newNode.id) return n;
+          const merged = {
+            ...n,
+            ...newNode,
+            strategicAnswer: newNode.strategicAnswer ?? n.strategicAnswer,
+            moved: n.moved,
+          };
+          return n.moved ? { ...merged, x: n.x, y: n.y } : merged;
         });
-        // Mark as newly-added for fly-in animation, clear after 650ms
-        setNewlyAddedIds(prev => new Set([...prev, newNode.id]));
-        setTimeout(() => {
-          setNewlyAddedIds(prev => {
-            const next = new Set(prev);
-            next.delete(newNode.id);
-            return next;
-          });
-        }, 650);
-        if (goalNode) {
-          setEdges(prev => {
-            const edgeId = `e-${goalNode.id}-${newNode.id}`;
-            if (prev.find(e => e.id === edgeId)) return prev;
-            return [...prev, { id: edgeId, from: goalNode.id, to: newNode.id }];
-          });
-        }
-      }, delay);
-      delay += 60;
-    });
+      } else {
+        nextNodes = [...nextNodes, newNode];
+        newlyAdded.push(newNode.id);
+      }
+      if (goalNode) {
+        nextEdges = addEdgeIfMissing(nextEdges, goalNode.id, newNode.id);
+      }
+    }
+
+    normalized = normalizeGoalNodes(nextNodes, nextEdges);
+    nextNodes = layoutRadial(normalized.nodes);
+    nextEdges = normalized.edges;
+
+    if (newlyAdded.length > 0) {
+      haptics.tap();
+      sounds.tap();
+      setNewlyAddedIds(prev => new Set([...prev, ...newlyAdded]));
+      setTimeout(() => {
+        setNewlyAddedIds(prev => {
+          const next = new Set(prev);
+          for (const id of newlyAdded) next.delete(id);
+          return next;
+        });
+      }, 650);
+    }
+
+    setNodes(nextNodes);
+    setEdges(nextEdges);
 
     setTimeout(() => {
       pendingConsumedRef.current = false;
       onPendingConsumed?.();
-    }, delay + 100);
-  }, [pendingNodes, onPendingConsumed, nodes]);
+    }, 100);
+  }, [pendingNodes, onPendingConsumed, nodes, edges]);
 
   const [zoom, setZoom] = useState(isMobile ? ZOOM_DEFAULT_MOBILE : ZOOM_DEFAULT_DESKTOP);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -694,6 +790,72 @@ export function AxiomFlow({
     pinchStartDist: 0,
     pinchStartZoom: 1,
   });
+  const nodeDragState = useRef({
+    nodeId: null as string | null,
+    startX: 0,
+    startY: 0,
+    nodeStartX: 0,
+    nodeStartY: 0,
+    moved: false,
+  });
+
+  const startNodeDrag = useCallback((nodeId: string, e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    const point = "touches" in e ? e.touches[0] : e;
+    if (!point) return;
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    dragState.current.dragging = false;
+    dragState.current.moved = false;
+    dragState.current.lastNodeTapTime = Date.now();
+    nodeDragState.current = {
+      nodeId,
+      startX: point.clientX,
+      startY: point.clientY,
+      nodeStartX: node.x,
+      nodeStartY: node.y,
+      moved: false,
+    };
+  }, [nodes]);
+
+  const updateNodeDrag = useCallback((clientX: number, clientY: number) => {
+    const nd = nodeDragState.current;
+    if (!nd.nodeId) return false;
+    const clientDx = clientX - nd.startX;
+    const clientDy = clientY - nd.startY;
+    if (Math.abs(clientDx) > TAP_THRESHOLD || Math.abs(clientDy) > TAP_THRESHOLD) {
+      nd.moved = true;
+      dragState.current.moved = true;
+    }
+    if (!nd.moved) return true;
+    const dx = clientDx / zoom;
+    const dy = clientDy / zoom;
+    setNodes(prev => prev.map(n =>
+      n.id === nd.nodeId
+        ? { ...n, x: nd.nodeStartX + dx, y: nd.nodeStartY + dy }
+        : n
+    ));
+    return true;
+  }, [zoom]);
+
+  const finishNodeDrag = useCallback(() => {
+    const nd = nodeDragState.current;
+    if (!nd.nodeId) return false;
+    const nodeId = nd.nodeId;
+    const moved = nd.moved;
+    nodeDragState.current = {
+      nodeId: null,
+      startX: 0,
+      startY: 0,
+      nodeStartX: 0,
+      nodeStartY: 0,
+      moved: false,
+    };
+    if (moved) {
+      setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, moved: true } : n));
+    }
+    return true;
+  }, []);
 
   // Readiness: exclude wont-priority nodes from both numerator and denominator.
   // A node counts toward readiness only if it has a locked-in strategicAnswer.
@@ -738,6 +900,13 @@ export function AxiomFlow({
     try { localStorage.setItem(`${storageKey}-edges`, JSON.stringify(edges)); } catch {}
   }, [edges, storageKey]);
 
+  useEffect(() => {
+    if (nodes.filter(n => n.type === "goal").length <= 1) return;
+    const normalized = normalizeGoalNodes(nodes, edges);
+    setNodes(layoutRadial(normalized.nodes));
+    setEdges(normalized.edges);
+  }, [nodes, edges]);
+
   // Center the viewport on a specific (x, y) world coordinate while preserving
   // the current zoom. Used for the Intel Panel goal re-anchor: tapping the
   // goal re-centers the map around it instead of fitting all bounds.
@@ -779,15 +948,19 @@ export function AxiomFlow({
   }, [pan]);
 
   const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (updateNodeDrag(e.clientX, e.clientY)) return;
     const ds = dragState.current;
     if (!ds.dragging) return;
     const dx = e.clientX - ds.startX;
     const dy = e.clientY - ds.startY;
     if (Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD) ds.moved = true;
     setPan({ x: ds.startPanX + dx / zoom, y: ds.startPanY + dy / zoom });
-  }, [zoom]);
+  }, [updateNodeDrag, zoom]);
 
-  const onMouseUp = useCallback(() => { dragState.current.dragging = false; }, []);
+  const onMouseUp = useCallback(() => {
+    if (finishNodeDrag()) return;
+    dragState.current.dragging = false;
+  }, [finishNodeDrag]);
 
   const onWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
@@ -806,6 +979,13 @@ export function AxiomFlow({
       },
     });
   }, [fitMap]);
+
+  const tidyLayout = useCallback(() => {
+    const normalized = normalizeGoalNodes(nodes, edges);
+    setNodes(layoutRadial(normalized.nodes));
+    setEdges(normalized.edges);
+    haptics.tap();
+  }, [nodes, edges]);
 
   const onDoubleClick = useCallback(() => { resetView(); }, [resetView]);
 
@@ -832,6 +1012,9 @@ export function AxiomFlow({
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
     const ds = dragState.current;
+    if (e.touches.length === 1 && updateNodeDrag(e.touches[0].clientX, e.touches[0].clientY)) {
+      return;
+    }
     if (e.touches.length === 1 && ds.dragging) {
       const dx = e.touches[0].clientX - ds.startX;
       const dy = e.touches[0].clientY - ds.startY;
@@ -843,9 +1026,10 @@ export function AxiomFlow({
       const dist = Math.hypot(dx, dy);
       setZoom(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, ds.pinchStartZoom * (dist / ds.pinchStartDist))));
     }
-  }, [zoom]);
+  }, [updateNodeDrag, zoom]);
 
   const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (finishNodeDrag()) return;
     const ds = dragState.current;
     ds.dragging = false;
     if (e.changedTouches.length === 1 && !ds.moved) {
@@ -857,7 +1041,7 @@ export function AxiomFlow({
         ds.lastTap = now;
       }
     }
-  }, [resetView]);
+  }, [finishNodeDrag, resetView]);
 
   // Track last-mirrored node so we don't spam the chat with duplicates on
   // repeated taps of the same unanswered node.
@@ -1352,6 +1536,7 @@ export function AxiomFlow({
               key={node.id}
               node={node}
               onFocus={handleNodeTap}
+              onDragStart={startNodeDrag}
               newlyAdded={newlyAddedIds.has(node.id)}
               goalX={goalX}
               goalY={goalY}
@@ -1484,6 +1669,44 @@ export function AxiomFlow({
           />
         </div>
       )}
+
+      <div
+        style={{
+          position: "absolute",
+          right: 14,
+          bottom: 10,
+          zIndex: 8,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); tidyLayout(); }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          title="Tidy layout"
+          aria-label="Tidy layout"
+          style={{
+            padding: "7px 10px",
+            borderRadius: 8,
+            background: palette.panelBg,
+            border: `1px solid rgba(${palette.goldRgb},0.32)`,
+            color: palette.goldText,
+            cursor: "pointer",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            boxShadow: palette.panelShadow,
+          }}
+        >
+          Tidy layout
+        </button>
+      </div>
 
       {/* Hint — compact (?) icon, expands on hover/tap */}
       <div
@@ -1782,6 +2005,7 @@ function MoscowBadge({ value, palette }: { value: FlowNodeMeta; palette: FlowPal
 function FlowNodeComponent({
   node,
   onFocus,
+  onDragStart,
   newlyAdded = false,
   goalX = 300,
   goalY = 250,
@@ -1789,6 +2013,7 @@ function FlowNodeComponent({
 }: {
   node: ArchNode;
   onFocus: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
+  onDragStart: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
   newlyAdded?: boolean;
   goalX?: number;
   goalY?: number;
@@ -1809,6 +2034,8 @@ function FlowNodeComponent({
   return (
     <button
       onClick={e => onFocus(node.id, e)}
+      onMouseDown={e => onDragStart(node.id, e)}
+      onTouchStart={e => onDragStart(node.id, e)}
       onTouchEnd={e => { e.preventDefault(); onFocus(node.id, e); }}
       style={{
         position: "absolute",
