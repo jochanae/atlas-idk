@@ -156,6 +156,14 @@ export type AmbientSurface = {
   workspaceId?: number | null;
 } | null;
 
+export type ClarifyPayload = {
+  steps: Array<{
+    question: string;
+    options: string[];
+    allowFreeText?: boolean;
+  }>;
+};
+
 export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
@@ -173,6 +181,7 @@ export interface ChatMessage {
   catchResolved?: boolean;
   alertPayload?: AlertPayload | null;
   alertResolved?: boolean;
+  clarify?: ClarifyPayload | null;
   fileEdit?: FileEdit;
   fileEdits?: FileEdit[];
   linePatches?: LinePatch[];
