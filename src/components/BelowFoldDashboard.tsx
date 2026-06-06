@@ -810,23 +810,46 @@ function ConnectionsDock() {
               Disconnect
             </button>
           ) : (
-            <a
-              href="/api/github/oauth/start"
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/github/oauth/start", {
+                    method: "GET",
+                    credentials: "include",
+                    headers: { Accept: "application/json" },
+                  });
+                  if (res.status === 401) {
+                    // Not logged in — send to login
+                    window.location.href = "/login?reason=session_expired";
+                    return;
+                  }
+                  const data = await res.json();
+                  if (data.url) {
+                    window.location.href = data.url;
+                  } else {
+                    alert("Failed to start GitHub connection");
+                  }
+                } catch (err) {
+                  alert("Network error. Try again.");
+                }
+              }}
               style={{
-                background: "rgba(201,162,76,0.1)",
-                border: "1px solid rgba(201,162,76,0.3)",
-                borderRadius: 8,
-                color: "var(--atlas-gold, #C9A24C)",
-                fontSize: 12,
+                display: "block",
+                padding: "8px 14px",
+                borderRadius: 6,
+                background: "rgba(201,162,76,0.12)",
+                color: "#C9A24C",
+                fontSize: 11,
                 fontWeight: 600,
-                padding: "5px 14px",
-                textDecoration: "none",
                 cursor: "pointer",
-                whiteSpace: "nowrap",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                border: "none",
+                fontFamily: "var(--app-font-mono)",
               }}
             >
-              Connect →
-            </a>
+              Connect via GitHub →
+            </button>
           )}
         </div>
           {visibleConnections.map((c) => {

@@ -578,19 +578,46 @@ export function FilesPanel({
             Connect your GitHub account to link repos<br />and enable AI write-back across all projects.
           </div>
         </div>
-        <a
-          href="/api/github/oauth/start"
+        <button
+          onClick={async () => {
+            try {
+              const res = await fetch("/api/github/oauth/start", {
+                method: "GET",
+                credentials: "include",
+                headers: { Accept: "application/json" },
+              });
+              if (res.status === 401) {
+                // Not logged in — send to login
+                window.location.href = "/login?reason=session_expired";
+                return;
+              }
+              const data = await res.json();
+              if (data.url) {
+                window.location.href = data.url;
+              } else {
+                alert("Failed to start GitHub connection");
+              }
+            } catch (err) {
+              alert("Network error. Try again.");
+            }
+          }}
           style={{
-            display: "block", width: "100%", padding: "8px", borderRadius: 6, textAlign: "center",
-            background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)",
-            color: "var(--atlas-gold)", fontSize: 11, fontWeight: 600,
-            fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
-            textTransform: "uppercase", textDecoration: "none", cursor: "pointer",
-            boxSizing: "border-box",
+            display: "block",
+            padding: "8px 14px",
+            borderRadius: 6,
+            background: "rgba(201,162,76,0.12)",
+            color: "#C9A24C",
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: "pointer",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            border: "none",
+            fontFamily: "var(--app-font-mono)",
           }}
         >
           Connect via GitHub →
-        </a>
+        </button>
         <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center", fontFamily: "var(--app-font-mono)" }}>or paste a personal access token</div>
           <input
