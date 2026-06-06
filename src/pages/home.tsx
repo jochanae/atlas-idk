@@ -71,6 +71,8 @@ const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
+const GLOBAL_INSIGHT_PORTFOLIO_SEED =
+  "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
 type HomeHandoffSignal = {
   readyToHandoff: boolean;
@@ -1884,6 +1886,7 @@ export default function Home() {
   const queryClient = useQueryClient();
   const previousHomeMessageCountRef = useRef(0);
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
+  const globalInsightSeedPendingRef = useRef(false);
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
@@ -2614,12 +2617,16 @@ export default function Home() {
     />
   );
 
-  const handleSubmit = useCallback(async () => {
-    const liveText = textareaRef.current?.value ?? input;
+  const handleSubmit = useCallback(async (
+    messageOverride?: string,
+    options?: { forceStayOnHome?: boolean },
+  ) => {
+    const liveText = messageOverride ?? textareaRef.current?.value ?? input;
     const text = liveText.trim();
-    const hasImages = attachedFiles.some((f) => f.type.startsWith("image/"));
+    const files = messageOverride ? [] : attachedFiles;
+    const hasImages = files.some((f) => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
-    const shouldStayOnHome = globalInsightOpen || thinkOutLoudInlineRef.current;
+    const shouldStayOnHome = options?.forceStayOnHome || globalInsightOpen || thinkOutLoudInlineRef.current;
     if (!shouldStayOnHome && !backendReady) {
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
@@ -2633,7 +2640,6 @@ export default function Home() {
     // Block PTR and double-sends immediately — before any async work
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
-    const files = attachedFiles;
     setInput("");
     setAttachedFiles([]);
 
@@ -2750,6 +2756,44 @@ export default function Home() {
     setActiveProjectId,
     setLocation,
   ]);
+
+  useEffect(() => {
+    let surface: string | null = null;
+    let seed: string | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      surface = params.get("surface");
+      seed = params.get("seed");
+    } catch {
+      return;
+    }
+
+    if (surface !== "global-insight") return;
+
+    setGlobalInsightOpen(true);
+    if (seed === "portfolio") {
+      globalInsightSeedPendingRef.current = true;
+    }
+
+    try {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${window.location.hash}`,
+      );
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!globalInsightSeedPendingRef.current || threadLoading || isSending) return;
+    if (nexusChat.messages.length > 0) {
+      globalInsightSeedPendingRef.current = false;
+      return;
+    }
+
+    globalInsightSeedPendingRef.current = false;
+    void handleSubmit(GLOBAL_INSIGHT_PORTFOLIO_SEED, { forceStayOnHome: true });
+  }, [handleSubmit, isSending, nexusChat.messages.length, threadLoading]);
 
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
