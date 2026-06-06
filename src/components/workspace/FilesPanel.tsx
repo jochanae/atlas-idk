@@ -212,10 +212,10 @@ export function FilesPanel({
     canRead,
     isLoading,
     error: githubConnectionError,
-    statusLabel: githubStatusLabel,
+    statusLabel: githubStatusLabelFromHook,
     tokenHeader,
+    connect,
   } = useGitHub(projectId);
-  const token = tokenHeader;
   const [showModelPicker, setShowModelPicker] =
     useState(() =>
       localStorage.getItem("atlas-power-model-picker")
@@ -247,6 +247,24 @@ export function FilesPanel({
   const [unlinkRepoError, setUnlinkRepoError] = useState<string | null>(null);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const autoLoadedRef = useRef(false);
+  const [oauthConnected, setOauthConnected] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/github/status", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: any) => {
+        if (data?.hasUserToken || data?.hasAccountToken) {
+          setOauthConnected(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const token = tokenHeader ?? (oauthConnected ? "__oauth__" : null);
+  const canBrowseGitHub = canRead || oauthConnected;
+  const githubStatusLabel = oauthConnected ? "GitHub connected" : githubStatusLabelFromHook;
+  const [tokenInput, setTokenInput] = useState("");
+  const [tokenSaveError, setTokenSaveError] = useState<string | null>(null);
   const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
   const [fileSearch, setFileSearch] = useState("");
   const [treeViewMode, setTreeViewMode] = useState<"tree" | "buckets">(() => (wsLens === "build" ? "tree" : "buckets"));
@@ -514,6 +532,17 @@ export function FilesPanel({
       setShowModelPicker(false);
     }
   };
+  const saveToken = useCallback(async (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setTokenSaveError(null);
+    const connected = await connect(trimmed);
+    if (connected) {
+      setTokenInput("");
+      return;
+    }
+    setTokenSaveError(githubConnectionError ?? "Failed to save token");
+  }, [connect, githubConnectionError]);
   const modelPickerToggleRow = (
     <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--atlas-border)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -533,136 +562,72 @@ export function FilesPanel({
     </div>
   );
 
-  if (!canRead) {
+  if (!canBrowseGitHub) {
     if (isLoading) return (
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.5 }}>connecting…</div>
       </div>
     );
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 18px", gap: 16 }}>
-        {/* —— ZIP Upload —— */}
-        <div style={{ width: "100%", marginBottom: 4 }}>
-          <div style={{
-            fontSize: 9.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "var(--atlas-muted)", marginBottom: 8,
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
-            <span>Upload ZIP</span>
-            {zipLoaded && (
-              <span style={{
-                fontSize: 9, color: "rgba(134,239,172,0.8)",
-                background: "rgba(134,239,172,0.08)",
-                border: "1px solid rgba(134,239,172,0.2)",
-                padding: "2px 7px", borderRadius: 10,
-              }}>
-                ACTIVE
-              </span>
-            )}
-          </div>
-
-          {zipLoaded ? (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 12px", borderRadius: 7,
-              background: "rgba(201,162,76,0.05)",
-              border: "1px solid rgba(201,162,76,0.2)",
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.8)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-              </svg>
-              <span style={{
-                flex: 1, fontSize: 11, fontFamily: "var(--app-font-mono)",
-                color: "rgba(201,162,76,0.85)",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {zipFileName || "ZIP loaded"}
-              </span>
-              <button
-                onClick={() => onZipTrigger?.()}
-                style={{
-                  background: "transparent",
-                  border: "1px solid rgba(201,162,76,0.2)",
-                  borderRadius: 5, padding: "3px 9px",
-                  fontSize: 9.5, fontFamily: "var(--app-font-mono)",
-                  color: "rgba(201,162,76,0.6)",
-                  cursor: "pointer", letterSpacing: "0.06em",
-                }}
-              >
-                Replace
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => onZipTrigger?.()}
-              style={{
-                width: "100%", padding: "11px 14px",
-                background: "rgba(201,162,76,0.04)",
-                border: "1px dashed rgba(201,162,76,0.25)",
-                borderRadius: 7, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
-                color: "rgba(201,162,76,0.7)",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 11, letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                transition: "all 160ms ease",
-                WebkitTapHighlightColor: "transparent",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "rgba(201,162,76,0.08)";
-                e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "rgba(201,162,76,0.04)";
-                e.currentTarget.style.borderColor = "rgba(201,162,76,0.25)";
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Upload ZIP — no GitHub needed
-            </button>
-          )}
-
-          <div style={{
-            marginTop: 6, fontSize: 10, color: "rgba(120,113,108,0.5)",
-            fontFamily: "var(--app-font-sans)", lineHeight: 1.5,
-          }}>
-            Drop a ZIP of your project and Atlas reads the code directly. No repo required.
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 18px", gap: 14 }}>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" opacity={0.25}>
+          <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.8c.85.004 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z" fill="var(--atlas-fg)" /></svg>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 12.5, color: "var(--atlas-fg)", opacity: 0.7, fontWeight: 500, marginBottom: 5 }}>Connect GitHub</div>
+          <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.6 }}>
+            Connect your GitHub account to link repos<br />and enable AI write-back across all projects.
           </div>
         </div>
-        <div style={{
-          padding: "12px 13px",
-          borderRadius: 8,
-          background: "rgba(239,68,68,0.06)",
-          border: "1px solid rgba(239,68,68,0.18)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}>
-          <div style={{ fontSize: 12, color: "rgba(252,165,165,0.9)", fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
-            {githubConnectionError ?? GITHUB_RECONNECT_MESSAGE}
-          </div>
+        <a
+          href="/api/github/oauth/start"
+          style={{
+            display: "block", width: "100%", padding: "8px", borderRadius: 6, textAlign: "center",
+            background: "rgba(201,162,76,0.12)", border: "1px solid rgba(201,162,76,0.3)",
+            color: "var(--atlas-gold)", fontSize: 11, fontWeight: 600,
+            fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
+            textTransform: "uppercase", textDecoration: "none", cursor: "pointer",
+            boxSizing: "border-box",
+          }}
+        >
+          Connect via GitHub →
+        </a>
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.5, textAlign: "center", fontFamily: "var(--app-font-mono)" }}>or paste a personal access token</div>
+          <input
+            type="password"
+            value={tokenInput}
+            onChange={(e) => { setTokenInput(e.target.value); setTokenSaveError(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim()) saveToken(tokenInput.trim()); }}
+            placeholder="ghp_…"
+            autoComplete="off"
+            style={{
+              width: "100%", padding: "8px 10px", borderRadius: 6,
+              background: "var(--atlas-surface)",
+              border: `1px solid ${tokenSaveError ? "rgba(239,68,68,0.5)" : "var(--atlas-border)"}`,
+              color: "var(--atlas-fg)", fontSize: 11, fontFamily: "var(--app-font-mono)",
+              outline: "none", boxSizing: "border-box", transition: "border-color 160ms ease",
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = tokenSaveError ? "rgba(239,68,68,0.5)" : "rgba(201,162,76,0.4)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = tokenSaveError ? "rgba(239,68,68,0.5)" : "var(--atlas-border)")}
+          />
+          {tokenSaveError && (
+            <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)", lineHeight: 1.4, marginTop: -2 }}>{tokenSaveError}</div>
+          )}
           <button
             type="button"
-            onClick={onOpenConnections}
+            onClick={() => tokenInput.trim() && saveToken(tokenInput.trim())}
+            disabled={!tokenInput.trim()}
             style={{
-              alignSelf: "flex-start",
-              padding: "7px 12px",
-              borderRadius: 6,
-              background: "rgba(201,162,76,0.12)",
-              border: "1px solid rgba(201,162,76,0.3)",
-              color: "var(--atlas-gold)",
-              fontSize: 10,
+              padding: "7px", borderRadius: 6, width: "100%",
+              background: tokenInput.trim() ? "var(--atlas-ember)" : "var(--atlas-surface)",
+              border: "none", color: "var(--atlas-fg)", fontSize: 10,
               fontFamily: "var(--app-font-mono)",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              cursor: "pointer",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase", cursor: tokenInput.trim() ? "pointer" : "not-allowed",
+              transition: "background 160ms ease",
             }}
           >
-            Open connections
+            Connect
           </button>
         </div>
       </div>
