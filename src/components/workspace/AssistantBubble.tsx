@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type FormEvent } from "react";
 import { createEntry, useCreateEntry, getListEntriesQueryKey, useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
-import { Bookmark, BookmarkCheck, CornerUpLeft, Download, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
+import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, CornerUpLeft, Download, Pencil, X, MoreHorizontal, GitBranch, Share2, Archive, FileOutput } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useAtlasHistory, type AtlasLens } from "@/lib/atlas-history";
@@ -34,6 +34,7 @@ import type {
   PushRecord,
   AmbientSurface,
   CatchPayload,
+  ClarifyPayload,
   AlertPayload,
 } from "@/pages/workspace";
 
@@ -744,6 +745,343 @@ function MigrationCard({ sql }: { sql: string }) {
   );
 }
 
+type ClarifyAnswer = {
+  value: string;
+  skipped: boolean;
+};
+
+function ClarifyCard({
+  clarify,
+  onSend,
+}: {
+  clarify: ClarifyPayload;
+  onSend?: (message: string) => void;
+}) {
+  const steps = useMemo(
+    () => clarify.steps.filter((step) => step.question.trim().length > 0),
+    [clarify.steps],
+  );
+  const [stepIndex, setStepIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, ClarifyAnswer>>({});
+  const [freeTextOpen, setFreeTextOpen] = useState<Record<number, boolean>>({});
+  const [freeTextValues, setFreeTextValues] = useState<Record<number, string>>({});
+  const [done, setDone] = useState(false);
+
+  if (done || steps.length === 0) return null;
+
+  const activeStepIndex = Math.min(stepIndex, steps.length - 1);
+  const step = steps[activeStepIndex];
+  const isMultiStep = steps.length > 1;
+  const currentAnswer = answers[activeStepIndex];
+  const options = step.options ?? [];
+  const freeTextValue = freeTextValues[activeStepIndex] ?? "";
+  const isFreeTextOpen = freeTextOpen[activeStepIndex] === true;
+
+  const finish = (nextAnswers: Record<number, ClarifyAnswer>) => {
+    const hasAnyAnswer = Object.values(nextAnswers).some((answer) => !answer.skipped && answer.value.trim().length > 0);
+    if (hasAnyAnswer) {
+      const response = steps
+        .map((answeredStep, index) => {
+          const answer = nextAnswers[index];
+          if (!answer) return null;
+          return `Q: ${answeredStep.question} → A: ${answer.skipped ? "Skipped" : answer.value}`;
+        })
+        .filter((line): line is string => Boolean(line))
+        .join("\n");
+      if (response) onSend?.(response);
+    }
+    setDone(true);
+  };
+
+  const recordAnswer = (value: string, skipped = false) => {
+    const normalizedValue = value.trim();
+    if (!skipped && !normalizedValue) return;
+
+    if (!isMultiStep) {
+      if (!skipped) onSend?.(normalizedValue);
+      setDone(true);
+      return;
+    }
+
+    const nextAnswers = {
+      ...answers,
+      [activeStepIndex]: { value: normalizedValue, skipped },
+    };
+    setAnswers(nextAnswers);
+
+    if (activeStepIndex >= steps.length - 1) {
+      finish(nextAnswers);
+    } else {
+      setStepIndex(activeStepIndex + 1);
+    }
+  };
+
+  const handleFreeTextSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    recordAnswer(freeTextValue);
+  };
+
+  const optionRowStyle = (selected: boolean) => ({
+    width: "100%",
+    minHeight: 46,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 9,
+    border: selected
+      ? "1px solid color-mix(in oklab, var(--atlas-gold) 62%, transparent)"
+      : "1px solid color-mix(in oklab, var(--atlas-border) 82%, transparent)",
+    background: selected
+      ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+      : "color-mix(in oklab, var(--atlas-surface-alt) 70%, transparent)",
+    color: "var(--atlas-fg)",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    fontFamily: "var(--app-font-sans)",
+    fontSize: 14,
+    lineHeight: 1.35,
+    WebkitTapHighlightColor: "transparent",
+  });
+
+  const iconButtonStyle = (disabled = false) => ({
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    border: "1px solid color-mix(in oklab, var(--atlas-border) 70%, transparent)",
+    background: "transparent",
+    color: disabled ? "color-mix(in oklab, var(--atlas-muted) 45%, transparent)" : "var(--atlas-muted)",
+    cursor: disabled ? "default" : "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: disabled ? 0.45 : 0.85,
+  });
+
+  return (
+    <div
+      role="group"
+      aria-label="Clarification"
+      className="atlas-bubble-in"
+      style={{
+        marginTop: 12,
+        maxWidth: 430,
+        borderRadius: 14,
+        border: "1px solid color-mix(in oklab, var(--atlas-gold) 24%, var(--atlas-border))",
+        background: "linear-gradient(180deg, color-mix(in oklab, var(--atlas-surface) 94%, transparent), color-mix(in oklab, var(--atlas-bg) 88%, transparent))",
+        boxShadow: "0 16px 42px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.035)",
+        padding: 14,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.13em",
+              textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              opacity: 0.78,
+              marginBottom: 6,
+            }}
+          >
+            Clarify
+          </div>
+          <div style={{ fontSize: 15, lineHeight: 1.45, color: "var(--atlas-fg)", fontWeight: 600 }}>
+            {step.question}
+          </div>
+        </div>
+
+        {isMultiStep && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <button
+              type="button"
+              aria-label="Previous clarification step"
+              disabled={activeStepIndex === 0}
+              onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
+              style={iconButtonStyle(activeStepIndex === 0)}
+            >
+              <ChevronLeft size={15} strokeWidth={1.8} />
+            </button>
+            <div
+              aria-label={`Step ${activeStepIndex + 1} of ${steps.length}`}
+              style={{
+                minWidth: 44,
+                textAlign: "center",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10,
+                color: "var(--atlas-muted)",
+                opacity: 0.8,
+              }}
+            >
+              {activeStepIndex + 1} of {steps.length}
+            </div>
+            <button
+              type="button"
+              aria-label="Next clarification step"
+              disabled={activeStepIndex >= steps.length - 1}
+              onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
+              style={iconButtonStyle(activeStepIndex >= steps.length - 1)}
+            >
+              <ChevronRight size={15} strokeWidth={1.8} />
+            </button>
+            <button
+              type="button"
+              aria-label="Dismiss clarification"
+              onClick={() => setDone(true)}
+              style={iconButtonStyle()}
+            >
+              <X size={14} strokeWidth={1.8} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {options.map((option, index) => {
+          const selected = !currentAnswer?.skipped && currentAnswer?.value === option;
+          return (
+            <button
+              key={`${option}-${index}`}
+              type="button"
+              onClick={() => recordAnswer(option)}
+              style={optionRowStyle(selected)}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 25,
+                  height: 25,
+                  borderRadius: 999,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  background: selected
+                    ? "color-mix(in oklab, var(--atlas-gold) 22%, transparent)"
+                    : "color-mix(in oklab, var(--atlas-fg) 7%, transparent)",
+                  color: selected ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {index + 1}
+              </span>
+              <span style={{ flex: 1 }}>{option}</span>
+            </button>
+          );
+        })}
+
+        {step.allowFreeText && (
+          <>
+            <button
+              type="button"
+              onClick={() => setFreeTextOpen((open) => ({ ...open, [activeStepIndex]: true }))}
+              style={optionRowStyle(isFreeTextOpen && !currentAnswer?.skipped && currentAnswer?.value === freeTextValue.trim() && freeTextValue.trim().length > 0)}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 25,
+                  height: 25,
+                  borderRadius: 999,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                  color: "var(--atlas-gold)",
+                }}
+              >
+                <Pencil size={13} strokeWidth={1.8} />
+              </span>
+              <span style={{ flex: 1 }}>Something else</span>
+            </button>
+            {isFreeTextOpen && (
+              <form onSubmit={handleFreeTextSubmit} style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={freeTextValue}
+                  onChange={(event) => setFreeTextValues((values) => ({ ...values, [activeStepIndex]: event.target.value }))}
+                  autoFocus
+                  placeholder="Type your answer..."
+                  aria-label="Clarification free text answer"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: 42,
+                    borderRadius: 9,
+                    border: "1px solid color-mix(in oklab, var(--atlas-border) 88%, transparent)",
+                    background: "color-mix(in oklab, var(--atlas-bg) 76%, transparent)",
+                    color: "var(--atlas-fg)",
+                    padding: "8px 11px",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
+                />
+                <button
+                  type="submit"
+                  style={{
+                    minHeight: 42,
+                    padding: "0 13px",
+                    borderRadius: 9,
+                    border: "1px solid var(--atlas-gold)",
+                    background: "var(--atlas-gold)",
+                    color: "var(--atlas-bg)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Send
+                </button>
+              </form>
+            )}
+          </>
+        )}
+
+        <button
+          type="button"
+          onClick={() => recordAnswer("", true)}
+          style={{
+            width: "100%",
+            minHeight: 42,
+            borderRadius: 9,
+            border: "1px solid color-mix(in oklab, var(--atlas-border) 66%, transparent)",
+            background: "transparent",
+            color: "var(--atlas-muted)",
+            cursor: "pointer",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10.5,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          Skip
+        </button>
+      </div>
+
+      <div
+        style={{
+          marginTop: 12,
+          paddingTop: 10,
+          borderTop: "1px solid color-mix(in oklab, var(--atlas-border) 56%, transparent)",
+          fontSize: 12,
+          lineHeight: 1.45,
+          color: "var(--atlas-muted)",
+          opacity: 0.72,
+        }}
+      >
+        Or reply directly in the composer below.
+      </div>
+    </div>
+  );
+}
+
 // ── AssistantBubble ───────────────────────────────────────────────────────────
 export function AssistantBubble({
   message,
@@ -1410,6 +1748,10 @@ export function AssistantBubble({
         {migrationBlocks.map((sql, i) => (
           <MigrationCard key={i} sql={sql} />
         ))}
+
+        {!message.streaming && message.clarify && (
+          <ClarifyCard clarify={message.clarify} onSend={onSend} />
+        )}
 
         {hasImageClarify && (
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
