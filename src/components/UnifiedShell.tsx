@@ -19,6 +19,7 @@ import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
+import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   computeScoreFromNodeState,
@@ -285,13 +286,22 @@ function ShellAvatar() {
   );
 }
 
+function repoNameFromFullName(fullName: string): string {
+  const trimmed = fullName.trim().replace(/\.git$/i, "");
+  return trimmed.split("/").filter(Boolean).pop() || trimmed;
+}
+
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
+  const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
   const hydrating = ps.loading && !ps.project;
-  const resolvedName = ps.project?.name?.trim();
+  const resolvedName = project?.name?.trim();
   const name = resolvedName || (hydrating ? "" : "Untitled project");
   const hasActive = Boolean(ps.activeSession);
+  const linkedRepo = useMemo(() => parseLinkedRepo(project?.linkedRepo ?? null), [project?.linkedRepo]);
+  const linkedRepoName = linkedRepo ? repoNameFromFullName(linkedRepo.fullName) : null;
+  const hasGithubToken = Boolean(project?.githubToken);
   const qc = useQueryClient();
   const updateProject = useUpdateProject();
 
@@ -306,11 +316,11 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   }, []);
 
   const beginRename = useCallback(() => {
-    setDraft(ps.project?.name ?? "");
+    setDraft(project?.name ?? "");
     setError(null);
     setRenaming(true);
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, [ps.project?.name]);
+  }, [project?.name]);
 
   useEffect(() => {
     const handler = () => beginRename();
@@ -320,8 +330,8 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
 
   const commit = useCallback(() => {
     if (projectId == null || updateProject.isPending) return;
-    const newName = draft.trim() || (ps.project?.name ?? "");
-    if (newName === ps.project?.name) { setRenaming(false); return; }
+    const newName = draft.trim() || (project?.name ?? "");
+    if (newName === project?.name) { setRenaming(false); return; }
     updateProject.mutate(
       { id: projectId, data: { name: newName } },
       {
@@ -337,19 +347,18 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
         },
       }
     );
-  }, [draft, projectId, ps, qc, updateProject]);
+  }, [draft, project?.name, projectId, ps, qc, updateProject]);
 
   if (projectId == null) return null;
 
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "min(320px, 100%)", minWidth: 0 }}>
       {(() => {
-        const proj = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null }) | null;
         const state = deriveLifecycle({
-          status: proj?.status ?? null,
-          readinessScore: proj?.latestSnapshotScore ?? null,
+          status: project?.status ?? null,
+          readinessScore: project?.latestSnapshotScore ?? null,
           decisionCount: ps.decisions?.length ?? 0,
-          hasRepo: Boolean(proj?.linkedRepo),
+          hasRepo: Boolean(project?.linkedRepo),
         });
         const meta = LIFECYCLE_META[state];
         return (
@@ -369,10 +378,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             <LifecycleGlyph
               projectId={projectId}
               projectName={name || "Project"}
-              status={(proj?.status as "shaping" | "committed" | "archived" | undefined) ?? undefined}
-              readinessScore={proj?.latestSnapshotScore ?? null}
+              status={(project?.status as "shaping" | "committed" | "archived" | undefined) ?? undefined}
+              readinessScore={project?.latestSnapshotScore ?? null}
               decisionCount={ps.decisions?.length ?? 0}
-              hasRepo={Boolean(proj?.linkedRepo)}
+              hasRepo={Boolean(project?.linkedRepo)}
               size={13}
             />
           </span>
@@ -458,6 +467,54 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             />
           ) : (
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
+          )}
+          {linkedRepoName && (
+            <span
+              title={`${linkedRepoName} branch: main`}
+              style={{
+                fontSize: 10,
+                fontFamily: "var(--app-font-mono, monospace)",
+                color: "var(--atlas-muted, #78716C)",
+                background: "rgba(28,25,23,0.7)",
+                border: "1px solid rgba(201,162,76,0.15)",
+                borderRadius: 10,
+                padding: "2px 8px",
+                letterSpacing: "0.04em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ opacity: 0.5 }}>⌥</span>
+              main
+            </span>
+          )}
+          {hasGithubToken ? (
+            <span
+              title="GitHub connected"
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "#4ade80",
+                display: "inline-block",
+                boxShadow: "0 0 6px rgba(74,222,128,0.5)",
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <span
+              title="No GitHub token - writes disabled"
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "#78716C",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
           )}
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
             <polyline points="6 9 12 15 18 9" />
