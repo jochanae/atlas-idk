@@ -51,7 +51,7 @@ export function LinePatchReviewCard({
 
   const handleApply = async () => {
     if (!linkedRepo) { setError("No repo linked — connect a GitHub repo in the Files tab."); return; }
-    if (!token) { setError("No GitHub token — add your personal token in the Files tab."); return; }
+    if (!token) { setError("No GitHub token — connect GitHub from your home page."); return; }
     setApplying(true);
     setError(null);
     try {
@@ -201,7 +201,7 @@ export function ReviewPlanCard({
   const resolvePlanLinePatches = async (): Promise<FileEdit[]> => {
     if (!message.linePatches?.length) return [];
     if (!linkedRepo) throw new Error("No repo linked - connect a GitHub repo in the Files tab.");
-    if (!githubPushToken) throw new Error("No GitHub token - add your personal token in the Files tab.");
+    if (!githubPushToken) throw new Error("No GitHub token — connect GitHub from your home page.");
     const groups: Record<string, LinePatch[]> = {};
     for (const patch of message.linePatches) {
       if (!groups[patch.path]) groups[patch.path] = [];
