@@ -10,7 +10,7 @@
  *   - Scroll lives ONLY inside `.atlas-global-insight-scroll`
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -41,6 +41,59 @@ interface Props {
   onExit: () => void;
 }
 
+const GLOBAL_INSIGHT_PLACEHOLDERS = [
+  "Ask the global view…",
+  "What's conflicting across projects…",
+  "Which project is most worth doing next…",
+  "Where are decisions stalling…",
+  "What pattern keeps repeating…",
+];
+
+// Mirror of home.tsx's useTypewriter — same cadence so the surface feels native.
+function useTypewriter(phrases: string[], paused: boolean) {
+  const [display, setDisplay] = useState("");
+  const state = useRef({ phraseIdx: 0, charIdx: 0, phase: "typing" as "typing" | "erasing" });
+  const phrasesRef = useRef(phrases);
+  phrasesRef.current = phrases;
+
+  useEffect(() => {
+    if (paused) return;
+    let timer: ReturnType<typeof setTimeout>;
+
+    function tick() {
+      const s = state.current;
+      const phrase = phrasesRef.current[s.phraseIdx];
+      if (s.phase === "typing") {
+        if (s.charIdx < phrase.length) {
+          s.charIdx++;
+          setDisplay(phrase.slice(0, s.charIdx));
+          timer = setTimeout(tick, 38);
+        } else {
+          timer = setTimeout(() => {
+            s.phase = "erasing";
+            tick();
+          }, 2000);
+        }
+      } else {
+        if (s.charIdx > 0) {
+          s.charIdx--;
+          setDisplay(phrase.slice(0, s.charIdx));
+          timer = setTimeout(tick, 22);
+        } else {
+          s.phraseIdx = (s.phraseIdx + 1) % phrasesRef.current.length;
+          s.phase = "typing";
+          timer = setTimeout(tick, 200);
+        }
+      }
+    }
+
+    timer = setTimeout(tick, 600);
+    return () => clearTimeout(timer);
+  }, [paused]);
+
+  return display;
+}
+
 export function GlobalInsightSurface({
   open,
   messages,
@@ -58,6 +111,7 @@ export function GlobalInsightSurface({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [focused, setFocused] = useState(false);
 
   // Auto-scroll on new messages / streaming
   useEffect(() => {
@@ -66,6 +120,10 @@ export function GlobalInsightSurface({
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [open, messages.length, isStreaming]);
+
+  const hasInput = input.length > 0;
+  const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
+  const typed = useTypewriter(GLOBAL_INSIGHT_PLACEHOLDERS, !showPlaceholder);
 
   if (!open) return null;
 
@@ -98,7 +156,6 @@ export function GlobalInsightSurface({
         flexDirection: "column",
         background: "var(--atlas-bg)",
         zIndex: 60,
-        // Defensive — never let ambient page scroll bleed through
         overscrollBehavior: "contain",
         touchAction: "none",
       }}
@@ -167,7 +224,7 @@ export function GlobalInsightSurface({
         </p>
       </div>
 
-      {/* Isolated scroll container — the ONLY scroll surface in this view */}
+      {/* Isolated scroll container */}
       <div
         ref={scrollRef}
         className="atlas-global-insight-scroll"
@@ -187,23 +244,6 @@ export function GlobalInsightSurface({
           msOverflowStyle: "none",
         }}
       >
-        {messages.length === 0 && !isStreaming && (
-          <div
-            style={{
-              textAlign: "center",
-              opacity: 0.45,
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 11,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--atlas-muted)",
-              marginTop: 40,
-            }}
-          >
-            Ask the global view…
-          </div>
-        )}
-
         {messages.map((msg, i) =>
           msg.role === "assistant" ? (
             <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -293,7 +333,7 @@ export function GlobalInsightSurface({
         )}
       </div>
 
-      {/* Composer — pinned to bottom, OUTSIDE the scroll container */}
+      {/* Composer */}
       <div
         style={{
           flexShrink: 0,
@@ -311,6 +351,7 @@ export function GlobalInsightSurface({
             border: "1px solid rgba(212,175,55,0.18)",
             borderRadius: 14,
             padding: "8px 10px",
+            position: "relative",
           }}
         >
           <button
@@ -340,28 +381,55 @@ export function GlobalInsightSurface({
             </svg>
           </button>
 
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="Ask the global view…"
-            rows={1}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              resize: "none",
-              color: "var(--atlas-fg)",
-              fontSize: 16,
-              lineHeight: 1.5,
-              fontFamily: "var(--app-font-sans)",
-              padding: "6px 4px",
-              maxHeight: 140,
-            }}
-          />
+          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+            {showPlaceholder && (
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: 6,
+                  left: 4,
+                  right: 4,
+                  pointerEvents: "none",
+                  color: "var(--atlas-muted)",
+                  opacity: 0.65,
+                  fontSize: 16,
+                  lineHeight: 1.5,
+                  fontFamily: "var(--app-font-sans)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {typed}
+                <span className="atlas-cursor" />
+              </div>
+            )}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              rows={1}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                resize: "none",
+                color: "var(--atlas-fg)",
+                fontSize: 16,
+                lineHeight: 1.5,
+                fontFamily: "var(--app-font-sans)",
+                padding: "6px 4px",
+                maxHeight: 140,
+                position: "relative",
+                zIndex: 1,
+              }}
+            />
+          </div>
 
           <button
             type="button"
