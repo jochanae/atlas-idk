@@ -2089,13 +2089,25 @@ export function AssistantBubble({
               <div
                 role="menu"
                 style={{
-                  position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 9999,
+                  position: "fixed", top: "auto", left: "auto", zIndex: 9999,
+                  marginTop: 6,
                   minWidth: 220, padding: 6, borderRadius: 12,
-                  background: "color-mix(in oklab, var(--atlas-surface) 96%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
-                  backdropFilter: "blur(24px) saturate(150%)",
-                  boxShadow: "0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
+                  background: "var(--atlas-surface)",
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+                  boxShadow: "0 18px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
                   fontFamily: "var(--app-font-sans)",
+                }}
+                ref={(el) => {
+                  if (!el) return;
+                  const btn = el.previousElementSibling?.previousElementSibling as HTMLElement | null;
+                  // anchor below the trigger button
+                  const trigger = el.parentElement?.parentElement?.querySelector('[aria-label="More actions"]') as HTMLElement | null;
+                  const anchor = trigger ?? btn;
+                  if (anchor) {
+                    const r = anchor.getBoundingClientRect();
+                    el.style.top = `${r.bottom + 6}px`;
+                    el.style.left = `${Math.max(8, Math.min(window.innerWidth - 228, r.left))}px`;
+                  }
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 2px 4px" }}>
