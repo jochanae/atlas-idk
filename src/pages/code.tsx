@@ -532,7 +532,9 @@ export default function CodePage() {
 
   return (
     <div style={{
-      display: "flex", flexDirection: "column", height: "100vh",
+      display: "flex", flexDirection: "column",
+      height: "100dvh", maxHeight: "100dvh",
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
       background: "var(--atlas-bg)", color: "var(--atlas-fg)", overflow: "hidden",
     }}>
       <div style={{
