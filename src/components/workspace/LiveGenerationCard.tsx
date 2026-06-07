@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
-import { LoadingSpinner } from "./ui/loading-spinner";
-
-
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type LiveGenerationCardProps = {
   mode: "plan" | "blueprint" | "edit" | "thinking";

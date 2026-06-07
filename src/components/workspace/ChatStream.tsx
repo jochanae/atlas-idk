@@ -4,7 +4,7 @@ import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
-import { LiveGenerationCard } from "../LiveGenerationCard";
+import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
 import { TimelineRail } from "../TimelineRail";
 
 import type {

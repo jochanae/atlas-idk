@@ -44,7 +44,7 @@ import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useNexusChatStream, type NexusLiveStep } from "@/hooks/useNexusChatStream";
+import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
@@ -644,107 +644,6 @@ function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew:
         />
       ))}
     </>
-  );
-}
-
-function HomeThinkingStepCard({ step }: { step: NexusLiveStep }) {
-  const background = step.status === "fail"
-    ? "color-mix(in oklab, #b91c1c 12%, var(--atlas-surface))"
-    : step.status === "warn"
-      ? "color-mix(in oklab, #d97706 13%, var(--atlas-surface))"
-      : "color-mix(in oklab, white 9%, var(--atlas-surface))";
-  const border = step.status === "fail"
-    ? "color-mix(in oklab, #b91c1c 28%, var(--atlas-border))"
-    : step.status === "warn"
-      ? "color-mix(in oklab, #d97706 30%, var(--atlas-border))"
-      : "color-mix(in oklab, white 14%, var(--atlas-border))";
-
-  return (
-    <div
-      className="atlas-thinking-step-card"
-      style={{
-        borderRadius: 10,
-        padding: "8px 10px",
-        background,
-        border: `1px solid ${border}`,
-        boxShadow: "0 8px 20px -18px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.04) inset",
-        minWidth: 210,
-        maxWidth: 420,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-        <span style={{
-          color: "var(--atlas-fg)",
-          fontWeight: 650,
-          fontSize: 12,
-          lineHeight: 1.25,
-        }}>
-          {step.verb}
-        </span>
-        {step.target && (
-          <span style={{
-            borderRadius: 999,
-            padding: "2px 7px",
-            background: "color-mix(in oklab, var(--atlas-muted) 12%, transparent)",
-            color: "var(--atlas-muted)",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 10,
-            lineHeight: 1.35,
-            maxWidth: 240,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
-            {step.target}
-          </span>
-        )}
-      </div>
-      {step.detail && (
-        <div style={{
-          marginTop: 4,
-          color: "var(--atlas-muted)",
-          fontSize: 11,
-          lineHeight: 1.45,
-          opacity: 0.78,
-        }}>
-          {step.detail}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HomeThinkingSteps({
-  steps,
-  pendingPhrase,
-}: {
-  steps: NexusLiveStep[];
-  pendingPhrase: string;
-}) {
-  if (steps.length === 0) {
-    return (
-      <span
-        style={{
-          fontFamily: "var(--app-font-mono)",
-          fontSize: "var(--ts-micro)",
-          color: "var(--atlas-muted)",
-          letterSpacing: "0.07em",
-          opacity: 0.7,
-          animation: "fadeIn 360ms ease",
-          display: "inline-block",
-        }}
-      >
-        {pendingPhrase}
-      </span>
-    );
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {steps.map((step) => (
-        <HomeThinkingStepCard key={step.id} step={step} />
-      ))}
-    </div>
   );
 }
 
@@ -1860,13 +1759,6 @@ export default function Home() {
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
-  const [executionSteps, setExecutionSteps] = useState<Array<{
-    verb: string;
-    target?: string;
-    detail?: string;
-    status?: "ok" | "warn" | "fail";
-    resolvedAt?: number;
-  }>>([]);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   // Home lens state removed — lenses live in workspace only
 
@@ -1894,7 +1786,6 @@ export default function Home() {
   const previousHomeMessageCountRef = useRef(0);
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
   const globalInsightSeedPendingRef = useRef(false);
-  const lastExecutionStepIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
@@ -2088,27 +1979,6 @@ export default function Home() {
     const t = setInterval(() => setPendingPhraseIdx(i => (i + 1) % HOME_PENDING_PHRASES.length), 2400);
     return () => clearInterval(t);
   }, [isAtlasStreaming]);
-
-  useEffect(() => {
-    const step = nexusChat.liveSteps[nexusChat.liveSteps.length - 1];
-    if (!step || step.id === lastExecutionStepIdRef.current) return;
-    lastExecutionStepIdRef.current = step.id;
-
-    setExecutionSteps(prev => {
-      // Mark previous active step as resolved when a new one arrives
-      const updated = prev.map((s, i) =>
-        i === prev.length - 1 && !s.resolvedAt
-          ? { ...s, resolvedAt: Date.now() }
-          : s
-      );
-      return [...updated, {
-        verb: step.verb,
-        target: step.target,
-        detail: step.detail,
-        status: step.status,
-      }];
-    });
-  }, [nexusChat.liveSteps]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2669,8 +2539,6 @@ export default function Home() {
     // Block PTR and double-sends immediately — before any async work
     setIsSending(true);
     document.body.dataset.voiceActive = "true";
-    setExecutionSteps([]);
-    lastExecutionStepIdRef.current = null;
     setInput("");
     setAttachedFiles([]);
 
@@ -2727,7 +2595,6 @@ export default function Home() {
           imageBase64,
           imageMimeType,
         });
-        setTimeout(() => setExecutionSteps([]), 800);
       } catch (err) {
         handleSubmitError(err);
       } finally {
@@ -3883,129 +3750,22 @@ export default function Home() {
                         <div style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.4, marginBottom: 6 }}>
                           Atlas
                         </div>
-                        {isAtlasStreaming && executionSteps.length > 0 ? (
-                          <div style={{
-                            width: "100%",
-                            maxWidth: 420,
-                            margin: "8px 0",
-                            borderRadius: 12,
-                            background: "linear-gradient(to bottom, rgba(18,18,20,0.85), rgba(10,10,12,0.92))",
-                            border: "1px solid rgba(201,162,76,0.12)",
-                            backdropFilter: "blur(12px)",
-                            padding: "12px 14px",
-                            boxSizing: "border-box",
-                          }}>
-                            {/* Header */}
-                            <div style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              paddingBottom: 8,
-                              marginBottom: 10,
-                              borderBottom: "1px solid rgba(42,42,48,0.4)",
-                            }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <span style={{
-                                  width: 6, height: 6, borderRadius: "50%",
-                                  background: "var(--atlas-gold, #C9A24C)",
-                                  display: "inline-block",
-                                  animation: "ping 1.2s cubic-bezier(0,0,0.2,1) infinite",
-                                }} />
-                                <span style={{
-                                  fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-                                  color: "rgba(160,160,170,0.9)", textTransform: "uppercase",
-                                  fontFamily: "var(--app-font-mono, monospace)",
-                                }}>
-                                  Atlas Working
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Timeline */}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative", paddingLeft: 4 }}>
-                              <div style={{
-                                position: "absolute", left: 15, top: 4, bottom: 4,
-                                width: 1,
-                                background: "linear-gradient(to bottom, rgba(201,162,76,0.25), rgba(42,42,48,0.2))",
-                              }} />
-
-                              {executionSteps.map((step, i) => {
-                                const isLast = i === executionSteps.length - 1;
-                                const isComplete = !isLast || !!step.resolvedAt || step.status === "ok";
-                                const isFailed = step.status === "fail";
-
-                                return (
-                                  <div key={i} style={{
-                                    display: "flex", alignItems: "flex-start", gap: 10,
-                                    opacity: isComplete ? 1 : 0.95,
-                                    transition: "opacity 0.3s",
-                                  }}>
-                                    {/* Indicator */}
-                                    <div style={{ width: 20, height: 20, position: "relative", flexShrink: 0, marginTop: 1, zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                      {isFailed ? (
-                                        <span style={{ fontSize: 11, color: "#ef4444" }}>✕</span>
-                                      ) : isComplete ? (
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-gold, #C9A24C)" strokeWidth="3">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                      ) : (
-                                        <>
-                                          <div style={{
-                                            position: "absolute", inset: 0, borderRadius: "50%",
-                                            background: "rgba(201,162,76,0.2)",
-                                            animation: "ping 1.2s cubic-bezier(0,0,0.2,1) infinite",
-                                          }} />
-                                          <div style={{
-                                            width: 7, height: 7, borderRadius: "50%",
-                                            background: "var(--atlas-gold, #C9A24C)",
-                                            boxShadow: "0 0 8px rgba(201,162,76,0.7)",
-                                          }} />
-                                        </>
-                                      )}
-                                    </div>
-
-                                    {/* Text */}
-                                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                                      <span style={{
-                                        fontSize: 13, fontWeight: 500, letterSpacing: "0.01em",
-                                        color: isComplete ? "rgba(212,212,216,0.85)" : "#F4F4F6",
-                                        fontFamily: "var(--app-font-sans, sans-serif)",
-                                      }}>
-                                        {step.verb}{step.target ? ` ${step.target}` : ""}
-                                      </span>
-                                      {step.detail && (
-                                        <span style={{
-                                          fontSize: 11, marginTop: 2,
-                                          color: "rgba(160,160,170,0.75)",
-                                          fontFamily: "var(--app-font-mono, monospace)",
-                                          background: "rgba(22,22,26,0.6)",
-                                          border: "1px solid rgba(42,42,48,0.25)",
-                                          borderRadius: 4,
-                                          padding: "1px 6px",
-                                          width: "fit-content",
-                                          maxWidth: "100%",
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                        }}>
-                                          {step.detail}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                            <LoadingSpinner size="sm" color="atlas" />
-                            <HomeThinkingSteps
-                              steps={nexusChat.liveSteps}
-                              pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
-                            />
-                          </div>
-                        )}
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                          <LoadingSpinner size="sm" color="atlas" />
+                          <span
+                            style={{
+                              fontFamily: "var(--app-font-mono)",
+                              fontSize: "var(--ts-micro)",
+                              color: "var(--atlas-muted)",
+                              letterSpacing: "0.07em",
+                              opacity: 0.7,
+                              animation: "fadeIn 360ms ease",
+                              display: "inline-block",
+                            }}
+                          >
+                            {HOME_PENDING_PHRASES[pendingPhraseIdx]}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -4935,16 +4695,9 @@ export default function Home() {
         @keyframes ping {
           75%, 100% { transform: scale(1.8); opacity: 0; }
         }
-        @keyframes atlasThinkingStepIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
         @keyframes atlasTokenShimmer {
           from { background-position: 160% 50%; }
           to   { background-position: -60% 50%; }
-        }
-        .atlas-thinking-step-card {
-          animation: atlasThinkingStepIn 50ms ease-out both;
         }
         .atlas-streaming-word-shimmer {
           --atlas-token-shimmer-base: color-mix(in oklab, var(--atlas-gold) 78%, var(--atlas-fg));
