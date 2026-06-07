@@ -55,23 +55,27 @@ export interface GeneratedFile {
   previousContent?: string | null;
 }
 
+export type CodeRunStatus = "completed" | "warnings" | "failed" | "cancelled";
+
+export interface RunFileArtifact {
+  type: "file_edit";
+  path: string;
+  language: string;
+}
+
 export interface GenerationRun {
   id: string;
-  projectId: number;
-  userId: number;
-  prompt: string;
-  intent: "BUILD" | "REFACTOR" | "FIX" | "SKETCH";
-  model: string;
-  status: "streaming" | "complete" | "error" | "cancelled";
-  startedAt: string;
-  finishedAt: string | null;
-  durationMs: number | null;
-  filesChanged: number;
-  linesAdded: number;
-  linesRemoved: number;
-  summary: string;
-  commitSha?: string | null;
-  pushedToBranch?: string | null;
+  title: string;
+  runStatus: CodeRunStatus;
+  runSummary: string | null;
+  runArtifacts: RunFileArtifact[] | null;
+  messageCount: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  costUsd: number;
+  totalExecutionMs: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProjectStub {
@@ -80,6 +84,10 @@ export interface ProjectStub {
   repo?: string | null;       // "owner/repo"
   defaultBranch?: string;
 }
+
+type RunsResponse = {
+  runs: GenerationRun[];
+};
 
 // ── API fetchers ─────────────────────────────────────────────────────────────
 async function fetchJson<T>(path: string): Promise<T> {
@@ -157,11 +165,65 @@ function statusColor(s: GeneratedFile["status"]) {
   return "rgba(255,255,255,0.45)";
 }
 
-function intentTint(i: GenerationRun["intent"]) {
-  if (i === "BUILD") return "#7CE3A0";
-  if (i === "REFACTOR") return "#A0C8FF";
-  if (i === "FIX") return "#FFB37C";
-  return "#E6A8FF";
+function runStatusTint(s: CodeRunStatus) {
+  if (s === "completed") return "#7CE3A0";
+  if (s === "warnings") return "#E6C687";
+  if (s === "failed") return "#FF8A8A";
+  return "rgba(255,255,255,0.55)";
+}
+
+function runStatusLabel(s: CodeRunStatus) {
+  if (s === "warnings") return "Warnings";
+  return s;
+}
+
+function fileCountForRun(run: GenerationRun) {
+  return run.runArtifacts?.length ?? 0;
+}
+
+function fileCountLabel(count: number) {
+  return `${count} ${count === 1 ? "file" : "files"}`;
+}
+
+function formatDuration(ms: number) {
+  if (!Number.isFinite(ms) || ms <= 0) return "0.0s";
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatCost(cost: number) {
+  if (!Number.isFinite(cost) || cost <= 0) return "$0.00";
+  return `$${cost.toFixed(4)}`;
+}
+
+function normalizeGeneratedFileLanguage(language: string): GeneratedFileLanguage {
+  const normalized = language.toLowerCase();
+  if (
+    normalized === "typescript" || normalized === "tsx" ||
+    normalized === "javascript" || normalized === "jsx" ||
+    normalized === "css" || normalized === "scss" ||
+    normalized === "html" || normalized === "json" ||
+    normalized === "md" || normalized === "sql" ||
+    normalized === "sh" || normalized === "yaml"
+  ) {
+    return normalized;
+  }
+  return "other";
+}
+
+function filesFromRunArtifacts(run: GenerationRun | null): GeneratedFile[] {
+  if (!run?.runArtifacts?.length) return [];
+  return run.runArtifacts.map((artifact, index) => ({
+    id: `${run.id}:${index}:${artifact.path}`,
+    runId: run.id,
+    path: artifact.path,
+    language: normalizeGeneratedFileLanguage(artifact.language),
+    bytes: 0,
+    lines: 0,
+    content: "",
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+    status: "modified",
+  }));
 }
 
 // ── File Tree ────────────────────────────────────────────────────────────────
@@ -334,23 +396,24 @@ function ActivityRail({
           border: "1px solid color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-            <span style={{
-              ...MONO, fontSize: 9.5, padding: "2px 6px", borderRadius: 4,
-              background: `color-mix(in oklab, ${intentTint(run.intent)} 16%, transparent)`,
-              color: intentTint(run.intent), letterSpacing: "0.1em",
-            }}>{run.intent}</span>
-            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{run.model}</span>
+            <RunStatusBadge status={run.runStatus} />
+            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
+              {fileCountLabel(fileCountForRun(run))}
+            </span>
+          </div>
+          <div style={{ marginBottom: 6, fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)" }}>
+            {run.title}
           </div>
           <p style={{ margin: 0, fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.55 }}>
-            {run.prompt}
+            {run.runSummary || "Build session"}
           </p>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        <Stat label="Files" value={run.filesChanged.toString()} />
-        <Stat label="+Lines" value={`+${run.linesAdded}`} tint="#7CE3A0" />
-        <Stat label="−Lines" value={`-${run.linesRemoved}`} tint="#FF8A8A" />
+        <Stat label="Files" value={fileCountForRun(run).toString()} />
+        <Stat label="Messages" value={run.messageCount.toString()} />
+        <Stat label="Cost" value={formatCost(run.costUsd)} tint="#7CE3A0" />
       </div>
 
       <div>
@@ -358,7 +421,7 @@ function ActivityRail({
           Summary
         </div>
         <p style={{ margin: 0, fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.55, opacity: 0.85 }}>
-          {run.summary}
+          {run.runSummary || "Build session"}
         </p>
       </div>
 
@@ -367,21 +430,25 @@ function ActivityRail({
           Files in this run
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {files.map((f) => (
-            <div key={f.id} style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
-              borderRadius: 6, background: "rgba(255,255,255,0.02)",
-            }}>
-              <span style={{
-                width: 5, height: 5, borderRadius: 99, background: statusColor(f.status),
-                boxShadow: `0 0 6px ${statusColor(f.status)}`, flexShrink: 0,
-              }} />
-              <span style={{ ...MONO, fontSize: 11, color: "var(--atlas-fg)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {f.path}
-              </span>
-              <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{f.lines}L</span>
-            </div>
-          ))}
+          {files.length ? (
+            files.map((f) => (
+              <div key={f.id} style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
+                borderRadius: 6, background: "rgba(255,255,255,0.02)",
+              }}>
+                <span style={{
+                  width: 5, height: 5, borderRadius: 99, background: statusColor(f.status),
+                  boxShadow: `0 0 6px ${statusColor(f.status)}`, flexShrink: 0,
+                }} />
+                <span style={{ ...MONO, fontSize: 11, color: "var(--atlas-fg)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {f.path}
+                </span>
+                <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{f.language}</span>
+              </div>
+            ))
+          ) : (
+            <EmptyHint label="No files in this run yet." />
+          )}
         </div>
       </div>
 
@@ -391,42 +458,115 @@ function ActivityRail({
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {runs.map((r) => (
-            <button
+            <RunCard
               key={r.id}
-              type="button"
-              onClick={() => onSelectRun(r.id)}
-              style={{
-                textAlign: "left", cursor: "pointer",
-                padding: "8px 10px", borderRadius: 8,
-                border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-                background: r.id === run.id ? "rgba(230,198,135,0.04)" : "transparent",
-                color: "var(--atlas-fg)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <span style={{
-                  ...MONO, fontSize: 9, padding: "1px 5px", borderRadius: 3,
-                  background: `color-mix(in oklab, ${intentTint(r.intent)} 14%, transparent)`,
-                  color: intentTint(r.intent),
-                }}>{r.intent}</span>
-                {r.commitSha && (
-                  <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
-                    <GitBranch size={9} style={{ display: "inline", marginRight: 3 }} />
-                    {r.commitSha}
-                  </span>
-                )}
-                <span style={{ flex: 1 }} />
-                <span style={{ ...MONO, fontSize: 9.5, color: "var(--atlas-muted)" }}>
-                  {((r.durationMs ?? 0) / 1000).toFixed(1)}s
-                </span>
-              </div>
-              <p style={{ margin: 0, fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.8, lineHeight: 1.4 }}>
-                {r.prompt.slice(0, 84)}{r.prompt.length > 84 ? "…" : ""}
-              </p>
-            </button>
+              run={r}
+              active={r.id === run.id}
+              onSelect={() => onSelectRun(r.id)}
+              compact
+            />
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function RunStatusBadge({ status }: { status: CodeRunStatus }) {
+  const tint = runStatusTint(status);
+  return (
+    <span style={{
+      ...MONO, fontSize: 9, padding: "2px 6px", borderRadius: 4,
+      background: `color-mix(in oklab, ${tint} 16%, transparent)`,
+      color: tint, letterSpacing: "0.1em", textTransform: "uppercase",
+      border: `1px solid color-mix(in oklab, ${tint} 25%, transparent)`,
+    }}>
+      {runStatusLabel(status)}
+    </span>
+  );
+}
+
+function RunCard({
+  run,
+  active,
+  onSelect,
+  compact,
+}: {
+  run: GenerationRun;
+  active: boolean;
+  onSelect: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      style={{
+        textAlign: "left", cursor: "pointer",
+        padding: compact ? "8px 10px" : "12px 14px", borderRadius: 10,
+        border: "1px solid color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+        background: active ? "rgba(230,198,135,0.06)" : "rgba(255,255,255,0.015)",
+        color: "var(--atlas-fg)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <RunStatusBadge status={run.runStatus} />
+        <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
+          {fileCountLabel(fileCountForRun(run))}
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{ ...MONO, fontSize: 9.5, color: "var(--atlas-muted)" }}>
+          {formatDuration(run.totalExecutionMs)}
+        </span>
+      </div>
+      <div style={{ fontSize: compact ? 12 : 14, fontWeight: 500, color: "var(--atlas-fg)", marginBottom: 4 }}>
+        {run.title}
+      </div>
+      <p style={{ margin: 0, fontSize: compact ? 11.5 : 12.5, color: "var(--atlas-fg)", opacity: 0.8, lineHeight: 1.45 }}>
+        {run.runSummary || "Build session"}
+      </p>
+    </button>
+  );
+}
+
+function RunList({
+  runs,
+  activeRunId,
+  loading,
+  onSelectRun,
+}: {
+  runs: GenerationRun[];
+  activeRunId: string | null;
+  loading: boolean;
+  onSelectRun: (id: string) => void;
+}) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <Activity size={14} style={{ color: "var(--atlas-gold)" }} />
+        <span style={{ ...MONO, fontSize: 10, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase" }}>
+          Runs
+        </span>
+        <span style={{ flex: 1 }} />
+        <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{runs.length}</span>
+      </div>
+      {runs.length ? (
+        <div style={{ display: "grid", gap: 10 }}>
+          {runs.map((run) => (
+            <RunCard
+              key={run.id}
+              run={run}
+              active={run.id === activeRunId}
+              onSelect={() => onSelectRun(run.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title={loading ? "Loading generation workspace…" : "Runs"}
+          hint={loading ? "Fetching runs from the backend." : "No runs returned yet."}
+        />
+      )}
     </div>
   );
 }
@@ -490,32 +630,29 @@ export default function CodePage() {
   });
 
   // 2. Runs
-  const runsQ = useQuery<GenerationRun[]>({
+  const runsQ = useQuery<RunsResponse>({
     queryKey: ["code", "runs", projectId],
-    queryFn: () => fetchJson<GenerationRun[]>(`/api/projects/${projectId}/generation-runs`),
+    queryFn: () => fetchJson<RunsResponse>(`/api/projects/${projectId}/runs`),
     enabled: projectId != null,
     refetchInterval: 10_000,
   });
 
-  const runs = runsQ.data ?? [];
+  const runs = useMemo(() => {
+    const rawRuns = runsQ.data?.runs ?? [];
+    return [...rawRuns].sort((a, b) => {
+      const aTime = new Date(a.updatedAt).getTime();
+      const bTime = new Date(b.updatedAt).getTime();
+      return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+    });
+  }, [runsQ.data]);
+
   const activeRun = useMemo(() => {
     if (!runs.length) return null;
     if (selectedRunId) return runs.find((r) => r.id === selectedRunId) ?? runs[0];
     return runs[0];
   }, [runs, selectedRunId]);
 
-  // 3. Files for the active run
-  const filesQ = useQuery<GeneratedFile[]>({
-    queryKey: ["code", "files", projectId, activeRun?.id],
-    queryFn: () =>
-      fetchJson<GeneratedFile[]>(
-        `/api/projects/${projectId}/generation-runs/${activeRun!.id}/files`,
-      ),
-    enabled: projectId != null && !!activeRun,
-    refetchInterval: activeRun?.status === "streaming" ? 2_000 : false,
-  });
-
-  const files = filesQ.data ?? [];
+  const files = useMemo(() => filesFromRunArtifacts(activeRun), [activeRun]);
   const selectedFile = useMemo(() => {
     if (!files.length) return null;
     return files.find((f) => f.id === selectedFileId) ?? files[0];
@@ -526,9 +663,14 @@ export default function CodePage() {
     setOpenMap((m) => ({ ...m, [p]: !(m[p] ?? true) }));
 
   // Loading / error / empty states
-  const loading = projectQ.isLoading || runsQ.isLoading || filesQ.isLoading;
-  const error = projectQ.error || runsQ.error || filesQ.error;
-  const isStreaming = activeRun?.status === "streaming";
+  const loading = projectQ.isLoading || runsQ.isLoading;
+  const error = projectQ.error || runsQ.error;
+  const isStreaming = false;
+  const handleSelectRun = (id: string) => {
+    setSelectedRunId(id);
+    setSelectedFileId(null);
+    if (isMobile) setMobilePane("Files");
+  };
 
   return (
     <div style={{
@@ -608,7 +750,7 @@ export default function CodePage() {
         <ToolButton
           icon={<RefreshCw size={13} />}
           label="Refresh"
-          onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
+          onClick={() => { runsQ.refetch(); }}
         />
         <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
         <ToolButton icon={<Hammer size={13} />} label="Extract to Forge" />
@@ -722,13 +864,13 @@ export default function CodePage() {
               <EmptyHint label={loading ? "Loading files…" : "No files in this run yet."} />
             )}
           </div>
-          {activeRun?.finishedAt && (
+          {activeRun?.updatedAt && (
             <div style={{
               padding: "8px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
               display: "flex", alignItems: "center", gap: 6,
               ...MONO, fontSize: 10, color: "var(--atlas-muted)",
             }}>
-              <Clock size={10} /> Updated {new Date(activeRun.finishedAt).toLocaleTimeString()}
+              <Clock size={10} /> Updated {new Date(activeRun.updatedAt).toLocaleTimeString()}
             </div>
           )}
         </aside>
@@ -738,7 +880,7 @@ export default function CodePage() {
         {(!isMobile || mobilePane === "Code") && (
         <main style={{ ...PANEL, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
           {error ? (
-            <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); filesQ.refetch(); }} />
+            <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); }} />
           ) : projectId == null ? (
             <EmptyState
               title="No project selected"
@@ -747,9 +889,11 @@ export default function CodePage() {
           ) : selectedFile ? (
             <CodeViewer file={selectedFile} />
           ) : (
-            <EmptyState
-              title={loading ? "Loading generation workspace…" : "No generation runs yet"}
-              hint={loading ? "Fetching runs from the backend." : "Start a build from the chat and files will appear here."}
+            <RunList
+              runs={runs}
+              activeRunId={activeRun?.id ?? null}
+              loading={loading}
+              onSelectRun={handleSelectRun}
             />
           )}
         </main>
@@ -763,7 +907,7 @@ export default function CodePage() {
                 run={activeRun}
                 files={files}
                 runs={runs}
-                onSelectRun={(id) => { setSelectedRunId(id); setSelectedFileId(null); }}
+                onSelectRun={handleSelectRun}
               />
             ) : (
               <EmptyHint label={loading ? "Loading runs…" : "No runs to show."} />
