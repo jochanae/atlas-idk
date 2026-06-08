@@ -217,7 +217,9 @@ export default function ConnectorsPage() {
   return (
     <div
       style={{
-        minHeight: "100dvh",
+        height: "100dvh",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
         background:
           "radial-gradient(1200px 600px at 20% -10%, rgba(230,198,135,0.06), transparent 60%), " +
           "radial-gradient(900px 500px at 90% 10%, rgba(6,182,212,0.04), transparent 65%), " +
