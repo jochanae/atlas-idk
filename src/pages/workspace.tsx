@@ -6671,7 +6671,44 @@ export default function Workspace() {
                overscrollBehavior: "contain",
              }}
            >
+            {isMobile && (() => {
+              const score = project?.latestSnapshotScore ?? 0;
+              const ringColor = score >= 80 ? "#4ade80" : score >= 50 ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)";
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    margin: "8px 6px 6px",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "rgba(28,25,23,0.55)",
+                    border: "1px solid rgba(201,162,76,0.18)",
+                  }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.75, color: "var(--atlas-gold)", flexShrink: 0 }}>
+                      <line x1="6" y1="3" x2="6" y2="15" />
+                      <circle cx="18" cy="6" r="3" />
+                      <circle cx="6" cy="18" r="3" />
+                      <path d="M18 9a9 9 0 0 1-9 9" />
+                    </svg>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, letterSpacing: "0.06em", color: "var(--atlas-fg)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>main</span>
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden style={{ display: "block" }}>
+                      <circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.6" />
+                      <circle cx="7" cy="7" r="5.5" fill="none" stroke={ringColor} strokeWidth="1.6" strokeLinecap="round" strokeDasharray={`${(score / 100) * (2 * Math.PI * 5.5)} ${2 * Math.PI * 5.5}`} transform="rotate(-90 7 7)" />
+                    </svg>
+                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{score}%</span>
+                  </span>
+                </div>
+              );
+            })()}
             {(allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived").length > 0 && (() => {
+
               const others = (allProjects ?? []).filter((p: any) => p.id !== id && p.status !== "archived");
               return (
                 <>

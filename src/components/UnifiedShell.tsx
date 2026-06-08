@@ -390,6 +390,7 @@ function ShellBranchChip() {
 
 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
+  const isMobile = useIsMobile();
   const ps = useProjectState(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
@@ -402,6 +403,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const hasGithubToken = Boolean(project?.githubToken);
   const qc = useQueryClient();
   const updateProject = useUpdateProject();
+
 
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -573,7 +575,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
           ) : (
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{linkedRepoName || name}</span>
           )}
-          {hasGithubToken ? (
+          {!isMobile && (hasGithubToken ? (
             <span
               title="GitHub connected"
               style={{
@@ -598,13 +600,14 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
                 flexShrink: 0,
               }}
             />
-          )}
+          ))}
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-        <ShellBranchChip />
+        {!isMobile && <ShellBranchChip />}
         </>
+
       )}
 
     </div>
@@ -1140,8 +1143,10 @@ function ShellStatusChip({ projectId }: { projectId: number | null }) {
 // Decisions, Repo, and Live URL into a single ring. Tap to open a panel
 // with the breakdown + mode toggle + recent ledger entries.
 function ShellCompletionChip({ projectId }: { projectId: number | null }) {
+  const isMobile = useIsMobile();
   const ps = useProjectState(projectId);
   const [, navigate] = useLocation();
+
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<ReadinessMode>(() => {
     try {
@@ -1162,7 +1167,8 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
-  if (projectId == null) return null;
+  if (projectId == null || isMobile) return null;
+
 
   const proj = ps.project as {
     latestSnapshotScore?: number | null;
