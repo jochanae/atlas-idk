@@ -114,10 +114,11 @@ const SHEET_PANEL: React.CSSProperties = {
 // Inner scroll container — isolates overflow inside the floating canvas so
 // the Settings row and expanded "More" items always reach the viewport.
 const SHEET_SCROLL: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
   overflowY: "auto",
   WebkitOverflowScrolling: "touch",
-  maxHeight: "60vh",
-  paddingBottom: "4rem",
+  paddingBottom: "1rem",
   margin: "0 -4px",
   paddingLeft: 4,
   paddingRight: 4,
