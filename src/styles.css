@@ -439,9 +439,10 @@ html, body {
 /* Home/Nexus: glass treatment ONLY when a thread is active.
    Ambient (empty) mode stays clean — composer floats with no panel. */
 body[data-axiom-thread="active"] .atlas-input-shell {
-  /* Floating glass — content scrolls cleanly underneath, no encasing border. */
-  background: color-mix(in oklab, var(--atlas-bg) 22%, transparent);
-  backdrop-filter: blur(28px) saturate(160%);
+  /* True glass — see the conversation through the composer. */
+  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: none;
   border-radius: 0;
   box-shadow: none;
