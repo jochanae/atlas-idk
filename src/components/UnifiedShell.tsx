@@ -427,6 +427,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
           )}
         </div>
       ) : (
+        <>
         <button
           type="button"
           onClick={openSwitcher}
@@ -437,9 +438,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             alignItems: "center",
             gap: 6,
             minWidth: 0,
-            background: "transparent",
-            border: "none",
-            padding: "0 4px 0 6px",
+            background: "rgba(28,25,23,0.55)",
+            border: "1px solid rgba(201,162,76,0.18)",
+            borderRadius: 999,
+            padding: "3px 8px 3px 8px",
             cursor: "pointer",
             color: "var(--atlas-fg)",
             fontFamily: "var(--app-font-sans)",
@@ -447,10 +449,15 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             fontWeight: 500,
             lineHeight: "var(--lh-snug)",
             letterSpacing: "var(--ls-tight)",
-            opacity: 0.92,
+            opacity: 0.95,
             pointerEvents: "auto",
+            maxWidth: 180,
           }}
         >
+          {/* GitHub mark */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden style={{ opacity: 0.7, flexShrink: 0 }}>
+            <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.53-1.35-1.3-1.71-1.31-1.71-1.07-.73.08-.71.08-.71 1.18.08 1.81 1.21 1.81 1.21 1.05 1.81 2.76 1.29 3.43.99.11-.76.41-1.29.75-1.59-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.2 1.19a11 11 0 0 1 5.83 0c2.22-1.5 3.2-1.19 3.2-1.19.63 1.6.23 2.78.11 3.07.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.42.36.79 1.08.79 2.18v3.23c0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
+          </svg>
           {hydrating ? (
             <span
               aria-label="Loading project"
@@ -466,36 +473,14 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
               }}
             />
           ) : (
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{name}</span>
-          )}
-          {linkedRepoName && (
-            <span
-              title={`${linkedRepoName} branch: main`}
-              style={{
-                fontSize: 10,
-                fontFamily: "var(--app-font-mono, monospace)",
-                color: "var(--atlas-muted, #78716C)",
-                background: "rgba(28,25,23,0.7)",
-                border: "1px solid rgba(201,162,76,0.15)",
-                borderRadius: 10,
-                padding: "2px 8px",
-                letterSpacing: "0.04em",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ opacity: 0.5 }}>⌥</span>
-              main
-            </span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{linkedRepoName || name}</span>
           )}
           {hasGithubToken ? (
             <span
               title="GitHub connected"
               style={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
                 background: "#4ade80",
                 display: "inline-block",
@@ -507,8 +492,8 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             <span
               title="No GitHub token - writes disabled"
               style={{
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
                 background: "#78716C",
                 display: "inline-block",
@@ -520,7 +505,10 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
+        <ShellBranchChip />
+        </>
       )}
+
     </div>
   );
 }
