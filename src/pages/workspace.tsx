@@ -6163,6 +6163,11 @@ export default function Workspace() {
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "history") { setShowHistorySheet(true); return; }
+                if (action === "mcp") {
+                  if (isMobile) { setMobileTab("mcp"); setRightOpen(true); }
+                  else { setDesktopForceTab("mcp" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
                 if (action === "files") {
                   if (isMobile) { setMobileTab("files"); setRightOpen(true); }
                   else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
