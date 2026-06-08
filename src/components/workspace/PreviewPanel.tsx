@@ -263,32 +263,13 @@ ${t}
           detected: Array<{ url: string; platform: string; confidence: string }>;
           suggestions: Array<{ url: string; platform: string; confidence: string }>;
         };
-        // Prefer high-confidence confirmed deployments
-        const best = data.detected?.find((d) => d.confidence === "high")
-          ?? data.detected?.[0]
-          ?? null;
-        if (best) {
-          const u = normalize(best.url);
-          setUrlInput(u);
-          setLiveUrl(u);
-          setIframeError(false);
-          setIframeLoading(true);
-          setReloadKey((k) => k + 1);
-          setAutoDetected({ url: u, platform: best.platform });
-          setDetectResults([]);
-          try { localStorage.setItem(storageKey, u); } catch {}
-          updateProject.mutate(
-            { id: projectId, data: { previewUrl: u } },
-            { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) }) }
-          );
-        } else {
-          // No confirmed URL — surface suggestions so user can pick
-          const all = [
-            ...(data.detected ?? []),
-            ...(data.suggestions ?? []).filter((s) => !data.detected?.find((d) => d.url === s.url)),
-          ];
-          if (all.length > 0) setDetectResults(all);
-        }
+        // Surface everything as suggestions — never auto-save a URL the user
+        // didn't explicitly connect. The user picks which one to apply.
+        const all = [
+          ...(data.detected ?? []),
+          ...(data.suggestions ?? []).filter((s) => !data.detected?.find((d) => d.url === s.url)),
+        ];
+        if (all.length > 0) setDetectResults(all);
       } catch {}
       finally { setDetecting(false); }
     };
