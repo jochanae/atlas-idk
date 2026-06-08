@@ -392,7 +392,7 @@ function ShellBranchChip() {
 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const isMobile = useIsMobile();
-  const isTinyMobile = useIsTinyMobile();
+  const isTinyMobile = useIsTinyScreen();
   const ps = useProjectState(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
