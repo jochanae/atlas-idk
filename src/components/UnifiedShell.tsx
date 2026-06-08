@@ -1796,8 +1796,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
-            <ShellReadinessChip projectId={activeProjectId} />
-            <ShellStatusChip projectId={activeProjectId} />
+            <ShellCompletionChip projectId={activeProjectId} />
             {location === "/home" && <ThinkFreelyHeaderToggle />}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
