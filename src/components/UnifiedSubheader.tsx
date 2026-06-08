@@ -199,14 +199,14 @@ export function UnifiedSubheader({
       )}
 
 
-      {/* Centered collapse handle — sits directly below the row (or directly below main header when collapsed) */}
+      {/* Centered collapse handle — always visible, prominent gold tab */}
       {hasConversation && hasProject && (
         <div
           style={{
             display: "flex",
             justifyContent: "center",
             alignItems: "flex-start",
-            height: expanded ? 14 : 10,
+            height: 18,
             pointerEvents: "none",
           }}
         >
@@ -220,21 +220,22 @@ export function UnifiedSubheader({
             aria-expanded={expanded}
             style={{
               pointerEvents: "auto",
-              width: 36,
-              height: expanded ? 14 : 10,
+              width: 52,
+              height: 18,
               padding: 0,
-              borderRadius: "0 0 8px 8px",
-              background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
+              borderRadius: "0 0 10px 10px",
+              background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 38%, transparent)",
               borderTop: "none",
               color: "var(--atlas-gold)",
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 9,
+              fontSize: 12,
               lineHeight: 1,
               WebkitTapHighlightColor: "transparent",
+              boxShadow: "0 2px 8px rgba(201,162,76,0.18)",
             }}
           >
             {expanded ? "▴" : "▾"}
