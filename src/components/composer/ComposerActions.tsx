@@ -86,11 +86,11 @@ const SHEET_OVERLAY: React.CSSProperties = {
   alignItems: "flex-end",
   justifyContent: "center",
   // Float clear of fixed bottom tab bar + device safe-area
-  padding: "0 14px calc(env(safe-area-inset-bottom, 0px) + 96px)",
+  padding: "16px 14px calc(env(safe-area-inset-bottom, 0px) + 96px)",
+  overflow: "hidden",
 };
 
-// Floating centered canvas — NOT edge-to-edge. Sized for mobile readability,
-// hovers above the persistent bottom navigation bar, isolates its own scroll.
+// Floating centered canvas — flex column so the inner scroll region can shrink.
 const SHEET_PANEL: React.CSSProperties = {
   position: "relative",
   zIndex: 9999,
@@ -105,9 +105,11 @@ const SHEET_PANEL: React.CSSProperties = {
   padding: "10px 14px 14px",
   display: "flex",
   flexDirection: "column",
-  maxHeight: "min(60vh, 560px)",
+  minHeight: 0,
+  maxHeight: "100%",
   overflow: "hidden",
 };
+
 
 // Inner scroll container — isolates overflow inside the floating canvas so
 // the Settings row and expanded "More" items always reach the viewport.
