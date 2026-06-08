@@ -75,7 +75,8 @@ export function UnifiedSubheader({
     <div
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
-        marginTop: expanded ? 28 : 6,
+        marginTop: expanded ? 12 : 0,
+        paddingBottom: 12,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,
@@ -204,13 +205,16 @@ export function UnifiedSubheader({
       {hasProject && (
         <div
           style={{
+            position: "absolute",
+            left: "50%",
+            bottom: 0,
+            transform: "translate(-50%, 72%)",
             display: "flex",
             justifyContent: "center",
             alignItems: "flex-start",
             height: 18,
             pointerEvents: "none",
-            position: "relative",
-            zIndex: 3,
+            zIndex: 4,
           }}
         >
           <button
@@ -223,12 +227,14 @@ export function UnifiedSubheader({
             aria-expanded={expanded}
             style={{
               pointerEvents: "auto",
-              width: 52,
-              height: 18,
+              width: 58,
+              height: 20,
               padding: 0,
-              borderRadius: "0 0 10px 10px",
-              background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 38%, transparent)",
+              borderRadius: "0 0 12px 12px",
+              background: "color-mix(in oklab, var(--atlas-bg) 58%, var(--atlas-gold) 12%)",
+              backdropFilter: "blur(18px) saturate(140%)",
+              WebkitBackdropFilter: "blur(18px) saturate(140%)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 34%, transparent)",
               borderTop: "none",
               color: "var(--atlas-gold)",
               cursor: "pointer",
