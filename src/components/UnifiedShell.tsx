@@ -390,6 +390,7 @@ function ShellBranchChip() {
 
 
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
+  const isMobile = useIsMobile();
   const ps = useProjectState(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
   // Avoid the "Untitled" flash while the project state is still loading for the first time.
@@ -402,6 +403,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const hasGithubToken = Boolean(project?.githubToken);
   const qc = useQueryClient();
   const updateProject = useUpdateProject();
+
 
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
