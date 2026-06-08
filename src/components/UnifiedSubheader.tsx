@@ -75,12 +75,13 @@ export function UnifiedSubheader({
     <div
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
-        marginTop: 50,
+        marginTop: expanded ? 28 : 6,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,
         width: "100%",
         background: "transparent",
+        transition: "margin-top 240ms ease",
       }}
     >
       {/* Collapsible tab row — slides up and out of DOM flow when collapsed */}
