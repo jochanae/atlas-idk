@@ -4187,13 +4187,13 @@ export default function Home() {
                         style={{
                           background: premium
                             ? "linear-gradient(135deg, rgba(212,175,55,0.22), rgba(201,162,76,0.10))"
-                            : isParchment ? "rgba(255,255,255,0.9)" : (globalInsightOpen ? "rgba(20,14,8,0.92)" : "rgba(255,255,255,0.03)"),
+                            : "transparent",
                           border: premium
                             ? "1px solid rgba(212,175,55,0.55)"
-                            : isParchment ? "1px solid rgba(17,17,17,0.12)" : (globalInsightOpen ? "1px solid rgba(232,200,110,0.55)" : "1px solid rgba(255,255,255,0.08)"),
-                          backdropFilter: globalInsightOpen ? "none" : "blur(8px)",
-                          borderRadius: 20,
-                          padding: "5px 8px",
+                            : "none",
+                          backdropFilter: premium ? (globalInsightOpen ? "none" : "blur(8px)") : "none",
+                          borderRadius: premium ? 20 : 0,
+                          padding: premium ? "5px 8px" : "5px 2px",
                           width: "100%",
                           minWidth: 0,
                           color: premium
@@ -4210,7 +4210,8 @@ export default function Home() {
                           boxShadow: premium
                             ? "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)"
                             : "none",
-                          transition: "color 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+                          transition: "color 160ms ease, box-shadow 160ms ease, border-color 160ms ease, opacity 160ms ease",
+                          opacity: premium ? 1 : 0.92,
                         }}
                         onMouseEnter={(e) => {
                           const el = e.currentTarget as HTMLButtonElement;
@@ -4219,8 +4220,7 @@ export default function Home() {
                             return;
                           }
                           el.style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.9)";
-                          el.style.boxShadow = isParchment ? "0 2px 10px rgba(17,17,17,0.06)" : "0 0 10px rgba(212,175,55,0.15)";
-                          if (isParchment) el.style.borderColor = "rgba(17,17,17,0.25)";
+                          el.style.opacity = "1";
                         }}
                         onMouseLeave={(e) => {
                           const el = e.currentTarget as HTMLButtonElement;
@@ -4230,7 +4230,7 @@ export default function Home() {
                           }
                           el.style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.5)";
                           el.style.boxShadow = "none";
-                          if (isParchment) el.style.borderColor = "rgba(17,17,17,0.12)";
+                          el.style.opacity = "0.92";
                         }}
                       >
                         {it.label}
