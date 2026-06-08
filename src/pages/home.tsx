@@ -4913,7 +4913,7 @@ export default function Home() {
       `}</style>
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
-          mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
+          mode="ambient"
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onProjects={() => setShowProjectsSheet(true)}
