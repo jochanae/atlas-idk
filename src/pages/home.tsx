@@ -4159,22 +4159,24 @@ export default function Home() {
               }}>
                 <div className="suggestion-chips-row" style={{
                   display: "flex",
-                  flexWrap: "wrap",
+                  flexWrap: "nowrap",
                   justifyContent: "center",
+                  alignItems: "center",
                   gap: 6,
                   fontFamily: "var(--app-font-sans)",
                   fontSize: "var(--ts-label)",
                   letterSpacing: "0.01em",
                   color: "var(--atlas-muted)",
-                  paddingInline: 12,
+                  paddingInline: 8,
                   width: "100%",
+                  maxWidth: "100%",
                   position: "relative",
                   zIndex: 20,
                 }}>
                   {intents.map((it) => {
                     const premium = it.premium;
                     return (
-                    <span key={it.label} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
+                    <span key={it.label} style={{ display: "inline-flex", alignItems: "center", flex: "1 1 0", minWidth: 0 }}>
                       <button
                         type="button"
                         onClick={it.action}
@@ -4187,15 +4189,20 @@ export default function Home() {
                             : isParchment ? "1px solid rgba(17,17,17,0.12)" : (globalInsightOpen ? "1px solid rgba(232,200,110,0.55)" : "1px solid rgba(255,255,255,0.08)"),
                           backdropFilter: globalInsightOpen ? "none" : "blur(8px)",
                           borderRadius: 20,
-                          padding: "5px 12px",
+                          padding: "5px 8px",
+                          width: "100%",
+                          minWidth: 0,
                           color: premium
                             ? "rgba(245,215,130,1)"
                             : isParchment ? "rgba(146,64,14,0.95)" : (globalInsightOpen ? "rgba(245,215,130,1)" : "rgba(212,175,55,0.5)"),
                           cursor: "pointer",
                           fontFamily: "inherit",
-                          fontSize: "var(--ts-caption)",
+                          fontSize: "clamp(10px, 2.8vw, var(--ts-caption))",
                           letterSpacing: "inherit",
                           fontWeight: premium ? 600 : (isParchment ? 600 : (globalInsightOpen ? 500 : 400)),
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
                           boxShadow: premium
                             ? "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)"
                             : "none",
