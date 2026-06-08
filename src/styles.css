@@ -580,15 +580,26 @@ body[data-axiom-global-insight="true"] .atlas-input-shell input {
 /* Composer — floating glass with no hard border or panel.
    Content scrolls cleanly underneath; only a soft blur separates it. */
 .atlas-composer-glass {
-  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  background: color-mix(in oklab, var(--atlas-bg) 3%, transparent);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
   border: none;
   border-radius: 0;
   box-shadow: none;
 }
+[data-theme="dark"] .atlas-composer-glass .atlas-input-shell,
+body:not([data-theme="parchment"]) .atlas-composer-glass .atlas-input-shell {
+  background: color-mix(in oklab, var(--atlas-bg) 14%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+[data-theme="parchment"] .atlas-composer-glass .atlas-input-shell {
+  background: color-mix(in oklab, var(--atlas-bg) 24%, transparent);
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+}
 [data-theme="parchment"] .atlas-composer-glass {
-  background: color-mix(in oklab, var(--atlas-bg) 32%, transparent);
+  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
 }
 
 /* ── Side drawer mobile sizing ──

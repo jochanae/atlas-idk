@@ -81,6 +81,7 @@ export function UnifiedSubheader({
         zIndex: 20,
         width: "100%",
         background: "transparent",
+        overflow: "visible",
         transition: "margin-top 240ms ease",
       }}
     >
@@ -200,7 +201,7 @@ export function UnifiedSubheader({
 
 
       {/* Centered collapse handle — always visible, prominent gold tab */}
-      {hasConversation && hasProject && (
+      {hasProject && (
         <div
           style={{
             display: "flex",
@@ -208,6 +209,8 @@ export function UnifiedSubheader({
             alignItems: "flex-start",
             height: 18,
             pointerEvents: "none",
+            position: "relative",
+            zIndex: 3,
           }}
         >
           <button
