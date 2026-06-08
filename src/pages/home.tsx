@@ -4159,15 +4159,17 @@ export default function Home() {
               }}>
                 <div className="suggestion-chips-row" style={{
                   display: "flex",
-                  flexWrap: "wrap",
+                  flexWrap: "nowrap",
                   justifyContent: "center",
+                  alignItems: "center",
                   gap: 6,
                   fontFamily: "var(--app-font-sans)",
                   fontSize: "var(--ts-label)",
                   letterSpacing: "0.01em",
                   color: "var(--atlas-muted)",
-                  paddingInline: 12,
+                  paddingInline: 8,
                   width: "100%",
+                  maxWidth: "100%",
                   position: "relative",
                   zIndex: 20,
                 }}>
