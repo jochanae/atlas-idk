@@ -3933,6 +3933,14 @@ export default function Workspace() {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
   });
   const project = projectState.project ?? fallbackProject;
+  const launchPreviewUrl = project?.previewUrl ?? (() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return localStorage.getItem(`atlas-preview-${id}`);
+    } catch {
+      return null;
+    }
+  })();
   const projectLoading = projectState.loading && !project ? true : fallbackProjectLoading;
   const githubPushToken = useGithubPushToken(project?.githubToken);
   // True when forge has run this session OR when saved AxiomFlow nodes exist for this project
