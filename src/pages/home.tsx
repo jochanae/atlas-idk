@@ -3822,7 +3822,7 @@ export default function Home() {
             flexShrink: 0,
             zIndex: globalInsightOpen ? 1 : 250,
             pointerEvents: "auto",
-            background: globalInsightOpen ? "transparent" : "linear-gradient(to bottom, transparent 0, var(--atlas-bg) 24px)",
+            background: "transparent",
             maxWidth: globalInsightOpen ? undefined : 680,
             margin: globalInsightOpen ? 0 : undefined,
           }}>
