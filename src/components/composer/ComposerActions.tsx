@@ -145,6 +145,7 @@ export function ComposerActions({
   scope = "composer",
   hasAttachments = false,
   trailing,
+  borderless = false,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
