@@ -36,46 +36,39 @@ import {
    Blueprint). All data here is MOCK and conforms to those types.
    ────────────────────────────────────────────────────────────────────────── */
 
-// ── Types (exported for backend wiring) ──────────────────────────────────────
-export type GeneratedFileLanguage =
-  | "typescript" | "tsx" | "javascript" | "jsx"
-  | "css" | "scss" | "html" | "json" | "md" | "sql" | "sh" | "yaml" | "other";
-
 export interface GeneratedFile {
   id: string;
   runId: string;
   path: string;              // "src/components/Foo.tsx"
-  language: GeneratedFileLanguage;
+  language: string;
   bytes: number;
   lines: number;
   content: string;
   createdAt: string;         // ISO
   updatedAt: string;         // ISO
-  status: "new" | "modified" | "unchanged" | "deleted";
+  status: string;
   previousContent?: string | null;
 }
 
-export type CodeRunStatus = "completed" | "warnings" | "failed" | "cancelled";
-
-export interface RunFileArtifact {
-  type: "file_edit";
-  path: string;
-  language: string;
-}
+export type CodeRunStatus = string;
 
 export interface GenerationRun {
   id: string;
-  title: string;
-  runStatus: CodeRunStatus;
-  runSummary: string | null;
-  runArtifacts: RunFileArtifact[] | null;
-  messageCount: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  costUsd: number;
-  totalExecutionMs: number;
-  createdAt: string;
-  updatedAt: string;
+  projectId: number;
+  userId: number;
+  prompt: string;
+  intent: string;
+  model: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  filesChanged: number;
+  linesAdded: number;
+  linesRemoved: number;
+  summary: string;
+  commitSha: string | null;
+  pushedToBranch: string | null;
 }
 
 export interface ProjectStub {
@@ -85,9 +78,7 @@ export interface ProjectStub {
   defaultBranch?: string;
 }
 
-type RunsResponse = {
-  runs: GenerationRun[];
-};
+type RunsResponse = GenerationRun[];
 
 // ── API fetchers ─────────────────────────────────────────────────────────────
 async function fetchJson<T>(path: string): Promise<T> {
@@ -158,72 +149,56 @@ const MONO: React.CSSProperties = {
 
 type MobilePane = "Files" | "Code" | "Activity";
 
+function normalizeFileStatus(status: string): "new" | "modified" | "unchanged" | "deleted" {
+  if (status === "new" || status === "modified" || status === "unchanged" || status === "deleted") {
+    return status;
+  }
+  return "modified";
+}
+
 function statusColor(s: GeneratedFile["status"]) {
-  if (s === "new") return "#7CE3A0";
-  if (s === "modified") return "#E6C687";
-  if (s === "deleted") return "#FF8A8A";
+  const status = normalizeFileStatus(s);
+  if (status === "new") return "#7CE3A0";
+  if (status === "modified") return "#E6C687";
+  if (status === "deleted") return "#FF8A8A";
   return "rgba(255,255,255,0.45)";
 }
 
 function runStatusTint(s: CodeRunStatus) {
   if (s === "completed") return "#7CE3A0";
-  if (s === "warnings") return "#E6C687";
   if (s === "failed") return "#FF8A8A";
   return "rgba(255,255,255,0.55)";
 }
 
 function runStatusLabel(s: CodeRunStatus) {
-  if (s === "warnings") return "Warnings";
-  return s;
+  return s || "unknown";
 }
 
 function fileCountForRun(run: GenerationRun) {
-  return run.runArtifacts?.length ?? 0;
+  return run.filesChanged;
 }
 
 function fileCountLabel(count: number) {
   return `${count} ${count === 1 ? "file" : "files"}`;
 }
 
-function formatDuration(ms: number) {
-  if (!Number.isFinite(ms) || ms <= 0) return "0.0s";
+function formatDuration(ms: number | null) {
+  if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) return "0.0s";
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function formatCost(cost: number) {
-  if (!Number.isFinite(cost) || cost <= 0) return "$0.00";
-  return `$${cost.toFixed(4)}`;
+function runUpdatedAt(run: GenerationRun) {
+  return run.finishedAt ?? run.startedAt;
 }
 
-function normalizeGeneratedFileLanguage(language: string): GeneratedFileLanguage {
-  const normalized = language.toLowerCase();
-  if (
-    normalized === "typescript" || normalized === "tsx" ||
-    normalized === "javascript" || normalized === "jsx" ||
-    normalized === "css" || normalized === "scss" ||
-    normalized === "html" || normalized === "json" ||
-    normalized === "md" || normalized === "sql" ||
-    normalized === "sh" || normalized === "yaml"
-  ) {
-    return normalized;
-  }
-  return "other";
-}
+function runTitle(run: GenerationRun) {
+  const summary = run.summary.trim();
+  if (summary) return summary;
 
-function filesFromRunArtifacts(run: GenerationRun | null): GeneratedFile[] {
-  if (!run?.runArtifacts?.length) return [];
-  return run.runArtifacts.map((artifact, index) => ({
-    id: `${run.id}:${index}:${artifact.path}`,
-    runId: run.id,
-    path: artifact.path,
-    language: normalizeGeneratedFileLanguage(artifact.language),
-    bytes: 0,
-    lines: 0,
-    content: "",
-    createdAt: run.createdAt,
-    updatedAt: run.updatedAt,
-    status: "modified",
-  }));
+  const prompt = run.prompt.trim();
+  if (!prompt) return "Generation run";
+  if (prompt.length <= 60) return prompt;
+  return `${prompt.slice(0, 57).trimEnd()}...`;
 }
 
 // ── File Tree ────────────────────────────────────────────────────────────────
@@ -396,24 +371,24 @@ function ActivityRail({
           border: "1px solid color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-            <RunStatusBadge status={run.runStatus} />
+            <RunStatusBadge status={run.status} />
             <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
               {fileCountLabel(fileCountForRun(run))}
             </span>
           </div>
           <div style={{ marginBottom: 6, fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)" }}>
-            {run.title}
+            {runTitle(run)}
           </div>
           <p style={{ margin: 0, fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.55 }}>
-            {run.runSummary || "Build session"}
+            {run.summary || "Build session"}
           </p>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         <Stat label="Files" value={fileCountForRun(run).toString()} />
-        <Stat label="Messages" value={run.messageCount.toString()} />
-        <Stat label="Cost" value={formatCost(run.costUsd)} tint="#7CE3A0" />
+        <Stat label="Lines" value={`+${run.linesAdded} / -${run.linesRemoved}`} tint="#7CE3A0" />
+        <Stat label="Duration" value={formatDuration(run.durationMs)} />
       </div>
 
       <div>
@@ -421,7 +396,7 @@ function ActivityRail({
           Summary
         </div>
         <p style={{ margin: 0, fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.55, opacity: 0.85 }}>
-          {run.runSummary || "Build session"}
+          {run.summary || "Build session"}
         </p>
       </div>
 
@@ -510,20 +485,20 @@ function RunCard({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <RunStatusBadge status={run.runStatus} />
+        <RunStatusBadge status={run.status} />
         <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
           {fileCountLabel(fileCountForRun(run))}
         </span>
         <span style={{ flex: 1 }} />
         <span style={{ ...MONO, fontSize: 9.5, color: "var(--atlas-muted)" }}>
-          {formatDuration(run.totalExecutionMs)}
+          {formatDuration(run.durationMs)}
         </span>
       </div>
       <div style={{ fontSize: compact ? 12 : 14, fontWeight: 500, color: "var(--atlas-fg)", marginBottom: 4 }}>
-        {run.title}
+        {runTitle(run)}
       </div>
       <p style={{ margin: 0, fontSize: compact ? 11.5 : 12.5, color: "var(--atlas-fg)", opacity: 0.8, lineHeight: 1.45 }}>
-        {run.runSummary || "Build session"}
+        {run.summary || "Build session"}
       </p>
     </button>
   );
@@ -632,16 +607,16 @@ export default function CodePage() {
   // 2. Runs
   const runsQ = useQuery<RunsResponse>({
     queryKey: ["code", "runs", projectId],
-    queryFn: () => fetchJson<RunsResponse>(`/api/projects/${projectId}/runs`),
+    queryFn: () => fetchJson<RunsResponse>(`/api/projects/${projectId}/generation-runs`),
     enabled: projectId != null,
     refetchInterval: 10_000,
   });
 
   const runs = useMemo(() => {
-    const rawRuns = runsQ.data?.runs ?? [];
+    const rawRuns = runsQ.data ?? [];
     return [...rawRuns].sort((a, b) => {
-      const aTime = new Date(a.updatedAt).getTime();
-      const bTime = new Date(b.updatedAt).getTime();
+      const aTime = new Date(runUpdatedAt(a)).getTime();
+      const bTime = new Date(runUpdatedAt(b)).getTime();
       return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
     });
   }, [runsQ.data]);
@@ -652,7 +627,17 @@ export default function CodePage() {
     return runs[0];
   }, [runs, selectedRunId]);
 
-  const files = useMemo(() => filesFromRunArtifacts(activeRun), [activeRun]);
+  // 3. Files for the selected run
+  const filesQ = useQuery<GeneratedFile[]>({
+    queryKey: ["code", "run-files", projectId, activeRun?.id],
+    queryFn: () => {
+      if (projectId == null || !activeRun) throw new Error("Missing project or run");
+      return fetchJson<GeneratedFile[]>(`/api/projects/${projectId}/generation-runs/${activeRun.id}/files`);
+    },
+    enabled: projectId != null && !!activeRun?.id,
+  });
+
+  const files = useMemo(() => filesQ.data ?? [], [filesQ.data]);
   const selectedFile = useMemo(() => {
     if (!files.length) return null;
     return files.find((f) => f.id === selectedFileId) ?? files[0];
@@ -663,8 +648,8 @@ export default function CodePage() {
     setOpenMap((m) => ({ ...m, [p]: !(m[p] ?? true) }));
 
   // Loading / error / empty states
-  const loading = projectQ.isLoading || runsQ.isLoading;
-  const error = projectQ.error || runsQ.error;
+  const loading = projectQ.isLoading || runsQ.isLoading || (!!activeRun && filesQ.isLoading);
+  const error = projectQ.error || runsQ.error || filesQ.error;
   const isStreaming = false;
   const handleSelectRun = (id: string) => {
     setSelectedRunId(id);
@@ -750,7 +735,7 @@ export default function CodePage() {
         <ToolButton
           icon={<RefreshCw size={13} />}
           label="Refresh"
-          onClick={() => { runsQ.refetch(); }}
+          onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
         />
         <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
         <ToolButton icon={<Hammer size={13} />} label="Extract to Forge" />
@@ -864,13 +849,13 @@ export default function CodePage() {
               <EmptyHint label={loading ? "Loading files…" : "No files in this run yet."} />
             )}
           </div>
-          {activeRun?.updatedAt && (
+          {activeRun && (
             <div style={{
               padding: "8px 12px", borderTop: "1px solid rgba(255,255,255,0.05)",
               display: "flex", alignItems: "center", gap: 6,
               ...MONO, fontSize: 10, color: "var(--atlas-muted)",
             }}>
-              <Clock size={10} /> Updated {new Date(activeRun.updatedAt).toLocaleTimeString()}
+              <Clock size={10} /> Updated {new Date(runUpdatedAt(activeRun)).toLocaleTimeString()}
             </div>
           )}
         </aside>
@@ -880,7 +865,7 @@ export default function CodePage() {
         {(!isMobile || mobilePane === "Code") && (
         <main style={{ ...PANEL, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
           {error ? (
-            <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); }} />
+            <ErrorState message={(error as Error).message} onRetry={() => { runsQ.refetch(); filesQ.refetch(); }} />
           ) : projectId == null ? (
             <EmptyState
               title="No project selected"
