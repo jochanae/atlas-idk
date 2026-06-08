@@ -252,7 +252,6 @@ export function ReadinessRing({
       </LongPressTip>
 
       {!hideModePill && (
-      <LongPressTip tip="Readiness mode: Blended · tap to switch to Architecture or Decisions">
         <button
           onClick={cycleMode}
           onPointerDown={(e) => {
@@ -283,7 +282,6 @@ export function ReadinessRing({
         >
           {MODE_META[mode].abbr}
         </button>
-      </LongPressTip>
       )}
       {showTooltip && tooltipLayout && typeof document !== "undefined" && createPortal(
         <>
