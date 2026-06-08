@@ -141,6 +141,23 @@ export function GlobalInsightSurface({
     }
   };
 
+  const pickStarter = (starter: string) => {
+    setInput(starter);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.style.height = "0px";
+      el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+    });
+  };
+
+  const intents: Array<{ label: string; action: () => void; premium?: boolean }> = [
+    { label: "Where were we", action: () => void onOpenHistory(), premium: true },
+    { label: "Think out loud", action: () => pickStarter("Think out loud about this with me: ") },
+    { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
+    { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
+  ];
+
   return (
     <div
       className="atlas-global-insight-surface"
@@ -151,7 +168,7 @@ export function GlobalInsightSurface({
         top: "var(--atlas-header-height, 56px)",
         left: 0,
         right: 0,
-        bottom: 0,
+          bottom: "var(--atlas-dock-height, 64px)",
         display: "flex",
         flexDirection: "column",
         background: "var(--atlas-bg)",
@@ -160,16 +177,6 @@ export function GlobalInsightSurface({
         touchAction: "none",
       }}
     >
-      {/* Header strip */}
-      <div
-        style={{
-          flexShrink: 0,
-          padding: "14px 20px 12px",
-          textAlign: "center",
-          position: "relative",
-          borderBottom: "1px solid rgba(212,175,55,0.08)",
-        }}
-      >
         <button
           type="button"
           onClick={onExit}
@@ -182,47 +189,20 @@ export function GlobalInsightSurface({
             height: 32,
             borderRadius: 999,
             background: "transparent",
-            border: "1px solid rgba(212,175,55,0.25)",
+            border: "1px solid rgba(212,175,55,0.2)",
             color: "var(--atlas-gold)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
             WebkitTapHighlightColor: "transparent",
+            zIndex: 2,
           }}
         >
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
         </button>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "var(--ts-display-md, 22px)",
-            fontWeight: 300,
-            letterSpacing: "-0.02em",
-            background: "linear-gradient(135deg, #F2D89A 0%, #C9A24C 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          Global Insight
-        </h1>
-        <p
-          style={{
-            margin: "4px 0 0",
-            fontSize: 11,
-            color: "var(--atlas-gold)",
-            opacity: 0.7,
-            fontFamily: "var(--app-font-mono)",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          Strategic view · All projects
-        </p>
-      </div>
 
       {/* Isolated scroll container */}
       <div
@@ -236,7 +216,7 @@ export function GlobalInsightSurface({
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
           touchAction: "pan-y",
-          padding: "20px 20px 24px",
+          padding: "18px 20px 24px",
           display: "flex",
           flexDirection: "column",
           gap: 16,
@@ -244,6 +224,105 @@ export function GlobalInsightSurface({
           msOverflowStyle: "none",
         }}
       >
+        <div
+          style={{
+            alignSelf: "center",
+            paddingTop: 4,
+            paddingInline: 36,
+            fontSize: 10,
+            color: "var(--atlas-gold)",
+            opacity: 0.68,
+            fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            textAlign: "center",
+          }}
+        >
+          Global Insight · All projects
+        </div>
+
+        {messages.length === 0 && (
+          <div
+            style={{
+              minHeight: "calc(100% - 12px)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+              paddingBottom: 24,
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "clamp(22px, 6vw, 30px)",
+                lineHeight: 1.2,
+                fontWeight: 300,
+                color: "var(--atlas-fg)",
+                textAlign: "center",
+              }}
+            >
+              Ask across every project.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%", maxWidth: 420 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minWidth: 0 }}>
+                {intents.map((it) => {
+                  const premium = it.premium;
+                  return (
+                    <span key={it.label} style={{ display: "inline-flex", alignItems: "center", flex: "1 1 0", minWidth: 0, justifyContent: "center" }}>
+                      <button
+                        type="button"
+                        onClick={it.action}
+                        style={{
+                          width: "100%",
+                          minWidth: 0,
+                          background: premium ? "linear-gradient(135deg, rgba(212,175,55,0.22), rgba(201,162,76,0.10))" : "transparent",
+                          border: premium ? "1px solid rgba(212,175,55,0.55)" : "none",
+                          borderRadius: premium ? 20 : 0,
+                          padding: premium ? "5px 8px" : "5px 2px",
+                          color: premium ? "rgba(245,215,130,1)" : "rgba(245,215,130,0.88)",
+                          cursor: "pointer",
+                          fontFamily: "var(--app-font-sans)",
+                          fontSize: "clamp(10px, 2.9vw, 12px)",
+                          fontWeight: premium ? 600 : 500,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          boxShadow: premium ? "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)" : "none",
+                          opacity: premium ? 1 : 0.92,
+                          transition: "color 160ms ease, box-shadow 160ms ease, opacity 160ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          const el = e.currentTarget as HTMLButtonElement;
+                          if (premium) {
+                            el.style.boxShadow = "0 0 0 1px rgba(212,175,55,0.32), 0 0 22px rgba(212,175,55,0.4)";
+                            return;
+                          }
+                          el.style.color = "rgba(245,215,130,1)";
+                          el.style.opacity = "1";
+                        }}
+                        onMouseLeave={(e) => {
+                          const el = e.currentTarget as HTMLButtonElement;
+                          if (premium) {
+                            el.style.boxShadow = "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)";
+                            return;
+                          }
+                          el.style.color = "rgba(245,215,130,0.88)";
+                          el.style.opacity = "0.92";
+                        }}
+                      >
+                        {it.label}
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, i) =>
           msg.role === "assistant" ? (
             <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
