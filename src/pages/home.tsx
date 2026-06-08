@@ -4258,7 +4258,7 @@ export default function Home() {
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)"; }}
                 >
                   <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
-                  help me decide where to start
+                  need a starting point?
                   <span style={{ fontSize: "var(--ts-label)", color: "inherit", display: "inline-block" }}>↻</span>
                 </button>
               </div>
