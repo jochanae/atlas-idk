@@ -1050,6 +1050,260 @@ function ShellStatusChip({ projectId }: { projectId: number | null }) {
 }
 
 
+// ── Unified completion chip: one pie icon that rolls up Architecture,
+// Decisions, Repo, and Live URL into a single ring. Tap to open a panel
+// with the breakdown + mode toggle + recent ledger entries.
+function ShellCompletionChip({ projectId }: { projectId: number | null }) {
+  const ps = useProjectState(projectId);
+  const [, navigate] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<ReadinessMode>(() => {
+    try {
+      const v = localStorage.getItem(READINESS_MODE_KEY) as ReadinessMode | null;
+      return v === "arch" || v === "decisions" || v === "blended" ? v : "blended";
+    } catch { return "blended"; }
+  });
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
+  if (projectId == null) return null;
+
+  const proj = ps.project as {
+    latestSnapshotScore?: number | null;
+    nodeState?: ProjectNodeState | null;
+    name?: string;
+    linkedRepo?: string | null;
+    previewUrl?: string | null;
+  } | null;
+  const ns = (proj?.nodeState ?? {}) as Record<string, unknown>;
+  const decisionsCount = ps.decisions?.length ?? 0;
+  const active = !!ps.activeSession;
+
+  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
+  let archTotal = 0, archResolved = 0, decTotal = 0, decResolved = 0;
+  Object.entries(ns).forEach(([nid, raw]) => {
+    const resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
+    if (ARCH_IDS.has(nid)) { archTotal++; if (resolved) archResolved++; }
+    else { decTotal++; if (resolved) decResolved++; }
+  });
+  const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
+  const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
+  const blendedScore = proj?.latestSnapshotScore ?? (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
+
+  const repoLinked = Boolean(proj?.linkedRepo);
+  const previewLinked = Boolean(proj?.previewUrl);
+  const repoPct = repoLinked ? 100 : 0;
+  const urlPct = previewLinked ? 100 : 0;
+  const completion = Math.round((archScore + decisionsScore + repoPct + urlPct) / 4);
+
+  const displayScore = mode === "arch" ? archScore : mode === "decisions" ? decisionsScore : blendedScore;
+  const meta = MODE_META[mode];
+
+  const setNextMode = (m: ReadinessMode) => {
+    setMode(m);
+    try { localStorage.setItem(READINESS_MODE_KEY, m); } catch {}
+  };
+
+  const SIZE = 26;
+  const R = 10;
+  const CX = SIZE / 2;
+  const CY = SIZE / 2;
+  const C = 2 * Math.PI * R;
+  const dash = (completion / 100) * C;
+  const ringColor = completion >= 80 ? "#4ade80" : completion >= 50 ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)";
+
+  const go = (path: string) => { setOpen(false); navigate(path); };
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={`Completion ${completion}%. ${decisionsCount} ledger entries. Open breakdown.`}
+        title={`Completion ${completion}% — tap for breakdown`}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "3px 8px", borderRadius: 999,
+          background: open ? "rgba(var(--atlas-muted-rgb),0.12)" : "transparent",
+          border: "1px solid rgba(var(--atlas-muted-rgb),0.14)",
+          cursor: "pointer", userSelect: "none", WebkitUserSelect: "none",
+          color: "var(--atlas-fg)",
+        }}
+      >
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ display: "block" }}>
+          <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(var(--atlas-muted-rgb),0.22)" strokeWidth={2.5} />
+          <circle
+            cx={CX} cy={CY} r={R} fill="none"
+            stroke={ringColor} strokeWidth={2.5} strokeLinecap="round"
+            strokeDasharray={`${dash} ${C - dash}`}
+            transform={`rotate(-90 ${CX} ${CY})`}
+            style={{ transition: "stroke-dasharray 240ms ease" }}
+          />
+          {active && (
+            <circle cx={CX} cy={CY} r={2.2} fill="#4ade80" className="atlas-pulse-dot" />
+          )}
+        </svg>
+        <span style={{
+          fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
+          letterSpacing: "0.02em", lineHeight: 1,
+        }}>{completion}%</span>
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Project completion"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            right: 0,
+            width: 300,
+            maxWidth: "calc(100vw - 24px)",
+            background: "var(--atlas-bg)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid var(--atlas-border)",
+            borderRadius: 14,
+            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+            color: "var(--atlas-fg)",
+            zIndex: 1000,
+            overflow: "hidden",
+            fontFamily: "var(--app-font-sans)",
+          }}
+        >
+          <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.12)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 18, fontWeight: 700, color: "var(--atlas-fg)", lineHeight: 1,
+            }}>{completion}%</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--atlas-fg)", lineHeight: 1.2 }}>Project completion</div>
+              <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.2 }}>
+                {active ? "Session active" : "Idle"} · {decisionsCount} {decisionsCount === 1 ? "entry" : "entries"}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              style={{
+                width: 26, height: 26, borderRadius: 999, border: "1px solid rgba(var(--atlas-muted-rgb),0.18)",
+                background: "transparent", color: "var(--atlas-muted)", cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, lineHeight: 1,
+              }}
+            >×</button>
+          </div>
+
+          <div style={{ padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", marginRight: 4 }}>View</span>
+            {(["blended", "arch", "decisions"] as ReadinessMode[]).map((m) => {
+              const isActive = mode === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setNextMode(m)}
+                  style={{
+                    padding: "3px 8px", borderRadius: 999, cursor: "pointer",
+                    border: "1px solid " + (isActive ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb),0.18)"),
+                    background: isActive ? "rgba(var(--atlas-muted-rgb),0.10)" : "transparent",
+                    color: isActive ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700,
+                    letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1,
+                  }}
+                >{MODE_META[m].abbr}</button>
+              );
+            })}
+            <span style={{ marginLeft: "auto", fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: "var(--atlas-gold)" }}>{displayScore}%</span>
+          </div>
+          <div style={{ padding: "0 14px 10px", fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.35 }}>
+            {meta.label} — {meta.description}
+          </div>
+
+          <div style={{ borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)" }}>
+            <CompletionRow
+              label="Architecture"
+              sub={`${archResolved}/${archTotal || 6} resolved`}
+              pct={archScore}
+              onClick={() => go("/master-map")}
+            />
+            <CompletionRow
+              label="Decisions"
+              sub={`${decResolved}/${decTotal} resolved · ${decisionsCount} committed`}
+              pct={decisionsScore}
+              onClick={() => go("/ledger")}
+            />
+            <CompletionRow
+              label="Repo"
+              sub={repoLinked ? "Linked" : "Not linked"}
+              pct={repoPct}
+              onClick={() => go("/workspace")}
+            />
+            <CompletionRow
+              label="Live URL"
+              sub={previewLinked ? "Set" : "Not set"}
+              pct={urlPct}
+              onClick={() => go("/workspace")}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => go("/ledger")}
+            style={{
+              display: "block", width: "100%", padding: "10px 14px",
+              background: "transparent", border: "none", borderTop: "1px solid rgba(var(--atlas-muted-rgb),0.12)",
+              cursor: "pointer", color: "var(--atlas-gold)", fontSize: 12, fontWeight: 600,
+              fontFamily: "var(--app-font-mono)", textTransform: "uppercase", letterSpacing: "var(--ls-mono-cap)",
+              textAlign: "center",
+            }}
+          >
+            Open Ledger →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompletionRow({ label, sub, pct, onClick }: { label: string; sub: string; pct: number; onClick: () => void }) {
+  const color = pct >= 80 ? "#4ade80" : pct >= 50 ? "var(--atlas-gold)" : pct > 0 ? "rgba(252,165,165,0.9)" : "rgba(var(--atlas-muted-rgb),0.5)";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 10, width: "100%",
+        padding: "10px 14px", background: "transparent", border: "none",
+        borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.08)",
+        cursor: "pointer", textAlign: "left", color: "var(--atlas-fg)",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(var(--atlas-muted-rgb),0.06)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{label}</div>
+        <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginTop: 2, lineHeight: 1.2 }}>{sub}</div>
+      </div>
+      <div style={{ position: "relative", width: 56, height: 4, borderRadius: 999, background: "rgba(var(--atlas-muted-rgb),0.18)", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, width: `${pct}%`, background: color, transition: "width 240ms ease" }} />
+      </div>
+      <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: color, minWidth: 32, textAlign: "right" }}>{pct}%</div>
+    </button>
+  );
+}
+
+
 function ShellFooterIcon({ icon }: { icon: ShellNavIcon }) {
   const common = {
     width: 20,
@@ -1542,8 +1796,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
-            <ShellReadinessChip projectId={activeProjectId} />
-            <ShellStatusChip projectId={activeProjectId} />
+            <ShellCompletionChip projectId={activeProjectId} />
             {location === "/home" && <ThinkFreelyHeaderToggle />}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
