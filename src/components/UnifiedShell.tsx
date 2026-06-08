@@ -13,7 +13,8 @@ import { updateProject, useUpdateProject, getGetProjectQueryKey, Session, Projec
 import { useLocation } from "wouter";
 import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
-import { useIsMobile, useIsTinyMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
 import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
