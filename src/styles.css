@@ -580,8 +580,9 @@ body[data-axiom-global-insight="true"] .atlas-input-shell input {
 /* Composer — floating glass with no hard border or panel.
    Content scrolls cleanly underneath; only a soft blur separates it. */
 .atlas-composer-glass {
-  background: color-mix(in oklab, var(--atlas-bg) 18%, transparent);
-  backdrop-filter: blur(28px) saturate(160%);
+  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   border: none;
   border-radius: 0;
   box-shadow: none;
