@@ -609,7 +609,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-        {!isMobile && <ShellBranchChip />}
+        {!isTinyMobile && <ShellBranchChip />}
         </>
 
       )}
