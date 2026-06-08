@@ -3306,7 +3306,7 @@ export default function Home() {
           <div style={{
             minHeight: globalInsightOpen
               ? 0
-              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))"),
+              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
             height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
