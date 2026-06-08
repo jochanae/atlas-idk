@@ -147,11 +147,30 @@ export function ReadinessRing({
   
   const [showTooltip, setShowTooltip] = useState(false);
   const anchorRef = useRef<HTMLDivElement | null>(null);
+  const pressTimerRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
   const MODES: ReadinessMode[] = ["blended", "arch", "decisions"];
   const cycleMode = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     const next = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
     onModeChange(next);
+  };
+  const clearPressTimer = () => {
+    if (pressTimerRef.current) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+  const startLongPress = () => {
+    clearPressTimer();
+    pressTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = true;
+      setShowTooltip(true);
+    }, 420);
   };
   const blended = computeBlendedScore(archScore, decisionsScore);
   const tooltipText = trend
@@ -191,6 +210,8 @@ export function ReadinessRing({
     <div
       ref={anchorRef}
       style={{ display: "flex", alignItems: "center", gap: wrapperGap, flexShrink: 0, position: "relative" }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
     >
       {/* Combined readiness pill — score% + delta in ONE element */}
       <LongPressTip tip="Readiness score — how complete this project is across architecture and committed decisions">
@@ -236,7 +257,17 @@ export function ReadinessRing({
           onClick={cycleMode}
           onPointerDown={(e) => {
             e.stopPropagation();
-            setShowTooltip((v) => !v);
+            startLongPress();
+          }}
+          onPointerUp={clearPressTimer}
+          onPointerLeave={clearPressTimer}
+          onPointerCancel={clearPressTimer}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clearPressTimer();
+            suppressClickRef.current = true;
+            setShowTooltip(true);
           }}
           title={`Viewing: ${MODE_META[mode].description}. Click to switch mode.`}
           aria-label={`Readiness mode: ${MODE_META[mode].label}. Click to cycle modes.`}
