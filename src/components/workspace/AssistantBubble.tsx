@@ -2083,15 +2083,19 @@ export function AssistantBubble({
             <>
               <div
                 onPointerDown={() => setMenuOpen(false)}
+                onTouchStart={() => setMenuOpen(false)}
                 onClick={() => setMenuOpen(false)}
-                style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.001)" }}
+                style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
               />
               <div
                 role="menu"
+                onClick={(e) => e.stopPropagation()}
                 style={{
                   position: "fixed", top: "auto", left: "auto", zIndex: 9999,
                   marginTop: 6,
-                  minWidth: 220, padding: 6, borderRadius: 12,
+                  minWidth: 220, maxWidth: "calc(100vw - 16px)",
+                  overflowY: "auto", WebkitOverflowScrolling: "touch",
+                  padding: 6, borderRadius: 12,
                   background: "var(--atlas-surface)",
                   border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
                   boxShadow: "0 18px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
@@ -2102,15 +2106,20 @@ export function AssistantBubble({
                   const trigger = el.parentElement?.parentElement?.querySelector('[aria-label="More actions"]') as HTMLElement | null;
                   if (!trigger) return;
                   const r = trigger.getBoundingClientRect();
-                  const menuH = el.offsetHeight || 320;
-                  const menuW = 228;
                   const vh = window.innerHeight;
                   const vw = window.innerWidth;
-                  // Flip up if not enough room below
+                  const menuW = Math.min(228, vw - 16);
+                  const desired = el.scrollHeight || 320;
+                  const maxH = vh - 24;
+                  const menuH = Math.min(desired, maxH);
+                  el.style.maxHeight = `${maxH}px`;
                   const spaceBelow = vh - r.bottom;
-                  const top = spaceBelow < menuH + 16 && r.top > menuH + 16
-                    ? Math.max(8, r.top - menuH - 6)
-                    : Math.min(vh - menuH - 8, r.bottom + 6);
+                  const spaceAbove = r.top;
+                  const top = spaceBelow >= menuH + 12
+                    ? r.bottom + 6
+                    : spaceAbove >= menuH + 12
+                      ? r.top - menuH - 6
+                      : Math.max(8, vh - menuH - 8);
                   const left = Math.max(8, Math.min(vw - menuW - 8, r.left));
                   el.style.top = `${top}px`;
                   el.style.left = `${left}px`;

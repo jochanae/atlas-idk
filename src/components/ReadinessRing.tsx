@@ -174,6 +174,15 @@ export function ReadinessRing({
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
+      {showTooltip && (
+        <div
+          onPointerDown={() => setShowTooltip(false)}
+          onTouchStart={() => setShowTooltip(false)}
+          onClick={() => setShowTooltip(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "transparent" }}
+        />
+      )}
+
       {/* Combined readiness pill — score% + delta in ONE element */}
       <LongPressTip tip="Readiness score — how complete this project is across architecture and committed decisions">
         <button
@@ -239,11 +248,15 @@ export function ReadinessRing({
       )}
       {showTooltip && (
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
-            position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+            position: "absolute", bottom: "calc(100% + 8px)", right: 0,
             background: "var(--atlas-surface)", border: "1px solid rgba(201,162,76,0.2)",
-            borderRadius: 8, padding: "8px 10px", minWidth: 150, zIndex: 10000,
-            pointerEvents: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.55)", whiteSpace: "nowrap",
+            borderRadius: 8, padding: "8px 10px",
+            width: "min(220px, calc(100vw - 24px))",
+            maxWidth: "calc(100vw - 24px)",
+            zIndex: 10000,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.55)",
           }}
         >
           <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.1em", marginBottom: 6, textTransform: "uppercase" }}>
