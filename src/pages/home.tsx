@@ -4441,7 +4441,11 @@ export default function Home() {
         messages={nexusChat.messages as any}
         input={input}
         setInput={setInput}
-        onSubmit={() => handleSubmit(undefined, { forceStayOnHome: true })}
+        onSubmit={() => {
+          const result = handleSubmit(undefined, { forceStayOnHome: true });
+          setInput("");
+          return result;
+        }}
         isSending={isSending}
         isStreaming={isAtlasStreaming}
         pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
