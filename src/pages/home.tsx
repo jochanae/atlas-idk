@@ -4450,6 +4450,8 @@ export default function Home() {
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
         onExit={handleLockTap}
+        onAddAsset={() => fileInputRef.current?.click()}
+        onMore={() => setShowDrawer(true)}
       />
 
       {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
