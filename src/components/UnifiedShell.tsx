@@ -291,6 +291,104 @@ function repoNameFromFullName(fullName: string): string {
   return trimmed.split("/").filter(Boolean).pop() || trimmed;
 }
 
+function ShellBranchChip() {
+  const [open, setOpen] = useState(false);
+  const branches = ["main"]; // TODO: wire to repo branches list
+  const current = "main";
+  return (
+    <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Branch"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          background: "rgba(28,25,23,0.55)",
+          border: "1px solid rgba(201,162,76,0.18)",
+          borderRadius: 999,
+          padding: "3px 8px",
+          cursor: "pointer",
+          color: "var(--atlas-fg)",
+          fontFamily: "var(--app-font-mono, monospace)",
+          fontSize: 11,
+          letterSpacing: "0.04em",
+          opacity: 0.92,
+          pointerEvents: "auto",
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.7 }}>
+          <line x1="6" y1="3" x2="6" y2="15" />
+          <circle cx="18" cy="6" r="3" />
+          <circle cx="6" cy="18" r="3" />
+          <path d="M18 9a9 9 0 0 1-9 9" />
+        </svg>
+        <span>{current}</span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div
+            role="listbox"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              left: 0,
+              zIndex: 50,
+              minWidth: 180,
+              background: "color-mix(in oklab, var(--atlas-surface) 96%, transparent)",
+              backdropFilter: "blur(18px)",
+              border: "1px solid rgba(201,162,76,0.22)",
+              borderRadius: 12,
+              boxShadow: "0 18px 40px rgba(0,0,0,0.55)",
+              padding: 6,
+            }}
+          >
+            <div style={{ fontFamily: "var(--app-font-mono, monospace)", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", padding: "6px 10px 4px" }}>
+              Branch
+            </div>
+            {branches.map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setOpen(false)}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 10px",
+                  background: b === current ? "rgba(201,162,76,0.10)" : "transparent",
+                  border: "none",
+                  borderRadius: 8,
+                  color: "var(--atlas-fg)",
+                  fontFamily: "var(--app-font-mono, monospace)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ opacity: b === current ? 1 : 0, color: "var(--atlas-gold)" }}>✓</span>
+                <span>{b}</span>
+              </button>
+            ))}
+            <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 11, color: "var(--atlas-muted)", padding: "6px 10px 4px", opacity: 0.7 }}>
+              More branches coming soon.
+            </div>
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+
 function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const ps = useProjectState(projectId);
   const project = ps.project as (Project & { status?: string | null; latestSnapshotScore?: number | null; linkedRepo?: string | null; githubToken?: string | null }) | null;
