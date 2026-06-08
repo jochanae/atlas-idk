@@ -174,6 +174,15 @@ export function ReadinessRing({
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
+      {showTooltip && (
+        <div
+          onPointerDown={() => setShowTooltip(false)}
+          onTouchStart={() => setShowTooltip(false)}
+          onClick={() => setShowTooltip(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "transparent" }}
+        />
+      )}
+
       {/* Combined readiness pill — score% + delta in ONE element */}
       <LongPressTip tip="Readiness score — how complete this project is across architecture and committed decisions">
         <button
