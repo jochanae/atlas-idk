@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import JSZip from "jszip";
+import { toast } from "sonner";
+import { CodeEditor } from "@/components/code/CodeEditor";
+import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { apiUrl } from "@/lib/api";
+import { parseLinkedRepo } from "@/lib/githubRepo";
 import {
   ArrowLeft,
   Code2,
@@ -75,6 +80,8 @@ export interface ProjectStub {
   id: number;
   name: string;
   repo?: string | null;       // "owner/repo"
+  linkedRepo?: string | null;
+  githubToken?: string | null;
   defaultBranch?: string;
 }
 
@@ -203,12 +210,13 @@ function runTitle(run: GenerationRun) {
 
 // ── File Tree ────────────────────────────────────────────────────────────────
 function FileTree({
-  node, depth, selectedPath, onSelect, openMap, toggleOpen, query,
+  node, depth, selectedPath, onSelect, openMap, toggleOpen, query, edits,
 }: {
   node: TreeNode; depth: number; selectedPath: string;
   onSelect: (f: GeneratedFile) => void;
   openMap: Record<string, boolean>; toggleOpen: (p: string) => void;
   query: string;
+  edits: Record<string, string>;
 }) {
   if (!node.children) return null;
   const entries = Object.values(node.children).sort((a, b) => {
@@ -225,6 +233,7 @@ function FileTree({
         if (!matches && isFile) return null;
         const isOpen = openMap[child.path] ?? depth < 2;
         const selected = isFile && selectedPath === child.path;
+        const isEdited = !!child.file && Object.prototype.hasOwnProperty.call(edits, child.file.id);
 
         return (
           <div key={child.path}>
@@ -249,10 +258,18 @@ function FileTree({
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {child.name}
                   </span>
+                  {isEdited && (
+                    <span style={{
+                      ...MONO, fontSize: 9, color: "var(--atlas-gold)", letterSpacing: "0.08em",
+                      textTransform: "uppercase", flexShrink: 0,
+                    }}>
+                      edited
+                    </span>
+                  )}
                   <span style={{
                     width: 6, height: 6, borderRadius: 99,
-                    background: statusColor(child.file!.status),
-                    boxShadow: `0 0 8px ${statusColor(child.file!.status)}`,
+                    background: isEdited ? "var(--atlas-gold)" : statusColor(child.file!.status),
+                    boxShadow: `0 0 8px ${isEdited ? "var(--atlas-gold)" : statusColor(child.file!.status)}`,
                   }} />
                 </>
               ) : (
@@ -271,7 +288,7 @@ function FileTree({
               <FileTree
                 node={child} depth={depth + 1}
                 selectedPath={selectedPath} onSelect={onSelect}
-                openMap={openMap} toggleOpen={toggleOpen} query={query}
+                openMap={openMap} toggleOpen={toggleOpen} query={query} edits={edits}
               />
             )}
           </div>
@@ -282,9 +299,20 @@ function FileTree({
 }
 
 // ── Code Viewer ──────────────────────────────────────────────────────────────
-function CodeViewer({ file }: { file: GeneratedFile }) {
+function CodeViewer({
+  file,
+  value,
+  isEdited,
+  onChange,
+}: {
+  file: GeneratedFile;
+  value: string;
+  isEdited: boolean;
+  onChange: (next: string) => void;
+}) {
   const [copied, setCopied] = useState(false);
-  const lines = file.content.split("\n");
+  const lineCount = value.split("\n").length;
+  const byteCount = new Blob([value]).size;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
@@ -302,13 +330,22 @@ function CodeViewer({ file }: { file: GeneratedFile }) {
         }}>
           {file.status}
         </span>
+        {isEdited && (
+          <span style={{
+            ...MONO, fontSize: 10, padding: "2px 7px", borderRadius: 5,
+            background: "rgba(230,198,135,0.08)",
+            color: "var(--atlas-gold)", letterSpacing: "0.08em", textTransform: "uppercase",
+          }}>
+            unsaved
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         <span style={{ ...MONO, fontSize: 11, color: "var(--atlas-muted)" }}>
-          {file.lines} lines · {(file.bytes / 1024).toFixed(1)} kb
+          {lineCount} lines · {(byteCount / 1024).toFixed(1)} kb
         </span>
         <button
           onClick={() => {
-            navigator.clipboard.writeText(file.content);
+            navigator.clipboard.writeText(value);
             setCopied(true); setTimeout(() => setCopied(false), 1500);
           }}
           style={{
@@ -325,23 +362,8 @@ function CodeViewer({ file }: { file: GeneratedFile }) {
       </div>
 
       {/* Code body */}
-      <div style={{ flex: 1, minHeight: 0, overflow: "auto", background: "#0A0910" }}>
-        <pre style={{
-          margin: 0, padding: "14px 0", ...MONO,
-          fontSize: 12.5, lineHeight: 1.65, color: "rgba(240,238,232,0.9)",
-        }}>
-          {lines.map((line, i) => (
-            <div key={i} style={{ display: "flex", paddingLeft: 0 }}>
-              <span style={{
-                display: "inline-block", width: 48, textAlign: "right", paddingRight: 14,
-                color: "rgba(255,255,255,0.22)", userSelect: "none", flexShrink: 0,
-              }}>{i + 1}</span>
-              <span style={{ flex: 1, paddingRight: 16, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                {line || " "}
-              </span>
-            </div>
-          ))}
-        </pre>
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: "#0A0910" }}>
+        <CodeEditor value={value} language={`${file.language} ${file.path}`} onChange={onChange} />
       </div>
     </div>
   );
@@ -572,6 +594,9 @@ export default function CodePage() {
   const [mobilePane, setMobilePane] = useState<MobilePane>("Code");
   const [selectedRunId, setSelectedRunId] = useState<string | null>(getRunIdFromUrl());
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+  const [isPushingGithub, setIsPushingGithub] = useState(false);
 
   const projectId = useMemo(() => getProjectIdFromUrl(), []);
 
@@ -603,6 +628,11 @@ export default function CodePage() {
     enabled: projectId != null,
     staleTime: 60_000,
   });
+  const githubPushToken = useGithubPushToken(projectQ.data?.githubToken);
+  const linkedRepo = useMemo(
+    () => parseLinkedRepo(projectQ.data?.linkedRepo ?? projectQ.data?.repo ?? null),
+    [projectQ.data?.linkedRepo, projectQ.data?.repo],
+  );
 
   // 2. Runs
   const runsQ = useQuery<RunsResponse>({
@@ -655,6 +685,102 @@ export default function CodePage() {
     setSelectedRunId(id);
     setSelectedFileId(null);
     if (isMobile) setMobilePane("Files");
+  };
+
+  const selectedFileValue = selectedFile
+    ? edits[selectedFile.id] ?? selectedFile.content
+    : "";
+
+  const handleDownloadZip = async () => {
+    if (!activeRun || files.length === 0) {
+      toast.error("No files available to download.");
+      return;
+    }
+
+    setIsDownloadingZip(true);
+    try {
+      const zip = new JSZip();
+      for (const file of files) {
+        zip.file(file.path, edits[file.id] ?? file.content ?? "");
+      }
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${projectQ.data?.name || "atlas"}-run-${activeRun.id.slice(0, 8)}.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Downloaded ${files.length} file${files.length === 1 ? "" : "s"}.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? `Download failed: ${e.message}` : "Download failed.");
+    } finally {
+      setIsDownloadingZip(false);
+    }
+  };
+
+  const handlePushToGithub = async () => {
+    if (!activeRun || files.length === 0) {
+      toast.error("No files available to push.");
+      return;
+    }
+    if (!linkedRepo) {
+      toast.error("No linked GitHub repository found for this project.");
+      return;
+    }
+    if (!githubPushToken) {
+      toast.error("GitHub token not found. Add it in the Connections tab.");
+      return;
+    }
+
+    setIsPushingGithub(true);
+    const branch = `atlas/run-${activeRun.id.slice(0, 8)}-${Date.now().toString(36).slice(-4)}`;
+    try {
+      const branchRes = await fetch("/api/github/branch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-github-token": githubPushToken },
+        credentials: "include",
+        body: JSON.stringify({
+          repo: linkedRepo.fullName,
+          branch,
+          baseBranch: linkedRepo.defaultBranch,
+        }),
+      });
+      if (!branchRes.ok) {
+        const body = await branchRes.json().catch(() => ({})) as { error?: string; detail?: string };
+        throw new Error(body.error ?? body.detail ?? `Branch creation failed: HTTP ${branchRes.status}`);
+      }
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const commitRes = await fetch("/api/github/commit", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-github-token": githubPushToken },
+          credentials: "include",
+          body: JSON.stringify({
+            repo: linkedRepo.fullName,
+            branch,
+            path: file.path,
+            content: edits[file.id] ?? file.content ?? "",
+            message: files.length === 1
+              ? `Atlas: update ${file.path.split("/").pop() ?? "generated file"}`
+              : `Atlas: update generation run ${activeRun.id.slice(0, 8)} (${i + 1}/${files.length})`,
+          }),
+        });
+        if (!commitRes.ok) {
+          const body = await commitRes.json().catch(() => ({})) as { error?: string; detail?: string };
+          throw new Error(body.error ?? body.detail ?? `Commit failed for ${file.path}: HTTP ${commitRes.status}`);
+        }
+      }
+
+      toast.success(`Pushed ${files.length} file${files.length === 1 ? "" : "s"} to ${linkedRepo.fullName}:${branch}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? `GitHub push failed: ${e.message}` : "GitHub push failed.");
+    } finally {
+      setIsPushingGithub(false);
+    }
   };
 
   return (
@@ -739,8 +865,19 @@ export default function CodePage() {
         />
         <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
         <ToolButton icon={<Hammer size={13} />} label="Extract to Forge" />
-        <ToolButton icon={<Download size={13} />} label="Download .zip" />
-        <ToolButton icon={<Github size={13} />} label="Push to GitHub" primary />
+        <ToolButton
+          icon={<Download size={13} />}
+          label={isDownloadingZip ? "Downloading…" : "Download .zip"}
+          onClick={() => { void handleDownloadZip(); }}
+          disabled={isDownloadingZip}
+        />
+        <ToolButton
+          icon={<Github size={13} />}
+          label={isPushingGithub ? "Pushing…" : "Push to GitHub"}
+          onClick={() => { void handlePushToGithub(); }}
+          disabled={isPushingGithub}
+          primary
+        />
         <button
           onClick={() => setShowRail((v) => !v)}
           title="Toggle activity rail"
@@ -843,7 +980,7 @@ export default function CodePage() {
                 node={tree} depth={0}
                 selectedPath={selectedFile.path}
                 onSelect={(f) => setSelectedFileId(f.id)}
-                openMap={openMap} toggleOpen={toggleOpen} query={query}
+                openMap={openMap} toggleOpen={toggleOpen} query={query} edits={edits}
               />
             ) : (
               <EmptyHint label={loading ? "Loading files…" : "No files in this run yet."} />
@@ -872,7 +1009,12 @@ export default function CodePage() {
               hint="Open this page with ?projectId=<id> or select a project from the workspace."
             />
           ) : selectedFile ? (
-            <CodeViewer file={selectedFile} />
+            <CodeViewer
+              file={selectedFile}
+              value={selectedFileValue}
+              isEdited={Object.prototype.hasOwnProperty.call(edits, selectedFile.id)}
+              onChange={(next) => setEdits((current) => ({ ...current, [selectedFile.id]: next }))}
+            />
           ) : (
             <RunList
               runs={runs}
@@ -953,10 +1095,23 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function ToolButton({ icon, label, primary, onClick }: { icon: React.ReactNode; label: string; primary?: boolean; onClick?: () => void }) {
+function ToolButton({
+  icon,
+  label,
+  primary,
+  disabled,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  primary?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       style={{
         display: "inline-flex", alignItems: "center", gap: 6,
         padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500,
@@ -967,7 +1122,8 @@ function ToolButton({ icon, label, primary, onClick }: { icon: React.ReactNode; 
           ? "1px solid rgba(230,198,135,0.9)"
           : "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
         color: primary ? "#0B0A0F" : "var(--atlas-gold)",
-        cursor: "pointer", letterSpacing: "-0.005em",
+        cursor: disabled ? "not-allowed" : "pointer", letterSpacing: "-0.005em",
+        opacity: disabled ? 0.58 : 1,
         boxShadow: primary ? "0 4px 14px rgba(230,198,135,0.25)" : "none",
       }}
     >
