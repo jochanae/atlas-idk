@@ -4149,14 +4149,14 @@ export default function Home() {
             };
             return (
               <div className="ambient-suggestion-chips-wrap" style={{
-                marginTop: 8,
+                marginTop: 14,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
-                transform: globalInsightOpen ? "none" : "translateY(-72px)",
+                transform: globalInsightOpen ? "none" : "translateY(-28px)",
               }}>
 
                 <div className="suggestion-chips-row" style={{
