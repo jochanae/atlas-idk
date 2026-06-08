@@ -194,14 +194,21 @@ export function ReadinessRing({
     if (!rect) return null;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const maxWidth = Math.min(240, viewportWidth - 24);
-    const estimatedHeight = trend && trend.history.length > 1 ? 178 : 124;
-    const spaceAbove = rect.top;
-    const shouldOpenBelow = spaceAbove < estimatedHeight + 16 && rect.bottom + estimatedHeight + 12 < viewportHeight;
-    const left = Math.min(Math.max(rect.right - maxWidth, 12), viewportWidth - maxWidth - 12);
+    const viewportPadding = 12;
+    const maxWidth = Math.min(260, viewportWidth - viewportPadding * 2);
+    const estimatedHeight = trend && trend.history.length > 1 ? 220 : 156;
+    const belowTop = rect.bottom + 8;
+    const aboveTop = rect.top - estimatedHeight - 8;
+    const left = Math.min(Math.max(rect.right - maxWidth, viewportPadding), viewportWidth - maxWidth - viewportPadding);
+    const top =
+      belowTop + estimatedHeight <= viewportHeight - viewportPadding
+        ? belowTop
+        : aboveTop >= viewportPadding
+        ? aboveTop
+        : Math.max(viewportPadding, viewportHeight - estimatedHeight - viewportPadding);
     return {
       left,
-      top: shouldOpenBelow ? rect.bottom + 8 : Math.max(12, rect.top - estimatedHeight - 8),
+      top,
       width: maxWidth,
     };
   }, [showTooltip, trend]);
