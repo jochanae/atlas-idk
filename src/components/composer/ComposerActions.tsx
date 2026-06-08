@@ -48,6 +48,8 @@ export interface ComposerActionsProps {
   hasAttachments?: boolean;
   /** Optional trailing slot — e.g. workspace model chip — rendered between actions and Send. */
   trailing?: ReactNode;
+  /** Strip the borders / chip backgrounds from + and ... buttons (used by Global Insight). */
+  borderless?: boolean;
 }
 
 type PrimaryItem = {
