@@ -575,7 +575,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
           ) : (
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{linkedRepoName || name}</span>
           )}
-          {hasGithubToken ? (
+          {!isMobile && (hasGithubToken ? (
             <span
               title="GitHub connected"
               style={{
@@ -600,13 +600,14 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
                 flexShrink: 0,
               }}
             />
-          )}
+          ))}
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ opacity: 0.55, flexShrink: 0 }}>
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </button>
-        <ShellBranchChip />
+        {!isMobile && <ShellBranchChip />}
         </>
+
       )}
 
     </div>
