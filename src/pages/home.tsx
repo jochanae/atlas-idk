@@ -4149,7 +4149,7 @@ export default function Home() {
             };
             return (
               <div className="ambient-suggestion-chips-wrap" style={{
-                marginTop: 8,
+                marginTop: 20,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
