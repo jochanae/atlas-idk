@@ -4235,6 +4235,32 @@ export default function Home() {
                     );
                   })}
                 </div>
+                <button
+                  type="button"
+                  onClick={rotate}
+                  aria-label="Suggest a starting point"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 6px",
+                    color: isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-sans)",
+                    fontSize: "var(--ts-caption)",
+                    letterSpacing: "0.01em",
+                    fontWeight: isParchment ? 600 : 400,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    transition: "color 160ms ease",
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(120,53,15,1)" : "rgba(212,175,55,0.95)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = isParchment ? "rgba(146,64,14,0.95)" : "rgba(212,175,55,0.6)"; }}
+                >
+                  <span className="atlas-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: isParchment ? "rgba(146,64,14,0.7)" : "rgba(212,175,55,0.7)", display: "inline-block" }} />
+                  help me decide where to start
+                  <span style={{ fontSize: "var(--ts-label)", color: "inherit", display: "inline-block" }}>↻</span>
+                </button>
               </div>
             );
           })()}
