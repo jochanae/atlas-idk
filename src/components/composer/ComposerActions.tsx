@@ -48,6 +48,8 @@ export interface ComposerActionsProps {
   hasAttachments?: boolean;
   /** Optional trailing slot — e.g. workspace model chip — rendered between actions and Send. */
   trailing?: ReactNode;
+  /** Strip the borders / chip backgrounds from + and ... buttons (used by Global Insight). */
+  borderless?: boolean;
 }
 
 type PrimaryItem = {
@@ -143,6 +145,7 @@ export function ComposerActions({
   scope = "composer",
   hasAttachments = false,
   trailing,
+  borderless = false,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -206,7 +209,7 @@ export function ComposerActions({
           setShowMore(false);
           setShowPlus(true);
         }}
-        style={iconBtnStyle(showPlus, hasAttachments)}
+        style={iconBtnStyle(showPlus, hasAttachments, borderless)}
       >
         <Plus size={17} strokeWidth={1.7} />
       </button>
@@ -220,7 +223,7 @@ export function ComposerActions({
           setMoreExpanded(false);
           setShowMore(true);
         }}
-        style={iconBtnStyle(showMore, false)}
+        style={iconBtnStyle(showMore, false, borderless)}
       >
         <MoreHorizontal size={17} strokeWidth={1.7} />
       </button>
@@ -346,7 +349,7 @@ export function ComposerActions({
   );
 }
 
-function iconBtnStyle(active: boolean, accent: boolean): React.CSSProperties {
+function iconBtnStyle(active: boolean, accent: boolean, borderless = false): React.CSSProperties {
   return {
     width: 42,
     height: 42,
@@ -358,15 +361,19 @@ function iconBtnStyle(active: boolean, accent: boolean): React.CSSProperties {
     padding: 7,
     boxSizing: "border-box",
     borderRadius: 10,
-    background: active
+    background: borderless && !active && !accent
+      ? "transparent"
+      : active
       ? "rgba(201,162,76,0.14)"
       : accent
       ? "rgba(201,162,76,0.08)"
       : "rgba(255,255,255,0.02)",
-    border: active || accent
+    border: borderless && !active && !accent
+      ? "1px solid transparent"
+      : active || accent
       ? "1px solid rgba(201,162,76,0.28)"
       : "1px solid rgba(255,255,255,0.06)",
-    backdropFilter: "blur(8px)",
+    backdropFilter: borderless ? "none" : "blur(8px)",
     color: active || accent ? "var(--atlas-gold)" : "var(--atlas-muted)",
     cursor: "pointer",
     display: "inline-flex",
