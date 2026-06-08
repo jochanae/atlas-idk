@@ -1143,8 +1143,10 @@ function ShellStatusChip({ projectId }: { projectId: number | null }) {
 // Decisions, Repo, and Live URL into a single ring. Tap to open a panel
 // with the breakdown + mode toggle + recent ledger entries.
 function ShellCompletionChip({ projectId }: { projectId: number | null }) {
+  const isMobile = useIsMobile();
   const ps = useProjectState(projectId);
   const [, navigate] = useLocation();
+
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<ReadinessMode>(() => {
     try {
