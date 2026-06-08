@@ -39,6 +39,8 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onExit: () => void;
+  onAddAsset?: () => void;
+  onMore?: () => void;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
