@@ -75,15 +75,12 @@ export function UnifiedSubheader({
     <div
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
-        marginTop: expanded ? 12 : 0,
-        paddingBottom: 12,
+        marginTop: 50,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,
         width: "100%",
         background: "transparent",
-        overflow: "visible",
-        transition: "margin-top 240ms ease",
       }}
     >
       {/* Collapsible tab row — slides up and out of DOM flow when collapsed */}
@@ -201,20 +198,15 @@ export function UnifiedSubheader({
       )}
 
 
-      {/* Centered collapse handle — always visible, prominent gold tab */}
-      {hasProject && (
+      {/* Centered collapse handle — sits directly below the row (or directly below main header when collapsed) */}
+      {hasConversation && hasProject && (
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            bottom: 0,
-            transform: "translate(-50%, 72%)",
             display: "flex",
             justifyContent: "center",
             alignItems: "flex-start",
-            height: 18,
+            height: expanded ? 14 : 10,
             pointerEvents: "none",
-            zIndex: 4,
           }}
         >
           <button
@@ -227,24 +219,21 @@ export function UnifiedSubheader({
             aria-expanded={expanded}
             style={{
               pointerEvents: "auto",
-              width: 58,
-              height: 20,
+              width: 36,
+              height: expanded ? 14 : 10,
               padding: 0,
-              borderRadius: "0 0 12px 12px",
-              background: "color-mix(in oklab, var(--atlas-bg) 58%, var(--atlas-gold) 12%)",
-              backdropFilter: "blur(18px) saturate(140%)",
-              WebkitBackdropFilter: "blur(18px) saturate(140%)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 34%, transparent)",
+              borderRadius: "0 0 8px 8px",
+              background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
               borderTop: "none",
               color: "var(--atlas-gold)",
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 12,
+              fontSize: 9,
               lineHeight: 1,
               WebkitTapHighlightColor: "transparent",
-              boxShadow: "0 2px 8px rgba(201,162,76,0.18)",
             }}
           >
             {expanded ? "▴" : "▾"}

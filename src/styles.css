@@ -439,10 +439,9 @@ html, body {
 /* Home/Nexus: glass treatment ONLY when a thread is active.
    Ambient (empty) mode stays clean — composer floats with no panel. */
 body[data-axiom-thread="active"] .atlas-input-shell {
-  /* True glass — see the conversation through the composer. */
-  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  /* Floating glass — content scrolls cleanly underneath, no encasing border. */
+  background: color-mix(in oklab, var(--atlas-bg) 22%, transparent);
+  backdrop-filter: blur(28px) saturate(160%);
   border: none;
   border-radius: 0;
   box-shadow: none;
@@ -580,26 +579,14 @@ body[data-axiom-global-insight="true"] .atlas-input-shell input {
 /* Composer — floating glass with no hard border or panel.
    Content scrolls cleanly underneath; only a soft blur separates it. */
 .atlas-composer-glass {
-  background: color-mix(in oklab, var(--atlas-bg) 2%, transparent);
-  backdrop-filter: blur(16px) saturate(130%);
-  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  background: color-mix(in oklab, var(--atlas-bg) 18%, transparent);
+  backdrop-filter: blur(28px) saturate(160%);
   border: none;
   border-radius: 0;
   box-shadow: none;
 }
-[data-theme="dark"] .atlas-composer-glass .atlas-input-shell,
-body:not([data-theme="parchment"]) .atlas-composer-glass .atlas-input-shell {
-  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
-  backdrop-filter: blur(24px) saturate(145%);
-  -webkit-backdrop-filter: blur(24px) saturate(145%);
-}
-[data-theme="parchment"] .atlas-composer-glass .atlas-input-shell {
-  background: color-mix(in oklab, var(--atlas-bg) 24%, transparent);
-  backdrop-filter: blur(16px) saturate(125%);
-  -webkit-backdrop-filter: blur(16px) saturate(125%);
-}
 [data-theme="parchment"] .atlas-composer-glass {
-  background: color-mix(in oklab, var(--atlas-bg) 8%, transparent);
+  background: color-mix(in oklab, var(--atlas-bg) 32%, transparent);
 }
 
 /* ── Side drawer mobile sizing ──
