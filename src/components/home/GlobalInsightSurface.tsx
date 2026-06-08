@@ -110,6 +110,8 @@ export function GlobalInsightSurface({
   toggleVoice,
   onOpenHistory,
   onExit,
+  onAddAsset,
+  onMore,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
