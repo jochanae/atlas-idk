@@ -315,8 +315,20 @@ export function ReadinessRing({
               boxShadow: "0 4px 20px rgba(0,0,0,0.55)",
             }}
           >
-          <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.1em", marginBottom: 6, textTransform: "uppercase" }}>
-            Readiness — {MODE_META[mode].label}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+            <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Readiness — {MODE_META[mode].label}
+            </div>
+            <button
+              onClick={() => setShowTooltip(false)}
+              aria-label="Close"
+              style={{
+                background: "transparent", border: "1px solid rgba(201,162,76,0.25)",
+                color: "var(--atlas-muted)", borderRadius: 4, width: 22, height: 22,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", fontSize: 13, lineHeight: 1, flexShrink: 0,
+              }}
+            >×</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 9.5, fontFamily: "var(--app-font-mono)" }}>
