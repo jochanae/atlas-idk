@@ -21,6 +21,7 @@ import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ComposerActions } from "../components/composer/ComposerActions";
+import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
 
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
@@ -4434,6 +4435,22 @@ export default function Home() {
           </aside>
         )}
       </div>
+
+      <GlobalInsightSurface
+        open={globalInsightOpen}
+        messages={nexusChat.messages as any}
+        input={input}
+        setInput={setInput}
+        onSubmit={() => handleSubmit(undefined, { forceStayOnHome: true })}
+        isSending={isSending}
+        isStreaming={isAtlasStreaming}
+        pendingPhrase={HOME_PENDING_PHRASES[pendingPhraseIdx]}
+        liveStep={nexusChat.liveStep}
+        isListening={isListening}
+        toggleVoice={toggleVoice}
+        onOpenHistory={handleOpenHistory}
+        onExit={handleLockTap}
+      />
 
       {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
       {!globalInsightOpen && (
