@@ -2099,15 +2099,21 @@ export function AssistantBubble({
                 }}
                 ref={(el) => {
                   if (!el) return;
-                  const btn = el.previousElementSibling?.previousElementSibling as HTMLElement | null;
-                  // anchor below the trigger button
                   const trigger = el.parentElement?.parentElement?.querySelector('[aria-label="More actions"]') as HTMLElement | null;
-                  const anchor = trigger ?? btn;
-                  if (anchor) {
-                    const r = anchor.getBoundingClientRect();
-                    el.style.top = `${r.bottom + 6}px`;
-                    el.style.left = `${Math.max(8, Math.min(window.innerWidth - 228, r.left))}px`;
-                  }
+                  if (!trigger) return;
+                  const r = trigger.getBoundingClientRect();
+                  const menuH = el.offsetHeight || 320;
+                  const menuW = 228;
+                  const vh = window.innerHeight;
+                  const vw = window.innerWidth;
+                  // Flip up if not enough room below
+                  const spaceBelow = vh - r.bottom;
+                  const top = spaceBelow < menuH + 16 && r.top > menuH + 16
+                    ? Math.max(8, r.top - menuH - 6)
+                    : Math.min(vh - menuH - 8, r.bottom + 6);
+                  const left = Math.max(8, Math.min(vw - menuW - 8, r.left));
+                  el.style.top = `${top}px`;
+                  el.style.left = `${left}px`;
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 2px 4px" }}>
