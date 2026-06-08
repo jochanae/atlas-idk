@@ -338,7 +338,6 @@ export function GlobalInsightSurface({
         style={{
           flexShrink: 0,
           padding: "10px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
-          marginTop: 48,
           background: "var(--atlas-bg)",
           borderTop: "1px solid rgba(212,175,55,0.08)",
         }}
