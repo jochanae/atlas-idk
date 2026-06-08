@@ -1167,7 +1167,7 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
   }, [open]);
 
-  if (projectId == null || isMobile) return null;
+  if (projectId == null) return null;
 
 
   const proj = ps.project as {
