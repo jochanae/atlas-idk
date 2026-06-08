@@ -39,6 +39,8 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onExit: () => void;
+  onAddAsset?: () => void;
+  onMore?: () => void;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
@@ -108,6 +110,8 @@ export function GlobalInsightSurface({
   toggleVoice,
   onOpenHistory,
   onExit,
+  onAddAsset,
+  onMore,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -412,69 +416,49 @@ export function GlobalInsightSurface({
         )}
       </div>
 
-      {/* Composer */}
+      {/* Composer — premium command bar */}
       <div
         style={{
           flexShrink: 0,
-          padding: "10px 16px calc(10px + env(safe-area-inset-bottom, 0px))",
-          background: "var(--atlas-bg)",
-          borderTop: "1px solid rgba(212,175,55,0.08)",
+          padding: "12px 14px calc(14px + env(safe-area-inset-bottom, 0px))",
+          background: "linear-gradient(to top, var(--atlas-bg) 70%, color-mix(in oklab, var(--atlas-bg) 88%, transparent))",
         }}
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "flex-end",
-            gap: 8,
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(212,175,55,0.18)",
-            borderRadius: 14,
-            padding: "8px 10px",
             position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            background: "linear-gradient(180deg, rgba(20,17,12,0.72) 0%, rgba(12,10,8,0.78) 100%)",
+            border: `1px solid ${focused ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.16)"}`,
+            borderRadius: 20,
+            padding: "14px 14px 10px",
+            backdropFilter: "blur(18px) saturate(140%)",
+            boxShadow: focused
+              ? "0 0 0 1px rgba(212,175,55,0.18), 0 10px 40px -12px rgba(212,175,55,0.28), inset 0 1px 0 rgba(255,255,255,0.04)"
+              : "0 6px 24px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03)",
+            transition: "border-color 220ms ease, box-shadow 220ms ease",
+            minHeight: 124,
           }}
         >
-          <button
-            type="button"
-            onClick={() => void onOpenHistory()}
-            aria-label="Open history"
-            title="Where were we?"
-            style={{
-              width: 32,
-              height: 32,
-              flexShrink: 0,
-              borderRadius: 999,
-              background: "rgba(212,175,55,0.10)",
-              border: "1px solid rgba(212,175,55,0.28)",
-              color: "rgba(212,175,55,0.85)",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              padding: 0,
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <polyline points="12 7 12 12 15 14" />
-            </svg>
-          </button>
-
-          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+          {/* Textarea row — full width, generous height */}
+          <div style={{ position: "relative", flex: 1, minHeight: 56 }}>
             {showPlaceholder && (
               <div
                 aria-hidden
                 style={{
                   position: "absolute",
-                  top: 6,
-                  left: 4,
-                  right: 4,
+                  top: 4,
+                  left: 2,
+                  right: 2,
                   pointerEvents: "none",
                   color: "var(--atlas-muted)",
-                  opacity: 0.65,
+                  opacity: 0.55,
                   fontSize: 16,
-                  lineHeight: 1.5,
+                  lineHeight: 1.55,
                   fontFamily: "var(--app-font-sans)",
+                  letterSpacing: "-0.005em",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -491,7 +475,7 @@ export function GlobalInsightSurface({
               onKeyDown={handleKey}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              rows={1}
+              rows={2}
               style={{
                 width: "100%",
                 background: "transparent",
@@ -500,79 +484,190 @@ export function GlobalInsightSurface({
                 resize: "none",
                 color: "var(--atlas-fg)",
                 fontSize: 16,
-                lineHeight: 1.5,
+                lineHeight: 1.55,
+                letterSpacing: "-0.005em",
                 fontFamily: "var(--app-font-sans)",
-                padding: "6px 4px",
-                maxHeight: 140,
+                padding: "4px 2px",
+                minHeight: 56,
+                maxHeight: 180,
                 position: "relative",
                 zIndex: 1,
+                display: "block",
               }}
             />
           </div>
 
-          <button
-            type="button"
-            onClick={toggleVoice}
-            aria-label={isListening ? "Stop voice" : "Voice input"}
+          {/* Action row — left utilities, right send cluster */}
+          <div
             style={{
-              width: 32,
-              height: 32,
-              flexShrink: 0,
-              borderRadius: 8,
-              border: "none",
-              background: isListening ? "rgba(201,162,76,0.10)" : "transparent",
-              color: isListening ? "var(--atlas-gold)" : "var(--atlas-muted)",
-              cursor: "pointer",
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
+              justifyContent: "space-between",
+              gap: 8,
+              paddingTop: 4,
+              borderTop: "1px solid rgba(212,175,55,0.08)",
+              marginTop: 2,
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="2" width="6" height="11" rx="3" />
-              <path d="M5 10a7 7 0 0014 0" />
-              <line x1="12" y1="19" x2="12" y2="23" />
-              <line x1="8" y1="23" x2="16" y2="23" />
-            </svg>
-          </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <UtilityButton
+                ariaLabel="Where were we"
+                title="Where were we?"
+                onClick={() => void onOpenHistory()}
+                tinted
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <polyline points="12 7 12 12 15 14" />
+                </svg>
+              </UtilityButton>
+              <UtilityButton
+                ariaLabel="Add asset"
+                title="Add asset"
+                onClick={() => onAddAsset?.()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </UtilityButton>
+              <UtilityButton
+                ariaLabel="More options"
+                title="More"
+                onClick={() => onMore?.()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="5" cy="12" r="1.4" />
+                  <circle cx="12" cy="12" r="1.4" />
+                  <circle cx="19" cy="12" r="1.4" />
+                </svg>
+              </UtilityButton>
+            </div>
 
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              if (canSubmit) handleSubmit();
-            }}
-            onClick={(e) => {
-              if (e.detail === 0) handleSubmit();
-            }}
-            disabled={!canSubmit}
-            aria-label="Send"
-            style={{
-              width: 36,
-              height: 36,
-              flexShrink: 0,
-              borderRadius: 999,
-              border: "none",
-              background: canSubmit ? "rgba(212,175,55,0.14)" : "transparent",
-              color: canSubmit ? "var(--atlas-gold)" : "var(--atlas-muted)",
-              cursor: canSubmit ? "pointer" : "not-allowed",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              opacity: isSending ? 0.5 : 1,
-              transition: "background 160ms ease, color 160ms ease",
-            }}
-          >
-            <svg viewBox="0 0 20 20" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
-              <path d="M17 3 9.5 11.5" />
-            </svg>
-          </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <UtilityButton
+                ariaLabel={isListening ? "Stop voice" : "Voice input"}
+                onClick={toggleVoice}
+                active={isListening}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="2" width="6" height="11" rx="3" />
+                  <path d="M5 10a7 7 0 0014 0" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </UtilityButton>
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  if (canSubmit) handleSubmit();
+                }}
+                onClick={(e) => {
+                  if (e.detail === 0) handleSubmit();
+                }}
+                disabled={!canSubmit}
+                aria-label="Send"
+                style={{
+                  width: 38,
+                  height: 38,
+                  flexShrink: 0,
+                  borderRadius: 999,
+                  border: `1px solid ${canSubmit ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.15)"}`,
+                  background: canSubmit
+                    ? "linear-gradient(135deg, rgba(212,175,55,0.32), rgba(201,162,76,0.16))"
+                    : "rgba(255,255,255,0.02)",
+                  color: canSubmit ? "rgba(245,215,130,1)" : "var(--atlas-muted)",
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0,
+                  opacity: isSending ? 0.55 : 1,
+                  boxShadow: canSubmit ? "0 0 18px -4px rgba(212,175,55,0.45)" : "none",
+                  transition: "background 200ms ease, border-color 200ms ease, box-shadow 200ms ease",
+                }}
+              >
+                <svg viewBox="0 0 20 20" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
+                  <path d="M17 3 9.5 11.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function UtilityButton({
+  children,
+  ariaLabel,
+  title,
+  onClick,
+  tinted,
+  active,
+}: {
+  children: React.ReactNode;
+  ariaLabel: string;
+  title?: string;
+  onClick?: () => void;
+  tinted?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      title={title ?? ariaLabel}
+      style={{
+        width: 34,
+        height: 34,
+        flexShrink: 0,
+        borderRadius: 10,
+        border: "1px solid transparent",
+        background: active
+          ? "rgba(212,175,55,0.14)"
+          : tinted
+            ? "rgba(212,175,55,0.06)"
+            : "transparent",
+        color: active
+          ? "var(--atlas-gold)"
+          : tinted
+            ? "rgba(212,175,55,0.85)"
+            : "var(--atlas-muted)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: onClick ? "pointer" : "default",
+        padding: 0,
+        WebkitTapHighlightColor: "transparent",
+        transition: "background 160ms ease, color 160ms ease, border-color 160ms ease",
+      }}
+      onMouseEnter={(e) => {
+        if (!onClick) return;
+        const el = e.currentTarget as HTMLButtonElement;
+        el.style.background = "rgba(212,175,55,0.10)";
+        el.style.color = "rgba(245,215,130,1)";
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLButtonElement;
+        el.style.background = active
+          ? "rgba(212,175,55,0.14)"
+          : tinted
+            ? "rgba(212,175,55,0.06)"
+            : "transparent";
+        el.style.color = active
+          ? "var(--atlas-gold)"
+          : tinted
+            ? "rgba(212,175,55,0.85)"
+            : "var(--atlas-muted)";
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
