@@ -4156,7 +4156,7 @@ export default function Home() {
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
-                transform: globalInsightOpen ? "none" : "translateY(-28px)",
+                
               }}>
 
                 <div className="suggestion-chips-row" style={{
