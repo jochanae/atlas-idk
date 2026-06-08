@@ -5470,7 +5470,7 @@ export default function Workspace() {
         mode={launchModal.mode}
         onClose={() => setLaunchModal((s) => ({ ...s, open: false }))}
         linkedRepo={linkedRepo}
-        previewUrl={project?.previewUrl ?? null}
+        previewUrl={launchPreviewUrl}
       />
 
       {/* ── Spec → Build handoff modal ── */}
