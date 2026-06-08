@@ -4148,7 +4148,7 @@ export default function Home() {
               pickStarter(PLACEHOLDERS[next].replace(/…$/, ""));
             };
             return (
-              <div style={{
+              <div className="ambient-suggestion-chips-wrap" style={{
                 marginTop: 14,
                 display: "flex",
                 flexDirection: "column",
@@ -4156,7 +4156,9 @@ export default function Home() {
                 gap: 10,
                 position: "relative",
                 zIndex: 20,
+                transform: globalInsightOpen ? "none" : "translateY(-28px)",
               }}>
+
                 <div className="suggestion-chips-row" style={{
                   display: "flex",
                   flexWrap: "nowrap",
