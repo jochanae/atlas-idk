@@ -439,19 +439,17 @@ html, body {
 /* Home/Nexus: glass treatment ONLY when a thread is active.
    Ambient (empty) mode stays clean — composer floats with no panel. */
 body[data-axiom-thread="active"] .atlas-input-shell {
-  /* Glass: use ONLY standard property — Lightning CSS dedupes a hand-written
-     -webkit- prefix and drops the standard form, killing the blur in Chrome. */
-  background: color-mix(in oklab, var(--atlas-bg) 38%, transparent);
-  backdrop-filter: blur(24px) saturate(160%);
-  border-top: 0.5px solid color-mix(in srgb, var(--atlas-gold) 22%, transparent);
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
-  box-shadow: 0 -8px 32px -12px rgba(0,0,0,0.45);
+  /* Floating glass — content scrolls cleanly underneath, no encasing border. */
+  background: color-mix(in oklab, var(--atlas-bg) 22%, transparent);
+  backdrop-filter: blur(28px) saturate(160%);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 body[data-axiom-thread="active"][data-theme="parchment"] .atlas-input-shell {
-  background: color-mix(in oklab, var(--atlas-bg) 55%, transparent) !important;
-  border-radius: 20px 20px 0 0 !important;
-  box-shadow: 0 -8px 32px -12px rgba(0,0,0,0.08) !important;
+  background: color-mix(in oklab, var(--atlas-bg) 38%, transparent) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 /* Mobile / tablet: active-thread composer goes edge-to-edge like workspace,
    breaking out of the .atlas-home-responsive-shell 24px side gutter.
