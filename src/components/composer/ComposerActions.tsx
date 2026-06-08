@@ -209,7 +209,7 @@ export function ComposerActions({
           setShowMore(false);
           setShowPlus(true);
         }}
-        style={iconBtnStyle(showPlus, hasAttachments)}
+        style={iconBtnStyle(showPlus, hasAttachments, borderless)}
       >
         <Plus size={17} strokeWidth={1.7} />
       </button>
@@ -223,7 +223,7 @@ export function ComposerActions({
           setMoreExpanded(false);
           setShowMore(true);
         }}
-        style={iconBtnStyle(showMore, false)}
+        style={iconBtnStyle(showMore, false, borderless)}
       >
         <MoreHorizontal size={17} strokeWidth={1.7} />
       </button>
