@@ -3306,7 +3306,7 @@ export default function Home() {
           <div style={{
             minHeight: globalInsightOpen
               ? 0
-              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - env(safe-area-inset-bottom, 0px))"),
+              : (nexusChat.messages.length > 0 ? 0 : "calc(100svh - var(--atlas-header-height) - var(--atlas-dock-clearance) - env(safe-area-inset-bottom, 0px))"),
             height: globalInsightOpen ? "100%" : undefined,
             display: "flex",
             flexDirection: "column",
@@ -4159,18 +4159,15 @@ export default function Home() {
               }}>
                 <div className="suggestion-chips-row" style={{
                   display: "flex",
-                  flexWrap: "nowrap",
-                  justifyContent: "flex-start",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
                   gap: 6,
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  msOverflowStyle: "none",
-                  WebkitOverflowScrolling: "touch",
                   fontFamily: "var(--app-font-sans)",
                   fontSize: "var(--ts-label)",
                   letterSpacing: "0.01em",
                   color: "var(--atlas-muted)",
                   paddingInline: 12,
+                  width: "100%",
                   position: "relative",
                   zIndex: 20,
                 }}>
