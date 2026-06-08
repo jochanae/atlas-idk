@@ -793,7 +793,8 @@ function SovereignReadinessSheet({
       style={{
         position: "fixed", inset: 0, zIndex: 100,
         background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "max(env(safe-area-inset-top, 0px), 12px) 12px max(env(safe-area-inset-bottom, 0px), 12px)",
       }}
     >
       <div
@@ -801,12 +802,11 @@ function SovereignReadinessSheet({
         role="dialog"
         aria-label="Sovereign Readiness Ledger"
         style={{
-          width: "100%", maxWidth: 560, maxHeight: "85dvh", overflowY: "auto",
+          width: "100%", maxWidth: 560, maxHeight: "calc(100dvh - 24px)", overflowY: "auto",
           background: "var(--atlas-surface)",
+          border: "1px solid rgba(201,162,76,0.18)",
           borderTop: "1px solid rgba(201,162,76,0.25)",
-          borderLeft: "1px solid rgba(201,162,76,0.15)",
-          borderRight: "1px solid rgba(201,162,76,0.15)",
-          borderTopLeftRadius: 18, borderTopRightRadius: 18,
+          borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 18,
           padding: "18px 20px 28px",
           boxShadow: "0 -10px 40px rgba(0,0,0,0.55)",
         }}

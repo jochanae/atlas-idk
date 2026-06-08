@@ -3933,6 +3933,14 @@ export default function Workspace() {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
   });
   const project = projectState.project ?? fallbackProject;
+  const launchPreviewUrl = project?.previewUrl ?? (() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return localStorage.getItem(`atlas-preview-${id}`);
+    } catch {
+      return null;
+    }
+  })();
   const projectLoading = projectState.loading && !project ? true : fallbackProjectLoading;
   const githubPushToken = useGithubPushToken(project?.githubToken);
   // True when forge has run this session OR when saved AxiomFlow nodes exist for this project
@@ -5462,7 +5470,7 @@ export default function Workspace() {
         mode={launchModal.mode}
         onClose={() => setLaunchModal((s) => ({ ...s, open: false }))}
         linkedRepo={linkedRepo}
-        previewUrl={project?.previewUrl ?? null}
+        previewUrl={launchPreviewUrl}
       />
 
       {/* ── Spec → Build handoff modal ── */}
@@ -6155,6 +6163,11 @@ export default function Workspace() {
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "history") { setShowHistorySheet(true); return; }
+                if (action === "mcp") {
+                  if (isMobile) { setMobileTab("mcp"); setRightOpen(true); }
+                  else { setDesktopForceTab("mcp" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
                 if (action === "files") {
                   if (isMobile) { setMobileTab("files"); setRightOpen(true); }
                   else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }

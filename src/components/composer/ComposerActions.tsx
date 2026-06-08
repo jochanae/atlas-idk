@@ -19,6 +19,7 @@ import {
 
 export type ComposerMenuAction =
   | "files"
+  | "mcp"
   | "connectors"
   | "code"
   | "history"
@@ -58,6 +59,7 @@ type PrimaryItem = {
 
 const PRIMARY_ITEMS: PrimaryItem[] = [
   { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} />, projectOnly: true },
+  { id: "mcp", label: "MCP", icon: <Layers size={18} strokeWidth={1.6} /> },
   { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} /> },
   { id: "code", label: "Code", icon: <Code2 size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "history", label: "History", icon: <History size={18} strokeWidth={1.6} /> },
