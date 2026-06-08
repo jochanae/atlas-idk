@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ProjectNodeState } from "@workspace/api-client-react";
 import type React from "react";
+import { createPortal } from "react-dom";
 import { LongPressTip } from "@/lib/long-press-tip";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -145,11 +146,31 @@ export function ReadinessRing({
   const trendColor = hasTrend ? (trend.delta > 0 ? "#4ade80" : "rgba(252,165,165,0.85)") : "var(--atlas-muted)";
   
   const [showTooltip, setShowTooltip] = useState(false);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const pressTimerRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
   const MODES: ReadinessMode[] = ["blended", "arch", "decisions"];
   const cycleMode = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     const next = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
     onModeChange(next);
+  };
+  const clearPressTimer = () => {
+    if (pressTimerRef.current) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+  const startLongPress = () => {
+    clearPressTimer();
+    pressTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = true;
+      setShowTooltip(true);
+    }, 420);
   };
   const blended = computeBlendedScore(archScore, decisionsScore);
   const tooltipText = trend
@@ -167,22 +188,31 @@ export function ReadinessRing({
   const wrapperGap = compact ? 4 : 5;
   const modePadding = compact ? "1px 2px" : "1px 3px";
   const modeFontSize = compact ? 6 : 6.5;
+  const tooltipLayout = useMemo(() => {
+    if (!showTooltip || typeof window === "undefined") return null;
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const maxWidth = Math.min(240, viewportWidth - 24);
+    const estimatedHeight = trend && trend.history.length > 1 ? 178 : 124;
+    const spaceAbove = rect.top;
+    const shouldOpenBelow = spaceAbove < estimatedHeight + 16 && rect.bottom + estimatedHeight + 12 < viewportHeight;
+    const left = Math.min(Math.max(rect.right - maxWidth, 12), viewportWidth - maxWidth - 12);
+    return {
+      left,
+      top: shouldOpenBelow ? rect.bottom + 8 : Math.max(12, rect.top - estimatedHeight - 8),
+      width: maxWidth,
+    };
+  }, [showTooltip, trend]);
 
   return (
     <div
+      ref={anchorRef}
       style={{ display: "flex", alignItems: "center", gap: wrapperGap, flexShrink: 0, position: "relative" }}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      {showTooltip && (
-        <div
-          onPointerDown={() => setShowTooltip(false)}
-          onTouchStart={() => setShowTooltip(false)}
-          onClick={() => setShowTooltip(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "transparent" }}
-        />
-      )}
-
       {/* Combined readiness pill — score% + delta in ONE element */}
       <LongPressTip tip="Readiness score — how complete this project is across architecture and committed decisions">
         <button
@@ -222,11 +252,25 @@ export function ReadinessRing({
       </LongPressTip>
 
       {!hideModePill && (
-      <LongPressTip tip="Readiness mode: Blended · tap to switch to Architecture or Decisions">
         <button
           onClick={cycleMode}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            startLongPress();
+          }}
+          onPointerUp={clearPressTimer}
+          onPointerLeave={clearPressTimer}
+          onPointerCancel={clearPressTimer}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clearPressTimer();
+            suppressClickRef.current = true;
+            setShowTooltip(true);
+          }}
           title={`Viewing: ${MODE_META[mode].description}. Click to switch mode.`}
           aria-label={`Readiness mode: ${MODE_META[mode].label}. Click to cycle modes.`}
+          aria-expanded={showTooltip}
           className="atlas-mix-btn"
           style={{
             background: "transparent", border: "none",
@@ -235,30 +279,35 @@ export function ReadinessRing({
             color: "var(--atlas-muted)", lineHeight: 1, userSelect: "none", flexShrink: 0,
             transition: "color 150ms ease",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--atlas-gold)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--atlas-muted)";
-          }}
         >
           {MODE_META[mode].abbr}
         </button>
-      </LongPressTip>
       )}
-      {showTooltip && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "absolute", bottom: "calc(100% + 8px)", right: 0,
-            background: "var(--atlas-surface)", border: "1px solid rgba(201,162,76,0.2)",
-            borderRadius: 8, padding: "8px 10px",
-            width: "min(220px, calc(100vw - 24px))",
-            maxWidth: "calc(100vw - 24px)",
-            zIndex: 10000,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.55)",
-          }}
-        >
+      {showTooltip && tooltipLayout && typeof document !== "undefined" && createPortal(
+        <>
+          <div
+            onPointerDown={() => setShowTooltip(false)}
+            onTouchStart={() => setShowTooltip(false)}
+            onClick={() => setShowTooltip(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 9999, background: "transparent" }}
+          />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              left: tooltipLayout.left,
+              top: tooltipLayout.top,
+              background: "var(--atlas-surface)", border: "1px solid rgba(201,162,76,0.2)",
+              borderRadius: 8, padding: "8px 10px",
+              width: tooltipLayout.width,
+              maxWidth: "calc(100vw - 24px)",
+              maxHeight: "calc(100dvh - 24px)",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              zIndex: 10000,
+              boxShadow: "0 4px 20px rgba(0,0,0,0.55)",
+            }}
+          >
           <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.1em", marginBottom: 6, textTransform: "uppercase" }}>
             Readiness — {MODE_META[mode].label}
           </div>
@@ -312,7 +361,9 @@ export function ReadinessRing({
           <div style={{ marginTop: 5, fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "rgba(120,113,108,0.5)", letterSpacing: "0.05em" }}>
             Click mode pill to switch signal
           </div>
-        </div>
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );

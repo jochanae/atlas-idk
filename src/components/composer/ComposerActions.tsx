@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   Camera,
   Paperclip,
@@ -144,6 +145,7 @@ export function ComposerActions({
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
+  const portalHost = typeof document !== "undefined" ? document.body : null;
 
   const attachRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -224,7 +226,7 @@ export function ComposerActions({
       {trailing}
 
       {/* PLUS sheet — Camera + Attach (only two nodes) */}
-      {showPlus && (
+      {showPlus && portalHost && createPortal(
         <div style={SHEET_OVERLAY} onClick={() => setShowPlus(false)}>
           <div
             role="dialog"
@@ -261,11 +263,12 @@ export function ComposerActions({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        portalHost
       )}
 
       {/* MORE sheet — Files, Connectors, Code, History, Share, Publish, Settings, More */}
-      {showMore && (
+      {showMore && portalHost && createPortal(
         <div style={SHEET_OVERLAY} onClick={() => setShowMore(false)}>
           <div
             role="dialog"
@@ -334,7 +337,8 @@ export function ComposerActions({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        portalHost
       )}
     </>
   );
