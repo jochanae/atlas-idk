@@ -3811,7 +3811,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
+          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
           <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
             position: globalInsightOpen ? "relative" : "sticky",
             left: globalInsightOpen ? undefined : 0,
