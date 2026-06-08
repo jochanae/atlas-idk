@@ -3811,7 +3811,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0 }}>
+          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
           <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
             position: globalInsightOpen ? "relative" : "sticky",
             left: globalInsightOpen ? undefined : 0,
@@ -4913,7 +4913,7 @@ export default function Home() {
       `}</style>
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
-          mode={nexusChat.messages.length > 0 ? "active" : "ambient"}
+          mode="ambient"
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onProjects={() => setShowProjectsSheet(true)}
