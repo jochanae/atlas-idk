@@ -447,13 +447,20 @@ export function GlobalInsightSurface({
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            background: "transparent",
-            border: "none",
-            borderRadius: 0,
-            padding: "6px 2px 4px",
-            backdropFilter: "none",
-            boxShadow: "none",
-            transition: "none",
+            background: isParchment
+              ? "rgba(255,255,255,0.55)"
+              : "rgba(20,17,14,0.55)",
+            border: isParchment
+              ? "1px solid rgba(180,83,9,0.30)"
+              : "1px solid rgba(212,175,55,0.32)",
+            borderRadius: 16,
+            padding: "10px 12px 8px",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            boxShadow: isParchment
+              ? "0 2px 12px rgba(146,64,14,0.08)"
+              : "0 2px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,175,55,0.06) inset",
+            transition: "border-color 200ms ease, box-shadow 200ms ease",
             minHeight: 96,
           }}
         >
@@ -497,7 +504,10 @@ export function GlobalInsightSurface({
                 border: "none",
                 outline: "none",
                 resize: "none",
-                color: "var(--atlas-fg)",
+                appearance: "none",
+                WebkitAppearance: "none",
+                boxShadow: "none",
+                color: isParchment ? "#171717" : "var(--atlas-fg)",
                 fontSize: 16,
                 lineHeight: 1.55,
                 letterSpacing: "-0.005em",
