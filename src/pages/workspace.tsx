@@ -91,6 +91,7 @@ import {
 } from "@/components/workspace/chatShared";
 import { extractStrategicIntent } from "@/lib/forgeExtract";
 import { submitForgeIntake } from "@/lib/forgeIntake";
+import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { buildParkedEntryPayload } from "@/lib/parking";
 
 
@@ -3787,6 +3788,7 @@ export default function Workspace() {
   const renameEscapeRef = useRef(false);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
@@ -5073,6 +5075,15 @@ export default function Workspace() {
     }
   }, [id, applyForgeNodes]);
 
+  // Open the ForgeIntakeSheet from anywhere (LifecycleGlyph long-press, etc).
+  useEffect(() => {
+    const open = () => setForgeIntakeSheetOpen(true);
+    window.addEventListener(FORGE_INTAKE_OPEN_EVENT, open as EventListener);
+    return () => window.removeEventListener(FORGE_INTAKE_OPEN_EVENT, open as EventListener);
+  }, []);
+
+
+
 
   // messagesRef + summarize effect owned by useChatStream.
 
@@ -6242,6 +6253,7 @@ export default function Workspace() {
               onOpenModelSheet: () => setShowWsModelSheet(true),
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
+                if (action === "forge-intake") { setForgeIntakeSheetOpen(true); return; }
                 if (action === "history") { setShowHistorySheet(true); return; }
                 if (action === "mcp") {
                   if (isMobile) { setMobileTab("mcp"); setRightOpen(true); }
@@ -6645,6 +6657,15 @@ export default function Workspace() {
           onSaved={() => { queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }); }}
         />
       )}
+
+      {/* Forge intake — bottom sheet opened by Atlas Pulse long-press or "+" menu */}
+      <ForgeIntakeSheet
+        open={forgeIntakeSheetOpen}
+        onClose={() => setForgeIntakeSheetOpen(false)}
+        onIntake={handleForgeIntake}
+        onOpenProjectDna={() => setShowProjectSettings(true)}
+        projectName={project?.name ?? null}
+      />
 
       <HistoryBookmarksSheet
         projectId={Number.isFinite(id) ? id : null}
