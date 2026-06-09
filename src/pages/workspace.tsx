@@ -6121,6 +6121,7 @@ export default function Workspace() {
               onRunCommand: handleRunCommand,
               onPrCreated: (url) => { setSessionPrUrl(url); setLeftTab("diff"); },
               onExtractToForge: (content) => { setForgePreloadContent(extractStrategicIntent(content)); setShowForgeExternal(true); },
+              onForgeIntake: handleForgeIntake,
               onReviewDiff: () => setLeftTab("diff"),
               onOpenArtifact: (_title: string) => {
                 setLeftTab("artifacts");
@@ -6235,6 +6236,7 @@ export default function Workspace() {
               setShowParkingDrawer,
               refreshParkedEntries,
               onPark: handlePark,
+              onForgeIntake: handleForgeIntake,
               showModelPicker,
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
