@@ -257,6 +257,21 @@ export function ChatComposer(props: ChatComposerProps) {
   const isMultiAgent = !wsModel || wsModel === "multi";
 
   const [planMode, setPlanMode] = useState(false);
+  const [planBannerVisible, setPlanBannerVisible] = useState(false);
+
+  const togglePlanMode = () => {
+    setPlanMode(v => {
+      const next = !v;
+      if (next) {
+        setPlanBannerVisible(true);
+        window.setTimeout(() => setPlanBannerVisible(false), 1500);
+      } else {
+        setPlanBannerVisible(false);
+      }
+      try { (navigator as any).vibrate?.(10); } catch {}
+      return next;
+    });
+  };
 
   
 
