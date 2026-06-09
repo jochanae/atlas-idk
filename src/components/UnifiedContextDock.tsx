@@ -316,7 +316,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     ];
     right = [
       { id: "preview", label: "Preview", icon: ICONS.preview, onClick: props.onPreview, active: at === "preview" },
-      { id: "flow", label: "Flow", icon: ICONS.map, onClick: props.onFlow, active: at === "map" },
+      { id: "flow", label: "Map", icon: ICONS.map, onClick: props.onFlow, active: at === "map" },
     ];
   }
 
