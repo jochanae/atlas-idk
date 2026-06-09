@@ -3863,6 +3863,11 @@ export default function Workspace() {
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
 
+  // Drive chrome auto-hide off the chat scroll container. Mobile-only immersion;
+  // desktop chrome always stays visible.
+  const wsScrollDir = useScrollDirection(chatPanelScrollRef, { threshold: 8, debounceMs: 150 });
+  const immersive = isMobile && wsScrollDir.direction === "up" && wsScrollDir.distanceFromBottom > 200;
+
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow
   // updates even when the user isn't scrolling.
   useEffect(() => {
