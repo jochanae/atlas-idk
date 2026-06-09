@@ -3020,7 +3020,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
 export default function Workspace() {
   const { projectId } = useParams();
   const [, setLocation] = useLocation();
-  const id = Number(projectId);
+  const id = Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]);
   const searchParams = new URLSearchParams(window.location.search);
   const [showIntake, setShowIntake] = useState(searchParams.get("intake") === "true");
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
