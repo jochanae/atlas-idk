@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
  * Scroll-driven collapse for the workspace subheader.
  *
  * Rule set:
- *  - scrollTop > THRESHOLD AND moving up (reading older content) → collapsed = true
- *  - scrollTop <= THRESHOLD OR a downward swipe of >= REVEAL_DELTA → collapsed = false
+ *  - scrollTop > THRESHOLD AND moving down through content → collapsed = true
+ *  - scrollTop <= THRESHOLD OR a downward reveal swipe of >= REVEAL_DELTA → collapsed = false
  *  - Manual taps (setManual) pin the value for PIN_MS, during which scroll is ignored.
  *  - Returning to scrollTop === 0 clears the pin.
  *
@@ -31,6 +31,7 @@ export function useScrollCollapse(
   const lastTopRef = useRef(0);
   const tickingRef = useRef(false);
   const pinnedUntilRef = useRef(0);
+  const hasCollapsedOnceRef = useRef(false);
 
   const setManual = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     pinnedUntilRef.current = Date.now() + pinMs;
@@ -53,6 +54,7 @@ export function useScrollCollapse(
         // Always reveal at the very top, and clear the manual pin.
         if (top <= threshold) {
           pinnedUntilRef.current = 0;
+          hasCollapsedOnceRef.current = false;
           setExpanded((prev) => (prev ? prev : true));
           return;
         }
@@ -60,11 +62,12 @@ export function useScrollCollapse(
         // Honor a recent manual tap.
         if (Date.now() < pinnedUntilRef.current) return;
 
-        if (delta > 2) {
-          // scrolling down within the list → collapse
+        if (delta > 10) {
+          // scrolling deeper into the thread → collapse, but only after a deliberate move
+          hasCollapsedOnceRef.current = true;
           setExpanded((prev) => (prev ? false : prev));
-        } else if (delta < -revealDelta) {
-          // brisk swipe down (content moves down, scrollTop decreases) → reveal
+        } else if (delta < -revealDelta && hasCollapsedOnceRef.current) {
+          // reveal only after the rail has been collapsed once, so tiny idle bounces don't toggle it
           setExpanded((prev) => (prev ? prev : true));
         }
       });
