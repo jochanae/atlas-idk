@@ -10,11 +10,14 @@ import {
   useListEntries,
   useUpdateEntry,
   useDeleteEntry,
+  useCreateEntry,
   getListEntriesQueryKey,
 } from "@workspace/api-client-react";
 import type { Entry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { CaptureBar } from "@/components/CaptureBar";
+import { buildParkedEntryPayload } from "@/lib/parking";
 
 // ── Architectural note (locked rule from original Atlas) ──────────────────────
 // "Ledger and Parking Lot are the same object, rendered differently based on
