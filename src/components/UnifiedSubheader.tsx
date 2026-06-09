@@ -28,7 +28,7 @@ const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }>
 function tabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
   return {
     position: "relative",
-    padding: "4px 2px 4px",
+    padding: "6px 2px 10px",
     background: "transparent",
     border: "none",
     color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
@@ -69,14 +69,13 @@ export function UnifiedSubheader({
   };
 
   const showRow = expanded && hasProject;
-  const controlRailHeight = isMobile ? 28 : 30;
 
 
   return (
     <div
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
-        marginTop: 4,
+        marginTop: 50,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,
@@ -87,12 +86,9 @@ export function UnifiedSubheader({
       {/* Collapsible tab row — slides up and out of DOM flow when collapsed */}
       <div
         style={{
-          maxHeight: showRow ? 44 : 0,
-          opacity: showRow ? 1 : 0,
-          transform: showRow ? "translateY(0)" : "translateY(-6px)",
+          maxHeight: showRow ? 56 : 0,
           overflow: "hidden",
-          transition:
-            "max-height 280ms cubic-bezier(0.4,0,0.2,1), opacity 220ms cubic-bezier(0.4,0,0.2,1), transform 280ms cubic-bezier(0.4,0,0.2,1)",
+          transition: "max-height 240ms ease",
         }}
         aria-hidden={!showRow}
       >
@@ -102,7 +98,7 @@ export function UnifiedSubheader({
             display: "flex",
             alignItems: "center",
             gap: 10,
-            padding: isMobile ? "4px 16px 2px" : "6px 22px 2px",
+            padding: isMobile ? "8px 16px 6px" : "10px 22px 8px",
           }}
         >
           <nav
@@ -161,91 +157,87 @@ export function UnifiedSubheader({
         </div>
       </div>
 
-      {(hasProject && (showWorkspaceMenu || hasConversation)) && (
-        <div
+      {/* Play button — pinned, stays visible whether the row is expanded or collapsed */}
+      {showWorkspaceMenu && hasProject && (
+        <button
+          type="button"
+          onClick={() => onLaunch?.()}
+          onMouseEnter={() => setLaunchHover(true)}
+          onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
+          onMouseDown={() => setLaunchActive(true)}
+          onMouseUp={() => setLaunchActive(false)}
+          title="Launch full screen"
+          aria-label="Launch full screen"
           style={{
-            position: "relative",
-            minHeight: controlRailHeight,
-            display: "flex",
+            position: "absolute",
+            top: expanded ? (isMobile ? 8 : 10) : 4,
+            right: isMobile ? 16 : 22,
+            zIndex: 2,
+            background: launchActive
+              ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
+              : launchHover
+              ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+              : "transparent",
+            border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
+            borderRadius: 8,
+            padding: "5px 6px",
+            cursor: "pointer",
+            color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
+            opacity: launchHover || launchActive ? 1 : 0.85,
+            lineHeight: 0,
+            display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: isMobile ? "2px 16px 0" : "3px 22px 0",
+            transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease, top 240ms ease",
+            WebkitTapHighlightColor: "transparent",
+            boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
           }}
         >
-          {/* Play button — always visible in the workspace control rail */}
-          {showWorkspaceMenu && (
-            <button
-              type="button"
-              onClick={() => onLaunch?.()}
-              onMouseEnter={() => setLaunchHover(true)}
-              onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
-              onMouseDown={() => setLaunchActive(true)}
-              onMouseUp={() => setLaunchActive(false)}
-              title="Launch full screen"
-              aria-label="Launch full screen"
-              style={{
-                position: "absolute",
-                right: isMobile ? 16 : 22,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 2,
-                background: launchActive
-                  ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
-                  : launchHover
-                  ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
-                  : "transparent",
-                border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "color-mix(in oklab, var(--atlas-gold) 14%, transparent)"}`,
-                borderRadius: 8,
-                padding: "5px 6px",
-                cursor: "pointer",
-                color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 78%, var(--atlas-muted))",
-                opacity: 1,
-                lineHeight: 0,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease, transform 240ms ease",
-                WebkitTapHighlightColor: "transparent",
-                boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
-              }}
-            >
-              <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
-            </button>
-          )}
+          <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
+        </button>
+      )}
 
-          {/* Centered collapse handle — always reachable even when tabs are hidden */}
-          {hasConversation && (
-            <button
-              type="button"
-              onClick={() => {
-                setExpanded((open) => !open);
-              }}
-              title={expanded ? "Hide tabs" : "Show tabs"}
-              aria-label={expanded ? "Hide tabs" : "Show tabs"}
-              aria-expanded={expanded}
-              style={{
-                width: 40,
-                height: expanded ? 12 : 10,
-                padding: 0,
-                borderRadius: "0 0 9px 9px",
-                background: "color-mix(in oklab, var(--atlas-gold) 7%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
-                borderTop: "none",
-                color: "var(--atlas-gold)",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 9,
-                lineHeight: 1,
-                WebkitTapHighlightColor: "transparent",
-                opacity: 0.92,
-                transition: "opacity 180ms ease, background 180ms ease",
-              }}
-            >
-              {expanded ? "▴" : "▾"}
-            </button>
-          )}
+
+      {/* Centered collapse handle — sits directly below the row (or directly below main header when collapsed) */}
+      {hasConversation && hasProject && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            height: expanded ? 14 : 10,
+            pointerEvents: "none",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setExpanded((open) => !open);
+            }}
+            title={expanded ? "Hide tabs" : "Show tabs"}
+            aria-label={expanded ? "Hide tabs" : "Show tabs"}
+            aria-expanded={expanded}
+            style={{
+              pointerEvents: "auto",
+              width: 36,
+              height: expanded ? 14 : 10,
+              padding: 0,
+              borderRadius: "0 0 8px 8px",
+              background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
+              borderTop: "none",
+              color: "var(--atlas-gold)",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 9,
+              lineHeight: 1,
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            {expanded ? "▴" : "▾"}
+          </button>
         </div>
       )}
     </div>
