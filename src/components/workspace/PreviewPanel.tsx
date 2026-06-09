@@ -4,6 +4,7 @@ import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject }
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
+import { useIsMobile } from "@/hooks/useBreakpoints";
 
 export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, sessionId, onSwitchToFiles }: {
   projectId: number;
@@ -86,6 +87,19 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
     };
   }, [deviceMenuOpen]);
   const [detectMenuOpen, setDetectMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileFullscreen, setMobileFullscreen] = useState(false);
+  useEffect(() => {
+    if (!mobileFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileFullscreen(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileFullscreen]);
 
   // ── Devserver state ──────────────────────────────────────────────────────────
   type DsStatus = "idle" | "cloning" | "installing" | "starting" | "running" | "error";
@@ -574,8 +588,8 @@ ${t}
 
 
               {/* Fullscreen / hide chrome */}
-              <button onClick={() => setChromeVisible((v) => !v)}
-                title={chromeVisible ? "Hide toolbar" : "Show toolbar"}
+              <button onClick={() => { if (isMobile && liveUrl) setMobileFullscreen(true); else setChromeVisible((v) => !v); }}
+                title={isMobile ? "Fullscreen" : (chromeVisible ? "Hide toolbar" : "Show toolbar")}
                 aria-label="Toggle fullscreen preview"
                 style={iconBtn}>⛶</button>
 
@@ -685,6 +699,44 @@ ${t}
             </div>
           )}
           </div>
+
+          {/* Mobile fullscreen portal */}
+          {mobileFullscreen && liveUrl && typeof document !== "undefined" && createPortal(
+            <div style={{
+              position: "fixed", inset: 0, zIndex: 99999, background: "#000",
+              display: "flex", flexDirection: "column",
+            }}>
+              <iframe
+                key={`fs-${liveUrl}-${reloadKey}`}
+                src={liveUrl}
+                title="Preview fullscreen"
+                style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+              <button
+                onClick={() => setMobileFullscreen(false)}
+                aria-label="Exit fullscreen"
+                style={{
+                  position: "fixed",
+                  top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+                  right: "calc(env(safe-area-inset-right, 0px) + 12px)",
+                  zIndex: 100000,
+                  padding: "8px 14px", borderRadius: 999,
+                  background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(201,162,76,0.35)",
+                  color: "var(--atlas-gold, #c9a24c)",
+                  fontSize: 12, fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.08em", cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
+                <span>EXIT</span>
+              </button>
+            </div>,
+            document.body
+          )}
         </>
       )}
 
