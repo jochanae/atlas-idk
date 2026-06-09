@@ -11,6 +11,7 @@ import {
   Rocket,
   Settings,
   Layers,
+  Flame,
   MoreHorizontal,
   Plus,
   ChevronDown,
@@ -26,6 +27,7 @@ export type ComposerMenuAction =
   | "share"
   | "publish"
   | "settings"
+  | "forge-intake"
   | "more:forge"
   | "more:memory"
   | "more:blueprints"
@@ -60,6 +62,7 @@ type PrimaryItem = {
 };
 
 const PRIMARY_ITEMS: PrimaryItem[] = [
+  { id: "forge-intake", label: "Forge intake", icon: <Flame size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "mcp", label: "MCP", icon: <Layers size={18} strokeWidth={1.6} /> },
   { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} /> },
