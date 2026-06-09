@@ -453,12 +453,14 @@ export function ChatComposer(props: ChatComposerProps) {
                   style={{
                     position: "absolute", top: 0, left: 2,
                     color: "var(--atlas-gold)", fontSize: 14, lineHeight: 1.6,
-                    opacity: 0.75, pointerEvents: "none",
+                    opacity: planBannerVisible ? 0.75 : 0,
+                    transition: "opacity 1.5s ease-out",
+                    pointerEvents: "none",
                     fontFamily: "var(--app-font-sans)",
                     fontStyle: "italic",
                   }}
                 >
-                  Drafting plan… (No code will be written)
+                  Strategizing
                 </div>
               ) : (
                 <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
