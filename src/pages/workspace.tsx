@@ -471,25 +471,28 @@ function GithubTokenInput({
   isConnected,
   isLoading,
   error,
-  onConnect,
   onDisconnect,
 }: {
   isConnected: boolean;
   isLoading: boolean;
   error: string | null;
-  onConnect: (token: string) => Promise<boolean>;
   onDisconnect: () => Promise<void>;
 }) {
-  const [token, setToken] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const handleConnect = async () => {
-    const trimmed = token.trim();
-    if (!trimmed) return;
-    setSaving(true);
-    const ok = await onConnect(trimmed);
-    setSaving(false);
-    if (ok) setToken("");
+  const handleConnectWithGitHub = () => {
+    fetch("/api/github/oauth/start", {
+      headers: { Accept: "application/json" },
+      credentials: "include",
+    })
+      .then((r) => {
+        if (r.status === 401) {
+          window.location.href = "/login?reason=session_expired";
+          return null;
+        }
+        return r.json() as Promise<{ url?: string }>;
+      })
+      .then((data) => {
+        if (data?.url) window.location.href = data.url;
+      });
   };
 
   if (isLoading) {
@@ -533,26 +536,6 @@ function GithubTokenInput({
       <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.7 }}>
         Connect GitHub once for this account so Atlas can read and write code across projects.
       </div>
-      <input
-        type="password"
-        value={token}
-        onChange={(e) => setToken(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") void handleConnect(); }}
-        placeholder="ghp_..."
-        autoComplete="off"
-        style={{
-          width: "100%",
-          padding: "8px 10px",
-          borderRadius: 6,
-          background: "var(--atlas-surface)",
-          border: "1px solid var(--atlas-border)",
-          color: "var(--atlas-fg)",
-          fontSize: 11,
-          fontFamily: "var(--app-font-mono)",
-          outline: "none",
-          boxSizing: "border-box",
-        }}
-      />
       {error && (
         <div style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>
           {error}
@@ -560,32 +543,23 @@ function GithubTokenInput({
       )}
       <button
         type="button"
-        onClick={() => { void handleConnect(); }}
-        disabled={!token.trim() || saving}
+        onClick={handleConnectWithGitHub}
         style={{
           alignSelf: "flex-start",
           padding: "8px 14px",
           borderRadius: 6,
-          background: token.trim() ? "var(--atlas-gold)" : "var(--atlas-surface)",
+          background: "var(--atlas-gold)",
           border: "none",
-          color: token.trim() ? "#0D0B09" : "var(--atlas-muted)",
+          color: "#0D0B09",
           fontSize: 10,
           fontFamily: "var(--app-font-mono)",
           letterSpacing: "0.1em",
           textTransform: "uppercase",
-          cursor: token.trim() && !saving ? "pointer" : "not-allowed",
+          cursor: "pointer",
         }}
       >
-        {saving ? "Connecting..." : "Connect"}
+        Connect with GitHub
       </button>
-      <a
-        href="https://github.com/settings/tokens/new?description=Atlas&scopes=repo"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ fontSize: 9.5, color: "var(--atlas-gold)", opacity: 0.55, fontFamily: "var(--app-font-mono)" }}
-      >
-        Create token on GitHub -&gt;
-      </a>
     </div>
   );
 }

@@ -369,6 +369,29 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
     }
   };
 
+  const handleStartGithubOAuth = async () => {
+    setGithubTokenError(null);
+    try {
+      const res = await fetch("/api/github/oauth/start", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+      if (res.status === 401) {
+        window.location.href = "/login?reason=session_expired";
+        return;
+      }
+      const data = await res.json().catch(() => ({})) as { url?: string };
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setGithubTokenError("Failed to start GitHub connection");
+    } catch {
+      setGithubTokenError("Network error. Try again.");
+    }
+  };
+
   const handleRemoveGithubConnection = async (id: AccountConnection["id"]) => {
     setRemovingGithubConnectionId(id);
     try {
@@ -784,9 +807,31 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
               marginBottom: "12px",
               lineHeight: 1.5,
             }}>
-              Save a GitHub token for your account so Atlas can read and write code across projects.
+              Connect your GitHub account so Atlas can read and write code across projects.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => void handleStartGithubOAuth()}
+                style={{
+                  alignSelf: "flex-start",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  background: "var(--atlas-gold)",
+                  border: "none",
+                  color: "#0D0B09",
+                  fontSize: 10,
+                  fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
+              >
+                Connect with GitHub
+              </button>
+              <div style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55, fontFamily: "var(--app-font-mono)" }}>
+                or paste a personal access token
+              </div>
               <input
                 type="password"
                 value={githubToken}
