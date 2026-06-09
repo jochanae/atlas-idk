@@ -91,6 +91,7 @@ import {
 } from "@/components/workspace/chatShared";
 import { extractStrategicIntent } from "@/lib/forgeExtract";
 import { submitForgeIntake } from "@/lib/forgeIntake";
+import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { buildParkedEntryPayload } from "@/lib/parking";
 
 
@@ -3787,6 +3788,7 @@ export default function Workspace() {
   const renameEscapeRef = useRef(false);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
