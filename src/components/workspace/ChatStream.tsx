@@ -162,6 +162,39 @@ export function ChatStream(props: ChatStreamProps) {
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
   const isMobile = useIsMobile();
+  const { isScrolling, viewportsFromBottom } = useScrollDirection(scrollRef, {
+    threshold: 8,
+    debounceMs: 150,
+  });
+
+  // Day-divider indices: render a sticky chip BEFORE the first message of each new calendar day.
+  const dayDividerMap = useMemo(() => {
+    const map = new Map<number, string>();
+    let prev: string | null = null;
+    messages.forEach((m, i) => {
+      const t = m.sentAt ? new Date(m.sentAt).getTime() : Date.now();
+      const key = dayKey(t);
+      if (key !== prev) {
+        map.set(i, dayLabel(t));
+        prev = key;
+      }
+    });
+    return map;
+  }, [messages]);
+
+  // Unread tracking for the Jump-to-Latest pill.
+  const [unreadCount, setUnreadCount] = useState(0);
+  const lastAssistantCountRef = useRef(0);
+  const farFromBottom = viewportsFromBottom >= 1;
+  useEffect(() => {
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (farFromBottom && assistantCount > lastAssistantCountRef.current) {
+      setUnreadCount((c) => c + (assistantCount - lastAssistantCountRef.current));
+    }
+    if (!farFromBottom) setUnreadCount(0);
+    lastAssistantCountRef.current = assistantCount;
+  }, [messages, farFromBottom]);
+
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
