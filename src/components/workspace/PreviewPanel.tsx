@@ -69,6 +69,22 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [chromeVisible, setChromeVisible] = useState(true);
   const [statusVisible, setStatusVisible] = useState(false);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
+  const deviceBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [deviceMenuPos, setDeviceMenuPos] = useState<{ top: number; right: number } | null>(null);
+  useEffect(() => {
+    if (!deviceMenuOpen) return;
+    const update = () => {
+      const r = deviceBtnRef.current?.getBoundingClientRect();
+      if (r) setDeviceMenuPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [deviceMenuOpen]);
   const [detectMenuOpen, setDetectMenuOpen] = useState(false);
 
   // ── Devserver state ──────────────────────────────────────────────────────────
