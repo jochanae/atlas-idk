@@ -602,11 +602,15 @@ export default function CodePage() {
 
   const projectId = useMemo(() => getProjectIdFromUrl(), []);
   const handleBack = () => {
+    if (projectId != null) {
+      navigate(`/project/${projectId}`);
+      return;
+    }
     if (typeof window !== "undefined" && window.history.length > 1) {
       window.history.back();
       return;
     }
-    navigate(projectId != null ? `/project/${projectId}` : "/");
+    navigate("/");
   };
 
   useEffect(() => {
