@@ -287,14 +287,13 @@ export function TimelineRail({
         {/* spine */}
         <div
           aria-hidden
+          className="atlas-rail-spine"
           style={{
             position: "absolute",
             top: 4,
             bottom: 4,
-            right: 6,
+            right: 10,
             width: 1,
-            background:
-              "linear-gradient(180deg, transparent 0%, rgba(201,162,76,0.25) 12%, rgba(201,162,76,0.35) 50%, rgba(201,162,76,0.25) 88%, transparent 100%)",
             pointerEvents: "none",
           }}
         />
