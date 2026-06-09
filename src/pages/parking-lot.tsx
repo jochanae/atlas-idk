@@ -10,11 +10,14 @@ import {
   useListEntries,
   useUpdateEntry,
   useDeleteEntry,
+  useCreateEntry,
   getListEntriesQueryKey,
 } from "@workspace/api-client-react";
 import type { Entry } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { CaptureBar } from "@/components/CaptureBar";
+import { buildParkedEntryPayload } from "@/lib/parking";
 
 // ── Architectural note (locked rule from original Atlas) ──────────────────────
 // "Ledger and Parking Lot are the same object, rendered differently based on
@@ -97,6 +100,15 @@ export default function ParkingLot() {
 
   const updateEntry = useUpdateEntry({ mutation: { onSuccess: invalidateAll } });
   const deleteEntry = useDeleteEntry({ mutation: { onSuccess: invalidateAll } });
+  const createEntry = useCreateEntry({ mutation: { onSuccess: invalidateAll } });
+
+  const handleCapture = (content: string) => {
+    if (!activeProjectId) return;
+    createEntry.mutate({
+      projectId: activeProjectId,
+      data: buildParkedEntryPayload(content),
+    });
+  };
 
   // Resume: navigate back to source project workspace
   const handleResume = (entry: Entry) => {
@@ -281,6 +293,19 @@ export default function ParkingLot() {
                 : "When Atlas delivers a thought you're not ready to commit, park it here."}
             </p>
           </div>
+
+          {/* Capture bar — park a thought directly from this page */}
+          {activeProjectId && (
+            <div style={{ marginBottom: 20 }}>
+              <CaptureBar
+                context="modal"
+                destinations={["park"]}
+                defaultDestination="park"
+                projectId={String(activeProjectId)}
+                onPark={handleCapture}
+              />
+            </div>
+          )}
 
           {/* Content */}
           {!activeProjectId ? (

@@ -7,6 +7,7 @@ import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import { CaptureBar } from "@/components/CaptureBar";
 
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
@@ -172,6 +173,8 @@ export interface ChatComposerProps {
   showParkingDrawer: boolean;
   setShowParkingDrawer: (v: boolean) => void;
   refreshParkedEntries: () => Promise<unknown> | unknown;
+  /** Proactive park-your-own-thought from the CaptureBar mounted in the composer. */
+  onPark?: (content: string) => void;
 
   // Model picker (only renders chip when showModelPicker is true)
   showModelPicker?: boolean;
@@ -238,6 +241,7 @@ export function ChatComposer(props: ChatComposerProps) {
     showParkingDrawer,
     setShowParkingDrawer,
     refreshParkedEntries,
+    onPark,
     showModelPicker,
     wsModel,
     onOpenModelSheet,
@@ -353,6 +357,22 @@ export function ChatComposer(props: ChatComposerProps) {
                 <path d="M2 2l10 10M12 2L2 12" />
               </svg>
             </button>
+          </div>
+        )}
+
+        {/* CaptureBar — proactive park / forge entry surface.
+            Only mounts when a parent provided onPark (workspace does). */}
+        {onPark && (
+          <div style={{ marginBottom: 10 }}>
+            <CaptureBar
+              context="flow"
+              destinations={["park", "forge"]}
+              defaultDestination="park"
+              projectId={projectId ? String(projectId) : null}
+              parkedCount={parkedCount}
+              onParkedChipClick={() => { setShowParkingDrawer(true); void refreshParkedEntries(); }}
+              onPark={(content) => onPark(content)}
+            />
           </div>
         )}
 
@@ -656,35 +676,8 @@ export function ChatComposer(props: ChatComposerProps) {
         </div>
       </div>}
 
-      {parkedCount > 0 && !showParkingDrawer && (
-        <button
-          type="button"
-          onClick={() => { setShowParkingDrawer(true); void refreshParkedEntries(); }}
-          style={{
-            position: "absolute",
-            right: 16,
-            bottom: 104,
-            zIndex: 42,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            padding: "6px 10px",
-            borderRadius: 999,
-            background: "var(--atlas-surface)",
-            border: "1px solid var(--atlas-border)",
-            color: "var(--atlas-muted)",
-            cursor: "pointer",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 9,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            boxShadow: "0 12px 28px -20px var(--atlas-gold)",
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block", flexShrink: 0 }} />
-          {parkedCount} items
-        </button>
-      )}
+      {/* Floating "{n} items" pill removed — parked count now renders inline
+          in the CaptureBar mounted above the input. */}
     </>
   );
 }

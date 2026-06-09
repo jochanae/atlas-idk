@@ -90,6 +90,7 @@ import {
   type PlanState,
 } from "@/components/workspace/chatShared";
 import { extractStrategicIntent } from "@/lib/forgeExtract";
+import { buildParkedEntryPayload } from "@/lib/parking";
 
 
 export interface CatchPayload {
@@ -4785,13 +4786,12 @@ export default function Workspace() {
       if (!sessionId) return;
       haptic.short();
       playPark();
-      const title = content.replace(/\n/g, " ").slice(0, 80).trim();
       createEntry.mutate(
-        { projectId: id, data: { title, summary: content.slice(0, 500), status: "parked", severity: "parked", mode: "think", sessionId } },
+        { projectId: id, data: { ...buildParkedEntryPayload(content, sessionId) } },
         { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
       );
     },
-    [id, sessionId, createEntry, queryClient, refreshParkedEntries]
+    [id, sessionId, createEntry, queryClient, refreshParkedEntries, playPark]
   );
 
   const handleCommit = useCallback(
@@ -6163,6 +6163,7 @@ export default function Workspace() {
               showParkingDrawer,
               setShowParkingDrawer,
               refreshParkedEntries,
+              onPark: handlePark,
               showModelPicker,
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
