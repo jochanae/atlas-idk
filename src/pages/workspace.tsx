@@ -5004,6 +5004,76 @@ export default function Workspace() {
     }
   }, [wsLens]);
 
+  // Shared Forge-nodes apply pipeline. Used by TheForge's onNodesReady AND
+  // by the in-composer / assistant-bubble Forge intake flows so all three
+  // surfaces produce identical side effects (canvas, ctx, nodeState, ledger).
+  const applyForgeNodes = useCallback((nodes: ArchNode[]) => {
+    setExternalForgeNodes(nodes);
+    const ctx = nodes.map(n => `[${n.type}] ${n.label}`).join(" | ");
+    setForgeContext(ctx);
+    try { sessionStorage.setItem(`atlas-forge-ctx-${id}`, ctx); } catch { /* noop */ }
+
+    const targetProjectId = forgeActiveProjectId ?? id;
+    if (Number.isFinite(targetProjectId) && nodes.length > 0) {
+      const currentNodeState = ((project?.nodeState ?? {}) as Record<string, unknown>);
+      const forgedState: Record<string, unknown> = {};
+      nodes.forEach((n) => {
+        forgedState[n.id] = {
+          resolved: n.resolved,
+          label: n.label,
+          type: n.type,
+          x: n.x,
+          y: n.y,
+          ...(n.details ? { details: n.details } : {}),
+          ...(n.meta ? { meta: n.meta } : {}),
+          ...(n.moscow ? { moscow: n.moscow } : {}),
+          ...(n.question ? { question: n.question } : {}),
+          ...(n.strategicAnswer ? { strategicAnswer: n.strategicAnswer } : {}),
+        };
+      });
+      updateProjectHeader.mutate(
+        { id: targetProjectId, data: { nodeState: { ...currentNodeState, ...forgedState } } },
+        { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }); } }
+      );
+
+      const resolvedCount = nodes.filter(n => n.resolved).length;
+      const summary = nodes.slice(0, 6).map(n => `[${n.type}] ${n.label}`).join(" · ");
+      createEntry.mutate(
+        {
+          projectId: targetProjectId,
+          data: {
+            title: `Forge run · ${nodes.length} node${nodes.length === 1 ? "" : "s"} mapped`,
+            summary: summary.slice(0, 500),
+            details: `Forge committed ${nodes.length} node${nodes.length === 1 ? "" : "s"} into the system map (${resolvedCount} resolved).`,
+            status: "committed",
+            severity: "committed",
+            verb: "new",
+            mode: "build",
+            sessionId: sessionId ?? null,
+          },
+        },
+        { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); } }
+      );
+    }
+
+    void updateForgeState("forged");
+    setDesktopForceTab("map");
+    setTimeout(() => setDesktopForceTab(undefined), 80);
+    if (isMobile) setMobileTab("map");
+  }, [id, forgeActiveProjectId, project, sessionId, isMobile, updateProjectHeader, createEntry, queryClient, updateForgeState]);
+
+  const handleForgeIntake = useCallback(async (content: string) => {
+    try {
+      const result = await submitForgeIntake({ transcript: content, projectId: id });
+      applyForgeNodes(result.nodes);
+      toast(`Forge intake · ${result.nodes.length} node${result.nodes.length === 1 ? "" : "s"} mapped`);
+    } catch (e) {
+      toast("Forge intake failed — try a more specific description.");
+      throw e;
+    }
+  }, [id, applyForgeNodes]);
+
+
   // messagesRef + summarize effect owned by useChatStream.
 
 
