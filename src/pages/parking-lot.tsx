@@ -100,6 +100,15 @@ export default function ParkingLot() {
 
   const updateEntry = useUpdateEntry({ mutation: { onSuccess: invalidateAll } });
   const deleteEntry = useDeleteEntry({ mutation: { onSuccess: invalidateAll } });
+  const createEntry = useCreateEntry({ mutation: { onSuccess: invalidateAll } });
+
+  const handleCapture = (content: string) => {
+    if (!activeProjectId) return;
+    createEntry.mutate({
+      projectId: activeProjectId,
+      data: buildParkedEntryPayload(content),
+    });
+  };
 
   // Resume: navigate back to source project workspace
   const handleResume = (entry: Entry) => {
