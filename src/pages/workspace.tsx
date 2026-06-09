@@ -90,6 +90,7 @@ import {
   type PlanState,
 } from "@/components/workspace/chatShared";
 import { extractStrategicIntent } from "@/lib/forgeExtract";
+import { submitForgeIntake } from "@/lib/forgeIntake";
 import { buildParkedEntryPayload } from "@/lib/parking";
 
 
