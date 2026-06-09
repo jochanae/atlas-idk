@@ -599,6 +599,13 @@ export default function CodePage() {
   const [isPushingGithub, setIsPushingGithub] = useState(false);
 
   const projectId = useMemo(() => getProjectIdFromUrl(), []);
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    navigate(projectId != null ? `/project/${projectId}` : "/");
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -806,14 +813,14 @@ export default function CodePage() {
         backdropFilter: "blur(14px)",
       }}>
         <button
-          onClick={() => navigate("/home")}
+          onClick={handleBack}
           style={{
             display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px",
             background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 8, color: "var(--atlas-muted)", cursor: "pointer", fontSize: 12,
           }}
         >
-          <ArrowLeft size={13} /> Home
+          <ArrowLeft size={13} /> Back
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
