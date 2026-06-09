@@ -503,6 +503,37 @@ body[data-axiom-global-insight="true"] .atlas-input-shell input {
   box-shadow: none;
 }
 
+/* ── Timeline rail (theme-aware spine + chips) ── */
+.atlas-rail-spine {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    color-mix(in oklab, var(--atlas-gold) 35%, transparent) 12%,
+    color-mix(in oklab, var(--atlas-gold) 55%, transparent) 50%,
+    color-mix(in oklab, var(--atlas-gold) 35%, transparent) 88%,
+    transparent 100%);
+}
+[data-theme="parchment"] .atlas-rail-daychip {
+  background: rgba(255,255,255,0.85) !important;
+  border-color: rgba(17,17,17,0.14) !important;
+  color: #5b3a1f !important;
+  box-shadow: 0 1px 3px rgba(17,17,17,0.06);
+}
+
+/* ── Light-mode workspace composer contrast ── */
+[data-theme="parchment"] .atlas-input-shell textarea {
+  color: #171717 !important;
+}
+[data-theme="parchment"] .atlas-input-shell textarea::placeholder {
+  color: rgba(23,23,23,0.45) !important;
+}
+[data-theme="parchment"] .atlas-input-actionrow button {
+  color: #404040;
+}
+[data-theme="parchment"] .atlas-input-actionrow button:hover {
+  color: #171717;
+}
+
+
 @keyframes atlas-breathing-glow {
   0%, 100% {
     border-color: var(--atlas-gold-border);
