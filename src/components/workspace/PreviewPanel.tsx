@@ -577,12 +577,12 @@ ${t}
                 </button>
                 {deviceMenuOpen && (
                   <>
-                    <div onClick={() => setDeviceMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div onClick={() => setDeviceMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1000 }} />
                     <div style={{
-                      position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 41,
+                      position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 1001,
                       background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
                       borderRadius: 6, padding: 4, minWidth: 140,
-                      boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
                     }}>
                       {(["phone", "tablet", "desktop"] as const).map((d) => (
                         <button key={d} onClick={() => { setDeviceSize(d); setDeviceMenuOpen(false); }}
