@@ -272,7 +272,7 @@ export function TimelineRail({
           bottom: bottomOffset,
           right: 0,
           // Widen the hit/render column so inline day chips have room to the left of the spine.
-          width: 72,
+          width: 96,
           zIndex: 18,
           display: "flex",
           flexDirection: "column",
