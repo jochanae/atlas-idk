@@ -75,7 +75,7 @@ interface Props {
   readinessScore?: number;
   activeProjectName?: string;
   projectId?: number;
-  defaultTab?: "forge" | "prompt" | "dna";
+  defaultTab?: "forge" | "prompt";
   preloadContent?: string;
   onClose: () => void;
   onNodesReady?: (nodes: ArchNode[]) => void;
@@ -90,7 +90,7 @@ interface Props {
 export function TheForge({ platform, readinessScore = 0, activeProjectName, projectId, defaultTab = "forge", preloadContent, onClose, onNodesReady, onFillChatInput, scopeNodeId, scopeNodeLabel, onClearScope }: Props) {
   const [isMobile] = useState(() => window.innerWidth < 768);
   const theme = useThemeMode();
-  const [tab, setTab] = useState<"forge" | "prompt" | "dna">(defaultTab);
+  const [tab, setTab] = useState<"forge" | "prompt">(defaultTab === "prompt" ? "prompt" : "forge");
 
   // Forge state — pre-fill transcript from preloadContent if provided
   const [transcript, setTranscript] = useState(preloadContent ?? "");
@@ -107,72 +107,9 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   const [repoDocsFound, setRepoDocsFound] = useState<string[]>([]);
   const [repoScanStatus, setRepoScanStatus] = useState<"idle" | "loading" | "done">("idle");
 
-  // Project DNA — loaded from project.shape on the backend. Free-form record so
-  // future shape keys (identity / constraints / format / …) can be surfaced
-  // without a schema change here.
-  const [projectShape, setProjectShape] = useState<Record<string, unknown>>({});
-  const [editingDnaKey, setEditingDnaKey] = useState<string | null>(null);
-  const [dnaDraft, setDnaDraft] = useState("");
-  const [dnaSaving, setDnaSaving] = useState(false);
-  const [dnaError, setDnaError] = useState<string | null>(null);
-  const [dnaCopied, setDnaCopied] = useState(false);
-  const dnaValue = (key: string): string => {
-    const v = projectShape[key];
-    if (typeof v === "string") return v;
-    if (Array.isArray(v)) return v.filter(x => typeof x === "string").join("\n");
-    return "";
-  };
-  const startEditDna = (key: string) => {
-    setDnaError(null);
-    setDnaDraft(dnaValue(key));
-    setEditingDnaKey(key);
-  };
-  const cancelEditDna = () => {
-    setEditingDnaKey(null);
-    setDnaDraft("");
-    setDnaError(null);
-  };
-  const saveDna = async () => {
-    if (!projectId || !editingDnaKey) return;
-    setDnaSaving(true);
-    setDnaError(null);
-    const key = editingDnaKey;
-    const nextShape = { ...projectShape, [key]: dnaDraft };
-    try {
-      const r = await fetch(`/api/projects/${projectId}/shape`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shape: nextShape }),
-      });
-      if (!r.ok) throw new Error(`Save failed (${r.status})`);
-      const data = await r.json().catch(() => null) as { shape?: Record<string, unknown> } | null;
-      setProjectShape(data?.shape && typeof data.shape === "object" ? data.shape : nextShape);
-      setEditingDnaKey(null);
-      setDnaDraft("");
-      haptics.tap();
-    } catch (e) {
-      setDnaError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setDnaSaving(false);
-    }
-  };
-  const copyStrategicPayload = async () => {
-    const parts: string[] = [];
-    const id = dnaValue("identity");
-    const co = dnaValue("constraints");
-    const fmt = dnaValue("format");
-    if (id) parts.push(`# Identity\n${id}`);
-    if (co) parts.push(`# Constraints\n${co}`);
-    if (fmt) parts.push(`# Format\n${fmt}`);
-    const payload = parts.join("\n\n") || "(No Project DNA defined yet)";
-    try {
-      await navigator.clipboard.writeText(payload);
-      setDnaCopied(true);
-      haptics.tap();
-      setTimeout(() => setDnaCopied(false), 1600);
-    } catch { /* silent */ }
-  };
+  // Project DNA was extracted to ProjectDnaEditor (mounted in ProjectSettingsPanel).
+  // See the transitional banner below the tab bar — drop the banner once the
+  // move has been live for a couple of weeks.
 
   // Quick Prompt state — auto-detect platform from hostname; respect prop override
   const detectedPlatform = detectPlatformId();
