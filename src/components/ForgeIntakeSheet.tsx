@@ -187,7 +187,7 @@ export function ForgeIntakeSheet({ open, onClose, onIntake, onOpenProjectDna, pr
             maxHeight: "44vh",
             resize: "vertical",
             padding: "12px 14px",
-            background: "rgba(0,0,0,0.35)",
+            background: "rgba(var(--atlas-bg-rgb), 0.45)",
             border: "1px solid rgba(var(--atlas-gold-rgb), 0.18)",
             borderRadius: 12,
             color: "var(--atlas-fg)",
