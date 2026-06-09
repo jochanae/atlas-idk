@@ -62,8 +62,9 @@ export function ProjectPulsePanel(props: Props) {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 13000,
-        background: "rgba(0,0,0,0.72)",
+        background: "rgba(var(--atlas-bg-rgb), 0.55)",
         backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: 16,
         animation: "atlas-fade-in 180ms ease",
@@ -79,10 +80,10 @@ export function ProjectPulsePanel(props: Props) {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%", maxWidth: 420, maxHeight: "85vh", overflowY: "auto",
-          background: "rgba(10,10,12,0.96)",
-          border: "1px solid rgba(201,162,76,0.22)",
+          background: "rgba(var(--atlas-surface-rgb), 0.96)",
+          border: "1px solid rgba(var(--atlas-gold-rgb), 0.22)",
           borderRadius: 14,
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.35), inset 0 1px 0 rgba(var(--atlas-gold-rgb), 0.06)",
           padding: 20,
           animation: "atlas-pulse-rise 240ms cubic-bezier(0.22,1,0.36,1)",
           fontFamily: "var(--app-font-sans)",
