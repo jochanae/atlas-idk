@@ -160,17 +160,19 @@ export function UserMenuDropdown({ openSignal, onOpenProfile }: Props) {
     if (!open) return;
     // Capture button position for portal placement
     if (btnRef.current) setBtnRect(btnRef.current.getBoundingClientRect());
-    const onDocClick = (e: MouseEvent) => {
+    const onDocClick = (e: Event) => {
       const target = e.target as Node;
       const insideBtn = btnRef.current?.contains(target);
       const insideMenu = (document.getElementById("atlas-user-menu-portal"))?.contains(target);
       if (!insideBtn && !insideMenu) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("pointerdown", onDocClick, true);
+    document.addEventListener("touchstart", onDocClick, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("pointerdown", onDocClick, true);
+      document.removeEventListener("touchstart", onDocClick, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
