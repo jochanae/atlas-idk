@@ -243,12 +243,13 @@ html, body {
   background-image: none;
 }
 
+/* Parchment text color only — never force a background on textareas/inputs,
+   or composers that intentionally render transparent textareas get a gray
+   inset rectangle that also hides streaming placeholder text. */
 [data-theme="parchment"] input,
 [data-theme="parchment"] textarea,
 [data-theme="parchment"] select {
-  background: var(--atlas-surface) !important;
-  color: var(--atlas-fg) !important;
-  border-color: var(--atlas-border) !important;
+  color: var(--atlas-fg);
 }
 
 :root {
