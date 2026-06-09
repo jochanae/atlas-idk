@@ -360,6 +360,22 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
+        {/* CaptureBar — proactive park / forge entry surface.
+            Only mounts when a parent provided onPark (workspace does). */}
+        {onPark && (
+          <div style={{ marginBottom: 10 }}>
+            <CaptureBar
+              context="flow"
+              destinations={["park", "forge"]}
+              defaultDestination="park"
+              projectId={projectId ? String(projectId) : null}
+              parkedCount={parkedCount}
+              onParkedChipClick={() => { setShowParkingDrawer(true); void refreshParkedEntries(); }}
+              onPark={(content) => onPark(content)}
+            />
+          </div>
+        )}
+
         {/* ZIP panel — shows when a ZIP is loaded */}
         {zipFiles.length > 0 && (
           <ZipPanel
