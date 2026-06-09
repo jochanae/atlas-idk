@@ -414,6 +414,30 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
+        {planBannerVisible && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+              marginBottom: 6,
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              opacity: 0.85,
+              animation: "fade-in 0.2s ease-out",
+              pointerEvents: "none",
+            }}
+          >
+            <span style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "var(--atlas-gold)",
+              boxShadow: "0 0 6px rgba(201,162,76,0.7)",
+            }} />
+            Plan Mode Active · Strategizing
+          </div>
+        )}
+
         <div
           className="atlas-input-shell"
           style={{
