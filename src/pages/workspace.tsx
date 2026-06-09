@@ -3867,7 +3867,9 @@ export default function Workspace() {
   // Drive chrome auto-hide off the chat scroll container. Mobile-only immersion;
   // desktop chrome always stays visible.
   const wsScrollDir = useScrollDirection(chatPanelScrollRef, { threshold: 8, debounceMs: 150 });
-  const immersive = isMobile && wsScrollDir.direction === "up" && wsScrollDir.distanceFromBottom > 200;
+  // Only hide chrome while ACTIVELY scrolling up away from bottom.
+  // When idle (not scrolling), always restore the dock + subheader.
+  const immersive = isMobile && wsScrollDir.isScrolling && wsScrollDir.direction === "up" && wsScrollDir.distanceFromBottom > 200;
 
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow
   // updates even when the user isn't scrolling.

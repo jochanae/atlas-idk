@@ -60,6 +60,25 @@ export function TimelineRail({
   const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Track mobile keyboard via visualViewport so the rail rides above it
+  // instead of being clipped behind it when the composer is focused.
+  const [kbInset, setKbInset] = useState(0);
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKbInset(inset > 80 ? inset : 0);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
   // Sorted list of message indices that contain the query.
   const matchList = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -257,7 +276,7 @@ export function TimelineRail({
         style={{
           position: "fixed",
           top: topOffset,
-          bottom: bottomOffset,
+          bottom: bottomOffset + kbInset,
           right: 0,
           // Widen the hit/render column so inline day chips have room to the left of the spine.
           width: 96,

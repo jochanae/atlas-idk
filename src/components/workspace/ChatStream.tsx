@@ -424,18 +424,15 @@ export function ChatStream(props: ChatStreamProps) {
             position: "absolute",
             right: 16,
             bottom: 56,
+            width: 36,
+            height: 36,
             display: "inline-flex",
             alignItems: "center",
-            gap: 8,
-            padding: "8px 14px 8px 12px",
+            justifyContent: "center",
             borderRadius: 999,
             background: "var(--atlas-surface)",
             border: "1px solid var(--atlas-gold)",
             color: "var(--atlas-gold)",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
             boxShadow: "0 6px 24px rgba(0,0,0,0.45)",
             cursor: "pointer",
             zIndex: 50,
@@ -443,21 +440,23 @@ export function ChatStream(props: ChatStreamProps) {
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 3v10M4 9l4 4 4-4"/>
           </svg>
-          <span>JUMP TO LATEST</span>
           {unreadCount > 0 && (
             <span
               aria-label={`${unreadCount} new`}
               style={{
-                minWidth: 18,
-                height: 18,
-                padding: "0 5px",
+                position: "absolute",
+                top: -4,
+                right: -4,
+                minWidth: 16,
+                height: 16,
+                padding: "0 4px",
                 borderRadius: 999,
                 background: "var(--atlas-gold)",
                 color: "var(--atlas-bg, #14110e)",
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: 700,
                 display: "inline-flex",
                 alignItems: "center",
