@@ -423,7 +423,22 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+              {planMode && !hasInput ? (
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute", top: 0, left: 2,
+                    color: "var(--atlas-gold)", fontSize: 14, lineHeight: 1.6,
+                    opacity: 0.75, pointerEvents: "none",
+                    fontFamily: "var(--app-font-sans)",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Drafting plan… (No code will be written)
+                </div>
+              ) : (
+                <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+              )}
 
               <textarea
                 ref={textareaRef}
