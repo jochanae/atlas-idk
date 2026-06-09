@@ -49,51 +49,7 @@ export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, activ
   // Preview mode = totally immersive — no chrome, just the iframe + tiny close button
   if (mode === "preview") {
     return createPortal(
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 9999,
-          background: "#000",
-        }}
-      >
-        {previewUrl ? (
-          <iframe
-            src={previewUrl}
-            title="Sandbox"
-            style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          />
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-            No preview URL configured
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Exit sandbox"
-          style={{
-            position: "fixed",
-            top: 14,
-            right: 14,
-            zIndex: 10000,
-            width: 36,
-            height: 36,
-            borderRadius: 999,
-            background: "rgba(0,0,0,0.7)",
-            border: "1px solid color-mix(in oklab, var(--atlas-gold) 35%, transparent)",
-            color: "var(--atlas-gold)",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <X size={16} />
-        </button>
-      </div>,
+      <PreviewLaunchOverlay previewUrl={previewUrl} onClose={onClose} />,
       document.body,
     );
   }
