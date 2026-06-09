@@ -2125,7 +2125,67 @@ export function AssistantBubble({
                   el.style.left = `${left}px`;
                 }}
               >
-...
+                <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 2px 4px" }}>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      width: 26, height: 26, borderRadius: 999,
+                      background: "transparent", border: "none",
+                      color: "var(--atlas-muted)", cursor: "pointer",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4l8 8M12 4l-8 8" />
+                    </svg>
+                  </button>
+                </div>
+                {snapshotForMsg && (
+                  <MenuItem
+                    icon={snapshotForMsg.isBookmarked ? <BookmarkCheck size={13} strokeWidth={1.7} /> : <Bookmark size={13} strokeWidth={1.6} />}
+                    label={snapshotForMsg.isBookmarked ? "Bookmarked" : "Bookmark snapshot"}
+                    onClick={() => { setMenuOpen(false); toggleSnapshotBookmark(projectId, snapshotForMsg.id); }}
+                  />
+                )}
+                <MenuItem
+                  icon={<GitBranch size={13} strokeWidth={1.6} />}
+                  label="Fork / branch thread"
+                  onClick={() => { setMenuOpen(false); toast("Branching coming soon"); }}
+                />
+                <MenuItem
+                  icon={<FileOutput size={13} strokeWidth={1.6} />}
+                  label="Export as artifact"
+                  onClick={() => { setMenuOpen(false); toast("Sent to Artifacts workbench"); }}
+                />
+                <MenuItem
+                  icon={<Archive size={13} strokeWidth={1.6} />}
+                  label={parkDone ? "Parked" : "Park to inbox"}
+                  disabled={parkDone}
+                  onClick={() => { setMenuOpen(false); if (!parkDone) { onPark(message.content); setParkDone(true); } }}
+                />
+                <MenuItem
+                  icon={<Share2 size={13} strokeWidth={1.6} />}
+                  label="Share / archive"
+                  onClick={() => { setMenuOpen(false); toast("Share link coming soon"); }}
+                />
+                {previewableCode && onPreviewCode && (
+                  <MenuItem
+                    icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="12" height="9" rx="1.5" /><path d="M5 5.5l2 2-2 2M8.5 9.5h1.5" /></svg>}
+                    label="Preview in sandbox"
+                    onClick={() => { setMenuOpen(false); onPreviewCode(previewableCode); }}
+                  />
+                )}
+                {onExtractToForge && (
+                  <MenuItem
+                    icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1v8M4 6l3 3 3-3" /><path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" /></svg>}
+                    label="Extract to Forge"
+                    accent
+                    onClick={() => { setMenuOpen(false); onExtractToForge(message.content); }}
+                  />
+                )}
               </div>
             </>,
             document.body
