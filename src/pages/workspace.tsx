@@ -86,6 +86,7 @@ import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import { JobsPanel } from "@/components/workspace/JobsPanel";
 import { McpPanel } from "@/components/workspace/McpPanel";
 import { LaunchModal, type LaunchMode } from "@/components/workspace/LaunchModal";
+import { useScrollCollapse } from "@/hooks/useScrollCollapse";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
