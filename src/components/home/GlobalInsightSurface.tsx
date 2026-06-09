@@ -11,6 +11,7 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState } from "react";
+import { useThemeMode } from "@/lib/theme";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
