@@ -588,8 +588,8 @@ ${t}
 
 
               {/* Fullscreen / hide chrome */}
-              <button onClick={() => setChromeVisible((v) => !v)}
-                title={chromeVisible ? "Hide toolbar" : "Show toolbar"}
+              <button onClick={() => { if (isMobile && liveUrl) setMobileFullscreen(true); else setChromeVisible((v) => !v); }}
+                title={isMobile ? "Fullscreen" : (chromeVisible ? "Hide toolbar" : "Show toolbar")}
                 aria-label="Toggle fullscreen preview"
                 style={iconBtn}>⛶</button>
 
