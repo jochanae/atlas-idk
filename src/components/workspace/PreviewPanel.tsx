@@ -503,10 +503,35 @@ ${t}
       {/* ── URL mode ── */}
       {previewMode === "url" && (
         <>
-          <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-              <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: 8, opacity: 0.25, flexShrink: 0 }}>
+          {/* Hairline pull-tab — only when chrome is hidden */}
+          {!chromeVisible && (
+            <button
+              onClick={() => setChromeVisible(true)}
+              aria-label="Show preview chrome"
+              title="Show toolbar"
+              style={{
+                position: "relative", width: "100%", height: 4, padding: 0,
+                border: "none", cursor: "pointer", flexShrink: 0,
+                background: "linear-gradient(90deg, transparent, rgba(201,162,76,0.6), transparent)",
+              }}
+            />
+          )}
+
+          {/* Chrome wrapper (Row 1 + Row 2) — slides up on collapse */}
+          <div
+            style={{
+              overflow: "hidden",
+              maxHeight: chromeVisible ? 200 : 0,
+              opacity: chromeVisible ? 1 : 0,
+              transition: "max-height 240ms cubic-bezier(.32,.72,0,1), opacity 200ms ease",
+              flexShrink: 0,
+              borderBottom: chromeVisible ? "1px solid var(--atlas-border)" : "none",
+            }}
+          >
+            {/* Row 1 — unified browser bar */}
+            <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "7px 10px" }}>
+              <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center", minWidth: 0 }}>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: 8, opacity: 0.3, pointerEvents: "none" }}>
                   <circle cx="8" cy="8" r="6" stroke="var(--atlas-fg)" strokeWidth="1.4" />
                   <path d="M8 2c-2 3-2 9 0 12M2 8h12" stroke="var(--atlas-fg)" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
@@ -514,7 +539,7 @@ ${t}
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleGo()}
-                  placeholder="Paste your deployment URL…"
+                  placeholder="Paste deployment URL…"
                   style={{
                     width: "100%", paddingLeft: 26, paddingRight: 8, paddingTop: 5, paddingBottom: 5,
                     borderRadius: 5, background: "var(--atlas-surface)",
@@ -531,72 +556,123 @@ ${t}
                 border: "none", color: "var(--atlas-fg)", fontSize: 10, ...sMono,
                 letterSpacing: "0.08em", cursor: "pointer", flexShrink: 0,
               }}>Go</button>
+
               {liveUrl && (
                 <>
                   <button
                     onClick={() => { setIframeError(false); setIframeLoading(true); setReloadKey((k) => k + 1); }}
-                    title="Reload"
-                    aria-label="Reload preview"
-                    style={{ padding: "5px 7px", borderRadius: 5, background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", fontSize: 11, cursor: "pointer", flexShrink: 0, lineHeight: 1, opacity: 0.55, transition: "opacity 160ms ease" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
+                    title="Reload" aria-label="Reload preview"
+                    style={iconBtn}
                   >↺</button>
                   <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open in new tab"
-                    style={{ padding: "5px 7px", borderRadius: 5, background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", fontSize: 10, lineHeight: 1, ...sMono, opacity: 0.55, textDecoration: "none", flexShrink: 0, transition: "opacity 160ms ease", display: "flex", alignItems: "center" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
+                    style={{ ...iconBtn, textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", ...sMono }}
                   >↗</a>
-                  <button onClick={handleClear} title="Clear" aria-label="Clear preview"
-                    style={{ padding: "5px 7px", borderRadius: 5, background: "transparent", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", fontSize: 13, cursor: "pointer", flexShrink: 0, lineHeight: 1, opacity: 0.4, transition: "opacity 160ms ease" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.4")}
-                  >×</button>
                 </>
               )}
-            </div>
-            <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-              {autoDetected ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 4, background: "rgba(134,239,172,0.06)", border: "1px solid rgba(134,239,172,0.18)", flexShrink: 0 }}>
-                  <span style={{ fontSize: 8, color: "rgba(134,239,172,0.7)" }}>✓</span>
-                  <span style={{ fontSize: 9, ...sMono, color: "rgba(134,239,172,0.7)", letterSpacing: "0.06em" }}>
-                    Auto-detected · {autoDetected.platform}
-                  </span>
-                  <button onClick={() => { setAutoDetected(null); autoDetectTriedRef.current = null; handleDetect(); }}
-                    title="Re-run detection"
-                    style={{ background: "transparent", border: "none", color: "rgba(134,239,172,0.4)", cursor: "pointer", fontSize: 10, padding: "0 0 0 3px", lineHeight: 1 }}>
-                    ↺
-                  </button>
-                </div>
-              ) : linkedRepo && token ? (
-                <button onClick={handleDetect} disabled={detecting} style={{ padding: "4px 10px", borderRadius: 4, fontSize: 9.5, ...sMono, letterSpacing: "0.08em", background: detecting ? "var(--atlas-glass-bg)" : "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: detecting ? "var(--atlas-muted)" : "var(--atlas-gold)", cursor: detecting ? "not-allowed" : "pointer", flexShrink: 0 }}>
-                  {detecting ? "Detecting…" : "Auto-detect URL"}
+
+              {/* Device popover */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button onClick={() => setDeviceMenuOpen((v) => !v)} title="Device size"
+                  style={{ ...iconBtn, padding: "5px 8px", display: "inline-flex", alignItems: "center", gap: 4, ...sMono }}>
+                  <span style={{ fontSize: 9.5, letterSpacing: "0.04em", textTransform: "capitalize" }}>{deviceSize}</span>
+                  <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
                 </button>
-              ) : (
-                <div style={{ fontSize: 9.5, ...sMono, color: "var(--atlas-muted)", opacity: 0.35 }}>Link a repo in Files to auto-detect URL</div>
-              )}
+                {deviceMenuOpen && (
+                  <>
+                    <div onClick={() => setDeviceMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 41,
+                      background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
+                      borderRadius: 6, padding: 4, minWidth: 140,
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+                    }}>
+                      {(["phone", "tablet", "desktop"] as const).map((d) => (
+                        <button key={d} onClick={() => { setDeviceSize(d); setDeviceMenuOpen(false); }}
+                          style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: deviceSize === d ? "rgba(201,162,76,0.10)" : "transparent", border: "none", borderRadius: 4, color: deviceSize === d ? "var(--atlas-gold)" : "var(--atlas-fg)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textTransform: "capitalize", textAlign: "left" }}>
+                          {d}
+                        </button>
+                      ))}
+                      <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 2px" }} />
+                      <button onClick={() => { setIsLandscape((l) => !l); setDeviceMenuOpen(false); }}
+                        style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: "transparent", border: "none", borderRadius: 4, color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textAlign: "left" }}>
+                        {isLandscape ? "→ Portrait" : "→ Landscape"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Fullscreen / hide chrome */}
+              <button onClick={() => setChromeVisible((v) => !v)}
+                title={chromeVisible ? "Hide toolbar" : "Show toolbar"}
+                aria-label="Toggle fullscreen preview"
+                style={iconBtn}>⛶</button>
+
               {liveUrl && (
-                <button onClick={handleSaveToProject} disabled={savedIndicator || updateProject.isPending || !!autoDetected} style={{ marginLeft: "auto", padding: "4px 10px", borderRadius: 4, fontSize: 9.5, ...sMono, letterSpacing: "0.08em", background: (savedIndicator || autoDetected) ? "rgba(34,197,94,0.08)" : "var(--atlas-glass-bg)", border: `1px solid ${(savedIndicator || autoDetected) ? "rgba(34,197,94,0.2)" : "var(--atlas-border)"}`, color: (savedIndicator || autoDetected) ? "rgba(134,239,172,0.8)" : "var(--atlas-muted)", cursor: (savedIndicator || autoDetected) ? "default" : "pointer", flexShrink: 0, transition: "all 160ms ease" }}>
-                  {savedIndicator || autoDetected ? "✓ Saved to project" : project?.previewUrl === liveUrl ? "Saved to project" : "Save to project"}
-                </button>
+                <button onClick={handleClear} title="Clear" aria-label="Clear preview"
+                  style={{ ...iconBtn, fontSize: 13, opacity: 0.5 }}>×</button>
               )}
             </div>
-            {detectResults.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ fontSize: 8.5, ...sMono, color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.08em", textTransform: "uppercase" }}>Detected / suggested</div>
-                {detectResults.slice(0, 4).map((r) => (
-                  <button key={r.url} onClick={() => { applyUrl(r.url); setDetectResults([]); }}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: 5, width: "100%", textAlign: "left", background: "rgba(255,255,255,0.03)", border: "1px solid var(--atlas-border)", cursor: "pointer", transition: "border-color 120ms ease" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(201,162,76,0.3)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
-                  >
-                    <span style={{ fontSize: 8.5, ...sMono, color: platformColor(r.platform), opacity: 0.85, flexShrink: 0 }}>{r.platform}</span>
-                    {r.confidence === "high" && <span style={{ fontSize: 7.5, ...sMono, color: "rgba(134,239,172,0.6)", flexShrink: 0 }}>✓ confirmed</span>}
-                    <span style={{ flex: 1, fontSize: 9.5, ...sMono, color: "var(--atlas-fg)", opacity: 0.55, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.url}</span>
-                  </button>
-                ))}
+
+            {/* Row 2 — status strip (auto-hides after 4s) */}
+            {(autoDetected || (linkedRepo && token) || detectResults.length > 0 || (liveUrl && !autoDetected)) && (
+              <div style={{
+                overflow: "visible",
+                maxHeight: statusVisible ? 40 : 0,
+                opacity: statusVisible ? 1 : 0,
+                transition: "max-height 240ms cubic-bezier(.32,.72,0,1), opacity 200ms ease",
+              }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "0 10px 7px", flexWrap: "nowrap" }}>
+                  {autoDetected ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 4, background: "rgba(134,239,172,0.06)", border: "1px solid rgba(134,239,172,0.18)", flexShrink: 0 }}>
+                      <span style={{ fontSize: 8, color: "rgba(134,239,172,0.7)" }}>✓</span>
+                      <span style={{ fontSize: 9, ...sMono, color: "rgba(134,239,172,0.75)", letterSpacing: "0.06em" }}>Auto-detected · {autoDetected.platform}</span>
+                      <button onClick={(e) => { e.stopPropagation(); setAutoDetected(null); autoDetectTriedRef.current = null; handleDetect(); setStatusVisible(true); }}
+                        title="Re-run detection"
+                        style={{ background: "transparent", border: "none", color: "rgba(134,239,172,0.45)", cursor: "pointer", fontSize: 10, padding: "0 0 0 3px", lineHeight: 1 }}>↺</button>
+                    </div>
+                  ) : linkedRepo && token ? (
+                    <button onClick={() => { handleDetect(); setStatusVisible(true); }} disabled={detecting}
+                      style={{ padding: "3px 9px", borderRadius: 4, fontSize: 9.5, ...sMono, letterSpacing: "0.08em", background: detecting ? "var(--atlas-glass-bg)" : "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: detecting ? "var(--atlas-muted)" : "var(--atlas-gold)", cursor: detecting ? "not-allowed" : "pointer", flexShrink: 0 }}>
+                      {detecting ? "Detecting…" : "Auto-detect URL"}
+                    </button>
+                  ) : null}
+
+                  {detectResults.length > 0 && (
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <button onClick={() => setDetectMenuOpen((v) => !v)}
+                        style={{ padding: "3px 9px", borderRadius: 4, fontSize: 9.5, ...sMono, letterSpacing: "0.08em", background: "var(--atlas-glass-bg)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer" }}>
+                        {detectResults.length} suggestion{detectResults.length === 1 ? "" : "s"} ▾
+                      </button>
+                      {detectMenuOpen && (
+                        <>
+                          <div onClick={() => setDetectMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 41, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 6, padding: 4, minWidth: 240, boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
+                            {detectResults.slice(0, 6).map((r) => (
+                              <button key={r.url} onClick={() => { applyUrl(r.url); setDetectResults([]); setDetectMenuOpen(false); setStatusVisible(true); }}
+                                style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 7px", borderRadius: 4, width: "100%", textAlign: "left", background: "transparent", border: "none", cursor: "pointer" }}>
+                                <span style={{ fontSize: 8.5, ...sMono, color: platformColor(r.platform), opacity: 0.9, flexShrink: 0 }}>{r.platform}</span>
+                                {r.confidence === "high" && <span style={{ fontSize: 7.5, ...sMono, color: "rgba(134,239,172,0.7)", flexShrink: 0 }}>✓</span>}
+                                <span style={{ flex: 1, fontSize: 9.5, ...sMono, color: "var(--atlas-fg)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.url}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {liveUrl && (
+                    <button onClick={() => { handleSaveToProject(); setStatusVisible(true); }} disabled={savedIndicator || updateProject.isPending || !!autoDetected}
+                      style={{ marginLeft: "auto", padding: "3px 9px", borderRadius: 4, fontSize: 9.5, ...sMono, letterSpacing: "0.08em", background: (savedIndicator || autoDetected) ? "rgba(34,197,94,0.08)" : "var(--atlas-glass-bg)", border: `1px solid ${(savedIndicator || autoDetected) ? "rgba(34,197,94,0.2)" : "var(--atlas-border)"}`, color: (savedIndicator || autoDetected) ? "rgba(134,239,172,0.8)" : "var(--atlas-muted)", cursor: (savedIndicator || autoDetected) ? "default" : "pointer", flexShrink: 0, transition: "all 160ms ease" }}>
+                      {savedIndicator || autoDetected ? "✓ Saved" : project?.previewUrl === liveUrl ? "Saved" : "Save to project"}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
+
           <div ref={containerRef} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {liveUrl && !iframeError ? (
             <div style={deviceWrapperStyle}>
