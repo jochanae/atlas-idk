@@ -2079,19 +2079,19 @@ export function AssistantBubble({
             <MoreHorizontal size={13} strokeWidth={1.7} />
           </button>
 
-          {menuOpen && (
+          {menuOpen && createPortal(
             <>
               <div
                 onPointerDown={() => setMenuOpen(false)}
                 onTouchStart={() => setMenuOpen(false)}
                 onClick={() => setMenuOpen(false)}
-                style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
+                style={{ position: "fixed", inset: 0, zIndex: 99998, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
               />
               <div
                 role="menu"
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  position: "fixed", top: "auto", left: "auto", zIndex: 9999,
+                  position: "fixed", top: "auto", left: "auto", zIndex: 99999,
                   marginTop: 6,
                   minWidth: 220, maxWidth: "calc(100vw - 16px)",
                   overflowY: "auto", WebkitOverflowScrolling: "touch",
@@ -2103,7 +2103,7 @@ export function AssistantBubble({
                 }}
                 ref={(el) => {
                   if (!el) return;
-                  const trigger = el.parentElement?.parentElement?.querySelector('[aria-label="More actions"]') as HTMLElement | null;
+                  const trigger = document.querySelector(`[aria-label="More actions"][aria-expanded="true"]`) as HTMLElement | null;
                   if (!trigger) return;
                   const r = trigger.getBoundingClientRect();
                   const vh = window.innerHeight;
@@ -2187,7 +2187,8 @@ export function AssistantBubble({
                   />
                 )}
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
         )}
