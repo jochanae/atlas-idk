@@ -148,6 +148,10 @@ export function CaptureBar({
         if (!onPark) throw new Error("Park destination has no handler.");
         onPark(text.trim(), intent);
         finishConfirm("Parked");
+      } else if (destination === "intake") {
+        if (!onIntake) throw new Error("Intake destination has no handler.");
+        await onIntake(text.trim(), intent);
+        finishConfirm("Intake → Forge");
       } else {
         const res = await fetch("/api/quick-prompt", {
           method: "POST",
@@ -294,7 +298,7 @@ export function CaptureBar({
             <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
               {destinations.map((d) => {
                 const active = destination === d;
-                const label = d === "park" ? "Park" : "Forge";
+                const label = d === "park" ? "Park" : d === "intake" ? "Intake" : "Forge";
                 return (
                   <button
                     key={d}
@@ -416,7 +420,7 @@ export function CaptureBar({
             >
               <CornerDownLeft size={13} />
               <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em" }}>
-                {submitting ? "…" : (destination === "park" ? "Park" : "Forge")}
+                {submitting ? "…" : (destination === "park" ? "Park" : destination === "intake" ? "Intake" : "Forge")}
               </span>
             </button>
 
