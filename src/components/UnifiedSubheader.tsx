@@ -28,7 +28,7 @@ const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }>
 function tabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
   return {
     position: "relative",
-    padding: "6px 2px 10px",
+    padding: "4px 2px 4px",
     background: "transparent",
     border: "none",
     color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
