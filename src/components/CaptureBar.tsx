@@ -20,7 +20,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Mic, MicOff, CornerDownLeft, X } from "lucide-react";
 
 type Intent = "idea" | "decision" | "build" | "dump";
-export type CaptureDestination = "park" | "forge";
+export type CaptureDestination = "park" | "forge" | "intake";
 
 const INTENTS: Array<{ id: Intent; label: string; hint: string }> = [
   { id: "idea",     label: "Idea",     hint: "loose thought" },
@@ -45,6 +45,9 @@ type Props = {
   /** Forge branch result (after /api/quick-prompt resolves). */
   onCaptured?: (result: { intent: Intent; text: string; response: string }) => void;
 
+  /** Intake branch — parent owns the /api/forge call (use submitForgeIntake). */
+  onIntake?: (content: string, intent: Intent) => Promise<void> | void;
+
   /** Inline "{n} parked" chip + tap-through. */
   parkedCount?: number;
   onParkedChipClick?: () => void;
@@ -62,6 +65,7 @@ export function CaptureBar({
   defaultDestination,
   onPark,
   onCaptured,
+  onIntake,
   parkedCount = 0,
   onParkedChipClick,
   inlineOnly,
@@ -85,9 +89,11 @@ export function CaptureBar({
     placeholder ??
     (destination === "park"
       ? "Park a thought — analyze it later…"
-      : context === "flow"
-        ? "Brain dump — captured to Forge, won't interrupt chat…"
-        : "Send to Forge — capture an idea, decision, or build intent…");
+      : destination === "intake"
+        ? "Brain dump — raw context, goals, blockers. Routes straight to Forge…"
+        : context === "flow"
+          ? "Brain dump — captured to Forge, won't interrupt chat…"
+          : "Send to Forge — capture an idea, decision, or build intent…");
 
   useEffect(() => {
     const el = inputRef.current;
@@ -142,6 +148,10 @@ export function CaptureBar({
         if (!onPark) throw new Error("Park destination has no handler.");
         onPark(text.trim(), intent);
         finishConfirm("Parked");
+      } else if (destination === "intake") {
+        if (!onIntake) throw new Error("Intake destination has no handler.");
+        await onIntake(text.trim(), intent);
+        finishConfirm("Intake → Forge");
       } else {
         const res = await fetch("/api/quick-prompt", {
           method: "POST",
@@ -288,7 +298,7 @@ export function CaptureBar({
             <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
               {destinations.map((d) => {
                 const active = destination === d;
-                const label = d === "park" ? "Park" : "Forge";
+                const label = d === "park" ? "Park" : d === "intake" ? "Intake" : "Forge";
                 return (
                   <button
                     key={d}
@@ -410,7 +420,7 @@ export function CaptureBar({
             >
               <CornerDownLeft size={13} />
               <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em" }}>
-                {submitting ? "…" : (destination === "park" ? "Park" : "Forge")}
+                {submitting ? "…" : (destination === "park" ? "Park" : destination === "intake" ? "Intake" : "Forge")}
               </span>
             </button>
 
