@@ -915,6 +915,7 @@ function RightPanel({
   sandboxCode,
   onSandboxConsumed,
   previewRefreshTrigger,
+  sessionId,
   pendingTerminalCommand,
   onTerminalCommandConsumed,
   onCommandComplete,
@@ -968,6 +969,7 @@ function RightPanel({
   sandboxCode?: string | null;
   onSandboxConsumed?: () => void;
   previewRefreshTrigger?: number;
+  sessionId?: number;
   pendingTerminalCommand?: string | null;
   onTerminalCommandConsumed?: () => void;
   onCommandComplete?: (command: string, output: string, exitCode: number | null) => void;
@@ -1341,7 +1343,7 @@ function RightPanel({
       {tab === "mcp" && (
         <McpPanel projectId={projectId} />
       )}
-      {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} onSwitchToFiles={() => setTab("files")} />}
+      {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
       {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
@@ -3153,6 +3155,35 @@ export default function Workspace() {
     setSandboxCode(code);
     openPreviewPanel();
   }, [openPreviewPanel]);
+  const [latestRun, setLatestRun] = useState<any | null>(null);
+  const latestRunKey = useCallback((run: any | null) => {
+    if (!run) return "";
+    return String(run.id ?? run.runId ?? run.finishedAt ?? run.updatedAt ?? run.startedAt ?? run.createdAt ?? "");
+  }, []);
+  useEffect(() => {
+    if (!Number.isFinite(id)) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/projects/${id}/runs`);
+        if (!res.ok) return;
+        const runs = await res.json();
+        const completed = Array.isArray(runs)
+          ? runs.find((r: any) => (r.runStatus ?? r.status) === "completed")
+          : null;
+        if (completed) {
+          setLatestRun((prev) => prev && latestRunKey(prev) === latestRunKey(completed) ? prev : completed);
+        }
+      } catch {}
+    };
+    void poll();
+    const iv = setInterval(poll, 3000);
+    return () => clearInterval(iv);
+  }, [id, latestRunKey]);
+  useEffect(() => {
+    if ((latestRun?.runStatus ?? latestRun?.status) === "completed") {
+      openPreviewPanel();
+    }
+  }, [latestRun, openPreviewPanel]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
@@ -5829,6 +5860,7 @@ export default function Workspace() {
             sandboxCode={sandboxCode}
             onSandboxConsumed={() => setSandboxCode(null)}
             previewRefreshTrigger={previewRefreshTrigger}
+            sessionId={sessionId ?? undefined}
             pendingTerminalCommand={pendingTerminalCommand}
             onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
             onCommandComplete={handleTerminalComplete}
@@ -6338,6 +6370,7 @@ export default function Workspace() {
                 sandboxCode={sandboxCode}
                 onSandboxConsumed={() => setSandboxCode(null)}
                 previewRefreshTrigger={previewRefreshTrigger}
+                sessionId={sessionId ?? undefined}
                 pendingTerminalCommand={pendingTerminalCommand}
                 onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
                 onCommandComplete={handleTerminalComplete}

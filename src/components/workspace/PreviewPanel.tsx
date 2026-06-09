@@ -4,11 +4,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 
-export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, onSwitchToFiles }: {
+export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, sessionId, onSwitchToFiles }: {
   projectId: number;
   sandboxCode?: string | null;
   onSandboxConsumed?: () => void;
   refreshTrigger?: number;
+  sessionId?: number;
   onSwitchToFiles?: () => void;
 }) {
 
@@ -17,7 +18,22 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const updateProject = useUpdateProject();
 
   // Mode toggle
-  const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "local">("url");
+  const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "local" | "generated">("url");
+  const [generatedPreviewUrl, setGeneratedPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setGeneratedPreviewUrl(null);
+      return;
+    }
+    setGeneratedPreviewUrl(`/api/preview/session/${sessionId}`);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (generatedPreviewUrl) {
+      setPreviewMode("generated");
+    }
+  }, [generatedPreviewUrl]);
 
   // Device switcher
   type DeviceSize = "phone" | "tablet" | "desktop";
@@ -667,6 +683,35 @@ ${t}
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {previewMode === "generated" && generatedPreviewUrl && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderBottom: "1px solid var(--atlas-border)", background: "var(--atlas-surface)" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.05em" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block", boxShadow: "0 0 6px rgba(201,162,76,0.5)" }} />
+              Atlas Generated
+            </span>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={() => setPreviewMode("url")}
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", color: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", borderRadius: 4, opacity: 0.55, transition: "opacity 140ms" }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={e => (e.currentTarget.style.opacity = "0.55")}
+            >
+              Back to URL
+            </button>
+          </div>
+          <div style={{ flex: 1, position: "relative" }}>
+            <iframe
+              key={generatedPreviewUrl}
+              src={generatedPreviewUrl}
+              title="Atlas Preview"
+              sandbox="allow-scripts allow-same-origin"
+              style={{ border: "none", width: "100%", height: "100%", display: "block", background: "var(--atlas-bg)" }}
+            />
           </div>
         </div>
       )}
