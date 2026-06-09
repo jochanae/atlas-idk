@@ -206,112 +206,58 @@ export function UnifiedSubheader({
         </div>
       </div>
 
-      {/* Play button — pinned. Tap = primary action (launch when collapsed, collapse when expanded).
+      {/* Play button — pinned. Tap = primary (launch when collapsed, collapse when expanded).
           Long-press = secondary (expand when collapsed, launch when expanded). Icon rotates 90° when expanded. */}
-      {showWorkspaceMenu && hasProject && (() => {
-        const longPressTimer = useRef<number | null>(null);
-        const longPressFired = useRef(false);
-
-        const clearLongPress = () => {
-          if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
-          }
-        };
-
-        const handlePointerDown = () => {
-          setLaunchActive(true);
-          longPressFired.current = false;
-          clearLongPress();
-          longPressTimer.current = window.setTimeout(() => {
-            longPressFired.current = true;
-            // Long-press: collapsed → expand, expanded → launch
-            if (expanded) {
-              onLaunch?.();
-            } else {
-              setExpanded(true);
-            }
-            try { navigator.vibrate?.(40); } catch { /* ignore */ }
-          }, 450);
-        };
-
-        const handlePointerUp = () => {
-          setLaunchActive(false);
-          clearLongPress();
-        };
-
-        const handlePointerCancel = () => {
-          setLaunchActive(false);
-          clearLongPress();
-          longPressFired.current = true; // suppress click
-        };
-
-        const handleClick = (e: React.MouseEvent) => {
-          if (longPressFired.current) {
-            e.preventDefault();
-            e.stopPropagation();
-            longPressFired.current = false;
-            return;
-          }
-          // Tap: collapsed → launch, expanded → collapse
-          if (expanded) {
-            setExpanded(false);
-          } else {
-            onLaunch?.();
-          }
-        };
-
-        return (
-          <button
-            type="button"
-            onClick={handleClick}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerCancel}
-            onPointerCancel={handlePointerCancel}
-            onMouseEnter={() => setLaunchHover(true)}
-            onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
-            title={expanded ? "Tap to hide tabs · long-press to launch" : "Tap to launch · long-press to show tabs"}
-            aria-label={expanded ? "Hide tabs (long-press to launch full screen)" : "Launch full screen (long-press to show tabs)"}
-            aria-expanded={expanded}
+      {showWorkspaceMenu && hasProject && (
+        <button
+          type="button"
+          onClick={handleLaunchClick}
+          onPointerDown={handleLaunchPointerDown}
+          onPointerUp={handleLaunchPointerUp}
+          onPointerLeave={handleLaunchPointerCancel}
+          onPointerCancel={handleLaunchPointerCancel}
+          onMouseEnter={() => setLaunchHover(true)}
+          onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
+          title={expanded ? "Tap to hide tabs · long-press to launch" : "Tap to launch · long-press to show tabs"}
+          aria-label={expanded ? "Hide tabs (long-press to launch full screen)" : "Launch full screen (long-press to show tabs)"}
+          aria-expanded={expanded}
+          style={{
+            position: "absolute",
+            top: expanded ? (isMobile ? 8 : 10) : 4,
+            right: isMobile ? 16 : 22,
+            zIndex: 2,
+            background: launchActive
+              ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
+              : launchHover
+              ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
+              : "transparent",
+            border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
+            borderRadius: 8,
+            padding: "5px 6px",
+            cursor: "pointer",
+            color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
+            opacity: launchHover || launchActive ? 1 : 0.85,
+            lineHeight: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease, top 240ms ease",
+            WebkitTapHighlightColor: "transparent",
+            boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
+            touchAction: "manipulation",
+          }}
+        >
+          <span
             style={{
-              position: "absolute",
-              top: expanded ? (isMobile ? 8 : 10) : 4,
-              right: isMobile ? 16 : 22,
-              zIndex: 2,
-              background: launchActive
-                ? "color-mix(in oklab, var(--atlas-gold) 18%, transparent)"
-                : launchHover
-                ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)"
-                : "transparent",
-              border: `1px solid ${launchHover || launchActive ? "color-mix(in oklab, var(--atlas-gold) 38%, transparent)" : "transparent"}`,
-              borderRadius: 8,
-              padding: "5px 6px",
-              cursor: "pointer",
-              color: launchHover || launchActive ? "var(--atlas-gold)" : "color-mix(in oklab, var(--atlas-gold) 70%, var(--atlas-muted))",
-              opacity: launchHover || launchActive ? 1 : 0.85,
-              lineHeight: 0,
               display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease, top 240ms ease",
-              WebkitTapHighlightColor: "transparent",
-              boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
-              touchAction: "manipulation",
+              transition: "transform 200ms cubic-bezier(.32,.72,0,1)",
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
             }}
           >
-            <span
-              style={{
-                display: "inline-flex",
-                transition: "transform 200ms cubic-bezier(.32,.72,0,1)",
-                transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
-              }}
-            >
-              <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
-            </span>
-          </button>
-        );
-      })()}
+            <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
+          </span>
+        </button>
+      )}
     </div>
   );
 }
