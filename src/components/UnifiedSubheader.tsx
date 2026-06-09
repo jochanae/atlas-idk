@@ -79,11 +79,8 @@ export function UnifiedSubheader({
     clearLongPress();
     longPressTimer.current = window.setTimeout(() => {
       longPressFired.current = true;
-      if (expanded) {
-        onLaunch?.();
-      } else {
-        setExpanded(true);
-      }
+      // Long-press always toggles the subheader (expand ↔ collapse)
+      setExpanded((v) => !v);
       try { navigator.vibrate?.(40); } catch { /* ignore */ }
     }, 450);
   };
@@ -106,11 +103,8 @@ export function UnifiedSubheader({
       longPressFired.current = false;
       return;
     }
-    if (expanded) {
-      setExpanded(false);
-    } else {
-      onLaunch?.();
-    }
+    // Tap always launches preview, regardless of expanded state
+    onLaunch?.();
   };
 
   const selectTab = (tab: UnifiedSubheaderTab) => {
