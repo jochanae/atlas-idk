@@ -175,10 +175,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
 
     fetch(`/api/projects/${projectId}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(async (proj: { linkedRepo?: string | null; shape?: Record<string, unknown> | null } | null) => {
-        if (proj?.shape && typeof proj.shape === "object") {
-          setProjectShape(proj.shape);
-        }
+      .then(async (proj: { linkedRepo?: string | null } | null) => {
+        // Project DNA hydration was removed; ProjectDnaEditor self-hydrates.
         if (!proj?.linkedRepo) { setRepoScanStatus("done"); return; }
         const repoInfo = parseLinkedRepo(proj.linkedRepo);
         if (!repoInfo?.fullName) { setRepoScanStatus("done"); return; }
@@ -1078,96 +1076,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     </div>
   );
 
-  // ── Tab: Project DNA ───────────────────────────────────────────────────────
-  const renderDnaCard = (
-    key: "identity" | "constraints" | "format",
-    label: string,
-    subtitle: string,
-    placeholder: string,
-    addLabel: string,
-    editLabel: string,
-  ) => {
-    const value = dnaValue(key);
-    const isEditing = editingDnaKey === key;
-    const pillBtn = {
-      alignSelf: "flex-start" as const,
-      padding: "6px 14px", borderRadius: 20,
-      border: "1px solid rgba(var(--atlas-gold-rgb),0.25)",
-      background: "rgba(var(--atlas-gold-rgb),0.02)",
-      color: "rgba(var(--atlas-gold-rgb),0.75)",
-      fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)",
-      letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase" as const,
-    };
-    return (
-      <div style={{ borderRadius: 12, border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(8px)", padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "var(--atlas-gold)", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>{label}</span>
-          <span style={{ fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.6)", lineHeight: 1.4 }}>{subtitle}</span>
-        </div>
-        {isEditing ? (
-          <>
-            <textarea
-              value={dnaDraft}
-              onChange={e => setDnaDraft(e.target.value)}
-              placeholder={placeholder}
-              autoFocus
-              rows={4}
-              style={{
-                width: "100%", resize: "vertical", minHeight: 80,
-                padding: "10px 12px", borderRadius: 8,
-                border: "1px solid rgba(var(--atlas-gold-rgb),0.3)",
-                background: "rgba(0,0,0,0.25)", color: "rgba(var(--atlas-muted-rgb),0.95)",
-                fontSize: 12, lineHeight: 1.5, fontFamily: "var(--app-font-sans)",
-                outline: "none",
-              }}
-            />
-            {dnaError && (
-              <span style={{ fontSize: 11, color: "rgba(239,68,68,0.9)" }}>{dnaError}</span>
-            )}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={saveDna} disabled={dnaSaving || !projectId} style={{ ...pillBtn, opacity: dnaSaving ? 0.5 : 1 }}>
-                {dnaSaving ? "Saving…" : "Save"}
-              </button>
-              <button onClick={cancelEditDna} disabled={dnaSaving} style={{ ...pillBtn, borderColor: "rgba(var(--atlas-muted-rgb),0.25)", color: "rgba(var(--atlas-muted-rgb),0.65)" }}>
-                Cancel
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {value ? (
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.85)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{value}</p>
-            ) : (
-              <p style={{ margin: 0, fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.45)", lineHeight: 1.5, fontStyle: "italic" }}>{placeholder}</p>
-            )}
-            <button onClick={() => startEditDna(key)} disabled={!projectId} style={{ ...pillBtn, opacity: projectId ? 1 : 0.4 }}>
-              {value ? editLabel : addLabel}
-            </button>
-          </>
-        )}
-      </div>
-    );
-  };
-
-  const dnaContent = (
-    <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 14 }}>
-      {!projectId && (
-        <div style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(var(--atlas-muted-rgb),0.18)", background: "rgba(var(--atlas-muted-rgb),0.05)", fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.7)", lineHeight: 1.5 }}>
-          Open a project to edit its DNA.
-        </div>
-      )}
-      {renderDnaCard("identity", "Identity", "Who you are and what you're building", "Define your core persona, vision, and strategic context", "+ Add Identity", "Edit Identity")}
-      {renderDnaCard("constraints", "Constraints", "The boundaries the AI must respect", "Add financial, stylistic, or technical constraints", "+ Add Constraint", "Edit Constraint")}
-      {renderDnaCard("format", "Format", "How you want intelligence packaged", "Define your preferred output structure and style", "+ Add Format", "Edit Format")}
-
-      {/* Bottom pill */}
-      <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
-        <button onClick={copyStrategicPayload} style={{ padding: "7px 18px", borderRadius: 20, border: "1px solid rgba(var(--atlas-muted-rgb),0.2)", background: "rgba(var(--atlas-muted-rgb),0.08)", color: "rgba(var(--atlas-muted-rgb),0.55)", fontSize: 10, fontWeight: 700, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", cursor: "pointer", textTransform: "uppercase", transition: "all 180ms" }}>
-          {dnaCopied ? "Copied ✓" : "Copy Strategic Payload →"}
-        </button>
-      </div>
-    </div>
-  );
+  // (Project DNA tab content removed — now lives in ProjectSettingsPanel.)
 
 
   // ── Header ─────────────────────────────────────────────────────────────────
@@ -1179,13 +1088,11 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--atlas-gold)", letterSpacing: "0.06em", fontFamily: "var(--app-font-mono)" }}>
-            {tab === "forge" ? "THE FORGE" : tab === "dna" ? "PROJECT DNA" : "QUICK PROMPT"}
+            {tab === "forge" ? "THE FORGE" : "QUICK PROMPT"}
           </span>
           <span style={{ fontSize: 10, color: "rgba(var(--atlas-muted-rgb),0.6)" }}>
             {tab === "forge"
               ? `Decompose your thinking into a strategic map${activeProjectName ? ` · ${activeProjectName}` : ""}${readinessScore > 0 ? ` · ${readinessScore}% ready` : ""}`
-              : tab === "dna"
-              ? "Define your identity, constraints, and output format for sharper AI responses"
               : "Generate a ready-to-paste prompt for any AI builder"}
           </span>
         </div>
@@ -1196,7 +1103,22 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
       <div style={{ display: "flex", gap: 4, padding: "0 16px 12px", borderBottom: "1px solid rgba(var(--atlas-gold-rgb),0.10)" }}>
         <button style={tabBtn(tab === "forge")} onClick={() => setTab("forge")}>The Forge</button>
         <button style={tabBtn(tab === "prompt")} onClick={() => setTab("prompt")}>Quick Prompt</button>
-        <button style={tabBtn(tab === "dna")} onClick={() => setTab("dna")}>Project DNA</button>
+      </div>
+
+      {/* Transitional banner — Project DNA moved to Settings (remove after ~2 weeks). */}
+      <div style={{
+        margin: "8px 16px 0",
+        padding: "8px 12px",
+        borderRadius: 8,
+        border: "1px dashed rgba(var(--atlas-gold-rgb),0.28)",
+        background: "rgba(var(--atlas-gold-rgb),0.04)",
+        fontSize: 11,
+        fontFamily: "var(--app-font-mono)",
+        color: "rgba(var(--atlas-gold-rgb),0.78)",
+        letterSpacing: "0.04em",
+        lineHeight: 1.45,
+      }}>
+        Project DNA moved → open Project Settings to edit identity, constraints, and format.
       </div>
 
       {/* Scope breadcrumb — visible only when Forge was entered from a Master Map node */}
@@ -1240,8 +1162,8 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     </div>
   );
 
-  const tabContent = tab === "forge" ? forgeContent : tab === "dna" ? dnaContent : quickPromptContent;
-  const tabLabel = tab === "forge" ? "THE FORGE" : tab === "dna" ? "PROJECT DNA" : "QUICK PROMPT";
+  const tabContent = tab === "forge" ? forgeContent : quickPromptContent;
+  const tabLabel = tab === "forge" ? "THE FORGE" : "QUICK PROMPT";
   const forgeBackgroundImage = theme === "parchment" ? "none" : FORGE_ATMOSPHERE_BACKGROUND;
 
   if (!isMobile) {
