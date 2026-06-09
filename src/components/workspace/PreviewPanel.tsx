@@ -459,8 +459,8 @@ ${t}
         ))}
       </div>
 
-      {/* Device switcher — shown for URL + Sandbox modes */}
-      {(previewMode === "url" || previewMode === "sandbox") && (
+      {/* Device switcher — shown for Sandbox mode (URL mode uses popover inline) */}
+      {previewMode === "sandbox" && (
         <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
           <button style={deviceBtnStyle(deviceSize === "phone")} onClick={() => setDeviceSize("phone")}>
             <svg width="8" height="11" viewBox="0 0 8 11" fill="none"><rect x="0.5" y="0.5" width="7" height="10" rx="1.5" stroke="currentColor" strokeWidth="1" /><circle cx="4" cy="8.5" r="0.6" fill="currentColor" /></svg>
