@@ -602,12 +602,21 @@ body[data-axiom-global-insight="true"] .atlas-input-shell input {
 .atlas-composer-glass {
   background: color-mix(in oklab, var(--atlas-bg) 18%, transparent);
   backdrop-filter: blur(28px) saturate(160%);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
+  border-top: 1px solid color-mix(in oklab, var(--atlas-gold) 38%, transparent);
+  border-left: 1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent);
+  border-right: 1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent);
+  border-bottom: none;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 0 -8px 28px -18px color-mix(in oklab, var(--atlas-gold) 35%, transparent);
 }
 [data-theme="parchment"] .atlas-composer-glass {
   background: color-mix(in oklab, var(--atlas-bg) 32%, transparent);
+  border-top-color: color-mix(in oklab, var(--atlas-gold) 55%, transparent);
+  border-left-color: color-mix(in oklab, var(--atlas-gold) 35%, transparent);
+  border-right-color: color-mix(in oklab, var(--atlas-gold) 35%, transparent);
 }
 
 /* ── Side drawer mobile sizing ──
