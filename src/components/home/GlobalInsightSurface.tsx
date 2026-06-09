@@ -117,6 +117,7 @@ export function GlobalInsightSurface({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [focused, setFocused] = useState(false);
+  const isParchment = useThemeMode() === "parchment";
 
   // Auto-scroll on new messages / streaming
   useEffect(() => {
