@@ -4020,7 +4020,7 @@ export default function Home() {
               <ComposerActions
                 scope="home"
                 hasProjectContext={false}
-                borderless={globalInsightOpen}
+                borderless={true}
                 hasAttachments={attachedFiles.length > 0}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);
