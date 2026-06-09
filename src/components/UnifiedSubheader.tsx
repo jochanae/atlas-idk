@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
+import { useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import { Play } from "lucide-react";
 
 export type UnifiedSubheaderTab = "chat" | "changes" | "blueprints" | "artifacts" | "console";
@@ -63,6 +63,55 @@ export function UnifiedSubheader({
   const setExpanded = onExpandedChange ?? setInternalExpanded;
   const [launchHover, setLaunchHover] = useState(false);
   const [launchActive, setLaunchActive] = useState(false);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleLaunchPointerDown = () => {
+    setLaunchActive(true);
+    longPressFired.current = false;
+    clearLongPress();
+    longPressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true;
+      if (expanded) {
+        onLaunch?.();
+      } else {
+        setExpanded(true);
+      }
+      try { navigator.vibrate?.(40); } catch { /* ignore */ }
+    }, 450);
+  };
+
+  const handleLaunchPointerUp = () => {
+    setLaunchActive(false);
+    clearLongPress();
+  };
+
+  const handleLaunchPointerCancel = () => {
+    setLaunchActive(false);
+    clearLongPress();
+    longPressFired.current = true;
+  };
+
+  const handleLaunchClick = (e: React.MouseEvent) => {
+    if (longPressFired.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      longPressFired.current = false;
+      return;
+    }
+    if (expanded) {
+      setExpanded(false);
+    } else {
+      onLaunch?.();
+    }
+  };
 
   const selectTab = (tab: UnifiedSubheaderTab) => {
     onTabChange(tab);
@@ -157,17 +206,21 @@ export function UnifiedSubheader({
         </div>
       </div>
 
-      {/* Play button — pinned, stays visible whether the row is expanded or collapsed */}
+      {/* Play button — pinned. Tap = primary (launch when collapsed, collapse when expanded).
+          Long-press = secondary (expand when collapsed, launch when expanded). Icon rotates 90° when expanded. */}
       {showWorkspaceMenu && hasProject && (
         <button
           type="button"
-          onClick={() => onLaunch?.()}
+          onClick={handleLaunchClick}
+          onPointerDown={handleLaunchPointerDown}
+          onPointerUp={handleLaunchPointerUp}
+          onPointerLeave={handleLaunchPointerCancel}
+          onPointerCancel={handleLaunchPointerCancel}
           onMouseEnter={() => setLaunchHover(true)}
           onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
-          onMouseDown={() => setLaunchActive(true)}
-          onMouseUp={() => setLaunchActive(false)}
-          title="Launch full screen"
-          aria-label="Launch full screen"
+          title={expanded ? "Tap to hide tabs · long-press to launch" : "Tap to launch · long-press to show tabs"}
+          aria-label={expanded ? "Hide tabs (long-press to launch full screen)" : "Launch full screen (long-press to show tabs)"}
+          aria-expanded={expanded}
           style={{
             position: "absolute",
             top: expanded ? (isMobile ? 8 : 10) : 4,
@@ -191,54 +244,19 @@ export function UnifiedSubheader({
             transition: "background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease, top 240ms ease",
             WebkitTapHighlightColor: "transparent",
             boxShadow: launchHover || launchActive ? "0 0 12px rgba(201,162,76,0.25)" : "none",
+            touchAction: "manipulation",
           }}
         >
-          <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
-        </button>
-      )}
-
-
-      {/* Centered collapse handle — sits directly below the row (or directly below main header when collapsed) */}
-      {hasConversation && hasProject && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "flex-start",
-            height: expanded ? 14 : 10,
-            pointerEvents: "none",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setExpanded((open) => !open);
-            }}
-            title={expanded ? "Hide tabs" : "Show tabs"}
-            aria-label={expanded ? "Hide tabs" : "Show tabs"}
-            aria-expanded={expanded}
+          <span
             style={{
-              pointerEvents: "auto",
-              width: 36,
-              height: expanded ? 14 : 10,
-              padding: 0,
-              borderRadius: "0 0 8px 8px",
-              background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
-              borderTop: "none",
-              color: "var(--atlas-gold)",
-              cursor: "pointer",
               display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 9,
-              lineHeight: 1,
-              WebkitTapHighlightColor: "transparent",
+              transition: "transform 200ms cubic-bezier(.32,.72,0,1)",
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
             }}
           >
-            {expanded ? "▴" : "▾"}
-          </button>
-        </div>
+            <Play size={15} strokeWidth={2} fill="currentColor" aria-hidden />
+          </span>
+        </button>
       )}
     </div>
   );
