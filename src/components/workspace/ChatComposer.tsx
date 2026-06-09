@@ -175,6 +175,9 @@ export interface ChatComposerProps {
   refreshParkedEntries: () => Promise<unknown> | unknown;
   /** Proactive park-your-own-thought from the CaptureBar mounted in the composer. */
   onPark?: (content: string) => void;
+  /** Forge intake — raw context dump routed straight to /api/forge. Parent owns
+      the merge of returned nodes into the Flow canvas. */
+  onForgeIntake?: (content: string) => Promise<void> | void;
 
   // Model picker (only renders chip when showModelPicker is true)
   showModelPicker?: boolean;
@@ -242,6 +245,7 @@ export function ChatComposer(props: ChatComposerProps) {
     setShowParkingDrawer,
     refreshParkedEntries,
     onPark,
+    onForgeIntake,
     showModelPicker,
     wsModel,
     onOpenModelSheet,
@@ -262,6 +266,8 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const [planMode, setPlanMode] = useState(false);
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
+  // Intake mode is OFF by default and NOT sticky across sessions.
+  const [intakeMode, setIntakeMode] = useState(false);
 
   const togglePlanMode = () => {
     setPlanMode(v => {
@@ -361,17 +367,45 @@ export function ChatComposer(props: ChatComposerProps) {
         )}
 
         {/* CaptureBar — proactive park / forge entry surface.
-            Only mounts when a parent provided onPark (workspace does). */}
+            Intake toggle switches the bar into Forge brain-dump mode (raw
+            context → /api/forge → nodes merged into Flow canvas). Default OFF. */}
         {onPark && (
           <div style={{ marginBottom: 10 }}>
+            {onForgeIntake && (
+              <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setIntakeMode(v => !v)}
+                  title={intakeMode ? "Intake mode on — dumps route to Forge" : "Switch to Forge intake mode"}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "3px 9px", borderRadius: 999,
+                    border: `1px solid ${intakeMode ? "rgba(var(--atlas-gold-rgb), 0.55)" : "rgba(var(--atlas-gold-rgb), 0.18)"}`,
+                    background: intakeMode ? "rgba(var(--atlas-gold-rgb), 0.14)" : "transparent",
+                    color: intakeMode ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb), 0.75)",
+                    fontFamily: "var(--app-font-mono)", fontSize: 10,
+                    letterSpacing: "0.14em", textTransform: "uppercase",
+                    cursor: "pointer", transition: "all 160ms",
+                  }}
+                >
+                  <span style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: intakeMode ? "var(--atlas-gold)" : "rgba(var(--atlas-muted-rgb), 0.5)",
+                    boxShadow: intakeMode ? "0 0 6px rgba(201,162,76,0.7)" : "none",
+                  }} />
+                  Forge intake {intakeMode ? "on" : "off"}
+                </button>
+              </div>
+            )}
             <CaptureBar
               context="flow"
-              destinations={["park", "forge"]}
-              defaultDestination="park"
+              destinations={intakeMode && onForgeIntake ? ["intake", "park"] : ["park", "forge"]}
+              defaultDestination={intakeMode && onForgeIntake ? "intake" : "park"}
               projectId={projectId ? String(projectId) : null}
               parkedCount={parkedCount}
               onParkedChipClick={() => { setShowParkingDrawer(true); void refreshParkedEntries(); }}
               onPark={(content) => onPark(content)}
+              onIntake={onForgeIntake ? async (content) => { await onForgeIntake(content); setIntakeMode(false); } : undefined}
             />
           </div>
         )}
