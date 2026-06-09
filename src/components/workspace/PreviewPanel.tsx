@@ -87,6 +87,19 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
     };
   }, [deviceMenuOpen]);
   const [detectMenuOpen, setDetectMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileFullscreen, setMobileFullscreen] = useState(false);
+  useEffect(() => {
+    if (!mobileFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileFullscreen(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileFullscreen]);
 
   // ── Devserver state ──────────────────────────────────────────────────────────
   type DsStatus = "idle" | "cloning" | "installing" | "starting" | "running" | "error";
