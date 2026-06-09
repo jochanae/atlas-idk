@@ -63,6 +63,55 @@ export function UnifiedSubheader({
   const setExpanded = onExpandedChange ?? setInternalExpanded;
   const [launchHover, setLaunchHover] = useState(false);
   const [launchActive, setLaunchActive] = useState(false);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressFired = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleLaunchPointerDown = () => {
+    setLaunchActive(true);
+    longPressFired.current = false;
+    clearLongPress();
+    longPressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true;
+      if (expanded) {
+        onLaunch?.();
+      } else {
+        setExpanded(true);
+      }
+      try { navigator.vibrate?.(40); } catch { /* ignore */ }
+    }, 450);
+  };
+
+  const handleLaunchPointerUp = () => {
+    setLaunchActive(false);
+    clearLongPress();
+  };
+
+  const handleLaunchPointerCancel = () => {
+    setLaunchActive(false);
+    clearLongPress();
+    longPressFired.current = true;
+  };
+
+  const handleLaunchClick = (e: React.MouseEvent) => {
+    if (longPressFired.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      longPressFired.current = false;
+      return;
+    }
+    if (expanded) {
+      setExpanded(false);
+    } else {
+      onLaunch?.();
+    }
+  };
 
   const selectTab = (tab: UnifiedSubheaderTab) => {
     onTabChange(tab);
