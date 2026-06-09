@@ -1100,6 +1100,7 @@ export function AssistantBubble({
   onPrCreated,
   onRunCommand,
   onExtractToForge,
+  onForgeIntake,
   onReviewDiff,
   onOpenArtifact,
   onEditDeclined,
@@ -1131,6 +1132,7 @@ export function AssistantBubble({
   onPrCreated?: (prUrl: string) => void;
   onRunCommand?: (command: string) => void;
   onExtractToForge?: (content: string) => void;
+  onForgeIntake?: (content: string) => Promise<void> | void;
   onReviewDiff: () => void;
   onOpenArtifact?: (title: string) => void;
   onEditDeclined?: () => void;
