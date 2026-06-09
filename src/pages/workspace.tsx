@@ -6378,6 +6378,81 @@ export default function Workspace() {
 
 
 
+        {/* Soft "Atlas Build ready" chip — non-intrusive surface for a completed run.
+            Tapping switches to the preview tab; dismiss keeps the user where they are. */}
+        {previewReady && (
+          <div
+            style={{
+              position: "fixed",
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: isMobile ? (mobileTab === "map" ? 16 : 76) : 24,
+              zIndex: 60,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 12px 8px 14px",
+              borderRadius: 999,
+              background: "rgba(13, 11, 9, 0.92)",
+              border: "1px solid rgba(var(--atlas-gold-rgb), 0.45)",
+              boxShadow: "0 10px 32px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(var(--atlas-gold-rgb), 0.15)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              animation: "atlas-slide-in-right 240ms ease",
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                boxShadow: "0 0 10px var(--atlas-gold)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => { setPreviewReady(false); openPreviewPanel(); }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "inherit",
+                font: "inherit",
+                letterSpacing: "inherit",
+                textTransform: "inherit",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Atlas Build ready →
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewReady(false)}
+              aria-label="Dismiss"
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "rgba(var(--atlas-muted-rgb), 0.7)",
+                cursor: "pointer",
+                padding: "0 2px",
+                marginLeft: 2,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
           <div
