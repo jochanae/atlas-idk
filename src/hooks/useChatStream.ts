@@ -225,6 +225,11 @@ export function useChatStream(
   });
   useEffect(() => {
     if (!priorMessages || priorMessages.length === 0 || priorLoadedRef.current) return;
+    if (messagesRef.current.length > 0) {
+      priorLoadedRef.current = true;
+      historyMsgCountRef.current = messagesRef.current.length;
+      return;
+    }
     priorLoadedRef.current = true;
     historyMsgCountRef.current = priorMessages.length;
     setMessages(priorMessages.map(mapPriorMessage));
