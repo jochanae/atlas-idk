@@ -481,36 +481,14 @@ ${t}
         <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, position: "relative", zIndex: 5 }}>
           <div style={{ flex: 1 }} />
           {/* Device popover (mirrors URL mode) */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <button onClick={() => setDeviceMenuOpen((v) => !v)} title="Device size"
+          <div style={{ flexShrink: 0 }}>
+            <button ref={deviceBtnRef} onClick={() => setDeviceMenuOpen((v) => !v)} title="Device size"
               style={{ ...iconBtn, padding: "5px 8px", display: "inline-flex", alignItems: "center", gap: 4, ...sMono }}>
               <span style={{ fontSize: 9.5, letterSpacing: "0.04em", textTransform: "capitalize" }}>{deviceSize}</span>
               <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
             </button>
-            {deviceMenuOpen && (
-              <>
-                <div onClick={() => setDeviceMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1000 }} />
-                <div style={{
-                  position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 1001,
-                  background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
-                  borderRadius: 6, padding: 4, minWidth: 140,
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
-                }}>
-                  {(["phone", "tablet", "desktop"] as const).map((d) => (
-                    <button key={d} onClick={() => { setDeviceSize(d); setDeviceMenuOpen(false); }}
-                      style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: deviceSize === d ? "rgba(201,162,76,0.10)" : "transparent", border: "none", borderRadius: 4, color: deviceSize === d ? "var(--atlas-gold)" : "var(--atlas-fg)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textTransform: "capitalize", textAlign: "left" }}>
-                      {d}
-                    </button>
-                  ))}
-                  <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 2px" }} />
-                  <button onClick={() => { setIsLandscape((l) => !l); setDeviceMenuOpen(false); }}
-                    style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: "transparent", border: "none", borderRadius: 4, color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textAlign: "left" }}>
-                    {isLandscape ? "→ Portrait" : "→ Landscape"}
-                  </button>
-                </div>
-              </>
-            )}
           </div>
+
         </div>
       )}
 
