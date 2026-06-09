@@ -374,17 +374,18 @@ export function TimelineRail({
             {t.isNewDay && (
               <span
                 aria-hidden
+                className="atlas-rail-daychip"
                 style={{
                   fontFamily: "var(--app-font-mono)",
                   fontSize: 9,
                   fontWeight: 700,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
-                  color: "rgba(201,162,76,0.55)",
                   padding: "2px 6px",
                   borderRadius: 4,
-                  border: "1px solid rgba(201,162,76,0.18)",
-                  background: "rgba(20,17,14,0.55)",
+                  border: "1px solid var(--atlas-border)",
+                  background: "var(--atlas-surface)",
+                  color: "var(--atlas-fg)",
                   backdropFilter: "blur(6px)",
                   pointerEvents: "none",
                   userSelect: "none",
@@ -397,6 +398,7 @@ export function TimelineRail({
                 {t.label}
               </span>
             )}
+
 
             {/* Memory recall marker — shown when this assistant message surfaced a ledger memory */}
             {t.hasMemory && (
