@@ -294,6 +294,19 @@ export default function ParkingLot() {
             </p>
           </div>
 
+          {/* Capture bar — park a thought directly from this page */}
+          {activeProjectId && (
+            <div style={{ marginBottom: 20 }}>
+              <CaptureBar
+                context="modal"
+                destinations={["park"]}
+                defaultDestination="park"
+                projectId={String(activeProjectId)}
+                onPark={handleCapture}
+              />
+            </div>
+          )}
+
           {/* Content */}
           {!activeProjectId ? (
             <EmptyState message="No projects yet. Start one from home." />
