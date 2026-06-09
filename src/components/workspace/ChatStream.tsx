@@ -401,43 +401,80 @@ export function ChatStream(props: ChatStreamProps) {
 
 
     </div>
-      {showScrollBtn && (
+      {(showScrollBtn || farFromBottom) && (
         <button
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") {
               e.preventDefault();
+              setUnreadCount(0);
               onScrollToLatest();
             }
           }}
           onClick={(e) => {
-            if (e.detail === 0) onScrollToLatest();
+            if (e.detail === 0) {
+              setUnreadCount(0);
+              onScrollToLatest();
+            } else {
+              setUnreadCount(0);
+              onScrollToLatest();
+            }
           }}
-          aria-label="Scroll to latest"
+          aria-label="Jump to latest"
           style={{
             position: "absolute",
-            bottom: 10,
-            right: 12,
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
+            right: 16,
+            bottom: 56,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 14px 8px 12px",
+            borderRadius: 999,
             background: "var(--atlas-surface)",
             border: "1px solid var(--atlas-gold)",
             color: "var(--atlas-gold)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            boxShadow: "0 6px 24px rgba(0,0,0,0.45)",
             cursor: "pointer",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
             zIndex: 50,
             pointerEvents: "auto",
+            WebkitTapHighlightColor: "transparent",
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 3v10M4 9l4 4 4-4"/>
           </svg>
+          <span>JUMP TO LATEST</span>
+          {unreadCount > 0 && (
+            <span
+              aria-label={`${unreadCount} new`}
+              style={{
+                minWidth: 18,
+                height: 18,
+                padding: "0 5px",
+                borderRadius: 999,
+                background: "var(--atlas-gold)",
+                color: "var(--atlas-bg, #14110e)",
+                fontSize: 10,
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                lineHeight: 1,
+              }}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
       )}
-      <TimelineRail bottomOffset={isMobile ? 170 : 110} messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
+      <TimelineRail
+        bottomOffset={isMobile ? 170 : 110}
+        active={isScrolling}
+        messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))}
+      />
     </div>
   );
 }
