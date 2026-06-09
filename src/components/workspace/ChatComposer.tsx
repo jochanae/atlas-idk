@@ -552,13 +552,17 @@ export function ChatComposer(props: ChatComposerProps) {
             {/* Right: plan mode + voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
               <button
-                onClick={() => setPlanMode(v => !v)}
+                onClick={togglePlanMode}
                 title="Plan mode"
                 aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
+                aria-pressed={planMode}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
-                  background: planMode ? "rgba(201,162,76,0.1)" : "transparent",
-                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "transparent"}`,
+                  background: planMode
+                    ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
+                    : "transparent",
+                  border: `1px solid ${planMode ? "rgba(201,162,76,0.55)" : "transparent"}`,
+                  boxShadow: planMode ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "none",
                   color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
