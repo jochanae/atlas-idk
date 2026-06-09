@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import { CodeEditor } from "@/components/code/CodeEditor";
+import { ForgeSyncPanel } from "@/components/code/ForgeSyncPanel";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { apiUrl } from "@/lib/api";
 import { parseLinkedRepo } from "@/lib/githubRepo";
@@ -597,6 +598,7 @@ export default function CodePage() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [isPushingGithub, setIsPushingGithub] = useState(false);
+  const [showForgeSync, setShowForgeSync] = useState(false);
 
   const projectId = useMemo(() => getProjectIdFromUrl(), []);
 
@@ -668,6 +670,14 @@ export default function CodePage() {
   });
 
   const files = useMemo(() => filesQ.data ?? [], [filesQ.data]);
+  const forgeSyncFiles = useMemo(
+    () => files.map((file) => (
+      Object.prototype.hasOwnProperty.call(edits, file.id)
+        ? { ...file, content: edits[file.id] ?? "" }
+        : file
+    )),
+    [edits, files],
+  );
   const selectedFile = useMemo(() => {
     if (!files.length) return null;
     return files.find((f) => f.id === selectedFileId) ?? files[0];
@@ -783,6 +793,19 @@ export default function CodePage() {
     }
   };
 
+  const handleOpenForgeSync = () => {
+    if (projectId == null) {
+      toast.error("Select a project before opening Forge Sync.");
+      return;
+    }
+    if (!activeRun) {
+      toast.error("No active generation run available for Forge Sync.");
+      return;
+    }
+
+    setShowForgeSync(true);
+  };
+
   return (
     <div style={{
       display: "flex", flexDirection: "column",
@@ -864,7 +887,11 @@ export default function CodePage() {
           onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
         />
         <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
-        <ToolButton icon={<Hammer size={13} />} label="Extract to Forge" />
+        <ToolButton
+          icon={<Hammer size={13} />}
+          label="Forge Sync"
+          onClick={handleOpenForgeSync}
+        />
         <ToolButton
           icon={<Download size={13} />}
           label={isDownloadingZip ? "Downloading…" : "Download .zip"}
@@ -1042,6 +1069,16 @@ export default function CodePage() {
           </aside>
         )}
       </div>
+
+      {showForgeSync && projectId != null && activeRun && (
+        <ForgeSyncPanel
+          projectId={projectId}
+          runId={activeRun.id}
+          files={forgeSyncFiles}
+          runSummary={activeRun.summary}
+          onClose={() => setShowForgeSync(false)}
+        />
+      )}
     </div>
   );
 }
