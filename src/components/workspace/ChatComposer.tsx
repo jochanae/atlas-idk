@@ -257,6 +257,21 @@ export function ChatComposer(props: ChatComposerProps) {
   const isMultiAgent = !wsModel || wsModel === "multi";
 
   const [planMode, setPlanMode] = useState(false);
+  const [planBannerVisible, setPlanBannerVisible] = useState(false);
+
+  const togglePlanMode = () => {
+    setPlanMode(v => {
+      const next = !v;
+      if (next) {
+        setPlanBannerVisible(true);
+        window.setTimeout(() => setPlanBannerVisible(false), 1500);
+      } else {
+        setPlanBannerVisible(false);
+      }
+      try { (navigator as any).vibrate?.(10); } catch {}
+      return next;
+    });
+  };
 
   
 
@@ -399,6 +414,30 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
+        {planBannerVisible && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+              marginBottom: 6,
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              opacity: 0.85,
+              animation: "fade-in 0.2s ease-out",
+              pointerEvents: "none",
+            }}
+          >
+            <span style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "var(--atlas-gold)",
+              boxShadow: "0 0 6px rgba(201,162,76,0.7)",
+            }} />
+            Plan Mode Active · Strategizing
+          </div>
+        )}
+
         <div
           className="atlas-input-shell"
           style={{
@@ -408,7 +447,22 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+              {planMode && !hasInput ? (
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute", top: 0, left: 2,
+                    color: "var(--atlas-gold)", fontSize: 14, lineHeight: 1.6,
+                    opacity: 0.75, pointerEvents: "none",
+                    fontFamily: "var(--app-font-sans)",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Drafting plan… (No code will be written)
+                </div>
+              ) : (
+                <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+              )}
 
               <textarea
                 ref={textareaRef}
@@ -498,13 +552,17 @@ export function ChatComposer(props: ChatComposerProps) {
             {/* Right: plan mode + voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
               <button
-                onClick={() => setPlanMode(v => !v)}
+                onClick={togglePlanMode}
                 title="Plan mode"
                 aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
+                aria-pressed={planMode}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
-                  background: planMode ? "rgba(201,162,76,0.1)" : "transparent",
-                  border: `1px solid ${planMode ? "rgba(201,162,76,0.35)" : "transparent"}`,
+                  background: planMode
+                    ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
+                    : "transparent",
+                  border: `1px solid ${planMode ? "rgba(201,162,76,0.55)" : "transparent"}`,
+                  boxShadow: planMode ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "none",
                   color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
