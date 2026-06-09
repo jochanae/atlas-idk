@@ -7,6 +7,7 @@ import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import { CaptureBar } from "@/components/CaptureBar";
 
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
@@ -172,6 +173,8 @@ export interface ChatComposerProps {
   showParkingDrawer: boolean;
   setShowParkingDrawer: (v: boolean) => void;
   refreshParkedEntries: () => Promise<unknown> | unknown;
+  /** Proactive park-your-own-thought from the CaptureBar mounted in the composer. */
+  onPark?: (content: string) => void;
 
   // Model picker (only renders chip when showModelPicker is true)
   showModelPicker?: boolean;
@@ -238,6 +241,7 @@ export function ChatComposer(props: ChatComposerProps) {
     showParkingDrawer,
     setShowParkingDrawer,
     refreshParkedEntries,
+    onPark,
     showModelPicker,
     wsModel,
     onOpenModelSheet,
