@@ -462,11 +462,28 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
   // ── Tab: Forge ─────────────────────────────────────────────────────────────
   const forgeContent = (
     <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Transitional banner — Brain Dump now also lives inline in Axiom Flow
+          via the Forge intake toggle. This Forge surface stays for ceremony,
+          repo context, and reviewing nodes before they land on the canvas. */}
+      <div style={{
+        borderRadius: 10,
+        border: "1px dashed rgba(var(--atlas-gold-rgb),0.35)",
+        padding: "10px 12px",
+        background: "rgba(var(--atlas-gold-rgb),0.04)",
+        fontSize: 11.5, lineHeight: 1.55,
+        color: "rgba(var(--atlas-gold-rgb),0.85)",
+        fontFamily: "var(--app-font-mono)",
+        letterSpacing: "0.01em",
+      }}>
+        Brain Dump now lives in Axiom Flow → tap <strong>Forge intake</strong> above the composer to route raw context here without leaving chat.
+      </div>
+
       <div style={{ borderRadius: 10, background: "rgba(var(--atlas-gold-rgb),0.02)", border: "1px solid rgba(var(--atlas-gold-rgb),0.12)", padding: "12px 14px" }}>
         <p style={{ fontSize: 12, color: "rgba(var(--atlas-gold-rgb),0.75)", lineHeight: 1.6, margin: 0 }}>
           Paste a raw transcript, voice note, brain dump, or strategy doc. The Forge reads intent, extracts goals, requirements, and <GlossaryTip term="blockers">{BLOCKER_EXPLANATION}</GlossaryTip> — then places them on your Axiom Flow.
         </p>
       </div>
+
 
       <div>
         <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 8, fontFamily: "var(--app-font-mono)" }}>
