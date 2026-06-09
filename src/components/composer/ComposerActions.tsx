@@ -303,15 +303,18 @@ export function ComposerActions({
                 onClick={() => setMoreExpanded((v) => !v)}
                 aria-expanded={moreExpanded}
                 style={menuRowStyle(false)}
+                onPointerDown={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
+                onPointerUp={(e) => { e.currentTarget.style.background = "transparent"; }}
+                onPointerLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                <span style={iconWrapStyle}>
+                <span style={{ ...iconWrapStyle, pointerEvents: "none" }}>
                   <Layers size={18} strokeWidth={1.6} />
                 </span>
-                <span style={{ flex: 1, textAlign: "left" }}>More</span>
+                <span style={{ flex: 1, textAlign: "left", pointerEvents: "none" }}>More</span>
                 {moreExpanded ? (
-                  <ChevronUp size={16} strokeWidth={1.6} style={{ opacity: 0.6 }} />
+                  <ChevronUp size={16} strokeWidth={1.6} style={{ opacity: 0.6, pointerEvents: "none" }} />
                 ) : (
-                  <ChevronDown size={16} strokeWidth={1.6} style={{ opacity: 0.6 }} />
+                  <ChevronDown size={16} strokeWidth={1.6} style={{ opacity: 0.6, pointerEvents: "none" }} />
                 )}
               </button>
               {moreExpanded && (
