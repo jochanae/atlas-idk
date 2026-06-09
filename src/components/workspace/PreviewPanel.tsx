@@ -1010,6 +1010,31 @@ ${t}
           )}
         </div>
       )}
+      {/* Shared device popover — portaled so it floats above iframes and isn't clipped */}
+      {deviceMenuOpen && deviceMenuPos && typeof document !== "undefined" && createPortal(
+        <>
+          <div onClick={() => setDeviceMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+          <div style={{
+            position: "fixed", top: deviceMenuPos.top, right: deviceMenuPos.right, zIndex: 9999,
+            background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
+            borderRadius: 6, padding: 4, minWidth: 140,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+          }}>
+            {(["phone", "tablet", "desktop"] as const).map((d) => (
+              <button key={d} onClick={() => { setDeviceSize(d); setDeviceMenuOpen(false); }}
+                style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: deviceSize === d ? "rgba(201,162,76,0.10)" : "transparent", border: "none", borderRadius: 4, color: deviceSize === d ? "var(--atlas-gold)" : "var(--atlas-fg)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textTransform: "capitalize", textAlign: "left" }}>
+                {d}
+              </button>
+            ))}
+            <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 2px" }} />
+            <button onClick={() => { setIsLandscape((l) => !l); setDeviceMenuOpen(false); }}
+              style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: "transparent", border: "none", borderRadius: 4, color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textAlign: "left" }}>
+              {isLandscape ? "→ Portrait" : "→ Landscape"}
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }
