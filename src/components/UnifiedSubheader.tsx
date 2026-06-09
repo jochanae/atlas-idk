@@ -212,8 +212,8 @@ export function UnifiedSubheader({
           onPointerCancel={handleLaunchPointerCancel}
           onMouseEnter={() => setLaunchHover(true)}
           onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
-          title={expanded ? "Tap to hide tabs · long-press to launch" : "Tap to launch · long-press to show tabs"}
-          aria-label={expanded ? "Hide tabs (long-press to launch full screen)" : "Launch full screen (long-press to show tabs)"}
+          title={expanded ? "Tap to launch · long-press to hide tabs" : "Tap to launch · long-press to show tabs"}
+          aria-label={expanded ? "Launch full screen (long-press to hide tabs)" : "Launch full screen (long-press to show tabs)"}
           aria-expanded={expanded}
           style={{
             position: "absolute",
