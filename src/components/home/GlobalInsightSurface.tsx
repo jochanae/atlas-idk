@@ -519,8 +519,8 @@ export function GlobalInsightSurface({
               alignItems: "center",
               justifyContent: "space-between",
               gap: 8,
-              paddingTop: 4,
-              borderTop: "1px solid rgba(212,175,55,0.08)",
+              paddingTop: 6,
+              borderTop: "none",
               marginTop: 2,
             }}
           >
