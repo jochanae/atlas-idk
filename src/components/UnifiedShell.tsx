@@ -334,7 +334,7 @@ function ShellBranchChip() {
       </button>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div onPointerDown={() => setOpen(false)} onTouchStart={() => setOpen(false)} onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div
             role="listbox"
             style={{
