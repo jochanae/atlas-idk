@@ -763,8 +763,8 @@ function ConnectionsDock() {
       }}>
         {/* GitHub Connection */}
         <div style={{
-          background: "rgba(255,255,255,0.03)",
-          border: `1px solid ${githubStatus?.connected ? "rgba(74,222,128,0.25)" : "rgba(255,255,255,0.08)"}`,
+          background: "color-mix(in oklab, var(--atlas-fg) 4%, transparent)",
+          border: `1px solid ${githubStatus?.connected ? "rgba(74,222,128,0.30)" : "var(--atlas-border)"}`,
           borderRadius: 12,
           padding: "16px 18px",
           display: "flex",
