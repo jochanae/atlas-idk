@@ -3369,6 +3369,34 @@ export default function Workspace() {
     homeHandoffPrimed.current = false;
     setAutoNameKey(0);
   }, [id]);
+
+  // Reset preview-ready chip when switching projects or sessions.
+  useEffect(() => {
+    setPreviewReady(false);
+    acknowledgedRunRef.current = "";
+    workspaceMountedAtRef.current = Date.now();
+  }, [id, sessionId]);
+
+  // Session-gated, non-intrusive "Atlas Build ready" detection.
+  // Only fires for runs that (a) belong to the current session, (b) finished
+  // after this workspace instance mounted, and (c) when not viewing the flow map.
+  useEffect(() => {
+    if (!latestRun) return;
+    if ((latestRun.runStatus ?? latestRun.status) !== "completed") return;
+    const viewIsFlow = new URLSearchParams(window.location.search).get("view") === "flow";
+    if (viewIsFlow) return;
+    const runSessionId = latestRun.sessionId ?? latestRun.session_id ?? null;
+    if (runSessionId == null || sessionId == null) return;
+    if (Number(runSessionId) !== Number(sessionId)) return;
+    const finishedAtRaw = latestRun.finishedAt ?? latestRun.finished_at ?? latestRun.updatedAt ?? latestRun.updated_at ?? latestRun.createdAt ?? latestRun.created_at;
+    const finishedAt = finishedAtRaw ? new Date(finishedAtRaw).getTime() : 0;
+    if (!finishedAt || finishedAt < workspaceMountedAtRef.current) return;
+    const key = latestRunKey(latestRun);
+    if (acknowledgedRunRef.current === key) return;
+    acknowledgedRunRef.current = key;
+    setPreviewReady(true);
+  }, [latestRun, sessionId, latestRunKey]);
+
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
