@@ -1577,7 +1577,11 @@ export default function MasterMap() {
                     <div style={{ display: "flex", gap: 8, marginTop: 2, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
                       <button
                         type="button"
-                        onClick={() => { if (projectId) window.location.href = `/project/${projectId}?view=flow`; }}
+                        onClick={() => {
+                          if (!projectId) return;
+                          try { sessionStorage.setItem("atlas-open-tab", "map"); } catch {}
+                          window.location.href = `/project/${projectId}?view=flow`;
+                        }}
                         style={{
                           padding: "6px 14px",
                           background: "rgba(201,162,76,0.12)",
@@ -1592,7 +1596,7 @@ export default function MasterMap() {
                           pointerEvents: "auto",
                         }}
                       >
-                        {committed === 0 ? "Start first decision →" : "Open flow map →"}
+                        {committed === 0 ? "Open flow map →" : "Open flow map →"}
                       </button>
                       {projectId && (
                         <button
