@@ -276,6 +276,22 @@ export function GlobalInsightSurface({
               <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minWidth: 0 }}>
                 {intents.map((it) => {
                   const premium = it.premium;
+                  // Theme-aware tokens
+                  const premiumBg = isParchment
+                    ? "linear-gradient(135deg, rgba(217,119,6,0.12), rgba(180,83,9,0.06))"
+                    : "linear-gradient(135deg, rgba(212,175,55,0.22), rgba(201,162,76,0.10))";
+                  const premiumBorder = isParchment ? "1px solid rgba(180,83,9,0.45)" : "1px solid rgba(212,175,55,0.55)";
+                  const premiumColor = isParchment ? "rgba(146,64,14,1)" : "rgba(245,215,130,1)";
+                  const premiumShadow = isParchment
+                    ? "0 2px 8px rgba(217,119,6,0.15)"
+                    : "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)";
+                  const premiumShadowHover = isParchment
+                    ? "0 4px 14px rgba(217,119,6,0.22)"
+                    : "0 0 0 1px rgba(212,175,55,0.32), 0 0 22px rgba(212,175,55,0.4)";
+                  const restBg = isParchment ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.025)";
+                  const restBorder = isParchment ? "1px solid rgba(17,17,17,0.10)" : "1px solid rgba(212,175,55,0.18)";
+                  const restColor = isParchment ? "rgba(64,64,64,0.92)" : "rgba(212,175,55,0.78)";
+                  const restColorHover = isParchment ? "rgba(23,23,23,1)" : "rgba(245,215,130,1)";
                   return (
                     <span key={it.label} style={{ display: "inline-flex", alignItems: "center", flex: "1 1 0", minWidth: 0, justifyContent: "center" }}>
                       <button
@@ -284,11 +300,11 @@ export function GlobalInsightSurface({
                         style={{
                           width: "100%",
                           minWidth: 0,
-                          background: premium ? "linear-gradient(135deg, rgba(212,175,55,0.22), rgba(201,162,76,0.10))" : "transparent",
-                          border: premium ? "1px solid rgba(212,175,55,0.55)" : "none",
-                          borderRadius: premium ? 20 : 0,
-                          padding: premium ? "5px 8px" : "5px 2px",
-                          color: premium ? "rgba(245,215,130,1)" : "rgba(245,215,130,0.88)",
+                          background: premium ? premiumBg : restBg,
+                          border: premium ? premiumBorder : restBorder,
+                          borderRadius: 999,
+                          padding: "6px 10px",
+                          color: premium ? premiumColor : restColor,
                           cursor: "pointer",
                           fontFamily: "var(--app-font-sans)",
                           fontSize: "clamp(10px, 2.9vw, 12px)",
@@ -296,27 +312,26 @@ export function GlobalInsightSurface({
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          boxShadow: premium ? "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)" : "none",
-                          opacity: premium ? 1 : 0.92,
-                          transition: "color 160ms ease, box-shadow 160ms ease, opacity 160ms ease",
+                          boxShadow: premium ? premiumShadow : "none",
+                          backdropFilter: isParchment && !premium ? "blur(8px)" : "none",
+                          opacity: 1,
+                          transition: "color 160ms ease, box-shadow 160ms ease, background 160ms ease",
                         }}
                         onMouseEnter={(e) => {
                           const el = e.currentTarget as HTMLButtonElement;
                           if (premium) {
-                            el.style.boxShadow = "0 0 0 1px rgba(212,175,55,0.32), 0 0 22px rgba(212,175,55,0.4)";
+                            el.style.boxShadow = premiumShadowHover;
                             return;
                           }
-                          el.style.color = "rgba(245,215,130,1)";
-                          el.style.opacity = "1";
+                          el.style.color = restColorHover;
                         }}
                         onMouseLeave={(e) => {
                           const el = e.currentTarget as HTMLButtonElement;
                           if (premium) {
-                            el.style.boxShadow = "0 0 0 1px rgba(212,175,55,0.18), 0 0 14px rgba(212,175,55,0.22)";
+                            el.style.boxShadow = premiumShadow;
                             return;
                           }
-                          el.style.color = "rgba(245,215,130,0.88)";
-                          el.style.opacity = "0.92";
+                          el.style.color = restColor;
                         }}
                       >
                         {it.label}
