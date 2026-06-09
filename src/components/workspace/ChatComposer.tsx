@@ -676,35 +676,8 @@ export function ChatComposer(props: ChatComposerProps) {
         </div>
       </div>}
 
-      {parkedCount > 0 && !showParkingDrawer && (
-        <button
-          type="button"
-          onClick={() => { setShowParkingDrawer(true); void refreshParkedEntries(); }}
-          style={{
-            position: "absolute",
-            right: 16,
-            bottom: 104,
-            zIndex: 42,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            padding: "6px 10px",
-            borderRadius: 999,
-            background: "var(--atlas-surface)",
-            border: "1px solid var(--atlas-border)",
-            color: "var(--atlas-muted)",
-            cursor: "pointer",
-            fontFamily: "var(--app-font-mono)",
-            fontSize: 9,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            boxShadow: "0 12px 28px -20px var(--atlas-gold)",
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block", flexShrink: 0 }} />
-          {parkedCount} items
-        </button>
-      )}
+      {/* Floating "{n} items" pill removed — parked count now renders inline
+          in the CaptureBar mounted above the input. */}
     </>
   );
 }
