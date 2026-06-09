@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
+import { useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import { Play } from "lucide-react";
 
 export type UnifiedSubheaderTab = "chat" | "changes" | "blueprints" | "artifacts" | "console";
