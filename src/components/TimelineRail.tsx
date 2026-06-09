@@ -276,7 +276,7 @@ export function TimelineRail({
         style={{
           position: "fixed",
           top: topOffset,
-          bottom: bottomOffset,
+          bottom: bottomOffset + kbInset,
           right: 0,
           // Widen the hit/render column so inline day chips have room to the left of the spine.
           width: 96,
