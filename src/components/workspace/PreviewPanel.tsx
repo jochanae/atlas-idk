@@ -403,8 +403,41 @@ ${t}
     background: "#fff",
   };
 
+  const iconBtn: React.CSSProperties = {
+    padding: "5px 7px", borderRadius: 5, background: "transparent",
+    border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)",
+    fontSize: 11, cursor: "pointer", flexShrink: 0, lineHeight: 1,
+    opacity: 0.7, transition: "opacity 160ms ease",
+  };
+
+  // Scroll-collapse the URL chrome when user scrolls the panel
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || previewMode !== "url") return;
+    const onScroll = () => {
+      const top = el.scrollTop;
+      if (top > 8) { setChromeVisible(false); setStatusVisible(false); }
+      else setChromeVisible(true);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [previewMode, liveUrl]);
+
+  // Reveal Row 2 whenever new status data arrives
+  useEffect(() => {
+    if (autoDetected || savedIndicator || detectResults.length > 0) setStatusVisible(true);
+  }, [autoDetected, savedIndicator, detectResults.length]);
+
+  // Auto-hide Row 2 after 4s
+  useEffect(() => {
+    if (!statusVisible) return;
+    const t = window.setTimeout(() => setStatusVisible(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [statusVisible, autoDetected, savedIndicator, detectResults.length]);
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
       {/* Mode toggle */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
         {(["url", "sandbox", "local"] as const).map((m) => (
