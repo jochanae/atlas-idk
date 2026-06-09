@@ -293,6 +293,11 @@ html, body {
   --atlas-gold-border:  rgba(139, 94, 60, 0.30);
   --atlas-phosphor:     #0284C7;
 
+  /* Search rail trigger — high-contrast bronze on parchment */
+  --atlas-search-btn-bg:     rgba(255,255,255,0.85);
+  --atlas-search-btn-border: rgba(139,94,60,0.55);
+  --atlas-search-btn-fg:     #6f4a30;
+
   /* Ice Plate Glassmorphism */
   --atlas-border:       rgba(17, 17, 17, 0.10);
   --atlas-glass-bg:     rgba(255, 255, 255, 0.65);
