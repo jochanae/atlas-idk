@@ -267,8 +267,10 @@ export function TimelineRail({
           alignItems: "center",
           justifyContent: "space-evenly",
           padding: "8px 0",
-          pointerEvents: "auto",
-          opacity: 0.95,
+          // Pointer-events fail-safe: idle rail must not catch stray thumb drags.
+          pointerEvents: active ? "auto" : "none",
+          opacity: active ? 1 : 0.3,
+          transition: "opacity 240ms cubic-bezier(0.2,0.8,0.2,1)",
         }}
 
       >
