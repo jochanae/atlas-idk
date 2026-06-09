@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
+import { useRef, useState, type CSSProperties, type Dispatch, type MouseEvent, type PointerEvent, type SetStateAction } from "react";
 import { Play } from "lucide-react";
 
 export type UnifiedSubheaderTab = "chat" | "changes" | "blueprints" | "artifacts" | "console";
@@ -93,10 +93,21 @@ export function UnifiedSubheader({
   const handleLaunchPointerCancel = () => {
     setLaunchActive(false);
     clearLongPress();
-    longPressFired.current = true;
   };
 
-  const handleLaunchClick = (e: React.MouseEvent) => {
+  const handleLaunchPointerLeave = (e: PointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType === "mouse") {
+      setLaunchActive(false);
+      clearLongPress();
+    }
+  };
+
+  const handleLaunchMouseLeave = () => {
+    setLaunchHover(false);
+    setLaunchActive(false);
+  };
+
+  const handleLaunchClick = (e: MouseEvent<HTMLButtonElement>) => {
     if (longPressFired.current) {
       e.preventDefault();
       e.stopPropagation();
@@ -208,10 +219,10 @@ export function UnifiedSubheader({
           onClick={handleLaunchClick}
           onPointerDown={handleLaunchPointerDown}
           onPointerUp={handleLaunchPointerUp}
-          onPointerLeave={handleLaunchPointerCancel}
+          onPointerLeave={handleLaunchPointerLeave}
           onPointerCancel={handleLaunchPointerCancel}
           onMouseEnter={() => setLaunchHover(true)}
-          onMouseLeave={() => { setLaunchHover(false); setLaunchActive(false); }}
+          onMouseLeave={handleLaunchMouseLeave}
           title={expanded ? "Tap to launch · long-press to hide tabs" : "Tap to launch · long-press to show tabs"}
           aria-label={expanded ? "Launch full screen (long-press to hide tabs)" : "Launch full screen (long-press to show tabs)"}
           aria-expanded={expanded}
