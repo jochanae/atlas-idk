@@ -13,6 +13,7 @@ import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
 import { useForceDesktop, useIsMobile, useIsTinyScreen, useIsDesktop } from "@/hooks/useBreakpoints";
+import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useGitHub } from "@/hooks/useGitHub";
 import { AxiomFlow } from "../components/AxiomFlow";
