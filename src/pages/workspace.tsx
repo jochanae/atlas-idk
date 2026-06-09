@@ -13,7 +13,6 @@ import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
 import { useForceDesktop, useIsMobile, useIsTinyScreen, useIsDesktop } from "@/hooks/useBreakpoints";
-import { useScrollDirection } from "@/hooks/useScrollDirection";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useGitHub } from "@/hooks/useGitHub";
 import { AxiomFlow } from "../components/AxiomFlow";
@@ -3864,12 +3863,6 @@ export default function Workspace() {
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
 
-  // Drive chrome auto-hide off the chat scroll container. Mobile-only immersion;
-  // desktop chrome always stays visible.
-  const wsScrollDir = useScrollDirection(chatPanelScrollRef, { threshold: 8, debounceMs: 150 });
-  // Chrome auto-hide disabled per user feedback — footer + subheader always visible.
-  const immersive = false;
-
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow
   // updates even when the user isn't scrolling.
   useEffect(() => {
@@ -5453,16 +5446,6 @@ export default function Workspace() {
       />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
-      <div
-        style={{
-          // Subheader rides above sticky day-dividers (z-index: 12) per locked z-hierarchy.
-          position: "relative",
-          zIndex: 20,
-          transform: immersive ? "translateY(-100%)" : "translateY(0)",
-          transition: "transform 220ms cubic-bezier(0.2,0.8,0.2,1)",
-          willChange: "transform",
-        }}
-      >
       <UnifiedSubheader
         activeTab={unifiedSubheaderTab}
         onTabChange={handleUnifiedSubheaderTabChange}
@@ -5470,17 +5453,22 @@ export default function Workspace() {
         isMobile={isMobile}
         showWorkspaceMenu
         onLaunch={() => {
+          // Preview-first toggle. Play ALWAYS surfaces the running app preview,
+          // regardless of which tab/module is currently active. Panel maximize
+          // is handled by each panel's own expand control — not here.
+          // If preview is already open in the launcher, close it (return to
+          // the previous view / acts as a publish-sheet placeholder toggle).
           if (launchModal.open && launchModal.mode === "preview") {
             setLaunchModal((s) => ({ ...s, open: false }));
             return;
           }
+          // Also reflect intent in mobile tab so closing returns to preview tab.
           if (isMobile) setMobileTab("preview");
           setLaunchModal({ open: true, mode: "preview" });
         }}
         expanded={subheaderOpen}
         onExpandedChange={setSubheaderOpen}
       />
-      </div>
 
       <LaunchModal
         open={launchModal.open}
@@ -6390,28 +6378,21 @@ export default function Workspace() {
 
 
       {isMobile && mobileTab !== "map" && (
-        <div
-          style={{
-            transform: immersive ? "translateY(100%)" : "translateY(0)",
-            transition: "transform 220ms cubic-bezier(0.2,0.8,0.2,1)",
-            willChange: "transform",
+        <UnifiedContextDock
+          mode="operational"
+          activeOperationalTab={(["chat","ledger","preview","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "preview" | "map" | "files" | undefined}
+          onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
+          onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
+
+          onLedger={() => {
+            setMobileTab("ledger");
+            setRightOpen(true);
           }}
-        >
-          <UnifiedContextDock
-            mode="operational"
-            activeOperationalTab={(["chat","ledger","preview","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "preview" | "map" | "files" | undefined}
-            onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
-            onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
-            onLedger={() => {
-              setMobileTab("ledger");
-              setRightOpen(true);
-            }}
-            onPreview={() => setMobileTab("preview")}
-            onFlow={() => setLocation("/map")}
-            entryCount={entryCount}
-            activeCatch={!!activeCatch}
-          />
-        </div>
+          onPreview={() => setMobileTab("preview")}
+          onFlow={() => setLocation("/map")}
+          entryCount={entryCount}
+          activeCatch={!!activeCatch}
+        />
       )}
 
       {isMobile && showMoreSheet && (

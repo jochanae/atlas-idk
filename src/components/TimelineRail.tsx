@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { dayLabel } from "@/lib/dayLabel";
 
 type RailMessage = {
   role: "user" | "assistant";
@@ -14,6 +13,22 @@ type Bucket = {
   count: number;
 };
 
+function dayLabel(t: number, now: number): string {
+  const startOfDay = (ms: number) => {
+    const d = new Date(ms);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  const today = startOfDay(now);
+  const yesterday = today - 86_400_000;
+  const weekStart = today - 6 * 86_400_000;
+  if (t >= today) return "TODAY";
+  if (t >= yesterday) return "YESTERDAY";
+  if (t >= weekStart) {
+    return new Date(t).toLocaleDateString(undefined, { weekday: "short" }).toUpperCase();
+  }
+  // Older — use MMM D
+  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
+}
 
 function bucketize(messages: RailMessage[]): Bucket[] {
   const now = Date.now();
@@ -43,13 +58,10 @@ export function TimelineRail({
   messages,
   topOffset = 92,
   bottomOffset = 90,
-  active = false,
 }: {
   messages: RailMessage[];
   topOffset?: number;
   bottomOffset?: number;
-  /** When true (e.g. user actively scrolling), rail goes to 100% opacity + interactive. Idle = 30% + pointer-events:none. */
-  active?: boolean;
 }) {
   const [showOverlay, setShowOverlay] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -59,25 +71,6 @@ export function TimelineRail({
   const longPressRef = useRef<number | null>(null);
   const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Track mobile keyboard via visualViewport so the rail rides above it
-  // instead of being clipped behind it when the composer is focused.
-  const [kbInset, setKbInset] = useState(0);
-  useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    if (!vv) return;
-    const update = () => {
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      setKbInset(inset > 80 ? inset : 0);
-    };
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, []);
 
   // Sorted list of message indices that contain the query.
   const matchList = useMemo(() => {
@@ -276,7 +269,7 @@ export function TimelineRail({
         style={{
           position: "fixed",
           top: topOffset,
-          bottom: bottomOffset + kbInset,
+          bottom: bottomOffset,
           right: 0,
           // Widen the hit/render column so inline day chips have room to the left of the spine.
           width: 96,
@@ -286,10 +279,8 @@ export function TimelineRail({
           alignItems: "center",
           justifyContent: "space-evenly",
           padding: "8px 0",
-          // Pointer-events fail-safe: idle rail must not catch stray thumb drags.
-          pointerEvents: active ? "auto" : "none",
-          opacity: active ? 1 : 0.3,
-          transition: "opacity 240ms cubic-bezier(0.2,0.8,0.2,1)",
+          pointerEvents: "auto",
+          opacity: 0.95,
         }}
 
       >

@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import type { CSSProperties, RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useScrollDirection } from "@/hooks/useScrollDirection";
-import { dayKey, dayLabel } from "@/lib/dayLabel";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
@@ -162,39 +160,6 @@ export function ChatStream(props: ChatStreamProps) {
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
   const isMobile = useIsMobile();
-  const { isScrolling, viewportsFromBottom } = useScrollDirection(scrollRef, {
-    threshold: 8,
-    debounceMs: 150,
-  });
-
-  // Day-divider indices: render a sticky chip BEFORE the first message of each new calendar day.
-  const dayDividerMap = useMemo(() => {
-    const map = new Map<number, string>();
-    let prev: string | null = null;
-    messages.forEach((m, i) => {
-      const t = m.sentAt ? new Date(m.sentAt).getTime() : Date.now();
-      const key = dayKey(t);
-      if (key !== prev) {
-        map.set(i, dayLabel(t));
-        prev = key;
-      }
-    });
-    return map;
-  }, [messages]);
-
-  // Unread tracking for the Jump-to-Latest pill.
-  const [unreadCount, setUnreadCount] = useState(0);
-  const lastAssistantCountRef = useRef(0);
-  const farFromBottom = viewportsFromBottom >= 1;
-  useEffect(() => {
-    const assistantCount = messages.filter((m) => m.role === "assistant").length;
-    if (farFromBottom && assistantCount > lastAssistantCountRef.current) {
-      setUnreadCount((c) => c + (assistantCount - lastAssistantCountRef.current));
-    }
-    if (!farFromBottom) setUnreadCount(0);
-    lastAssistantCountRef.current = assistantCount;
-  }, [messages, farFromBottom]);
-
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
@@ -250,40 +215,9 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
-      {messages.map((msg, i) => {
-        const divider = dayDividerMap.get(i);
-        const dayChip = divider ? (
-          <div
-            data-day-divider
-            style={{
-              position: "sticky",
-              top: 8,
-              zIndex: 12,
-              alignSelf: "flex-start",
-              display: "inline-block",
-              margin: "10px 0 6px",
-              padding: "4px 10px",
-              borderRadius: 999,
-              background: "var(--atlas-surface)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
-              color: "var(--atlas-fg)",
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 10,
-              fontWeight: 600,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              pointerEvents: "none",
-            }}
-          >
-            {divider}
-          </div>
-        ) : null;
-
-        return msg.role === "user" ? (
+      {messages.map((msg, i) =>
+        msg.role === "user" ? (
           <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
-            {dayChip}
             {isAutoVerifyMessage(msg) ? (
               <AutoVerifyMessage content={msg.content} />
             ) : (
@@ -299,7 +233,6 @@ export function ChatStream(props: ChatStreamProps) {
           </div>
         ) : (
           <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
-            {dayChip}
             {activityStream.active && i === messages.length - 1 && (
               liveGeneration.shouldShow ? (
                 <LiveGenerationCard
@@ -349,8 +282,8 @@ export function ChatStream(props: ChatStreamProps) {
               </div>
             )}
           </div>
-        );
-      })}
+        )
+      )}
 
       {messages.filter(m => m.role !== "user").length >= 60 && !chatPending && wsModel !== "gemini" && (
         <div style={{
@@ -401,79 +334,43 @@ export function ChatStream(props: ChatStreamProps) {
 
 
     </div>
-      {(showScrollBtn || farFromBottom) && (
+      {showScrollBtn && (
         <button
           onPointerDown={(e) => {
             if (e.pointerType !== "mouse") {
               e.preventDefault();
-              setUnreadCount(0);
               onScrollToLatest();
             }
           }}
           onClick={(e) => {
-            if (e.detail === 0) {
-              setUnreadCount(0);
-              onScrollToLatest();
-            } else {
-              setUnreadCount(0);
-              onScrollToLatest();
-            }
+            if (e.detail === 0) onScrollToLatest();
           }}
-          aria-label="Jump to latest"
+          aria-label="Scroll to latest"
           style={{
             position: "absolute",
-            right: 16,
-            bottom: 56,
-            width: 36,
-            height: 36,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 999,
+            bottom: 10,
+            right: 12,
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
             background: "var(--atlas-surface)",
             border: "1px solid var(--atlas-gold)",
             color: "var(--atlas-gold)",
-            boxShadow: "0 6px 24px rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "pointer",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
             zIndex: 50,
             pointerEvents: "auto",
-            WebkitTapHighlightColor: "transparent",
           }}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 3v10M4 9l4 4 4-4"/>
           </svg>
-          {unreadCount > 0 && (
-            <span
-              aria-label={`${unreadCount} new`}
-              style={{
-                position: "absolute",
-                top: -4,
-                right: -4,
-                minWidth: 16,
-                height: 16,
-                padding: "0 4px",
-                borderRadius: 999,
-                background: "var(--atlas-gold)",
-                color: "var(--atlas-bg, #14110e)",
-                fontSize: 9,
-                fontWeight: 700,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                lineHeight: 1,
-              }}
-            >
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
         </button>
       )}
-      <TimelineRail
-        bottomOffset={isMobile ? 170 : 110}
-        active={true}
-        messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))}
-      />
+      <TimelineRail bottomOffset={isMobile ? 170 : 110} messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
     </div>
   );
 }
