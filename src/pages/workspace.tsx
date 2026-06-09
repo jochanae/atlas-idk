@@ -86,6 +86,7 @@ import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import { JobsPanel } from "@/components/workspace/JobsPanel";
 import { McpPanel } from "@/components/workspace/McpPanel";
 import { LaunchModal, type LaunchMode } from "@/components/workspace/LaunchModal";
+import { useScrollCollapse } from "@/hooks/useScrollCollapse";
 import {
   type PlanState,
 } from "@/components/workspace/chatShared";
@@ -3131,7 +3132,7 @@ export default function Workspace() {
     } catch {}
     return "chat";
   });
-  const [subheaderOpen, setSubheaderOpen] = useState(false);
+  // subheaderOpen is now scroll-driven — wired below once chatPanelScrollRef exists.
   const [mobileTab, setMobileTab] = useState<"chat" | "ledger" | "blueprints" | "files" | "map" | "preview" | "memory" | "connections" | "artifacts" | "workbench" | "mcp">(() =>
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : "chat"
   );
@@ -3888,6 +3889,10 @@ export default function Workspace() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const chatPanelScrollRef = useRef<HTMLDivElement>(null);
   const [showWsScrollBtn, setShowWsScrollBtn] = useState(false);
+  const { expanded: subheaderOpen, setExpanded: setSubheaderOpen } = useScrollCollapse(
+    chatPanelScrollRef,
+    { defaultExpanded: true },
+  );
 
   // Track content growth (streaming reveal) so the scroll-to-bottom arrow
   // updates even when the user isn't scrolling.

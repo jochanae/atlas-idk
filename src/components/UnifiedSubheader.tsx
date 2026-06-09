@@ -28,7 +28,7 @@ const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }>
 function tabButtonStyle(active: boolean, isMobile: boolean): CSSProperties {
   return {
     position: "relative",
-    padding: "6px 2px 10px",
+    padding: "4px 2px 4px",
     background: "transparent",
     border: "none",
     color: active ? "var(--atlas-fg)" : "var(--atlas-muted)",
@@ -75,7 +75,7 @@ export function UnifiedSubheader({
     <div
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
-        marginTop: 50,
+        marginTop: 4,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,
@@ -86,9 +86,12 @@ export function UnifiedSubheader({
       {/* Collapsible tab row — slides up and out of DOM flow when collapsed */}
       <div
         style={{
-          maxHeight: showRow ? 56 : 0,
+          maxHeight: showRow ? 44 : 0,
+          opacity: showRow ? 1 : 0,
+          transform: showRow ? "translateY(0)" : "translateY(-6px)",
           overflow: "hidden",
-          transition: "max-height 240ms ease",
+          transition:
+            "max-height 280ms cubic-bezier(0.4,0,0.2,1), opacity 220ms cubic-bezier(0.4,0,0.2,1), transform 280ms cubic-bezier(0.4,0,0.2,1)",
         }}
         aria-hidden={!showRow}
       >
@@ -98,7 +101,7 @@ export function UnifiedSubheader({
             display: "flex",
             alignItems: "center",
             gap: 10,
-            padding: isMobile ? "8px 16px 6px" : "10px 22px 8px",
+            padding: isMobile ? "4px 16px 2px" : "6px 22px 2px",
           }}
         >
           <nav
@@ -205,7 +208,7 @@ export function UnifiedSubheader({
             display: "flex",
             justifyContent: "center",
             alignItems: "flex-start",
-            height: expanded ? 14 : 10,
+            height: expanded ? 10 : 6,
             pointerEvents: "none",
           }}
         >
@@ -220,7 +223,7 @@ export function UnifiedSubheader({
             style={{
               pointerEvents: "auto",
               width: 36,
-              height: expanded ? 14 : 10,
+              height: expanded ? 10 : 6,
               padding: 0,
               borderRadius: "0 0 8px 8px",
               background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
