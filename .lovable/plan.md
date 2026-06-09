@@ -1,115 +1,61 @@
-# Global Decisions → Sovereign Git Log
+# Workspace Header: Tighten + Scroll-Driven Collapse
 
-Execute in 3 phases. Each phase is shippable on its own so we don't bet the whole rebuild on one big push.
-
----
-
-## Phase 1 — Stop the bleed (dedupe)
-
-**Backend (atlas-commit pipeline)**
-- Add an idempotency guard in `supabase/functions/atlas-commit/index.ts`: before insert into `ledger_entries`, lookup by `(user_id, project_id, title)` within the last 60s. If hit → return existing row instead of inserting.
-- Add `source_message_id` linkage so the same Atlas message can never spawn 2 ledger rows.
-- Migration: add `source_message_id uuid` + unique partial index `(user_id, source_message_id) where source_message_id is not null` on `ledger_entries`.
-
-**Backend (cleanup)**
-- One-time backfill: collapse existing duplicates in `atlas-idk` and any other project — keep oldest row, archive the rest with `status='archived_duplicate'`.
-
-**Frontend (`src/pages/ledger.tsx` + `DecisionLedgerGrouped`)**
-- Group rows by normalized title within a 24h window. Render one row with a `×N` badge; expand on tap to see each occurrence.
-- Hide `status='archived_duplicate'` from default view.
+## Goal
+Eliminate the dead whitespace under the subheader tabs and make the whole header context collapse/reveal smoothly based on scroll direction — like a premium mobile app.
 
 ---
 
-## Phase 2 — GitHub footprint on every entry
+## 1. Tighten the padding (immediate visual fix)
 
-The piece Lovable missed. A decision without a diff is a journal entry.
+In `src/components/UnifiedSubheader.tsx`:
 
-**Schema**
-Migration adds to `ledger_entries`:
-- `github_commit_sha text`
-- `github_repo text` (e.g. `owner/repo`)
-- `github_branch text`
-- `github_pr_number int`
-- `github_diff_url text` (computed/stored)
-- `github_event_type text` — `commit | pr_opened | pr_merged | push | manual_link`
-- `github_event_at timestamptz`
+- Reduce the wrapper `marginTop: 50` → `marginTop` that matches the actual main-header height (no arbitrary 50px gap).
+- Tab row vertical padding: `10px 22px 8px` (desktop) / `8px 16px 6px` (mobile) → tighten bottom to `2px`.
+- Collapse-handle wrapper height: expanded `14` / collapsed `10` → reduce to `10 / 6`, and pull it up so it sits right under the tabs row (or right under the main header when collapsed).
+- Tab buttons currently have `padding: "6px 2px 10px"` — drop the bottom `10` → `4`.
 
-**Wire-up points**
-1. **Codegen path** (`atlas-codegen`): when a generation run produces files and pushes to GitHub via the Git Tree API, stamp the resulting commit SHA back onto the originating ledger entry.
-2. **Push modal** (`src/components/workspace/GitHubPushModal.tsx`): after a successful push, if there's a current "in-motion" or just-committed entry, attach the SHA.
-3. **Manual link**: small "Link commit" action on any ledger row — paste a SHA or PR URL, we parse via `src/lib/githubRepo.ts` and stamp it.
-4. **Backfill (optional, later)**: scan `build_states` + `generated_files` per project, match to ledger entries by `session_id` + time window, fill SHAs where we already know them.
+Net effect: the `▾` chip sits tight against the content above it. No more empty band.
 
-**Render on each entry card**
-- Commit chip: `repo @ sha[0..7]` → links to `https://github.com/{repo}/commit/{sha}`
-- PR chip if present: `PR #123` → links to PR
-- Event glyph (commit / merge / push)
-- Empty state: "No code footprint — link a commit" (only on entries inside projects that have a linked GitHub repo)
+## 2. Scroll-driven collapse/reveal
 
----
+Add a small hook `useScrollCollapse(scrollRef)` that watches the chat scroll container and emits `collapsed: boolean`:
 
-## Phase 3 — Redesign /ledger as 5 sections
+- Tracks `scrollTop` and `lastScrollTop`.
+- `scrollTop > 20` AND scrolling **up** (reading older content) → `collapsed = true`.
+- `scrollTop <= 20` OR a downward swipe of ≥ 8px → `collapsed = false`.
+- Debounced via `requestAnimationFrame` so it's smooth, not jittery.
+- Respects `prefers-reduced-motion` (skips the transition, still toggles state).
 
-Replace the current flat list in `src/pages/ledger.tsx`.
+Wire it in `ChatStream.tsx` (which owns `scrollRef`) and pass the boolean up to `UnifiedSubheader` via the existing `expanded` / `onExpandedChange` props (already controlled — no new prop wiring needed).
 
-```text
-┌──────────────────────────────────────────────────┐
-│  1. Portfolio Pulse                              │
-│  ── sparkline · commit/override ratio · TTC      │
-├──────────────────────────────────────────────────┤
-│  2. Cross-Project Tensions                       │
-│  ── In Tension + Overridden, all projects        │
-├──────────────────────────────────────────────────┤
-│  3. Pattern Detection                            │
-│  ── semantic clusters (doubles as dedupe view)   │
-├──────────────────────────────────────────────────┤
-│  4. Project Signal Cards                         │
-│  ── last-decision age · tension count · override │
-│     rate · last commit SHA per project           │
-├──────────────────────────────────────────────────┤
-│  5. Recent Stream                                │
-│  ── grouped by title+24h, ×N badges, commit chip │
-│     inline on every row                          │
-└──────────────────────────────────────────────────┘
-```
+## 3. Transition mechanics
 
-**Section 1 — Portfolio Pulse**
-- Sparkline: decisions/week, last 8w. SVG, no chart lib.
-- Two scalar tiles: commit-vs-override ratio, avg time `In Motion → Committed`.
-- Query: aggregate over `ledger_entries` grouped by week.
+In `UnifiedSubheader.tsx`, the collapsible row already animates `max-height`. Extend it:
 
-**Section 2 — Cross-Project Tensions**
-- Filter: `status='In Tension' OR is_violation=true OR has supersedes_id`.
-- Sort by `created_at desc`, cap 10, "See all" → filtered ledger view.
+- Add `opacity` and `transform: translateY(-6px)` transitions to the tab row.
+- Use `transition: max-height 280ms ease-in-out, opacity 220ms ease-in-out, transform 280ms ease-in-out`.
+- The pinned `Play` button and `▾` chip stay visible in both states (already do).
 
-**Section 3 — Pattern Detection**
-- v1: title-similarity clustering (lowercase + token Jaccard ≥ 0.6).
-- Cluster card shows: representative title, N entries, projects spanned, "Merge" / "Mark distinct" actions.
-- v2 (later): embedding-based via Lovable AI Gateway.
+When **empty-state greeting** is visible (in `ChatStream.tsx`, the "What are we shaping here?" / Atlas greeting block), wrap it with the same `collapsed` flag so it fades + slides up on scroll and fades back in at top.
 
-**Section 4 — Project Signal Cards**
-- One card per project with ≥1 ledger entry.
-- Signals: last decision age, # in tension, override rate (last 30d), last commit SHA (chip), tap → project.
+## 4. Manual override coordination
 
-**Section 5 — Recent Stream**
-- Dedup-grouped feed from Phase 1.
-- Every row shows: title, severity glyph, project chip, GitHub chip (Phase 2), `×N` badge if grouped.
+The `▾` chip stays tappable. Rule:
 
----
+- Scroll updates `expanded` automatically.
+- A manual tap sets a `userPinnedAt` timestamp; scroll-driven changes are ignored for 2s after a manual tap (prevents the auto-collapse from immediately undoing the user's tap).
+- Returning to `scrollTop === 0` clears the pin.
 
 ## Technical notes
 
-- All new server work goes through existing `createServerFn` + `requireSupabaseAuth` patterns in `src/lib/*.functions.ts`. No new edge functions.
-- GitHub stamping reuses the existing push pipeline (`useGithubPushToken`, Git Tree API path in `atlas-codegen`). No new GitHub auth surface.
-- Pulse/cluster queries done server-side, returned as one aggregate payload `getGlobalDecisionsDashboard()` — single round trip on page load.
-- No design-token violations: reuse existing severity/status glyphs and the parchment/dark token set already in `src/styles.css`.
+- Files touched: `src/components/UnifiedSubheader.tsx`, `src/components/workspace/ChatStream.tsx`, new `src/hooks/useScrollCollapse.ts`.
+- No changes to `UnifiedShell.tsx` main header — it stays exactly where it is (already low-profile sticky).
+- No changes to TimelineRail, composer, or any global styles.
+- Easing: `cubic-bezier(0.4, 0, 0.2, 1)` (matches Tailwind `ease-in-out`), 280ms.
 
----
+## What you'll feel
 
-## Order of operations
-
-1. Phase 1 migration + atlas-commit guard + frontend grouping. (Ship.)
-2. Phase 2 migration + codegen/push stamping + commit chip on existing rows. (Ship.)
-3. Phase 3 page rebuild section by section, top to bottom. (Ship each section.)
-
-Approve and I start with Phase 1.
+- Land on workspace → full header + tabs + greeting, tightly stacked (no dead gap).
+- Scroll up to read history → tabs + greeting fade up and out in ~280ms, leaving just the slim AXIOM bar.
+- Scroll back to top (or quick down-swipe at top) → header expands back down smoothly.
+- Tap `▾` manually any time to force-collapse or force-expand; auto-behavior resumes after 2s.
