@@ -7,7 +7,7 @@ import { GenerateBlueprintPill } from "../BlueprintsTab";
 import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
-import { CaptureBar } from "@/components/CaptureBar";
+// CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
@@ -266,8 +266,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const [planMode, setPlanMode] = useState(false);
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
-  // Intake mode is OFF by default and NOT sticky across sessions.
-  const [intakeMode, setIntakeMode] = useState(false);
+  // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
 
   const togglePlanMode = () => {
     setPlanMode(v => {
