@@ -64,6 +64,11 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [detectResults, setDetectResults] = useState<Array<{ url: string; platform: string; confidence: string }>>([]);
   const [reloadKey, setReloadKey] = useState(0);
   const [savedIndicator, setSavedIndicator] = useState(false);
+  // URL-mode chrome collapse + status auto-hide
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const [statusVisible, setStatusVisible] = useState(false);
+  const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
+  const [detectMenuOpen, setDetectMenuOpen] = useState(false);
 
   // ── Devserver state ──────────────────────────────────────────────────────────
   type DsStatus = "idle" | "cloning" | "installing" | "starting" | "running" | "error";
