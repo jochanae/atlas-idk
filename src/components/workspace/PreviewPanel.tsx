@@ -459,46 +459,44 @@ ${t}
         ))}
       </div>
 
-      {/* Device switcher — shown for Sandbox mode (URL mode uses popover inline) */}
+      {/* Device switcher — Sandbox mode uses same popover dropdown as URL mode */}
       {previewMode === "sandbox" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-          <button style={deviceBtnStyle(deviceSize === "phone")} onClick={() => setDeviceSize("phone")}>
-            <svg width="8" height="11" viewBox="0 0 8 11" fill="none"><rect x="0.5" y="0.5" width="7" height="10" rx="1.5" stroke="currentColor" strokeWidth="1" /><circle cx="4" cy="8.5" r="0.6" fill="currentColor" /></svg>
-            Phone
-          </button>
-          <button style={deviceBtnStyle(deviceSize === "tablet")} onClick={() => setDeviceSize("tablet")}>
-            <svg width="10" height="11" viewBox="0 0 10 11" fill="none"><rect x="0.5" y="0.5" width="9" height="10" rx="1.5" stroke="currentColor" strokeWidth="1" /><circle cx="5" cy="8.5" r="0.6" fill="currentColor" /></svg>
-            Tablet
-          </button>
-          <button style={deviceBtnStyle(deviceSize === "desktop")} onClick={() => setDeviceSize("desktop")}>
-            <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><rect x="0.5" y="0.5" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1" /><path d="M3 8.5h5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" /></svg>
-            Desktop
-          </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 8px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0, position: "relative", zIndex: 5 }}>
           <div style={{ flex: 1 }} />
-          <button
-            onClick={() => setIsLandscape((l) => !l)}
-            title={isLandscape ? "Switch to portrait" : "Switch to landscape"}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-              padding: "4px 8px", borderRadius: 4, cursor: "pointer",
-              background: isLandscape ? "rgba(201,162,76,0.1)" : "transparent",
-              border: `1px solid ${isLandscape ? "rgba(201,162,76,0.28)" : "var(--atlas-border)"}`,
-              color: isLandscape ? "var(--atlas-gold)" : "var(--atlas-muted)",
-              opacity: 0.8,
-              transition: "all 140ms ease",
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-              <path d="M3 13L13 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M13 3v4M13 3H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M3 13H7M3 13v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em" }}>
-              {isLandscape ? "Landscape" : "Portrait"}
-            </span>
-          </button>
+          {/* Device popover (mirrors URL mode) */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button onClick={() => setDeviceMenuOpen((v) => !v)} title="Device size"
+              style={{ ...iconBtn, padding: "5px 8px", display: "inline-flex", alignItems: "center", gap: 4, ...sMono }}>
+              <span style={{ fontSize: 9.5, letterSpacing: "0.04em", textTransform: "capitalize" }}>{deviceSize}</span>
+              <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
+            </button>
+            {deviceMenuOpen && (
+              <>
+                <div onClick={() => setDeviceMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1000 }} />
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 1001,
+                  background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
+                  borderRadius: 6, padding: 4, minWidth: 140,
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+                }}>
+                  {(["phone", "tablet", "desktop"] as const).map((d) => (
+                    <button key={d} onClick={() => { setDeviceSize(d); setDeviceMenuOpen(false); }}
+                      style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: deviceSize === d ? "rgba(201,162,76,0.10)" : "transparent", border: "none", borderRadius: 4, color: deviceSize === d ? "var(--atlas-gold)" : "var(--atlas-fg)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textTransform: "capitalize", textAlign: "left" }}>
+                      {d}
+                    </button>
+                  ))}
+                  <div style={{ height: 1, background: "var(--atlas-border)", margin: "4px 2px" }} />
+                  <button onClick={() => { setIsLandscape((l) => !l); setDeviceMenuOpen(false); }}
+                    style={{ display: "flex", alignItems: "center", width: "100%", padding: "6px 8px", gap: 8, background: "transparent", border: "none", borderRadius: 4, color: "var(--atlas-muted)", fontSize: 10, ...sMono, letterSpacing: "0.05em", cursor: "pointer", textAlign: "left" }}>
+                    {isLandscape ? "→ Portrait" : "→ Landscape"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
+
 
       {/* ── URL mode ── */}
       {previewMode === "url" && (
