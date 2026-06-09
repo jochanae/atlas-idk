@@ -3133,7 +3133,9 @@ export default function Workspace() {
     openPreviewPanel();
   }, [openPreviewPanel]);
   const [latestRun, setLatestRun] = useState<any | null>(null);
-  const hasAutoOpenedPreview = useRef(false);
+  const [previewReady, setPreviewReady] = useState(false);
+  const workspaceMountedAtRef = useRef<number>(Date.now());
+  const acknowledgedRunRef = useRef<string>("");
   const latestRunKey = useCallback((run: any | null) => {
     if (!run) return "";
     return String(run.id ?? run.runId ?? run.finishedAt ?? run.updatedAt ?? run.startedAt ?? run.createdAt ?? "");
@@ -3157,12 +3159,6 @@ export default function Workspace() {
     const iv = setInterval(poll, 3000);
     return () => clearInterval(iv);
   }, [id, latestRunKey]);
-  useEffect(() => {
-    if ((latestRun?.runStatus ?? latestRun?.status) === "completed" && !hasAutoOpenedPreview.current) {
-      hasAutoOpenedPreview.current = true;
-      openPreviewPanel();
-    }
-  }, [latestRun, openPreviewPanel]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
@@ -3373,6 +3369,34 @@ export default function Workspace() {
     homeHandoffPrimed.current = false;
     setAutoNameKey(0);
   }, [id]);
+
+  // Reset preview-ready chip when switching projects or sessions.
+  useEffect(() => {
+    setPreviewReady(false);
+    acknowledgedRunRef.current = "";
+    workspaceMountedAtRef.current = Date.now();
+  }, [id, sessionId]);
+
+  // Session-gated, non-intrusive "Atlas Build ready" detection.
+  // Only fires for runs that (a) belong to the current session, (b) finished
+  // after this workspace instance mounted, and (c) when not viewing the flow map.
+  useEffect(() => {
+    if (!latestRun) return;
+    if ((latestRun.runStatus ?? latestRun.status) !== "completed") return;
+    const viewIsFlow = new URLSearchParams(window.location.search).get("view") === "flow";
+    if (viewIsFlow) return;
+    const runSessionId = latestRun.sessionId ?? latestRun.session_id ?? null;
+    if (runSessionId == null || sessionId == null) return;
+    if (Number(runSessionId) !== Number(sessionId)) return;
+    const finishedAtRaw = latestRun.finishedAt ?? latestRun.finished_at ?? latestRun.updatedAt ?? latestRun.updated_at ?? latestRun.createdAt ?? latestRun.created_at;
+    const finishedAt = finishedAtRaw ? new Date(finishedAtRaw).getTime() : 0;
+    if (!finishedAt || finishedAt < workspaceMountedAtRef.current) return;
+    const key = latestRunKey(latestRun);
+    if (acknowledgedRunRef.current === key) return;
+    acknowledgedRunRef.current = key;
+    setPreviewReady(true);
+  }, [latestRun, sessionId, latestRunKey]);
+
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
@@ -6353,6 +6377,81 @@ export default function Workspace() {
             `flowPanel` slot). Mobile overlay stays here. */}
 
 
+
+        {/* Soft "Atlas Build ready" chip — non-intrusive surface for a completed run.
+            Tapping switches to the preview tab; dismiss keeps the user where they are. */}
+        {previewReady && (
+          <div
+            style={{
+              position: "fixed",
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: isMobile ? (mobileTab === "map" ? 16 : 76) : 24,
+              zIndex: 60,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 12px 8px 14px",
+              borderRadius: 999,
+              background: "rgba(13, 11, 9, 0.92)",
+              border: "1px solid rgba(var(--atlas-gold-rgb), 0.45)",
+              boxShadow: "0 10px 32px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(var(--atlas-gold-rgb), 0.15)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              animation: "atlas-slide-in-right 240ms ease",
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                boxShadow: "0 0 10px var(--atlas-gold)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => { setPreviewReady(false); openPreviewPanel(); }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "inherit",
+                font: "inherit",
+                letterSpacing: "inherit",
+                textTransform: "inherit",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Atlas Build ready →
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewReady(false)}
+              aria-label="Dismiss"
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "rgba(var(--atlas-muted-rgb), 0.7)",
+                cursor: "pointer",
+                padding: "0 2px",
+                marginLeft: 2,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
