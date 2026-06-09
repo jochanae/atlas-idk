@@ -174,6 +174,101 @@ export function LaunchModal({ open, mode, onClose, linkedRepo, previewUrl, activ
   );
 }
 
+function PreviewLaunchOverlay({ previewUrl, onClose }: { previewUrl: string | null; onClose: () => void }) {
+  const [visible, setVisible] = useState(true);
+
+  // Auto-dismiss the "no preview" alert after 3.5s; iframe stays open until X.
+  useEffect(() => {
+    if (previewUrl) return;
+    const t = window.setTimeout(() => {
+      setVisible(false);
+      window.setTimeout(onClose, 260);
+    }, 3500);
+    return () => window.clearTimeout(t);
+  }, [previewUrl, onClose]);
+
+  const handleBackdropClick = () => {
+    if (previewUrl) return; // don't dismiss when iframe is loaded
+    setVisible(false);
+    window.setTimeout(onClose, 200);
+  };
+
+  return (
+    <div
+      onClick={handleBackdropClick}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: previewUrl
+          ? "#000"
+          : "color-mix(in oklab, var(--atlas-bg) 70%, transparent)",
+        backdropFilter: previewUrl ? undefined : "blur(18px)",
+        WebkitBackdropFilter: previewUrl ? undefined : "blur(18px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "opacity 240ms ease",
+        opacity: visible ? 1 : 0,
+      }}
+    >
+      {previewUrl ? (
+        <iframe
+          src={previewUrl}
+          title="Sandbox"
+          style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+        />
+      ) : (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            padding: "22px 28px",
+            borderRadius: 14,
+            background: "color-mix(in oklab, var(--atlas-surface) 80%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--atlas-gold) 32%, transparent)",
+            backdropFilter: "blur(18px) saturate(140%)",
+            WebkitBackdropFilter: "blur(18px) saturate(140%)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
+            color: "var(--atlas-fg)",
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 12,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+          }}
+        >
+          No preview URL configured
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Exit sandbox"
+        style={{
+          position: "fixed",
+          top: 14,
+          right: 14,
+          zIndex: 10000,
+          width: 36,
+          height: 36,
+          borderRadius: 999,
+          background: "color-mix(in oklab, var(--atlas-surface) 80%, transparent)",
+          border: "1px solid color-mix(in oklab, var(--atlas-gold) 35%, transparent)",
+          color: "var(--atlas-gold)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+        }}
+      >
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
+
 function CodeView({ file }: { file: { path: string; content: string } | null }) {
   if (!file) {
     return (
