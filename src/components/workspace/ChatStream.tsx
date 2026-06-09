@@ -471,7 +471,7 @@ export function ChatStream(props: ChatStreamProps) {
       )}
       <TimelineRail
         bottomOffset={isMobile ? 170 : 110}
-        active={isScrolling}
+        active={true}
         messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))}
       />
     </div>
