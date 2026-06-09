@@ -4,6 +4,7 @@ import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject }
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
+import { useIsMobile } from "@/hooks/useBreakpoints";
 
 export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refreshTrigger, sessionId, onSwitchToFiles }: {
   projectId: number;
