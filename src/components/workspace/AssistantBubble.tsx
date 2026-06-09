@@ -1150,6 +1150,7 @@ export function AssistantBubble({
 }) {
   const [hov, setHov] = useState(false);
   const [parkDone, setParkDone] = useState(false);
+  const [intakeDone, setIntakeDone] = useState(false);
   const [commitDone, setCommitDone] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [showPlanPushModal, setShowPlanPushModal] = useState(false);
@@ -2168,6 +2169,19 @@ export function AssistantBubble({
                   disabled={parkDone}
                   onClick={() => { setMenuOpen(false); if (!parkDone) { onPark(message.content); setParkDone(true); } }}
                 />
+                {onForgeIntake && (
+                  <MenuItem
+                    icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 11h10M4 8l3-5 3 5" /></svg>}
+                    label={intakeDone ? "Sent to Forge" : "Intake to Forge"}
+                    accent
+                    disabled={intakeDone}
+                    onClick={async () => {
+                      setMenuOpen(false);
+                      if (intakeDone) return;
+                      try { await onForgeIntake(message.content); setIntakeDone(true); } catch { /* surfaced by parent */ }
+                    }}
+                  />
+                )}
                 <MenuItem
                   icon={<Share2 size={13} strokeWidth={1.6} />}
                   label="Share / archive"
