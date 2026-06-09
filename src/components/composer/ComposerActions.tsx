@@ -74,7 +74,6 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
 ];
 
 const MORE_ITEMS: { id: ComposerMenuAction; label: string }[] = [
-  { id: "more:forge", label: "Forge" },
   { id: "more:memory", label: "Memory" },
   { id: "more:blueprints", label: "Blueprints" },
   { id: "more:changes", label: "Changes" },
