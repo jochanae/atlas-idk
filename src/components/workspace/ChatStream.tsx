@@ -250,9 +250,40 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
-      {messages.map((msg, i) =>
-        msg.role === "user" ? (
+      {messages.map((msg, i) => {
+        const divider = dayDividerMap.get(i);
+        const dayChip = divider ? (
+          <div
+            data-day-divider
+            style={{
+              position: "sticky",
+              top: 8,
+              zIndex: 12,
+              alignSelf: "flex-start",
+              display: "inline-block",
+              margin: "10px 0 6px",
+              padding: "4px 10px",
+              borderRadius: 999,
+              background: "var(--atlas-surface)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
+              color: "var(--atlas-fg)",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              pointerEvents: "none",
+            }}
+          >
+            {divider}
+          </div>
+        ) : null;
+
+        return msg.role === "user" ? (
           <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
+            {dayChip}
             {isAutoVerifyMessage(msg) ? (
               <AutoVerifyMessage content={msg.content} />
             ) : (
@@ -268,6 +299,7 @@ export function ChatStream(props: ChatStreamProps) {
           </div>
         ) : (
           <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
+            {dayChip}
             {activityStream.active && i === messages.length - 1 && (
               liveGeneration.shouldShow ? (
                 <LiveGenerationCard
@@ -317,8 +349,8 @@ export function ChatStream(props: ChatStreamProps) {
               </div>
             )}
           </div>
-        )
-      )}
+        );
+      })}
 
       {messages.filter(m => m.role !== "user").length >= 60 && !chatPending && wsModel !== "gemini" && (
         <div style={{
