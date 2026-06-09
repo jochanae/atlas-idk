@@ -6179,8 +6179,8 @@ export default function Workspace() {
                   else { setDesktopForceTab("files" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
                   return;
                 }
-                if (action === "connectors") { window.location.href = "/connectors"; return; }
-                if (action === "code") { window.location.href = "/code"; return; }
+                if (action === "connectors") { window.location.href = `/connectors?projectId=${id}`; return; }
+                if (action === "code") { window.location.href = `/code?projectId=${id}`; return; }
                 if (action === "share") { setShowProjectSettings(true); return; }
                 if (action === "publish") { window.open("https://lovable.dev/publish", "_blank"); return; }
                 if (action === "more:forge") { setShowForgeExternal(true); return; }
