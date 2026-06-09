@@ -3133,6 +3133,7 @@ export default function Workspace() {
     openPreviewPanel();
   }, [openPreviewPanel]);
   const [latestRun, setLatestRun] = useState<any | null>(null);
+  const hasAutoOpenedPreview = useRef(false);
   const latestRunKey = useCallback((run: any | null) => {
     if (!run) return "";
     return String(run.id ?? run.runId ?? run.finishedAt ?? run.updatedAt ?? run.startedAt ?? run.createdAt ?? "");
@@ -3157,7 +3158,8 @@ export default function Workspace() {
     return () => clearInterval(iv);
   }, [id, latestRunKey]);
   useEffect(() => {
-    if ((latestRun?.runStatus ?? latestRun?.status) === "completed") {
+    if ((latestRun?.runStatus ?? latestRun?.status) === "completed" && !hasAutoOpenedPreview.current) {
+      hasAutoOpenedPreview.current = true;
       openPreviewPanel();
     }
   }, [latestRun, openPreviewPanel]);
