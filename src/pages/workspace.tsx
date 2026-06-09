@@ -6389,21 +6389,28 @@ export default function Workspace() {
 
 
       {isMobile && mobileTab !== "map" && (
-        <UnifiedContextDock
-          mode="operational"
-          activeOperationalTab={(["chat","ledger","preview","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "preview" | "map" | "files" | undefined}
-          onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
-          onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
-
-          onLedger={() => {
-            setMobileTab("ledger");
-            setRightOpen(true);
+        <div
+          style={{
+            transform: immersive ? "translateY(100%)" : "translateY(0)",
+            transition: "transform 220ms cubic-bezier(0.2,0.8,0.2,1)",
+            willChange: "transform",
           }}
-          onPreview={() => setMobileTab("preview")}
-          onFlow={() => setLocation("/map")}
-          entryCount={entryCount}
-          activeCatch={!!activeCatch}
-        />
+        >
+          <UnifiedContextDock
+            mode="operational"
+            activeOperationalTab={(["chat","ledger","preview","map","files"].includes(mobileTab) ? mobileTab : undefined) as "chat" | "ledger" | "preview" | "map" | "files" | undefined}
+            onAtlasCore={() => { setMobileTab("chat"); setLeftTab("chat"); setRightOpen(false); }}
+            onChat={() => { setMobileTab("chat"); setLeftTab("chat"); }}
+            onLedger={() => {
+              setMobileTab("ledger");
+              setRightOpen(true);
+            }}
+            onPreview={() => setMobileTab("preview")}
+            onFlow={() => setLocation("/map")}
+            entryCount={entryCount}
+            activeCatch={!!activeCatch}
+          />
+        </div>
       )}
 
       {isMobile && showMoreSheet && (
