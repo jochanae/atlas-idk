@@ -1163,13 +1163,18 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
 
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => {
+    const onDoc = (e: Event) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc, true);
+    document.addEventListener("touchstart", onDoc, true);
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+    return () => {
+      document.removeEventListener("pointerdown", onDoc, true);
+      document.removeEventListener("touchstart", onDoc, true);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   if (projectId == null) return null;
