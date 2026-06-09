@@ -460,7 +460,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     fontStyle: "italic",
                   }}
                 >
-                  Strategizing
+                  Strategizing…
                 </div>
               ) : (
                 <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
