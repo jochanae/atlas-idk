@@ -5452,6 +5452,16 @@ export default function Workspace() {
       />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
 
+      <div
+        style={{
+          // Subheader rides above sticky day-dividers (z-index: 12) per locked z-hierarchy.
+          position: "relative",
+          zIndex: 20,
+          transform: immersive ? "translateY(-100%)" : "translateY(0)",
+          transition: "transform 220ms cubic-bezier(0.2,0.8,0.2,1)",
+          willChange: "transform",
+        }}
+      >
       <UnifiedSubheader
         activeTab={unifiedSubheaderTab}
         onTabChange={handleUnifiedSubheaderTabChange}
@@ -5459,22 +5469,17 @@ export default function Workspace() {
         isMobile={isMobile}
         showWorkspaceMenu
         onLaunch={() => {
-          // Preview-first toggle. Play ALWAYS surfaces the running app preview,
-          // regardless of which tab/module is currently active. Panel maximize
-          // is handled by each panel's own expand control — not here.
-          // If preview is already open in the launcher, close it (return to
-          // the previous view / acts as a publish-sheet placeholder toggle).
           if (launchModal.open && launchModal.mode === "preview") {
             setLaunchModal((s) => ({ ...s, open: false }));
             return;
           }
-          // Also reflect intent in mobile tab so closing returns to preview tab.
           if (isMobile) setMobileTab("preview");
           setLaunchModal({ open: true, mode: "preview" });
         }}
         expanded={subheaderOpen}
         onExpandedChange={setSubheaderOpen}
       />
+      </div>
 
       <LaunchModal
         open={launchModal.open}
