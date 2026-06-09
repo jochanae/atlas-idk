@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Project, UpdateProjectBody, updateProject, useUpdateProject } from "@workspace/api-client-react";
 import { X } from "lucide-react";
 import { parseLinkedRepo, serializeLinkedRepo } from "@/lib/githubRepo";
+import { ProjectDnaEditor } from "@/components/ProjectDnaEditor";
 
 interface Props {
   project: Project;
@@ -154,7 +155,7 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
       <aside
         style={{
           position: "fixed", top: 0, right: 0,
-          width: "min(92vw, 340px)",
+          width: "min(94vw, 420px)",
           height: "100dvh",
           background: "var(--atlas-surface)",
           borderLeft: "1px solid var(--atlas-gold-border)",
@@ -234,7 +235,24 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
               />
             </div>
 
-            {/* Meta */}
+            {/* Project DNA — identity, constraints, format. Persists to project.shape. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "var(--app-font-mono)" }}>
+                  Project DNA
+                </label>
+                <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", opacity: 0.6, lineHeight: 1.45 }}>
+                  Identity, constraints, and output format — sharpens every AI response across the project.
+                </span>
+              </div>
+              <ProjectDnaEditor
+                projectId={project.id}
+                initialShape={(project as { shape?: Record<string, unknown> }).shape ?? undefined}
+                variant="drawer"
+              />
+            </div>
+
+
             <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px", borderRadius: 8, background: "var(--atlas-surface-alt)", border: "1px solid var(--atlas-border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>Project ID</span>
