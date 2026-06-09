@@ -3133,7 +3133,9 @@ export default function Workspace() {
     openPreviewPanel();
   }, [openPreviewPanel]);
   const [latestRun, setLatestRun] = useState<any | null>(null);
-  const hasAutoOpenedPreview = useRef(false);
+  const [previewReady, setPreviewReady] = useState(false);
+  const workspaceMountedAtRef = useRef<number>(Date.now());
+  const acknowledgedRunRef = useRef<string>("");
   const latestRunKey = useCallback((run: any | null) => {
     if (!run) return "";
     return String(run.id ?? run.runId ?? run.finishedAt ?? run.updatedAt ?? run.startedAt ?? run.createdAt ?? "");
@@ -3157,12 +3159,6 @@ export default function Workspace() {
     const iv = setInterval(poll, 3000);
     return () => clearInterval(iv);
   }, [id, latestRunKey]);
-  useEffect(() => {
-    if ((latestRun?.runStatus ?? latestRun?.status) === "completed" && !hasAutoOpenedPreview.current) {
-      hasAutoOpenedPreview.current = true;
-      openPreviewPanel();
-    }
-  }, [latestRun, openPreviewPanel]);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [launchModal, setLaunchModal] = useState<{ open: boolean; mode: LaunchMode }>({ open: false, mode: "preview" });
   const [showModelPicker, setShowModelPicker] = useState(() => {
