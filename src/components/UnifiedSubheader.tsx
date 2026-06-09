@@ -208,7 +208,7 @@ export function UnifiedSubheader({
             display: "flex",
             justifyContent: "center",
             alignItems: "flex-start",
-            height: expanded ? 14 : 10,
+            height: expanded ? 10 : 6,
             pointerEvents: "none",
           }}
         >
@@ -223,7 +223,7 @@ export function UnifiedSubheader({
             style={{
               pointerEvents: "auto",
               width: 36,
-              height: expanded ? 14 : 10,
+              height: expanded ? 10 : 6,
               padding: 0,
               borderRadius: "0 0 8px 8px",
               background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
