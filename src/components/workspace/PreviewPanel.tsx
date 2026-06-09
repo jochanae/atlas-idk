@@ -699,6 +699,44 @@ ${t}
             </div>
           )}
           </div>
+
+          {/* Mobile fullscreen portal */}
+          {mobileFullscreen && liveUrl && typeof document !== "undefined" && createPortal(
+            <div style={{
+              position: "fixed", inset: 0, zIndex: 99999, background: "#000",
+              display: "flex", flexDirection: "column",
+            }}>
+              <iframe
+                key={`fs-${liveUrl}-${reloadKey}`}
+                src={liveUrl}
+                title="Preview fullscreen"
+                style={{ border: "none", flex: 1, width: "100%", background: "#fff" }}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              />
+              <button
+                onClick={() => setMobileFullscreen(false)}
+                aria-label="Exit fullscreen"
+                style={{
+                  position: "fixed",
+                  top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+                  right: "calc(env(safe-area-inset-right, 0px) + 12px)",
+                  zIndex: 100000,
+                  padding: "8px 14px", borderRadius: 999,
+                  background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(201,162,76,0.35)",
+                  color: "var(--atlas-gold, #c9a24c)",
+                  fontSize: 12, fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.08em", cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1 }}>✕</span>
+                <span>EXIT</span>
+              </button>
+            </div>,
+            document.body
+          )}
         </>
       )}
 
