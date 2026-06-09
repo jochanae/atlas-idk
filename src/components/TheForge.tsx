@@ -3,6 +3,7 @@ import { Project } from "@workspace/api-client-react";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
 import { parseLinkedRepo } from "@/lib/githubRepo";
+import { submitForgeIntake } from "@/lib/forgeIntake";
 import type { ArchNode } from "./AxiomFlow";
 import { GlossaryTip } from "./GlossaryTip";
 import { useThemeMode } from "@/lib/theme";
@@ -355,20 +356,13 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
     startStageAnimation();
     abortRef.current = new AbortController();
     try {
-      const body: Record<string, unknown> = { transcript: transcript.trim(), projectId };
-      if (projectContext.trim()) body.projectContext = projectContext.trim();
-      if (repoContext) body.repoContext = repoContext;
-      const res = await fetch("/api/forge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const data = await submitForgeIntake({
+        transcript: transcript.trim(),
+        projectId,
+        projectContext: projectContext.trim() || null,
+        repoContext: repoContext || null,
         signal: abortRef.current.signal,
-        body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Forge failed");
-      }
-      const data = await res.json() as { nodes: ArchNode[]; summary: string };
       haptics.cardConfirmed();
       sounds.cardConfirmed();
       setForgeResult(data);
