@@ -433,12 +433,12 @@ export function GlobalInsightSurface({
         )}
       </div>
 
-      {/* Composer — premium command bar */}
+      {/* Composer — minimal, transparent. Cursor + action row only. */}
       <div
         style={{
           flexShrink: 0,
           padding: "12px 14px calc(14px + env(safe-area-inset-bottom, 0px))",
-          background: "linear-gradient(to top, var(--atlas-bg) 70%, color-mix(in oklab, var(--atlas-bg) 88%, transparent))",
+          background: "transparent",
         }}
       >
         <div
@@ -447,24 +447,14 @@ export function GlobalInsightSurface({
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            background: isParchment
-              ? "rgba(255,255,255,0.62)"
-              : "linear-gradient(180deg, rgba(20,17,12,0.72) 0%, rgba(12,10,8,0.78) 100%)",
-            border: isParchment
-              ? `1px solid ${focused ? "rgba(180,83,9,0.45)" : "rgba(17,17,17,0.10)"}`
-              : `1px solid ${focused ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.16)"}`,
-            borderRadius: 20,
-            padding: "14px 14px 10px",
-            backdropFilter: isParchment ? "blur(20px) saturate(160%)" : "blur(18px) saturate(140%)",
-            boxShadow: isParchment
-              ? (focused
-                  ? "0 8px 32px rgba(217,119,6,0.12), inset 0 1px 0 rgba(255,255,255,0.6)"
-                  : "0 8px 32px rgba(31,38,135,0.06), inset 0 1px 0 rgba(255,255,255,0.6)")
-              : (focused
-                  ? "0 0 0 1px rgba(212,175,55,0.18), 0 10px 40px -12px rgba(212,175,55,0.28), inset 0 1px 0 rgba(255,255,255,0.04)"
-                  : "0 6px 24px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03)"),
-            transition: "border-color 220ms ease, box-shadow 220ms ease, background 220ms ease",
-            minHeight: 124,
+            background: "transparent",
+            border: "none",
+            borderRadius: 0,
+            padding: "6px 2px 4px",
+            backdropFilter: "none",
+            boxShadow: "none",
+            transition: "none",
+            minHeight: 96,
           }}
         >
           {/* Textarea row — full width, generous height */}
@@ -529,8 +519,8 @@ export function GlobalInsightSurface({
               alignItems: "center",
               justifyContent: "space-between",
               gap: 8,
-              paddingTop: 4,
-              borderTop: "1px solid rgba(212,175,55,0.08)",
+              paddingTop: 6,
+              borderTop: "none",
               marginTop: 2,
             }}
           >

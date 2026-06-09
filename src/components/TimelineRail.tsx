@@ -272,7 +272,7 @@ export function TimelineRail({
           bottom: bottomOffset,
           right: 0,
           // Widen the hit/render column so inline day chips have room to the left of the spine.
-          width: 72,
+          width: 96,
           zIndex: 18,
           display: "flex",
           flexDirection: "column",
@@ -287,14 +287,13 @@ export function TimelineRail({
         {/* spine */}
         <div
           aria-hidden
+          className="atlas-rail-spine"
           style={{
             position: "absolute",
             top: 4,
             bottom: 4,
-            right: 6,
+            right: 10,
             width: 1,
-            background:
-              "linear-gradient(180deg, transparent 0%, rgba(201,162,76,0.25) 12%, rgba(201,162,76,0.35) 50%, rgba(201,162,76,0.25) 88%, transparent 100%)",
             pointerEvents: "none",
           }}
         />
@@ -374,17 +373,18 @@ export function TimelineRail({
             {t.isNewDay && (
               <span
                 aria-hidden
+                className="atlas-rail-daychip"
                 style={{
                   fontFamily: "var(--app-font-mono)",
                   fontSize: 9,
                   fontWeight: 700,
                   letterSpacing: "0.16em",
                   textTransform: "uppercase",
-                  color: "rgba(201,162,76,0.55)",
                   padding: "2px 6px",
                   borderRadius: 4,
-                  border: "1px solid rgba(201,162,76,0.18)",
-                  background: "rgba(20,17,14,0.55)",
+                  border: "1px solid var(--atlas-border)",
+                  background: "var(--atlas-surface)",
+                  color: "var(--atlas-fg)",
                   backdropFilter: "blur(6px)",
                   pointerEvents: "none",
                   userSelect: "none",
@@ -397,6 +397,7 @@ export function TimelineRail({
                 {t.label}
               </span>
             )}
+
 
             {/* Memory recall marker — shown when this assistant message surfaced a ledger memory */}
             {t.hasMemory && (
