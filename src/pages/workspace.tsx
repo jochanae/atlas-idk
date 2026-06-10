@@ -484,6 +484,7 @@ function GithubTokenInput({
   onDisconnect: () => Promise<void>;
 }) {
   const handleConnectWithGitHub = () => {
+    void import("@/lib/oauthReturn").then(({ stashOauthReturn }) => stashOauthReturn());
     fetch("/api/github/oauth/start", {
       headers: { Accept: "application/json" },
       credentials: "include",
