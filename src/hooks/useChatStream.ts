@@ -34,10 +34,11 @@ function processPreviewableContent(
       const artifact = JSON.parse(artifactMatch[1]) as { type?: unknown; title?: unknown; content?: unknown };
       if (typeof artifact.content === "string") {
         onPreviewCode?.(artifact.content);
-        return content.replace(ARTIFACT_LINE_RE, "").trim();
+        // Do NOT strip the artifact from content — return as-is so it renders inline
+        return content;
       }
     } catch {
-      // Leave malformed artifact text visible so the response is not silently lost.
+      // Leave malformed artifact text visible
     }
   }
 
