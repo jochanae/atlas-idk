@@ -274,15 +274,31 @@ ${t}
 </body>
 </html>`;
   };
+  // Persist sandbox code per-project so generated previews survive hard refresh.
+  const sandboxStorageKey = `atlas-sandbox-${projectId}`;
   useEffect(() => {
     if (!sandboxCode) return;
     setPreviewMode("sandbox");
     setSandboxInput(sandboxCode);
     setSandboxRendered(buildSrcdoc(sandboxCode));
     setSandboxExpanded(false);
+    try { localStorage.setItem(sandboxStorageKey, sandboxCode); } catch {}
     onSandboxConsumed?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sandboxCode]);
+
+  // Rehydrate sandbox on mount / project switch.
+  useEffect(() => {
+    if (sandboxCode) return; // incoming prop wins
+    try {
+      const saved = localStorage.getItem(sandboxStorageKey);
+      if (saved) {
+        setSandboxInput(saved);
+        setSandboxRendered(buildSrcdoc(saved));
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
 
   // Sync from DB on project load / switch
