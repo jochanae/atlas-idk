@@ -4444,6 +4444,7 @@ export default function Home() {
         open={globalInsightOpen}
         messages={nexusChat.messages as any}
         projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
+        conversationId={activeConversationId}
         input={input}
         setInput={setInput}
         onSubmit={() => {

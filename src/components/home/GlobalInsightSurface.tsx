@@ -36,6 +36,7 @@ interface Props {
   open: boolean;
   messages: GlobalInsightMessage[];
   projects: GlobalInsightProject[];
+  conversationId?: string | null;
   input: string;
   setInput: (v: string) => void;
   onSubmit: () => void | Promise<void>;
@@ -127,6 +128,7 @@ export function GlobalInsightSurface({
   open,
   messages,
   projects,
+  conversationId,
   input,
   setInput,
   onSubmit,
@@ -166,6 +168,27 @@ export function GlobalInsightSurface({
   const handleSubmit = () => {
     if (!canSubmit) return;
     void onSubmit();
+  };
+
+  const handleProjectOpen = async (projectId: number) => {
+    const route = `/project/${projectId}`;
+
+    try {
+      await fetch("/api/nexus/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          messages: messages.slice(-10),
+          projectId,
+          conversationId,
+        }),
+      });
+    } catch {
+      // Handoff is best-effort; navigation should still feel immediate on failure.
+    }
+
+    setLocation(route);
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -405,7 +428,7 @@ export function GlobalInsightSurface({
                 {projectOpenTarget && (
                   <button
                     type="button"
-                    onClick={() => setLocation(`/project/${projectOpenTarget.id}`)}
+                    onClick={() => void handleProjectOpen(projectOpenTarget.id)}
                     aria-label={`Open ${projectOpenTarget.name}`}
                     style={{
                       alignSelf: "flex-start",
