@@ -455,7 +455,15 @@ function InlineDiffCard({
         </button>
 
         <div style={{ background: "var(--atlas-bg)", fontFamily: "var(--app-font-mono)", fontSize: 10.5, lineHeight: 1.55 }}>
-          {viewMode === "unified" ? visibleLines.map((line, idx) => {
+          {fileEdits.length === 1 && originals[fileEdits[0].path] !== undefined ? (
+            <DiffViewer
+              before={originals[fileEdits[0].path] ?? ""}
+              after={fileEdits[0].content}
+              viewMode={viewMode === "split" ? "split" : "inline"}
+              maxHeight={open ? 420 : 180}
+              badge={originals[fileEdits[0].path] == null ? "New file" : undefined}
+            />
+          ) : viewMode === "unified" ? visibleLines.map((line, idx) => {
             const added = line.type === "added";
             return (
               <div
@@ -516,12 +524,13 @@ function InlineDiffCard({
               </div>
             ));
           })()}
-          {!open && previewLines.length > 3 && (
+          {!open && fileEdits.length !== 1 && previewLines.length > 3 && (
             <div style={{ padding: "4px 12px", color: "var(--atlas-muted)", opacity: 0.45 }}>
               + {previewLines.length - 3} more changed line{previewLines.length - 3 === 1 ? "" : "s"}
             </div>
           )}
         </div>
+
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 7, padding: "8px 10px", borderTop: "1px solid var(--atlas-border)" }}>
           {fileEdits.length > 0 && (
