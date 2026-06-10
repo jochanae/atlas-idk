@@ -12,12 +12,18 @@
 //   • Removed lines: muted wine/amber-red via --atlas-ember (low alpha).
 //   • Gutter is mono, dim, with a subtle inner border. No neon defaults.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collapseDiff,
   computeLineDiff,
   type DiffItem,
 } from "@/components/workspace/chatShared";
+import {
+  langFromFilename,
+  tokenizeLines,
+  type HighlightedLine,
+  type ShikiLang,
+} from "@/lib/shikiHighlight";
 
 export type DiffViewMode = "inline" | "split";
 
