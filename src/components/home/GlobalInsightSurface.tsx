@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
+import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -422,10 +423,6 @@ export function GlobalInsightSurface({
         {messages.map((msg, i) => {
           if (msg.role === "assistant") {
             const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
-            const textTarget = !tokenTarget ? findProjectOpenTarget(cleanContent, projects) : null;
-            const navigateTarget = tokenTarget
-              ? { id: tokenTarget.projectId, name: tokenTarget.projectName }
-              : textTarget;
             const displayContent = cleanContent;
             return (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -452,30 +449,36 @@ export function GlobalInsightSurface({
                     opacity: 0.92,
                   }}
                 >
-                  {displayContent}
+                  <GlobalInsightRenderer
+                    content={displayContent}
+                    projects={projects}
+                    onNavigate={(id) => void handleProjectOpen(id)}
+                    isParchment={isParchment}
+                  />
                 </div>
-                {navigateTarget && (
+                {tokenTarget && (
                   <button
                     type="button"
-                    onClick={() => void handleProjectOpen(navigateTarget.id)}
-                    aria-label={`Open ${navigateTarget.name}`}
+                    onClick={() => void handleProjectOpen(tokenTarget.projectId)}
+                    aria-label={`Open ${tokenTarget.projectName}`}
                     style={{
                       alignSelf: "flex-start",
                       marginTop: 4,
-                      border: "1px solid rgba(212,175,55,0.28)",
-                      borderRadius: 999,
-                      background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(212,175,55,0.06)",
+                      fontSize: 11,
+                      fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.06em",
+                      opacity: 0.6,
+                      padding: "3px 8px",
+                      border: "1px solid rgba(212,175,55,0.18)",
+                      borderRadius: 6,
+                      background: "transparent",
                       color: "var(--atlas-gold)",
                       cursor: "pointer",
-                      fontFamily: "var(--app-font-sans)",
-                      fontSize: 13,
-                      fontWeight: 600,
                       lineHeight: 1.2,
-                      padding: "7px 11px",
                       WebkitTapHighlightColor: "transparent",
                     }}
                   >
-                    → Open {navigateTarget.name}
+                    → Open {tokenTarget.projectName}
                   </button>
                 )}
                 {!msg.streaming && displayContent.length > 0 && (
