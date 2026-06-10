@@ -5118,16 +5118,38 @@ export default function Workspace() {
     if (isMobile) setMobileTab("map");
   }, [id, forgeActiveProjectId, project, sessionId, isMobile, updateProjectHeader, createEntry, queryClient, updateForgeState]);
 
+  // ── Codegen bridge (atlas-codegen edge function → sandbox preview) ──────────
+  const codegen = useCodegen({
+    projectId: id,
+    sessionId: sessionId ?? null,
+    onResult: (file) => {
+      setSandboxCode(file.content);
+      openPreviewPanel();
+      toast(`Generated ${file.filename}`);
+    },
+    onError: (msg) => toast(`Codegen failed: ${msg}`),
+  });
+
+  // Detect a BUILD intent in a Forge transcript so we can auto-fire codegen
+  // after intake commits nodes into the system map.
+  const BUILD_INTENT_RE = /\b(build|generate|create|scaffold|prototype|make|render|design)\b/i;
+
   const handleForgeIntake = useCallback(async (content: string) => {
     try {
       const result = await submitForgeIntake({ transcript: content, projectId: id });
       applyForgeNodes(result.nodes);
       toast(`Forge intake · ${result.nodes.length} node${result.nodes.length === 1 ? "" : "s"} mapped`);
+
+      // Decision-led builder: once the intent is committed (Forge nodes mapped),
+      // a detected BUILD verb hands off to the codegen pipeline.
+      if (BUILD_INTENT_RE.test(content)) {
+        void codegen.run(content, result.summary);
+      }
     } catch (e) {
       toast("Forge intake failed — try a more specific description.");
       throw e;
     }
-  }, [id, applyForgeNodes]);
+  }, [id, applyForgeNodes, codegen]);
 
   // Open the ForgeIntakeSheet from anywhere (LifecycleGlyph long-press, etc).
   useEffect(() => {
