@@ -5438,8 +5438,14 @@ export default function Workspace() {
   } = useComposerZip(id, setFileContext);
 
   const liveGeneration = useMemo(
-    () => parseLiveGeneration(activityStream.content, chatPending),
-    [activityStream.content, chatPending]
+    () => {
+      // Codegen run takes priority — its synthetic step stream owns the card.
+      if (codegen.running || codegen.steps.length > 0) {
+        return { mode: codegen.mode, steps: codegen.steps, shouldShow: true };
+      }
+      return parseLiveGeneration(activityStream.content, chatPending);
+    },
+    [activityStream.content, chatPending, codegen.running, codegen.steps, codegen.mode]
   );
   useEffect(() => {
     if (/FILE_EDIT/i.test(activityStream.content)) setSubheaderOpen(true);
