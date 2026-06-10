@@ -324,24 +324,13 @@ export function GitHubPushModal({
                   loadingOriginals ? (
                     <div style={{ padding: "12px 0", fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5, fontFamily: "var(--app-font-mono)" }}>Loading original…</div>
                   ) : (
-                    <div style={{ borderRadius: 5, overflow: "hidden", border: "1px solid var(--atlas-glass-bg)", maxHeight: 280, overflowY: "auto", fontFamily: "var(--app-font-mono)", fontSize: 10.5, lineHeight: 1.55 }}>
-                      {currentOriginal === null && (
-                        <div style={{ padding: "5px 10px", fontSize: 10, color: "rgba(134,239,172,0.6)", background: "rgba(134,239,172,0.04)", borderBottom: "1px solid rgba(134,239,172,0.1)" }}>New file</div>
-                      )}
-                      {diffItems.map((item, idx) => {
-                        if (item.type === "ellipsis") {
-                          return <div key={idx} style={{ padding: "3px 10px", background: "rgba(0,0,0,0.2)", color: "rgba(var(--atlas-muted-rgb),0.4)", fontSize: 9.5, letterSpacing: "0.04em", borderTop: "1px solid rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>···  {item.count} unchanged {item.count === 1 ? "line" : "lines"}</div>;
-                        }
-                        const isAdded = item.type === "added";
-                        const isRemoved = item.type === "removed";
-                        return (
-                          <div key={idx} style={{ display: "flex", alignItems: "flex-start", background: isAdded ? "rgba(134,239,172,0.06)" : isRemoved ? "rgba(239,68,68,0.05)" : "transparent", borderLeft: `2px solid ${isAdded ? "rgba(134,239,172,0.4)" : isRemoved ? "rgba(239,68,68,0.35)" : "transparent"}` }}>
-                            <span style={{ width: 16, flexShrink: 0, textAlign: "center", color: isAdded ? "rgba(134,239,172,0.7)" : isRemoved ? "rgba(252,165,165,0.6)" : "transparent", fontSize: 10, paddingTop: 1, userSelect: "none" as const }}>{isAdded ? "+" : isRemoved ? "−" : " "}</span>
-                            <span style={{ flex: 1, padding: "1px 8px 1px 2px", color: isAdded ? "rgba(134,239,172,0.85)" : isRemoved ? "rgba(252,165,165,0.7)" : "var(--atlas-muted)", whiteSpace: "pre" as const, overflowX: "auto" }}>{item.line || " "}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <DiffViewer
+                      before={currentOriginal ?? ""}
+                      after={currentFile.content}
+                      viewMode="inline"
+                      maxHeight={280}
+                      badge={currentOriginal === null ? "New file" : undefined}
+                    />
                   )
                 ) : (
                   <pre style={{ margin: 0, padding: "10px", background: "rgba(0,0,0,0.35)", border: "1px solid var(--atlas-glass-bg)", borderRadius: 5, fontSize: 10.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.6, color: "var(--atlas-fg)", overflowX: "auto", maxHeight: 280, overflowY: "auto", whiteSpace: "pre" }}>{currentFile.content}</pre>
