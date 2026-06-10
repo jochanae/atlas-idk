@@ -12,12 +12,18 @@
 //   • Removed lines: muted wine/amber-red via --atlas-ember (low alpha).
 //   • Gutter is mono, dim, with a subtle inner border. No neon defaults.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collapseDiff,
   computeLineDiff,
   type DiffItem,
 } from "@/components/workspace/chatShared";
+import {
+  langFromFilename,
+  tokenizeLines,
+  type HighlightedLine,
+  type ShikiLang,
+} from "@/lib/shikiHighlight";
 
 export type DiffViewMode = "inline" | "split";
 
@@ -40,6 +46,8 @@ export interface DiffViewerProps {
   contextLines?: number;
   /** Optional badge text (e.g. "New file"). */
   badge?: string;
+  /** Force a language; otherwise inferred from filename. */
+  language?: ShikiLang;
 }
 
 type NumberedItem =
@@ -81,7 +89,10 @@ export function DiffViewer({
   maxHeight = 320,
   contextLines = 3,
   badge,
+  language,
 }: DiffViewerProps) {
+  const lang = language ?? langFromFilename(filename);
+
   const annotated = useMemo<NumberedItem[]>(() => {
     if (items && items.length > 0) return annotate(items);
     const a = before ?? "";
@@ -89,6 +100,25 @@ export function DiffViewer({
     const diff = computeLineDiff(a, b);
     return annotate(collapseDiff(diff, contextLines));
   }, [items, before, after, contextLines]);
+
+  // Shiki: tokenize before/after once each. Falls back to plain text when
+  // unsupported (lang === "txt") or when the items mode is in use.
+  const [beforeTokens, setBeforeTokens] = useState<HighlightedLine[] | null>(null);
+  const [afterTokens, setAfterTokens] = useState<HighlightedLine[] | null>(null);
+  useEffect(() => {
+    if (items && items.length > 0) { setBeforeTokens(null); setAfterTokens(null); return; }
+    let cancelled = false;
+    void (async () => {
+      const [bt, at] = await Promise.all([
+        before ? tokenizeLines(before, lang) : Promise.resolve(null),
+        after ? tokenizeLines(after, lang) : Promise.resolve(null),
+      ]);
+      if (cancelled) return;
+      setBeforeTokens(bt);
+      setAfterTokens(at);
+    })();
+    return () => { cancelled = true; };
+  }, [before, after, lang, items]);
 
   const totals = useMemo(() => {
     let added = 0;
@@ -184,8 +214,8 @@ export function DiffViewer({
           </div>
         )}
         {viewMode === "inline"
-          ? renderInline(annotated, showLineNumbers)
-          : renderSplit(annotated, showLineNumbers)}
+          ? renderInline(annotated, showLineNumbers, beforeTokens, afterTokens)
+          : renderSplit(annotated, showLineNumbers, beforeTokens, afterTokens)}
       </div>
     </div>
   );
@@ -211,7 +241,43 @@ function gutterCell(value: number | null | string, opts?: { dim?: boolean }) {
   );
 }
 
-function renderInline(items: NumberedItem[], showLineNumbers: boolean) {
+function renderTokenLine(
+  raw: string,
+  tokens: HighlightedLine | undefined,
+  fallbackColor: string,
+) {
+  if (!tokens || tokens.length === 0) {
+    return <span style={{ color: fallbackColor }}>{raw || " "}</span>;
+  }
+  return (
+    <>
+      {tokens.map((t, i) => (
+        <span key={i} style={{ color: t.color ?? fallbackColor }}>{t.content}</span>
+      ))}
+    </>
+  );
+}
+
+function tokensFor(
+  item: Exclude<NumberedItem, { type: "ellipsis" }>,
+  beforeTokens: HighlightedLine[] | null,
+  afterTokens: HighlightedLine[] | null,
+  side: "old" | "new",
+): HighlightedLine | undefined {
+  if (item.type === "added") return afterTokens?.[(item.newNo ?? 0) - 1];
+  if (item.type === "removed") return beforeTokens?.[(item.oldNo ?? 0) - 1];
+  // context — prefer the requested side
+  const idx = (side === "old" ? item.oldNo : item.newNo) ?? 0;
+  const src = side === "old" ? beforeTokens : afterTokens;
+  return src?.[idx - 1];
+}
+
+function renderInline(
+  items: NumberedItem[],
+  showLineNumbers: boolean,
+  beforeTokens: HighlightedLine[] | null,
+  afterTokens: HighlightedLine[] | null,
+) {
   return items.map((item, idx) => {
     if (item.type === "ellipsis") {
       return (
@@ -243,11 +309,12 @@ function renderInline(items: NumberedItem[], showLineNumbers: boolean) {
       : removed
       ? "var(--atlas-ember)"
       : "transparent";
-    const fg = added
+    const fallbackFg = added
       ? "color-mix(in oklab, var(--atlas-phosphor) 55%, var(--atlas-fg))"
       : removed
       ? "color-mix(in oklab, var(--atlas-ember) 55%, var(--atlas-fg))"
       : "var(--atlas-muted)";
+    const toks = tokensFor(item, beforeTokens, afterTokens, removed ? "old" : "new");
     return (
       <div
         key={`${idx}-${item.type}`}
@@ -276,15 +343,20 @@ function renderInline(items: NumberedItem[], showLineNumbers: boolean) {
         >
           {added ? "+" : removed ? "−" : " "}
         </span>
-        <span style={{ flex: 1, padding: ROW_PAD, color: fg, whiteSpace: "pre", overflowX: "auto" }}>
-          {item.line || " "}
+        <span style={{ flex: 1, padding: ROW_PAD, whiteSpace: "pre", overflowX: "auto" }}>
+          {renderTokenLine(item.line, toks, fallbackFg)}
         </span>
       </div>
     );
   });
 }
 
-function renderSplit(items: NumberedItem[], showLineNumbers: boolean) {
+function renderSplit(
+  items: NumberedItem[],
+  showLineNumbers: boolean,
+  beforeTokens: HighlightedLine[] | null,
+  afterTokens: HighlightedLine[] | null,
+) {
   type Row = { left: NumberedItem | null; right: NumberedItem | null; ellipsis?: number };
   const rows: Row[] = [];
   let i = 0;
@@ -338,6 +410,7 @@ function renderSplit(items: NumberedItem[], showLineNumbers: boolean) {
       ? "color-mix(in oklab, var(--atlas-ember) 55%, var(--atlas-fg))"
       : "var(--atlas-muted)";
     const num = side === "left" ? it.oldNo : it.newNo;
+    const toks = tokensFor(it, beforeTokens, afterTokens, side === "left" ? "old" : "new");
     return (
       <div
         style={{
@@ -357,8 +430,8 @@ function renderSplit(items: NumberedItem[], showLineNumbers: boolean) {
         <span style={{ width: 16, flexShrink: 0, textAlign: "center", color: accent === "transparent" ? "transparent" : accent, opacity: 0.85, userSelect: "none" }}>
           {added ? "+" : removed ? "−" : " "}
         </span>
-        <span style={{ flex: 1, padding: ROW_PAD, color: fg, whiteSpace: "pre", overflowX: "auto" }}>
-          {it.line || " "}
+        <span style={{ flex: 1, padding: ROW_PAD, whiteSpace: "pre", overflowX: "auto" }}>
+          {renderTokenLine(it.line, toks, fg)}
         </span>
       </div>
     );
