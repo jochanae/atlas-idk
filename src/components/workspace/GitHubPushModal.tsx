@@ -81,9 +81,6 @@ export function GitHubPushModal({
 
   const currentFile = fileEdits[selectedIdx] ?? fileEdits[0];
   const currentOriginal = originalContents[selectedIdx] ?? null;
-  const diffItems: DiffItem[] = currentOriginal !== null
-    ? collapseDiff(computeLineDiff(currentOriginal, currentFile.content))
-    : currentFile.content.split("\n").map((line) => ({ type: "added" as const, line }));
 
   const handlePush = async () => {
     if (!linkedRepo || !token) {
