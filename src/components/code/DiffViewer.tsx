@@ -351,7 +351,12 @@ function renderInline(
   });
 }
 
-function renderSplit(items: NumberedItem[], showLineNumbers: boolean) {
+function renderSplit(
+  items: NumberedItem[],
+  showLineNumbers: boolean,
+  beforeTokens: HighlightedLine[] | null,
+  afterTokens: HighlightedLine[] | null,
+) {
   type Row = { left: NumberedItem | null; right: NumberedItem | null; ellipsis?: number };
   const rows: Row[] = [];
   let i = 0;
