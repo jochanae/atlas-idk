@@ -241,7 +241,43 @@ function gutterCell(value: number | null | string, opts?: { dim?: boolean }) {
   );
 }
 
-function renderInline(items: NumberedItem[], showLineNumbers: boolean) {
+function renderTokenLine(
+  raw: string,
+  tokens: HighlightedLine | undefined,
+  fallbackColor: string,
+) {
+  if (!tokens || tokens.length === 0) {
+    return <span style={{ color: fallbackColor }}>{raw || " "}</span>;
+  }
+  return (
+    <>
+      {tokens.map((t, i) => (
+        <span key={i} style={{ color: t.color ?? fallbackColor }}>{t.content}</span>
+      ))}
+    </>
+  );
+}
+
+function tokensFor(
+  item: Exclude<NumberedItem, { type: "ellipsis" }>,
+  beforeTokens: HighlightedLine[] | null,
+  afterTokens: HighlightedLine[] | null,
+  side: "old" | "new",
+): HighlightedLine | undefined {
+  if (item.type === "added") return afterTokens?.[(item.newNo ?? 0) - 1];
+  if (item.type === "removed") return beforeTokens?.[(item.oldNo ?? 0) - 1];
+  // context — prefer the requested side
+  const idx = (side === "old" ? item.oldNo : item.newNo) ?? 0;
+  const src = side === "old" ? beforeTokens : afterTokens;
+  return src?.[idx - 1];
+}
+
+function renderInline(
+  items: NumberedItem[],
+  showLineNumbers: boolean,
+  beforeTokens: HighlightedLine[] | null,
+  afterTokens: HighlightedLine[] | null,
+) {
   return items.map((item, idx) => {
     if (item.type === "ellipsis") {
       return (
@@ -273,11 +309,12 @@ function renderInline(items: NumberedItem[], showLineNumbers: boolean) {
       : removed
       ? "var(--atlas-ember)"
       : "transparent";
-    const fg = added
+    const fallbackFg = added
       ? "color-mix(in oklab, var(--atlas-phosphor) 55%, var(--atlas-fg))"
       : removed
       ? "color-mix(in oklab, var(--atlas-ember) 55%, var(--atlas-fg))"
       : "var(--atlas-muted)";
+    const toks = tokensFor(item, beforeTokens, afterTokens, removed ? "old" : "new");
     return (
       <div
         key={`${idx}-${item.type}`}
@@ -306,8 +343,8 @@ function renderInline(items: NumberedItem[], showLineNumbers: boolean) {
         >
           {added ? "+" : removed ? "−" : " "}
         </span>
-        <span style={{ flex: 1, padding: ROW_PAD, color: fg, whiteSpace: "pre", overflowX: "auto" }}>
-          {item.line || " "}
+        <span style={{ flex: 1, padding: ROW_PAD, whiteSpace: "pre", overflowX: "auto" }}>
+          {renderTokenLine(item.line, toks, fallbackFg)}
         </span>
       </div>
     );
