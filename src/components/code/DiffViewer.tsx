@@ -46,6 +46,8 @@ export interface DiffViewerProps {
   contextLines?: number;
   /** Optional badge text (e.g. "New file"). */
   badge?: string;
+  /** Force a language; otherwise inferred from filename. */
+  language?: ShikiLang;
 }
 
 type NumberedItem =
