@@ -89,7 +89,10 @@ export function DiffViewer({
   maxHeight = 320,
   contextLines = 3,
   badge,
+  language,
 }: DiffViewerProps) {
+  const lang = language ?? langFromFilename(filename);
+
   const annotated = useMemo<NumberedItem[]>(() => {
     if (items && items.length > 0) return annotate(items);
     const a = before ?? "";
@@ -97,6 +100,25 @@ export function DiffViewer({
     const diff = computeLineDiff(a, b);
     return annotate(collapseDiff(diff, contextLines));
   }, [items, before, after, contextLines]);
+
+  // Shiki: tokenize before/after once each. Falls back to plain text when
+  // unsupported (lang === "txt") or when the items mode is in use.
+  const [beforeTokens, setBeforeTokens] = useState<HighlightedLine[] | null>(null);
+  const [afterTokens, setAfterTokens] = useState<HighlightedLine[] | null>(null);
+  useEffect(() => {
+    if (items && items.length > 0) { setBeforeTokens(null); setAfterTokens(null); return; }
+    let cancelled = false;
+    void (async () => {
+      const [bt, at] = await Promise.all([
+        before ? tokenizeLines(before, lang) : Promise.resolve(null),
+        after ? tokenizeLines(after, lang) : Promise.resolve(null),
+      ]);
+      if (cancelled) return;
+      setBeforeTokens(bt);
+      setAfterTokens(at);
+    })();
+    return () => { cancelled = true; };
+  }, [before, after, lang, items]);
 
   const totals = useMemo(() => {
     let added = 0;
