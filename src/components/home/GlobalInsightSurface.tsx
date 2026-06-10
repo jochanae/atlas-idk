@@ -61,6 +61,22 @@ const GLOBAL_INSIGHT_PLACEHOLDERS = [
 ];
 
 const PROJECT_OPEN_INTENT_RE = /\b(go|jump|open|workspace|inside)\b|\binto\s+that\b/i;
+const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
+
+type NavigateTarget = { projectId: number; projectName: string } | null;
+
+function extractNavigateTo(content: string): { target: NavigateTarget; cleanContent: string } {
+  const match = content.match(NAVIGATE_TO_RE);
+  if (!match) return { target: null, cleanContent: content };
+  try {
+    const parsed = JSON.parse(match[1]) as { projectId?: unknown; projectName?: unknown };
+    if (typeof parsed.projectId === "number" && typeof parsed.projectName === "string") {
+      const cleanContent = content.replace(NAVIGATE_TO_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+      return { target: { projectId: parsed.projectId, projectName: parsed.projectName }, cleanContent };
+    }
+  } catch {}
+  return { target: null, cleanContent: content };
+}
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -147,6 +163,7 @@ export function GlobalInsightSurface({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [, setLocation] = useLocation();
   const [focused, setFocused] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const isParchment = useThemeMode() === "parchment";
 
   // Auto-scroll on new messages / streaming
@@ -189,6 +206,13 @@ export function GlobalInsightSurface({
     }
 
     setLocation(route);
+  };
+
+  const handleCopy = (content: string, idx: number) => {
+    void navigator.clipboard.writeText(content).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 1800);
+    });
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -397,7 +421,12 @@ export function GlobalInsightSurface({
 
         {messages.map((msg, i) => {
           if (msg.role === "assistant") {
-            const projectOpenTarget = findProjectOpenTarget(msg.content, projects);
+            const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
+            const textTarget = !tokenTarget ? findProjectOpenTarget(cleanContent, projects) : null;
+            const navigateTarget = tokenTarget
+              ? { id: tokenTarget.projectId, name: tokenTarget.projectName }
+              : textTarget;
+            const displayContent = cleanContent;
             return (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span
@@ -423,13 +452,13 @@ export function GlobalInsightSurface({
                     opacity: 0.92,
                   }}
                 >
-                  {msg.content}
+                  {displayContent}
                 </div>
-                {projectOpenTarget && (
+                {navigateTarget && (
                   <button
                     type="button"
-                    onClick={() => void handleProjectOpen(projectOpenTarget.id)}
-                    aria-label={`Open ${projectOpenTarget.name}`}
+                    onClick={() => void handleProjectOpen(navigateTarget.id)}
+                    aria-label={`Open ${navigateTarget.name}`}
                     style={{
                       alignSelf: "flex-start",
                       marginTop: 4,
@@ -446,7 +475,38 @@ export function GlobalInsightSurface({
                       WebkitTapHighlightColor: "transparent",
                     }}
                   >
-                    → Open {projectOpenTarget.name}
+                    → Open {navigateTarget.name}
+                  </button>
+                )}
+                {!msg.streaming && displayContent.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(displayContent, i)}
+                    aria-label="Copy message"
+                    style={{
+                      alignSelf: "flex-start",
+                      marginTop: 2,
+                      background: "transparent",
+                      border: "none",
+                      padding: "4px 2px",
+                      cursor: "pointer",
+                      color: copiedIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                      opacity: copiedIdx === i ? 1 : 0.45,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontSize: 11,
+                      fontFamily: "var(--app-font-mono)",
+                      letterSpacing: "0.06em",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    {copiedIdx === i ? "✓ copied" : (
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="5" y="5" width="8" height="9" rx="1.5" />
+                        <path d="M11 5V4a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 4v7A1.5 1.5 0 003.5 12.5H5" />
+                      </svg>
+                    )}
                   </button>
                 )}
               </div>
