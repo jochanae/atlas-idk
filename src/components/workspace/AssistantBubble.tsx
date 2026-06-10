@@ -13,6 +13,7 @@ import { ThoughtForBadge } from "../ThoughtForBadge";
 
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
+import { DiffViewer } from "@/components/code/DiffViewer";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import {
   ICON_TOUCH_TARGET_STYLE,
