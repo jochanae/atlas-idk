@@ -688,15 +688,13 @@ function ConnectionsDock() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/github/status", { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          setGithubStatus((current) => current ?? {
-            connected: data.hasUserToken || data.hasAccountToken,
-            username: undefined,
-          });
-        }
+    fetchGitHubStatus()
+      .then((status) => {
+        const isConnected = status.canWrite || (status.canRead && status.hasServerToken);
+        setGithubStatus((current) => current ?? {
+          connected: isConnected,
+          username: undefined,
+        });
       })
       .catch(() => {});
   }, []);
