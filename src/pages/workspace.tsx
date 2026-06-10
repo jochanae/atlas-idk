@@ -71,6 +71,7 @@ import { ChatTrayHeader } from "@/components/ChatTrayHeader";
 import { LongPressTip, haptic } from "@/lib/long-press-tip";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
+import { AtlasThinkingBlock } from "@/components/workspace/AtlasThinkingBlock";
 
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -3224,6 +3225,27 @@ export default function Workspace() {
     });
     return [...entryMap.values()];
   }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
+  const [thinkingState, setThinkingState] = useState<{ status: "processing"|"streaming"|"completed"; currentStep: any; history: any[]; developerLens?: any } | null>(null);
+  const stepStartRef = useRef<number>(Date.now());
+  const handleThinkingSendStart = useCallback(() => {
+    stepStartRef.current = Date.now();
+    setThinkingState(null);
+  }, []);
+  const handleThinkingStep = useCallback((event: { phase?: any; verb?: string; target?: string }) => {
+    setThinkingState(prev => ({
+      status: "processing",
+      currentStep: { id: Date.now().toString(), phase: event.phase, label: event.verb + (event.target ? " " + event.target : "") },
+      history: prev ? [...prev.history, ...(prev.currentStep ? [{ ...prev.currentStep, durationMs: Date.now() - stepStartRef.current }] : [])] : [],
+      developerLens: prev?.developerLens,
+    }));
+    stepStartRef.current = Date.now();
+  }, []);
+  const handleFirstStreamingToken = useCallback(() => {
+    setThinkingState(prev => prev ? { ...prev, status: "streaming" } : prev);
+  }, []);
+  const handleThinkingDone = useCallback((payload: any) => {
+    setThinkingState(prev => prev ? { ...prev, status: "completed", developerLens: payload?.developerLens } : prev);
+  }, []);
 
   const {
     messages,
@@ -3291,6 +3313,10 @@ export default function Workspace() {
     getGetProjectQueryKey,
     getListProjectsQueryKey,
     reportError,
+    onSendStart: handleThinkingSendStart,
+    onStepEvent: handleThinkingStep,
+    onFirstStreamingToken: handleFirstStreamingToken,
+    onDoneEvent: handleThinkingDone,
     onFlowNodes: (nodes) => {
       const archNodes: ArchNode[] = nodes.map((n) => ({
         id: n.id,
@@ -3361,6 +3387,7 @@ export default function Workspace() {
     setPlanStates(new Map());
     setPlanExecutions(new Map());
     setActiveCatch(null);
+    setThinkingState(null);
     homePlanLoadedRef.current = false;
     // Note: abort/chatPending/activityStream reset is owned by useChatStream.
     // Reset auto-prime guards so a fresh ?source=handoff load can seed its first message.
@@ -6125,6 +6152,9 @@ export default function Workspace() {
               activityStream,
               liveGeneration,
               liveStep,
+              thinkingBlock: thinkingState && (
+                <AtlasThinkingBlock thinkingState={thinkingState} />
+              ),
               historyMsgCountRef,
               priorLoaded: priorLoaded.current,
               isHomeHandoff,
