@@ -410,6 +410,7 @@ function renderSplit(
       ? "color-mix(in oklab, var(--atlas-ember) 55%, var(--atlas-fg))"
       : "var(--atlas-muted)";
     const num = side === "left" ? it.oldNo : it.newNo;
+    const toks = tokensFor(it, beforeTokens, afterTokens, side === "left" ? "old" : "new");
     return (
       <div
         style={{
@@ -429,8 +430,8 @@ function renderSplit(
         <span style={{ width: 16, flexShrink: 0, textAlign: "center", color: accent === "transparent" ? "transparent" : accent, opacity: 0.85, userSelect: "none" }}>
           {added ? "+" : removed ? "−" : " "}
         </span>
-        <span style={{ flex: 1, padding: ROW_PAD, color: fg, whiteSpace: "pre", overflowX: "auto" }}>
-          {it.line || " "}
+        <span style={{ flex: 1, padding: ROW_PAD, whiteSpace: "pre", overflowX: "auto" }}>
+          {renderTokenLine(it.line, toks, fg)}
         </span>
       </div>
     );
