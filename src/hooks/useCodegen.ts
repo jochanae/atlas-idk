@@ -86,14 +86,15 @@ export function useCodegen(opts: UseCodegenOptions): UseCodegenReturn {
             sessionId: sessionId ?? null,
             prompt,
             context: context ?? null,
+            model: "claude-sonnet-4-6",
           }),
         });
 
         clearTimers();
 
         if (!res.ok) {
-          const errText = await res.text().catch(() => "");
-          throw new Error(`Codegen ${res.status}: ${errText || res.statusText}`);
+          const errData = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(errData?.error ?? `Codegen ${res.status}: ${res.statusText}`);
         }
         const data = await res.json().catch(() => null);
         const file = (data?.file ?? null) as CodegenFile | null;
