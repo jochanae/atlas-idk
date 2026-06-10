@@ -133,11 +133,13 @@ export function ProjectsSheet({ onClose }: Props) {
         }}>
           {/* New Project card */}
           <div style={{
-            border: "1.5px dashed var(--atlas-gold-border)",
+            border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
             borderRadius: 12,
             overflow: "hidden",
             display: "flex", flexDirection: "column",
+            boxShadow: "0 1px 2px rgba(15,23,42,0.04), 0 6px 18px -8px color-mix(in oklab, var(--atlas-gold) 32%, transparent)",
           }}>
+
             {/* Thumbnail area */}
             <div style={{
               flex: 1, minHeight: 100, display: "flex", flexDirection: "column",
