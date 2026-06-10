@@ -4443,6 +4443,7 @@ export default function Home() {
       <GlobalInsightSurface
         open={globalInsightOpen}
         messages={nexusChat.messages as any}
+        projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name }))}
         input={input}
         setInput={setInput}
         onSubmit={() => {
