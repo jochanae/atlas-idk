@@ -2941,22 +2941,31 @@ export default function Home() {
           })
         : [];
 
-      if (normalizedMessages.length > 0) {
-        nexusChat.setMessages(normalizedMessages as any);
-        setActiveConversationId(id);
-        setReviewingPlanIds(new Set());
-        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
-        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      } else {
-        nexusChat.setMessages([]);
-        setActiveConversationId(id);
-        setReviewingPlanIds(new Set());
-        try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
-        try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
-      }
+      nexusChat.setMessages(normalizedMessages.length > 0 ? (normalizedMessages as any) : []);
+      setActiveConversationId(id);
+      setReviewingPlanIds(new Set());
+      try { localStorage.setItem("atlas-home-conversation-id", id); } catch {}
+      try { sessionStorage.setItem("atlas-home-conversation-id", id); } catch {}
+
+      // The home composer's gold-clock history exclusively lists Global Insight
+      // threads ("GLOBAL INSIGHT · HISTORY"). Resuming one must re-enter Global
+      // Insight mode so the surface, reflection flag, and depth all match — not
+      // strand the thread in the ambient homepage where it tries to earn a
+      // title and reads as half-broken.
+      setGlobalInsightOpen(true);
+      setDepth("active");
+      try {
+        await fetch(`/api/sessions/${encodeURIComponent(id)}/reflection-mode`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: true }),
+        });
+      } catch {}
+
       setShowHistory(false);
     } catch {}
-  }, [setActiveConversationId, nexusChat.setMessages]);
+  }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
 
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
