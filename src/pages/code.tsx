@@ -674,11 +674,12 @@ export default function CodePage() {
   const filesQ = useQuery<GeneratedFile[]>({
     queryKey: ["code", "run-files", projectId, activeRun?.id],
     queryFn: () => {
-      if (projectId == null || !activeRun) throw new Error("Missing project or run");
+      if (projectId == null || !activeRun) return Promise.resolve([] as GeneratedFile[]);
       return fetchJson<GeneratedFile[]>(`/api/projects/${projectId}/generation-runs/${activeRun.id}/files`);
     },
     enabled: projectId != null && !!activeRun?.id,
   });
+
 
   const files = useMemo(() => filesQ.data ?? [], [filesQ.data]);
   const forgeSyncFiles = useMemo(
