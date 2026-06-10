@@ -5,6 +5,7 @@ import JSZip from "jszip";
 import { toast } from "sonner";
 import { CodeEditor } from "@/components/code/CodeEditor";
 import { ForgeSyncPanel } from "@/components/code/ForgeSyncPanel";
+import { useCodegen, type CodegenFile } from "@/hooks/useCodegen";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { apiUrl } from "@/lib/api";
 import { parseLinkedRepo } from "@/lib/githubRepo";
@@ -601,6 +602,32 @@ export default function CodePage() {
   const [showForgeSync, setShowForgeSync] = useState(false);
 
   const projectId = useMemo(() => getProjectIdFromUrl(), []);
+  const codegen = useCodegen({
+    projectId: projectId ?? 0,
+    onResult: (file: CodegenFile) => {
+      // Add the generated file to local state as a preview
+      const tempFile = {
+        id: `codegen-${Date.now()}`,
+        runId: "codegen",
+        path: file.filename,
+        language: file.language,
+        bytes: new Blob([file.content]).size,
+        lines: file.content.split("\n").length,
+        content: file.content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: "new" as const,
+        previousContent: null,
+      };
+      setEdits((prev) => ({ ...prev, [tempFile.id]: file.content }));
+      setSelectedFileId(tempFile.id);
+      toast.success(`Generated ${file.filename}`);
+    },
+    onError: (msg: string) => {
+      toast.error(msg);
+    },
+  });
+
   const handleBack = () => {
     if (projectId != null) {
       navigate(`/project/${projectId}`);
@@ -898,7 +925,15 @@ export default function CodePage() {
           label="Refresh"
           onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
         />
-        <ToolButton icon={<Wand2 size={13} />} label="Regenerate" />
+        <ToolButton
+          icon={<Wand2 size={13} />}
+          label={codegen.running ? "Generating…" : "Regenerate"}
+          disabled={codegen.running || !activeRun}
+          onClick={() => {
+            if (!activeRun) return;
+            void codegen.run(activeRun.prompt, activeRun.summary || undefined);
+          }}
+        />
         <ToolButton
           icon={<Hammer size={13} />}
           label="Forge Sync"
