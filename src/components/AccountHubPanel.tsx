@@ -372,6 +372,8 @@ export function AccountHubPanel({ onClose, isMobile = false }: { onClose: () => 
   const handleStartGithubOAuth = async () => {
     setGithubTokenError(null);
     try {
+      const { stashOauthReturn } = await import("@/lib/oauthReturn");
+      stashOauthReturn();
       const res = await fetch("/api/github/oauth/start", {
         method: "GET",
         headers: { Accept: "application/json" },
