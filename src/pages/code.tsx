@@ -1047,7 +1047,13 @@ export default function CodePage() {
               title="No project selected"
               hint="Open this page with ?projectId=<id> or select a project from the workspace."
             />
+          ) : !loading && runs.length === 0 ? (
+            <EmptyState
+              title="No generation runs yet"
+              hint="This project hasn't been generated yet. Start a run from the Forge or send a build intent in chat."
+            />
           ) : selectedFile ? (
+
             <CodeViewer
               file={selectedFile}
               value={selectedFileValue}
