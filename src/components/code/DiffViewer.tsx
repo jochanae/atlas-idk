@@ -214,8 +214,8 @@ export function DiffViewer({
           </div>
         )}
         {viewMode === "inline"
-          ? renderInline(annotated, showLineNumbers)
-          : renderSplit(annotated, showLineNumbers)}
+          ? renderInline(annotated, showLineNumbers, beforeTokens, afterTokens)
+          : renderSplit(annotated, showLineNumbers, beforeTokens, afterTokens)}
       </div>
     </div>
   );
