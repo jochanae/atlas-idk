@@ -2378,6 +2378,39 @@ export default function Home() {
       });
   }, [activeConversationId, nexusChat.setMessages]);
 
+  // Rehydrate Global Insight mode on hard refresh / initial load.
+  // The server is the source of truth (reflection_mode is set per-session
+  // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
+  // resets the in-memory `globalInsightOpen` to false and the conversation
+  // renders as the ambient/active homepage instead of the Global Insight surface.
+  useEffect(() => {
+    if (!activeConversationId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/sessions/${encodeURIComponent(activeConversationId)}`,
+          { credentials: "include" },
+        );
+        if (!res.ok || cancelled) return;
+        const data: any = await res.json().catch(() => null);
+        if (!data || cancelled) return;
+        const session = data.session ?? data;
+        const isReflection =
+          session?.mode === "reflection" ||
+          session?.mode === "global_insight" ||
+          session?.reflection_mode === true ||
+          session?.reflectionMode === true;
+        if (isReflection) {
+          setGlobalInsightOpen(true);
+          setDepth("active");
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [activeConversationId, setDepth]);
+
+
 
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
