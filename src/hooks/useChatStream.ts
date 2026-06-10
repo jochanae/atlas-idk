@@ -79,6 +79,10 @@ export interface UseChatStreamOptions {
   reportError: (err: unknown, ctx?: { projectId?: number }) => void;
   onPreviewCode?: (code: string) => void;
   onFlowNodes?: (nodes: Array<{ id: string; type: string; label: string; question?: string; x: number; y: number }>) => void;
+  onSendStart?: () => void;
+  onStepEvent?: (event: { phase?: unknown; verb?: string; target?: string; status?: string }) => void;
+  onFirstStreamingToken?: () => void;
+  onDoneEvent?: (payload: any) => void;
 }
 
 export interface ActivityStreamState {
@@ -176,6 +180,10 @@ export function useChatStream(
     reportError,
     onPreviewCode,
     onFlowNodes,
+    onSendStart,
+    onStepEvent,
+    onFirstStreamingToken,
+    onDoneEvent,
   } = opts;
 
   // ---- message state ----
@@ -284,6 +292,7 @@ export function useChatStream(
       const ledgerEntries = (entries || []).map((e) => ({ id: e.id, title: e.title, status: e.status }));
       const activeCtx = ctx !== undefined ? ctx : fileContext;
 
+      onSendStart?.();
       setMessages((prev) => [...prev, userMsg]);
       setChatPending(true);
       setActivityStream({ active: true, content: "" });
@@ -483,6 +492,7 @@ export function useChatStream(
           const placeholderId = -Date.now();
           streamingId = placeholderId;
           let streamedText = "";
+          let sawFirstToken = false;
           let githubAutoLinkStatus: string | null = null;
           let githubAutoLinkPromise: Promise<string> | null = null;
           setMessages((prev) => [
@@ -563,6 +573,10 @@ export function useChatStream(
               try {
                 if (evtName === "token") {
                   const chunk = JSON.parse(evtData) as string;
+                  if (!sawFirstToken) {
+                    sawFirstToken = true;
+                    onFirstStreamingToken?.();
+                  }
                   streamedText += chunk;
                   triggerGithubAutoLink(streamedText);
                   // Feed the pacer instead of writing to React state directly.
@@ -574,13 +588,18 @@ export function useChatStream(
                   setActivityStream({ active: true, content: text });
                 } else if (evtName === "step") {
                   const step = JSON.parse(evtData) as {
+                    phase?: unknown;
                     verb?: string;
                     target?: string;
                     status?: string;
                   };
-                  if (step?.verb) setLiveStep({ verb: step.verb, target: step.target, status: step.status });
+                  if (step?.verb) {
+                    setLiveStep({ verb: step.verb, target: step.target, status: step.status });
+                    onStepEvent?.(step);
+                  }
                 } else if (evtName === "done") {
                   const res = JSON.parse(evtData);
+                  if (res) onDoneEvent?.(res);
                   streamingFinished = true;
                   // Drain any remaining buffered text BEFORE swapping the placeholder
                   // out for the final message, so the user sees the reveal finish
@@ -715,7 +734,7 @@ export function useChatStream(
         }
       })();
     },
-    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onPreviewCode, onFlowNodes],
+    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onPreviewCode, onFlowNodes, onSendStart, onStepEvent, onFirstStreamingToken, onDoneEvent],
   );
 
   const handleRegenerate = useCallback(

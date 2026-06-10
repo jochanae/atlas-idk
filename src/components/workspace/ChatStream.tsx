@@ -1,4 +1,4 @@
-import type { CSSProperties, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
@@ -77,6 +77,7 @@ export interface ChatStreamProps {
   activityStream: { active: boolean; content: string };
   liveGeneration: LiveGenerationLike;
   liveStep: LiveStepLike;
+  thinkingBlock?: ReactNode;
   historyMsgCountRef: RefObject<number> | { current: number };
   priorLoaded?: boolean;
 
@@ -142,7 +143,7 @@ type AssistantBubbleProp<K extends string> = any;
 export function ChatStream(props: ChatStreamProps) {
   const {
     scrollRef, bottomRef, onScroll, showScrollBtn, onScrollToLatest,
-    messages, chatPending, activityStream, liveGeneration, liveStep, historyMsgCountRef,
+    messages, chatPending, activityStream, liveGeneration, thinkingBlock, historyMsgCountRef,
     priorLoaded,
     isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading,
     wsModel, wsLens, onSwitchToGemini,
@@ -167,9 +168,6 @@ export function ChatStream(props: ChatStreamProps) {
     padding: isMobile ? "32px 14px 20px 14px" : "56px 104px 28px 24px",
     position: "relative", scrollbarWidth: "none",
   };
-  const liveStepText = liveStep
-    ? `${liveStep.verb}${liveStep.target ? ` ${liveStep.target}` : ""}...`
-    : null;
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -325,11 +323,7 @@ export function ChatStream(props: ChatStreamProps) {
           <AtlasActivityBar content={activityStream.content} lens={wsLens} />
         )
       ) : null}
-      {liveStepText && chatPending && (messages.length === 0 || messages[messages.length - 1].role === "user") ? (
-        <div style={{ fontSize: 11, color: "var(--atlas-muted)", margin: "0 0 8px" }}>
-          {liveStepText}
-        </div>
-      ) : null}
+      {thinkingBlock}
 
 
       <div ref={bottomRef} />
