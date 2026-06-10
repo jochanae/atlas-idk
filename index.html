@@ -4,9 +4,9 @@
       <script>
       (function() {
         var ATLAS = 'https://axiom-atlas-689827072865.us-east1.run.app/api/errors/report';
-        var PROJECT_ID = 35;
+        var PROJECT_ID = 36;
         function report(msg, stack, url) {
-          try { fetch(ATLAS, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({projectId: PROJECT_ID, appName: 'CoinsBloom', message: String(msg), stack: stack||null, url: url||location.href}) }); } catch(e) {}
+          try { fetch(ATLAS, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({projectId: PROJECT_ID, appName: 'PresentQ', message: String(msg), stack: stack||null, url: url||location.href}) }); } catch(e) {}
         }
         window.addEventListener('error', function(e) { report(e.message, e.error&&e.error.stack, location.href); });
         window.addEventListener('unhandledrejection', function(e) { report(String(e.reason), e.reason&&e.reason.stack, location.href); });
