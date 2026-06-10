@@ -581,6 +581,8 @@ export function FilesPanel({
         <button
           onClick={async () => {
             try {
+              const { stashOauthReturn } = await import("@/lib/oauthReturn");
+              stashOauthReturn();
               const res = await fetch("/api/github/oauth/start", {
                 method: "GET",
                 credentials: "include",
