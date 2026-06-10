@@ -92,6 +92,7 @@ import {
 } from "@/components/workspace/chatShared";
 import { extractStrategicIntent } from "@/lib/forgeExtract";
 import { submitForgeIntake } from "@/lib/forgeIntake";
+import { useCodegen } from "@/hooks/useCodegen";
 import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeIntakeSheet";
 import { buildParkedEntryPayload } from "@/lib/parking";
 
