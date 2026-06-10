@@ -11,6 +11,7 @@
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
 
 export type GlobalInsightMessage = {
@@ -26,9 +27,15 @@ export type GlobalInsightLiveStep = {
   status?: "ok" | "warn" | "fail" | string;
 } | null;
 
+type GlobalInsightProject = {
+  id: number;
+  name: string;
+};
+
 interface Props {
   open: boolean;
   messages: GlobalInsightMessage[];
+  projects: GlobalInsightProject[];
   input: string;
   setInput: (v: string) => void;
   onSubmit: () => void | Promise<void>;
@@ -51,6 +58,25 @@ const GLOBAL_INSIGHT_PLACEHOLDERS = [
   "Where are decisions stalling…",
   "What pattern keeps repeating…",
 ];
+
+const PROJECT_OPEN_INTENT_RE = /\b(go|jump|open|workspace|inside)\b|\binto\s+that\b/i;
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findProjectOpenTarget(content: string, projects: GlobalInsightProject[]) {
+  if (!PROJECT_OPEN_INTENT_RE.test(content)) return null;
+
+  for (const project of projects) {
+    const name = project.name.trim();
+    if (!name) continue;
+    const nameRe = new RegExp(`(^|[^a-z0-9])${escapeRegExp(name)}(?=$|[^a-z0-9])`, "i");
+    if (nameRe.test(content)) return project;
+  }
+
+  return null;
+}
 
 // Mirror of home.tsx's useTypewriter — same cadence so the surface feels native.
 function useTypewriter(phrases: string[], paused: boolean) {
@@ -100,6 +126,7 @@ function useTypewriter(phrases: string[], paused: boolean) {
 export function GlobalInsightSurface({
   open,
   messages,
+  projects,
   input,
   setInput,
   onSubmit,
@@ -116,6 +143,7 @@ export function GlobalInsightSurface({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [, setLocation] = useLocation();
   const [focused, setFocused] = useState(false);
   const isParchment = useThemeMode() === "parchment";
 
@@ -344,36 +372,65 @@ export function GlobalInsightSurface({
           </div>
         )}
 
-        {messages.map((msg, i) =>
-          msg.role === "assistant" ? (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontFamily: "var(--app-font-mono)",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "var(--atlas-gold)",
-                  opacity: 0.55,
-                }}
-              >
-                Atlas
-              </span>
-              <div
-                style={{
-                  fontSize: 16,
-                  lineHeight: 1.75,
-                  color: "var(--atlas-fg)",
-                  fontFamily: "var(--app-font-sans)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  opacity: 0.92,
-                }}
-              >
-                {msg.content}
+        {messages.map((msg, i) => {
+          if (msg.role === "assistant") {
+            const projectOpenTarget = findProjectOpenTarget(msg.content, projects);
+            return (
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    color: "var(--atlas-gold)",
+                    opacity: 0.55,
+                  }}
+                >
+                  Atlas
+                </span>
+                <div
+                  style={{
+                    fontSize: 16,
+                    lineHeight: 1.75,
+                    color: "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-sans)",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    opacity: 0.92,
+                  }}
+                >
+                  {msg.content}
+                </div>
+                {projectOpenTarget && (
+                  <button
+                    type="button"
+                    onClick={() => setLocation(`/project/${projectOpenTarget.id}`)}
+                    aria-label={`Open ${projectOpenTarget.name}`}
+                    style={{
+                      alignSelf: "flex-start",
+                      marginTop: 4,
+                      border: "1px solid rgba(212,175,55,0.28)",
+                      borderRadius: 999,
+                      background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(212,175,55,0.06)",
+                      color: "var(--atlas-gold)",
+                      cursor: "pointer",
+                      fontFamily: "var(--app-font-sans)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      padding: "7px 11px",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    → Open {projectOpenTarget.name}
+                  </button>
+                )}
               </div>
-            </div>
-          ) : (
+            );
+          }
+
+          return (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
               <span
                 style={{
@@ -405,8 +462,8 @@ export function GlobalInsightSurface({
                 {msg.content}
               </div>
             </div>
-          ),
-        )}
+          );
+        })}
 
         {isStreaming && !messages.some((m) => m.streaming && m.content.length > 0) && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.75 }}>
