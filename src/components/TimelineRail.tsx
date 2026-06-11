@@ -202,31 +202,44 @@ export function TimelineRail({
   }, [messages.length]);
 
 
-  // Each tick carries the day label of its message + a boolean for "first of this day".
-  const ticks = useMemo(() => {
+  // One dot per unique date — collapse all messages on the same day into a single dot.
+  const dateDots = useMemo(() => {
     const now = Date.now();
-    const out: {
-      idx: number;
-      role: "user" | "assistant";
+    const dayKey = (ms: number) => {
+      const d = new Date(ms);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    };
+    const groups = new Map<string, {
+      key: string;
       label: string;
-      isNewDay: boolean;
+      firstIdx: number;
+      lastIdx: number;
+      msgIdxs: number[];
       hasMemory: boolean;
-    }[] = [];
-    let prevLabel: string | null = null;
+      timestamp: number;
+    }>();
     messages.forEach((m, i) => {
       if (m.role !== "assistant") return;
       const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
-      const label = dayLabel(t, now);
-      out.push({
-        idx: i,
-        role: m.role,
-        label,
-        isNewDay: label !== prevLabel,
-        hasMemory: !!m.hasSurfacedMemory,
-      });
-      prevLabel = label;
+      const key = dayKey(t);
+      const existing = groups.get(key);
+      if (existing) {
+        existing.lastIdx = i;
+        existing.msgIdxs.push(i);
+        if (m.hasSurfacedMemory) existing.hasMemory = true;
+      } else {
+        groups.set(key, {
+          key,
+          label: dayLabel(t, now),
+          firstIdx: i,
+          lastIdx: i,
+          msgIdxs: [i],
+          hasMemory: !!m.hasSurfacedMemory,
+          timestamp: t,
+        });
+      }
     });
-    return out;
+    return Array.from(groups.values()).sort((a, b) => a.timestamp - b.timestamp);
   }, [messages]);
 
   const buckets = useMemo(() => bucketize(messages), [messages]);
@@ -238,7 +251,8 @@ export function TimelineRail({
     [],
   );
 
-  if (ticks.length === 0) return null;
+  if (dateDots.length === 0) return null;
+  const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
   const scrollTo = (idx: number) => {
     const el = document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`);
@@ -257,6 +271,21 @@ export function TimelineRail({
     longPressRef.current = null;
   };
 
+
+  const matchedDateKeys = new Set<string>();
+  if (matchList.length > 0) {
+    dateDots.forEach((d) => {
+      if (d.msgIdxs.some((i) => matchingIdx.has(i))) matchedDateKeys.add(d.key);
+    });
+  }
+  const focusedDateKey = (() => {
+    if (focusIdx < 0) return null;
+    for (const d of dateDots) {
+      if (focusIdx >= d.firstIdx && focusIdx <= d.lastIdx) return d.key;
+    }
+    return null;
+  })();
+
   return (
     <>
       <div
@@ -271,45 +300,37 @@ export function TimelineRail({
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
-          // Widen the hit/render column so inline day chips have room to the left of the spine.
-          width: 96,
+          width: 48,
           zIndex: 18,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "space-evenly",
-          padding: "8px 0",
+          padding: "40px 0 12px",
           pointerEvents: "auto",
           opacity: 0.95,
         }}
-
       >
-        {/* spine */}
         <div
           aria-hidden
           className="atlas-rail-spine"
           style={{
             position: "absolute",
-            top: 4,
-            bottom: 4,
-            right: 10,
+            top: 40,
+            bottom: 12,
+            right: 22,
             width: 1,
             pointerEvents: "none",
           }}
         />
-        {/* Search affordance — minimalist trigger pinned at the top of the rail */}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowSearch((v) => !v);
-          }}
+          onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
           title="Search this thread"
           aria-label="Search this thread"
           style={{
             position: "absolute",
             top: -2,
-            right: 0,
+            right: 8,
             width: 28,
             height: 28,
             borderRadius: 999,
@@ -326,12 +347,8 @@ export function TimelineRail({
             color: "var(--atlas-search-btn-fg, rgba(201,162,76,0.95))",
             transition: "transform 140ms ease, background 140ms ease",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.06)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7" />
@@ -339,129 +356,106 @@ export function TimelineRail({
           </svg>
         </button>
 
-        {ticks.map((t) => {
-          const isMatch = matchingIdx.has(t.idx);
-          // Accordion: distance from currently-focused message governs presence.
-          const dist = focusIdx < 0 ? 99 : Math.abs(focusIdx - t.idx);
-          const isExactFocus = dist === 0;
-          const isNearFocus = dist <= 2;
-          const tickWidth = isMatch ? 12 : isExactFocus ? 14 : isNearFocus ? 8 : 4;
-          const tickHeight = isExactFocus ? 3 : 2;
-          const tickOpacity = isMatch ? 1 : isExactFocus ? 1 : isNearFocus ? 0.65 : 0.22;
-          const rowPaddingY = isExactFocus ? 4 : isNearFocus ? 2 : 0;
-          const chipOpacity = isExactFocus ? 1 : isNearFocus ? 0.55 : 0.18;
-          const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-          return (
-          <div
-            key={t.idx}
-            style={{
-              position: "relative",
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 6,
-              padding: `${rowPaddingY}px 0`,
-              opacity: tickOpacity,
-              transform: isMatch ? "scale(1.2)" : "scale(1)",
-              transition: `padding 280ms ${ease}, opacity 280ms ${ease}, transform 220ms ${ease}`,
-            }}
-          >
-            {/* Day chip — only on the first tick of a new day, inline to the LEFT of the spine */}
-            {t.isNewDay && (
-              <span
-                aria-hidden
-                className="atlas-rail-daychip"
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            flex: 1,
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            justifyContent: "space-evenly",
+            paddingRight: 14,
+          }}
+        >
+          {dateDots.map((d) => {
+            const isFocused = d.key === focusedDateKey;
+            const isMatch = matchedDateKeys.has(d.key);
+            const size = isMatch ? 9 : isFocused ? 8 : 6;
+            const bg = isMatch
+              ? "rgba(245,200,110,1)"
+              : isFocused
+                ? "var(--atlas-gold, rgba(217,160,80,1))"
+                : "rgba(201,162,76,0.55)";
+            const shadow = isMatch
+              ? "0 0 10px rgba(245,200,110,0.7)"
+              : isFocused
+                ? "0 0 6px rgba(217,160,80,0.5)"
+                : "none";
+            return (
+              <button
+                key={d.key}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (didLongPressRef.current) return;
+                  scrollTo(d.firstIdx);
+                }}
+                title={d.label}
+                aria-label={`Jump to ${d.label}`}
                 style={{
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  padding: "2px 6px",
-                  borderRadius: 4,
-                  border: "1px solid var(--atlas-border)",
-                  background: "var(--atlas-surface)",
-                  color: "var(--atlas-fg)",
-                  backdropFilter: "blur(6px)",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  whiteSpace: "nowrap",
-                  opacity: chipOpacity,
-                  transform: isExactFocus ? "translateX(0)" : "translateX(-4px)",
-                  transition: `opacity 240ms ${ease}, transform 240ms ${ease}`,
+                  position: "relative",
+                  background: "transparent",
+                  border: "none",
+                  padding: "8px 4px",
+                  margin: 0,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: 8,
                 }}
               >
-                {t.label}
-              </span>
-            )}
-
-
-            {/* Memory recall marker — shown when this assistant message surfaced a ledger memory */}
-            {t.hasMemory && (
-              <span
-                aria-label="Memory surfaced"
-                style={{
-                  fontSize: 10,
-                  lineHeight: 1,
-                  color: "rgba(201,162,76,0.85)",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                  textShadow: "0 0 6px rgba(201,162,76,0.5)",
-                  opacity: isNearFocus ? 1 : 0.4,
-                  transition: `opacity 240ms ${ease}`,
-                }}
-              >
-                ✦
-              </span>
-            )}
-
-            {/* The interactive tick itself, sitting on the spine */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (didLongPressRef.current) return;
-                scrollTo(t.idx);
-              }}
-              title={`Jump to message ${t.idx + 1}`}
-              aria-label={`Jump to message ${t.idx + 1}`}
-              style={{
-                position: "relative",
-                zIndex: 1,
-                background: "transparent",
-                border: "none",
-                padding: "4px 4px",
-                margin: 0,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
-              }}
-            >
-              <span
-                style={{
-                  display: "block",
-                  width: tickWidth,
-                  height: tickHeight,
-                  background: isMatch
-                    ? "rgba(245,200,110,1)"
-                    : isExactFocus
-                      ? "var(--atlas-gold, rgba(217,160,80,1))"
-                      : "rgba(201,162,76,0.7)",
-                  borderRadius: 1,
-                  boxShadow: isMatch
-                    ? "0 0 10px rgba(245,200,110,0.7)"
-                    : isExactFocus
-                      ? "0 0 8px rgba(217,160,80,0.5)"
-                      : "none",
-                  transition: `width 280ms ${ease}, height 280ms ${ease}, background 220ms ${ease}, box-shadow 220ms ${ease}`,
-                }}
-              />
-            </button>
-          </div>
-          );
-        })}
+                {isFocused && (
+                  <span
+                    aria-hidden
+                    style={{
+                      fontFamily: "var(--app-font-mono)",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "1px solid var(--atlas-border)",
+                      background: "var(--atlas-surface)",
+                      color: "var(--atlas-fg)",
+                      backdropFilter: "blur(6px)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {d.label}
+                  </span>
+                )}
+                {d.hasMemory && (
+                  <span
+                    aria-hidden
+                    style={{
+                      fontSize: 9,
+                      lineHeight: 1,
+                      color: "rgba(201,162,76,0.85)",
+                      textShadow: "0 0 6px rgba(201,162,76,0.5)",
+                    }}
+                  >
+                    ✦
+                  </span>
+                )}
+                <span
+                  style={{
+                    display: "block",
+                    width: size,
+                    height: size,
+                    borderRadius: "50%",
+                    background: bg,
+                    boxShadow: shadow,
+                    transition: `width 220ms ${ease}, height 220ms ${ease}, background 220ms ${ease}, box-shadow 220ms ${ease}`,
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {showOverlay && (
