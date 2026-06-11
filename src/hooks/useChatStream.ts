@@ -4,6 +4,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
   ChatMessage,
+  BrowserResult,
   MemoryChip,
   CatchPayload,
   FileEdit,
@@ -421,6 +422,7 @@ export function useChatStream(
               intentType: res.intentType, catchPayload: cp,
               terminalCmd: res.terminalCmd ?? res.terminal_cmd,
               terminalResult: res.terminalResult ?? res.terminal_result,
+              ...(res.browserResult ? { browserResult: res.browserResult as BrowserResult } : {}),
               modelUsed: res.modelUsed ?? res.model_used ?? null,
               ...(res.plan ? { plan: res.plan } : {}),
               sentAt: new Date().toISOString(),
@@ -639,6 +641,7 @@ export function useChatStream(
             content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType, catchPayload: cp,
             terminalCmd: res.terminalCmd ?? res.terminal_cmd,
             terminalResult: res.terminalResult ?? res.terminal_result,
+            ...(res.browserResult ? { browserResult: res.browserResult as BrowserResult } : {}),
             modelUsed: res.modelUsed ?? res.model_used ?? null,
             ...(res.plan ? { plan: res.plan } : {}),
             sentAt: new Date().toISOString(),
