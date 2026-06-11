@@ -172,6 +172,7 @@ export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
   content: string;
+  researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
   displayAs?: "autoVerify";
   streaming?: boolean;
   terminalCmd?: unknown;
@@ -7210,7 +7211,7 @@ export default function Workspace() {
               ))}
               <div style={{ margin: "12px 0 4px", padding: "8px 12px", background: "rgba(201,162,76,0.04)", borderRadius: 6, border: "1px solid rgba(201,162,76,0.1)" }}>
                 <p style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", color: "var(--atlas-muted)", letterSpacing: "0.07em", margin: 0, lineHeight: 1.6 }}>
-                  TIP: Type <span style={{ color: "rgba(201,162,76,0.7)" }}>/deep [topic]</span> in any message to run a structured research analysis via Gemini — regardless of selected model.
+                  TIP: Type /deep [topic] for structured research via Gemini, or /research [url] to analyze any product or competitor page.
                 </p>
               </div>
             </div>

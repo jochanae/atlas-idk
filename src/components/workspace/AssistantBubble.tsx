@@ -9,6 +9,7 @@ import { addSnapshot, toggleBookmark as toggleSnapshotBookmark, rollbackTo, useA
 import { CommitCard } from "../CommitCard";
 import { PlanCard } from "../PlanCard";
 import { MarkdownProse } from "../MessageRenderer";
+import { ResearchCard } from "../ResearchCard";
 import { ThoughtForBadge } from "../ThoughtForBadge";
 
 import { InsightChip } from "@/components/workspace/InsightChip";
@@ -1657,6 +1658,15 @@ export function AssistantBubble({
             <MarkdownProse content={cleanedContent} />
           )}
         </div>
+
+        {message.researchResult && (
+          <ResearchCard
+            url={message.researchResult.url}
+            title={message.researchResult.title}
+            summary={message.researchResult.summary}
+            headings={message.researchResult.headings ?? []}
+          />
+        )}
 
         {message.imageGen?.images?.map((img, i) => (
           <div key={i} style={{ marginTop: 12 }}>
