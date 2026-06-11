@@ -288,8 +288,9 @@ export function TimelineRail({
 
   return (
     <>
+      {/* Invisible long-press strip on the right edge. Dots are hidden until long-press. */}
       <div
-        aria-label="Conversation timeline"
+        aria-label="Conversation timeline (long-press to jump)"
         onMouseDown={startPress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
@@ -300,246 +301,158 @@ export function TimelineRail({
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
-          width: 48,
+          width: 24,
           zIndex: 18,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "40px 0 12px",
           pointerEvents: "auto",
-          opacity: 0.95,
+          background: "transparent",
+        }}
+      />
+
+      {/* Search affordance — small, top-right, always reachable */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
+        title="Search this thread"
+        aria-label="Search this thread"
+        style={{
+          position: "fixed",
+          top: topOffset - 2,
+          right: 8,
+          width: 28,
+          height: 28,
+          borderRadius: 999,
+          background: "var(--atlas-search-btn-bg, rgba(20,17,14,0.72))",
+          border: "1px solid var(--atlas-search-btn-border, rgba(201,162,76,0.45))",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          backdropFilter: "blur(6px)",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+          zIndex: 19,
+          padding: 0,
+          color: "var(--atlas-search-btn-fg, rgba(201,162,76,0.95))",
+          transition: "transform 140ms ease, background 140ms ease",
         }}
       >
-        <div
-          aria-hidden
-          className="atlas-rail-spine"
-          style={{
-            position: "absolute",
-            top: 40,
-            bottom: 12,
-            right: 22,
-            width: 1,
-            pointerEvents: "none",
-          }}
-        />
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
-          title="Search this thread"
-          aria-label="Search this thread"
-          style={{
-            position: "absolute",
-            top: -2,
-            right: 8,
-            width: 28,
-            height: 28,
-            borderRadius: 999,
-            background: "var(--atlas-search-btn-bg, rgba(20,17,14,0.72))",
-            border: "1px solid var(--atlas-search-btn-border, rgba(201,162,76,0.45))",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            backdropFilter: "blur(6px)",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
-            zIndex: 2,
-            padding: 0,
-            color: "var(--atlas-search-btn-fg, rgba(201,162,76,0.95))",
-            transition: "transform 140ms ease, background 140ms ease",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <line x1="20" y1="20" x2="16.2" y2="16.2" />
-          </svg>
-        </button>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="20" y1="20" x2="16.2" y2="16.2" />
+        </svg>
+      </button>
 
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            flex: 1,
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            justifyContent: "space-evenly",
-            paddingRight: 14,
-          }}
-        >
-          {dateDots.map((d) => {
-            const isFocused = d.key === focusedDateKey;
-            const isMatch = matchedDateKeys.has(d.key);
-            const size = isMatch ? 9 : isFocused ? 8 : 6;
-            const bg = isMatch
-              ? "rgba(245,200,110,1)"
-              : isFocused
-                ? "var(--atlas-gold, rgba(217,160,80,1))"
-                : "rgba(201,162,76,0.55)";
-            const shadow = isMatch
-              ? "0 0 10px rgba(245,200,110,0.7)"
-              : isFocused
-                ? "0 0 6px rgba(217,160,80,0.5)"
-                : "none";
-            return (
-              <button
-                key={d.key}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (didLongPressRef.current) return;
-                  scrollTo(d.firstIdx);
-                }}
-                title={d.label}
-                aria-label={`Jump to ${d.label}`}
-                style={{
-                  position: "relative",
-                  background: "transparent",
-                  border: "none",
-                  padding: "8px 4px",
-                  margin: 0,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  gap: 8,
-                }}
-              >
-                {isFocused && (
+      {/* Long-press "golden thread" overlay — Compani style */}
+      {showOverlay && (
+        <>
+          <div
+            onClick={() => setShowOverlay(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 200,
+              background: "rgba(0,0,0,0.35)",
+              backdropFilter: "blur(2px)",
+              animation: "fadeIn 200ms ease",
+            }}
+          />
+          <div
+            role="dialog"
+            aria-label="Jump to date"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed",
+              top: "20%",
+              bottom: "20%",
+              right: 12,
+              width: 56,
+              zIndex: 201,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              animation: "fadeIn 220ms ease",
+            }}
+          >
+            {/* Vertical gold thread */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                width: 1,
+                background:
+                  "linear-gradient(to bottom, transparent, rgba(201,162,76,0.45), transparent)",
+              }}
+            />
+            {/* Date nodes */}
+            <div
+              style={{
+                position: "relative",
+                flex: 1,
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: dateDots.length === 1 ? "center" : "space-between",
+                padding: "16px 0",
+              }}
+            >
+              {dateDots.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => {
+                    setShowOverlay(false);
+                    scrollTo(d.firstIdx);
+                  }}
+                  aria-label={`Jump to ${d.label}`}
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    gap: 10,
+                    background: "transparent",
+                    border: "none",
+                    padding: "6px 0",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
                   <span
-                    aria-hidden
                     style={{
                       fontFamily: "var(--app-font-mono)",
                       fontSize: 9,
-                      fontWeight: 700,
+                      fontWeight: 300,
                       letterSpacing: "0.16em",
                       textTransform: "uppercase",
-                      padding: "2px 6px",
+                      padding: "3px 8px",
                       borderRadius: 4,
-                      border: "1px solid var(--atlas-border)",
-                      background: "var(--atlas-surface)",
-                      color: "var(--atlas-fg)",
-                      backdropFilter: "blur(6px)",
+                      border: "1px solid rgba(201,162,76,0.35)",
+                      background: "rgba(10,11,30,0.85)",
+                      color: "rgba(201,162,76,0.9)",
+                      backdropFilter: "blur(8px)",
                       whiteSpace: "nowrap",
                     }}
                   >
                     {d.label}
                   </span>
-                )}
-                {d.hasMemory && (
                   <span
-                    aria-hidden
                     style={{
-                      fontSize: 9,
-                      lineHeight: 1,
-                      color: "rgba(201,162,76,0.85)",
-                      textShadow: "0 0 6px rgba(201,162,76,0.5)",
+                      display: "block",
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "rgba(201,162,76,0.3)",
+                      border: "1px solid rgba(201,162,76,0.6)",
+                      boxShadow: "0 0 8px rgba(201,162,76,0.35)",
+                      marginRight: 18,
                     }}
-                  >
-                    ✦
-                  </span>
-                )}
-                <span
-                  style={{
-                    display: "block",
-                    width: size,
-                    height: size,
-                    borderRadius: "50%",
-                    background: bg,
-                    boxShadow: shadow,
-                    transition: `width 220ms ${ease}, height 220ms ${ease}, background 220ms ${ease}, box-shadow 220ms ${ease}`,
-                  }}
-                />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {showOverlay && (
-        <div
-          role="dialog"
-          aria-label="Jump to timeframe"
-          onClick={() => setShowOverlay(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 200,
-            background: "rgba(0,0,0,0.45)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            padding: "0 28px 0 0",
-            animation: "fadeIn 160ms ease",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--atlas-bg)",
-              border: "1px solid var(--atlas-border)",
-              borderRadius: 10,
-              padding: "10px 6px",
-              minWidth: 180,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 9,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                color: "rgba(201,162,76,0.6)",
-                padding: "4px 12px 8px",
-              }}
-            >
-              Jump to
-            </div>
-            {buckets.length === 0 ? (
-              <div style={{ padding: "8px 12px", fontSize: 12, color: "var(--atlas-muted)" }}>
-                No history yet.
-              </div>
-            ) : (
-              buckets.map((b) => (
-                <button
-                  key={b.label}
-                  type="button"
-                  onClick={() => {
-                    setShowOverlay(false);
-                    scrollTo(b.firstIdx);
-                  }}
-                  style={{
-                    display: "flex",
-                    width: "100%",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "8px 12px",
-                    background: "transparent",
-                    border: "none",
-                    color: "var(--atlas-fg)",
-                    fontFamily: "var(--app-font-sans)",
-                    fontSize: 13,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    borderRadius: 6,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(201,162,76,0.08)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <span>{b.label}</span>
-                  <span style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)" }}>
-                    {b.count}
-                  </span>
+                  />
                 </button>
-              ))
-            )}
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {showSearch && (
