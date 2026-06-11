@@ -5256,9 +5256,9 @@ export default function Workspace() {
     setPreviewRefreshTrigger((tick) => tick + 1);
     setTimeout(() => setPreviewRefreshTrigger((tick) => tick + 1), 25000);
     setTimeout(() => setPreviewRefreshTrigger((tick) => tick + 1), 55000);
-    fetch("/api/deploy/after-push", { credentials: "include" })
+    fetch(`/api/deploy/after-push?atlasProjectId=${id}`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { hasVercel?: boolean; status?: string; alias?: string; url?: string; visualQa?: DeployQa } | null) => {
+      .then((data: { hasVercel?: boolean; status?: string; alias?: string; url?: string; visualQa?: DeployQa; autoMonitoringSetUp?: boolean; autoMonitoringMessage?: string } | null) => {
         if (!data?.hasVercel) return;
         const host = data.alias
           ? `https://${data.alias}`
@@ -5267,7 +5267,7 @@ export default function Workspace() {
             : null;
         const content =
           data.status === "ready"
-            ? `Deployed ✓${host ? `\n\nLive at ${host}` : ""}`
+            ? `Deployed ✓${host ? `\n\nLive at ${host}` : ""}${data.autoMonitoringSetUp ? "\n\nI've set up automatic monitoring for your app." : ""}`
             : data.status === "failed"
               ? "Deploy failed. Check your Vercel dashboard — the build may need a fix."
               : null;
