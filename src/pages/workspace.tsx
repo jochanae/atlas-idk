@@ -168,6 +168,27 @@ export type ClarifyPayload = {
   }>;
 };
 
+export interface BrowserResult {
+  type: "screenshot" | "scrape" | "health" | "monitor";
+  url: string;
+  screenshotBase64?: string;
+  analysis?: string;
+  isHealthy?: boolean;
+  issues?: string[];
+  hasErrors?: boolean;
+  consoleErrors?: string[];
+  resourceErrors?: string[];
+  errorPatterns?: string[];
+  summary?: string;
+}
+
+export interface DeployQa {
+  isHealthy: boolean;
+  issues: string[];
+  analysis?: string;
+  screenshotBase64?: string;
+}
+
 export interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
@@ -176,6 +197,8 @@ export interface ChatMessage {
   streaming?: boolean;
   terminalCmd?: unknown;
   terminalResult?: unknown;
+  browserResult?: BrowserResult | null;
+  deployQa?: DeployQa | null;
   intentType?: string | null;
   plan?: Plan;
   planFromHome?: boolean;
@@ -5232,6 +5255,35 @@ export default function Workspace() {
     setPreviewRefreshTrigger((tick) => tick + 1);
     setTimeout(() => setPreviewRefreshTrigger((tick) => tick + 1), 25000);
     setTimeout(() => setPreviewRefreshTrigger((tick) => tick + 1), 55000);
+    fetch("/api/deploy/after-push", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { hasVercel?: boolean; status?: string; alias?: string; url?: string; visualQa?: DeployQa } | null) => {
+        if (!data?.hasVercel) return;
+        const host = data.alias
+          ? `https://${data.alias}`
+          : data.url
+            ? `https://${data.url}`
+            : null;
+        const content =
+          data.status === "ready"
+            ? `Deployed ✓${host ? `\n\nLive at ${host}` : ""}`
+            : data.status === "failed"
+              ? "Deploy failed. Check your Vercel dashboard — the build may need a fix."
+              : null;
+        if (!content) return;
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant" as const,
+            content,
+            model: "system",
+            intentType: "BUILD",
+            sentAt: new Date().toISOString(),
+            ...(data.visualQa ? { deployQa: data.visualQa } : {}),
+          },
+        ]);
+      })
+      .catch(() => {});
     if (sessionId) {
       if (agenticMode && agenticIterCount >= 8) {
         return;
