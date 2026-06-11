@@ -254,6 +254,24 @@ export function TimelineRail({
   if (dateDots.length === 0) return null;
   const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
+  const scrollTo = (idx: number) => {
+    const el = document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const startPress = () => {
+    didLongPressRef.current = false;
+    longPressRef.current = window.setTimeout(() => {
+      didLongPressRef.current = true;
+      setShowOverlay(true);
+    }, 480);
+  };
+  const endPress = () => {
+    if (longPressRef.current) window.clearTimeout(longPressRef.current);
+    longPressRef.current = null;
+  };
+
+
   const matchedDateKeys = new Set<string>();
   if (matchList.length > 0) {
     dateDots.forEach((d) => {
