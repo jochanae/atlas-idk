@@ -20,6 +20,7 @@ import { AccountHubPanel } from "../components/AccountHubPanel";
 import { BelowFoldDashboard } from "../components/BelowFoldDashboard";
 import { TheForge } from "../components/TheForge";
 import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
+import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
 import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
 
@@ -94,6 +95,7 @@ type AmbientSurface = {
 type HomeMessage = {
   role: "user" | "assistant";
   content: string;
+  researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
   terminalCmd?: unknown;
   terminalResult?: unknown;
   imageUrl?: string;
@@ -3527,6 +3529,14 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                           </div>
+                          {msg.researchResult && (
+                            <ResearchCard
+                              url={msg.researchResult.url}
+                              title={msg.researchResult.title}
+                              summary={msg.researchResult.summary}
+                              headings={msg.researchResult.headings ?? []}
+                            />
+                          )}
                           {msg.focusSuggestion && !msg.streaming && (
                             <div style={{ marginTop: 8, marginLeft: 4 }}>
                               <button
