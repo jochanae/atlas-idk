@@ -3,6 +3,8 @@
 // its own background tint (green/red) while keeping accurate syntax colors.
 
 import type { HighlighterCore, ThemedToken } from "shiki/core";
+import { bundledLanguages } from "shiki/langs";
+import { bundledThemes } from "shiki/themes";
 
 export type ShikiLang =
   | "tsx" | "ts" | "jsx" | "js"
@@ -20,20 +22,20 @@ async function getHighlighter(): Promise<HighlighterCore> {
     const { createHighlighterCore } = await import("shiki/core");
     const { createOnigurumaEngine } = await import("shiki/engine/oniguruma");
     return createHighlighterCore({
-      themes: [import("@shikijs/themes/github-dark-dimmed")],
+      themes: [bundledThemes[THEME]()],
       langs: [
-        import("@shikijs/langs/tsx"),
-        import("@shikijs/langs/typescript"),
-        import("@shikijs/langs/jsx"),
-        import("@shikijs/langs/javascript"),
-        import("@shikijs/langs/css"),
-        import("@shikijs/langs/scss"),
-        import("@shikijs/langs/html"),
-        import("@shikijs/langs/json"),
-        import("@shikijs/langs/markdown"),
-        import("@shikijs/langs/bash"),
-        import("@shikijs/langs/yaml"),
-        import("@shikijs/langs/sql"),
+        bundledLanguages.tsx(),
+        bundledLanguages.typescript(),
+        bundledLanguages.jsx(),
+        bundledLanguages.javascript(),
+        bundledLanguages.css(),
+        bundledLanguages.scss(),
+        bundledLanguages.html(),
+        bundledLanguages.json(),
+        bundledLanguages.markdown(),
+        bundledLanguages.bash(),
+        bundledLanguages.yaml(),
+        bundledLanguages.sql(),
       ],
       engine: createOnigurumaEngine(import("shiki/wasm")),
     });
