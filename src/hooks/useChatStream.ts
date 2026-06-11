@@ -417,6 +417,7 @@ export function useChatStream(
             const rawChips = res.memoryChips ?? [];
             const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
             setMessages((prev) => [...prev, {
+              ...res,
               id: res.messageId ?? Date.now(), role: "assistant",
               content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(),
               intentType: res.intentType, catchPayload: cp,
@@ -637,6 +638,7 @@ export function useChatStream(
           const rawChips = res.memoryChips ?? [];
           const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
           setMessages((prev) => [...prev, {
+            ...res,
             id: res.messageId, role: "assistant",
             content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType, catchPayload: cp,
             terminalCmd: res.terminalCmd ?? res.terminal_cmd,
