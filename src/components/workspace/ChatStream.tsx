@@ -3,6 +3,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
+import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
 import { TimelineRail } from "../TimelineRail";
@@ -280,6 +281,9 @@ export function ChatStream(props: ChatStreamProps) {
               <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
                 <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />
               </div>
+            )}
+            {!msg.imageB64 && !msg.imageGen && (
+              <InlineSketchOffer text={msg.content || ""} onSend={onSend} />
             )}
           </div>
         )
