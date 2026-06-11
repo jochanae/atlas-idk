@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
 export interface ImageVersion {
@@ -64,7 +64,7 @@ export function CanvasPanel({
   const border = isDark ? "#252220" : "#D8D2CA";
   const gold = isDark ? "#C9A24C" : "#A6803C";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isGenerating) return;
     onRefine(input.trim());
@@ -182,7 +182,7 @@ export function CanvasPanel({
             }}
           >
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 4, fontFamily: "var(--app-font-mono)" }}>
-              {activeVersion.model} Â· {activeVersion.mode}
+              {activeVersion.model} · {activeVersion.mode}
             </div>
             <div>{activeVersion.prompt}</div>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 6, fontFamily: "var(--app-font-mono)" }}>
@@ -319,4 +319,4 @@ export function CanvasPanel({
   );
 
   return mode === "modal" ? createPortal(content, document.body) : content;
-            }
+}
