@@ -13,11 +13,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
+import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
   content: string;
+  kind?: "genesis";
+  genesisData?: { projectName: string; timestamp: string };
   streaming?: boolean;
   createdAt?: string;
 };
@@ -423,6 +426,16 @@ export function GlobalInsightSurface({
         )}
 
         {messages.map((msg, i) => {
+          if (msg.kind === "genesis" && msg.genesisData) {
+            return (
+              <GenesisCard
+                key={i}
+                projectName={msg.genesisData.projectName}
+                timestamp={msg.genesisData.timestamp}
+              />
+            );
+          }
+
           if (msg.role === "assistant") {
             const { target: tokenTarget, cleanContent } = extractNavigateTo(msg.content);
             const displayContent = cleanContent;
