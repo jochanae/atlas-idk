@@ -3656,12 +3656,13 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div style={{
-                          display: "flex", flexDirection: "column",
-                          alignItems: globalInsightOpen ? "flex-end" : "stretch",
-                          width: "100%", gap: 3,
-                        }}>
+                       ) : (
+                         <div style={{
+                           display: "flex", flexDirection: "column",
+                           alignItems: globalInsightOpen ? "flex-end" : "stretch",
+                           width: "100%", gap: 3,
+                           marginBottom: globalInsightOpen ? 10 : 0,
+                         }}>
                           <div style={{
                             fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                             textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
