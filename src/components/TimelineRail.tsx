@@ -288,7 +288,7 @@ export function TimelineRail({
 
   return (
     <>
-      {/* Invisible long-press strip on the right edge. Dots are hidden until long-press. */}
+      {/* Invisible long-press strip on the right edge — keeps gesture available. */}
       <div
         aria-label="Conversation timeline (long-press to jump)"
         onMouseDown={startPress}
@@ -301,12 +301,109 @@ export function TimelineRail({
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
-          width: 24,
-          zIndex: 18,
+          width: 28,
+          zIndex: 17,
           pointerEvents: "auto",
           background: "transparent",
         }}
       />
+
+      {/* Persistent visible rail — vertical gold spine + day chips + shaded circle dots. */}
+      <div
+        style={{
+          position: "fixed",
+          top: topOffset,
+          bottom: bottomOffset,
+          right: 0,
+          width: 72,
+          zIndex: 18,
+          pointerEvents: "none",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          justifyContent: dateDots.length === 1 ? "center" : "space-between",
+          padding: "20px 0",
+        }}
+      >
+        {/* Spine */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 8,
+            bottom: 8,
+            right: 12,
+            width: 1,
+            background:
+              "linear-gradient(to bottom, transparent 0%, rgba(201,162,76,0.18) 8%, rgba(201,162,76,0.38) 50%, rgba(201,162,76,0.18) 92%, transparent 100%)",
+          }}
+        />
+        {dateDots.map((d) => {
+          const isFocused = focusedDateKey === d.key;
+          const isMatch = matchedDateKeys.has(d.key);
+          return (
+            <button
+              key={d.key}
+              type="button"
+              onClick={() => scrollTo(d.firstIdx)}
+              aria-label={`Jump to ${d.label}`}
+              style={{
+                pointerEvents: "auto",
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 10,
+                background: "transparent",
+                border: "none",
+                padding: "4px 0",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  border: `1px solid rgba(201,162,76,${isFocused ? 0.55 : 0.32})`,
+                  background: "rgba(10,11,30,0.85)",
+                  color: `rgba(201,162,76,${isFocused ? 1 : 0.85})`,
+                  backdropFilter: "blur(6px)",
+                  whiteSpace: "nowrap",
+                  opacity: isFocused ? 1 : 0.85,
+                  transition: "opacity 200ms ease, border-color 200ms ease, color 200ms ease",
+                }}
+              >
+                {d.label}
+              </span>
+              {/* Shaded circle — sits on the spine */}
+              <span
+                style={{
+                  display: "block",
+                  width: isFocused ? 10 : 8,
+                  height: isFocused ? 10 : 8,
+                  borderRadius: "50%",
+                  background: isMatch
+                    ? "rgba(245,200,110,0.9)"
+                    : isFocused
+                      ? "rgba(201,162,76,0.55)"
+                      : "rgba(201,162,76,0.32)",
+                  border: `1px solid rgba(201,162,76,${isFocused ? 0.95 : 0.7})`,
+                  boxShadow: isFocused
+                    ? "0 0 10px rgba(201,162,76,0.55)"
+                    : "0 0 6px rgba(201,162,76,0.28)",
+                  marginRight: 8,
+                  transition: "all 200ms ease",
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
 
       {/* Search affordance — small, top-right, always reachable */}
       <button
