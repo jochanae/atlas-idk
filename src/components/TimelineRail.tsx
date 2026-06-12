@@ -259,16 +259,43 @@ export function TimelineRail({
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  const startPress = () => {
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const MOVE_CANCEL_PX = 6;
+
+  const startPress = (e: React.TouchEvent | React.MouseEvent) => {
     didLongPressRef.current = false;
+    const point =
+      "touches" in e && e.touches[0]
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        : "clientX" in e
+          ? { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY }
+          : null;
+    pressStartRef.current = point;
     longPressRef.current = window.setTimeout(() => {
       didLongPressRef.current = true;
       setShowOverlay(true);
-    }, 480);
+    }, 550);
+  };
+  const movePress = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!pressStartRef.current || !longPressRef.current) return;
+    const cur =
+      "touches" in e && e.touches[0]
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        : "clientX" in e
+          ? { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY }
+          : null;
+    if (!cur) return;
+    if (
+      Math.abs(cur.x - pressStartRef.current.x) > MOVE_CANCEL_PX ||
+      Math.abs(cur.y - pressStartRef.current.y) > MOVE_CANCEL_PX
+    ) {
+      endPress();
+    }
   };
   const endPress = () => {
     if (longPressRef.current) window.clearTimeout(longPressRef.current);
     longPressRef.current = null;
+    pressStartRef.current = null;
   };
 
 
@@ -288,25 +315,29 @@ export function TimelineRail({
 
   return (
     <>
-      {/* Invisible long-press strip on the right edge — keeps gesture available. */}
+      {/* Narrow long-press strip on the right edge — cancels on scroll/move to avoid accidental triggers. */}
       <div
         aria-label="Conversation timeline (long-press to jump)"
         onMouseDown={startPress}
+        onMouseMove={movePress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
         onTouchStart={startPress}
+        onTouchMove={movePress}
         onTouchEnd={endPress}
+        onTouchCancel={endPress}
         style={{
           position: "fixed",
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
-          width: 28,
+          width: 14,
           zIndex: 17,
           pointerEvents: "auto",
           background: "transparent",
         }}
       />
+
 
       {/* Rail is hidden by default — appears only during long-press overlay below. */}
 
@@ -395,10 +426,15 @@ export function TimelineRail({
                 width: "100%",
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: dateDots.length === 1 ? "center" : "space-between",
+                justifyContent: dateDots.length <= 6 ? "center" : "flex-start",
+                gap: 4,
                 padding: "16px 0",
+                overflowY: "auto",
+                overscrollBehavior: "contain",
+                scrollbarWidth: "none",
               }}
             >
+
               {dateDots.map((d) => {
                 const isFocused = focusedDateKey === d.key;
                 const isMatch = matchedDateKeys.has(d.key);
