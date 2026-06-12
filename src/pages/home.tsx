@@ -2570,7 +2570,11 @@ export default function Home() {
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if ((!text && !hasImages) || isSending) return;
-    const shouldStayOnHome = options?.forceStayOnHome || globalInsightOpen || thinkOutLoudInlineRef.current;
+    const shouldStayOnHome = true;
+    if (!globalInsightOpen && !thinkOutLoudInlineRef.current) {
+      setGlobalInsightOpen(true);
+      void callGlobalInsightMode(true);
+    }
     if (!shouldStayOnHome && !backendReady) {
       setCreateError(
         "Project creation is unavailable in this preview because the backend API URL is not configured.",
