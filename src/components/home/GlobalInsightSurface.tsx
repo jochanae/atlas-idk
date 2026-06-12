@@ -49,6 +49,7 @@ interface Props {
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
   onExit: () => void;
+  onCreateProject?: () => void;
   onAddAsset?: () => void;
   onMore?: () => void;
 }
@@ -157,6 +158,7 @@ export function GlobalInsightSurface({
   toggleVoice,
   onOpenHistory,
   onExit,
+  onCreateProject,
   onAddAsset,
   onMore,
 }: Props) {
@@ -689,6 +691,19 @@ export function GlobalInsightSurface({
                   <polyline points="12 7 12 12 15 14" />
                 </svg>
               </UtilityButton>
+              {messages.length > 0 && (
+                <UtilityButton
+                  ariaLabel="Create project from this conversation"
+                  title="Create project from this conversation"
+                  onClick={() => onCreateProject?.()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 6.5h5l2 2H20v9.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+                    <path d="M12 12v5" />
+                    <path d="M9.5 14.5h5" />
+                  </svg>
+                </UtilityButton>
+              )}
               <UtilityButton
                 ariaLabel="Add asset"
                 title="Add asset"
