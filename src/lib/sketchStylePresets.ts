@@ -61,6 +61,33 @@ export function buildSketchPrompt(preset: SketchStylePreset, excerpt: string): s
   return `[SKETCH:${preset}] Sketch this as a ${label} (thinking artifact, not a final deliverable).\n\nStyle: ${hint}\n\nSubject:\n${trimmed}`;
 }
 
+const CAPABILITY_QUESTION_RE = /^(?:\s*)(?:can|could|do|does|is|are|will|would)\b[\s\S]*\?\s*$/i;
+const DIRECT_IMAGE_REQUEST_RE = [
+  /\b(sketch|draw|render|illustrate|visuali[sz]e|mock\s*up)\b\s+(?:this|that|it|me|a|an|the)\b/i,
+  /\b(generate|create|make)\b[\s\S]{0,80}\b(image|picture|illustration|render|sketch|mockup|wireframe|mood\s*board)\b/i,
+  /\bshow\s+me\b[\s\S]{0,80}\b(image|picture|render|sketch|mockup|wireframe|mood\s*board)\b/i,
+];
+
+export function inferSketchStylePreset(text: string): SketchStylePreset {
+  const lower = text.toLowerCase();
+  if (/(wireframe|layout|ui|screen|page|dashboard|interface|app)/i.test(lower)) return "wireframe";
+  if (/(mood\s*board|moodboard|palette|brand|branding|style|editorial|vibe)/i.test(lower)) return "moodboard";
+  if (/(photoreal|photo\s*real|realistic|product\s*render|studio\s*lighting|cinematic)/i.test(lower)) return "photoreal";
+  return "concept";
+}
+
+export function shouldAutoRouteToSketchPrompt(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || SKETCH_PROMPT_MARKER_RE.test(trimmed)) return false;
+  if (CAPABILITY_QUESTION_RE.test(trimmed) && !/\b(of|for|this|that|it|me)\b/i.test(trimmed)) return false;
+  return DIRECT_IMAGE_REQUEST_RE.some((re) => re.test(trimmed));
+}
+
+export function routeDirectImageRequestToSketchPrompt(text: string): string {
+  if (!shouldAutoRouteToSketchPrompt(text)) return text;
+  return buildSketchPrompt(inferSketchStylePreset(text), text);
+}
+
 /**
  * ─── BACKEND CONTRACT (Cloud Run /api/chat) ────────────────────────────
  * When an incoming `message` matches SKETCH_PROMPT_MARKER_RE, the handler
