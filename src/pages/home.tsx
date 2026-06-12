@@ -97,6 +97,8 @@ type AmbientSurface = {
 type HomeMessage = {
   role: "user" | "assistant";
   content: string;
+  kind?: "genesis";
+  genesisData?: { projectName: string; timestamp: string };
   researchResult?: { type: "research"; url: string; title: string; summary: string | null; headings: string[] } | null;
   terminalCmd?: unknown;
   terminalResult?: unknown;
@@ -145,6 +147,15 @@ function formatMessageTime(iso?: string): string {
   if (sameDay) return time;
   const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return `${date} · ${time}`;
+}
+
+function formatGenesisTimestamp(date: Date): string {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = date.toLocaleString("en-US", { month: "short" }).toUpperCase();
+  const year = date.getFullYear();
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${day} ${month} ${year} · ${hour}:${minute}`;
 }
 
 function formatModelUsedLabel(modelUsed?: string | null): string | null {
@@ -2785,6 +2796,20 @@ export default function Home() {
       } catch {}
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);
+      const createdAt = new Date();
+      const timestamp = formatGenesisTimestamp(createdAt);
+      nexusChat.setMessages(prev => [
+        ...prev,
+        {
+          id: `genesis-${createdAt.getTime()}`,
+          role: "assistant",
+          content: "",
+          kind: "genesis",
+          genesisData: { projectName: name, timestamp },
+          createdAt: createdAt.toISOString(),
+        },
+      ]);
+      await new Promise(resolve => setTimeout(resolve, 700));
       setLocation(`/project/${projectId}`);
     } catch (err) {
       const msg =
@@ -2807,6 +2832,7 @@ export default function Home() {
     isFree,
     isSending,
     nexusChat.messages,
+    nexusChat.setMessages,
     projects,
     queryClient,
     setActiveProjectId,

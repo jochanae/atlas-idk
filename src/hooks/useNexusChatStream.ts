@@ -9,6 +9,8 @@ export interface NexusMessage {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  kind?: "genesis";
+  genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
   imageGen?: {
     images: Array<{
