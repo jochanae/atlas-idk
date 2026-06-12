@@ -9,6 +9,14 @@ export interface NexusMessage {
   role: "user" | "assistant";
   content: string;
   imageUrl?: string;
+  imageGen?: {
+    images: Array<{
+      imageUrl: string;
+      prompt?: string;
+      model?: string;
+      mode?: "render" | "schematic" | string;
+    }>;
+  } | null;
   createdAt: string;
   streaming?: boolean;
   model?: string | null;
@@ -265,6 +273,9 @@ export function useNexusChatStream(
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
           },
           onDone: (fullText, meta) => {
+            if (meta && !(meta as any).imageGen && (meta as any).image_gen) {
+              (meta as any).imageGen = (meta as any).image_gen;
+            }
             const doneConversationId = meta.conversationId;
             if (!activeConversationIdRef.current && typeof doneConversationId === "string" && doneConversationId) {
               activeConversationIdRef.current = doneConversationId;
@@ -381,6 +392,7 @@ export function useNexusChatStream(
                 ? {
                     ...m,
                     content: displayText,
+                    imageGen: ((meta as any).imageGen ?? null) as NexusMessage["imageGen"],
                     streaming: false,
                     handoffSignal: handoff ?? null,
                     focusSuggestion,

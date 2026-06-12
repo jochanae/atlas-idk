@@ -1207,8 +1207,15 @@ export function AssistantBubble({
     });
   }, [message.streaming, message.id, message.role, message.intentType, projectId, snapshotForMsg, message.content, activeEdits]);
 
+  const imageGenDataUrl = !message.imageB64
+    ? (() => {
+        const raw = message.imageGen?.images?.[0]?.imageUrl;
+        return typeof raw === "string" && raw.startsWith("data:image/") ? raw : "";
+      })()
+    : "";
+
   // Extract image URL from markdown image syntax in content if no base64
-  const inlineImageUrl = !message.imageB64
+  const inlineImageUrl = !message.imageB64 && !imageGenDataUrl
     ? (() => {
         const match = message.content?.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
         return match?.[1] ?? "";
@@ -1216,7 +1223,7 @@ export function AssistantBubble({
     : "";
   const imageSrc = message.imageB64
     ? `data:${message.imageMimeType ?? "image/png"};base64,${message.imageB64}`
-    : inlineImageUrl;
+    : imageGenDataUrl || inlineImageUrl;
   const modelUsedLabel = formatModelUsedLabel(message.modelUsed);
 
   // Parse CMD_EXEC block from Atlas response
@@ -1519,7 +1526,7 @@ export function AssistantBubble({
           </div>
         )}
 
-        {(message.imageB64 || inlineImageUrl) && (
+        {(message.imageB64 || imageGenDataUrl || inlineImageUrl) && (
           <div style={{ marginBottom: 12 }}>
             <button
               type="button"
