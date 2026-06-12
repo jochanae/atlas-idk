@@ -399,7 +399,10 @@ export function TimelineRail({
                 padding: "16px 0",
               }}
             >
-              {dateDots.map((d) => (
+              {dateDots.map((d) => {
+                const isFocused = focusedDateKey === d.key;
+                const isMatch = matchedDateKeys.has(d.key);
+                return (
                 <button
                   key={d.key}
                   type="button"
@@ -425,16 +428,17 @@ export function TimelineRail({
                     style={{
                       fontFamily: "var(--app-font-mono)",
                       fontSize: 9,
-                      fontWeight: 300,
+                      fontWeight: isFocused ? 600 : 300,
                       letterSpacing: "0.16em",
                       textTransform: "uppercase",
                       padding: "3px 8px",
                       borderRadius: 4,
-                      border: "1px solid rgba(201,162,76,0.35)",
+                      border: `1px solid rgba(201,162,76,${isFocused ? 0.7 : 0.35})`,
                       background: "rgba(10,11,30,0.85)",
-                      color: "rgba(201,162,76,0.9)",
+                      color: `rgba(201,162,76,${isFocused ? 1 : 0.9})`,
                       backdropFilter: "blur(8px)",
                       whiteSpace: "nowrap",
+                      transition: "all 180ms ease",
                     }}
                   >
                     {d.label}
@@ -442,17 +446,26 @@ export function TimelineRail({
                   <span
                     style={{
                       display: "block",
-                      width: 8,
-                      height: 8,
+                      width: isFocused ? 11 : 8,
+                      height: isFocused ? 11 : 8,
                       borderRadius: "50%",
-                      background: "rgba(201,162,76,0.3)",
-                      border: "1px solid rgba(201,162,76,0.6)",
-                      boxShadow: "0 0 8px rgba(201,162,76,0.35)",
+                      background: isMatch
+                        ? "rgba(245,200,110,0.9)"
+                        : isFocused
+                          ? "rgba(201,162,76,0.7)"
+                          : "rgba(201,162,76,0.3)",
+                      border: `1px solid rgba(201,162,76,${isFocused ? 1 : 0.6})`,
+                      boxShadow: isFocused
+                        ? "0 0 12px rgba(201,162,76,0.65)"
+                        : "0 0 8px rgba(201,162,76,0.35)",
                       marginRight: 18,
+                      transition: "all 180ms ease",
                     }}
                   />
                 </button>
-              ))}
+                );
+              })}
+
             </div>
           </div>
         </>
