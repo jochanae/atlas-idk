@@ -17,7 +17,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
-import { ThinkFreelyHeaderToggle } from "@/components/ThinkFreelyHeaderToggle";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
@@ -1899,7 +1898,6 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={activeProjectId} />
-            {location === "/home" && <ThinkFreelyHeaderToggle />}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 
