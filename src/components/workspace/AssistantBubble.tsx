@@ -15,6 +15,7 @@ import { ThoughtForBadge } from "../ThoughtForBadge";
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { DiffViewer } from "@/components/code/DiffViewer";
+import SketchReveal from "@/components/chat/SketchReveal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import {
   ICON_TOUCH_TARGET_STYLE,
@@ -1786,16 +1787,12 @@ export function AssistantBubble({
         )}
 
         {message.imageGen?.images?.map((img, i) => (
-          <div key={i} style={{ marginTop: 12 }}>
-            <img
-              src={img.imageUrl}
-              alt={img.prompt}
-              style={{ width: "100%", borderRadius: 8, display: "block" }}
-            />
-            <p style={{ fontSize: 11, opacity: 0.4, marginTop: 4, marginBottom: 0 }}>
-              {img.mode === "render" ? "Render" : "Schematic"} · {img.model}
-            </p>
-          </div>
+          <SketchReveal
+            key={i}
+            src={img.imageUrl}
+            alt={img.prompt}
+            caption={`${img.mode === "render" ? "Render" : "Schematic"} · ${img.model}`}
+          />
         ))}
 
         {message.streaming && message.planMode && !message.artifact && (
