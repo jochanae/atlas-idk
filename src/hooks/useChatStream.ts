@@ -17,6 +17,7 @@ import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
+import { routeDirectImageRequestToSketchPrompt } from "@/lib/sketchStylePresets";
 
 type PriorMessage = Message;
 
@@ -300,6 +301,7 @@ export function useChatStream(
       setLiveStep(null);
 
       const userProfileStr = profileToString(loadProfile());
+      const routedText = routeDirectImageRequestToSketchPrompt(text);
 
       // Read cached project scan from localStorage and send as compact map string
       let projectMap: string | undefined;
@@ -329,7 +331,7 @@ export function useChatStream(
       const body = {
         sessionId: sid,
         projectId,
-        message: text,
+        message: routedText,
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,
         workspaceLens: lensCtx.wsLens,
