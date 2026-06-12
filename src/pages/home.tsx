@@ -3659,24 +3659,23 @@ export default function Home() {
                        ) : (
                          <div style={{
                            display: "flex", flexDirection: "column",
-                           alignItems: globalInsightOpen ? "flex-end" : "stretch",
-                           width: "100%", gap: 3,
-                           marginBottom: globalInsightOpen ? 10 : 0,
+                           alignItems: "flex-end",
+                           maxWidth: "85%", gap: 3,
+                           marginBottom: 14, marginLeft: "auto",
                          }}>
                           <div style={{
                             fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                             textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
                             marginBottom: 4,
-                            alignSelf: globalInsightOpen ? "flex-end" : undefined,
+                            alignSelf: "flex-end",
                           }}>You</div>
                           <div style={{
-                            padding: globalInsightOpen ? "10px 14px" : "2px 0",
-                            background: globalInsightOpen ? "rgba(212,175,55,0.04)" : "transparent",
-                            border: globalInsightOpen ? "1px solid rgba(212,175,55,0.25)" : "none",
-                            borderRadius: globalInsightOpen ? 12 : 0,
-                            maxWidth: globalInsightOpen ? "82%" : undefined,
-                            alignSelf: globalInsightOpen ? "flex-end" : undefined,
-                            fontSize: 16, lineHeight: 1.75, color: "var(--atlas-fg)",
+                            padding: "10px 14px",
+                            background: "rgba(212,175,55,0.06)",
+                            border: "1px solid rgba(212,175,55,0.22)",
+                            borderRadius: "12px 12px 4px 12px",
+                            alignSelf: "flex-end",
+                            fontSize: 16, lineHeight: 1.6, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             {msg.imageUrl && (
@@ -3691,10 +3690,10 @@ export default function Home() {
                               />
                             )}
                             <CollapsibleMessageText
-                              fadeFromColor="transparent"
+                              fadeFromColor="rgba(212,175,55,0.06)"
                               textStyle={{
                                 fontSize: 16,
-                                lineHeight: 1.75,
+                                lineHeight: 1.6,
                                 color: "var(--atlas-fg)",
                                 fontFamily: "var(--app-font-sans)",
                                 whiteSpace: "pre-wrap",
@@ -3704,7 +3703,7 @@ export default function Home() {
                               {msg.content}
                             </CollapsibleMessageText>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, alignSelf: globalInsightOpen ? "flex-end" : undefined, flexDirection: globalInsightOpen ? "row-reverse" : "row" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, alignSelf: "flex-end", flexDirection: "row-reverse" }}>
                             <button
                               type="button"
                               title={copiedMsgIdx === i ? "Copied!" : "Copy"}
@@ -3715,14 +3714,10 @@ export default function Home() {
                                 setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
                               }}
                               style={{
-                                background: "transparent",
-                                border: "none",
-                                padding: "3px 4px",
-                                cursor: "pointer",
+                                background: "transparent", border: "none", padding: "3px 4px", cursor: "pointer",
                                 opacity: copiedMsgIdx === i ? 0.9 : 0.35,
                                 color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                                lineHeight: 1,
-                                transition: "opacity 140ms, color 140ms",
+                                lineHeight: 1, transition: "opacity 140ms, color 140ms",
                               }}
                               onMouseEnter={e => (e.currentTarget.style.opacity = "0.75")}
                               onMouseLeave={e => (e.currentTarget.style.opacity = copiedMsgIdx === i ? "0.9" : "0.35")}
@@ -3745,14 +3740,9 @@ export default function Home() {
                                 } catch {}
                               }}
                               style={{
-                                background: "transparent",
-                                border: "none",
-                                padding: "3px 4px",
-                                cursor: "pointer",
-                                opacity: 0.35,
-                                color: "var(--atlas-muted)",
-                                lineHeight: 1,
-                                transition: "opacity 140ms, color 140ms",
+                                background: "transparent", border: "none", padding: "3px 4px", cursor: "pointer",
+                                opacity: 0.35, color: "var(--atlas-muted)",
+                                lineHeight: 1, transition: "opacity 140ms, color 140ms",
                               }}
                               onMouseEnter={e => { e.currentTarget.style.opacity = "0.75"; e.currentTarget.style.color = "var(--atlas-gold)"; }}
                               onMouseLeave={e => { e.currentTarget.style.opacity = "0.35"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
@@ -3762,13 +3752,13 @@ export default function Home() {
                               </svg>
                             </button>
                             {msg.createdAt && (
-                              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase", marginLeft: globalInsightOpen ? 0 : 4, marginRight: globalInsightOpen ? 4 : 0 }}>
+                              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase", marginRight: 4 }}>
                                 {formatMessageTime(msg.createdAt)}
                               </div>
                             )}
                           </div>
                         </div>
-                      )}
+                        )}
                     </div>
                     </Fragment>
                   ))}
