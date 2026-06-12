@@ -226,7 +226,31 @@ function normalizeLoadedHomeMessages(
     : trimmed.map((m) => ({ ...m, ...enrich(m) }));
 }
 
+function deriveAtlasProposedProjectName(messages: HomeMessage[]): string | null {
+  const proposedNamePatterns = [
+    /^\*?\*?([A-Z][A-Za-z0-9]+)\*?\*?\s*[-—]\s*working title/im,
+    /(?:let'?s call (?:it|this)|i'?ll call (?:it|this))\s+\*?\*?([A-Z][A-Za-z0-9]+)\*?\*?/i,
+    /^\*?\*?([A-Z][A-Za-z0-9]+)\*?\*?\s*[-—]\s*(?:working|project)\s*name/im,
+  ];
+
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message.role !== "assistant") continue;
+
+    for (const pattern of proposedNamePatterns) {
+      const match = pattern.exec(message.content);
+      const proposedName = match?.[1]?.replace(/^\*+|\*+$/g, "").trim();
+      if (proposedName) return proposedName;
+    }
+  }
+
+  return null;
+}
+
 function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
+  const atlasProposedName = deriveAtlasProposedProjectName(messages);
+  if (atlasProposedName) return atlasProposedName;
+
   const firstUserMessage = messages.find((message) => message.role === "user" && message.content.trim().length > 0);
   const normalized = firstUserMessage?.content.replace(/\s+/g, " ").trim() ?? "";
   if (!normalized) return "New Project";
