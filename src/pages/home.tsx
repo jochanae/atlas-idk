@@ -645,8 +645,6 @@ function splitHomeChunks(text: string): string[] {
 }
 
 function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew: boolean; isStreaming: boolean }) {
-  if (isStreaming) return <HomeStreamingText text={text} animate={true} />;
-
   const chunks = splitHomeChunks(text);
   const [revealed, setRevealed] = useState(isNew ? 0 : chunks.length);
 
@@ -655,6 +653,8 @@ function HomeChunkedBubbles({ text, isNew, isStreaming }: { text: string; isNew:
     const t = setTimeout(() => setRevealed(r => r + 1), revealed === 0 ? 80 : 500 + Math.random() * 300);
     return () => clearTimeout(t);
   }, [revealed, chunks.length, isNew]);
+
+  if (isStreaming) return <HomeStreamingText text={text} animate={true} />;
 
   const visible = chunks.slice(0, isNew ? Math.min(revealed + 1, chunks.length) : chunks.length);
   return (
@@ -2393,8 +2393,7 @@ export default function Home() {
       setGlobalInsightOpen(true);
       void callGlobalInsightMode(true);
     }
-    // run once on mount, after nexusChat history has hydrated
-  }, [nexusChat.messages.length]);
+  }, [callGlobalInsightMode, globalInsightOpen, nexusChat.messages.length]);
 
   // Rehydrate Global Insight mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
