@@ -15,6 +15,7 @@ import { ThoughtForBadge } from "../ThoughtForBadge";
 import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { DiffViewer } from "@/components/code/DiffViewer";
+import SketchReveal from "@/components/chat/SketchReveal";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import {
   ICON_TOUCH_TARGET_STYLE,
@@ -1793,9 +1794,6 @@ export function AssistantBubble({
             caption={`${img.mode === "render" ? "Render" : "Schematic"} · ${img.model}`}
           />
         ))}
-        {message.streaming && !message.imageGen?.images?.length && message.sketchPending && (
-          <SketchReveal loading caption="Sketching a concept…" />
-        )}
 
         {message.streaming && message.planMode && !message.artifact && (
           <div
