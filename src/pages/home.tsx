@@ -13,6 +13,7 @@ import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
+import SketchReveal from "@/components/chat/SketchReveal";
 import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
@@ -3577,7 +3578,7 @@ export default function Home() {
                             <SketchReveal
                               src={msg.visualImageBase64 ? `data:image/png;base64,${msg.visualImageBase64}` : (msg.imageGen?.images?.[0]?.imageUrl ?? "")}
                               alt={msg.visualCaption ?? msg.imageGen?.images?.[0]?.prompt ?? "Concept sketch"}
-                              caption={msg.visualCaption ?? [msg.imageGen?.images?.[0]?.mode, msg.imageGen?.images?.[0]?.model].filter(Boolean).join(" · ") || null}
+                              caption={msg.visualCaption ?? ([msg.imageGen?.images?.[0]?.mode, msg.imageGen?.images?.[0]?.model].filter(Boolean).join(" · ") || null)}
                             />
                           )}
 
