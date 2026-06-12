@@ -1972,19 +1972,6 @@ export default function Home() {
     }, 700);
   }, [vibrate, callGlobalInsightMode, nexusChat.setMessages]);
 
-  // Bridge to the global header's Think Freely lock — listen for tap events and
-  // broadcast state changes so the header icon mirrors Global Insight mode.
-  useEffect(() => {
-    const onToggle = () => { handleLockTap(); };
-    window.addEventListener("axiom:think-freely-toggle", onToggle);
-    return () => window.removeEventListener("axiom:think-freely-toggle", onToggle);
-  }, [handleLockTap]);
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("axiom:think-freely-state", { detail: { active: globalInsightOpen } }));
-  }, [globalInsightOpen]);
-
-
   // Cycle pending phrases while Atlas is generating
   useEffect(() => {
     if (!isAtlasStreaming) { setPendingPhraseIdx(0); return; }

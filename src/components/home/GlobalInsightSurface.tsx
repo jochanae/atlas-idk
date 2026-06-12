@@ -262,7 +262,7 @@ export function GlobalInsightSurface({
         <button
           type="button"
           onClick={onExit}
-          aria-label="Close Global Insight"
+          aria-label="New conversation"
           style={{
             position: "absolute",
             top: 10,
@@ -282,7 +282,7 @@ export function GlobalInsightSurface({
           }}
         >
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 4l8 8M12 4l-8 8" />
+            <path d="M8 2v12M2 8h12" />
           </svg>
         </button>
 
