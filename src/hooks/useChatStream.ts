@@ -381,6 +381,7 @@ export function useChatStream(
           if (!_contentType.includes("text/event-stream")) {
             const res = await r.json().catch(() => null) as any;
             if (!res) throw new Error("Empty response from chat endpoint");
+            if (res && !res.imageGen && res.image_gen) res.imageGen = res.image_gen;
             streamingFinished = true;
             let ghStatus: string | null = null;
             const { found: ghFound } = stripGithubAutoLinkToolCall(typeof res.content === "string" ? res.content : "");
@@ -603,6 +604,14 @@ export function useChatStream(
                   }
                 } else if (evtName === "done") {
                   const res = JSON.parse(evtData);
+                  // Normalize snake_case → camelCase so we don't miss image payloads
+                  if (res && !res.imageGen && res.image_gen) res.imageGen = res.image_gen;
+                  if (res?.imageGen) {
+                    console.log("[useChatStream] done event has imageGen:", {
+                      count: res.imageGen?.images?.length,
+                      firstUrlPrefix: res.imageGen?.images?.[0]?.imageUrl?.slice(0, 50),
+                    });
+                  }
                   if (res) onDoneEvent?.(res);
                   streamingFinished = true;
                   // Drain any remaining buffered text BEFORE swapping the placeholder
