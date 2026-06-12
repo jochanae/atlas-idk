@@ -99,6 +99,14 @@ type HomeMessage = {
   terminalCmd?: unknown;
   terminalResult?: unknown;
   imageUrl?: string;
+  imageGen?: {
+    images: Array<{
+      imageUrl: string;
+      prompt?: string;
+      model?: string;
+      mode?: "render" | "schematic" | string;
+    }>;
+  } | null;
   model?: string;
   modelUsed?: string | null;
   intentType?: string | null;
@@ -3561,7 +3569,7 @@ export default function Home() {
                             </div>
                           )}
 
-                          {msg.visualLoading && (
+                          {(msg.visualLoading || (msg.streaming && !!msg.imageGen?.images?.length)) && (
                             <div style={{
                               marginTop: "12px",
                               padding: "16px",
@@ -3592,7 +3600,7 @@ export default function Home() {
                             </div>
                           )}
 
-                          {msg.visualImageBase64 && !msg.visualLoading && (
+                          {(msg.visualImageBase64 || msg.imageGen?.images?.[0]?.imageUrl) && !msg.visualLoading && !msg.streaming && (
                             <div style={{
                               marginTop: "12px",
                               borderRadius: "12px",
@@ -3600,15 +3608,15 @@ export default function Home() {
                               border: "1px solid rgba(201, 162, 76, 0.2)",
                             }}>
                               <img
-                                src={`data:image/png;base64,${msg.visualImageBase64}`}
-                                alt={msg.visualCaption ?? "Concept sketch"}
+                                src={msg.visualImageBase64 ? `data:image/png;base64,${msg.visualImageBase64}` : (msg.imageGen?.images?.[0]?.imageUrl ?? "")}
+                                alt={msg.visualCaption ?? msg.imageGen?.images?.[0]?.prompt ?? "Concept sketch"}
                                 style={{
                                   width: "100%",
                                   display: "block",
                                   borderRadius: "12px 12px 0 0",
                                 }}
                               />
-                              {msg.visualCaption && (
+                              {(msg.visualCaption || msg.imageGen?.images?.[0]?.model) && (
                                 <div style={{
                                   padding: "8px 12px",
                                   background: "rgba(201, 162, 76, 0.04)",
@@ -3617,7 +3625,7 @@ export default function Home() {
                                   fontFamily: "var(--app-font-mono)",
                                   letterSpacing: "0.08em",
                                 }}>
-                                  {msg.visualCaption}
+                                  {msg.visualCaption ?? [msg.imageGen?.images?.[0]?.mode, msg.imageGen?.images?.[0]?.model].filter(Boolean).join(" · ")}
                                 </div>
                               )}
                             </div>
