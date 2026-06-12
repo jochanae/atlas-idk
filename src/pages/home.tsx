@@ -2376,6 +2376,14 @@ export default function Home() {
       });
   }, [activeConversationId, nexusChat.setMessages]);
 
+  useEffect(() => {
+    if (nexusChat.messages.length > 0 && !globalInsightOpen) {
+      setGlobalInsightOpen(true);
+      void callGlobalInsightMode(true);
+    }
+    // run once on mount, after nexusChat history has hydrated
+  }, [nexusChat.messages.length]);
+
   // Rehydrate Global Insight mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
   // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
