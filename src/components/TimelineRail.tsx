@@ -243,6 +243,8 @@ export function TimelineRail({
   }, [messages]);
 
   const buckets = useMemo(() => bucketize(messages), [messages]);
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const MOVE_CANCEL_PX = 6;
 
   useEffect(
     () => () => {
@@ -258,9 +260,6 @@ export function TimelineRail({
     const el = document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
-
-  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
-  const MOVE_CANCEL_PX = 6;
 
   const startPress = (e: React.TouchEvent | React.MouseEvent) => {
     didLongPressRef.current = false;
