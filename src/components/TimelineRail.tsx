@@ -426,10 +426,15 @@ export function TimelineRail({
                 width: "100%",
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: dateDots.length === 1 ? "center" : "space-between",
+                justifyContent: dateDots.length <= 6 ? "center" : "flex-start",
+                gap: 4,
                 padding: "16px 0",
+                overflowY: "auto",
+                overscrollBehavior: "contain",
+                scrollbarWidth: "none",
               }}
             >
+
               {dateDots.map((d) => {
                 const isFocused = focusedDateKey === d.key;
                 const isMatch = matchedDateKeys.has(d.key);
