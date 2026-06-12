@@ -74,6 +74,7 @@ export function LiveGenerationCard({ mode, steps, isComplete }: LiveGenerationCa
         </span>
 
         <span
+          className={isComplete ? undefined : "atlas-label-shimmer"}
           style={{
             fontFamily: "var(--app-font-mono)",
             fontSize: 10,
@@ -84,6 +85,7 @@ export function LiveGenerationCard({ mode, steps, isComplete }: LiveGenerationCa
         >
           {MODE_LABELS[mode]}
         </span>
+
       </div>
 
       {steps.length > 0 && (
