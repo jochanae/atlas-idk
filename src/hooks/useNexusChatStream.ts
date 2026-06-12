@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
+import { routeDirectImageRequestToSketchPrompt } from "@/lib/sketchStylePresets";
 
 const STREAM_TIMEOUT_MS = 30_000;
 
@@ -177,6 +178,8 @@ export function useNexusChatStream(
   }) => {
     if (!text.trim() || isPending) return;
 
+    const routedText = routeDirectImageRequestToSketchPrompt(text);
+
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
     const history = messagesRef.current.map((m) => ({ role: m.role, content: m.content }));
@@ -234,7 +237,7 @@ export function useNexusChatStream(
         body: {
           global: true,
           ...(activeConversationId ? { conversationId: activeConversationId } : {}),
-          message: text,
+          message: routedText,
           model: resolvedModel,
           history,
           mode: resolvedMode,
