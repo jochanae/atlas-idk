@@ -45,13 +45,41 @@ export function isSketchStylePreset(v: unknown): v is SketchStylePreset {
 }
 
 /**
- * Compose a prompt to send through the standard chat path. The leading
- * verb explicitly asks for an image so atlas-chat routes it to the
- * image-generation tool; the style hint pins the visual register.
+ * Compose a prompt to send through the standard chat path.
+ *
+ * The leading `[SKETCH:<preset>]` marker is the explicit signal the
+ * Cloud Run `/api/chat` handler branches on to route this turn to
+ * image generation instead of replying as text. See BACKEND CONTRACT
+ * below.
  */
+export const SKETCH_PROMPT_MARKER_RE = /^\[SKETCH:(concept|wireframe|moodboard|photoreal)\]\s*/i;
+
 export function buildSketchPrompt(preset: SketchStylePreset, excerpt: string): string {
   const label = SKETCH_STYLE_LABEL[preset];
   const hint = SKETCH_STYLE_HINT[preset];
   const trimmed = excerpt.trim().slice(0, 700);
-  return `Sketch this as a ${label} (thinking artifact, not a final deliverable).\n\nStyle: ${hint}\n\nSubject:\n${trimmed}`;
+  return `[SKETCH:${preset}] Sketch this as a ${label} (thinking artifact, not a final deliverable).\n\nStyle: ${hint}\n\nSubject:\n${trimmed}`;
 }
+
+/**
+ * ─── BACKEND CONTRACT (Cloud Run /api/chat) ────────────────────────────
+ * When an incoming `message` matches SKETCH_PROMPT_MARKER_RE, the handler
+ * MUST:
+ *   1. Capture the preset (capture group 1) and strip the marker from the
+ *      prompt.
+ *   2. Call the configured image model (e.g. Lovable AI Gateway
+ *      `openai/gpt-image-2` via `https://ai.gateway.lovable.dev/v1/images/generations`).
+ *      Use the preset as a style hint; the rest of the message is the
+ *      subject.
+ *   3. Return JSON containing EITHER:
+ *        { imageB64: "<base64>", imageMimeType: "image/png", content: "" }
+ *      OR:
+ *        { imageGen: { images: [{ imageUrl: "data:image/png;base64,..." }] },
+ *          content: "" }
+ *      The frontend (`useChatStream`) already consumes both shapes and
+ *      renders the image inline as an assistant message.
+ *   4. Do NOT also stream an "I can't generate images" text reply — the
+ *      branch is terminal.
+ * ───────────────────────────────────────────────────────────────────────
+ */
+
