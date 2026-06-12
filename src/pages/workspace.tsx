@@ -249,6 +249,7 @@ type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" |
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
+const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const DEFAULT_NAMES = new Set([
   "New Project",
@@ -3369,8 +3370,18 @@ export default function Workspace() {
 
     let storedThread: string | null = null;
     try {
-      storedThread = sessionStorage.getItem(THINK_FREELY_THREAD_STORAGE_KEY);
-      if (storedThread !== null) {
+      const storedOpeningConversation = sessionStorage.getItem(OPENING_CONVERSATION_STORAGE_KEY);
+      const storedOpeningProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      if (storedOpeningConversation !== null) {
+        if (storedOpeningProjectId === String(id)) {
+          storedThread = storedOpeningConversation;
+        }
+        sessionStorage.removeItem(OPENING_CONVERSATION_STORAGE_KEY);
+        sessionStorage.removeItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
+      } else {
+        storedThread = sessionStorage.getItem(THINK_FREELY_THREAD_STORAGE_KEY);
+      }
+      if (storedThread !== null && storedOpeningConversation === null) {
         sessionStorage.removeItem(THINK_FREELY_THREAD_STORAGE_KEY);
       }
     } catch {
@@ -3390,7 +3401,7 @@ export default function Workspace() {
     priorLoaded.current = true;
     historyMsgCountRef.current = transferredMessages.length;
     setMessages(transferredMessages);
-  }, [historyMsgCountRef, priorLoaded, setMessages]);
+  }, [historyMsgCountRef, id, priorLoaded, setMessages]);
 
   useEffect(() => {
     if (messages.length > 0 || greetingLoading || atlasGreeting) return;

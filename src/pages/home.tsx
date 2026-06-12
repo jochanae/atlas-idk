@@ -72,6 +72,7 @@ const HOME_PENDING_PHRASES = [
 
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
 const OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY = "atlas-opening-message-project-id";
+const OPENING_CONVERSATION_STORAGE_KEY = "atlas-opening-conversation";
 const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 const GLOBAL_INSIGHT_PORTFOLIO_SEED =
@@ -223,6 +224,17 @@ function normalizeLoadedHomeMessages(
   return mapMessage
     ? trimmed.map((m, i) => ({ ...mapMessage(m, i), ...enrich(m) }))
     : trimmed.map((m) => ({ ...m, ...enrich(m) }));
+}
+
+function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
+  const firstUserMessage = messages.find((message) => message.role === "user" && message.content.trim().length > 0);
+  const normalized = firstUserMessage?.content.replace(/\s+/g, " ").trim() ?? "";
+  if (!normalized) return "New Project";
+  if (normalized.length <= 40) return normalized;
+
+  const clipped = normalized.slice(0, 40).trimEnd();
+  const lastSpace = clipped.lastIndexOf(" ");
+  return (lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped).trim() || "New Project";
 }
 
 const HOME_IMAGE_URL_RE = /(https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s<>"')]+)?)/gi;
@@ -2700,6 +2712,84 @@ export default function Home() {
     setLocation,
   ]);
 
+  const performCreateProjectFromConversation = useCallback(async () => {
+    const conversationMessages = nexusChat.messages as HomeMessage[];
+    if (conversationMessages.length === 0 || isSending) return;
+    if (!backendReady) {
+      setCreateError(
+        "Project creation is unavailable in this preview because the backend API URL is not configured.",
+      );
+      return;
+    }
+    if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowUpgrade(true);
+      return;
+    }
+
+    setCreateError(null);
+    setIsAtlasStreaming(true);
+    setIsSending(true);
+
+    try {
+      const name = deriveProjectNameFromConversation(conversationMessages);
+      const authToken = localStorage.getItem("atlas-auth-token");
+      const createRes = await fetch("/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ name }),
+      });
+      const project = (await createRes.json().catch(() => null)) as {
+        id?: number | string;
+        error?: string;
+        message?: string;
+      } | null;
+      if (!createRes.ok || !project?.id) {
+        const err = new Error(
+          project?.error ?? project?.message ?? "Failed to create project",
+        ) as Error & { status?: number };
+        err.status = createRes.status;
+        throw err;
+      }
+      const projectId = Number(project.id);
+      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+      try {
+        sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationMessages));
+        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
+      } catch {}
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      setActiveProjectId(projectId);
+      setLocation(`/project/${projectId}`);
+    } catch (err) {
+      const msg =
+        extractApiErrorMessage(err) ??
+        (err instanceof Error ? err.message : "Failed to create project");
+      if (
+        msg?.includes("PROJECT_LIMIT_REACHED") ||
+        (err as { status?: number } | null)?.status === 402
+      ) {
+        setShowUpgrade(true);
+      } else {
+        setCreateError(msg);
+      }
+    } finally {
+      setIsAtlasStreaming(false);
+      setIsSending(false);
+    }
+  }, [
+    backendReady,
+    isFree,
+    isSending,
+    nexusChat.messages,
+    projects,
+    queryClient,
+    setActiveProjectId,
+    setLocation,
+  ]);
+
   useEffect(() => {
     let surface: string | null = null;
     let seed: string | null = null;
@@ -4491,6 +4581,7 @@ export default function Home() {
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
         onExit={handleLockTap}
+        onCreateProject={performCreateProjectFromConversation}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
       />
