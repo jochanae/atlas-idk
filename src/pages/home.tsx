@@ -3569,66 +3569,16 @@ export default function Home() {
                             </div>
                           )}
 
-                          {(msg.visualLoading || (msg.streaming && !!msg.imageGen?.images?.length)) && (
-                            <div style={{
-                              marginTop: "12px",
-                              padding: "16px",
-                              background: "rgba(201, 162, 76, 0.04)",
-                              border: "1px solid rgba(201, 162, 76, 0.15)",
-                              borderRadius: "12px",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                            }}>
-                              <div style={{
-                                width: "20px",
-                                height: "20px",
-                                borderRadius: "50%",
-                                border: "2px solid rgba(201, 162, 76, 0.3)",
-                                borderTopColor: "var(--atlas-gold)",
-                                animation: "spin 1s linear infinite",
-                                flexShrink: 0,
-                              }} />
-                              <span style={{
-                                fontSize: "12px",
-                                color: "var(--atlas-muted)",
-                                fontFamily: "var(--app-font-mono)",
-                                letterSpacing: "0.08em",
-                              }}>
-                                Sketching a concept...
-                              </span>
-                            </div>
+                          {(msg.visualLoading || (msg.streaming && !!msg.imageGen?.images?.length)) && !msg.visualImageBase64 && !msg.imageGen?.images?.[0]?.imageUrl && (
+                            <SketchReveal loading caption="Sketching a concept…" />
                           )}
 
-                          {(msg.visualImageBase64 || msg.imageGen?.images?.[0]?.imageUrl) && !msg.visualLoading && !msg.streaming && (
-                            <div style={{
-                              marginTop: "12px",
-                              borderRadius: "12px",
-                              overflow: "hidden",
-                              border: "1px solid rgba(201, 162, 76, 0.2)",
-                            }}>
-                              <img
-                                src={msg.visualImageBase64 ? `data:image/png;base64,${msg.visualImageBase64}` : (msg.imageGen?.images?.[0]?.imageUrl ?? "")}
-                                alt={msg.visualCaption ?? msg.imageGen?.images?.[0]?.prompt ?? "Concept sketch"}
-                                style={{
-                                  width: "100%",
-                                  display: "block",
-                                  borderRadius: "12px 12px 0 0",
-                                }}
-                              />
-                              {(msg.visualCaption || msg.imageGen?.images?.[0]?.model) && (
-                                <div style={{
-                                  padding: "8px 12px",
-                                  background: "rgba(201, 162, 76, 0.04)",
-                                  fontSize: "11px",
-                                  color: "var(--atlas-muted)",
-                                  fontFamily: "var(--app-font-mono)",
-                                  letterSpacing: "0.08em",
-                                }}>
-                                  {msg.visualCaption ?? [msg.imageGen?.images?.[0]?.mode, msg.imageGen?.images?.[0]?.model].filter(Boolean).join(" · ")}
-                                </div>
-                              )}
-                            </div>
+                          {(msg.visualImageBase64 || msg.imageGen?.images?.[0]?.imageUrl) && !msg.visualLoading && (
+                            <SketchReveal
+                              src={msg.visualImageBase64 ? `data:image/png;base64,${msg.visualImageBase64}` : (msg.imageGen?.images?.[0]?.imageUrl ?? "")}
+                              alt={msg.visualCaption ?? msg.imageGen?.images?.[0]?.prompt ?? "Concept sketch"}
+                              caption={msg.visualCaption ?? [msg.imageGen?.images?.[0]?.mode, msg.imageGen?.images?.[0]?.model].filter(Boolean).join(" · ") || null}
+                            />
                           )}
 
                           {!msg.streaming && Boolean(msg.terminalCmd || msg.terminalResult) && (
