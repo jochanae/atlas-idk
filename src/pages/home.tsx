@@ -3656,12 +3656,13 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div style={{
-                          display: "flex", flexDirection: "column",
-                          alignItems: globalInsightOpen ? "flex-end" : "stretch",
-                          width: "100%", gap: 3,
-                        }}>
+                       ) : (
+                         <div style={{
+                           display: "flex", flexDirection: "column",
+                           alignItems: globalInsightOpen ? "flex-end" : "stretch",
+                           width: "100%", gap: 3,
+                           marginBottom: globalInsightOpen ? 10 : 0,
+                         }}>
                           <div style={{
                             fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
                             textTransform: "uppercase", opacity: 0.55, color: "rgba(212,175,55,0.85)",
@@ -3703,7 +3704,7 @@ export default function Home() {
                               {msg.content}
                             </CollapsibleMessageText>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, alignSelf: globalInsightOpen ? "flex-end" : undefined, flexDirection: globalInsightOpen ? "row-reverse" : "row" }}>
                             <button
                               type="button"
                               title={copiedMsgIdx === i ? "Copied!" : "Copy"}
@@ -3716,13 +3717,15 @@ export default function Home() {
                               style={{
                                 background: "transparent",
                                 border: "none",
-                                padding: "3px 2px",
+                                padding: "3px 4px",
                                 cursor: "pointer",
-                                opacity: copiedMsgIdx === i ? 0.9 : 0.55,
+                                opacity: copiedMsgIdx === i ? 0.9 : 0.35,
                                 color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
                                 lineHeight: 1,
                                 transition: "opacity 140ms, color 140ms",
                               }}
+                              onMouseEnter={e => (e.currentTarget.style.opacity = "0.75")}
+                              onMouseLeave={e => (e.currentTarget.style.opacity = copiedMsgIdx === i ? "0.9" : "0.35")}
                             >
                               {copiedMsgIdx === i ? (
                                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
@@ -3730,8 +3733,36 @@ export default function Home() {
                                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
                               )}
                             </button>
+                            <button
+                              type="button"
+                              title="Edit & resend"
+                              aria-label="Edit message"
+                              onClick={() => {
+                                setInput(msg.content);
+                                try {
+                                  const ta = document.querySelector<HTMLTextAreaElement>('textarea[data-atlas-composer], textarea');
+                                  ta?.focus();
+                                } catch {}
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                padding: "3px 4px",
+                                cursor: "pointer",
+                                opacity: 0.35,
+                                color: "var(--atlas-muted)",
+                                lineHeight: 1,
+                                transition: "opacity 140ms, color 140ms",
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = "0.75"; e.currentTarget.style.color = "var(--atlas-gold)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = "0.35"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+                            >
+                              <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" />
+                              </svg>
+                            </button>
                             {msg.createdAt && (
-                              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase" }}>
+                              <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, textTransform: "lowercase", marginLeft: globalInsightOpen ? 0 : 4, marginRight: globalInsightOpen ? 4 : 0 }}>
                                 {formatMessageTime(msg.createdAt)}
                               </div>
                             )}
