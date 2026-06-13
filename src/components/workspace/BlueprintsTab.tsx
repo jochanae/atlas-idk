@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BlueprintVisual } from "@/components/BlueprintVisual";
 
 // ── BlueprintsTab ─────────────────────────────────────────────────────────────
 type BlueprintContent = {
