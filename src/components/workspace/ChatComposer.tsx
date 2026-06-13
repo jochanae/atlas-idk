@@ -544,6 +544,7 @@ export function ChatComposer(props: ChatComposerProps) {
               <ComposerActions
                 scope="ws"
                 hasProjectContext
+                borderless
                 hasAttachments={attachedFiles.length > 0 || zipFiles.length > 0 || !!codeContextStatus}
                 onFiles={async (files) => {
                   const zipFile = files.find(f => f.name.endsWith(".zip") || f.type === "application/zip");
