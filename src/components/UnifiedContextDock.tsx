@@ -163,6 +163,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const [location, setLocation] = useLocation();
   const { data: projectsRaw } = useListProjects();
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
+  const dockVisible = useDockVisibility();
 
   // Track last visited project so short-hold can return to it.
   useEffect(() => {
