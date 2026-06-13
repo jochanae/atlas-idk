@@ -33,13 +33,12 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: style === "blueprint" ? "openai/gpt-image-2" : "openai/gpt-image-2",
+        model: "openai/gpt-image-2",
         prompt,
         size: "1024x1024",
         quality: "low",
         n: 1,
         stream: false,
-        ...(style === "blueprint" ? { partial_images: 1 } : { partial_images: 1 }),
       }),
     });
 
