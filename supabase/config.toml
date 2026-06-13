@@ -2,3 +2,6 @@ project_id = "lmrpnsjckljdwqudtelk"
 
 [functions.atlas-chat]
 verify_jwt = true
+
+[functions.atlas-image]
+verify_jwt = false
