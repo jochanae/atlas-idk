@@ -186,6 +186,9 @@ export interface ChatComposerProps {
 
   // Universal "..." menu action routing
   onComposerMenuAction?: (action: ComposerMenuAction) => void;
+
+  /** Opens the unified sessions sheet (gold-clock). */
+  onOpenSessionsHistory?: () => void;
 }
 
 
@@ -250,6 +253,7 @@ export function ChatComposer(props: ChatComposerProps) {
     wsModel,
     onOpenModelSheet,
     onComposerMenuAction,
+    onOpenSessionsHistory,
   } = props;
 
 
@@ -513,8 +517,30 @@ export function ChatComposer(props: ChatComposerProps) {
           <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, flexWrap: "nowrap", gap: 4 }}>
 
 
-            {/* Universal composer actions: [+] + [...] */}
+            {/* Universal composer actions: [clock] + [+] + [...] */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, position: "relative" }}>
+              {onOpenSessionsHistory && (
+                <button
+                  type="button"
+                  onClick={onOpenSessionsHistory}
+                  aria-label="Sessions — resume or start new"
+                  title="Sessions — resume or start new"
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: 32, height: 32, borderRadius: 999,
+                    background: "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                    color: "var(--atlas-gold)",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <polyline points="12 7 12 12 15 14" />
+                  </svg>
+                </button>
+              )}
               <ComposerActions
                 scope="ws"
                 hasProjectContext
@@ -528,6 +554,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 onMenuAction={(action) => onComposerMenuAction?.(action)}
               />
             </div>
+
 
 
             {/* Model chip — only renders when the setting is enabled */}

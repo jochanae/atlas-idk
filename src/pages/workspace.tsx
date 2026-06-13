@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject, Project, Entry, Session, useListSessions, getListSessionsQueryKey, createSession, useCreateSession, useListEntries, getListEntriesQueryKey, getListProjectsQueryKey, useDeleteProject, useCreateProject, useListProjects, createEntry, useCreateEntry, useListReadinessSnapshots, getListReadinessSnapshotsQueryKey, useRecordReadinessSnapshot } from "@workspace/api-client-react";
+import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject, Project, Entry, Session, useListSessions, getListSessionsQueryKey, createSession, useCreateSession, useDeleteSession, useListEntries, getListEntriesQueryKey, getListProjectsQueryKey, useDeleteProject, useCreateProject, useListProjects, createEntry, useCreateEntry, useListReadinessSnapshots, getListReadinessSnapshotsQueryKey, useRecordReadinessSnapshot } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -47,6 +47,7 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
+import { SessionHistorySheet } from "../components/SessionHistorySheet";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -3676,6 +3677,50 @@ export default function Workspace() {
     }
   }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
 
+  // ── Sessions sheet (gold-clock) data + actions ────────────────────────────
+  const [sessionsSheetOpen, setSessionsSheetOpen] = useState(false);
+  const { data: allSessionsForSheet = [], isLoading: allSessionsForSheetLoading } = useListSessions(id, {
+    query: { enabled: !!id && sessionsSheetOpen, queryKey: getListSessionsQueryKey(id) },
+  });
+  const deleteSessionMutation = useDeleteSession();
+
+  const handleSwitchSession = useCallback((sid: number | string) => {
+    const numId = typeof sid === "string" ? Number(sid) : sid;
+    if (!Number.isFinite(numId) || numId === sessionId) {
+      setSessionsSheetOpen(false);
+      return;
+    }
+    setMessages([]);
+    priorLoaded.current = false;
+    historyMsgCountRef.current = 0;
+    setSessionId(numId);
+    queryClient.invalidateQueries({ queryKey: ["messages", numId] });
+    setSessionsSheetOpen(false);
+  }, [sessionId, setMessages, priorLoaded, historyMsgCountRef, setSessionId, queryClient]);
+
+  const handleDeleteSessionFromSheet = useCallback(async (sid: number | string) => {
+    const numId = typeof sid === "string" ? Number(sid) : sid;
+    if (!Number.isFinite(numId)) return;
+    try {
+      await deleteSessionMutation.mutateAsync({ id: numId });
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
+      if (numId === sessionId) {
+        setMessages([]);
+        priorLoaded.current = false;
+        historyMsgCountRef.current = 0;
+        setSessionId(null);
+      }
+      toast.success("Session deleted");
+    } catch (e) {
+      reportError(e, { projectId: id });
+      toast.error("Could not delete session");
+    }
+  }, [deleteSessionMutation, queryClient, id, sessionId, setMessages, priorLoaded, historyMsgCountRef, setSessionId]);
+
+
+
+
+
 
   // Close portaled header dropdowns on scroll/resize so they don't float off their anchors.
   const projectMenuRef = useRef<HTMLDivElement | null>(null);
@@ -6385,6 +6430,7 @@ export default function Workspace() {
               showModelPicker,
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
+              onOpenSessionsHistory: () => setSessionsSheetOpen(true),
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "forge-intake") { setForgeIntakeSheetOpen(true); return; }
@@ -6881,6 +6927,25 @@ export default function Workspace() {
         open={showHistorySheet}
         onClose={() => setShowHistorySheet(false)}
       />
+
+      <SessionHistorySheet
+        open={sessionsSheetOpen}
+        onClose={() => setSessionsSheetOpen(false)}
+        title={`${(project?.name ?? "PROJECT").toString().toUpperCase()} · SESSIONS`}
+        loading={allSessionsForSheetLoading}
+        emptyHint="No sessions yet. Tap NEW to start one."
+        items={(allSessionsForSheet ?? []).map((s: Session) => ({
+          id: s.id,
+          title: s.title || "Untitled session",
+          msgCount: (s as any).messageCount ?? (s as any).chat_messages?.length ?? 0,
+          timestamp: (s as any).updatedAt ?? (s as any).createdAt ?? null,
+          active: s.id === sessionId,
+        }))}
+        onNew={() => { setSessionsSheetOpen(false); void handleNewSession(); }}
+        onSelect={(sid) => handleSwitchSession(sid)}
+        onDelete={(sid) => handleDeleteSessionFromSheet(sid)}
+      />
+
 
 
 
