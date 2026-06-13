@@ -15,6 +15,7 @@ import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
+import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
