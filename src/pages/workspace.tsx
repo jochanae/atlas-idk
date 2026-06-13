@@ -433,6 +433,15 @@ function parseLiveGeneration(content: string, pending: boolean): { mode: LiveGen
     uniquePush(steps, planStep.endsWith("...") ? planStep : `${planStep}...`);
   }
 
+  // SKETCH_STEP: progressive steps emitted by the image-gen short-circuit.
+  // Owns the card whenever any sketch step is present.
+  const sketchSteps = [...content.matchAll(/SKETCH_STEP:\s*(.+)/gi)].map(m => m[1].trim());
+  if (sketchSteps.length > 0) {
+    mode = "sketch";
+    steps.length = 0;
+    for (const s of sketchSteps) uniquePush(steps, s);
+  }
+
   return {
     mode,
     steps,
