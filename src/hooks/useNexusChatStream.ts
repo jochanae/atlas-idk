@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
-import { routeDirectImageRequestToSketchPrompt } from "@/lib/sketchStylePresets";
+import { routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 const STREAM_TIMEOUT_MS = 30_000;
 
@@ -219,6 +219,55 @@ export function useNexusChatStream(
       createdAt: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg]);
+
+    // ── Frontend short-circuit for image requests ─────────────────
+    // /api/nexus/chat does not generate images. Route direct image
+    // asks (and explicit [SKETCH:*] picks) to /api/image/generate
+    // and render the result inline as an assistant message.
+    const isImageIntent = shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text);
+    if (isImageIntent) {
+      const imgPrompt = SKETCH_PROMPT_MARKER_RE.test(text)
+        ? text.replace(SKETCH_PROMPT_MARKER_RE, "").trim()
+        : routedText;
+      try {
+        const r = await fetch("/api/image/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ prompt: imgPrompt }),
+        });
+        const data = await r.json().catch(() => null) as any;
+        if (!r.ok || !data?.b64_json) {
+          throw new Error(data?.error ?? `HTTP ${r.status}`);
+        }
+        const dataUrl = `data:${data.mimeType ?? "image/png"};base64,${data.b64_json}`;
+        setMessages(prev => [...prev, {
+          id: streamingId,
+          role: "assistant",
+          content: "",
+          createdAt: new Date().toISOString(),
+          model: resolvedModel,
+          imageUrl: dataUrl,
+          imageGen: { images: [{ imageUrl: dataUrl, prompt: imgPrompt }] },
+          isNew: true,
+        } as NexusMessage]);
+      } catch (err: any) {
+        console.error("[useNexusChatStream] image generate failed:", err);
+        setMessages(prev => [...prev, {
+          id: streamingId,
+          role: "assistant",
+          content: `Image generation failed: ${err?.message ?? "unknown error"}`,
+          createdAt: new Date().toISOString(),
+          model: resolvedModel,
+        } as NexusMessage]);
+      } finally {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setIsPending(false);
+        setIsStreaming(false);
+        resetStreamState();
+      }
+      return;
+    }
 
     // Add streaming assistant bubble
     const assistantMsg: NexusMessage = {
