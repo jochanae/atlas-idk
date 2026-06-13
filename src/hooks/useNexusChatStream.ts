@@ -294,6 +294,7 @@ export function useNexusChatStream(
           history,
           mode: resolvedMode,
           userProfile,
+          ...(imageBase64 ? { imageData: imageBase64, imageMimeType } : {}),
         },
 
         callbacks: {
