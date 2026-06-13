@@ -17,7 +17,7 @@ import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
-import { routeDirectImageRequestToSketchPrompt } from "@/lib/sketchStylePresets";
+import { routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 type PriorMessage = Message;
 
@@ -302,6 +302,52 @@ export function useChatStream(
 
       const userProfileStr = profileToString(loadProfile());
       const routedText = routeDirectImageRequestToSketchPrompt(text);
+
+      // ── Frontend short-circuit for image requests ─────────────────
+      // The backend /api/chat handler does not have image-tool wiring,
+      // so route direct image asks (and explicit [SKETCH:*] picks) to
+      // the dedicated /api/image/generate endpoint and render the
+      // result inline as an assistant message.
+      const isImageIntent = shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text);
+      if (isImageIntent) {
+        const imgPrompt = SKETCH_PROMPT_MARKER_RE.test(text)
+          ? text.replace(SKETCH_PROMPT_MARKER_RE, "").trim()
+          : routedText;
+        void (async () => {
+          try {
+            const r = await fetch("/api/image/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+              credentials: "include",
+              body: JSON.stringify({ prompt: imgPrompt }),
+            });
+            const data = await r.json().catch(() => null) as any;
+            if (!r.ok || !data?.b64_json) {
+              throw new Error(data?.error ?? `HTTP ${r.status}`);
+            }
+            setMessages((prev) => [...prev, {
+              id: Date.now(),
+              role: "assistant",
+              content: "",
+              sentAt: new Date().toISOString(),
+              imageB64: data.b64_json,
+              imageMimeType: data.mimeType ?? "image/png",
+            } as ChatMessage]);
+          } catch (err: any) {
+            console.error("[useChatStream] image generate failed:", err);
+            setMessages((prev) => [...prev, {
+              id: Date.now(),
+              role: "assistant",
+              content: `Image generation failed: ${err?.message ?? "unknown error"}`,
+              sentAt: new Date().toISOString(),
+            } as ChatMessage]);
+          } finally {
+            setChatPending(false);
+            setActivityStream({ active: false, content: "" });
+          }
+        })();
+        return;
+      }
 
       // Read cached project scan from localStorage and send as compact map string
       let projectMap: string | undefined;
