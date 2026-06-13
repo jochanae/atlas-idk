@@ -23,6 +23,7 @@ import { TheForge } from "../components/TheForge";
 import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
+import { ImageGenerator } from "../components/ImageGenerator";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
@@ -245,7 +246,7 @@ export interface LinkedRepo {
   name: string;
 }
 
-type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "jobs" | "mcp" | "forge" | "artifacts" | "workbench";
+type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "workbench";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
 type OnboardingCoachId = "chat" | "ledger" | "flow";
 const OPENING_MESSAGE_STORAGE_KEY = "atlas-opening-message";
@@ -1135,6 +1136,17 @@ function RightPanel({
         </svg>
       ),
     },
+    {
+      id: "image" as RightTab,
+      label: "IMAGE",
+      icon: (
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+          <circle cx="6" cy="6" r="1.2" fill="currentColor" opacity={0.55} />
+          <path d="M3.5 12l3.2-3.2 2.1 2.1 1.6-1.6 2.1 2.7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    },
     ...(wsLens === "build" || wsLens === "scenario" ? [{
       id: "terminal" as RightTab,
       label: "Console",
@@ -1348,6 +1360,11 @@ function RightPanel({
       )}
       {tab === "mcp" && (
         <McpPanel projectId={projectId} />
+      )}
+      {tab === "image" && (
+        <div style={{ padding: 16 }}>
+          <ImageGenerator compact />
+        </div>
       )}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
