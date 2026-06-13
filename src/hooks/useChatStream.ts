@@ -344,7 +344,6 @@ export function useChatStream(
           } finally {
             setChatPending(false);
             setActivityStream({ active: false, content: "" });
-            onSendComplete?.();
           }
         })();
         return;
