@@ -21,6 +21,36 @@ type Blueprint = {
   createdAt: string;
 };
 
+async function ensureIdeaModeSession(projectId: number) {
+  const sessionsRes = await fetch(`/api/projects/${projectId}/sessions`, { credentials: "include" });
+  if (!sessionsRes.ok) throw new Error(`Could not inspect sessions (${sessionsRes.status})`);
+
+  const sessions = await sessionsRes.json() as Array<{ id: number; mode?: string | null }>;
+  const preferred = sessions.find((session) => session.mode === "idea") ?? sessions[0];
+
+  let sessionId = preferred?.id;
+  if (!sessionId) {
+    const createRes = await fetch(`/api/projects/${projectId}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ title: "Blueprint session", mode: "idea" }),
+    });
+    if (!createRes.ok) throw new Error(`Could not create a session (${createRes.status})`);
+    const created = await createRes.json() as { id?: number };
+    sessionId = created.id;
+  }
+
+  if (!sessionId) throw new Error("No session available for blueprint generation");
+
+  await fetch(`/api/sessions/${sessionId}/idea-mode`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ enabled: true }),
+  });
+}
+
 function BlueprintsTab({ projectId }: { projectId: number }) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,12 +76,27 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
     setGenerating(true);
     setGenError(null);
     try {
-      const res = await fetch(`/api/projects/${projectId}/blueprint`, {
+      let res = await fetch(`/api/projects/${projectId}/blueprint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({}),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null;
+        if (data?.error === "No idea mode session found for this project") {
+          await ensureIdeaModeSession(projectId);
+          res = await fetch(`/api/projects/${projectId}/blueprint`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({}),
+          });
+        } else {
+          setGenError(data?.error ?? `Error ${res.status}`);
+          return;
+        }
+      }
       if (!res.ok) {
         const data = await res.json() as { error?: string };
         setGenError(data.error ?? `Error ${res.status}`);
