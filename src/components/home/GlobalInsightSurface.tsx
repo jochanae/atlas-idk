@@ -24,6 +24,7 @@ export type GlobalInsightMessage = {
   genesisData?: { projectName: string; timestamp: string };
   streaming?: boolean;
   createdAt?: string;
+  imageUrl?: string;
 };
 
 export type GlobalInsightLiveStep = {
