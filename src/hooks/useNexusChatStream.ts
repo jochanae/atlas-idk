@@ -226,10 +226,10 @@ export function useNexusChatStream(
     // and render the result inline as an assistant message.
     const isImageIntent = shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text);
     if (isImageIntent) {
-      const sketchPreset = text.match(SKETCH_PROMPT_MARKER_RE)?.[1]?.toLowerCase();
-      const imgPrompt = SKETCH_PROMPT_MARKER_RE.test(text)
-        ? text.replace(SKETCH_PROMPT_MARKER_RE, "").trim()
-        : routedText;
+      const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
+      const imgPrompt = (SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText)
+        .replace(SKETCH_PROMPT_MARKER_RE, "")
+        .trim();
       try {
         const { generateImage } = await import("@/lib/generateImage");
         const img = await generateImage(imgPrompt, {
