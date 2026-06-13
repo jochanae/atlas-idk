@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { BlueprintVisual } from "@/components/BlueprintVisual";
 
 // ── BlueprintsTab ─────────────────────────────────────────────────────────────
 type BlueprintContent = {
@@ -203,7 +204,15 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
                     {listSection("Risks", bp.content.risks)}
                     {listSection("Open Questions", bp.content.openQuestions)}
                     {listSection("Next Steps", bp.content.nextSteps)}
-                    {bp.content.visualPrompt && section("Visual", bp.content.visualPrompt)}
+                    {bp.content.visualPrompt && (
+                      <div style={{ marginBottom: 14 }}>
+                        <span style={monoLabel}>Visual</span>
+                        <BlueprintVisual
+                          visualPrompt={bp.content.visualPrompt}
+                          title={bp.content.title}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
