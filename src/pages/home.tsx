@@ -14,6 +14,7 @@ import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import SketchReveal from "@/components/chat/SketchReveal";
+import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
