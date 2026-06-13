@@ -373,9 +373,19 @@ export function ComposerActions({
         </div>,
         portalHost
       )}
+
+      {/* Manual Sketch composer (image generation) */}
+      {onSketch && (
+        <SketchComposerSheet
+          open={showSketch}
+          onClose={() => setShowSketch(false)}
+          onSend={(prompt) => onSketch(prompt)}
+        />
+      )}
     </>
   );
 }
+
 
 function iconBtnStyle(active: boolean, accent: boolean, borderless = false): React.CSSProperties {
   return {
