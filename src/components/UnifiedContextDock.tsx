@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useListProjects } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { useDockVisibility, dockVisibility } from "@/hooks/useDockVisibility";
 
 const LAST_PROJECT_KEY = "atlas-last-project-id";
 
