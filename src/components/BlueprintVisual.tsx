@@ -26,7 +26,7 @@ export function BlueprintVisual({ visualPrompt, title, promptStyle }: Props) {
     setError(null);
     try {
       const prompt = buildBlueprintImagePrompt(visualPrompt, title);
-      const img = await generateImage(prompt);
+      const img = await generateImage(prompt, { style: "blueprint" });
       setImageUrl(img.dataUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
