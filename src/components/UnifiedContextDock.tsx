@@ -399,6 +399,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   return (
     <div
       data-dock-mode={mode}
+      data-dock-visible={dockVisible ? "true" : "false"}
       style={{
         position: "fixed",
         bottom: 0,
@@ -406,6 +407,9 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         right: 0,
         zIndex: 200,
         overflow: "visible",
+        transform: dockVisible ? "translateY(0)" : "translateY(calc(100% - 18px))",
+        transition: "transform 240ms cubic-bezier(.32,.72,0,1)",
+        willChange: "transform",
       }}
     >
       <style>{`
