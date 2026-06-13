@@ -186,6 +186,9 @@ export interface ChatComposerProps {
 
   // Universal "..." menu action routing
   onComposerMenuAction?: (action: ComposerMenuAction) => void;
+
+  /** Opens the unified sessions sheet (gold-clock). */
+  onOpenSessionsHistory?: () => void;
 }
 
 
