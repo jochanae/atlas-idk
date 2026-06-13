@@ -56,6 +56,9 @@ interface Props {
   onCreateProject?: () => void;
   onAddAsset?: () => void;
   onMore?: () => void;
+  onFiles?: (files: File[]) => void;
+  onMenuAction?: (action: ComposerMenuAction) => void;
+  onSketch?: (prompt: string) => void;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
