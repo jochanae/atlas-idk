@@ -228,11 +228,20 @@ export function useNexusChatStream(
     if (isImageIntent) {
       const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
       const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
+      const styleLabel = (sketchPreset ?? "concept").replace(/^\w/, c => c.toUpperCase());
+      const pushStep = (verb: string, target?: string) => {
+        const step: NexusLiveStep = { id: `${Date.now()}-${verb}`, verb, target };
+        setLiveStep(step);
+        setLiveSteps(prev => [...prev, step].slice(-6));
+      };
+      pushStep("Interpreting", `"${imgPrompt.slice(0, 48)}${imgPrompt.length > 48 ? "…" : ""}"`);
       try {
+        pushStep("Sketching", `${styleLabel} style`);
         const { generateImage } = await import("@/lib/generateImage");
         const img = await generateImage(imgPrompt, {
           style: (sketchPreset as "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal" | undefined) ?? "concept",
         });
+        pushStep("Rendering", "image");
         setMessages(prev => [...prev, {
           id: streamingId,
           role: "assistant",
