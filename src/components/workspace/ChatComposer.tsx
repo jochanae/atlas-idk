@@ -557,8 +557,10 @@ export function ChatComposer(props: ChatComposerProps) {
                   if (zipFile) await processZip(zipFile);
                   if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
                 }}
+                onSketch={props.onSketch}
                 onMenuAction={(action) => onComposerMenuAction?.(action)}
               />
+
             </div>
 
 
