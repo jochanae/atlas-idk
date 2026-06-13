@@ -191,7 +191,7 @@ export function ProjectPulsePanel(props: Props) {
           fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55,
           fontFamily: "var(--app-font-mono)", letterSpacing: "0.04em", lineHeight: 1.5,
         }}>
-          Shaping and Committed are Atlas assessments — they shift automatically as evidence accrues. Built is a human call.
+          Shaping and Committed are Atlas assessments — they shift automatically as evidence accrues. Built is your call.
         </div>
       </div>
     </div>,
