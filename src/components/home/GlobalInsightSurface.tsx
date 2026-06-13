@@ -168,6 +168,9 @@ export function GlobalInsightSurface({
   onCreateProject,
   onAddAsset,
   onMore,
+  onFiles,
+  onMenuAction,
+  onSketch,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
