@@ -6927,6 +6927,25 @@ export default function Workspace() {
         onClose={() => setShowHistorySheet(false)}
       />
 
+      <SessionHistorySheet
+        open={sessionsSheetOpen}
+        onClose={() => setSessionsSheetOpen(false)}
+        title={`${(project?.name ?? "PROJECT").toString().toUpperCase()} · SESSIONS`}
+        loading={allSessionsForSheetLoading}
+        emptyHint="No sessions yet. Tap NEW to start one."
+        items={(allSessionsForSheet ?? []).map((s: Session) => ({
+          id: s.id,
+          title: s.title || "Untitled session",
+          msgCount: (s as any).messageCount ?? (s as any).chat_messages?.length ?? 0,
+          timestamp: (s as any).updatedAt ?? (s as any).createdAt ?? null,
+          active: s.id === sessionId,
+        }))}
+        onNew={() => { setSessionsSheetOpen(false); void handleNewSession(); }}
+        onSelect={(sid) => handleSwitchSession(sid)}
+        onDelete={(sid) => handleDeleteSessionFromSheet(sid)}
+      />
+
+
 
 
       {showForgeExternal && (
