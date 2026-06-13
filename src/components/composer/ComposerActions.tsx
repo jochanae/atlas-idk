@@ -55,6 +55,10 @@ export interface ComposerActionsProps {
   trailing?: ReactNode;
   /** Strip the borders / chip backgrounds from + and ... buttons (used by Global Insight). */
   borderless?: boolean;
+  /** When provided, shows a "Sketch" tile in the + sheet that opens a manual
+   *  image-generation prompt. Receives the composed `[SKETCH:<preset>] …`
+   *  prompt — wire to the host's chat send pipeline. */
+  onSketch?: (prompt: string) => void;
 }
 
 type PrimaryItem = {
