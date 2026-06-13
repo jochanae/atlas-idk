@@ -189,7 +189,12 @@ export interface ChatComposerProps {
 
   /** Opens the unified sessions sheet (gold-clock). */
   onOpenSessionsHistory?: () => void;
+
+  /** Manual image-generation entry point from the composer "+" sheet.
+   *  Receives the composed `[SKETCH:<preset>] …` prompt — wire to doSend. */
+  onSketch?: (prompt: string) => void;
 }
+
 
 
 export function ChatComposer(props: ChatComposerProps) {
@@ -552,8 +557,10 @@ export function ChatComposer(props: ChatComposerProps) {
                   if (zipFile) await processZip(zipFile);
                   if (others.length > 0) setAttachedFiles(prev => [...prev, ...others].slice(0, 10));
                 }}
+                onSketch={props.onSketch}
                 onMenuAction={(action) => onComposerMenuAction?.(action)}
               />
+
             </div>
 
 

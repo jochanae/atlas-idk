@@ -16,7 +16,10 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  Wand2,
 } from "lucide-react";
+import SketchComposerSheet from "./SketchComposerSheet";
+
 
 export type ComposerMenuAction =
   | "files"
@@ -52,6 +55,10 @@ export interface ComposerActionsProps {
   trailing?: ReactNode;
   /** Strip the borders / chip backgrounds from + and ... buttons (used by Global Insight). */
   borderless?: boolean;
+  /** When provided, shows a "Sketch" tile in the + sheet that opens a manual
+   *  image-generation prompt. Receives the composed `[SKETCH:<preset>] …`
+   *  prompt — wire to the host's chat send pipeline. */
+  onSketch?: (prompt: string) => void;
 }
 
 type PrimaryItem = {
@@ -148,11 +155,14 @@ export function ComposerActions({
   hasAttachments = false,
   trailing,
   borderless = false,
+  onSketch,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
+  const [showSketch, setShowSketch] = useState(false);
   const portalHost = typeof document !== "undefined" ? document.body : null;
+
 
   const attachRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -267,7 +277,20 @@ export function ComposerActions({
                     setTimeout(() => attachRef.current?.click(), 50);
                   }}
                 />
+                {onSketch && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <BigNode
+                      label="Sketch"
+                      icon={<Wand2 size={36} strokeWidth={1.4} />}
+                      onClick={() => {
+                        setShowPlus(false);
+                        setTimeout(() => setShowSketch(true), 50);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
+
             </div>
           </div>
         </div>,
@@ -350,9 +373,19 @@ export function ComposerActions({
         </div>,
         portalHost
       )}
+
+      {/* Manual Sketch composer (image generation) */}
+      {onSketch && (
+        <SketchComposerSheet
+          open={showSketch}
+          onClose={() => setShowSketch(false)}
+          onSend={(prompt) => onSketch(prompt)}
+        />
+      )}
     </>
   );
 }
+
 
 function iconBtnStyle(active: boolean, accent: boolean, borderless = false): React.CSSProperties {
   return {

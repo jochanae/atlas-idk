@@ -4205,6 +4205,7 @@ export default function Home() {
                   if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
                   setAttachedFiles(combined);
                 }}
+                onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
                 onMenuAction={(action) => {
                   if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
@@ -4219,6 +4220,7 @@ export default function Home() {
                   toast("Open a project to use that");
                 }}
               />
+
 
 
               </div>
