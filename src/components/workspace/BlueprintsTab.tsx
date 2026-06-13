@@ -28,7 +28,7 @@ async function ensureIdeaModeSession(projectId: number) {
   const sessions = await sessionsRes.json() as Array<{ id: number; mode?: string | null }>;
   const preferred = sessions.find((session) => session.mode === "idea") ?? sessions[0];
 
-  let sessionId = preferred?.id;
+  let sessionId: number | null = preferred?.id ?? null;
   if (!sessionId) {
     const createRes = await fetch(`/api/projects/${projectId}/sessions`, {
       method: "POST",
@@ -38,7 +38,7 @@ async function ensureIdeaModeSession(projectId: number) {
     });
     if (!createRes.ok) throw new Error(`Could not create a session (${createRes.status})`);
     const created = await createRes.json() as { id?: number };
-    sessionId = created.id;
+    sessionId = created.id ?? null;
   }
 
   if (!sessionId) throw new Error("No session available for blueprint generation");
