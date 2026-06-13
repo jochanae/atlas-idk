@@ -4642,6 +4642,22 @@ export default function Home() {
         onCreateProject={performCreateProjectFromConversation}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
+        onFiles={(files) => {
+          const combined = [...attachedFiles, ...files].slice(0, 10);
+          if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
+          setAttachedFiles(combined);
+        }}
+        onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
+        onMenuAction={(action) => {
+          if (action === "history") { setShowTimeTravel(true); return; }
+          if (action === "settings") { setLocation("/account"); return; }
+          if (action === "code") { setLocation("/code"); return; }
+          if (action === "connectors") { setLocation("/connectors"); return; }
+          if (action === "files" || action === "share" ||
+              action === "publish" ||
+              action === "more:forge") { setLocation("/projects"); return; }
+          toast("Open a project to use that");
+        }}
       />
 
       {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}

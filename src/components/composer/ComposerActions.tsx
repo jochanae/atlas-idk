@@ -90,6 +90,11 @@ const MORE_ITEMS: { id: ComposerMenuAction; label: string }[] = [
   { id: "more:rescan", label: "Rescan Repo" },
 ];
 
+// Sentinel action id used internally when Sketch is rendered as a top-of-More
+// row. Not part of ComposerMenuAction because hosts don't handle it directly —
+// ComposerActions intercepts it and opens SketchComposerSheet.
+const SKETCH_MENU_ID = "__sketch__";
+
 const SHEET_OVERLAY: React.CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -277,18 +282,6 @@ export function ComposerActions({
                     setTimeout(() => attachRef.current?.click(), 50);
                   }}
                 />
-                {onSketch && (
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <BigNode
-                      label="Sketch"
-                      icon={<Wand2 size={36} strokeWidth={1.4} />}
-                      onClick={() => {
-                        setShowPlus(false);
-                        setTimeout(() => setShowSketch(true), 50);
-                      }}
-                    />
-                  </div>
-                )}
               </div>
 
             </div>
@@ -308,6 +301,16 @@ export function ComposerActions({
           >
             <div style={SHEET_HANDLE} />
             <div style={SHEET_SCROLL}>
+              {onSketch && (
+                <MenuRow
+                  icon={<Wand2 size={18} strokeWidth={1.6} />}
+                  label="Sketch"
+                  onClick={() => {
+                    setShowMore(false);
+                    setTimeout(() => setShowSketch(true), 50);
+                  }}
+                />
+              )}
               {visiblePrimary.map((item) => (
                 <MenuRow
                   key={item.id}

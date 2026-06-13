@@ -15,6 +15,7 @@ import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
+import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -55,6 +56,9 @@ interface Props {
   onCreateProject?: () => void;
   onAddAsset?: () => void;
   onMore?: () => void;
+  onFiles?: (files: File[]) => void;
+  onMenuAction?: (action: ComposerMenuAction) => void;
+  onSketch?: (prompt: string) => void;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
@@ -164,6 +168,9 @@ export function GlobalInsightSurface({
   onCreateProject,
   onAddAsset,
   onMore,
+  onFiles,
+  onMenuAction,
+  onSketch,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -717,27 +724,14 @@ export function GlobalInsightSurface({
                   </svg>
                 </UtilityButton>
               )}
-              <UtilityButton
-                ariaLabel="Add asset"
-                title="Add asset"
-                onClick={() => onAddAsset?.()}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-              </UtilityButton>
-              <UtilityButton
-                ariaLabel="More options"
-                title="More"
-                onClick={() => onMore?.()}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="5" cy="12" r="1.4" />
-                  <circle cx="12" cy="12" r="1.4" />
-                  <circle cx="19" cy="12" r="1.4" />
-                </svg>
-              </UtilityButton>
+              <ComposerActions
+                scope="global-insight"
+                hasProjectContext={false}
+                borderless={true}
+                onFiles={(files) => onFiles?.(files)}
+                onMenuAction={(action) => onMenuAction?.(action)}
+                onSketch={onSketch}
+              />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
