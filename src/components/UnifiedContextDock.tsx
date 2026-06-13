@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useListProjects } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { useDockVisibility, dockVisibility } from "@/hooks/useDockVisibility";
 
 const LAST_PROJECT_KEY = "atlas-last-project-id";
 
@@ -162,6 +163,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const [location, setLocation] = useLocation();
   const { data: projectsRaw } = useListProjects();
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
+  const dockVisible = useDockVisibility();
 
   // Track last visited project so short-hold can return to it.
   useEffect(() => {
@@ -268,6 +270,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const handleAtlasClick = () => {
     if (suppressNextClick.current) {
       suppressNextClick.current = false;
+      return;
+    }
+    if (!dockVisible) {
+      dockVisibility.peek();
       return;
     }
     if (window.matchMedia("(hover: hover)").matches) {
@@ -393,6 +399,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   return (
     <div
       data-dock-mode={mode}
+      data-dock-visible={dockVisible ? "true" : "false"}
       style={{
         position: "fixed",
         bottom: 0,
@@ -400,6 +407,9 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         right: 0,
         zIndex: 200,
         overflow: "visible",
+        transform: dockVisible ? "translateY(0)" : "translateY(calc(100% - 18px))",
+        transition: "transform 240ms cubic-bezier(.32,.72,0,1)",
+        willChange: "transform",
       }}
     >
       <style>{`
@@ -415,6 +425,11 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           100% { box-shadow: 0 0 0 0 rgba(var(--atlas-gold-rgb),0), 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
         }
         .udock-center-pulse { animation: udockCenterPulse 520ms var(--ease-standard); }
+        [data-dock-visible="false"] .udock-slot { pointer-events: none; opacity: 0; transition: opacity 200ms ease; }
+        [data-dock-visible="true"] .udock-slot { transition: opacity 240ms ease 80ms; }
+        [data-dock-visible="false"] .udock-center {
+          box-shadow: 0 0 18px rgba(var(--atlas-gold-rgb),0.55), 0 0 36px rgba(var(--atlas-gold-rgb),0.25) !important;
+        }
       `}</style>
 
       {/* Arch — fixed-width center dimple, flanks fill remaining width */}
