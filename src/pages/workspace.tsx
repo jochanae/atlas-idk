@@ -47,6 +47,7 @@ import { CapsuleTag } from "../components/CapsuleTag";
 import { ZipDragOverlay, ZipPanel } from "../components/ZipImport";
 import { ProjectSettingsPanel } from "../components/ProjectSettingsPanel";
 import { HistoryBookmarksSheet } from "../components/HistoryBookmarksSheet";
+import { SessionHistorySheet } from "../components/SessionHistorySheet";
 import { NewProjectModal } from "../components/NewProjectModal";
 import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
