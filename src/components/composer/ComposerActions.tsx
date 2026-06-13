@@ -155,11 +155,14 @@ export function ComposerActions({
   hasAttachments = false,
   trailing,
   borderless = false,
+  onSketch,
 }: ComposerActionsProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [moreExpanded, setMoreExpanded] = useState(false);
+  const [showSketch, setShowSketch] = useState(false);
   const portalHost = typeof document !== "undefined" ? document.body : null;
+
 
   const attachRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
