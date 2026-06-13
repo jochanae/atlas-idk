@@ -253,6 +253,7 @@ export function ChatComposer(props: ChatComposerProps) {
     wsModel,
     onOpenModelSheet,
     onComposerMenuAction,
+    onOpenSessionsHistory,
   } = props;
 
 
