@@ -3918,7 +3918,6 @@ export default function Workspace() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
-  const [showSessionsSheet, setShowSessionsSheet] = useState(false);
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
