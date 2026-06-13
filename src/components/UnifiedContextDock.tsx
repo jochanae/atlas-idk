@@ -272,6 +272,10 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       suppressNextClick.current = false;
       return;
     }
+    if (!dockVisible) {
+      dockVisibility.peek();
+      return;
+    }
     if (window.matchMedia("(hover: hover)").matches) {
       fireTap();
     }
