@@ -11,13 +11,15 @@ export function buildBlueprintImagePrompt(visualPrompt: string, title?: string):
   const subject = (visualPrompt ?? "").trim();
   const heading = title?.trim() ? `Concept: ${title.trim()}` : "Concept";
   return [
-    "Multi-panel industrial design board, magazine-quality presentation, dark editorial background, premium materials, cohesive palette, English labels only.",
+    "Multi-panel industrial design board, magazine-quality presentation, dark editorial background, premium materials, cohesive palette.",
     "",
-    "Layout:",
-    "- Top-left: product concept hero shot, studio lighting, three-quarter view, crisp materials.",
-    "- Top-right: orthographic views (front / side / top) with light annotation lines, technical blueprint feel, clean readable English annotations.",
-    "- Bottom: 4-state interaction or workflow strip with clean English labels.",
-    "- Typography: minimal, legible, premium editorial, no foreign-language text, no gibberish.",
+    "Show a premium product concept board with visual panels only.",
+    "- Main hero render of the concept, studio-lit, crisp materials, believable form.",
+    "- Supporting orthographic or exploded views using lines, arrows, callouts, and diagram shapes only.",
+    "- Optional workflow or usage panels shown visually, not as written captions.",
+    "- Avoid paragraphs, labels, UI text blocks, letters, words, typography, or faux writing inside the image.",
+    "- Use symbols, linework, shapes, measurements, and visual hierarchy instead of written text.",
+    "- No foreign-language text, no gibberish, no pseudo-type, no placeholder lettering.",
     "",
     heading,
     "",
