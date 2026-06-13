@@ -4674,7 +4674,14 @@ export default function Workspace() {
   const homeHandoffPrimed = useRef(false);
   useEffect(() => {
     if (!sessionId || homeHandoffPrimed.current || initialSent.current) return;
-    const fromHome = (() => { try { return new URLSearchParams(window.location.search).get("from") === "home"; } catch { return false; } })();
+    const fromHome = (() => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("from") === "home" || params.get("source") === "home-handoff";
+      } catch {
+        return false;
+      }
+    })();
     if (!fromHome) return;
     if (messages.length > 0) { homeHandoffPrimed.current = true; return; }
     if (!project?.memory) return;
@@ -4686,6 +4693,12 @@ export default function Workspace() {
       if (!briefEntry) { homeHandoffPrimed.current = true; return; }
       homeHandoffPrimed.current = true;
       const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
+      void fetch(`/api/sessions/${sessionId}/idea-mode`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: true }),
+      }).catch(() => {});
       setTimeout(() => {
         doSend(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`, sessionId, []);
       }, 300);
