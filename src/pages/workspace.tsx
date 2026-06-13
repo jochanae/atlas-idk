@@ -6429,6 +6429,7 @@ export default function Workspace() {
               showModelPicker,
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
+              onOpenSessionsHistory: () => setSessionsSheetOpen(true),
               onComposerMenuAction: (action) => {
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "forge-intake") { setForgeIntakeSheetOpen(true); return; }
