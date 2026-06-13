@@ -24,6 +24,7 @@ import { InlineTerminalBlock } from "../components/InlineTerminalBlock";
 import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
 import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
+import { SessionHistorySheet } from "@/components/SessionHistorySheet";
 
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
