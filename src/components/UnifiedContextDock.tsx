@@ -425,6 +425,11 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           100% { box-shadow: 0 0 0 0 rgba(var(--atlas-gold-rgb),0), 0 0 20px rgba(var(--atlas-gold-rgb),0.3), 0 4px 12px rgba(0,0,0,0.5); transform: translateY(0) scale(1); }
         }
         .udock-center-pulse { animation: udockCenterPulse 520ms var(--ease-standard); }
+        [data-dock-visible="false"] .udock-slot { pointer-events: none; opacity: 0; transition: opacity 200ms ease; }
+        [data-dock-visible="true"] .udock-slot { transition: opacity 240ms ease 80ms; }
+        [data-dock-visible="false"] .udock-center {
+          box-shadow: 0 0 18px rgba(var(--atlas-gold-rgb),0.55), 0 0 36px rgba(var(--atlas-gold-rgb),0.25) !important;
+        }
       `}</style>
 
       {/* Arch — fixed-width center dimple, flanks fill remaining width */}
