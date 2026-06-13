@@ -6448,7 +6448,12 @@ export default function Workspace() {
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
               onOpenSessionsHistory: () => setSessionsSheetOpen(true),
+              onSketch: (prompt) => {
+                if (!sessionId) { toast("Open or start a session first"); return; }
+                doSendFromComposer(prompt, sessionId, messagesRef.current ?? messages);
+              },
               onComposerMenuAction: (action) => {
+
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "forge-intake") { setForgeIntakeSheetOpen(true); return; }
                 if (action === "history") { setShowHistorySheet(true); return; }
