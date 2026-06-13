@@ -392,7 +392,7 @@ export function useChatStream(
         ...(activeCtx ? { fileContext: activeCtx } : {}),
         ...(userProfileStr ? { userProfile: userProfileStr } : {}),
         ...(projectMap ? { projectMap } : {}),
-        ...(imageData ? { imageData } : {}),
+        ...(imageData ? { imageData: imageData.base64, imageMimeType: imageData.mediaType } : {}),
         ...(forgeContext ? { forgeContext } : {}),
         ...(dbUrl ? { dbUrl } : {}),
       };
