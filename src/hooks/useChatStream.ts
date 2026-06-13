@@ -17,7 +17,7 @@ import type { WorkspaceLens } from "@/hooks/useChatLens";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { getAuthHeaders } from "@/lib/api";
 import { createTextPacer, type TextPacer } from "@/lib/textPacer";
-import { routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 type PriorMessage = Message;
 
@@ -311,14 +311,12 @@ export function useChatStream(
       const isImageIntent = shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text);
       if (isImageIntent) {
         const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
-        const imgPrompt = (SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText)
-          .replace(SKETCH_PROMPT_MARKER_RE, "")
-          .trim();
+        const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
         void (async () => {
           try {
             const { generateImage } = await import("@/lib/generateImage");
             const img = await generateImage(imgPrompt, {
-              style: sketchPreset === "blueprint" ? "blueprint" : "default",
+              style: (sketchPreset as "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal" | undefined) ?? "concept",
             });
             setMessages((prev) => [...prev, {
               id: Date.now(),
