@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FileText, ArrowLeft, Trash2, Copy, Download, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
+import { BlueprintVisual } from "@/components/BlueprintVisual";
 
 export type Blueprint = {
   id: number | string;
