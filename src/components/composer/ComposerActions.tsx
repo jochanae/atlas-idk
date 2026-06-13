@@ -16,7 +16,10 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  Wand2,
 } from "lucide-react";
+import SketchComposerSheet from "./SketchComposerSheet";
+
 
 export type ComposerMenuAction =
   | "files"
