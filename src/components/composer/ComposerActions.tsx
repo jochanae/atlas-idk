@@ -301,6 +301,16 @@ export function ComposerActions({
           >
             <div style={SHEET_HANDLE} />
             <div style={SHEET_SCROLL}>
+              {onSketch && (
+                <MenuRow
+                  icon={<Wand2 size={18} strokeWidth={1.6} />}
+                  label="Sketch"
+                  onClick={() => {
+                    setShowMore(false);
+                    setTimeout(() => setShowSketch(true), 50);
+                  }}
+                />
+              )}
               {visiblePrimary.map((item) => (
                 <MenuRow
                   key={item.id}
