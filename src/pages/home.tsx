@@ -14,6 +14,7 @@ import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { TimelineRail } from "../components/TimelineRail";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import SketchReveal from "@/components/chat/SketchReveal";
+import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { UnifiedConversationSurface } from "../components/UnifiedConversationSurface";
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
@@ -3677,6 +3678,12 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                           </div>
+                          {!msg.streaming && !!msg.content && (
+                            <InlineSketchOffer
+                              text={msg.content}
+                              onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
+                            />
+                          )}
                           {msg.researchResult && (
                             <ResearchCard
                               url={msg.researchResult.url}
