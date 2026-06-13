@@ -33,9 +33,10 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "openai/gpt-image-1-mini",
         prompt,
         size: "1024x1024",
+        quality: "low",
         n: 1,
       }),
     });
