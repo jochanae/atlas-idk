@@ -3676,6 +3676,47 @@ export default function Workspace() {
     }
   }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
 
+  // ── Sessions sheet (gold-clock) data + actions ────────────────────────────
+  const { data: allSessionsForSheet = [], isLoading: allSessionsForSheetLoading } = useListSessions(id, {
+    query: { enabled: !!id && showSessionsSheet, queryKey: getListSessionsQueryKey(id) },
+  });
+  const deleteSessionMutation = useDeleteSession();
+
+  const handleSwitchSession = useCallback((sid: number | string) => {
+    const numId = typeof sid === "string" ? Number(sid) : sid;
+    if (!Number.isFinite(numId) || numId === sessionId) {
+      setShowSessionsSheet(false);
+      return;
+    }
+    setMessages([]);
+    priorLoaded.current = false;
+    historyMsgCountRef.current = 0;
+    setSessionId(numId);
+    queryClient.invalidateQueries({ queryKey: ["messages", numId] });
+    setShowSessionsSheet(false);
+  }, [sessionId, setMessages, priorLoaded, historyMsgCountRef, setSessionId, queryClient]);
+
+  const handleDeleteSessionFromSheet = useCallback(async (sid: number | string) => {
+    const numId = typeof sid === "string" ? Number(sid) : sid;
+    if (!Number.isFinite(numId)) return;
+    try {
+      await deleteSessionMutation.mutateAsync({ id: numId });
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey(id) });
+      if (numId === sessionId) {
+        setMessages([]);
+        priorLoaded.current = false;
+        historyMsgCountRef.current = 0;
+        setSessionId(null);
+      }
+      toast.success("Session deleted");
+    } catch (e) {
+      reportError(e, { projectId: id, sessionId: numId });
+      toast.error("Could not delete session");
+    }
+  }, [deleteSessionMutation, queryClient, id, sessionId, setMessages, priorLoaded, historyMsgCountRef, setSessionId]);
+
+
+
 
   // Close portaled header dropdowns on scroll/resize so they don't float off their anchors.
   const projectMenuRef = useRef<HTMLDivElement | null>(null);
