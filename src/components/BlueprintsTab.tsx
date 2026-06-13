@@ -215,10 +215,17 @@ export function BlueprintsTab({
 
             {detail.visualPrompt && (
               <Section label="Visual">
-                <p style={{
-                  ...para, fontStyle: "italic", borderLeft: `2px solid ${GOLD}`,
-                  paddingLeft: 16, color: "rgba(var(--atlas-fg-rgb, 245,243,238), 0.85)",
-                }}>{detail.visualPrompt}</p>
+                <BlueprintVisual
+                  visualPrompt={detail.visualPrompt}
+                  title={detail.title}
+                  promptStyle={{
+                    ...para,
+                    fontStyle: "italic",
+                    borderLeft: `2px solid ${GOLD}`,
+                    paddingLeft: 16,
+                    color: "rgba(var(--atlas-fg-rgb, 245,243,238), 0.85)",
+                  }}
+                />
               </Section>
             )}
 
