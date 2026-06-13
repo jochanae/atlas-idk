@@ -263,7 +263,7 @@ const DEFAULT_NAMES = new Set([
 ]);
 type WorkspaceLens = "flow" | "build" | "look" | "scenario";
 
-type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking";
+type LiveGenerationMode = "plan" | "blueprint" | "edit" | "thinking" | "sketch";
 
 type ForgeState = { forged: boolean; dismissed: boolean };
 
