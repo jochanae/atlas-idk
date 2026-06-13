@@ -3678,6 +3678,12 @@ export default function Home() {
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                           </div>
+                          {!msg.streaming && !!msg.content && (
+                            <InlineSketchOffer
+                              text={msg.content}
+                              onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
+                            />
+                          )}
                           {msg.researchResult && (
                             <ResearchCard
                               url={msg.researchResult.url}
