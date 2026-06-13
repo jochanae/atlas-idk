@@ -16,15 +16,9 @@ export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
     setError(null);
     setImageUrl(null);
     try {
-      const res = await fetch("/api/image/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ prompt: prompt.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      setImageUrl(`data:${data.mimeType};base64,${data.b64_json}`);
+      const { generateImage } = await import("@/lib/generateImage");
+      const img = await generateImage(prompt.trim());
+      setImageUrl(img.dataUrl);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong");
     } finally {
