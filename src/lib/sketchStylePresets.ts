@@ -13,12 +13,13 @@
  *   - Any preset (including Photoreal) is an exploration, not a commit.
  */
 
-export type SketchStylePreset = "concept" | "wireframe" | "moodboard" | "photoreal";
+export type SketchStylePreset = "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal";
 
 export const SKETCH_STYLE_PRESETS: SketchStylePreset[] = [
   "concept",
   "wireframe",
   "moodboard",
+  "blueprint",
   "photoreal",
 ];
 
@@ -26,6 +27,7 @@ export const SKETCH_STYLE_LABEL: Record<SketchStylePreset, string> = {
   concept: "Concept",
   wireframe: "Wireframe",
   moodboard: "Mood board",
+  blueprint: "Blueprint",
   photoreal: "Photoreal",
 };
 
@@ -36,6 +38,8 @@ export const SKETCH_STYLE_HINT: Record<SketchStylePreset, string> = {
     "Clean low-fidelity UI wireframe, light background, generous whitespace, grayscale blocks.",
   moodboard:
     "Editorial mood board collage, balanced composition, cohesive palette, magazine-quality.",
+  blueprint:
+    "Multi-panel industrial design board, premium editorial presentation, English labels only, product concept hero shot, orthographic blueprint views, workflow strip, crisp typography, no foreign-language text.",
   photoreal:
     "Photorealistic product render, studio lighting, crisp materials, clean dark background.",
 };
@@ -52,7 +56,7 @@ export function isSketchStylePreset(v: unknown): v is SketchStylePreset {
  * image generation instead of replying as text. See BACKEND CONTRACT
  * below.
  */
-export const SKETCH_PROMPT_MARKER_RE = /^\[SKETCH:(concept|wireframe|moodboard|photoreal)\]\s*/i;
+export const SKETCH_PROMPT_MARKER_RE = /^\[SKETCH:(concept|wireframe|moodboard|blueprint|photoreal)\]\s*/i;
 
 export function buildSketchPrompt(preset: SketchStylePreset, excerpt: string): string {
   const label = SKETCH_STYLE_LABEL[preset];
@@ -72,6 +76,7 @@ export function inferSketchStylePreset(text: string): SketchStylePreset {
   const lower = text.toLowerCase();
   if (/(wireframe|layout|ui|screen|page|dashboard|interface|app)/i.test(lower)) return "wireframe";
   if (/(mood\s*board|moodboard|palette|brand|branding|style|editorial|vibe)/i.test(lower)) return "moodboard";
+  if (/(blueprint|orthographic|schematic|industrial design|concept board|product board)/i.test(lower)) return "blueprint";
   if (/(photoreal|photo\s*real|realistic|product\s*render|studio\s*lighting|cinematic)/i.test(lower)) return "photoreal";
   return "concept";
 }

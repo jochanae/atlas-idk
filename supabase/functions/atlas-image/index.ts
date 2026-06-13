@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, style } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "prompt required" }), {
         status: 400,
@@ -33,11 +33,12 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-image-1-mini",
+        model: "openai/gpt-image-2",
         prompt,
         size: "1024x1024",
         quality: "low",
         n: 1,
+        stream: false,
       }),
     });
 

@@ -6,13 +6,18 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
+export type ImageGenerationStyle = "default" | "blueprint";
+
 export interface GeneratedImage {
   b64_json: string;
   mimeType: string;
   dataUrl: string;
 }
 
-export async function generateImage(prompt: string): Promise<GeneratedImage> {
+export async function generateImage(
+  prompt: string,
+  options?: { style?: ImageGenerationStyle }
+): Promise<GeneratedImage> {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/atlas-image`, {
     method: "POST",
     headers: {
@@ -20,7 +25,7 @@ export async function generateImage(prompt: string): Promise<GeneratedImage> {
       apikey: SUPABASE_ANON,
       Authorization: `Bearer ${SUPABASE_ANON}`,
     },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, style: options?.style ?? "default" }),
   });
   const data = await res.json().catch(() => null) as { b64_json?: string; mimeType?: string; error?: string } | null;
   if (!res.ok || !data?.b64_json) {
