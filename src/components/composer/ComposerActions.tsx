@@ -90,6 +90,11 @@ const MORE_ITEMS: { id: ComposerMenuAction; label: string }[] = [
   { id: "more:rescan", label: "Rescan Repo" },
 ];
 
+// Sentinel action id used internally when Sketch is rendered as a top-of-More
+// row. Not part of ComposerMenuAction because hosts don't handle it directly —
+// ComposerActions intercepts it and opens SketchComposerSheet.
+const SKETCH_MENU_ID = "__sketch__";
+
 const SHEET_OVERLAY: React.CSSProperties = {
   position: "fixed",
   inset: 0,
