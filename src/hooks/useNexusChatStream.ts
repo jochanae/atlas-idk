@@ -230,25 +230,16 @@ export function useNexusChatStream(
         ? text.replace(SKETCH_PROMPT_MARKER_RE, "").trim()
         : routedText;
       try {
-        const r = await fetch("/api/image/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ prompt: imgPrompt }),
-        });
-        const data = await r.json().catch(() => null) as any;
-        if (!r.ok || !data?.b64_json) {
-          throw new Error(data?.error ?? `HTTP ${r.status}`);
-        }
-        const dataUrl = `data:${data.mimeType ?? "image/png"};base64,${data.b64_json}`;
+        const { generateImage } = await import("@/lib/generateImage");
+        const img = await generateImage(imgPrompt);
         setMessages(prev => [...prev, {
           id: streamingId,
           role: "assistant",
           content: "",
           createdAt: new Date().toISOString(),
           model: resolvedModel,
-          imageUrl: dataUrl,
-          imageGen: { images: [{ imageUrl: dataUrl, prompt: imgPrompt }] },
+          imageUrl: img.dataUrl,
+          imageGen: { images: [{ imageUrl: img.dataUrl, prompt: imgPrompt }] },
           isNew: true,
         } as NexusMessage]);
       } catch (err: any) {

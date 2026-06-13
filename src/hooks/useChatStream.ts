@@ -315,23 +315,15 @@ export function useChatStream(
           : routedText;
         void (async () => {
           try {
-            const r = await fetch("/api/image/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-              credentials: "include",
-              body: JSON.stringify({ prompt: imgPrompt }),
-            });
-            const data = await r.json().catch(() => null) as any;
-            if (!r.ok || !data?.b64_json) {
-              throw new Error(data?.error ?? `HTTP ${r.status}`);
-            }
+            const { generateImage } = await import("@/lib/generateImage");
+            const img = await generateImage(imgPrompt);
             setMessages((prev) => [...prev, {
               id: Date.now(),
               role: "assistant",
               content: "",
               sentAt: new Date().toISOString(),
-              imageB64: data.b64_json,
-              imageMimeType: data.mimeType ?? "image/png",
+              imageB64: img.b64_json,
+              imageMimeType: img.mimeType,
             } as ChatMessage]);
           } catch (err: any) {
             console.error("[useChatStream] image generate failed:", err);
