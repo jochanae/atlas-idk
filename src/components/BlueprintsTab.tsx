@@ -374,15 +374,57 @@ export function GenerateBlueprintPill({
   onCreated?: (blueprintId: number | string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+
+  const ensureIdeaModeSession = async () => {
+    const sessionsRes = await fetch(`/api/projects/${projectId}/sessions`, { credentials: "include" });
+    if (!sessionsRes.ok) throw new Error(`Could not inspect sessions (${sessionsRes.status})`);
+
+    const sessions = await sessionsRes.json() as Array<{ id: number; mode?: string | null }>;
+    const preferred = sessions.find((session) => session.mode === "idea") ?? sessions[0];
+
+    let sessionId: number | null = preferred?.id ?? null;
+    if (!sessionId) {
+      const createRes = await fetch(`/api/projects/${projectId}/sessions`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Blueprint session", mode: "idea" }),
+      });
+      if (!createRes.ok) throw new Error(`Could not create a session (${createRes.status})`);
+      const created = await createRes.json() as { id?: number };
+      sessionId = created.id ?? null;
+    }
+
+    if (!sessionId) throw new Error("No session available for blueprint generation");
+
+    await fetch(`/api/sessions/${sessionId}/idea-mode`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: true }),
+    });
+  };
+
   const generate = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/blueprint`, {
+      let res = await fetch(`/api/projects/${projectId}/blueprint`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null;
+        if (data?.error === "No idea mode session found for this project") {
+          await ensureIdeaModeSession();
+          res = await fetch(`/api/projects/${projectId}/blueprint`, {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+        }
+      }
       if (!res.ok) throw new Error(`Failed (${res.status})`);
       const data = await res.json();
       const bpId = data?.blueprint?.id ?? data?.id;
