@@ -1,4 +1,9 @@
 import { useState } from "react";
+import {
+  SKETCH_STYLE_LABEL,
+  SKETCH_STYLE_PRESETS,
+  type SketchStylePreset,
+} from "@/lib/sketchStylePresets";
 
 interface ImageGeneratorProps {
   compact?: boolean;
@@ -6,7 +11,7 @@ interface ImageGeneratorProps {
 
 export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState<"default" | "blueprint">("default");
+  const [style, setStyle] = useState<SketchStylePreset>("concept");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,16 +83,13 @@ export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
       />
 
       <div style={{ display: "flex", gap: 8 }}>
-        {[
-          { id: "default", label: "Standard" },
-          { id: "blueprint", label: "Blueprint" },
-        ].map((option) => {
-          const active = style === option.id;
+        {SKETCH_STYLE_PRESETS.map((option) => {
+          const active = style === option;
           return (
             <button
-              key={option.id}
+              key={option}
               type="button"
-              onClick={() => setStyle(option.id as "default" | "blueprint")}
+              onClick={() => setStyle(option)}
               style={{
                 background: active ? "#C9A24C" : "transparent",
                 color: active ? "#0C0A09" : "#C9A24C",
@@ -99,7 +101,7 @@ export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
                 cursor: "pointer",
               }}
             >
-              {option.label}
+              {SKETCH_STYLE_LABEL[option]}
             </button>
           );
         })}

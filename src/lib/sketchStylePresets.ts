@@ -65,6 +65,15 @@ export function buildSketchPrompt(preset: SketchStylePreset, excerpt: string): s
   return `[SKETCH:${preset}] Sketch this as a ${label} (thinking artifact, not a final deliverable).\n\nStyle: ${hint}\n\nSubject:\n${trimmed}`;
 }
 
+export function extractSketchSubject(prompt: string): string {
+  const stripped = prompt.replace(SKETCH_PROMPT_MARKER_RE, "").trim();
+  const subjectMatch = stripped.match(/\nSubject:\n([\s\S]*)$/i);
+  if (subjectMatch?.[1]?.trim()) return subjectMatch[1].trim();
+  return stripped
+    .replace(/^Sketch this as a .*?\n\nStyle:\s*[\s\S]*$/i, "")
+    .trim() || stripped;
+}
+
 const CAPABILITY_QUESTION_RE = /^(?:\s*)(?:can|could|do|does|is|are|will|would)\b[\s\S]*\?\s*$/i;
 const DIRECT_IMAGE_REQUEST_RE = [
   /\b(sketch|draw|render|illustrate|visuali[sz]e|mock\s*up)\b\s+(?:this|that|it|me|a|an|the)\b/i,

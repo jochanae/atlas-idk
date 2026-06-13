@@ -1,3 +1,5 @@
+import type { SketchStylePreset } from "@/lib/sketchStylePresets";
+
 /**
  * generateImage — calls the Lovable Cloud edge function `atlas-image`,
  * which routes through the AI Gateway. Bypasses the broken Cloud Run
@@ -6,7 +8,7 @@
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-export type ImageGenerationStyle = "default" | "blueprint";
+export type ImageGenerationStyle = SketchStylePreset | "default";
 
 export interface GeneratedImage {
   b64_json: string;
