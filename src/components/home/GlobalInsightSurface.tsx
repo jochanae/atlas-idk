@@ -24,6 +24,7 @@ export type GlobalInsightMessage = {
   genesisData?: { projectName: string; timestamp: string };
   streaming?: boolean;
   createdAt?: string;
+  imageUrl?: string;
 };
 
 export type GlobalInsightLiveStep = {
@@ -471,6 +472,19 @@ export function GlobalInsightSurface({
                     opacity: 0.92,
                   }}
                 >
+                  {msg.imageUrl && (
+                    <img
+                      src={msg.imageUrl}
+                      alt="Atlas sketch"
+                      style={{
+                        display: "block",
+                        maxWidth: "100%",
+                        borderRadius: 12,
+                        border: "1px solid rgba(212,175,55,0.22)",
+                        marginBottom: displayContent ? 10 : 0,
+                      }}
+                    />
+                  )}
                   <GlobalInsightRenderer
                     content={displayContent}
                     projects={projects}

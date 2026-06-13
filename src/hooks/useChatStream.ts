@@ -312,12 +312,23 @@ export function useChatStream(
       if (isImageIntent) {
         const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
         const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
+        const styleLabel = (sketchPreset ?? "concept").replace(/^\w/, c => c.toUpperCase());
+        const promptPreview = imgPrompt.length > 48 ? `${imgPrompt.slice(0, 48)}…` : imgPrompt;
+        const sketchLines: string[] = [];
+        const pushSketchStep = (line: string, step: { verb: string; target?: string }) => {
+          sketchLines.push(`SKETCH_STEP: ${line}`);
+          setActivityStream({ active: true, content: sketchLines.join("\n") });
+          setLiveStep({ verb: step.verb, target: step.target, status: "ok" });
+        };
+        pushSketchStep(`Interpreting "${promptPreview}"`, { verb: "Interpreting", target: promptPreview });
         void (async () => {
           try {
+            pushSketchStep(`Sketching ${styleLabel} style…`, { verb: "Sketching", target: `${styleLabel} style` });
             const { generateImage } = await import("@/lib/generateImage");
             const img = await generateImage(imgPrompt, {
               style: (sketchPreset as "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal" | undefined) ?? "concept",
             });
+            pushSketchStep("Rendering image…", { verb: "Rendering", target: "image" });
             setMessages((prev) => [...prev, {
               id: Date.now(),
               role: "assistant",
@@ -337,6 +348,7 @@ export function useChatStream(
           } finally {
             setChatPending(false);
             setActivityStream({ active: false, content: "" });
+            setLiveStep(null);
           }
         })();
         return;

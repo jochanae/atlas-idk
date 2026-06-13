@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type LiveGenerationCardProps = {
-  mode: "plan" | "blueprint" | "edit" | "thinking";
+  mode: "plan" | "blueprint" | "edit" | "thinking" | "sketch";
   steps: string[];
   isComplete: boolean;
 };
@@ -12,6 +12,7 @@ const MODE_LABELS: Record<LiveGenerationCardProps["mode"], string> = {
   blueprint: "Generating blueprint",
   edit: "Editing files",
   thinking: "Thinking...",
+  sketch: "Sketching",
 };
 
 export function LiveGenerationCard({ mode, steps, isComplete }: LiveGenerationCardProps) {
