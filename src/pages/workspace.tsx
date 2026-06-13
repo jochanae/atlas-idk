@@ -3677,15 +3677,16 @@ export default function Workspace() {
   }, [createSession, id, queryClient, setMessages, priorLoaded, historyMsgCountRef, setSessionId, sessionActionBusy]);
 
   // ── Sessions sheet (gold-clock) data + actions ────────────────────────────
+  const [sessionsSheetOpen, setSessionsSheetOpen] = useState(false);
   const { data: allSessionsForSheet = [], isLoading: allSessionsForSheetLoading } = useListSessions(id, {
-    query: { enabled: !!id && showSessionsSheet, queryKey: getListSessionsQueryKey(id) },
+    query: { enabled: !!id && sessionsSheetOpen, queryKey: getListSessionsQueryKey(id) },
   });
   const deleteSessionMutation = useDeleteSession();
 
   const handleSwitchSession = useCallback((sid: number | string) => {
     const numId = typeof sid === "string" ? Number(sid) : sid;
     if (!Number.isFinite(numId) || numId === sessionId) {
-      setShowSessionsSheet(false);
+      setSessionsSheetOpen(false);
       return;
     }
     setMessages([]);
@@ -3693,7 +3694,7 @@ export default function Workspace() {
     historyMsgCountRef.current = 0;
     setSessionId(numId);
     queryClient.invalidateQueries({ queryKey: ["messages", numId] });
-    setShowSessionsSheet(false);
+    setSessionsSheetOpen(false);
   }, [sessionId, setMessages, priorLoaded, historyMsgCountRef, setSessionId, queryClient]);
 
   const handleDeleteSessionFromSheet = useCallback(async (sid: number | string) => {
@@ -3710,10 +3711,12 @@ export default function Workspace() {
       }
       toast.success("Session deleted");
     } catch (e) {
-      reportError(e, { projectId: id, sessionId: numId });
+      reportError(e, { projectId: id });
       toast.error("Could not delete session");
     }
   }, [deleteSessionMutation, queryClient, id, sessionId, setMessages, priorLoaded, historyMsgCountRef, setSessionId]);
+
+
 
 
 
