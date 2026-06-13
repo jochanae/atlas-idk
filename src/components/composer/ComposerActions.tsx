@@ -282,18 +282,6 @@ export function ComposerActions({
                     setTimeout(() => attachRef.current?.click(), 50);
                   }}
                 />
-                {onSketch && (
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <BigNode
-                      label="Sketch"
-                      icon={<Wand2 size={36} strokeWidth={1.4} />}
-                      onClick={() => {
-                        setShowPlus(false);
-                        setTimeout(() => setShowSketch(true), 50);
-                      }}
-                    />
-                  </div>
-                )}
               </div>
 
             </div>
