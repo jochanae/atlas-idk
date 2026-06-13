@@ -6,6 +6,7 @@ interface ImageGeneratorProps {
 
 export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState("");
+  const [style, setStyle] = useState<"default" | "blueprint">("default");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +18,7 @@ export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
     setImageUrl(null);
     try {
       const { generateImage } = await import("@/lib/generateImage");
-      const img = await generateImage(prompt.trim());
+      const img = await generateImage(prompt.trim(), { style });
       setImageUrl(img.dataUrl);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong");
@@ -75,6 +76,34 @@ export function ImageGenerator({ compact = false }: ImageGeneratorProps) {
           boxSizing: "border-box",
         }}
       />
+
+      <div style={{ display: "flex", gap: 8 }}>
+        {[
+          { id: "default", label: "Standard" },
+          { id: "blueprint", label: "Blueprint" },
+        ].map((option) => {
+          const active = style === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setStyle(option.id as "default" | "blueprint")}
+              style={{
+                background: active ? "#C9A24C" : "transparent",
+                color: active ? "#0C0A09" : "#C9A24C",
+                border: "1px solid #C9A24C",
+                borderRadius: 999,
+                padding: "6px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
 
       <button
         onClick={generate}
