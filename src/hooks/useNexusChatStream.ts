@@ -102,6 +102,7 @@ export interface UseNexusChatStreamReturn {
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => Promise<void>;
   abort: () => void;
