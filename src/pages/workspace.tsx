@@ -4915,8 +4915,8 @@ export default function Workspace() {
     setAttachedFiles([]);
     if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
 
-    const imageFile = files.find(f => f.type.startsWith("image/"));
-    const otherFiles = files.filter(f => f !== imageFile);
+    const imageFiles = files.filter(f => f.type.startsWith("image/")).slice(0, 10);
+    const otherFiles = files.filter(f => !f.type.startsWith("image/"));
     const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
     const fullText = text + suffix;
 
@@ -4928,9 +4928,11 @@ export default function Workspace() {
     }
 
     const sendOpts = { planMode: opts?.planMode };
-    if (imageFile) {
-      fileToBase64Safe(imageFile)
-        .then(({ base64, mediaType }) => doSend(fullText, sid, current, undefined, { base64, mediaType }, sendOpts))
+    if (imageFiles.length > 0) {
+      Promise.all(imageFiles.map(f =>
+        fileToBase64Safe(f).then(({ base64, mediaType }) => ({ base64, mediaType, name: f.name }))
+      ))
+        .then((attachments) => doSend(fullText, sid, current, undefined, attachments, sendOpts))
         .catch(() => doSend(fullText, sid, current, undefined, undefined, sendOpts));
     } else {
       doSend(fullText, sid, current, undefined, undefined, sendOpts);
