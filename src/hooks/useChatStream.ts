@@ -117,7 +117,7 @@ export interface UseChatStreamReturn {
     sid: number,
     currentMessages: ChatMessage[],
     ctx?: string | null,
-    imageData?: { base64: string; mediaType: string },
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
     options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
   ) => void;
   handleRegenerate: (assistantMsgIndex: number) => void;
