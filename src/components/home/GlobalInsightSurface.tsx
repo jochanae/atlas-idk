@@ -17,6 +17,7 @@ import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
+import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -179,6 +180,8 @@ export function GlobalInsightSurface({
   const [, setLocation] = useLocation();
   const [focused, setFocused] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [showDeepDive, setShowDeepDive] = useState(false);
+  const [deepDiveContext, setDeepDiveContext] = useState("");
   const isParchment = useThemeMode() === "parchment";
 
   // Auto-scroll on new messages / streaming
@@ -747,7 +750,22 @@ export function GlobalInsightSurface({
                 hasProjectContext={false}
                 borderless={true}
                 onFiles={(files) => onFiles?.(files)}
-                onMenuAction={(action) => onMenuAction?.(action)}
+                onMenuAction={(action) => {
+                  if (action === "more:deep-dive") {
+                    const recent = messages.slice(-6).map((m) => {
+                      const role = m.role === "user" ? "ME" : "ATLAS";
+                      return m.content ? `[${role}] ${m.content}` : "";
+                    }).filter(Boolean).join("\n\n");
+                    const draftLine = input.trim() ? `Current draft:\n${input.trim()}\n\n` : "";
+                    const recentLine = recent ? `Recent thread:\n${recent}\n\n` : "";
+                    setDeepDiveContext(
+                      `I'm thinking through something in Axiom (a strategic thinking partner). Help me deep-dive this — challenge assumptions, surface what I'm missing, and end with a concrete recommendation I can bring back.\n\n${draftLine}${recentLine}`
+                    );
+                    setShowDeepDive(true);
+                    return;
+                  }
+                  onMenuAction?.(action);
+                }}
                 onSketch={onSketch}
               />
             </div>
