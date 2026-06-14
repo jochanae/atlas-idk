@@ -47,7 +47,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
     setGenerating(true);
     setGenError(null);
     try {
-      let res = await fetch(`/api/projects/${projectId}/blueprint`, {
+      const res = await fetch(`/api/projects/${projectId}/blueprint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -55,22 +55,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null) as { error?: string } | null;
-        if (data?.error === "No idea mode session found for this project") {
-          await ensureIdeaModeSession(projectId);
-          res = await fetch(`/api/projects/${projectId}/blueprint`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({}),
-          });
-        } else {
-          setGenError(data?.error ?? `Error ${res.status}`);
-          return;
-        }
-      }
-      if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        setGenError(data.error ?? `Error ${res.status}`);
+        setGenError(data?.error ?? `Error ${res.status}`);
         return;
       }
       const blueprint = await res.json() as Blueprint;
