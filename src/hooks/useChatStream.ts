@@ -411,7 +411,7 @@ export function useChatStream(
       abortControllerRef.current = controller;
       const stallGuard = setTimeout(() => {
         try { controller.abort(); } catch {}
-      }, 45000);
+      }, 90000);
 
       void (async () => {
         let streamingId: number | null = null;

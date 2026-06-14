@@ -145,6 +145,7 @@ export interface ChatComposerProps {
 
   // Textarea
   hasInput: boolean;
+  hasAttachments?: boolean;
   inputFocused: boolean;
   setInputFocused: (v: boolean) => void;
   wsLens: WorkspaceLens;
@@ -231,6 +232,7 @@ export function ChatComposer(props: ChatComposerProps) {
     setMobileTab,
     setDesktopForceTab,
     hasInput,
+    hasAttachments = false,
     inputFocused,
     setInputFocused,
     wsLens,
@@ -708,19 +710,19 @@ export function ChatComposer(props: ChatComposerProps) {
                   if (chatPending && onAbort) { onAbort(); return; }
                   handleSend({ planMode });
                 }}
-                disabled={chatPending ? !onAbort : (!hasInput || createSessionPending)}
+                disabled={chatPending ? !onAbort : (!(hasInput || hasAttachments) || createSessionPending)}
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}
                 title={chatPending ? "Stop" : "Send"}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 3,
                   background: chatPending
                     ? "var(--atlas-ember)"
-                    : (hasInput && !sendPreparingSession ? "var(--atlas-ember)" : "transparent"),
-                  border: (chatPending || hasInput) ? "none" : "1px solid transparent",
-                  boxShadow: (chatPending || hasInput) ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
+                    : ((hasInput || hasAttachments) && !sendPreparingSession ? "var(--atlas-ember)" : "transparent"),
+                  border: (chatPending || hasInput || hasAttachments) ? "none" : "1px solid transparent",
+                  boxShadow: (chatPending || hasInput || hasAttachments) ? "0 0 16px -3px rgba(146,64,14,0.5)" : "none",
                   borderRadius: 10,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: chatPending ? "pointer" : (hasInput ? "pointer" : "default"),
+                  cursor: chatPending ? "pointer" : ((hasInput || hasAttachments) ? "pointer" : "default"),
                 }}
               >
                 {chatPending ? (
@@ -733,8 +735,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   </svg>
                 ) : (
                   <svg viewBox="0 0 20 20" width={13} height={13}
-                    fill={hasInput ? "var(--atlas-fg)" : "none"}
-                    stroke={hasInput ? "var(--atlas-fg)" : "var(--atlas-muted)"}
+                    fill={hasInput || hasAttachments ? "var(--atlas-fg)" : "none"}
+                    stroke={hasInput || hasAttachments ? "var(--atlas-fg)" : "var(--atlas-muted)"}
                     strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2.5 10L17 3 13 17l-3.5-5.5z" />
                     <path d="M17 3 9.5 11.5" />

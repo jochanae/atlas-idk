@@ -3,7 +3,7 @@ import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
-const STREAM_TIMEOUT_MS = 30_000;
+const STREAM_TIMEOUT_MS = 90_000;
 
 export interface NexusMessage {
   id?: string;
@@ -182,8 +182,6 @@ export function useNexusChatStream(
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => {
-    if (!text.trim() || isPending) return;
-
     // Unify legacy single-image inputs into the attachments array.
     const imgAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
       (attachments && attachments.length > 0)
@@ -191,6 +189,7 @@ export function useNexusChatStream(
         : (imageBase64
             ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
             : []);
+    if ((!text.trim() && imgAttachments.length === 0) || isPending) return;
     const firstImg = imgAttachments[0];
 
     const routedText = imgAttachments.length > 0 ? text : routeDirectImageRequestToSketchPrompt(text);

@@ -271,7 +271,7 @@ export function ComposerActions({
                   icon={<Camera size={36} strokeWidth={1.4} />}
                   onClick={() => {
                     setShowPlus(false);
-                    setTimeout(() => cameraRef.current?.click(), 50);
+                    cameraRef.current?.click();
                   }}
                 />
                 <BigNode
@@ -279,7 +279,7 @@ export function ComposerActions({
                   icon={<Paperclip size={36} strokeWidth={1.4} />}
                   onClick={() => {
                     setShowPlus(false);
-                    setTimeout(() => attachRef.current?.click(), 50);
+                    attachRef.current?.click();
                   }}
                 />
               </div>
