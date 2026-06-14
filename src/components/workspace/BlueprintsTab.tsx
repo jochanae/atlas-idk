@@ -21,35 +21,6 @@ type Blueprint = {
   createdAt: string;
 };
 
-async function ensureIdeaModeSession(projectId: number) {
-  const sessionsRes = await fetch(`/api/projects/${projectId}/sessions`, { credentials: "include" });
-  if (!sessionsRes.ok) throw new Error(`Could not inspect sessions (${sessionsRes.status})`);
-
-  const sessions = await sessionsRes.json() as Array<{ id: number; mode?: string | null }>;
-  const preferred = sessions.find((session) => session.mode === "idea") ?? sessions[0];
-
-  let sessionId: number | null = preferred?.id ?? null;
-  if (!sessionId) {
-    const createRes = await fetch(`/api/projects/${projectId}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ title: "Blueprint session", mode: "idea" }),
-    });
-    if (!createRes.ok) throw new Error(`Could not create a session (${createRes.status})`);
-    const created = await createRes.json() as { id?: number };
-    sessionId = created.id ?? null;
-  }
-
-  if (!sessionId) throw new Error("No session available for blueprint generation");
-
-  await fetch(`/api/sessions/${sessionId}/idea-mode`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ enabled: true }),
-  });
-}
 
 function BlueprintsTab({ projectId }: { projectId: number }) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
@@ -76,7 +47,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
     setGenerating(true);
     setGenError(null);
     try {
-      let res = await fetch(`/api/projects/${projectId}/blueprint`, {
+      const res = await fetch(`/api/projects/${projectId}/blueprint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -84,22 +55,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null) as { error?: string } | null;
-        if (data?.error === "No idea mode session found for this project") {
-          await ensureIdeaModeSession(projectId);
-          res = await fetch(`/api/projects/${projectId}/blueprint`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({}),
-          });
-        } else {
-          setGenError(data?.error ?? `Error ${res.status}`);
-          return;
-        }
-      }
-      if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        setGenError(data.error ?? `Error ${res.status}`);
+        setGenError(data?.error ?? `Error ${res.status}`);
         return;
       }
       const blueprint = await res.json() as Blueprint;
@@ -185,9 +141,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
         {genError && (
           <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 6, background: "color-mix(in oklab, var(--atlas-ember) 8%, transparent)", border: "1px solid rgba(146,64,14,0.25)" }}>
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-ember)", opacity: 0.9, lineHeight: 1.5 }}>
-              {genError === "No idea mode session found for this project"
-                ? "No idea-mode conversation found. Start an idea chat on the home page with this project in focus, then generate here."
-                : genError}
+              {genError}
             </div>
           </div>
         )}
@@ -199,7 +153,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
           <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--atlas-muted)", opacity: 0.45 }}>
             <div style={{ fontSize: 13, marginBottom: 6 }}>No blueprints yet</div>
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, lineHeight: 1.6 }}>
-              Explore an idea on the home page with this project in focus, then hit Generate above.
+              Have a chat with Atlas about this project (here or on the home page), then hit Generate above.
             </div>
           </div>
         ) : (
