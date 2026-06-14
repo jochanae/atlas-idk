@@ -83,12 +83,18 @@ export function useAtlasStream(): UseAtlasStreamReturn {
       if (!res.ok) {
         let bodyText = "";
         try { bodyText = await res.text(); } catch { /* ignore */ }
-        console.error(`[useAtlasStream] ${endpoint} -> HTTP ${res.status}`, bodyText.slice(0, 500));
+        console.error(`[useAtlasStream] ${endpoint} -> HTTP ${res.status}`, bodyText.slice(0, 1000));
+        // Try to extract a human-readable reason from JSON error bodies.
+        let reason = "";
+        try {
+          const parsed = JSON.parse(bodyText) as { error?: string; message?: string; detail?: string };
+          reason = parsed.error || parsed.message || parsed.detail || "";
+        } catch { reason = bodyText.slice(0, 200); }
         const errText = res.status === 413
           ? "Images are too large to send. Try fewer or smaller images."
           : res.status === 401
             ? "Session expired. Please sign in again."
-            : `Atlas couldn't respond (HTTP ${res.status}). Try again.`;
+            : `Atlas couldn't respond (HTTP ${res.status})${reason ? `: ${reason}` : ""}. Try again.`;
         callbacks.onError?.(errText);
         return;
       }
