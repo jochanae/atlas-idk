@@ -47,6 +47,7 @@ interface Props {
   conversationId?: string | null;
   input: string;
   setInput: (v: string) => void;
+  hasAttachments?: boolean;
   onSubmit: () => void | Promise<void>;
   isSending: boolean;
   isStreaming: boolean;
@@ -159,6 +160,7 @@ export function GlobalInsightSurface({
   conversationId,
   input,
   setInput,
+  hasAttachments = false,
   onSubmit,
   isSending,
   isStreaming,
@@ -198,7 +200,7 @@ export function GlobalInsightSurface({
 
   if (!open) return null;
 
-  const canSubmit = input.trim().length > 0 && !isSending;
+  const canSubmit = (input.trim().length > 0 || hasAttachments) && !isSending;
 
   const handleSubmit = () => {
     if (!canSubmit) return;

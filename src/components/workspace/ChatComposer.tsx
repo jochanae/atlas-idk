@@ -275,6 +275,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const [planMode, setPlanMode] = useState(false);
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
+  const filePreviewUrls = useRef<Map<File, string>>(new Map());
   // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
 
   const togglePlanMode = () => {
@@ -305,6 +306,27 @@ export function ChatComposer(props: ChatComposerProps) {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, isMobile]);
+
+  useEffect(() => {
+    const current = new Set(attachedFiles);
+    for (const [file, url] of filePreviewUrls.current.entries()) {
+      if (!current.has(file)) {
+        URL.revokeObjectURL(url);
+        filePreviewUrls.current.delete(file);
+      }
+    }
+    for (const file of attachedFiles) {
+      if (file.type.startsWith("image/") && !filePreviewUrls.current.has(file)) {
+        filePreviewUrls.current.set(file, URL.createObjectURL(file));
+      }
+    }
+    return () => {
+      if (attachedFiles.length === 0) {
+        for (const url of filePreviewUrls.current.values()) URL.revokeObjectURL(url);
+        filePreviewUrls.current.clear();
+      }
+    };
+  }, [attachedFiles]);
 
 
   return (
@@ -418,7 +440,7 @@ export function ChatComposer(props: ChatComposerProps) {
               <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
                 {file.type.startsWith("image/") ? (
                   <img
-                    src={URL.createObjectURL(file)}
+                    src={filePreviewUrls.current.get(file)}
                     alt={file.name}
                     style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(201,162,76,0.25)", display: "block" }}
                   />
@@ -431,7 +453,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 <button
                   onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
                   aria-label="Remove attachment"
-                  style={{ position: "absolute", top: -5, right: -5, minWidth: 44, minHeight: 44, borderRadius: "50%", background: "var(--atlas-bg)", border: "1px solid rgba(201,162,76,0.3)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 14, zIndex: 1 }}
+                  style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(201,162,76,0.32)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
                 >×</button>
               </div>
             ))}

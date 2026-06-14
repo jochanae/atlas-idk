@@ -114,7 +114,7 @@ export function UserBubble({
                       aria-hidden
                       style={{
                         position: "absolute",
-                        bottom: 4, right: 4,
+                        top: 4, right: 4,
                         width: 18, height: 18, borderRadius: 999,
                         background: "rgba(0,0,0,0.55)",
                         color: "var(--atlas-gold)",

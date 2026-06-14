@@ -3845,21 +3845,42 @@ export default function Home() {
                                   {imgs.map((img: any, idx: number) => {
                                     const url = img._url ?? `data:${img.mediaType};base64,${img.base64}`;
                                     return (
-                                      <img
-                                        key={idx}
-                                        src={url}
-                                        alt={img.name || "Attached"}
-                                        style={{
-                                          width: imgs.length === 1 ? "100%" : 110,
-                                          maxWidth: "100%",
-                                          height: imgs.length === 1 ? "auto" : 110,
-                                          maxHeight: imgs.length === 1 ? 320 : 110,
-                                          objectFit: "cover",
-                                          borderRadius: 8,
-                                          display: "block",
-                                          border: "0.5px solid rgba(212,175,55,0.25)",
-                                        }}
-                                      />
+                                      <div key={idx} style={{ position: "relative" }}>
+                                        <img
+                                          src={url}
+                                          alt={img.name || "Attached"}
+                                          style={{
+                                            width: imgs.length === 1 ? "100%" : 110,
+                                            maxWidth: "100%",
+                                            height: imgs.length === 1 ? "auto" : 110,
+                                            maxHeight: imgs.length === 1 ? 320 : 110,
+                                            objectFit: "cover",
+                                            borderRadius: 8,
+                                            display: "block",
+                                            border: "0.5px solid rgba(212,175,55,0.25)",
+                                          }}
+                                        />
+                                        <span
+                                          aria-hidden
+                                          style={{
+                                            position: "absolute",
+                                            top: 4,
+                                            right: 4,
+                                            width: 18,
+                                            height: 18,
+                                            borderRadius: 999,
+                                            background: "rgba(0,0,0,0.55)",
+                                            color: "var(--atlas-gold)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                          }}
+                                        >
+                                          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M13 7.5l-5 5a3 3 0 01-4.24-4.24l6-6a2 2 0 012.83 2.83l-6 6a1 1 0 11-1.41-1.41L9.5 5" />
+                                          </svg>
+                                        </span>
+                                      </div>
                                     );
                                   })}
                                 </div>
@@ -4086,7 +4107,8 @@ export default function Home() {
                     )}
                     <button
                       onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                      style={{ position: "absolute", top: -5, right: -5, width: 16, height: 16, borderRadius: "50%", background: "var(--atlas-bg)", border: "1px solid rgba(201,162,76,0.3)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: "var(--ts-micro)", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 1 }}
+                      aria-label="Remove attachment"
+                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(201,162,76,0.32)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
                     >×</button>
                   </div>
                 ))}
@@ -4647,6 +4669,7 @@ export default function Home() {
         conversationId={activeConversationId}
         input={input}
         setInput={setInput}
+        hasAttachments={attachedFiles.length > 0}
         onSubmit={() => {
           const result = handleSubmit(undefined, { forceStayOnHome: true });
           setInput("");
