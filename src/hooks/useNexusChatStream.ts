@@ -12,6 +12,7 @@ export interface NexusMessage {
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
+  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
     images: Array<{
       imageUrl: string;
