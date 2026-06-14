@@ -89,49 +89,45 @@ export function UserBubble({
           }}
         >
           {/* Attachment thumbnail row — ABOVE the text, prominent, tap-to-expand */}
-          {imageUrl && (
+          {imgs.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: content ? 10 : 0 }}>
-              <button
-                type="button"
-                onClick={() => { haptic.short(); setPreviewOpen(true); }}
-                aria-label="Open attached image"
-                title="View attachment"
-                style={{
-                  position: "relative",
-                  width: 96,
-                  height: 96,
-                  padding: 0,
-                  borderRadius: 8,
-                  overflow: "hidden",
-                  border: "0.5px solid rgba(201,162,76,0.35)",
-                  background: "rgba(0,0,0,0.25)",
-                  cursor: "zoom-in",
-                  display: "block",
-                }}
-              >
-                <img
-                  src={imageUrl}
-                  alt="Attached"
-                  style={{
-                    width: "100%", height: "100%", objectFit: "cover", display: "block",
-                  }}
-                />
-                <span
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    bottom: 4, right: 4,
-                    width: 18, height: 18, borderRadius: 999,
-                    background: "rgba(0,0,0,0.55)",
-                    color: "var(--atlas-gold)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M13 7.5l-5 5a3 3 0 01-4.24-4.24l6-6a2 2 0 012.83 2.83l-6 6a1 1 0 11-1.41-1.41L9.5 5" />
-                  </svg>
-                </span>
-              </button>
+              {imgs.map((img, idx) => {
+                const url = `data:${img.mediaType};base64,${img.base64}`;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => { haptic.short(); setPreviewIndex(idx); }}
+                    aria-label={img.name ? `Open ${img.name}` : `Open attached image ${idx + 1}`}
+                    title={img.name || "View attachment"}
+                    style={{
+                      position: "relative",
+                      width: 96, height: 96, padding: 0,
+                      borderRadius: 8, overflow: "hidden",
+                      border: "0.5px solid rgba(201,162,76,0.35)",
+                      background: "rgba(0,0,0,0.25)",
+                      cursor: "zoom-in", display: "block",
+                    }}
+                  >
+                    <img src={url} alt={img.name || "Attached"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        bottom: 4, right: 4,
+                        width: 18, height: 18, borderRadius: 999,
+                        background: "rgba(0,0,0,0.55)",
+                        color: "var(--atlas-gold)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M13 7.5l-5 5a3 3 0 01-4.24-4.24l6-6a2 2 0 012.83 2.83l-6 6a1 1 0 11-1.41-1.41L9.5 5" />
+                      </svg>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
