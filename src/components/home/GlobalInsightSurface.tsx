@@ -16,6 +16,7 @@ import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
