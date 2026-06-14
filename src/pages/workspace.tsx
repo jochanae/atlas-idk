@@ -82,6 +82,7 @@ import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
+import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { MemoryTab } from "@/components/workspace/MemoryTab";
 import { BlueprintsTab } from "@/components/workspace/BlueprintsTab";
@@ -3945,6 +3946,8 @@ export default function Workspace() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
+  const [showDeepDive, setShowDeepDive] = useState(false);
+  const [deepDiveContext, setDeepDiveContext] = useState("");
   const [cloningProject, setCloningProject] = useState(false);
   const updateProjectHeader = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
@@ -6512,6 +6515,20 @@ export default function Workspace() {
                 }
                 if (action === "more:console") { setLeftTab("terminal"); return; }
                 if (action === "more:changes") { setLeftTab("diff"); return; }
+                if (action === "more:deep-dive") {
+                  const recent = (messages ?? []).slice(-6).map((m: any) => {
+                    const role = m.role === "user" ? "ME" : "ATLAS";
+                    const text = typeof m.content === "string" ? m.content : "";
+                    return text ? `[${role}] ${text}` : "";
+                  }).filter(Boolean).join("\n\n");
+                  const projectLine = project?.name ? `Project: ${project.name}\n\n` : "";
+                  const draftLine = input.trim() ? `Current draft:\n${input.trim()}\n\n` : "";
+                  const recentLine = recent ? `Recent thread:\n${recent}\n\n` : "";
+                  const prompt = `I'm thinking through something in Axiom (a strategic thinking partner). Help me deep-dive this — challenge assumptions, surface what I'm missing, and end with a concrete recommendation I can bring back.\n\n${projectLine}${draftLine}${recentLine}`;
+                  setDeepDiveContext(prompt);
+                  setShowDeepDive(true);
+                  return;
+                }
               },
             }}
 
@@ -6970,6 +6987,15 @@ export default function Workspace() {
         projectId={Number.isFinite(id) ? id : null}
         open={showHistorySheet}
         onClose={() => setShowHistorySheet(false)}
+      />
+
+      <DeepDiveSheet
+        open={showDeepDive}
+        onClose={() => setShowDeepDive(false)}
+        initialContext={deepDiveContext}
+        onPasteBack={(text) => {
+          setInput((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text));
+        }}
       />
 
       <SessionHistorySheet
