@@ -153,7 +153,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
           <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--atlas-muted)", opacity: 0.45 }}>
             <div style={{ fontSize: 13, marginBottom: 6 }}>No blueprints yet</div>
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, lineHeight: 1.6 }}>
-              Explore an idea on the home page with this project in focus, then hit Generate above.
+              Have a chat with Atlas about this project (here or on the home page), then hit Generate above.
             </div>
           </div>
         ) : (
