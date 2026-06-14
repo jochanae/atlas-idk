@@ -134,7 +134,7 @@ export interface ChatComposerProps {
     sid: number,
     currentMessages: ChatMessage[],
     ctx?: string | null,
-    imageData?: { base64: string; mediaType: string },
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
   ) => void;
 
   // Blueprint pill
