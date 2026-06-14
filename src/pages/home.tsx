@@ -4647,6 +4647,7 @@ export default function Home() {
         conversationId={activeConversationId}
         input={input}
         setInput={setInput}
+        hasAttachments={attachedFiles.length > 0}
         onSubmit={() => {
           const result = handleSubmit(undefined, { forceStayOnHome: true });
           setInput("");
