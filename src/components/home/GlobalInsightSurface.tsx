@@ -674,6 +674,36 @@ export function GlobalInsightSurface({
             minHeight: 96,
           }}
         >
+          {/* Attachment preview strip */}
+          {attachedFiles.length > 0 && (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
+              {attachedFiles.map((file, idx) => (
+                <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
+                  {file.type.startsWith("image/") ? (
+                    <img
+                      src={filePreviewUrls.current.get(file)}
+                      alt={file.name}
+                      style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(212,175,55,0.28)", display: "block" }}
+                    />
+                  ) : (
+                    <div style={{ width: 54, height: 54, borderRadius: 7, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.22)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="rgba(212,175,55,0.65)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      <span style={{ fontSize: 8, color: "rgba(212,175,55,0.6)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
+                    </div>
+                  )}
+                  {onRemoveFile && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveFile(idx)}
+                      aria-label="Remove attachment"
+                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(212,175,55,0.35)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
+                    >×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Textarea row — full width, generous height */}
           <div style={{ position: "relative", flex: 1, minHeight: 56 }}>
             {showPlaceholder && (
