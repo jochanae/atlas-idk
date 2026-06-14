@@ -226,6 +226,7 @@ export function ChatStream(props: ChatStreamProps) {
                 sentAt={msg.sentAt}
                 imageB64={msg.imageB64}
                 imageMimeType={msg.imageMimeType}
+                attachments={msg.attachments}
                 onCopy={() => {}}
                 onEdit={() => onEditUserMessage(msg.content)}
               />
