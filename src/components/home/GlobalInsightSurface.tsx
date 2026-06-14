@@ -178,6 +178,8 @@ export function GlobalInsightSurface({
   onFiles,
   onMenuAction,
   onSketch,
+  attachedFiles = [],
+  onRemoveFile,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
