@@ -86,4 +86,24 @@ describe("useNexusChatStream — attachments regression", () => {
     expect(body.attachments).toHaveLength(1);
     expect(body.attachments[0].mediaType).toBe("image/png");
   });
+
+  it("allows attachment-only sends to reach /api/nexus/chat", async () => {
+    const { result } = renderHook(() => useNexusChatStream({}));
+
+    await act(async () => {
+      await result.current.send({
+        text: "",
+        attachments: [
+          { base64: "AAA", mediaType: "image/png", name: "only.png" },
+        ],
+      });
+    });
+
+    const chatCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith("/api/nexus/chat"));
+    expect(chatCall, "expected POST /api/nexus/chat for attachment-only send").toBeTruthy();
+    const body = JSON.parse(String((chatCall![1] as RequestInit).body));
+    expect(body.attachments).toEqual([
+      expect.objectContaining({ base64: "AAA", mediaType: "image/png", name: "only.png" }),
+    ]);
+  });
 });
