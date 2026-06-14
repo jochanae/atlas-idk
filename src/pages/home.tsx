@@ -4086,7 +4086,8 @@ export default function Home() {
                     )}
                     <button
                       onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                      style={{ position: "absolute", top: -5, right: -5, width: 16, height: 16, borderRadius: "50%", background: "var(--atlas-bg)", border: "1px solid rgba(201,162,76,0.3)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: "var(--ts-micro)", lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 1 }}
+                      aria-label="Remove attachment"
+                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(201,162,76,0.32)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
                     >×</button>
                   </div>
                 ))}
