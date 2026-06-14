@@ -198,8 +198,12 @@ export default function Login() {
   const handleOAuth = async (provider: "google" | "apple") => {
     setError(null);
     setLoading(true);
-    // Custom backend OAuth — redirect to Axiom Cloud Run endpoint.
-    window.location.href = `https://axiom-atlas-689827072865.us-east1.run.app/api/auth/${provider}`;
+    // OAuth goes through the Express backend (atlas-session cookie + bearer token).
+    // On Vercel, /api/auth/* is rewritten same-origin so the cookie lands on the
+    // app domain. On preview origins (Lovable), we fall back to the absolute
+    // Cloud Run URL — auth still works via the bearer token returned on /auth/callback.
+    const { apiUrl } = await import("@/lib/api");
+    window.location.href = apiUrl(`/api/auth/${provider}`);
   };
 
   if (isLoading) return (
