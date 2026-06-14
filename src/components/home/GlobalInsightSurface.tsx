@@ -822,8 +822,8 @@ export function GlobalInsightSurface({
             </div>
           </div>
         </div>
-        </div>
       </div>
+
       <DeepDiveSheet
         open={showDeepDive}
         onClose={() => setShowDeepDive(false)}
