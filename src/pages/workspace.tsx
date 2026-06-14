@@ -4933,7 +4933,10 @@ export default function Workspace() {
         fileToBase64Safe(f).then(({ base64, mediaType }) => ({ base64, mediaType, name: f.name }))
       ))
         .then((attachments) => doSend(fullText, sid, current, undefined, attachments, sendOpts))
-        .catch(() => doSend(fullText, sid, current, undefined, undefined, sendOpts));
+        .catch(() => {
+          const fallbackText = fullText || `[Attached: ${imageFiles.map(f => f.name).join(", ")}]`;
+          doSend(fallbackText, sid, current, undefined, undefined, sendOpts);
+        });
     } else {
       doSend(fullText, sid, current, undefined, undefined, sendOpts);
     }
