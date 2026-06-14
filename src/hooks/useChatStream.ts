@@ -117,7 +117,7 @@ export interface UseChatStreamReturn {
     sid: number,
     currentMessages: ChatMessage[],
     ctx?: string | null,
-    imageData?: { base64: string; mediaType: string },
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
     options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
   ) => void;
   handleRegenerate: (assistantMsgIndex: number) => void;
@@ -279,16 +279,19 @@ export function useChatStream(
       sid: number,
       currentMessages: ChatMessage[],
       ctx?: string | null,
-      imageData?: { base64: string; mediaType: string },
+      attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
       options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
     ) => {
+      const imgAttachments = (attachments ?? []).filter((a) => a.mediaType?.startsWith("image/"));
+      const firstImg = imgAttachments[0];
       const userMsg: ChatMessage = {
         role: "user",
         content: text,
         sentAt: new Date().toISOString(),
         displayAs: options?.displayAs,
         planMode: options?.planMode,
-        ...(imageData ? { imageB64: imageData.base64, imageMimeType: imageData.mediaType } : {}),
+        ...(imgAttachments.length > 0 ? { attachments: imgAttachments } : {}),
+        ...(firstImg ? { imageB64: firstImg.base64, imageMimeType: firstImg.mediaType } : {}),
       };
       const history = currentMessages.map((m) => ({ role: m.role, content: m.content }));
       const ledgerEntries = (entries || []).map((e) => ({ id: e.id, title: e.title, status: e.status }));
@@ -392,7 +395,14 @@ export function useChatStream(
         ...(activeCtx ? { fileContext: activeCtx } : {}),
         ...(userProfileStr ? { userProfile: userProfileStr } : {}),
         ...(projectMap ? { projectMap } : {}),
-        ...(imageData ? { imageData: imageData.base64, imageMimeType: imageData.mediaType } : {}),
+        ...(imgAttachments.length > 0
+          ? {
+              attachments: imgAttachments,
+              // Legacy fields for backend compat with the pre-multi-image contract.
+              imageData: firstImg!.base64,
+              imageMimeType: firstImg!.mediaType,
+            }
+          : {}),
         ...(forgeContext ? { forgeContext } : {}),
         ...(dbUrl ? { dbUrl } : {}),
       };
