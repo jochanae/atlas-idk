@@ -164,7 +164,7 @@ function formatModelUsedLabel(modelUsed?: string | null): string | null {
   if (!modelUsed) return null;
   const normalized = modelUsed.toLowerCase().replace(/[\s_.]+/g, "-");
   if (normalized.includes("haiku")) return "Claude Haiku";
-  if (normalized.includes("sonnet") || normalized === "claude") return "Claude Sonnet";
+  if (normalized.includes("sonnet") || normalized === "claude") return "Claude Sonnet 4.6";
   if (normalized.includes("gpt-4o") || normalized.includes("gpt4o")) return "GPT-4o";
   if (normalized.includes("gemini") && normalized.includes("flash")) return "Gemini Flash";
   if (normalized.includes("gemini") && (normalized.includes("pro") || normalized === "gemini")) return "Gemini Pro";
