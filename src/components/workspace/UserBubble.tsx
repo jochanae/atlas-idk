@@ -187,9 +187,9 @@ export function UserBubble({
         </div>
       </div>
 
-      {previewOpen && imageUrl && (
+      {previewUrl && (
         <div
-          onClick={() => setPreviewOpen(false)}
+          onClick={() => setPreviewIndex(null)}
           role="dialog"
           aria-modal="true"
           aria-label="Attachment preview"
@@ -204,7 +204,7 @@ export function UserBubble({
         >
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setPreviewOpen(false); }}
+            onClick={(e) => { e.stopPropagation(); setPreviewIndex(null); }}
             aria-label="Close preview"
             style={{
               position: "absolute", top: 18, right: 18,
@@ -219,7 +219,7 @@ export function UserBubble({
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
           </button>
           <img
-            src={imageUrl}
+            src={previewUrl}
             alt="Attached"
             onClick={(e) => e.stopPropagation()}
             style={{
