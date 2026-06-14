@@ -822,7 +822,16 @@ export function GlobalInsightSurface({
             </div>
           </div>
         </div>
+        </div>
       </div>
+      <DeepDiveSheet
+        open={showDeepDive}
+        onClose={() => setShowDeepDive(false)}
+        initialContext={deepDiveContext}
+        onPasteBack={(text) => {
+          setInput(input.trim() ? `${input.trim()}\n\n${text}` : text);
+        }}
+      />
     </div>
   );
 }
