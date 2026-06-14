@@ -21,35 +21,6 @@ type Blueprint = {
   createdAt: string;
 };
 
-async function ensureIdeaModeSession(projectId: number) {
-  const sessionsRes = await fetch(`/api/projects/${projectId}/sessions`, { credentials: "include" });
-  if (!sessionsRes.ok) throw new Error(`Could not inspect sessions (${sessionsRes.status})`);
-
-  const sessions = await sessionsRes.json() as Array<{ id: number; mode?: string | null }>;
-  const preferred = sessions.find((session) => session.mode === "idea") ?? sessions[0];
-
-  let sessionId: number | null = preferred?.id ?? null;
-  if (!sessionId) {
-    const createRes = await fetch(`/api/projects/${projectId}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ title: "Blueprint session", mode: "idea" }),
-    });
-    if (!createRes.ok) throw new Error(`Could not create a session (${createRes.status})`);
-    const created = await createRes.json() as { id?: number };
-    sessionId = created.id ?? null;
-  }
-
-  if (!sessionId) throw new Error("No session available for blueprint generation");
-
-  await fetch(`/api/sessions/${sessionId}/idea-mode`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ enabled: true }),
-  });
-}
 
 function BlueprintsTab({ projectId }: { projectId: number }) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
