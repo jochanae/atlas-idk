@@ -36,6 +36,7 @@ export function UserBubble({
   sentAt,
   imageB64,
   imageMimeType,
+  attachments,
   onCopy,
   onEdit,
 }: {
@@ -43,16 +44,22 @@ export function UserBubble({
   sentAt?: string;
   imageB64?: string;
   imageMimeType?: string;
+  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   onCopy: () => void;
   onEdit: () => void;
 }) {
   const [hov, setHov] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
-  const imageUrl = imageB64
-    ? `data:${imageMimeType || "image/png"};base64,${imageB64}`
-    : null;
+  // Unified attachment list — prefer `attachments`, fall back to legacy single-image fields.
+  const imgs = (attachments && attachments.length > 0)
+    ? attachments
+    : (imageB64
+        ? [{ base64: imageB64, mediaType: imageMimeType || "image/png", name: undefined as string | undefined }]
+        : []);
+  const previewImg = previewIndex !== null ? imgs[previewIndex] : null;
+  const previewUrl = previewImg ? `data:${previewImg.mediaType};base64,${previewImg.base64}` : null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content).catch(() => {});
