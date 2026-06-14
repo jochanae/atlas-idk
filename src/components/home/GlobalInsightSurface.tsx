@@ -63,6 +63,8 @@ interface Props {
   onFiles?: (files: File[]) => void;
   onMenuAction?: (action: ComposerMenuAction) => void;
   onSketch?: (prompt: string) => void;
+  attachedFiles?: File[];
+  onRemoveFile?: (index: number) => void;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
