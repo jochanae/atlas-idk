@@ -4896,7 +4896,7 @@ export default function Workspace() {
 
   const handleSend = async (opts?: { planMode?: boolean }) => {
     const text = input.trim();
-    if (!text || chatPending) return;
+    if ((!text && attachedFiles.length === 0) || chatPending) return;
     const sid = sessionId ?? await ensureSessionId().catch(() => null);
     if (!sid) return;
     if (atlasGreeting) setAtlasGreeting(null);
