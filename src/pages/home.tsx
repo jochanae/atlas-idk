@@ -3833,17 +3833,38 @@ export default function Home() {
                             fontSize: 16, lineHeight: 1.6, color: "var(--atlas-fg)",
                             fontFamily: "var(--app-font-sans)",
                           }}>
-                            {msg.imageUrl && (
-                              <img
-                                src={msg.imageUrl}
-                                alt="Attached"
-                                style={{
-                                  maxWidth: "100%", borderRadius: 8, display: "block",
-                                  marginBottom: msg.content ? 8 : 0,
-                                  maxHeight: 320, objectFit: "cover",
-                                }}
-                              />
-                            )}
+                            {(() => {
+                              const imgs = (msg as any).attachments && (msg as any).attachments.length > 0
+                                ? (msg as any).attachments as Array<{ base64: string; mediaType: string; name?: string }>
+                                : (msg.imageUrl
+                                    ? [{ base64: "", mediaType: "", name: undefined, _url: msg.imageUrl }] as any
+                                    : []);
+                              if (imgs.length === 0) return null;
+                              return (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.content ? 8 : 0 }}>
+                                  {imgs.map((img: any, idx: number) => {
+                                    const url = img._url ?? `data:${img.mediaType};base64,${img.base64}`;
+                                    return (
+                                      <img
+                                        key={idx}
+                                        src={url}
+                                        alt={img.name || "Attached"}
+                                        style={{
+                                          width: imgs.length === 1 ? "100%" : 110,
+                                          maxWidth: "100%",
+                                          height: imgs.length === 1 ? "auto" : 110,
+                                          maxHeight: imgs.length === 1 ? 320 : 110,
+                                          objectFit: "cover",
+                                          borderRadius: 8,
+                                          display: "block",
+                                          border: "0.5px solid rgba(212,175,55,0.25)",
+                                        }}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                             <CollapsibleMessageText
                               fadeFromColor="rgba(212,175,55,0.06)"
                               textStyle={{
