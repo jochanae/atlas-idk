@@ -6450,6 +6450,7 @@ export default function Workspace() {
               setMobileTab,
               setDesktopForceTab,
               hasInput,
+              hasAttachments: attachedFiles.length > 0,
               inputFocused,
               setInputFocused,
               wsLens,
