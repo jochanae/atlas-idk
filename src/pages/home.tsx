@@ -2673,19 +2673,19 @@ export default function Home() {
 
     if (shouldStayOnHome) {
       try {
-        let imageBase64: string | undefined;
-        let imageMimeType: string | undefined;
+        let attachments: Array<{ base64: string; mediaType: string; name: string }> | undefined;
         if (imageFiles.length > 0) {
           try {
-            const safe = await fileToBase64Safe(imageFiles[0]);
-            imageBase64 = safe.base64;
-            imageMimeType = safe.mediaType;
+            const capped = imageFiles.slice(0, 10);
+            attachments = await Promise.all(capped.map(async (f) => {
+              const safe = await fileToBase64Safe(f);
+              return { base64: safe.base64, mediaType: safe.mediaType, name: f.name };
+            }));
           } catch {}
         }
         await nexusChat.send({
           text: messageText,
-          imageBase64,
-          imageMimeType,
+          attachments,
         });
       } catch (err) {
         handleSubmitError(err);
