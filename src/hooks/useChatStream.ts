@@ -395,7 +395,14 @@ export function useChatStream(
         ...(activeCtx ? { fileContext: activeCtx } : {}),
         ...(userProfileStr ? { userProfile: userProfileStr } : {}),
         ...(projectMap ? { projectMap } : {}),
-        ...(imageData ? { imageData: imageData.base64, imageMimeType: imageData.mediaType } : {}),
+        ...(imgAttachments.length > 0
+          ? {
+              attachments: imgAttachments,
+              // Legacy fields for backend compat with the pre-multi-image contract.
+              imageData: firstImg!.base64,
+              imageMimeType: firstImg!.mediaType,
+            }
+          : {}),
         ...(forgeContext ? { forgeContext } : {}),
         ...(dbUrl ? { dbUrl } : {}),
       };
