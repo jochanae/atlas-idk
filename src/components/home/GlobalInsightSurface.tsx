@@ -549,6 +549,9 @@ export function GlobalInsightSurface({
                     )}
                   </button>
                 )}
+                {!msg.streaming && !msg.imageUrl && displayContent.length > 0 && onSketch && (
+                  <InlineSketchOffer text={displayContent} onSend={onSketch} />
+                )}
               </div>
             );
           }
