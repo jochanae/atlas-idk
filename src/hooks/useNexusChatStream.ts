@@ -313,7 +313,14 @@ export function useNexusChatStream(
           history,
           mode: resolvedMode,
           userProfile,
-          ...(imageBase64 ? { imageData: imageBase64, imageMimeType } : {}),
+          ...(imgAttachments.length > 0
+            ? {
+                attachments: imgAttachments,
+                // Legacy fields for pre-multi-image backend builds.
+                imageData: firstImg!.base64,
+                imageMimeType: firstImg!.mediaType,
+              }
+            : {}),
         },
 
         callbacks: {
