@@ -141,9 +141,7 @@ function BlueprintsTab({ projectId }: { projectId: number }) {
         {genError && (
           <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 6, background: "color-mix(in oklab, var(--atlas-ember) 8%, transparent)", border: "1px solid rgba(146,64,14,0.25)" }}>
             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-ember)", opacity: 0.9, lineHeight: 1.5 }}>
-              {genError === "No idea mode session found for this project"
-                ? "No idea-mode conversation found. Start an idea chat on the home page with this project in focus, then generate here."
-                : genError}
+              {genError}
             </div>
           </div>
         )}
