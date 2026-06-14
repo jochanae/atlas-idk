@@ -505,6 +505,25 @@ export function ChatComposer(props: ChatComposerProps) {
                     handleKeyDown(e);
                   }
                 }}
+                onPaste={(e) => {
+                  // Native clipboard pasting → append image/file items to the
+                  // attachment carousel (capped at 10, matches picker behavior).
+                  const items = e.clipboardData?.items;
+                  if (!items || items.length === 0) return;
+                  const pasted: File[] = [];
+                  for (let i = 0; i < items.length; i++) {
+                    const it = items[i];
+                    if (it.kind === "file") {
+                      const f = it.getAsFile();
+                      if (f) pasted.push(f);
+                    }
+                  }
+                  if (pasted.length === 0) return;
+                  // Prevent the default paste only when we captured files,
+                  // so plain text pastes still work normally.
+                  e.preventDefault();
+                  setAttachedFiles(prev => [...prev, ...pasted].slice(0, 10));
+                }}
                 rows={1}
                 style={{
                   width: "100%", background: "transparent", border: "none", outline: "none",
