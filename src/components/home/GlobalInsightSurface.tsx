@@ -16,6 +16,7 @@ import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
+import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -547,6 +548,9 @@ export function GlobalInsightSurface({
                       </svg>
                     )}
                   </button>
+                )}
+                {!msg.streaming && !msg.imageUrl && displayContent.length > 0 && onSketch && (
+                  <InlineSketchOffer text={displayContent} onSend={onSketch} />
                 )}
               </div>
             );
