@@ -189,6 +189,23 @@ export function GlobalInsightSurface({
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [deepDiveContext, setDeepDiveContext] = useState("");
   const isParchment = useThemeMode() === "parchment";
+  const filePreviewUrls = useRef<Map<File, string>>(new Map());
+
+  // Manage object URLs for image previews
+  useEffect(() => {
+    const current = new Set(attachedFiles);
+    for (const [file, url] of filePreviewUrls.current.entries()) {
+      if (!current.has(file)) {
+        URL.revokeObjectURL(url);
+        filePreviewUrls.current.delete(file);
+      }
+    }
+    for (const file of attachedFiles) {
+      if (file.type.startsWith("image/") && !filePreviewUrls.current.has(file)) {
+        filePreviewUrls.current.set(file, URL.createObjectURL(file));
+      }
+    }
+  }, [attachedFiles]);
 
   // Auto-scroll on new messages / streaming
   useEffect(() => {
@@ -197,6 +214,7 @@ export function GlobalInsightSurface({
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [open, messages.length, isStreaming]);
+
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
