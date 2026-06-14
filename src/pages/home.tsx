@@ -4700,6 +4700,8 @@ export default function Home() {
           setAttachedFiles(combined);
         }}
         onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
+        attachedFiles={attachedFiles}
+        onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }

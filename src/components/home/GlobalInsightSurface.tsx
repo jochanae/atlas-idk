@@ -63,6 +63,8 @@ interface Props {
   onFiles?: (files: File[]) => void;
   onMenuAction?: (action: ComposerMenuAction) => void;
   onSketch?: (prompt: string) => void;
+  attachedFiles?: File[];
+  onRemoveFile?: (index: number) => void;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
@@ -176,6 +178,8 @@ export function GlobalInsightSurface({
   onFiles,
   onMenuAction,
   onSketch,
+  attachedFiles = [],
+  onRemoveFile,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -185,6 +189,23 @@ export function GlobalInsightSurface({
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [deepDiveContext, setDeepDiveContext] = useState("");
   const isParchment = useThemeMode() === "parchment";
+  const filePreviewUrls = useRef<Map<File, string>>(new Map());
+
+  // Manage object URLs for image previews
+  useEffect(() => {
+    const current = new Set(attachedFiles);
+    for (const [file, url] of filePreviewUrls.current.entries()) {
+      if (!current.has(file)) {
+        URL.revokeObjectURL(url);
+        filePreviewUrls.current.delete(file);
+      }
+    }
+    for (const file of attachedFiles) {
+      if (file.type.startsWith("image/") && !filePreviewUrls.current.has(file)) {
+        filePreviewUrls.current.set(file, URL.createObjectURL(file));
+      }
+    }
+  }, [attachedFiles]);
 
   // Auto-scroll on new messages / streaming
   useEffect(() => {
@@ -193,6 +214,7 @@ export function GlobalInsightSurface({
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [open, messages.length, isStreaming]);
+
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
@@ -652,6 +674,36 @@ export function GlobalInsightSurface({
             minHeight: 96,
           }}
         >
+          {/* Attachment preview strip */}
+          {attachedFiles.length > 0 && (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
+              {attachedFiles.map((file, idx) => (
+                <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
+                  {file.type.startsWith("image/") ? (
+                    <img
+                      src={filePreviewUrls.current.get(file)}
+                      alt={file.name}
+                      style={{ width: 54, height: 54, borderRadius: 7, objectFit: "cover", border: "1px solid rgba(212,175,55,0.28)", display: "block" }}
+                    />
+                  ) : (
+                    <div style={{ width: 54, height: 54, borderRadius: 7, background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.22)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, overflow: "hidden" }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 7.5l-5.5 5.5a4 4 0 01-5.66-5.66l6-6a2.5 2.5 0 013.54 3.54l-6 6a1 1 0 01-1.42-1.42l5.5-5.5" stroke="rgba(212,175,55,0.65)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      <span style={{ fontSize: 8, color: "rgba(212,175,55,0.6)", maxWidth: 46, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em" }}>{file.name.split(".").pop()?.toUpperCase() ?? "FILE"}</span>
+                    </div>
+                  )}
+                  {onRemoveFile && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveFile(idx)}
+                      aria-label="Remove attachment"
+                      style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: "rgba(8,8,10,0.92)", border: "1px solid rgba(212,175,55,0.35)", cursor: "pointer", color: "var(--atlas-fg)", fontSize: 10, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, zIndex: 2 }}
+                    >×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Textarea row — full width, generous height */}
           <div style={{ position: "relative", flex: 1, minHeight: 56 }}>
             {showPlaceholder && (
