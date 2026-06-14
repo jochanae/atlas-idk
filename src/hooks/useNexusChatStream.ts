@@ -173,14 +173,25 @@ export function useNexusChatStream(
     text,
     imageBase64,
     imageMimeType,
+    attachments,
     overrideOptions,
   }: {
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => {
     if (!text.trim() || isPending) return;
+
+    // Unify legacy single-image inputs into the attachments array.
+    const imgAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
+      (attachments && attachments.length > 0)
+        ? attachments.filter((a) => a.mediaType?.startsWith("image/"))
+        : (imageBase64
+            ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
+            : []);
+    const firstImg = imgAttachments[0];
 
     const routedText = routeDirectImageRequestToSketchPrompt(text);
 
@@ -219,6 +230,12 @@ export function useNexusChatStream(
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
+      ...(imgAttachments.length > 0
+        ? {
+            attachments: imgAttachments,
+            imageUrl: `data:${firstImg!.mediaType};base64,${firstImg!.base64}`,
+          }
+        : {}),
     };
     setMessages(prev => [...prev, userMsg]);
 
