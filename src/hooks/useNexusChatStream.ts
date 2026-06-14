@@ -12,6 +12,7 @@ export interface NexusMessage {
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
+  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
     images: Array<{
       imageUrl: string;
@@ -101,6 +102,7 @@ export interface UseNexusChatStreamReturn {
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => Promise<void>;
   abort: () => void;
@@ -171,14 +173,25 @@ export function useNexusChatStream(
     text,
     imageBase64,
     imageMimeType,
+    attachments,
     overrideOptions,
   }: {
     text: string;
     imageBase64?: string;
     imageMimeType?: string;
+    attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
     overrideOptions?: Partial<UseNexusChatStreamOptions>;
   }) => {
     if (!text.trim() || isPending) return;
+
+    // Unify legacy single-image inputs into the attachments array.
+    const imgAttachments: Array<{ base64: string; mediaType: string; name?: string }> =
+      (attachments && attachments.length > 0)
+        ? attachments.filter((a) => a.mediaType?.startsWith("image/"))
+        : (imageBase64
+            ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
+            : []);
+    const firstImg = imgAttachments[0];
 
     const routedText = routeDirectImageRequestToSketchPrompt(text);
 
@@ -217,6 +230,12 @@ export function useNexusChatStream(
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
+      ...(imgAttachments.length > 0
+        ? {
+            attachments: imgAttachments,
+            imageUrl: `data:${firstImg!.mediaType};base64,${firstImg!.base64}`,
+          }
+        : {}),
     };
     setMessages(prev => [...prev, userMsg]);
 
@@ -294,7 +313,14 @@ export function useNexusChatStream(
           history,
           mode: resolvedMode,
           userProfile,
-          ...(imageBase64 ? { imageData: imageBase64, imageMimeType } : {}),
+          ...(imgAttachments.length > 0
+            ? {
+                attachments: imgAttachments,
+                // Legacy fields for pre-multi-image backend builds.
+                imageData: firstImg!.base64,
+                imageMimeType: firstImg!.mediaType,
+              }
+            : {}),
         },
 
         callbacks: {
