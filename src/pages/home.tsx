@@ -108,9 +108,9 @@ type HomeMessage = {
   imageGen?: {
     images: Array<{
       imageUrl: string;
-      prompt?: string;
-      model?: string;
-      mode?: "render" | "schematic" | string;
+      prompt: string;
+      model: string;
+      mode: string;
     }>;
   } | null;
   model?: string;
@@ -3677,6 +3677,14 @@ export default function Home() {
                             fontFamily: "var(--app-font-sans)",
                           }}>
                             <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
+                            {msg.imageGen?.images?.map((img, i) => (
+                              <img
+                                key={i}
+                                src={img.imageUrl}
+                                alt={img.prompt}
+                                style={{ maxWidth: '100%', borderRadius: 12, marginTop: 12 }}
+                              />
+                            ))}
                           </div>
                           {!msg.streaming && !!msg.content && (
                             <InlineSketchOffer
