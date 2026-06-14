@@ -304,14 +304,14 @@ export function useChatStream(
       setLiveStep(null);
 
       const userProfileStr = profileToString(loadProfile());
-      const routedText = routeDirectImageRequestToSketchPrompt(text);
+      const routedText = imgAttachments.length > 0 ? text : routeDirectImageRequestToSketchPrompt(text);
 
       // ── Frontend short-circuit for image requests ─────────────────
       // The backend /api/chat handler does not have image-tool wiring,
       // so route direct image asks (and explicit [SKETCH:*] picks) to
       // the dedicated /api/image/generate endpoint and render the
       // result inline as an assistant message.
-      const isImageIntent = shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text);
+      const isImageIntent = imgAttachments.length === 0 && (shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text));
       if (isImageIntent) {
         const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
         const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
