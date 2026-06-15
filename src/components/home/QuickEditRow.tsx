@@ -178,7 +178,7 @@ export function QuickEditRow({
         JSON.stringify(payload)
       );
     } catch {}
-    setLocation(`/workspace?project=${activeProjectId}&resume=quickedit`);
+    setLocation(`/project/${activeProjectId}?resume=quickedit`);
   }, [prompt, errorMessage, lastFile, targetFile, attachments, activeProjectId, setLocation]);
 
   const artifacts: RunArtifact[] = useMemo(() => {
