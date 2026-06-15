@@ -3066,6 +3066,9 @@ export default function Workspace() {
   const id = Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]);
   const searchParams = new URLSearchParams(window.location.search);
   const [showIntake, setShowIntake] = useState(searchParams.get("intake") === "true");
+  const [globalMode, setGlobalMode] = useState(searchParams.get("global") === "true");
+  const effectiveId = globalMode ? 0 : id;
+  const [globalModeChipSlot, setGlobalModeChipSlot] = useState<HTMLElement | null>(null);
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [createProjectError, setCreateProjectError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -3307,7 +3310,7 @@ export default function Workspace() {
     setMemoryChips,
     doSend,
     handleRegenerate,
-  } = useChatStream(id, {
+  } = useChatStream(effectiveId, {
     sessions,
     sessionsLoading,
     createSession,
@@ -4121,6 +4124,27 @@ export default function Workspace() {
       titleSpan.removeAttribute("data-atlas-autoname-placeholder");
     };
   }, [autoNameKey, showProjectNameSkeleton]);
+
+  useEffect(() => {
+    const projectButton = document.querySelector<HTMLButtonElement>(
+      ".atlas-app-header button[title^='Tap to switch project']",
+    );
+    const parent = projectButton?.parentElement;
+    if (!projectButton || !parent) return;
+
+    const slot = document.createElement("span");
+    slot.setAttribute("data-atlas-global-mode-slot", "true");
+    slot.style.display = "inline-flex";
+    slot.style.alignItems = "center";
+    slot.style.flexShrink = "0";
+    projectButton.insertAdjacentElement("afterend", slot);
+    setGlobalModeChipSlot(slot);
+
+    return () => {
+      slot.remove();
+      setGlobalModeChipSlot(null);
+    };
+  }, [projectName]);
 
 
   useEffect(() => {
@@ -5621,6 +5645,34 @@ export default function Workspace() {
 
   return (
     <>
+      {globalModeChipSlot && createPortal(
+        <button
+          type="button"
+          onClick={() => setGlobalMode(prev => !prev)}
+          style={{
+            marginLeft: 8,
+            padding: "2px 10px",
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            border: globalMode
+              ? "1px solid rgba(201,162,76,0.6)"
+              : "1px solid rgba(255,255,255,0.12)",
+            background: globalMode
+              ? "rgba(201,162,76,0.12)"
+              : "transparent",
+            color: globalMode ? "var(--atlas-gold, #C9A24C)" : "var(--atlas-muted, #78716C)",
+            cursor: "pointer",
+            transition: "all 0.15s",
+            WebkitTapHighlightColor: "transparent",
+            flexShrink: 0,
+          }}
+        >
+          {globalMode ? "All Projects" : "This project"}
+        </button>,
+        globalModeChipSlot
+      )}
       {showIntake && (
         <ForgeIntake
           projectId={id}
