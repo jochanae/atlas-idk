@@ -243,7 +243,7 @@ export function UnifiedSubheader({
           aria-expanded={expanded}
           style={{
             position: "absolute",
-            top: expanded ? (isMobile ? 8 : 10) : 4,
+            top: 4,
             right: isMobile ? 16 : 22,
             zIndex: 2,
             background: launchActive
