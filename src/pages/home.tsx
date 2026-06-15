@@ -3545,7 +3545,16 @@ export default function Home() {
                 only by the subheader "● Global Insight" pill, so the home shell
                 stays visually identical. */}
             {nexusChat.messages.length === 0 && (
-              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
+              <div style={{
+                textAlign: "center",
+                marginBottom: 24,
+                marginTop: 72,
+                position: "relative",
+                zIndex: 1,
+                transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
+                opacity: inputFocused ? 0.3 : 1,
+                transition: "transform 200ms ease-in-out, opacity 200ms ease-in-out",
+              }}>
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
