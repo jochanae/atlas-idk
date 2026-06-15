@@ -4306,7 +4306,17 @@ export default function Home() {
               pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
+              <div
+                onPointerDown={(e) => {
+                  // Prevent the textarea from blurring on tap — blur would flip
+                  // this bar's pointer-events to "none" mid-tap and swallow the
+                  // click on +, ⋯, and the clock button.
+                  if ((e.target as HTMLElement).closest("input,textarea,select")) return;
+                  e.preventDefault();
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
+              >
+
 
               <ComposerActions
                 scope="home"
