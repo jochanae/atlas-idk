@@ -1847,6 +1847,18 @@ export default function Home() {
   const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { data: projects, isLoading } = useListProjects();
+  const mostRecentActiveProjectId = useMemo(() => {
+    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
+    const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
+    const latest = candidates.reduce<Project | null>((current, project: Project) => {
+      if (!current) return project;
+      return new Date(project.updatedAt).getTime() > new Date(current.updatedAt).getTime()
+        ? project
+        : current;
+    }, null);
+    return latest?.id ?? null;
+  }, [projects]);
   const previousHomeMessageCountRef = useRef(0);
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
   const globalInsightSeedPendingRef = useRef(false);
@@ -1940,14 +1952,18 @@ export default function Home() {
       setShowHistory(false);
       setShowFocusPicker(false);
       setGlobalInsightOpen(true);
-      void callGlobalInsightMode(true);
+      if (mostRecentActiveProjectId) {
+        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
+      } else {
+        setLocation("/projects");
+      }
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Global Insight · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
     }
-  }, [globalInsightOpen, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth]);
+  }, [globalInsightOpen, mostRecentActiveProjectId, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth, setLocation]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
@@ -2137,7 +2153,6 @@ export default function Home() {
   const [inputFocused, setInputFocused] = useState(false);
   const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
 
-  const { data: projects, isLoading } = useListProjects();
   useEffect(() => {
     if (!projects || projects.length === 0) return;
     const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours ago
@@ -2182,17 +2197,6 @@ export default function Home() {
       nexusChat.setShapingHeld(false);
     }
   }, [projects, nexusChat.shapingHeld, nexusChat.setShapingHeld, nexusChat.setShapingPayload]);
-  const mostRecentActiveProjectId = useMemo(() => {
-    const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
-    const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
-    const latest = candidates.reduce<Project | null>((current, project: Project) => {
-      if (!current) return project;
-      return new Date(project.updatedAt).getTime() > new Date(current.updatedAt).getTime()
-        ? project
-        : current;
-    }, null);
-    return latest?.id ?? null;
-  }, [projects]);
   const handleHomeFocusSelect = useCallback((projectId: number) => {
     homeFocusUserInitiatedRef.current = true;
     setHomeFocus(projectId);
@@ -2431,9 +2435,13 @@ export default function Home() {
   useEffect(() => {
     if (nexusChat.messages.length > 0 && !globalInsightOpen) {
       setGlobalInsightOpen(true);
-      void callGlobalInsightMode(true);
+      if (mostRecentActiveProjectId) {
+        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
+      } else {
+        setLocation("/projects");
+      }
     }
-  }, [callGlobalInsightMode, globalInsightOpen, nexusChat.messages.length]);
+  }, [globalInsightOpen, mostRecentActiveProjectId, nexusChat.messages.length, setLocation]);
 
   // Rehydrate Global Insight mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
@@ -2619,7 +2627,11 @@ export default function Home() {
     const shouldStayOnHome = true;
     if (!globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
-      void callGlobalInsightMode(true);
+      if (mostRecentActiveProjectId) {
+        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
+      } else {
+        setLocation("/projects");
+      }
     }
     if (!shouldStayOnHome && !backendReady) {
       setCreateError(
@@ -2742,6 +2754,7 @@ export default function Home() {
     attachedFiles,
     isSending,
     globalInsightOpen,
+    mostRecentActiveProjectId,
     backendReady,
     isFree,
     projects,
