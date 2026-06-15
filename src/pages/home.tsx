@@ -4426,31 +4426,7 @@ export default function Home() {
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
 
-              <ComposerActions
-                scope="home"
-                hasProjectContext={false}
-                borderless={true}
-                hasAttachments={attachedFiles.length > 0}
-                onFiles={(files) => {
-                  const combined = [...attachedFiles, ...files].slice(0, 10);
-                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-                  setAttachedFiles(combined);
-                }}
-                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
-                onMenuAction={(action) => {
-                  if (action === "history") { setShowTimeTravel(true); return; }
-                  if (action === "settings") { setLocation("/account"); return; }
-                  // Project-scoped items: route the user to the projects list so
-                  // whatever they pick up at home (attachments, intent) carries
-                  // into the same workspace. Keeps home + workspace menus identical.
-                  if (action === "code") { setLocation("/code"); return; }
-                  if (action === "connectors") { setLocation("/connectors"); return; }
-                  if (action === "files" || action === "share" ||
-                      action === "publish" ||
-                      action === "more:forge") { setLocation("/projects"); return; }
-                  toast("Open a project to use that");
-                }}
-              />
+
 
 
 
