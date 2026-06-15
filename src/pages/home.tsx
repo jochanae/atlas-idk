@@ -3471,7 +3471,7 @@ export default function Home() {
         </div>
       )}
 
-      {!globalInsightOpen && homeUnifiedSubheader}
+      {homeUnifiedSubheader}
       
 
 
