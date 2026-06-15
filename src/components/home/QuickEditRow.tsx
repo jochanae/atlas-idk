@@ -267,7 +267,7 @@ export function QuickEditRow({
       {/* Expanded body — rendered inline on desktop/active phases,
           or inside a vaul bottom sheet on mobile during composition. */}
       {open && (() => {
-        const isMobile = useIsMobileSafe();
+        // isMobile pulled from component scope above (rules of hooks).
         // Sheet handles the composition phase only. The moment we hit Run
         // (phase === "active"), the sheet dismisses and steps stream
         // inline in the activity feed row. resolved/failed also stay inline.
