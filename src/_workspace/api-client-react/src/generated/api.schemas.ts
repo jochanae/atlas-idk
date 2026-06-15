@@ -143,11 +143,6 @@ export const MessageRole = {
   assistant: "assistant",
 } as const;
 
-/**
- * @nullable
- */
-export type MessageCatchPayload = { [key: string]: unknown } | null;
-
 export interface Message {
   id: number;
   sessionId: number;
@@ -155,8 +150,6 @@ export interface Message {
   content: string;
   /** @nullable */
   intentType?: string | null;
-  /** @nullable */
-  catchPayload?: MessageCatchPayload;
   createdAt: string;
 }
 
@@ -395,17 +388,10 @@ export interface CreateThoughtBody {
   content: string;
 }
 
-/**
- * @nullable
- */
-export type ChatResponseCatchPayload = { [key: string]: unknown } | null;
-
 export interface ChatResponse {
   content: string;
   /** @nullable */
   intentType?: string | null;
-  /** @nullable */
-  catchPayload?: ChatResponseCatchPayload;
   /** Short keyword/phrase chips extracted from this response for the user to see what Atlas is tracking */
   memoryChips?: string[];
   messageId: number;
