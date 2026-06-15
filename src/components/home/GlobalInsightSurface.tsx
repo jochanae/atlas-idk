@@ -298,6 +298,12 @@ export function GlobalInsightSurface({
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // On touch devices the on-screen keyboard's "return" should always insert
+    // a newline — never submit. Desktop keeps Enter=send, Shift+Enter=newline.
+    const isTouch =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(pointer: coarse)").matches;
+    if (isTouch) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
