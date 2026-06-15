@@ -26,6 +26,7 @@ import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
 import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
+import { FocusModeAura } from "@/components/FocusModeAura";
 
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
@@ -44,15 +45,17 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase } from "lucide-react";
+import { Briefcase, ChevronDown, FolderClosed } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream } from "@/hooks/useNexusChatStream";
+import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
+import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 
 
 const PLACEHOLDERS = [
@@ -95,6 +98,11 @@ type AmbientSurface = {
   projectId?: number | null;
   workspaceId?: number | null;
 } | null;
+
+type ManualHomeFocus =
+  | { focus: "project"; projectId: number }
+  | { focus: "portfolio" }
+  | null;
 
 type HomeMessage = {
   role: "user" | "assistant";
@@ -1704,6 +1712,7 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const { user: authUser } = useRequireAuth();
+  const { data: projects, isLoading } = useListProjects();
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -1757,7 +1766,40 @@ export default function Home() {
     setActiveConversationId(conversationId);
   }, [activeConversationId, rememberActiveConversationId]);
   // ── Home context: repo / branch / model ────────────────────────────────────
-  const [homeFocus, setHomeFocus] = useState<number | null>(null);
+  const [manualFocus, setManualFocus] = useState<ManualHomeFocus>(null);
+  const [recentFocusUserMessages, setRecentFocusUserMessages] = useState<string[]>([]);
+  const detectedPortfolioFocus = usePortfolioFocus(recentFocusUserMessages);
+  const selectableFocusProjects = useMemo(
+    () => (projects ?? []).filter((p: Project) => p.status !== "shaping" && p.status !== "archived"),
+    [projects],
+  );
+  const detectedFocusProject = useMemo(() => {
+    const name = detectedPortfolioFocus.matchedProject?.trim().toLowerCase();
+    if (!name) return null;
+    return selectableFocusProjects.find((p: Project) => p.name.trim().toLowerCase() === name) ?? null;
+  }, [detectedPortfolioFocus.matchedProject, selectableFocusProjects]);
+  const manualFocusProject = useMemo(() => {
+    if (manualFocus?.focus !== "project") return null;
+    return selectableFocusProjects.find((p: Project) => p.id === manualFocus.projectId) ?? null;
+  }, [manualFocus, selectableFocusProjects]);
+  const homeFocus =
+    manualFocus?.focus === "project"
+      ? manualFocus.projectId
+      : manualFocus?.focus === "portfolio"
+        ? null
+        : detectedPortfolioFocus.focus === "project"
+          ? detectedFocusProject?.id ?? null
+          : null;
+  const resolvedPortfolioFocus =
+    manualFocus?.focus === "project"
+      ? "project"
+      : manualFocus?.focus === "portfolio"
+        ? "portfolio"
+        : detectedPortfolioFocus.focus;
+  const focusChipLabel =
+    resolvedPortfolioFocus === "project"
+      ? manualFocusProject?.name ?? detectedFocusProject?.name ?? detectedPortfolioFocus.matchedProject ?? "Project"
+      : "All Projects";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [homeModel] = useState<string>("claude");
@@ -1776,6 +1818,13 @@ export default function Home() {
     } : null,
   });
   const focusProjectId = homeFocus;
+  useEffect(() => {
+    setRecentFocusUserMessages(
+      nexusChat.messages
+        .filter((message) => message.role === "user" && message.content.trim().length > 0)
+        .map((message) => message.content),
+    );
+  }, [nexusChat.messages]);
   const [shapingPayload, setShapingPayload] = useState<{
     title: string;
     audience: string;
@@ -1847,7 +1896,6 @@ export default function Home() {
   const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { data: projects, isLoading } = useListProjects();
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
@@ -2197,9 +2245,14 @@ export default function Home() {
       nexusChat.setShapingHeld(false);
     }
   }, [projects, nexusChat.shapingHeld, nexusChat.setShapingHeld, nexusChat.setShapingPayload]);
+  const handleHomeFocusAllProjects = useCallback(() => {
+    homeFocusUserInitiatedRef.current = false;
+    setManualFocus({ focus: "portfolio" });
+    setShowFocusPicker(false);
+  }, []);
   const handleHomeFocusSelect = useCallback((projectId: number) => {
     homeFocusUserInitiatedRef.current = true;
-    setHomeFocus(projectId);
+    setManualFocus({ focus: "project", projectId });
     setShowFocusPicker(false);
   }, []);
   const handleHomeSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
@@ -2432,17 +2485,6 @@ export default function Home() {
       });
   }, [activeConversationId, nexusChat.setMessages]);
 
-  useEffect(() => {
-    if (nexusChat.messages.length > 0 && !globalInsightOpen) {
-      setGlobalInsightOpen(true);
-      if (mostRecentActiveProjectId) {
-        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
-      } else {
-        setLocation("/projects");
-      }
-    }
-  }, [globalInsightOpen, mostRecentActiveProjectId, nexusChat.messages.length, setLocation]);
-
   // Rehydrate Global Insight mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
   // via POST /api/sessions/:id/reflection-mode). Without this, a refresh
@@ -2615,6 +2657,18 @@ export default function Home() {
     />
   );
 
+  const resolveProjectIdForDetection = useCallback((detection: PortfolioFocusDetection) => {
+    const name = detection.matchedProject?.trim().toLowerCase();
+    if (!name) return null;
+    return selectableFocusProjects.find((p: Project) => p.name.trim().toLowerCase() === name)?.id ?? null;
+  }, [selectableFocusProjects]);
+
+  const resolveFocusProjectIdForTurn = useCallback((turnDetection?: PortfolioFocusDetection) => {
+    if (manualFocus?.focus === "project") return manualFocus.projectId;
+    if (manualFocus?.focus === "portfolio") return null;
+    return resolveProjectIdForDetection(turnDetection ?? detectedPortfolioFocus);
+  }, [detectedPortfolioFocus, manualFocus, resolveProjectIdForDetection]);
+
   const handleSubmit = useCallback(async (
     messageOverride?: string,
     options?: { forceStayOnHome?: boolean },
@@ -2627,11 +2681,6 @@ export default function Home() {
     const shouldStayOnHome = true;
     if (!globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
-      if (mostRecentActiveProjectId) {
-        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
-      } else {
-        setLocation("/projects");
-      }
     }
     if (!shouldStayOnHome && !backendReady) {
       setCreateError(
@@ -2661,6 +2710,8 @@ export default function Home() {
         ? ` [${imageFiles.length} images attached — showing first]`
         : "";
     const messageText = fullText + imageNote;
+    const turnFocusDetection = detectPortfolioFocus([...recentFocusUserMessages, messageText]);
+    const turnFocusProjectId = resolveFocusProjectIdForTurn(turnFocusDetection);
 
     setCreateError(null);
     setIsAtlasStreaming(true);
@@ -2701,6 +2752,7 @@ export default function Home() {
         await nexusChat.send({
           text: messageText,
           attachments,
+          overrideOptions: { focusProjectId: turnFocusProjectId },
         });
       } catch (err) {
         handleSubmitError(err);
@@ -2754,12 +2806,13 @@ export default function Home() {
     attachedFiles,
     isSending,
     globalInsightOpen,
-    mostRecentActiveProjectId,
     backendReady,
     isFree,
     projects,
+    recentFocusUserMessages,
     queryClient,
     nexusChat.send,
+    resolveFocusProjectIdForTurn,
     setActiveProjectId,
     setLocation,
   ]);
@@ -3279,6 +3332,7 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
+      <FocusModeAura focus={resolvedPortfolioFocus} />
       {/* Global Insight runs inline through the ambient home shell.
           The "● Global Insight" pill in the subheader is the only visual marker —
           no overlay, no duplicate header, no separate composer. */}
@@ -4106,14 +4160,22 @@ export default function Home() {
               <>
                 <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
                 <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus a project</div>
-                  {(projects ?? []).filter((p: any) => p.status !== "shaping" && p.status !== "archived").map((p: any) => (
+                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Active project</div>
+                  <button
+                    type="button"
+                    onClick={handleHomeFocusAllProjects}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                  >
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                    All Projects
+                  </button>
+                  {selectableFocusProjects.map((p: Project) => (
                     <button
                       key={p.id}
                       onClick={() => handleHomeFocusSelect(p.id)}
-                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                     >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
                       {p.name}
                     </button>
                   ))}
@@ -4285,6 +4347,48 @@ export default function Home() {
                 </svg>
               </button>
 
+              <button
+                type="button"
+                title="Active project"
+                aria-label={`Active project: ${focusChipLabel}`}
+                aria-expanded={showFocusPicker}
+                onClick={() => {
+                  setShowFocusPicker((open) => !open);
+                }}
+                style={{
+                  height: 34,
+                  maxWidth: 178,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "0 10px",
+                  borderRadius: 999,
+                  background: resolvedPortfolioFocus === "project"
+                    ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
+                    : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+                  border: resolvedPortfolioFocus === "project"
+                    ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
+                    : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                  color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                  flexShrink: 1,
+                  WebkitTapHighlightColor: "transparent",
+                  transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+                }}
+              >
+                <FolderClosed size={13} strokeWidth={1.7} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
+                  {focusChipLabel}
+                </span>
+                <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+              </button>
+
               <ComposerActions
                 scope="home"
                 hasProjectContext={false}
@@ -4295,7 +4399,7 @@ export default function Home() {
                   if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
                   setAttachedFiles(combined);
                 }}
-                onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
+                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
                 onMenuAction={(action) => {
                   if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
@@ -4738,9 +4842,50 @@ export default function Home() {
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
         }}
-        onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
+        onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+        focusChip={
+          <button
+            type="button"
+            title="Active project"
+            aria-label={`Active project: ${focusChipLabel}`}
+            aria-expanded={showFocusPicker}
+            onClick={() => setShowFocusPicker((open) => !open)}
+            style={{
+              height: 34,
+              maxWidth: 178,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "0 10px",
+              borderRadius: 999,
+              background: resolvedPortfolioFocus === "project"
+                ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
+                : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+              border: resolvedPortfolioFocus === "project"
+                ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
+                : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+              color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
+              cursor: "pointer",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              minWidth: 0,
+              flexShrink: 1,
+              WebkitTapHighlightColor: "transparent",
+              transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+            }}
+          >
+            <FolderClosed size={13} strokeWidth={1.7} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
+              {focusChipLabel}
+            </span>
+            <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+          </button>
+        }
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }
@@ -4752,6 +4897,34 @@ export default function Home() {
           toast("Open a project to use that");
         }}
       />
+
+      {globalInsightOpen && showFocusPicker && (
+        <>
+          <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
+            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Active project</div>
+            <button
+              type="button"
+              onClick={handleHomeFocusAllProjects}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+              All Projects
+            </button>
+            {selectableFocusProjects.map((p: Project) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleHomeFocusSelect(p.id)}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+              >
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
       {!globalInsightOpen && (

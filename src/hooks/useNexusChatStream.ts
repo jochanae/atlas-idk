@@ -223,6 +223,7 @@ export function useNexusChatStream(
 
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
+    const resolvedFocusProjectId = overrideOptions?.focusProjectId ?? focusProjectId;
     const history = messagesRef.current.map((m) => ({ role: m.role, content: m.content }));
     const userProfile = profileToString(loadProfile());
 
@@ -337,7 +338,7 @@ export function useNexusChatStream(
           model: resolvedModel,
           mode: resolvedMode,
           conversationId: activeConversationIdRef.current ?? undefined,
-          focusProjectId: focusProjectId ?? undefined,
+          focusProjectId: resolvedFocusProjectId ?? undefined,
           ...(imgAttachments.length > 0
             ? {
                 attachments: imgAttachments,
@@ -532,7 +533,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [isPending, model, mode, stream, abortStream, resetStreamState]);
+  }, [focusProjectId, isPending, model, mode, stream, abortStream, resetStreamState]);
 
   return {
     messages,

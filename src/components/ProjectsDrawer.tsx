@@ -182,13 +182,6 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                   }}>{ch}</span>
                 ))}
               </div>
-              <div style={{
-                fontSize: 9, color: "var(--atlas-muted)", opacity: 0.5,
-                fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
-                textTransform: "uppercase", marginTop: 1,
-              }}>
-                Global View · All Projects
-              </div>
             </div>
 
             {/* Chevron */}
