@@ -4317,36 +4317,7 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-
-              <ComposerActions
-                scope="home"
-                hasProjectContext={false}
-                borderless={true}
-                hasAttachments={attachedFiles.length > 0}
-                onFiles={(files) => {
-                  const combined = [...attachedFiles, ...files].slice(0, 10);
-                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-                  setAttachedFiles(combined);
-                }}
-                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
-                onMenuAction={(action) => {
-                  if (action === "history") { setShowTimeTravel(true); return; }
-                  if (action === "settings") { setLocation("/account"); return; }
-                  if (action === "code") { setLocation("/code"); return; }
-                  if (action === "connectors") { setLocation("/connectors"); return; }
-                  if (action === "files" || action === "share" ||
-                      action === "publish" ||
-                      action === "more:forge") { setLocation("/projects"); return; }
-                  toast("Open a project to use that");
-                }}
-              />
-
-
-
-              {/* Global Insight history — gold clock pill. Always visible so
-                  users can resume any prior Global Insight thread from the
-                  home composer, even on a fresh page load. Separate from the
-                  workspace/projects browser so the home chat isn't lost. */}
+              {/* Global Insight history — gold clock pill, far left for quick "where were we?" access */}
               <button
                 type="button"
                 title="Where were we? · Resume Global Insight"
@@ -4393,6 +4364,30 @@ export default function Home() {
                   <polyline points="12 7 12 12 15 14" />
                 </svg>
               </button>
+
+              <ComposerActions
+                scope="home"
+                hasProjectContext={false}
+                borderless={true}
+                hasAttachments={attachedFiles.length > 0}
+                onFiles={(files) => {
+                  const combined = [...attachedFiles, ...files].slice(0, 10);
+                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
+                  setAttachedFiles(combined);
+                }}
+                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
+                onMenuAction={(action) => {
+                  if (action === "history") { setShowTimeTravel(true); return; }
+                  if (action === "settings") { setLocation("/account"); return; }
+                  if (action === "code") { setLocation("/code"); return; }
+                  if (action === "connectors") { setLocation("/connectors"); return; }
+                  if (action === "files" || action === "share" ||
+                      action === "publish" ||
+                      action === "more:forge") { setLocation("/projects"); return; }
+                  toast("Open a project to use that");
+                }}
+              />
+
 
               <button
                 type="button"
@@ -4447,29 +4442,36 @@ export default function Home() {
 
               {/* Mic + Send — pinned to right via auto left margin */}
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
-                {/* Mic + waveform */}
+                {/* Mic morph: idle = mic icon, listening = waveform bars (single slot) */}
                 <button
                   title={isListening ? "Stop listening" : "Voice input"}
+                  aria-label={isListening ? "Stop listening" : "Voice input"}
+                  aria-pressed={isListening}
                   onClick={toggleVoice}
                   style={{
-                    height: 32, borderRadius: 8, border: "none",
-                    background: isListening ? "rgba(201,162,76,0.08)" : "transparent",
-                    color: isListening ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)", cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                    padding: "0 8px", transition: "color 160ms ease, background 160ms ease", flexShrink: 0,
+                    width: 36, height: 32, borderRadius: 8, border: "none",
+                    background: isListening ? "rgba(201,162,76,0.10)" : "transparent",
+                    color: isListening ? "var(--atlas-gold)" : "rgba(120,113,108,0.55)",
+                    cursor: "pointer",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    padding: 0, transition: "color 160ms ease, background 160ms ease",
+                    flexShrink: 0,
                   }}
                   onMouseEnter={(e) => { if (!isListening) e.currentTarget.style.color = "var(--atlas-fg)"; }}
-                  onMouseLeave={(e) => { if (!isListening) e.currentTarget.style.color = "rgba(120,113,108,0.45)"; }}
+                  onMouseLeave={(e) => { if (!isListening) e.currentTarget.style.color = "rgba(120,113,108,0.55)"; }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="2" width="6" height="11" rx="3" />
-                    <path d="M5 10a7 7 0 0014 0" />
-                    <line x1="12" y1="19" x2="12" y2="23" />
-                    <line x1="8" y1="23" x2="16" y2="23" />
-                  </svg>
-                  <div className={`atlas-waveform${isListening ? " is-active" : ""}`} style={{ color: "var(--atlas-gold)" }}>
-                    <span /><span /><span />
-                  </div>
+                  {isListening ? (
+                    <div className="atlas-waveform is-active" style={{ color: "var(--atlas-gold)" }}>
+                      <span /><span /><span />
+                    </div>
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="2" width="6" height="11" rx="3" />
+                      <path d="M5 10a7 7 0 0014 0" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  )}
                 </button>
 
                 {/* Send */}
