@@ -4156,7 +4156,7 @@ export default function Home() {
 
 
             {/* Project focus picker sheet */}
-            {showFocusPicker && (
+            {showFocusPicker && createPortal(
               <>
                 <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
                 <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
@@ -4180,7 +4180,8 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
-              </>
+              </>,
+              document.body
             )}
 
             {/* Attached files preview strip */}
