@@ -103,14 +103,33 @@ export function useAtlasStream(): UseAtlasStreamReturn {
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("text/event-stream")) {
         try {
-          const json = await res.json() as Record<string, unknown>;
-          const text = (json.response ?? json.content ?? json.message ?? "") as string;
+          const raw = await res.text();
+          let json: Record<string, unknown> | null = null;
+          try {
+            json = JSON.parse(raw) as Record<string, unknown>;
+          } catch {
+            json = null;
+          }
+
+          const text = json
+            ? (json.response ?? json.content ?? json.message ?? json.text ?? "") as string
+            : raw;
+          const errorText = json
+            ? (json.error ?? json.detail ?? "") as string
+            : "";
+
+          if (!text && errorText) {
+            pacer.abort();
+            callbacks.onError?.(errorText);
+            return;
+          }
+
           if (text) {
             streamedText = text;
             pacer.push(text);
           }
           await pacer.finish();
-          callbacks.onDone(streamedText, json);
+          callbacks.onDone(streamedText, json ?? { content: streamedText });
         } catch (e) {
           pacer.abort();
           callbacks.onError?.("Couldn't parse Atlas response.");
