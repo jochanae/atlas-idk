@@ -57,7 +57,6 @@ interface Props {
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
-  onExit: () => void;
   onCreateProject?: () => void;
   onAddAsset?: () => void;
   onMore?: () => void;
@@ -67,6 +66,7 @@ interface Props {
   attachedFiles?: File[];
   onRemoveFile?: (index: number) => void;
   focusChip?: ReactNode;
+  subheader?: ReactNode;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
@@ -212,7 +212,6 @@ export function GlobalInsightSurface({
   isListening,
   toggleVoice,
   onOpenHistory,
-  onExit,
   onCreateProject,
   onAddAsset,
   onMore,
@@ -222,6 +221,7 @@ export function GlobalInsightSurface({
   attachedFiles = [],
   onRemoveFile,
   focusChip,
+  subheader,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -348,33 +348,7 @@ export function GlobalInsightSurface({
         touchAction: "none",
       }}
     >
-        <button
-          type="button"
-          onClick={onExit}
-          aria-label="New conversation"
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 12,
-            width: 32,
-            height: 32,
-            borderRadius: 999,
-            background: "transparent",
-            border: "1px solid rgba(212,175,55,0.2)",
-            color: "var(--atlas-gold)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            WebkitTapHighlightColor: "transparent",
-            zIndex: 2,
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 2v12M2 8h12" />
-          </svg>
-        </button>
-
+      {subheader}
       {/* Isolated scroll container */}
       <div
         ref={scrollRef}
