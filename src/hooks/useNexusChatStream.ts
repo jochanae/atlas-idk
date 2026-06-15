@@ -329,18 +329,19 @@ export function useNexusChatStream(
 
     try {
       await stream({
-        endpoint: "/api/chat",
+        endpoint: "/api/nexus/chat",
         body: {
           message: routedText,
           history,
           userProfile,
           model: resolvedModel,
           mode: resolvedMode,
+          conversationId: activeConversationIdRef.current ?? undefined,
+          focusProjectId: focusProjectId ?? undefined,
           ...(imgAttachments.length > 0
             ? {
                 attachments: imgAttachments,
-                // Legacy fields for pre-multi-image backend builds.
-                imageData: firstImg!.base64,
+                imageBase64: firstImg!.base64,
                 imageMimeType: firstImg!.mediaType,
               }
             : {}),
