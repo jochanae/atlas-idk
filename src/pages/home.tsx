@@ -105,6 +105,7 @@ type HomeMessage = {
   terminalCmd?: unknown;
   terminalResult?: unknown;
   imageUrl?: string;
+  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
     images: Array<{
       imageUrl: string;
@@ -197,6 +198,10 @@ function normalizeLoadedHomeMessages(
 
     const shouldMock = demoRunSummary && m.role === "assistant" && !runStatus;
     return {
+      attachments: Array.isArray(m.attachments)
+        ? m.attachments.filter((a: any) => a && typeof a.base64 === "string" && typeof a.mediaType === "string")
+        : undefined,
+      imageUrl: typeof m.imageUrl === "string" ? m.imageUrl : undefined,
       executionTimeMs: m.executionTimeMs ?? m.execution_time_ms ?? null,
       inputTokens: m.inputTokens ?? m.input_tokens ?? null,
       outputTokens: m.outputTokens ?? m.output_tokens ?? null,
