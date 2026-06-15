@@ -330,10 +330,11 @@ export function TimelineRail({
           top: topOffset,
           bottom: bottomOffset,
           right: 0,
-          width: 14,
-          zIndex: 17,
+          width: 22,
+          zIndex: 270,
           pointerEvents: "auto",
           background: "transparent",
+          touchAction: "none",
         }}
       />
 
