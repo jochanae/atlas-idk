@@ -4966,6 +4966,27 @@ export default function Workspace() {
     if (!Number.isFinite(id)) return;
     if (!silent) setIsScanning(true);
     try {
+      const parsedRepo = project?.linkedRepo ? parseLinkedRepo(project.linkedRepo) : null;
+      if (parsedRepo?.fullName) {
+        const scanKey = `atlas-scan-${id}`;
+        try { localStorage.removeItem(scanKey); } catch {}
+        try {
+          const token = githubPushToken ?? "__server__";
+          const analyze = await fetch("/api/github/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
+            body: JSON.stringify({ repo: parsedRepo.fullName, branch: parsedRepo.defaultBranch ?? "main" }),
+          });
+          if (analyze.ok) {
+            const data = await analyze.json().catch(() => null);
+            if (data) {
+              try { localStorage.setItem(scanKey, JSON.stringify(data)); } catch {}
+            }
+          }
+        } catch {
+          // Silent — never block readiness scanning if GitHub analyze fails
+        }
+      }
       const r = await fetch(`/api/projects/${id}/scan`, {
         method: "POST",
         credentials: "include",
@@ -5022,7 +5043,7 @@ export default function Workspace() {
     } finally {
       if (!silent) setIsScanning(false);
     }
-  }, [id, queryClient, mapReadiness]);
+  }, [githubPushToken, id, queryClient, mapReadiness, project?.linkedRepo]);
 
   useEffect(() => {
     if (!Number.isFinite(id) || !hasLinkedRepo) return;
@@ -6808,7 +6829,7 @@ export default function Workspace() {
                 onSelect: () => {
                   if (isScanning) return;
                   toast.info("Rescanning repository", {
-                    description: "Pulling the latest from GitHub to refresh your readiness score.",
+                    description: "Pulling the latest from GitHub and refreshing project memory.",
                     className: "atlas-toast-pill",
                   });
                   void runScan(false);
