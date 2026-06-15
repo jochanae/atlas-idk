@@ -192,7 +192,11 @@ export function useNexusChatStream(
     if ((!text.trim() && imgAttachments.length === 0) || isPending) return;
     const firstImg = imgAttachments[0];
 
-    const routedText = imgAttachments.length > 0 ? text : routeDirectImageRequestToSketchPrompt(text);
+    // Backend requires a non-empty `message` field even when only images are attached.
+    const effectiveText = text.trim().length > 0
+      ? text
+      : (imgAttachments.length > 0 ? "(image attached)" : text);
+    const routedText = imgAttachments.length > 0 ? effectiveText : routeDirectImageRequestToSketchPrompt(effectiveText);
 
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
