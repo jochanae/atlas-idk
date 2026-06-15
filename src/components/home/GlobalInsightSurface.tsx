@@ -10,7 +10,7 @@
  *   - Scroll lives ONLY inside `.atlas-global-insight-scroll`
  *   - Composer is pinned to the bottom edge (above the safe-area inset)
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { useThemeMode } from "@/lib/theme";
 import { GenesisCard } from "./GenesisCard";
@@ -66,6 +66,7 @@ interface Props {
   onSketch?: (prompt: string) => void;
   attachedFiles?: File[];
   onRemoveFile?: (index: number) => void;
+  focusChip?: ReactNode;
 }
 
 const GLOBAL_INSIGHT_PLACEHOLDERS = [
@@ -220,6 +221,7 @@ export function GlobalInsightSurface({
   onSketch,
   attachedFiles = [],
   onRemoveFile,
+  focusChip,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -822,6 +824,7 @@ export function GlobalInsightSurface({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {focusChip}
               <UtilityButton
                 ariaLabel="Where were we"
                 title="Where were we?"
