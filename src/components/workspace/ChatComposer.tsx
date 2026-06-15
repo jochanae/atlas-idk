@@ -522,7 +522,12 @@ export function ChatComposer(props: ChatComposerProps) {
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  // Touch devices: Enter always inserts a newline (the on-screen
+                  // keyboard's "return" must not submit incomplete messages).
+                  const isTouch =
+                    typeof window !== "undefined" &&
+                    window.matchMedia?.("(pointer: coarse)").matches;
+                  if (!isTouch && e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSend();
                   } else {
