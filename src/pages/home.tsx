@@ -4317,36 +4317,7 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-
-              <ComposerActions
-                scope="home"
-                hasProjectContext={false}
-                borderless={true}
-                hasAttachments={attachedFiles.length > 0}
-                onFiles={(files) => {
-                  const combined = [...attachedFiles, ...files].slice(0, 10);
-                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-                  setAttachedFiles(combined);
-                }}
-                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
-                onMenuAction={(action) => {
-                  if (action === "history") { setShowTimeTravel(true); return; }
-                  if (action === "settings") { setLocation("/account"); return; }
-                  if (action === "code") { setLocation("/code"); return; }
-                  if (action === "connectors") { setLocation("/connectors"); return; }
-                  if (action === "files" || action === "share" ||
-                      action === "publish" ||
-                      action === "more:forge") { setLocation("/projects"); return; }
-                  toast("Open a project to use that");
-                }}
-              />
-
-
-
-              {/* Global Insight history — gold clock pill. Always visible so
-                  users can resume any prior Global Insight thread from the
-                  home composer, even on a fresh page load. Separate from the
-                  workspace/projects browser so the home chat isn't lost. */}
+              {/* Global Insight history — gold clock pill, far left for quick "where were we?" access */}
               <button
                 type="button"
                 title="Where were we? · Resume Global Insight"
@@ -4393,6 +4364,30 @@ export default function Home() {
                   <polyline points="12 7 12 12 15 14" />
                 </svg>
               </button>
+
+              <ComposerActions
+                scope="home"
+                hasProjectContext={false}
+                borderless={true}
+                hasAttachments={attachedFiles.length > 0}
+                onFiles={(files) => {
+                  const combined = [...attachedFiles, ...files].slice(0, 10);
+                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
+                  setAttachedFiles(combined);
+                }}
+                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
+                onMenuAction={(action) => {
+                  if (action === "history") { setShowTimeTravel(true); return; }
+                  if (action === "settings") { setLocation("/account"); return; }
+                  if (action === "code") { setLocation("/code"); return; }
+                  if (action === "connectors") { setLocation("/connectors"); return; }
+                  if (action === "files" || action === "share" ||
+                      action === "publish" ||
+                      action === "more:forge") { setLocation("/projects"); return; }
+                  toast("Open a project to use that");
+                }}
+              />
+
 
               <button
                 type="button"
