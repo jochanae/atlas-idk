@@ -15,6 +15,7 @@ import { StatCard } from "./stat-card";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 import { fetchGitHubStatus } from "@/hooks/useGitHub";
+import { QuickEditRow } from "./home/QuickEditRow";
 
 type RecentProject = {
   id: number;
@@ -152,7 +153,12 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {visible.map((item, i) => (
-              <ActivityRow key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`} item={item} onOpenProject={onOpenProject} />
+              <QuickEditRow
+                key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`}
+                projectId={item.projectId}
+                projectName={item.projectName}
+                row={<ActivityRowBody item={item} />}
+              />
             ))}
           </div>
           {items.length > 6 && (
@@ -172,20 +178,21 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
   );
 }
 
-function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProject: (id: number) => void }) {
+function ActivityRowBody({ item }: { item: ActivityItem }) {
   const dot = TYPE_COLOR[item.type];
   const label = TYPE_LABEL[item.type];
 
-  const inner = (
-    <div style={{
-      display: "flex", alignItems: "flex-start", gap: 10,
-      padding: "7px 8px", borderRadius: 7,
-      cursor: "pointer", transition: "background 140ms ease",
-    }}
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 10,
+        padding: "7px 8px", borderRadius: 7,
+        transition: "background 140ms ease",
+      }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(201,162,76,0.04)"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
     >
-      {/* Dot + vertical line */}
+      {/* Dot */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 3 }}>
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />
       </div>
@@ -193,7 +200,6 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
-          {/* Project chip */}
           <span style={{
             fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
             background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
@@ -202,7 +208,6 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
           }}>
             {item.projectName}
           </span>
-          {/* Type badge */}
           <span style={{
             fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
             textTransform: "uppercase", color: dot, opacity: 0.8, flexShrink: 0,
@@ -213,6 +218,22 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
             <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.04em" }}>
               {item.sha}
             </span>
+          )}
+          {item.type === "commit" && item.url && (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
+                opacity: 0.5, letterSpacing: "0.04em", textDecoration: "none",
+                padding: "1px 4px", borderRadius: 3,
+              }}
+              aria-label="Open commit on GitHub"
+            >
+              ↗
+            </a>
           )}
         </div>
         <div style={{ fontSize: 12, color: "var(--atlas-fg)", opacity: 0.82, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-sans)" }}>
@@ -229,20 +250,6 @@ function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProjec
       <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, paddingTop: 2, letterSpacing: "0.02em" }}>
         {formatRelative(item.timestamp)}
       </span>
-    </div>
-  );
-
-  // Commits open in new tab, decisions/sessions navigate to project
-  if (item.type === "commit" && item.url) {
-    return (
-      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
-        {inner}
-      </a>
-    );
-  }
-  return (
-    <div onClick={() => onOpenProject(item.projectId)} style={{ cursor: "pointer" }}>
-      {inner}
     </div>
   );
 }
