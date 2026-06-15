@@ -4467,57 +4467,6 @@ export default function Workspace() {
 
 
 
-  const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
-    const targetProjectId = surface.projectId ?? surface.workspaceId ?? id;
-
-    if (surface.type === "MAP") {
-      if (isMobile) {
-        setMobileTab("map");
-        setRightOpen(true);
-      } else {
-        setDesktopForceTab("map");
-        setTimeout(() => setDesktopForceTab(undefined), 120);
-      }
-      return;
-    }
-
-    if (surface.type === "WORKSPACE") {
-      if (targetProjectId && targetProjectId !== id) {
-        setLocation(`/project/${targetProjectId}`);
-        return;
-      }
-      setLeftTab("chat");
-      setMobileTab("chat");
-      setRightOpen(false);
-      setTimeout(() => textareaRef.current?.focus(), 0);
-      return;
-    }
-
-    if (surface.type === "DECISION") {
-      if (!targetProjectId) return;
-      try {
-        const res = await fetch(`/api/projects/${targetProjectId}/entries`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-          credentials: "include",
-          body: JSON.stringify({
-            title: surface.label,
-            status: "committed",
-            severity: "committed",
-            summary: "Logged from Atlas surface signal",
-          }),
-        });
-        if (res.ok) {
-          toast("Decision captured");
-          queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(targetProjectId, {}) });
-          if (targetProjectId === id) void refreshParkedEntries();
-        }
-      } catch {
-        // Surface actions stay ambient; failures should not interrupt the thread.
-      }
-    }
-  }, [id, isMobile, queryClient, refreshParkedEntries, setLocation]);
-
   const updatePlanState = useCallback((messageId: number, state: PlanState) => {
     setPlanStates((prev) => {
       const next = new Map(prev);
@@ -6357,7 +6306,6 @@ export default function Workspace() {
                 queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
                 void refreshParkedEntries();
               },
-              onSurfaceAction: handleAmbientSurfaceAction,
               planStates: chatPlanStates,
               planExecutions,
               onPlanStateChange: updatePlanState,

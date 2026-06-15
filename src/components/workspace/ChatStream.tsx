@@ -8,12 +8,7 @@ import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
 import { TimelineRail } from "../TimelineRail";
 
-import type {
-  ChatMessage,
-  AmbientSurface,
-  LinkedRepo,
-  PushRecord,
-} from "@/pages/workspace";
+import type { ChatMessage, LinkedRepo, PushRecord } from "@/pages/workspace";
 import type { PlanExecution } from "@/lib/plan";
 import type { Plan } from "@/lib/plan";
 import type { PlanState } from "@/components/workspace/chatShared";
@@ -122,7 +117,6 @@ export interface ChatStreamProps {
   onStreamActivityUpdate: (msg: ChatMessage, content: string) => void;
   onStreamActivityComplete: () => void;
   onCommitCardDone: () => void;
-  onSurfaceAction: AssistantBubbleProp<"onSurfaceAction">;
 
   // plan
   planStates: Map<number, PlanState>;
@@ -152,7 +146,7 @@ export function ChatStream(props: ChatStreamProps) {
     onPreviewCode, onRunCommand, onPrCreated, onExtractToForge, onForgeIntake, onReviewDiff,
     onOpenArtifact,
     onEditDeclined, onAlertDismiss, onStreamActivityUpdate, onStreamActivityComplete,
-    onCommitCardDone, onSurfaceAction,
+    onCommitCardDone,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
     onPushSuccess,
   } = props;
@@ -265,7 +259,6 @@ export function ChatStream(props: ChatStreamProps) {
               onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}
               onStreamActivityComplete={onStreamActivityComplete}
               onCommitCardDone={onCommitCardDone}
-              onSurfaceAction={onSurfaceAction}
               planState={planStates.get(msg.id ?? 0) ?? "pending"}
               planExecution={planExecutions.get(msg.id ?? 0)}
               onPlanStateChange={onPlanStateChange}
@@ -371,7 +364,3 @@ export function ChatStream(props: ChatStreamProps) {
     </div>
   );
 }
-
-
-// Silence unused-imports introduced by Plan/AmbientSurface re-export aliasing.
-export type _AmbientSurface = AmbientSurface;

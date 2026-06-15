@@ -35,7 +35,6 @@ import type {
   LinePatch,
   LinkedRepo,
   PushRecord,
-  AmbientSurface,
   ClarifyPayload,
   AlertPayload,
 } from "@/pages/workspace";
@@ -454,62 +453,6 @@ function InlineDiffCard({
         />
       )}
     </>
-  );
-}
-
-// ── AmbientEmergenceCard ──────────────────────────────────────────────────────
-function AmbientEmergenceCard({ surface, onAction }: { surface: AmbientSurface; onAction: (surface: NonNullable<AmbientSurface>) => void }) {
-  if (!surface) return null;
-  const actionLabel = surface.type === "MAP"
-    ? "View Structure"
-    : surface.type === "WORKSPACE"
-      ? "Continue Working"
-      : surface.type === "DECISION"
-        ? "Capture Decision"
-        : null;
-  if (!actionLabel) return null;
-
-  return (
-    <div
-      style={{
-        marginTop: 6,
-        marginLeft: 14,
-        maxWidth: 440,
-        background: "var(--atlas-surface-alt)",
-        border: "1px solid rgba(201,162,76,0.3)",
-        borderRadius: 10,
-        padding: "12px 16px",
-        animation: "fadeIn 260ms ease forwards",
-      }}
-    >
-      <div style={{ fontSize: 14, lineHeight: 1.4, color: "var(--atlas-fg)", marginBottom: surface.reason ? 4 : 8 }}>
-        {surface.label}
-      </div>
-      {surface.reason && (
-        <div style={{ fontSize: 12, lineHeight: 1.45, color: "var(--atlas-muted)", opacity: 0.72, marginBottom: 10 }}>
-          {surface.reason}
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={() => onAction(surface)}
-        style={{
-          background: "transparent",
-          border: "1px solid rgba(201,162,76,0.28)",
-          borderRadius: 999,
-          color: "var(--atlas-gold)",
-          cursor: "pointer",
-          fontFamily: "var(--app-font-mono)",
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          padding: "5px 10px",
-          textTransform: "uppercase",
-          opacity: 0.78,
-        }}
-      >
-        {actionLabel}
-      </button>
-    </div>
   );
 }
 
@@ -962,7 +905,6 @@ export function AssistantBubble({
   onStreamActivityUpdate,
   onStreamActivityComplete,
   onCommitCardDone,
-  onSurfaceAction,
   planState,
   planExecution,
   onPlanStateChange,
@@ -992,7 +934,6 @@ export function AssistantBubble({
   onStreamActivityUpdate?: (content: string) => void;
   onStreamActivityComplete?: () => void;
   onCommitCardDone?: () => void;
-  onSurfaceAction: (surface: NonNullable<AmbientSurface>) => void;
   planState?: PlanState;
   planExecution?: PlanExecution;
   onPlanStateChange?: (messageId: number, state: PlanState) => void;
@@ -1782,10 +1723,6 @@ export function AssistantBubble({
               }}
             />
           </div>
-        )}
-
-        {!message.streaming && (
-          <AmbientEmergenceCard surface={message.surface ?? null} onAction={onSurfaceAction} />
         )}
 
         {!message.streaming && message.plan && /FILE_EDIT_START/i.test(message.content) && planState !== "skipped" && (
