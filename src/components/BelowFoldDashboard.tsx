@@ -15,7 +15,7 @@ import { StatCard } from "./stat-card";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 import { fetchGitHubStatus } from "@/hooks/useGitHub";
-import { QuickEditRow } from "./home/QuickEditRow";
+import { QuickEditRow, QuickActionLauncherButton, type QuickEditProjectOption } from "./home/QuickEditRow";
 
 type RecentProject = {
   id: number;
@@ -103,10 +103,17 @@ const TYPE_LABEL: Record<ActivityItem["type"], string> = {
   session:  "session",
 };
 
-function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => void }) {
+function ActivityHubCard({
+  onOpenProject,
+  projectOptions,
+}: {
+  onOpenProject: (id: number) => void;
+  projectOptions: QuickEditProjectOption[];
+}) {
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [launcherOpen, setLauncherOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/nexus/activity", { credentials: "include" })
@@ -117,14 +124,21 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
   }, []);
 
   const visible = expanded ? items : items.slice(0, 6);
+  const defaultLauncherProjectId =
+    projectOptions[0]?.id ?? items[0]?.projectId ?? 0;
+  const defaultLauncherProjectName =
+    projectOptions[0]?.name ?? items[0]?.projectName ?? "project";
 
   return (
     <div className="atlas-discovery-card">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
             Activity
           </h3>
+          {defaultLauncherProjectId > 0 && (
+            <QuickActionLauncherButton onClick={() => setLauncherOpen(true)} />
+          )}
           {/* Legend */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.55 }}>
             {(["commit", "decision", "session"] as const).map(t => (
@@ -139,6 +153,19 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
           Live
         </span>
       </div>
+
+      {launcherOpen && defaultLauncherProjectId > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <QuickEditRow
+            key="quick-action-launcher"
+            mode="launcher"
+            projectId={defaultLauncherProjectId}
+            projectName={defaultLauncherProjectName}
+            projects={projectOptions}
+            onClose={() => setLauncherOpen(false)}
+          />
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0" }}>
@@ -157,6 +184,7 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
                 key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`}
                 projectId={item.projectId}
                 projectName={item.projectName}
+                projects={projectOptions}
                 row={<ActivityRowBody item={item} />}
               />
             ))}
@@ -478,7 +506,11 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
 
       {/* 2. ACTIVITY HUB */}
       <RevealOnScroll delayMs={80} className="bfd-col-left">
-        <ActivityHubCard onOpenProject={onOpenProject} />
+        <ActivityHubCard
+          onOpenProject={onOpenProject}
+          projectOptions={projects.map((p) => ({ id: p.id, name: p.name }))}
+        />
+
       </RevealOnScroll>
 
       {/* 3. COGNITIVE MOMENTUM (parking) — right column, top */}

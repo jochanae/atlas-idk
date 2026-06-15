@@ -1,34 +1,91 @@
-// QuickEditRow — state-driven wrapper that turns an activity row into a
-// tactical execution lane. States: idle → prompt → active → resolved | failed.
-// Reuses useCodegen, RunSummaryBlock, DiffViewer. No new edge functions.
+// QuickEditRow V2 — tactical execution lane.
+// States: idle → prompt → active → resolved | failed.
+// V2 changes: project pill (switchable), default branch pill (read-only),
+// target-file pill that drives true before/after diff lookup, attachment clip,
+// unified bottom toolbar, launcher mode (no header row, always-open).
+//
+// Telemetry remains client-synthesized (useCodegen). Successful push still
+// routes through the workspace fallback to keep blast radius safe.
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { Zap, X, ArrowRight, GitBranch, ChevronDown, ChevronRight } from "lucide-react";
-import { useCodegen, type CodegenFile } from "@/hooks/useCodegen";
+import {
+  Zap,
+  X,
+  ArrowRight,
+  GitBranch,
+  ChevronDown,
+  ChevronRight,
+  Paperclip,
+  FileCode2,
+  Plus,
+} from "lucide-react";
+import { useCodegen } from "@/hooks/useCodegen";
 import { RunSummaryBlock, type RunStatus, type RunArtifact } from "@/components/RunSummary";
 import { DiffViewer } from "@/components/code/DiffViewer";
+import { apiUrl } from "@/lib/api";
 
 type Phase = "idle" | "prompt" | "active" | "resolved" | "failed";
+
+export interface QuickEditProjectOption {
+  id: number;
+  name: string;
+  defaultBranch?: string;
+}
 
 interface Props {
   projectId: number;
   projectName: string;
-  /** The original row markup, rendered as the visible header. */
-  row: ReactNode;
-  /** Forwarded when the user dismisses without acting. */
+  /** Row markup rendered as the visible header (row mode). Omit for launcher mode. */
+  row?: ReactNode;
+  /** "row" = collapsed header (default). "launcher" = no header, always expanded. */
+  mode?: "row" | "launcher";
+  /** Project list for the switcher pill. If omitted, pill is read-only. */
+  projects?: QuickEditProjectOption[];
+  /** Default branch label (read-only). */
+  defaultBranch?: string;
+  /** Pre-fill target file path (e.g. from a commit row). */
+  initialFilename?: string;
+  /** Called when launcher dismisses. */
   onClose?: () => void;
+  /** Project switch callback. */
+  onProjectChange?: (id: number) => void;
 }
 
-export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
+export function QuickEditRow({
+  projectId: initialProjectId,
+  projectName,
+  row,
+  mode = "row",
+  projects,
+  defaultBranch = "main",
+  initialFilename,
+  onClose,
+  onProjectChange,
+}: Props) {
   const [, setLocation] = useLocation();
-  const [phase, setPhase] = useState<Phase>("idle");
+  const isLauncher = mode === "launcher";
+  const [phase, setPhase] = useState<Phase>(isLauncher ? "prompt" : "idle");
+  const [activeProjectId, setActiveProjectId] = useState(initialProjectId);
   const [prompt, setPrompt] = useState("");
+  const [targetFile, setTargetFile] = useState(initialFilename ?? "");
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [showDiff, setShowDiff] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [beforeContent, setBeforeContent] = useState<string>("");
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const activeProjectName = useMemo(() => {
+    if (!projects) return projectName;
+    return projects.find((p) => p.id === activeProjectId)?.name ?? projectName;
+  }, [projects, activeProjectId, projectName]);
+
+  const activeBranch =
+    projects?.find((p) => p.id === activeProjectId)?.defaultBranch ?? defaultBranch;
 
   const { running, steps, lastFile, run, reset } = useCodegen({
-    projectId,
+    projectId: activeProjectId,
     onResult: () => setPhase("resolved"),
     onError: (msg) => {
       setErrorMessage(msg);
@@ -37,43 +94,92 @@ export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
   });
 
   const open = phase !== "idle";
+
+  const collapse = useCallback(() => {
+    setPhase("idle");
+    reset();
+    setPrompt("");
+    setTargetFile(initialFilename ?? "");
+    setAttachments([]);
+    setShowDiff(false);
+    setErrorMessage(null);
+    setBeforeContent("");
+    onClose?.();
+  }, [reset, onClose, initialFilename]);
+
   const toggle = useCallback(() => {
+    if (isLauncher) return; // launcher has its own close button
     if (open) {
-      // Don't kill an in-flight job — just collapse.
-      if (phase === "active") {
-        // Allow collapse; job continues in background. Re-open restores state.
-        setPhase("idle");
-      } else {
-        setPhase("idle");
-        reset();
-        setPrompt("");
-        setShowDiff(false);
-        setErrorMessage(null);
-        onClose?.();
-      }
+      if (phase === "active") setPhase("idle"); // collapse but keep job running
+      else collapse();
     } else {
       setPhase("prompt");
     }
-  }, [open, phase, reset, onClose]);
+  }, [isLauncher, open, phase, collapse]);
+
+  // Fetch true "before" content when target file is set. Best-effort: 404
+  // / network errors fall back to empty before (preserves v1 behavior).
+  useEffect(() => {
+    if (!targetFile.trim()) {
+      setBeforeContent("");
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    const url = apiUrl(
+      `/api/projects/${activeProjectId}/file?path=${encodeURIComponent(targetFile.trim())}`
+    );
+    fetch(url, { credentials: "include", signal: controller.signal })
+      .then(async (r) => {
+        if (!r.ok) return "";
+        const ct = r.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          const data = (await r.json().catch(() => null)) as { content?: string } | null;
+          return data?.content ?? "";
+        }
+        return await r.text();
+      })
+      .then((content) => {
+        if (!cancelled) setBeforeContent(content);
+      })
+      .catch(() => {
+        if (!cancelled) setBeforeContent("");
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [targetFile, activeProjectId]);
 
   const submit = useCallback(async () => {
     if (!prompt.trim() || running) return;
     setPhase("active");
     setErrorMessage(null);
-    await run(prompt);
-  }, [prompt, running, run]);
+    const ctx = [
+      targetFile.trim() ? `Target file: ${targetFile.trim()}` : null,
+      attachments.length > 0 ? `Attached files: ${attachments.map((f) => f.name).join(", ")}` : null,
+      beforeContent ? `Current file content:\n\`\`\`\n${beforeContent}\n\`\`\`` : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    await run(prompt, ctx || undefined);
+  }, [prompt, running, run, targetFile, attachments, beforeContent]);
 
   const ejectToWorkspace = useCallback(() => {
     const payload = {
       prompt,
       error: errorMessage,
-      filename: lastFile?.filename,
+      filename: lastFile?.filename ?? targetFile,
+      attachments: attachments.map((f) => f.name),
     };
     try {
-      sessionStorage.setItem(`atlas:quickedit:resume:${projectId}`, JSON.stringify(payload));
+      sessionStorage.setItem(
+        `atlas:quickedit:resume:${activeProjectId}`,
+        JSON.stringify(payload)
+      );
     } catch {}
-    setLocation(`/workspace?project=${projectId}&resume=quickedit`);
-  }, [prompt, errorMessage, lastFile, projectId, setLocation]);
+    setLocation(`/workspace?project=${activeProjectId}&resume=quickedit`);
+  }, [prompt, errorMessage, lastFile, targetFile, attachments, activeProjectId, setLocation]);
 
   const artifacts: RunArtifact[] = useMemo(() => {
     if (!lastFile) return [];
@@ -83,115 +189,373 @@ export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
   const status: RunStatus | null =
     phase === "resolved" ? "completed" : phase === "failed" ? "failed" : null;
 
+  const switchProject = (id: number) => {
+    setActiveProjectId(id);
+    setProjectMenuOpen(false);
+    onProjectChange?.(id);
+  };
+
   return (
     <div
       style={{
         borderRadius: 8,
         background: open ? "rgba(201,162,76,0.03)" : "transparent",
-        border: open ? "1px solid rgba(201,162,76,0.12)" : "1px solid transparent",
+        border: open
+          ? "1px solid rgba(201,162,76,0.14)"
+          : "1px solid transparent",
         transition: "background 180ms ease, border-color 180ms ease",
         overflow: "hidden",
       }}
     >
-      {/* Header (existing row, clickable to toggle) */}
-      <div
-        onClick={toggle}
-        style={{ cursor: "pointer", position: "relative" }}
-        aria-expanded={open}
-      >
-        {row}
-        {/* Quick-edit affordance: lightning bolt fades in on hover/open */}
-        <span
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 38,
-            opacity: open ? 0.8 : 0,
-            transition: "opacity 160ms ease",
-            color: "var(--atlas-gold)",
-            pointerEvents: "none",
-          }}
-          aria-hidden
+      {/* Header: in row mode, clickable original row. In launcher mode, a thin bar. */}
+      {!isLauncher && row && (
+        <div
+          onClick={toggle}
+          style={{ cursor: "pointer" }}
+          aria-expanded={open}
         >
-          <Zap size={11} strokeWidth={2.25} />
-        </span>
-      </div>
+          {row}
+        </div>
+      )}
+
+      {isLauncher && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "8px 10px 4px",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 9.5,
+              fontFamily: "var(--app-font-mono)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              opacity: 0.85,
+            }}
+          >
+            <Zap size={11} strokeWidth={2.25} />
+            New quick action
+          </span>
+          <button
+            type="button"
+            onClick={collapse}
+            aria-label="Close launcher"
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: 2,
+              color: "var(--atlas-muted)",
+              cursor: "pointer",
+              opacity: 0.6,
+            }}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Expanded body */}
       {open && (
         <div
           style={{
-            padding: "10px 12px 12px",
-            borderTop: "1px dashed rgba(201,162,76,0.12)",
+            padding: isLauncher ? "4px 10px 12px" : "10px 12px 12px",
+            borderTop: isLauncher ? "none" : "1px dashed rgba(201,162,76,0.12)",
             display: "flex",
             flexDirection: "column",
             gap: 10,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Prompt input — visible until a run starts */}
+          {/* Context strip: project pill + branch pill + target file pill */}
           {(phase === "prompt" || phase === "active") && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <textarea
-                autoFocus={phase === "prompt"}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    submit();
-                  }
-                }}
-                disabled={running}
-                placeholder={`Quick edit on ${projectName} — describe the change`}
-                rows={2}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+              {/* Project pill */}
+              <div style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => projects && projects.length > 1 && setProjectMenuOpen((v) => !v)}
+                  style={contextPillStyle(!!projects && projects.length > 1)}
+                  aria-label="Switch project"
+                  disabled={running}
+                >
+                  <span style={{ opacity: 0.55 }}>project</span>
+                  <span style={{ color: "var(--atlas-gold)" }}>{activeProjectName}</span>
+                  {projects && projects.length > 1 && <ChevronDown size={10} strokeWidth={2} />}
+                </button>
+                {projectMenuOpen && projects && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 4px)",
+                      left: 0,
+                      zIndex: 30,
+                      minWidth: 180,
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      background: "var(--atlas-surface)",
+                      border: "1px solid var(--atlas-border)",
+                      borderRadius: 6,
+                      padding: 4,
+                      boxShadow: "0 12px 30px rgba(0,0,0,0.4)",
+                    }}
+                  >
+                    {projects.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => switchProject(p.id)}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "6px 8px",
+                          background:
+                            p.id === activeProjectId
+                              ? "rgba(201,162,76,0.08)"
+                              : "transparent",
+                          border: "none",
+                          borderRadius: 4,
+                          color: "var(--atlas-fg)",
+                          fontFamily: "var(--app-font-mono)",
+                          fontSize: 11,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Branch pill (read-only) */}
+              <span style={contextPillStyle(false)}>
+                <GitBranch size={10} strokeWidth={2} />
+                <span style={{ opacity: 0.55 }}>branch</span>
+                <span style={{ color: "var(--atlas-fg)" }}>{activeBranch}</span>
+              </span>
+
+              {/* Target file input — drives true diff lookup */}
+              <label
                 style={{
-                  width: "100%",
-                  resize: "none",
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: 12,
-                  lineHeight: 1.5,
-                  padding: "8px 10px",
-                  borderRadius: 6,
-                  background: "var(--atlas-surface)",
-                  border: "1px solid var(--atlas-border)",
-                  color: "var(--atlas-fg)",
-                  outline: "none",
+                  ...contextPillStyle(true),
+                  paddingRight: targetFile ? 4 : 8,
+                  cursor: "text",
                 }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.55 }}>
-                  ⌘↵ to run · esc to close
+              >
+                <FileCode2 size={10} strokeWidth={2} />
+                <input
+                  type="text"
+                  value={targetFile}
+                  onChange={(e) => setTargetFile(e.target.value)}
+                  placeholder="path/to/file"
+                  disabled={running}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "var(--atlas-fg)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10.5,
+                    width: targetFile ? Math.min(220, Math.max(80, targetFile.length * 7)) : 100,
+                    padding: 0,
+                  }}
+                />
+                {targetFile && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTargetFile("");
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 1,
+                      color: "var(--atlas-muted)",
+                      cursor: "pointer",
+                      opacity: 0.6,
+                      display: "inline-flex",
+                    }}
+                    aria-label="Clear target file"
+                  >
+                    <X size={9} />
+                  </button>
+                )}
+              </label>
+
+              {beforeContent && (
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontFamily: "var(--app-font-mono)",
+                    color: "rgba(74,222,128,0.85)",
+                    letterSpacing: "0.06em",
+                    opacity: 0.85,
+                  }}
+                >
+                  ● diff ready
                 </span>
-                <div style={{ display: "flex", gap: 6 }}>
+              )}
+            </div>
+          )}
+
+          {/* Prompt textarea */}
+          {(phase === "prompt" || phase === "active") && (
+            <textarea
+              autoFocus={phase === "prompt"}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  submit();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  collapse();
+                }
+              }}
+              disabled={running}
+              placeholder={`Quick edit on ${activeProjectName} — describe the change`}
+              rows={2}
+              style={{
+                width: "100%",
+                resize: "none",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 12,
+                lineHeight: 1.5,
+                padding: "8px 10px",
+                borderRadius: 6,
+                background: "var(--atlas-surface)",
+                border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-fg)",
+                outline: "none",
+              }}
+            />
+          )}
+
+          {/* Attachment chips */}
+          {attachments.length > 0 && (phase === "prompt" || phase === "active") && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {attachments.map((f, i) => (
+                <span
+                  key={`${f.name}-${i}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "3px 7px",
+                    borderRadius: 4,
+                    background: "rgba(99,102,241,0.08)",
+                    border: "1px solid rgba(99,102,241,0.25)",
+                    color: "rgba(165,180,252,0.95)",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10,
+                  }}
+                >
+                  <Paperclip size={9} />
+                  {f.name}
                   <button
                     type="button"
-                    onClick={toggle}
-                    style={pillBtnStyle("ghost")}
-                    aria-label="Cancel quick edit"
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 0,
+                      color: "inherit",
+                      cursor: "pointer",
+                      opacity: 0.7,
+                      display: "inline-flex",
+                    }}
+                    aria-label={`Remove ${f.name}`}
                   >
-                    <X size={11} strokeWidth={2} /> Cancel
+                    <X size={9} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={submit}
-                    disabled={!prompt.trim() || running}
-                    style={pillBtnStyle("primary", !prompt.trim() || running)}
-                  >
-                    <Zap size={11} strokeWidth={2.25} />
-                    {running ? "Running..." : "Run"}
-                  </button>
-                </div>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Unified bottom toolbar */}
+          {(phase === "prompt" || phase === "active") && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const list = Array.from(e.target.files ?? []);
+                    if (list.length) setAttachments((prev) => [...prev, ...list]);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={running}
+                  style={toolbarIconBtnStyle}
+                  aria-label="Attach files"
+                  title="Attach files"
+                >
+                  <Paperclip size={12} />
+                </button>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "var(--app-font-mono)",
+                    color: "var(--atlas-muted)",
+                    opacity: 0.5,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  ⌘↵ to run
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={collapse}
+                  style={pillBtnStyle("ghost")}
+                  aria-label="Cancel quick edit"
+                  disabled={running}
+                >
+                  <X size={11} strokeWidth={2} /> Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={!prompt.trim() || running}
+                  style={pillBtnStyle("primary", !prompt.trim() || running)}
+                >
+                  <Zap size={11} strokeWidth={2.25} />
+                  {running ? "Running..." : "Run"}
+                </button>
               </div>
             </div>
           )}
 
           {/* Live steps */}
-          {(phase === "active" || phase === "resolved" || phase === "failed") && steps.length > 0 && (
-            <StepStream steps={steps} running={running} />
-          )}
+          {(phase === "active" || phase === "resolved" || phase === "failed") &&
+            steps.length > 0 && <StepStream steps={steps} running={running} />}
 
-          {/* Resolved: summary + diff toggle */}
+          {/* Resolved */}
           {phase === "resolved" && lastFile && (
             <>
               <RunSummaryBlock
@@ -223,9 +587,9 @@ export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
               {showDiff && (
                 <DiffViewer
                   filename={lastFile.filename}
-                  before=""
+                  before={beforeContent}
                   after={lastFile.content}
-                  badge="Generated"
+                  badge={beforeContent ? "Edited" : "Generated"}
                   maxHeight={260}
                 />
               )}
@@ -239,7 +603,11 @@ export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setPhase("prompt"); reset(); setShowDiff(false); }}
+                  onClick={() => {
+                    setPhase("prompt");
+                    reset();
+                    setShowDiff(false);
+                  }}
                   style={pillBtnStyle("ghost")}
                 >
                   Tweak
@@ -255,7 +623,7 @@ export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
             </>
           )}
 
-          {/* Failed: red summary + single eject CTA */}
+          {/* Failed */}
           {phase === "failed" && (
             <>
               <RunSummaryBlock
@@ -274,6 +642,42 @@ export function QuickEditRow({ projectId, projectName, row, onClose }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Header chip for triggering a new blank launcher row. */
+export function QuickActionLauncherButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 8px",
+        borderRadius: 4,
+        background: "rgba(201,162,76,0.08)",
+        border: "1px solid rgba(201,162,76,0.28)",
+        color: "var(--atlas-gold)",
+        fontFamily: "var(--app-font-mono)",
+        fontSize: 9.5,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        cursor: "pointer",
+        transition: "background 140ms ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = "rgba(201,162,76,0.14)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = "rgba(201,162,76,0.08)";
+      }}
+      aria-label="Start a new quick action"
+    >
+      <Plus size={10} strokeWidth={2.5} />
+      Quick action
+    </button>
   );
 }
 
@@ -318,7 +722,8 @@ function StepStream({ steps, running }: { steps: string[]; running: boolean }) {
                   ? "var(--atlas-gold)"
                   : "rgba(74,222,128,0.7)",
                 flexShrink: 0,
-                animation: isLast && running ? "atlasCoreBloom 1.4s ease-in-out infinite" : "none",
+                animation:
+                  isLast && running ? "atlasCoreBloom 1.4s ease-in-out infinite" : "none",
               }}
             />
             {s}
@@ -328,6 +733,38 @@ function StepStream({ steps, running }: { steps: string[]; running: boolean }) {
     </div>
   );
 }
+
+function contextPillStyle(interactive: boolean): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    padding: "3px 8px",
+    borderRadius: 4,
+    background: "var(--atlas-surface)",
+    border: "1px solid var(--atlas-border)",
+    color: "var(--atlas-muted)",
+    fontFamily: "var(--app-font-mono)",
+    fontSize: 10.5,
+    letterSpacing: "0.02em",
+    cursor: interactive ? "pointer" : "default",
+    transition: "border-color 140ms ease",
+  };
+}
+
+const toolbarIconBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 26,
+  height: 26,
+  borderRadius: 5,
+  background: "transparent",
+  border: "1px solid var(--atlas-border)",
+  color: "var(--atlas-muted)",
+  cursor: "pointer",
+  transition: "color 140ms ease, border-color 140ms ease",
+};
 
 function pillBtnStyle(variant: "primary" | "ghost", disabled = false): React.CSSProperties {
   if (variant === "primary") {
@@ -359,7 +796,7 @@ function pillBtnStyle(variant: "primary" | "ghost", disabled = false): React.CSS
     fontFamily: "var(--app-font-mono)",
     fontSize: 10.5,
     letterSpacing: "0.04em",
-    cursor: "pointer",
+    cursor: disabled ? "not-allowed" : "pointer",
     transition: "color 140ms ease, border-color 140ms ease",
   };
 }
