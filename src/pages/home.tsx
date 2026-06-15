@@ -4302,8 +4302,8 @@ export default function Home() {
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
               display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
-              opacity: (inputFocused || hasInput || attachedFiles.length > 0) ? 1 : 0,
-              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0) ? "auto" : "none",
+              opacity: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker) ? 1 : 0,
+              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
@@ -4389,7 +4389,10 @@ export default function Home() {
                 title="Active project"
                 aria-label={`Active project: ${focusChipLabel}`}
                 aria-expanded={showFocusPicker}
-                onClick={() => {
+                onPointerDown={(e) => { e.preventDefault(); }}
+                onMouseDown={(e) => { e.preventDefault(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setShowFocusPicker((open) => !open);
                 }}
                 style={{
