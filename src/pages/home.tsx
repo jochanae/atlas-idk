@@ -4148,10 +4148,6 @@ export default function Home() {
               </div>
             )}
 
-            {(() => {
-              const composerAnchored = inputFocused || hasInput || attachedFiles.length > 0;
-              return null;
-            })()}
             <div style={{
               position: "relative",
               borderRadius: 14,
