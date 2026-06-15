@@ -144,7 +144,6 @@ export function UnifiedSubheader({
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
         marginTop: expanded ? 50 : 0,
-        height: expanded ? "auto" : 0,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,
