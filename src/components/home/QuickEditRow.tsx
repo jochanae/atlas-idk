@@ -66,6 +66,7 @@ export function QuickEditRow({
   onProjectChange,
 }: Props) {
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const isLauncher = mode === "launcher";
   const [phase, setPhase] = useState<Phase>(isLauncher ? "prompt" : "idle");
   const [activeProjectId, setActiveProjectId] = useState(initialProjectId);
