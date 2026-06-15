@@ -4,6 +4,29 @@ import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 const STREAM_TIMEOUT_MS = 90_000;
+const NAVIGATE_TO_RE = /\s*NAVIGATE_TO:\s*(\{[^\n]*"route"\s*:\s*"([^"]+)"[^\n]*\})\s*$/;
+
+function stripNavigateTo(content: string): { content: string; route: string | null } {
+  const match = content.match(NAVIGATE_TO_RE);
+  if (!match) return { content, route: null };
+
+  try {
+    const parsed = JSON.parse(match[1]) as { route?: unknown };
+    if (typeof parsed.route === "string" && parsed.route.startsWith("/")) {
+      return {
+        content: content.replace(NAVIGATE_TO_RE, "").replace(/\n{3,}/g, "\n\n").trim(),
+        route: parsed.route,
+      };
+    }
+  } catch {
+    // Fall back to the captured route when JSON parsing fails due to benign spacing.
+  }
+
+  return {
+    content: content.replace(NAVIGATE_TO_RE, "").replace(/\n{3,}/g, "\n\n").trim(),
+    route: match[2] ?? null,
+  };
+}
 
 export interface NexusMessage {
   id?: string;
@@ -243,7 +266,7 @@ export function useNexusChatStream(
     setMessages(prev => [...prev, userMsg]);
 
     // ── Frontend short-circuit for image requests ─────────────────
-    // /api/nexus/chat does not generate images. Route direct image
+    // /api/chat does not generate images. Route direct image
     // asks (and explicit [SKETCH:*] picks) to /api/image/generate
     // and render the result inline as an assistant message.
     const isImageIntent = imgAttachments.length === 0 && (shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text));
@@ -303,19 +326,16 @@ export function useNexusChatStream(
       isNew: true,
     };
     setMessages(prev => [...prev, assistantMsg]);
-    const activeConversationId = activeConversationIdRef.current;
 
     try {
       await stream({
-        endpoint: "/api/nexus/chat",
+        endpoint: "/api/chat",
         body: {
-          global: true,
-          ...(activeConversationId ? { conversationId: activeConversationId } : {}),
           message: routedText,
-          model: resolvedModel,
           history,
-          mode: resolvedMode,
           userProfile,
+          model: resolvedModel,
+          mode: resolvedMode,
           ...(imgAttachments.length > 0
             ? {
                 attachments: imgAttachments,
@@ -328,7 +348,8 @@ export function useNexusChatStream(
 
         callbacks: {
           onToken: (released) => {
-            const cleaned = released
+            const cleaned = stripNavigateTo(released)
+              .content
               .split('\n')
               .filter(line => {
                 const t = line.trim();
@@ -366,14 +387,9 @@ export function useNexusChatStream(
               activeConversationIdRef.current = doneConversationId;
             }
 
-            // Parse NAVIGATE_TO
-            let displayText = fullText;
-            const navMatch = displayText.match(/NAVIGATE_TO:\{"route":"([^"]+)"\}/);
-            if (navMatch) {
-              const route = navMatch[1];
-              displayText = displayText.replace(/\nNAVIGATE_TO:\{[^}]+\}/g, "").trim();
-              setTimeout(() => { window.location.href = route; }, 800);
-            }
+            const { content: navCleanedText, route } = stripNavigateTo(fullText);
+            let displayText = navCleanedText;
+            if (route) setTimeout(() => { window.location.href = route; }, 800);
 
             // Read shapingPayload from meta — backend parses and 
             // sends it in the done event already cleaned
