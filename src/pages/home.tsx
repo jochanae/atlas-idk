@@ -4225,8 +4225,13 @@ export default function Home() {
               />
             </div>
 
-            {/* Bottom action bar */}
-            <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
+            {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
+            <div style={{
+              display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
+              opacity: (inputFocused || hasInput || attachedFiles.length > 0) ? 1 : 0,
+              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0) ? "auto" : "none",
+              transition: "opacity 200ms ease-in-out",
+            }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
               {/* Global Insight history — gold clock pill. Always visible so
