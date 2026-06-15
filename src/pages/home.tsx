@@ -4129,7 +4129,7 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
+          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
           <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
             position: globalInsightOpen ? "relative" : "sticky",
             left: globalInsightOpen ? undefined : 0,
@@ -4308,6 +4308,31 @@ export default function Home() {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
+              <ComposerActions
+                scope="home"
+                hasProjectContext={false}
+                borderless={true}
+                hasAttachments={attachedFiles.length > 0}
+                onFiles={(files) => {
+                  const combined = [...attachedFiles, ...files].slice(0, 10);
+                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
+                  setAttachedFiles(combined);
+                }}
+                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
+                onMenuAction={(action) => {
+                  if (action === "history") { setShowTimeTravel(true); return; }
+                  if (action === "settings") { setLocation("/account"); return; }
+                  if (action === "code") { setLocation("/code"); return; }
+                  if (action === "connectors") { setLocation("/connectors"); return; }
+                  if (action === "files" || action === "share" ||
+                      action === "publish" ||
+                      action === "more:forge") { setLocation("/projects"); return; }
+                  toast("Open a project to use that");
+                }}
+              />
+
+
+
               {/* Global Insight history — gold clock pill. Always visible so
                   users can resume any prior Global Insight thread from the
                   home composer, even on a fresh page load. Separate from the
@@ -4401,31 +4426,7 @@ export default function Home() {
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
 
-              <ComposerActions
-                scope="home"
-                hasProjectContext={false}
-                borderless={true}
-                hasAttachments={attachedFiles.length > 0}
-                onFiles={(files) => {
-                  const combined = [...attachedFiles, ...files].slice(0, 10);
-                  if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
-                  setAttachedFiles(combined);
-                }}
-                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
-                onMenuAction={(action) => {
-                  if (action === "history") { setShowTimeTravel(true); return; }
-                  if (action === "settings") { setLocation("/account"); return; }
-                  // Project-scoped items: route the user to the projects list so
-                  // whatever they pick up at home (attachments, intent) carries
-                  // into the same workspace. Keeps home + workspace menus identical.
-                  if (action === "code") { setLocation("/code"); return; }
-                  if (action === "connectors") { setLocation("/connectors"); return; }
-                  if (action === "files" || action === "share" ||
-                      action === "publish" ||
-                      action === "more:forge") { setLocation("/projects"); return; }
-                  toast("Open a project to use that");
-                }}
-              />
+
 
 
 
