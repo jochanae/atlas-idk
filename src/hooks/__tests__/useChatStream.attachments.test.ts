@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useRef } from "react";
 import { useChatStream, type UseChatStreamOptions } from "@/hooks/useChatStream";
 
@@ -38,6 +38,24 @@ function makeOpts(): UseChatStreamOptions {
     getListProjectsQueryKey: () => ["projects"],
     reportError: vi.fn(),
   };
+}
+
+async function waitFor(assertion: () => void, timeoutMs = 1000) {
+  const start = Date.now();
+  let lastError: unknown;
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+
+  assertion();
+  throw lastError;
 }
 
 describe("useChatStream — attachments regression", () => {
