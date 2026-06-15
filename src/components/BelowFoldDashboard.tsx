@@ -178,11 +178,6 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
   );
 }
 
-function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProject: (id: number) => void }) {
-  const dot = TYPE_COLOR[item.type];
-  const label = TYPE_LABEL[item.type];
-
-  const inner = (
 function ActivityRowBody({ item }: { item: ActivityItem }) {
   const dot = TYPE_COLOR[item.type];
   const label = TYPE_LABEL[item.type];
