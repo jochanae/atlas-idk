@@ -51,7 +51,6 @@ export interface UnifiedContextDockProps {
 
   // badges (operational ledger)
   entryCount?: number;
-  activeCatch?: boolean;
 }
 
 type Slot = {
@@ -317,7 +316,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         onClick: props.onLedger,
         active: at === "ledger",
         badge: props.entryCount && props.entryCount > 0 ? props.entryCount : undefined,
-        alert: props.activeCatch,
       },
     ];
     right = [

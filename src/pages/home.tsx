@@ -281,7 +281,7 @@ function deriveProjectNameFromConversation(messages: HomeMessage[]): string {
 
 const HOME_IMAGE_URL_RE = /(https?:\/\/[^\s<>"')]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s<>"')]+)?)/gi;
 const HOME_CODE_BLOCK_RE = /```([\w+-]*)\n?([\s\S]*?)```/g;
-const HOME_CARD_TITLE_RE = /^(?:#{1,3}\s*)?(synthesis|analysis|surface|insight|decision_catch|decision catch|tension|conflict|file_edit|file edit|diff|code)\b[:\s-]*/i;
+const HOME_CARD_TITLE_RE = /^(?:#{1,3}\s*)?(synthesis|analysis|surface|insight|tension|conflict|file_edit|file edit|diff|code)\b[:\s-]*/i;
 
 function plainTextFromNode(node: ReactNode): string {
   if (node == null || typeof node === "boolean") return "";
@@ -342,10 +342,8 @@ function classifyHomeCard(text: string): {
   const body = trimmed.slice(firstLine.length).trim() || firstLine.replace(HOME_CARD_TITLE_RE, "").trim();
   const title = normalized === "FILE_EDIT"
     ? "File edit"
-    : normalized === "DECISION_CATCH"
-      ? "Tension"
-      : normalized.charAt(0) + normalized.slice(1).toLowerCase().replace(/_/g, " ");
-  const kind = normalized === "DECISION_CATCH" || normalized === "TENSION" || normalized === "CONFLICT"
+    : normalized.charAt(0) + normalized.slice(1).toLowerCase().replace(/_/g, " ");
+  const kind = normalized === "TENSION" || normalized === "CONFLICT"
     ? "tension"
     : normalized === "FILE_EDIT" || normalized === "DIFF"
       ? "file"

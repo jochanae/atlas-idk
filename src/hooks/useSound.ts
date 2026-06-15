@@ -54,14 +54,6 @@ export function useSound(enabled = true) {
     haptic(8);
   }, [isMuted]);
 
-  const playCatch = useCallback(() => {
-    if (isMuted) return;
-    playTone(220, 0.12, "triangle", 0.22);
-    playTone(330, 0.12, "triangle", 0.18, true, 0.10);
-    playTone(440, 0.20, "triangle", 0.14, true, 0.20);
-    haptic([20, 50, 20]);
-  }, [isMuted]);
-
   const playCommit = useCallback(() => {
     if (isMuted) return;
     playTone(523.25, 0.10, "sine", 0.13);
@@ -89,5 +81,5 @@ export function useSound(enabled = true) {
     haptic([30, 60, 30]);
   }, [isMuted]);
 
-  return { playSend, playCatch, playCommit, playPark, playNavigate, playError };
+  return { playSend, playCommit, playPark, playNavigate, playError };
 }

@@ -6,7 +6,6 @@ import type {
   ChatMessage,
   BrowserResult,
   MemoryChip,
-  CatchPayload,
   FileEdit,
   LinePatch,
   AmbientSurface,
@@ -72,10 +71,8 @@ export interface UseChatStreamOptions {
   setScenarioBuffer: Dispatch<SetStateAction<Array<{ role: string; content: string }>>>;
   setLeftTab: Dispatch<SetStateAction<"chat" | "diff" | "blueprints" | "terminal">>;
   setMobileTab: Dispatch<SetStateAction<string>>;
-  setActiveCatch: Dispatch<SetStateAction<CatchPayload | null>>;
   setPendingResolvedNodeIds: Dispatch<SetStateAction<string[]>>;
   setAutoNameKey: Dispatch<SetStateAction<number>>;
-  playCatch: () => void;
   getGetProjectQueryKey: (projectId: number) => QueryKey;
   getListProjectsQueryKey: () => QueryKey;
   reportError: (err: unknown, ctx?: { projectId?: number }) => void;
@@ -173,10 +170,8 @@ export function useChatStream(
     setScenarioBuffer,
     setLeftTab,
     setMobileTab,
-    setActiveCatch,
     setPendingResolvedNodeIds,
     setAutoNameKey,
-    playCatch,
     getGetProjectQueryKey,
     getListProjectsQueryKey,
     reportError,
@@ -474,7 +469,6 @@ export function useChatStream(
             if (typeof res.content === "string") {
               res.content = processPreviewableContent(res.content, onPreviewCode);
             }
-            const cp = res.catchPayload ?? null;
             const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
             const lps = res.linePatches ?? [];
             const aff = res.autoFetchedFiles ?? [];
@@ -484,7 +478,7 @@ export function useChatStream(
               ...res,
               id: res.messageId ?? Date.now(), role: "assistant",
               content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(),
-              intentType: res.intentType, catchPayload: cp,
+              intentType: res.intentType,
               terminalCmd: res.terminalCmd ?? res.terminal_cmd,
               terminalResult: res.terminalResult ?? res.terminal_result,
               ...(res.browserResult ? { browserResult: res.browserResult as BrowserResult } : {}),
@@ -524,7 +518,6 @@ export function useChatStream(
                 { role: "assistant", content: res.content ?? "" },
               ]);
             }
-            if (cp) { playCatch(); setActiveCatch(cp); }
             if (normalizedChips.length > 0) {
               setMemoryChips((prev) => {
                 const merged = [...prev];
@@ -704,7 +697,6 @@ export function useChatStream(
           if (typeof res.content === "string") {
             res.content = processPreviewableContent(res.content, onPreviewCode);
           }
-          const cp = res.catchPayload ?? null;
           const fes = (res.fileEdits ?? (res.fileEdit ? [res.fileEdit] : []));
           const lps = res.linePatches ?? [];
           const aff = res.autoFetchedFiles ?? [];
@@ -713,7 +705,7 @@ export function useChatStream(
           setMessages((prev) => [...prev, {
             ...res,
             id: res.messageId, role: "assistant",
-            content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType, catchPayload: cp,
+            content: (res.content ?? "").replace(/\nCONFIDENCE_ASSESSMENT:\{[^\n]+\}/g, "").trim(), intentType: res.intentType,
             terminalCmd: res.terminalCmd ?? res.terminal_cmd,
             terminalResult: res.terminalResult ?? res.terminal_result,
             ...(res.browserResult ? { browserResult: res.browserResult as BrowserResult } : {}),
@@ -753,7 +745,6 @@ export function useChatStream(
               { role: "assistant", content: res.content ?? "" },
             ]);
           }
-          if (cp) { playCatch(); setActiveCatch(cp); }
           if (normalizedChips.length > 0) {
             setMemoryChips((prev) => {
               const merged = [...prev];
@@ -813,7 +804,7 @@ export function useChatStream(
         }
       })();
     },
-    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setActiveCatch, setPendingResolvedNodeIds, setAutoNameKey, playCatch, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onPreviewCode, onFlowNodes, onSendStart, onStepEvent, onFirstStreamingToken, onDoneEvent],
+    [entries, projectId, fileContext, forgeContext, dbUrl, sendCtxRef, setDetectedLens, setScenarioBuffer, setLeftTab, setMobileTab, setPendingResolvedNodeIds, setAutoNameKey, queryClient, getGetProjectQueryKey, getListProjectsQueryKey, reportError, onPreviewCode, onFlowNodes, onSendStart, onStepEvent, onFirstStreamingToken, onDoneEvent],
   );
 
   const handleRegenerate = useCallback(

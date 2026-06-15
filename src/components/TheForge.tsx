@@ -964,7 +964,7 @@ export function TheForge({ platform, readinessScore = 0, activeProjectName, proj
                     type="text"
                     value={filePath}
                     onChange={e => setFilePath(e.target.value)}
-                    placeholder="e.g. artifacts/atlas/src/components/DecisionLogCard.tsx"
+                    placeholder="e.g. artifacts/atlas/src/components/StatusCard.tsx"
                     style={{
                       width: "100%", ...FORGE_FIELD_STYLE,
                       padding: "8px 12px",
