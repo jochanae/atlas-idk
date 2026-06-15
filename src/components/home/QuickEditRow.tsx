@@ -24,6 +24,8 @@ import { useCodegen } from "@/hooks/useCodegen";
 import { RunSummaryBlock, type RunStatus, type RunArtifact } from "@/components/RunSummary";
 import { DiffViewer } from "@/components/code/DiffViewer";
 import { apiUrl } from "@/lib/api";
+import { Drawer, DrawerContent, DrawerPortal, DrawerOverlay } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Phase = "idle" | "prompt" | "active" | "resolved" | "failed";
 
@@ -64,6 +66,7 @@ export function QuickEditRow({
   onProjectChange,
 }: Props) {
   const [, setLocation] = useLocation();
+  const isMobile = useIsMobile();
   const isLauncher = mode === "launcher";
   const [phase, setPhase] = useState<Phase>(isLauncher ? "prompt" : "idle");
   const [activeProjectId, setActiveProjectId] = useState(initialProjectId);
@@ -261,18 +264,26 @@ export function QuickEditRow({
         </div>
       )}
 
-      {/* Expanded body */}
-      {open && (
-        <div
-          style={{
-            padding: isLauncher ? "4px 10px 12px" : "10px 12px 12px",
-            borderTop: isLauncher ? "none" : "1px dashed rgba(201,162,76,0.12)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
+      {/* Expanded body — rendered inline on desktop/active phases,
+          or inside a vaul bottom sheet on mobile during composition. */}
+      {open && (() => {
+        // isMobile pulled from component scope above (rules of hooks).
+        // Sheet handles the composition phase only. The moment we hit Run
+        // (phase === "active"), the sheet dismisses and steps stream
+        // inline in the activity feed row. resolved/failed also stay inline.
+        const useSheet = isMobile && phase === "prompt";
+
+        const bodyInner = (
+          <div
+            style={{
+              padding: useSheet ? "4px 0 8px" : (isLauncher ? "4px 10px 12px" : "10px 12px 12px"),
+              borderTop: (useSheet || isLauncher) ? "none" : "1px dashed rgba(201,162,76,0.12)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
           {/* Context strip: project pill + branch pill + target file pill */}
           {(phase === "prompt" || phase === "active") && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
@@ -425,19 +436,20 @@ export function QuickEditRow({
               }}
               disabled={running}
               placeholder={`Quick edit on ${activeProjectName} — describe the change`}
-              rows={2}
+              rows={useSheet ? 6 : 2}
               style={{
                 width: "100%",
                 resize: "none",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 12,
+                fontSize: useSheet ? 14 : 12,
                 lineHeight: 1.5,
-                padding: "8px 10px",
+                padding: useSheet ? "12px 12px" : "8px 10px",
                 borderRadius: 6,
                 background: "var(--atlas-surface)",
                 border: "1px solid var(--atlas-border)",
                 color: "var(--atlas-fg)",
                 outline: "none",
+                minHeight: useSheet ? 140 : undefined,
               }}
             />
           )}
@@ -525,7 +537,7 @@ export function QuickEditRow({
                     letterSpacing: "0.04em",
                   }}
                 >
-                  ⌘↵ to run
+                  {useSheet ? "Tap Run to execute" : "⌘↵ to run"}
                 </span>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
@@ -639,8 +651,66 @@ export function QuickEditRow({
               </button>
             </>
           )}
-        </div>
-      )}
+          </div>
+        );
+
+        if (useSheet) {
+          return (
+            <Drawer
+              open
+              onOpenChange={(o) => { if (!o && !running) collapse(); }}
+              shouldScaleBackground={false}
+              dismissible={!running}
+            >
+              <DrawerPortal>
+                <DrawerOverlay className="bg-black/70 backdrop-blur-sm" />
+                <DrawerContent
+                  className="h-[85vh] border-[rgba(201,162,76,0.28)] bg-[var(--atlas-surface)]"
+                  style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "10px 16px 6px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: 10,
+                        fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.12em",
+                        textTransform: "uppercase",
+                        color: "var(--atlas-gold)",
+                        opacity: 0.9,
+                      }}
+                    >
+                      <Zap size={11} strokeWidth={2.25} />
+                      Quick action · {activeProjectName}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: "auto",
+                      padding: "4px 16px 16px",
+                    }}
+                  >
+                    {bodyInner}
+                  </div>
+                </DrawerContent>
+              </DrawerPortal>
+            </Drawer>
+          );
+        }
+
+        return bodyInner;
+      })()}
     </div>
   );
 }
