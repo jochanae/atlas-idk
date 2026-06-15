@@ -106,8 +106,6 @@ export interface ChatStreamProps {
   trustMode: "review" | "auto";
 
   // assistant bubble — per-message handlers
-  onCatchProceed: (msg: ChatMessage) => void;
-  onCatchAdjust: (msg: ChatMessage) => void;
   onPark: AssistantBubbleProp<"onPark">;
   onCommit: AssistantBubbleProp<"onCommit">;
   onRegenerate: (index: number) => void;
@@ -150,7 +148,7 @@ export function ChatStream(props: ChatStreamProps) {
     wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo, trustMode,
-    onCatchProceed, onCatchAdjust, onPark, onCommit, onRegenerate, onSend,
+    onPark, onCommit, onRegenerate, onSend,
     onPreviewCode, onRunCommand, onPrCreated, onExtractToForge, onForgeIntake, onReviewDiff,
     onOpenArtifact,
     onEditDeclined, onAlertDismiss, onStreamActivityUpdate, onStreamActivityComplete,
@@ -251,8 +249,6 @@ export function ChatStream(props: ChatStreamProps) {
               projectId={projectId}
               sessionId={sessionId || 0}
               linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
-              onCatchProceed={() => onCatchProceed(msg)}
-              onCatchAdjust={() => onCatchAdjust(msg)}
               onPark={onPark}
               onCommit={onCommit}
               onRegenerate={() => onRegenerate(i)}

@@ -100,12 +100,6 @@ import { ForgeIntakeSheet, FORGE_INTAKE_OPEN_EVENT } from "@/components/ForgeInt
 import { buildParkedEntryPayload } from "@/lib/parking";
 
 
-export interface CatchPayload {
-  v: number;
-  against: { id: string; title: string };
-  leadSentence: string;
-}
-
 export interface AlertPayload {
   type: string;
   headline: string;
@@ -207,9 +201,6 @@ export interface ChatMessage {
   plan?: Plan;
   planFromHome?: boolean;
   planMode?: boolean;
-  catchPayload?: CatchPayload | null;
-
-  catchResolved?: boolean;
   alertPayload?: AlertPayload | null;
   alertResolved?: boolean;
   clarify?: ClarifyPayload | null;
@@ -345,7 +336,7 @@ export interface ProjectScan {
 
 // User profile helpers moved to @/lib/userProfile.
 
-// DecisionLogCard + ProactiveAlertCard moved to @/components/workspace/AssistantBubble
+// ProactiveAlertCard moved to @/components/workspace/AssistantBubble
 
 // ── Chat bubbles + Memory Chips ──────────────────────────────────────────────
 
@@ -902,7 +893,6 @@ function RightPanel({
   projectId,
   projectName,
   entries,
-  activeCatch,
   onClose,
   fullscreen,
   onToggleFullscreen,
@@ -956,7 +946,6 @@ function RightPanel({
   projectId: number;
   projectName: string;
   entries: Entry[];
-  activeCatch: CatchPayload | null;
   onClose?: () => void;
   fullscreen?: boolean;
   onToggleFullscreen?: () => void;
@@ -1340,7 +1329,7 @@ function RightPanel({
       {/* Tab content */}
       {tab === "ledger" && (
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <LedgerPanel projectId={projectId} entries={entries} activeCatch={activeCatch} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
+          <LedgerPanel projectId={projectId} entries={entries} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
         </div>
       )}
       {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
@@ -1379,7 +1368,7 @@ function RightPanel({
       )}
       {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
-      {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} activeCatch={!!activeCatch} />}
+      {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
       {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
     </div>
   );
@@ -2381,12 +2370,10 @@ function MobileTabBar({
   activeTab,
   onTabChange,
   entryCount,
-  activeCatch,
 }: {
   activeTab: "chat" | "ledger" | "files" | "map" | "preview" | "memory" | "blueprints" | "connections" | "forge";
   onTabChange: (tab: "chat" | "ledger" | "files" | "map" | "preview" | "memory" | "blueprints" | "connections" | "forge") => void;
   entryCount: number;
-  activeCatch: boolean;
 }) {
   const [showMore, setShowMore] = useState(false);
 
@@ -2404,7 +2391,6 @@ function MobileTabBar({
       id: "ledger",
       label: "Ledger",
       badge: entryCount > 0 ? entryCount : undefined,
-      alert: activeCatch,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
@@ -3102,7 +3088,6 @@ export default function Workspace() {
 
   const [planStates, setPlanStates] = useState<Map<number, PlanState>>(() => new Map());
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
-  const [activeCatch, setActiveCatch] = useState<CatchPayload | null>(null);
   const [atlasGreeting, setAtlasGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(false);
 
@@ -3136,7 +3121,7 @@ export default function Workspace() {
   const createSession = useCreateSession();
 
   // ── Hoisted deps for useChatStream (B2c) ────────────────────────────────────
-  const { playSend, playCatch, playCommit, playPark, playNavigate } = useSound();
+  const { playSend, playCommit, playPark, playNavigate } = useSound();
   const {
     wsModel, setWsModel,
     wsLens, setWsLensRaw,
@@ -3362,10 +3347,8 @@ export default function Workspace() {
     setScenarioBuffer,
     setLeftTab,
     setMobileTab,
-    setActiveCatch,
     setPendingResolvedNodeIds,
     setAutoNameKey,
-    playCatch,
     getGetProjectQueryKey,
     getListProjectsQueryKey,
     reportError,
@@ -3452,7 +3435,6 @@ export default function Workspace() {
   useEffect(() => {
     setPlanStates(new Map());
     setPlanExecutions(new Map());
-    setActiveCatch(null);
     setThinkingState(null);
     homePlanLoadedRef.current = false;
     // Note: abort/chatPending/activityStream reset is owned by useChatStream.
@@ -4901,13 +4883,6 @@ export default function Workspace() {
     if (!sid) return;
     if (atlasGreeting) setAtlasGreeting(null);
     setShowHomeHandoffBanner(false);
-    // Auto-dismiss any active catch — user chose to keep moving
-    if (activeCatch) {
-      setMessages((prev) => prev.map((m) =>
-        m.catchPayload && !m.catchResolved ? { ...m, catchResolved: true } : m
-      ));
-      setActiveCatch(null);
-    }
     playSend();
     const current = messages;
     const files = attachedFiles;
@@ -5007,18 +4982,6 @@ export default function Workspace() {
 
   const { listening: voiceListening, toggle: toggleVoice, isSupported: voiceSupported } =
     useVoiceInput(handleVoiceTranscript);
-
-  const handleCatchProceed = (msgId?: number) => {
-    setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, catchResolved: true } : m));
-    setActiveCatch(null);
-    queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) });
-  };
-
-  const handleCatchAdjust = (msgId?: number) => {
-    setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, catchResolved: true } : m));
-    setActiveCatch(null);
-    textareaRef.current?.focus();
-  };
 
   const dismissChip = useCallback((label: string) => {
     setMemoryChips((prev) => prev.filter((c) => c.label !== label));
@@ -6111,7 +6074,6 @@ export default function Workspace() {
             projectId={id}
             projectName={project?.name ?? "Project"}
             entries={entries || []}
-            activeCatch={activeCatch}
             onFileContext={setFileContext}
             onLinkedRepoChange={setLinkedRepo}
             dbUrl={dbUrl}
@@ -6349,8 +6311,6 @@ export default function Workspace() {
               sessionId,
               linkedRepo,
               trustMode,
-              onCatchProceed: (msg) => handleCatchProceed(msg.id),
-              onCatchAdjust: (msg) => handleCatchAdjust(msg.id),
               onPark: handlePark,
               onCommit: handleCommit,
               onRegenerate: (i) => handleRegenerate(i),
@@ -6712,7 +6672,6 @@ export default function Workspace() {
                 projectId={id}
                 projectName={project?.name ?? "Project"}
                 entries={entries || []}
-                activeCatch={activeCatch}
                 onClose={() => { setRightOpen(false); setRightFullscreen(false); }}
                 fullscreen={rightFullscreen}
                 onToggleFullscreen={() => setRightFullscreen((f) => !f)}
@@ -6800,7 +6759,6 @@ export default function Workspace() {
           onPreview={() => setMobileTab("preview")}
           onFlow={() => setLocation("/map")}
           entryCount={entryCount}
-          activeCatch={!!activeCatch}
         />
       )}
 

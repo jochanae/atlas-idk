@@ -6,10 +6,7 @@ import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
 import { PushDiffCard } from "@/components/workspace/ReviewCards";
 import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
-import {
-  type CatchPayload,
-  type PushRecord,
-} from "../../pages/workspace";
+import { type PushRecord } from "../../pages/workspace";
 
 function LedgerEntry({ entry }: { entry: Entry }) {
   const committed = entry.status === "committed";
@@ -120,27 +117,18 @@ function LedgerEntry({ entry }: { entry: Entry }) {
 export function LedgerPanel({
   projectId,
   entries,
-  activeCatch,
   pushHistory,
   onRollbackPush,
 }: {
   projectId: number;
   entries: Entry[];
-  activeCatch: CatchPayload | null;
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
 }) {
   const parked = entries.filter((e) => e.status === "parked");
 
-  // Three committed groups — mirrors original DecisionLedgerGrouped
-  const inTensionId = activeCatch ? String(activeCatch.against.id) : null;
   const allCommitted = entries.filter((e) => e.status === "committed");
-  const committedClean = allCommitted.filter(
-    (e) => !e.deviation && String(e.id) !== inTensionId
-  );
-  const inTension = inTensionId
-    ? allCommitted.filter((e) => String(e.id) === inTensionId)
-    : [];
+  const committedClean = allCommitted.filter((e) => !e.deviation);
   const overridden = allCommitted.filter((e) => e.deviation);
 
   const [showAdd, setShowAdd] = useState(false);
@@ -264,51 +252,7 @@ export function LedgerPanel({
               )}
             </div>
 
-            {/* ── Group 2: In Tension ── */}
-            <div style={{ marginBottom: 22 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, padding: "0 2px" }}>
-                <span
-                  aria-hidden
-                  style={{
-                    width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
-                    background: inTension.length > 0 ? "var(--atlas-ember)" : "var(--atlas-muted)",
-                    boxShadow: inTension.length > 0
-                      ? "0 0 8px color-mix(in oklab, var(--atlas-ember) 65%, transparent)"
-                      : "none",
-                    transition: "background 300ms ease, box-shadow 300ms ease",
-                  }}
-                />
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: inTension.length > 0 ? "var(--atlas-ember)" : "var(--atlas-muted)", transition: "color 300ms ease" }}>
-                  In Tension
-                </span>
-                {inTension.length > 0 && (
-                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9.5, letterSpacing: "0.06em", color: "var(--atlas-ember)", opacity: 0.7, marginLeft: "auto" }}>
-                    {inTension.length}
-                  </span>
-                )}
-              </div>
-              {inTension.length > 0 ? (
-                inTension.map((e) => (
-                  <div
-                    key={e.id}
-                    style={{
-                      borderRadius: 8,
-                      border: "0.5px solid color-mix(in oklab, var(--atlas-ember) 30%, var(--atlas-border))",
-                      background: "color-mix(in oklab, var(--atlas-ember) 4%, transparent)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <LedgerEntry entry={e} />
-                  </div>
-                ))
-              ) : (
-                <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.4, padding: "6px 2px", lineHeight: 1.55 }}>
-                  No open tensions.
-                </div>
-              )}
-            </div>
-
-            {/* ── Group 3: Overridden ── */}
+            {/* ── Group 2: Overridden ── */}
             <div style={{ marginBottom: 22 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, padding: "0 2px" }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: "var(--atlas-muted)", opacity: 0.5 }} />

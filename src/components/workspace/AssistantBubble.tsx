@@ -36,7 +36,6 @@ import type {
   LinkedRepo,
   PushRecord,
   AmbientSurface,
-  CatchPayload,
   ClarifyPayload,
   AlertPayload,
 } from "@/pages/workspace";
@@ -50,161 +49,6 @@ function formatModelUsedLabel(modelUsed?: string | null): string | null {
   if (normalized.includes("gemini") && normalized.includes("flash")) return "Gemini Flash";
   if (normalized.includes("gemini") && (normalized.includes("pro") || normalized === "gemini")) return "Gemini Pro";
   return null;
-}
-
-// ── DecisionLogCard ────────────────────────────────────────────────────────
-function DecisionLogCard({
-  payload,
-  projectId,
-  sessionId,
-  onProceed,
-  onAdjust,
-}: {
-  payload: CatchPayload;
-  projectId: number;
-  sessionId: number;
-  onProceed: () => void;
-  onAdjust: () => void;
-}) {
-  const createEntry = useCreateEntry();
-  const queryClient = useQueryClient();
-
-  const handleLog = () => {
-    createEntry.mutate(
-      {
-        projectId,
-        data: {
-          title: `Override: ${payload.against.title}`,
-          summary: payload.leadSentence,
-          status: "committed",
-          severity: "committed",
-          mode: "decide",
-          sessionId,
-        },
-      },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(projectId, {}) });
-          onProceed();
-        },
-      }
-    );
-  };
-
-  return (
-    <div
-      role="alert"
-      aria-label="Decision Log"
-      className="atlas-catch-card atlas-bubble-in"
-      style={{ padding: "10px 12px", marginTop: 8 }}
-    >
-      {/* Header row — label + dismiss */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-              background: "var(--atlas-ember)",
-              boxShadow: "0 0 6px color-mix(in oklab, var(--atlas-ember) 55%, transparent)",
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "var(--app-font-mono)", fontSize: 9,
-              letterSpacing: "0.14em", textTransform: "uppercase" as const,
-              color: "var(--atlas-ember)", opacity: 0.85,
-            }}
-          >
-            Heads up
-          </span>
-        </div>
-        {/* Silent dismiss */}
-        <button
-          onClick={onProceed}
-          title="Dismiss"
-          aria-label="Dismiss"
-          style={{
-            background: "transparent", border: "none", cursor: "pointer",
-            color: "var(--atlas-muted)", fontSize: 14, lineHeight: 1,
-            padding: "2px 4px", opacity: 0.45, transition: "opacity 160ms",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.45")}
-        >
-          ×
-        </button>
-      </div>
-
-      {/* Against chip */}
-      <div
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          marginBottom: 7, padding: "3px 8px", borderRadius: 4,
-          background: "color-mix(in oklab, var(--atlas-ember) 6%, transparent)",
-          border: "0.5px solid color-mix(in oklab, var(--atlas-ember) 20%, transparent)",
-        }}
-      >
-        <span style={{
-          fontFamily: "var(--app-font-mono)", fontSize: 8.5, letterSpacing: "0.1em",
-          textTransform: "uppercase" as const, color: "var(--atlas-ember)", opacity: 0.6,
-        }}>
-          tensions with:
-        </span>
-        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--atlas-fg)", opacity: 0.85 }}>
-          {payload.against.title}
-        </span>
-      </div>
-
-      {/* Lead sentence */}
-      <p style={{ margin: "0 0 10px", fontSize: 12, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.75 }}>
-        {payload.leadSentence}
-      </p>
-
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        {/* Log the override to the ledger — single tap */}
-        <button
-          disabled={createEntry.isPending}
-          onClick={handleLog}
-          style={{
-            padding: "4px 11px", fontSize: 9.5, fontWeight: 600,
-            fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-            textTransform: "uppercase" as const,
-            background: "transparent",
-            color: "color-mix(in oklab, var(--atlas-ember) 85%, var(--atlas-fg))",
-            border: "0.5px solid color-mix(in oklab, var(--atlas-ember) 45%, transparent)",
-            borderRadius: 4,
-            cursor: createEntry.isPending ? "not-allowed" : "pointer",
-            opacity: createEntry.isPending ? 0.5 : 1,
-            transition: "all 160ms ease",
-          }}
-        >
-          {createEntry.isPending ? "Logging…" : "Log it"}
-        </button>
-
-        {/* Adjust — refocus the conversation */}
-        <button
-          disabled={createEntry.isPending}
-          onClick={onAdjust}
-          style={{
-            padding: "5px 12px", fontSize: 9.5, fontWeight: 600,
-            fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-            textTransform: "uppercase" as const,
-            background: "linear-gradient(180deg, var(--atlas-gold) 0%, color-mix(in oklab, var(--atlas-gold) 78%, #6a4a18) 100%)",
-            color: "var(--atlas-bg)",
-            border: "0.5px solid color-mix(in oklab, var(--atlas-gold) 75%, transparent)",
-            borderRadius: 4,
-            boxShadow: "0 0 10px -4px color-mix(in oklab, var(--atlas-gold) 45%, transparent)",
-            cursor: createEntry.isPending ? "not-allowed" : "pointer",
-            transition: "opacity 160ms ease",
-          }}
-        >
-          Adjust
-        </button>
-      </div>
-    </div>
-  );
 }
 
 function ProactiveAlertCard({
@@ -1101,8 +945,6 @@ export function AssistantBubble({
   projectId,
   sessionId,
   linkedRepo,
-  onCatchProceed,
-  onCatchAdjust,
   onPark,
   onCommit,
   onRegenerate,
@@ -1133,8 +975,6 @@ export function AssistantBubble({
   projectId: number;
   sessionId: number;
   linkedRepo: LinkedRepo | null;
-  onCatchProceed: () => void;
-  onCatchAdjust: () => void;
   onPark: (content: string) => void;
   onCommit: (content: string) => void;
   onRegenerate: () => void;
@@ -1931,7 +1771,7 @@ export function AssistantBubble({
           </div>
         )}
 
-        {cleanedContent.trim() && !message.streaming && !message.catchPayload && !commitPayload && (
+        {cleanedContent.trim() && !message.streaming && !commitPayload && (
           <div style={{ marginTop: 6 }}>
             <ThoughtForBadge
               metrics={{
@@ -2081,16 +1921,6 @@ export function AssistantBubble({
                     setCommitCardDone(true);
                     onCommitCardDone?.();
                   }}
-                />
-              )}
-
-              {!primaryCardShown && !message.streaming && message.catchPayload && !message.catchResolved && (
-                <DecisionLogCard
-                  payload={message.catchPayload}
-                  projectId={projectId}
-                  sessionId={sessionId}
-                  onProceed={onCatchProceed}
-                  onAdjust={onCatchAdjust}
                 />
               )}
 
