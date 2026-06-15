@@ -15,6 +15,7 @@ import { StatCard } from "./stat-card";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 import { fetchGitHubStatus } from "@/hooks/useGitHub";
+import { QuickEditRow } from "./home/QuickEditRow";
 
 type RecentProject = {
   id: number;
