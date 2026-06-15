@@ -2267,6 +2267,10 @@ export default function Home() {
     } catch {}
     setLocation(`/project/${homeFocus}`);
   }, [homeFocus, setLocation]);
+  const handleHomePlayLaunch = useCallback(() => {
+    if (homeFocus == null) return;
+    setLocation(`/project/${homeFocus}`);
+  }, [homeFocus, setLocation]);
   const createProject = useCreateProject();
   const createEntry = useCreateEntry();
 
@@ -3457,9 +3461,12 @@ export default function Home() {
       <UnifiedSubheader
         activeTab="chat"
         onTabChange={handleHomeSubheaderTabChange}
-        hasProject={false}
+        hasProject={homeFocus != null}
         isMobile={isMobile}
+        showWorkspaceMenu={homeFocus != null}
+        onLaunch={handleHomePlayLaunch}
         hasConversation={nexusChat.messages.length > 0}
+        zIndex={globalInsightOpen ? 80 : 20}
       />
       
 
@@ -4834,7 +4841,6 @@ export default function Home() {
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
-        onExit={handleLockTap}
         onCreateProject={performCreateProjectFromConversation}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}

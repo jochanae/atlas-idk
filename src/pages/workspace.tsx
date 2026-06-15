@@ -27,6 +27,7 @@ import { ImageGenerator } from "../components/ImageGenerator";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
+import { FocusModeAura } from "@/components/FocusModeAura";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
@@ -5673,6 +5674,7 @@ export default function Workspace() {
           top: 0;
         }
       `}</style>
+      <FocusModeAura focus="project" />
       <div
         aria-hidden
         style={{

@@ -15,6 +15,7 @@ type UnifiedSubheaderProps = {
   hasConversation?: boolean;
   expanded?: boolean;
   onExpandedChange?: Dispatch<SetStateAction<boolean>>;
+  zIndex?: number;
 };
 
 const TABS: Array<{ id: UnifiedSubheaderTab; label: string; ariaLabel: string }> = [
@@ -57,6 +58,7 @@ export function UnifiedSubheader({
   hasConversation = true,
   expanded: controlledExpanded,
   onExpandedChange,
+  zIndex = 20,
 }: UnifiedSubheaderProps) {
   const [internalExpanded, setInternalExpanded] = useState(false);
   const expanded = controlledExpanded ?? internalExpanded;
@@ -132,7 +134,7 @@ export function UnifiedSubheader({
         marginTop: 50,
         flexShrink: 0,
         position: "relative",
-        zIndex: 20,
+        zIndex,
         width: "100%",
         background: "transparent",
       }}
