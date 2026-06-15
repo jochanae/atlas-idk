@@ -24,6 +24,8 @@ import { useCodegen } from "@/hooks/useCodegen";
 import { RunSummaryBlock, type RunStatus, type RunArtifact } from "@/components/RunSummary";
 import { DiffViewer } from "@/components/code/DiffViewer";
 import { apiUrl } from "@/lib/api";
+import { Drawer, DrawerContent, DrawerPortal, DrawerOverlay } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Phase = "idle" | "prompt" | "active" | "resolved" | "failed";
 
