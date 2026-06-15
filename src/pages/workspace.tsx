@@ -74,6 +74,7 @@ import { LongPressTip, haptic } from "@/lib/long-press-tip";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
 import { AtlasThinkingBlock } from "@/components/workspace/AtlasThinkingBlock";
+import { FocusModeAura } from "@/components/FocusModeAura";
 
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -5622,6 +5623,7 @@ export default function Workspace() {
 
   return (
     <>
+      <FocusModeAura focus={project ? "project" : "none"} />
       {showIntake && (
         <ForgeIntake
           projectId={id}

@@ -2267,6 +2267,10 @@ export default function Home() {
     } catch {}
     setLocation(`/project/${homeFocus}`);
   }, [homeFocus, setLocation]);
+  const handleHomeLaunchWorkspace = useCallback(() => {
+    const projectId = homeFocus ?? mostRecentActiveProjectId;
+    setLocation(projectId ? `/project/${projectId}` : "/projects");
+  }, [homeFocus, mostRecentActiveProjectId, setLocation]);
   const createProject = useCreateProject();
   const createEntry = useCreateEntry();
 
@@ -3319,6 +3323,19 @@ export default function Home() {
     };
   }, []);
 
+  const homeUnifiedSubheader = (
+    <UnifiedSubheader
+      activeTab="chat"
+      onTabChange={handleHomeSubheaderTabChange}
+      hasProject={false}
+      isMobile={isMobile}
+      showWorkspaceMenu
+      showLaunchWhenNoProject
+      onLaunch={handleHomeLaunchWorkspace}
+      hasConversation={nexusChat.messages.length > 0}
+    />
+  );
+
   return (
     <div
       ref={ptrContainerRef}
@@ -3454,13 +3471,7 @@ export default function Home() {
         </div>
       )}
 
-      <UnifiedSubheader
-        activeTab="chat"
-        onTabChange={handleHomeSubheaderTabChange}
-        hasProject={false}
-        isMobile={isMobile}
-        hasConversation={nexusChat.messages.length > 0}
-      />
+      {!globalInsightOpen && homeUnifiedSubheader}
       
 
 
@@ -4834,7 +4845,6 @@ export default function Home() {
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
-        onExit={handleLockTap}
         onCreateProject={performCreateProjectFromConversation}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
@@ -4846,6 +4856,7 @@ export default function Home() {
         onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+        subheader={homeUnifiedSubheader}
         focusChip={
           <button
             type="button"

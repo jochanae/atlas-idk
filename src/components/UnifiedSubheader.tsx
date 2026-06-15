@@ -10,6 +10,7 @@ type UnifiedSubheaderProps = {
   hasProject: boolean;
   isMobile: boolean;
   showWorkspaceMenu?: boolean;
+  showLaunchWhenNoProject?: boolean;
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
   onLaunch?: () => void;
   hasConversation?: boolean;
@@ -53,6 +54,7 @@ export function UnifiedSubheader({
   hasProject,
   isMobile,
   showWorkspaceMenu = false,
+  showLaunchWhenNoProject = false,
   onLaunch,
   hasConversation = true,
   expanded: controlledExpanded,
@@ -77,6 +79,7 @@ export function UnifiedSubheader({
     setLaunchActive(true);
     longPressFired.current = false;
     clearLongPress();
+    if (!hasProject) return;
     longPressTimer.current = window.setTimeout(() => {
       longPressFired.current = true;
       // Long-press always toggles the subheader (expand ↔ collapse)
@@ -123,6 +126,17 @@ export function UnifiedSubheader({
   };
 
   const showRow = expanded && hasProject;
+  const showLaunchButton = showWorkspaceMenu && (hasProject || showLaunchWhenNoProject);
+  const launchTitle = hasProject
+    ? expanded
+      ? "Tap to launch · long-press to hide tabs"
+      : "Tap to launch · long-press to show tabs"
+    : "Open workspace";
+  const launchAriaLabel = hasProject
+    ? expanded
+      ? "Launch full screen (long-press to hide tabs)"
+      : "Launch full screen (long-press to show tabs)"
+    : "Open workspace";
 
 
   return (
@@ -213,7 +227,7 @@ export function UnifiedSubheader({
 
       {/* Play button — pinned. Tap = primary (launch when collapsed, collapse when expanded).
           Long-press = secondary (expand when collapsed, launch when expanded). Icon rotates 90° when expanded. */}
-      {showWorkspaceMenu && hasProject && (
+      {showLaunchButton && (
         <button
           type="button"
           onClick={handleLaunchClick}
@@ -223,8 +237,8 @@ export function UnifiedSubheader({
           onPointerCancel={handleLaunchPointerCancel}
           onMouseEnter={() => setLaunchHover(true)}
           onMouseLeave={handleLaunchMouseLeave}
-          title={expanded ? "Tap to launch · long-press to hide tabs" : "Tap to launch · long-press to show tabs"}
-          aria-label={expanded ? "Launch full screen (long-press to hide tabs)" : "Launch full screen (long-press to show tabs)"}
+          title={launchTitle}
+          aria-label={launchAriaLabel}
           aria-expanded={expanded}
           style={{
             position: "absolute",
