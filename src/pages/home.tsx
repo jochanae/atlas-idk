@@ -4389,7 +4389,10 @@ export default function Home() {
                 title="Active project"
                 aria-label={`Active project: ${focusChipLabel}`}
                 aria-expanded={showFocusPicker}
-                onClick={() => {
+                onPointerDown={(e) => { e.preventDefault(); }}
+                onMouseDown={(e) => { e.preventDefault(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
                   setShowFocusPicker((open) => !open);
                 }}
                 style={{
