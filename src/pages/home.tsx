@@ -4148,13 +4148,26 @@ export default function Home() {
               </div>
             )}
 
+            {(() => {
+              const composerAnchored = inputFocused || hasInput || attachedFiles.length > 0;
+              return null;
+            })()}
             <div style={{
               position: "relative",
-              borderRadius: 0,
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              boxShadow: "none",
+              borderRadius: 14,
+              padding: (inputFocused || hasInput || attachedFiles.length > 0) ? "12px 14px" : 0,
+              background: (inputFocused || hasInput || attachedFiles.length > 0)
+                ? "rgba(20,16,10,0.32)"
+                : "transparent",
+              border: "1px solid",
+              borderColor: (inputFocused || hasInput || attachedFiles.length > 0)
+                ? "rgba(212,175,55,0.45)"
+                : "rgba(212,175,55,0)",
+              boxShadow: (inputFocused || hasInput || attachedFiles.length > 0)
+                ? "inset 0 0 22px rgba(212,175,55,0.08), 0 0 18px rgba(212,175,55,0.06)"
+                : "none",
+              backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
+              transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
               {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || globalInsightOpen) && (
                 <div
