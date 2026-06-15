@@ -27,6 +27,7 @@ export type GlobalInsightMessage = {
   streaming?: boolean;
   createdAt?: string;
   imageUrl?: string;
+  attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
 };
 
 export type GlobalInsightLiveStep = {
@@ -77,6 +78,45 @@ const GLOBAL_INSIGHT_PLACEHOLDERS = [
 
 const PROJECT_OPEN_INTENT_RE = /\b(go|jump|open|workspace|inside)\b|\binto\s+that\b/i;
 const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
+
+function renderMessageImages(msg: GlobalInsightMessage) {
+  const images = msg.attachments && msg.attachments.length > 0
+    ? msg.attachments
+    : (msg.imageUrl ? [{ mediaType: "", base64: "", name: undefined, _url: msg.imageUrl }] as Array<{
+        mediaType: string;
+        base64: string;
+        name?: string;
+        _url?: string;
+      }> : []);
+
+  if (images.length === 0) return null;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: msg.content ? 8 : 0 }}>
+      {images.map((img, idx) => {
+        const url = (img as { _url?: string })._url ?? `data:${img.mediaType};base64,${img.base64}`;
+        return (
+          <div key={idx} style={{ position: "relative" }}>
+            <img
+              src={url}
+              alt={img.name || "Attached"}
+              style={{
+                width: images.length === 1 ? "100%" : 110,
+                maxWidth: "100%",
+                height: images.length === 1 ? "auto" : 110,
+                maxHeight: images.length === 1 ? 320 : 110,
+                objectFit: "cover",
+                borderRadius: 8,
+                display: "block",
+                border: "0.5px solid rgba(212,175,55,0.25)",
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 type NavigateTarget = { projectId: number; projectName: string } | null;
 
@@ -612,6 +652,7 @@ export function GlobalInsightSurface({
                   wordBreak: "break-word",
                 }}
               >
+                {renderMessageImages(msg)}
                 {msg.content}
               </div>
             </div>
