@@ -3545,7 +3545,16 @@ export default function Home() {
                 only by the subheader "● Global Insight" pill, so the home shell
                 stays visually identical. */}
             {nexusChat.messages.length === 0 && (
-              <div style={{ textAlign: "center", marginBottom: 24, marginTop: 72, position: "relative", zIndex: 1 }}>
+              <div style={{
+                textAlign: "center",
+                marginBottom: 24,
+                marginTop: 72,
+                position: "relative",
+                zIndex: 1,
+                transform: inputFocused ? "translateY(-12px)" : "translateY(0)",
+                opacity: inputFocused ? 0.3 : 1,
+                transition: "transform 200ms ease-in-out, opacity 200ms ease-in-out",
+              }}>
                 <h1 style={{
                   fontSize: "var(--ts-display-xl)", fontWeight: 300,
                   letterSpacing: "-0.025em", lineHeight: 1.2, margin: "0 0 10px",
@@ -4141,11 +4150,20 @@ export default function Home() {
 
             <div style={{
               position: "relative",
-              borderRadius: 0,
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              boxShadow: "none",
+              borderRadius: 14,
+              padding: (inputFocused || hasInput || attachedFiles.length > 0) ? "12px 14px" : 0,
+              background: (inputFocused || hasInput || attachedFiles.length > 0)
+                ? "rgba(20,16,10,0.32)"
+                : "transparent",
+              border: "1px solid",
+              borderColor: (inputFocused || hasInput || attachedFiles.length > 0)
+                ? "rgba(212,175,55,0.45)"
+                : "rgba(212,175,55,0)",
+              boxShadow: (inputFocused || hasInput || attachedFiles.length > 0)
+                ? "inset 0 0 22px rgba(212,175,55,0.08), 0 0 18px rgba(212,175,55,0.06)"
+                : "none",
+              backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
+              transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
               {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || globalInsightOpen) && (
                 <div
@@ -4207,8 +4225,13 @@ export default function Home() {
               />
             </div>
 
-            {/* Bottom action bar */}
-            <div style={{ display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative" }}>
+            {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
+            <div style={{
+              display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
+              opacity: (inputFocused || hasInput || attachedFiles.length > 0) ? 1 : 0,
+              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0) ? "auto" : "none",
+              transition: "opacity 200ms ease-in-out",
+            }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
               {/* Global Insight history — gold clock pill. Always visible so
