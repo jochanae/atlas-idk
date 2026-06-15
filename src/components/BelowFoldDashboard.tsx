@@ -153,7 +153,12 @@ function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => voi
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {visible.map((item, i) => (
-              <ActivityRow key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`} item={item} onOpenProject={onOpenProject} />
+              <QuickEditRow
+                key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`}
+                projectId={item.projectId}
+                projectName={item.projectName}
+                row={<ActivityRowBody item={item} />}
+              />
             ))}
           </div>
           {items.length > 6 && (
