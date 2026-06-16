@@ -2064,7 +2064,8 @@ function TerminalPanel({
           style={{
             flex: 1, minWidth: 0,
             display: "flex",
-            flexWrap: "wrap",
+            overflowX: "auto",
+            scrollbarWidth: "none",
             gap: 8,
           }}
         >
@@ -2091,7 +2092,7 @@ function TerminalPanel({
               onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 0 12px rgba(201,162,76,0.28), inset 0 0 0 1px rgba(201,162,76,0.18)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(201,162,76,0.08)"; }}
             >
-              <span aria-hidden>{m.icon}</span>{m.label}
+              <span aria-hidden>{m.icon}</span>{isDesktopView ? m.label : m.shortLabel}
             </button>
           ))}
         </div>
