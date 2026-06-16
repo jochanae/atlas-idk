@@ -162,7 +162,7 @@ export interface ChatComposerProps {
 
   // Send
   chatPending: boolean;
-  handleSend: (opts?: { planMode?: boolean }) => void;
+  handleSend: (opts?: { mode: "plan" | "build" }) => void;
   createSessionPending: boolean;
   onAbort?: () => void;
 
@@ -275,24 +275,23 @@ export function ChatComposer(props: ChatComposerProps) {
   })();
   const isMultiAgent = !wsModel || wsModel === "multi";
 
-  const [planMode, setPlanMode] = useState(false);
+  const [composerMode, setComposerMode] = useState<"plan" | "build">("plan");
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
 
   const togglePlanMode = () => {
-    setPlanMode(v => {
-      const next = !v;
-      if (next) {
-        setPlanBannerVisible(true);
-        window.setTimeout(() => setPlanBannerVisible(false), 1500);
-      } else {
-        setPlanBannerVisible(false);
-      }
+    setComposerMode(mode => {
+      const next = mode === "plan" ? "build" : "plan";
+      setPlanBannerVisible(true);
+      window.setTimeout(() => setPlanBannerVisible(false), 1500);
       try { (navigator as any).vibrate?.(10); } catch {}
       return next;
     });
   };
+  const composerModeIsPlan = composerMode === "plan";
+  const composerModeAccent = composerModeIsPlan ? "var(--atlas-gold)" : "hsl(217, 80%, 64%)";
+  const composerModeShadow = composerModeIsPlan ? "rgba(201,162,76,0.7)" : "hsla(217, 80%, 64%, 0.7)";
 
   
 
@@ -462,7 +461,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
-        {planBannerVisible && (
+        {(planBannerVisible || (!composerModeIsPlan && chatPending)) && (
           <div
             role="status"
             aria-live="polite"
@@ -471,7 +470,7 @@ export function ChatComposer(props: ChatComposerProps) {
               marginBottom: 6,
               fontFamily: "var(--app-font-mono)",
               fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
-              color: "var(--atlas-gold)",
+              color: composerModeAccent,
               opacity: 0.85,
               animation: "fade-in 0.2s ease-out",
               pointerEvents: "none",
@@ -479,10 +478,10 @@ export function ChatComposer(props: ChatComposerProps) {
           >
             <span style={{
               width: 5, height: 5, borderRadius: "50%",
-              background: "var(--atlas-gold)",
-              boxShadow: "0 0 6px rgba(201,162,76,0.7)",
+              background: composerModeAccent,
+              boxShadow: `0 0 6px ${composerModeShadow}`,
             }} />
-            Plan Mode Active · Strategizing
+            {composerModeIsPlan ? "Plan Mode Active · Strategizing" : `Build Mode · ${chatPending ? "Executing" : "Ready"}`}
           </div>
         )}
 
@@ -495,7 +494,7 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              {planMode && !hasInput ? (
+              {composerModeIsPlan && !hasInput ? (
                 <div
                   aria-hidden
                   style={{
@@ -529,7 +528,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     window.matchMedia?.("(pointer: coarse)").matches;
                   if (!isTouch && e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    handleSend();
+                    handleSend({ mode: composerMode });
                   } else {
                     handleKeyDown(e);
                   }
@@ -654,16 +653,16 @@ export function ChatComposer(props: ChatComposerProps) {
               <button
                 onClick={togglePlanMode}
                 title="Plan mode"
-                aria-label={planMode ? "Disable plan mode" : "Enable plan mode"}
-                aria-pressed={planMode}
+                aria-label={composerModeIsPlan ? "Switch to build mode" : "Switch to plan mode"}
+                aria-pressed
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
-                  background: planMode
+                  background: composerModeIsPlan
                     ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
-                    : "transparent",
-                  border: `1px solid ${planMode ? "rgba(201,162,76,0.55)" : "transparent"}`,
-                  boxShadow: planMode ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "none",
-                  color: planMode ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    : "linear-gradient(135deg, hsla(217, 80%, 64%, 0.28), hsla(217, 80%, 64%, 0.14))",
+                  border: `1px solid ${composerModeIsPlan ? "rgba(201,162,76,0.55)" : "hsla(217, 80%, 64%, 0.55)"}`,
+                  boxShadow: composerModeIsPlan ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "0 0 14px -4px hsla(217, 80%, 64%, 0.55), inset 0 0 0 1px hsla(217, 80%, 64%, 0.15)",
+                  color: composerModeAccent,
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
                 }}
@@ -677,10 +676,10 @@ export function ChatComposer(props: ChatComposerProps) {
                   <circle
                     cx="16"
                     cy="4"
-                    r={planMode ? 2.4 : 2}
-                    fill="#C9A24C"
+                    r={2.4}
+                    fill={composerModeAccent}
                     style={{
-                      filter: planMode ? "drop-shadow(0 0 4px rgba(201,162,76,0.75))" : "none",
+                      filter: `drop-shadow(0 0 4px ${composerModeIsPlan ? "rgba(201,162,76,0.75)" : "hsla(217, 80%, 64%, 0.75)"})`,
                       transition: "all var(--motion-fast) var(--ease-standard)",
                     }}
                   />
@@ -713,7 +712,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 className="atlas-send-btn"
                 onClick={() => {
                   if (chatPending && onAbort) { onAbort(); return; }
-                  handleSend({ planMode });
+                  handleSend({ mode: composerMode });
                 }}
                 disabled={chatPending ? !onAbort : (!(hasInput || hasAttachments) || createSessionPending)}
                 aria-label={chatPending ? "Stop generation" : sendPreparingSession ? "Preparing session" : "Send message"}

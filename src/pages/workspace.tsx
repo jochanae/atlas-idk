@@ -4827,7 +4827,7 @@ export default function Workspace() {
 
   const sendPreparingSession = !sessionId && (sessionsLoading || createSession.isPending);
 
-  const handleSend = async (opts?: { planMode?: boolean }) => {
+  const handleSend = async (opts?: { mode: "plan" | "build" }) => {
     const text = input.trim();
     if ((!text && attachedFiles.length === 0) || chatPending) return;
     const sid = sessionId ?? await ensureSessionId().catch(() => null);
@@ -4853,7 +4853,11 @@ export default function Workspace() {
       setMobileTab("chat");
     }
 
-    const sendOpts = { planMode: opts?.planMode };
+    const sendOpts = {
+      mode: opts?.mode,
+      planMode: opts?.mode === "plan",
+      buildMode: opts?.mode === "build",
+    };
     if (imageFiles.length > 0) {
       Promise.all(imageFiles.map(f =>
         fileToBase64Safe(f).then(({ base64, mediaType }) => ({ base64, mediaType, name: f.name }))
