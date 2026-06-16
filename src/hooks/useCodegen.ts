@@ -77,27 +77,22 @@ export function useCodegen(opts: UseCodegenOptions): UseCodegenReturn {
       });
 
       try {
-        const res = await fetch(apiUrl("/api/codegen"), {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke("atlas-codegen", {
+          body: {
             projectId,
             sessionId: sessionId ?? null,
             prompt,
             context: context ?? null,
             model: "claude-sonnet-4-6",
-          }),
+          },
         });
 
         clearTimers();
 
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-          throw new Error(errBody?.error ?? `Codegen request failed (${res.status})`);
+        if (error) {
+          throw new Error(error.message ?? "Codegen request failed");
         }
 
-        const data = await res.json();
         const file = (data?.file ?? null) as CodegenFile | null;
         if (!file?.content) throw new Error("Codegen returned no content");
 
