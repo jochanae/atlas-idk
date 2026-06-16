@@ -494,7 +494,7 @@ ${t}
 
       {/* Mode toggle */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-        {(["url", "sandbox", "stackblitz"] as const).map((m) => (
+        {(["url", "sandbox", "stackblitz", "local"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setPreviewMode(m)}
@@ -508,7 +508,7 @@ ${t}
               transition: "all 140ms ease",
             }}
           >
-            {m === "url" ? "Live URL" : m === "sandbox" ? "Sandbox" : "StackBlitz"}
+            {m === "url" ? "Live URL" : m === "sandbox" ? "Sandbox" : m === "stackblitz" ? "StackBlitz" : "Local Dev"}
           </button>
         ))}
       </div>
