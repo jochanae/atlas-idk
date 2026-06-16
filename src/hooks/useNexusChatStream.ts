@@ -5,6 +5,31 @@ import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAuto
 
 const STREAM_TIMEOUT_MS = 90_000;
 const NAVIGATE_TO_RE = /\s*NAVIGATE_TO:\s*(\{[^\n]*"route"\s*:\s*"([^"]+)"[^\n]*\})\s*$/;
+const PROJECT_READY_RE = /PROJECT_READY:\s*(\{[\s\S]*?\})(?=\s|$)/;
+
+function parseProjectReady(content: string): { title: string | null; reason: string | null } | null {
+  const match = content.match(PROJECT_READY_RE);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]) as { title?: unknown; reason?: unknown };
+    return {
+      title: typeof parsed.title === "string" ? parsed.title : null,
+      reason: typeof parsed.reason === "string" ? parsed.reason : null,
+    };
+  } catch {
+    const titleMatch = match[1].match(/"title"\s*:\s*"([^"]+)"/);
+    const reasonMatch = match[1].match(/"reason"\s*:\s*"([^"]+)"/);
+    if (!titleMatch && !reasonMatch) return null;
+    return {
+      title: titleMatch?.[1] ?? null,
+      reason: reasonMatch?.[1] ?? null,
+    };
+  }
+}
+
+function stripProjectReady(content: string): string {
+  return content.replace(PROJECT_READY_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+}
 
 function stripNavigateTo(content: string): { content: string; route: string | null } {
   const match = content.match(NAVIGATE_TO_RE);
