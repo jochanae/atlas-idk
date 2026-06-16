@@ -365,7 +365,25 @@ ${t}
     try { localStorage.setItem(storageKey, u); } catch {}
   };
 
-  const handleGo = () => { if (urlInput.trim()) { setAutoDetected(null); applyUrl(urlInput.trim()); } };
+  const handleGo = () => {
+    const raw = urlInput.trim();
+    if (!raw) return;
+    setAutoDetected(null);
+    const u = normalize(raw);
+    applyUrl(u);
+    // Persist immediately — Go means "use this URL for the project"
+    updateProject.mutate(
+      { id: projectId, data: { previewUrl: u } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          setSavedIndicator(true);
+          setStatusVisible(true);
+          setTimeout(() => setSavedIndicator(false), 2500);
+        },
+      },
+    );
+  };
 
   const handleSaveToProject = () => {
     if (!liveUrl) return;
