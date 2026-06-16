@@ -3868,30 +3868,38 @@ export default function Home() {
                               }}
                             />
                           )}
-                          {/* Copy button */}
+                          {/* Action row — Copy + Sketch this */}
                           {msg.content && (
-                            <button
-                              title={copiedMsgIdx === i ? "Copied!" : "Copy"}
-                              onClick={() => {
-                                navigator.clipboard.writeText(msg.content).catch(() => {});
-                                setCopiedMsgIdx(i);
-                                setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
-                              }}
-                              style={{
-                                background: "transparent", border: "none", padding: "3px 2px", cursor: "pointer",
-                                opacity: copiedMsgIdx === i ? 0.9 : 0.28,
-                                color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                                lineHeight: 1, transition: "opacity 140ms, color 140ms", marginTop: 3,
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.opacity = "0.65")}
-                              onMouseLeave={e => (e.currentTarget.style.opacity = copiedMsgIdx === i ? "0.9" : "0.28")}
-                            >
-                              {copiedMsgIdx === i ? (
-                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
-                              ) : (
-                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 2, marginTop: 3 }}>
+                              <button
+                                title={copiedMsgIdx === i ? "Copied!" : "Copy"}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(msg.content).catch(() => {});
+                                  setCopiedMsgIdx(i);
+                                  setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
+                                }}
+                                style={{
+                                  background: "transparent", border: "none", padding: "3px 2px", cursor: "pointer",
+                                  opacity: copiedMsgIdx === i ? 0.9 : 0.28,
+                                  color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                                  lineHeight: 1, transition: "opacity 140ms, color 140ms",
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.opacity = "0.65")}
+                                onMouseLeave={e => (e.currentTarget.style.opacity = copiedMsgIdx === i ? "0.9" : "0.28")}
+                              >
+                                {copiedMsgIdx === i ? (
+                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
+                                ) : (
+                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+                                )}
+                              </button>
+                              {!msg.streaming && (
+                                <InlineSketchOffer
+                                  text={msg.content}
+                                  onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
+                                />
                               )}
-                            </button>
+                            </div>
                           )}
                           {msg.createdAt && !msg.streaming && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
