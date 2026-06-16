@@ -1,11 +1,11 @@
-// useCodegen — frontend bridge to the native `POST /api/codegen` endpoint on
-// our Cloud Run + Neon backend. Authenticates via the `atlas-session` cookie.
+// useCodegen — frontend bridge to the Supabase edge function `atlas-codegen`.
+// Auth via the active Supabase session (JWT attached by supabase-js).
 //
 // Because the endpoint is request/response (not SSE), we synthesise progress
 // steps locally and feed them into the existing LiveGenerationCard.
 
 import { useCallback, useRef, useState } from "react";
-import { apiUrl } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export type CodegenMode = "plan" | "blueprint" | "edit" | "thinking";
 
