@@ -16,6 +16,7 @@ import { InsightChip } from "@/components/workspace/InsightChip";
 import { GitHubPushModal } from "@/components/workspace/GitHubPushModal";
 import { DiffViewer } from "@/components/code/DiffViewer";
 import SketchReveal from "@/components/chat/SketchReveal";
+import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { useGithubPushToken } from "@/hooks/useGithubPushToken";
 import {
   ICON_TOUCH_TARGET_STYLE,
@@ -1977,6 +1978,11 @@ export function AssistantBubble({
               : <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="1.5" width="10" height="11" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" /></svg>
             }
           </button>
+
+          {/* Sketch this — icon-only, popover with style presets */}
+          {!message.imageB64 && !message.imageGen && message.content && (
+            <InlineSketchOffer text={message.content} onSend={onSend} />
+          )}
 
           {/* ───── OVERFLOW ───── three-dot menu */}
           <button
