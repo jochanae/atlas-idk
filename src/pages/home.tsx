@@ -2919,7 +2919,7 @@ export default function Home() {
         },
       ]);
       await new Promise(resolve => setTimeout(resolve, 700));
-      setLocation(`/project/${projectId}`);
+      setLocation(`/project/${projectId}?from=home`);
     } catch (err) {
       const msg =
         extractApiErrorMessage(err) ??

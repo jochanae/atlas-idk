@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode, RefObject } from "react";
+import { Fragment, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
@@ -55,6 +55,42 @@ function AutoVerifyMessage({ content }: { content: string }) {
         Auto-verify
       </div>
       {content}
+    </div>
+  );
+}
+
+function HomeHandoffDivider({ projectName }: { projectName?: string }) {
+  const label = projectName?.trim() ? `${projectName.trim()} Workspace` : "Workspace";
+
+  return (
+    <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 0 22px" }}>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          height: 1,
+          background: "linear-gradient(to right, transparent, rgba(201,162,76,0.3), transparent)",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "var(--atlas-bg)",
+          border: "1px solid rgba(201,162,76,0.16)",
+          color: "var(--atlas-muted)",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: "var(--ts-micro)",
+          letterSpacing: "0.12em",
+          lineHeight: 1,
+          textTransform: "uppercase",
+          opacity: 0.72,
+        }}
+      >
+        {label}
+      </div>
     </div>
   );
 }
@@ -138,7 +174,7 @@ export function ChatStream(props: ChatStreamProps) {
     scrollRef, bottomRef, onScroll, showScrollBtn, onScrollToLatest,
     messages, chatPending, activityStream, liveGeneration, thinkingBlock, historyMsgCountRef,
     priorLoaded,
-    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading,
+    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading, project,
     wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo, trustMode,
@@ -207,75 +243,78 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
-      {messages.map((msg, i) =>
-        msg.role === "user" ? (
-          <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
-            {isAutoVerifyMessage(msg) ? (
-              <AutoVerifyMessage content={msg.content} />
-            ) : (
-              <UserBubble
-                content={msg.content}
-                sentAt={msg.sentAt}
-                imageB64={msg.imageB64}
-                imageMimeType={msg.imageMimeType}
-                attachments={msg.attachments}
-                onCopy={() => {}}
-                onEdit={() => onEditUserMessage(msg.content)}
-              />
-            )}
-          </div>
-        ) : (
-          <div key={i} data-atlas-msg-idx={i} data-msg-idx={i}>
-            {activityStream.active && i === messages.length - 1 && (
-              liveGeneration.shouldShow ? (
-                <LiveGenerationCard
-                  mode={liveGeneration.mode as never}
-                  steps={liveGeneration.steps as never}
-                  isComplete={false}
-                />
+      {messages.map((msg, i) => (
+        <Fragment key={i}>
+          {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
+          {msg.role === "user" ? (
+            <div data-atlas-msg-idx={i} data-msg-idx={i}>
+              {isAutoVerifyMessage(msg) ? (
+                <AutoVerifyMessage content={msg.content} />
               ) : (
-                <AtlasActivityBar content={activityStream.content} lens={wsLens} />
-              )
-            )}
-            <AssistantBubble
-              message={msg}
-              isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
-              projectId={projectId}
-              sessionId={sessionId || 0}
-              linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
-              onPark={onPark}
-              onCommit={onCommit}
-              onRegenerate={() => onRegenerate(i)}
-              onSend={onSend}
-              onPreviewCode={onPreviewCode}
-              onRunCommand={onRunCommand}
-              onPrCreated={onPrCreated}
-              onExtractToForge={onExtractToForge}
-              onForgeIntake={onForgeIntake}
-              onReviewDiff={onReviewDiff}
-              onOpenArtifact={onOpenArtifact}
-              onEditDeclined={onEditDeclined}
-              onAlertDismiss={() => onAlertDismiss(msg)}
-              onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}
-              onStreamActivityComplete={onStreamActivityComplete}
-              onCommitCardDone={onCommitCardDone}
-              planState={planStates.get(msg.id ?? 0) ?? "pending"}
-              planExecution={planExecutions.get(msg.id ?? 0)}
-              onPlanStateChange={onPlanStateChange}
-              onPlanExecutionChange={onPlanExecutionChange}
-              onExecuteHomePlan={onExecuteHomePlan}
-              trustMode={trustMode}
-              onPushSuccess={onPushSuccess}
-            />
-            {Boolean(msg.terminalCmd || msg.terminalResult) && (
-              <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
-                <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />
-              </div>
-            )}
-            {/* Sketch offer now lives as an icon in AssistantBubble's action bar. */}
-          </div>
-        )
-      )}
+                <UserBubble
+                  content={msg.content}
+                  sentAt={msg.sentAt}
+                  imageB64={msg.imageB64}
+                  imageMimeType={msg.imageMimeType}
+                  attachments={msg.attachments}
+                  onCopy={() => {}}
+                  onEdit={() => onEditUserMessage(msg.content)}
+                />
+              )}
+            </div>
+          ) : (
+            <div data-atlas-msg-idx={i} data-msg-idx={i}>
+              {activityStream.active && i === messages.length - 1 && (
+                liveGeneration.shouldShow ? (
+                  <LiveGenerationCard
+                    mode={liveGeneration.mode as never}
+                    steps={liveGeneration.steps as never}
+                    isComplete={false}
+                  />
+                ) : (
+                  <AtlasActivityBar content={activityStream.content} lens={wsLens} />
+                )
+              )}
+              <AssistantBubble
+                message={msg}
+                isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
+                projectId={projectId}
+                sessionId={sessionId || 0}
+                linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}
+                onPark={onPark}
+                onCommit={onCommit}
+                onRegenerate={() => onRegenerate(i)}
+                onSend={onSend}
+                onPreviewCode={onPreviewCode}
+                onRunCommand={onRunCommand}
+                onPrCreated={onPrCreated}
+                onExtractToForge={onExtractToForge}
+                onForgeIntake={onForgeIntake}
+                onReviewDiff={onReviewDiff}
+                onOpenArtifact={onOpenArtifact}
+                onEditDeclined={onEditDeclined}
+                onAlertDismiss={() => onAlertDismiss(msg)}
+                onStreamActivityUpdate={(content: string) => onStreamActivityUpdate(msg, content)}
+                onStreamActivityComplete={onStreamActivityComplete}
+                onCommitCardDone={onCommitCardDone}
+                planState={planStates.get(msg.id ?? 0) ?? "pending"}
+                planExecution={planExecutions.get(msg.id ?? 0)}
+                onPlanStateChange={onPlanStateChange}
+                onPlanExecutionChange={onPlanExecutionChange}
+                onExecuteHomePlan={onExecuteHomePlan}
+                trustMode={trustMode}
+                onPushSuccess={onPushSuccess}
+              />
+              {Boolean(msg.terminalCmd || msg.terminalResult) && (
+                <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
+                  <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />
+                </div>
+              )}
+              {/* Sketch offer now lives as an icon in AssistantBubble's action bar. */}
+            </div>
+          )}
+        </Fragment>
+      ))}
 
       {messages.filter(m => m.role !== "user").length >= 60 && !chatPending && wsModel !== "gemini" && (
         <div style={{
