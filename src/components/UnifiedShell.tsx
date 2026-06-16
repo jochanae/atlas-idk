@@ -1692,7 +1692,17 @@ function ShellFooter() {
       ];
     }
     return [
-      { label: "Home", icon: "home", action: () => setLocation("/home") },
+      {
+        label: "Home",
+        icon: "home",
+        action: () => {
+          if (location === "/home" || location === "/") {
+            window.dispatchEvent(new CustomEvent("axiom:home-reset"));
+          } else {
+            setLocation("/home");
+          }
+        },
+      },
       {
         label: "Projects",
         icon: "projects",
