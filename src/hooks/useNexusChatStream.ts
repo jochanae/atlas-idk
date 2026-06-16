@@ -387,11 +387,13 @@ export function useNexusChatStream(
                 return !t.startsWith('VISUALIZE:') &&
                        !t.startsWith('READY_TO_SHAPE:') &&
                        !t.startsWith('NAVIGATE_TO:') &&
+                       !t.startsWith('PROJECT_READY:') &&
                        !t.startsWith('MEMORY_CHIPS:');
               })
               .join('\n')
               .replace(/VISUALIZE:\{[\s\S]*$/g, '')
-              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '');
+              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
+              .replace(/PROJECT_READY:\{[\s\S]*$/g, '');
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
