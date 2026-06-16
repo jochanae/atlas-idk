@@ -1779,6 +1779,7 @@ function TerminalPanel({
     else runCommand(value);
   }, [input, nlMode, runCommand, runNaturalLanguage]);
 
+  const [activeMacro, setActiveMacro] = useState<string>("npm run build");
   const runMacro = useCallback((cmd: string) => {
     if (cmd === "__clear__") { setLines(welcomeLines()); return; }
     setNlMode(false);
@@ -2069,32 +2070,36 @@ function TerminalPanel({
             gap: 8,
           }}
         >
-          {MACROS.map(m => (
+          {MACROS.map(m => {
+            const isActive = activeMacro === m.cmd;
+            return (
             <button
               key={m.label}
-              onClick={() => runMacro(m.cmd)}
+              onClick={() => { setActiveMacro(m.cmd); runMacro(m.cmd); }}
               disabled={running}
+              aria-pressed={isActive}
               style={{
                 flexShrink: 0,
                 display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
                 padding: isDesktopView ? "8px 10px" : "6px 10px",
                 borderRadius: 999,
-                border: "1px solid rgba(201,162,76,0.35)",
-                background: "color-mix(in oklab, var(--atlas-gold) 7%, transparent)",
-                color: "var(--atlas-gold)",
+                border: `1px solid ${isActive ? "rgba(201,162,76,0.55)" : "rgba(var(--atlas-muted-rgb),0.18)"}`,
+                background: isActive ? "color-mix(in oklab, var(--atlas-gold) 12%, transparent)" : "transparent",
+                color: isActive ? "var(--atlas-gold)" : "var(--atlas-muted)",
                 fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)",
                 letterSpacing: "0.05em", cursor: running ? "not-allowed" : "pointer",
-                backdropFilter: "blur(10px)",
+                backdropFilter: isActive ? "blur(10px)" : "none",
                 whiteSpace: "nowrap",
-                boxShadow: "inset 0 0 0 1px rgba(201,162,76,0.08)",
+                boxShadow: isActive ? "inset 0 0 0 1px rgba(201,162,76,0.12)" : "none",
+                opacity: isActive ? 1 : 0.78,
                 transition: "all 160ms ease",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 0 12px rgba(201,162,76,0.28), inset 0 0 0 1px rgba(201,162,76,0.18)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "inset 0 0 0 1px rgba(201,162,76,0.08)"; }}
+              onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.color = "var(--atlas-gold)"; e.currentTarget.style.borderColor = "rgba(201,162,76,0.3)"; } }}
+              onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.color = "var(--atlas-muted)"; e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.18)"; } }}
             >
               <span aria-hidden>{m.icon}</span>{isDesktopView ? m.label : m.shortLabel}
             </button>
-          ))}
+          );})}
         </div>
         {/* NL toggle */}
         <button
