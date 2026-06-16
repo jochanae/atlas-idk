@@ -420,13 +420,8 @@ export function ChatComposer(props: ChatComposerProps) {
             as a single Atlas-voiced shaping question. No wizard, no setup card. */}
 
 
-        {/* Generate Blueprint pill — always available above composer.
-            The pill itself ensures an idea-mode session exists before generating,
-            so it works even without Atlas explicitly offering it. */}
-        <GenerateBlueprintPill
-          projectId={projectId}
-          onCreated={() => { if (isMobile) setMobileTab("blueprints"); else setDesktopForceTab("blueprints"); }}
-        />
+        {/* Generate Blueprint pill removed from composer — accessible from the
+            Blueprints tab empty state instead. */}
 
         {/* Attachment preview strip */}
         {attachedFiles.length > 0 && (
