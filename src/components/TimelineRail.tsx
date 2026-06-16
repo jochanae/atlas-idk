@@ -7,12 +7,6 @@ type RailMessage = {
   text?: string;
 };
 
-type Bucket = {
-  label: string;
-  firstIdx: number;
-  count: number;
-};
-
 function dayLabel(t: number, now: number): string {
   const startOfDay = (ms: number) => {
     const d = new Date(ms);
@@ -26,34 +20,18 @@ function dayLabel(t: number, now: number): string {
   if (t >= weekStart) {
     return new Date(t).toLocaleDateString(undefined, { weekday: "short" }).toUpperCase();
   }
-  // Older — use MMM D
   return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
 }
 
-function bucketize(messages: RailMessage[]): Bucket[] {
-  const now = Date.now();
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const today = startOfDay(new Date(now));
-  const yesterday = today - 86_400_000;
-  const weekStart = today - 6 * 86_400_000;
-
-  const buckets: Record<string, Bucket> = {};
-  const order = ["Today", "Yesterday", "This week", "Older"];
-
-  messages.forEach((m, i) => {
-    if (m.role !== "assistant") return;
-    const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
-    let label = "Older";
-    if (t >= today) label = "Today";
-    else if (t >= yesterday) label = "Yesterday";
-    else if (t >= weekStart) label = "This week";
-    if (!buckets[label]) buckets[label] = { label, firstIdx: i, count: 0 };
-    buckets[label].count += 1;
-  });
-
-  return order.filter((l) => buckets[l]).map((l) => buckets[l]);
-}
-
+/**
+ * TimelineRail — always-visible Compani-style chronological rail.
+ *
+ * A thin vertical gold line runs along the right edge of the chat. One circle
+ * node per unique date (chips: TODAY / YESTERDAY / weekday / MMM D) sits along
+ * the rail. As the user scrolls, the dot closest to viewport center brightens
+ * and its label expands. Tap any dot to smooth-scroll to that date's first
+ * message. The search magnifier above the rail is preserved.
+ */
 export function TimelineRail({
   messages,
   topOffset = 92,
@@ -63,16 +41,12 @@ export function TimelineRail({
   topOffset?: number;
   bottomOffset?: number;
 }) {
-  const [showOverlay, setShowOverlay] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const [focusIdx, setFocusIdx] = useState<number>(-1);
-  const longPressRef = useRef<number | null>(null);
-  const didLongPressRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sorted list of message indices that contain the query.
   const matchList = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [] as number[];
@@ -91,8 +65,7 @@ export function TimelineRail({
     }
   }, [showSearch]);
 
-  // ── DOM highlight effect: wrap query matches inside every chat bubble with a
-  // <mark class="atlas-search-hit"> span; tear down cleanly when query clears.
+  // DOM highlight effect for search hits.
   useEffect(() => {
     const HIT_CLASS = "atlas-search-hit";
     const HIT_ACTIVE = "atlas-search-hit--active";
@@ -150,7 +123,6 @@ export function TimelineRail({
       });
     });
 
-    // Tag the active match for distinct styling.
     document.querySelectorAll(`.${HIT_ACTIVE}`).forEach((el) => el.classList.remove(HIT_ACTIVE));
     const activeMsgIdx = matchList[cursor];
     if (activeMsgIdx !== undefined) {
@@ -161,12 +133,9 @@ export function TimelineRail({
     return () => { unwrapAll(); };
   }, [query, matchList, cursor]);
 
-  // Reset cursor when the match set changes.
   useEffect(() => { setCursor(0); }, [query]);
 
-
-
-  // Track which message is closest to vertical viewport center.
+  // Track message closest to viewport center.
   useEffect(() => {
     if (typeof window === "undefined") return;
     let raf = 0;
@@ -195,14 +164,13 @@ export function TimelineRail({
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     window.addEventListener("resize", onScroll);
     return () => {
-      window.removeEventListener("scroll", onScroll, { capture: true } as any);
+      window.removeEventListener("scroll", onScroll, { capture: true } as never);
       window.removeEventListener("resize", onScroll);
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, [messages.length]);
 
-
-  // One dot per unique date — collapse all messages on the same day into a single dot.
+  // One dot per unique date across all messages (user + assistant).
   const dateDots = useMemo(() => {
     const now = Date.now();
     const dayKey = (ms: number) => {
@@ -219,7 +187,6 @@ export function TimelineRail({
       timestamp: number;
     }>();
     messages.forEach((m, i) => {
-      if (m.role !== "assistant") return;
       const t = m.createdAt ? new Date(m.createdAt).getTime() : now;
       const key = dayKey(t);
       const existing = groups.get(key);
@@ -242,61 +209,10 @@ export function TimelineRail({
     return Array.from(groups.values()).sort((a, b) => a.timestamp - b.timestamp);
   }, [messages]);
 
-  const buckets = useMemo(() => bucketize(messages), [messages]);
-  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
-  const MOVE_CANCEL_PX = 6;
-
-  useEffect(
-    () => () => {
-      if (longPressRef.current) window.clearTimeout(longPressRef.current);
-    },
-    [],
-  );
-
-  if (dateDots.length === 0) return null;
-  const ease = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-
   const scrollTo = (idx: number) => {
     const el = document.querySelector<HTMLElement>(`[data-msg-idx="${idx}"]`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
-
-  const startPress = (e: React.TouchEvent | React.MouseEvent) => {
-    didLongPressRef.current = false;
-    const point =
-      "touches" in e && e.touches[0]
-        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
-        : "clientX" in e
-          ? { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY }
-          : null;
-    pressStartRef.current = point;
-    longPressRef.current = window.setTimeout(() => {
-      didLongPressRef.current = true;
-      setShowOverlay(true);
-    }, 550);
-  };
-  const movePress = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!pressStartRef.current || !longPressRef.current) return;
-    const cur =
-      "touches" in e && e.touches[0]
-        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
-        : "clientX" in e
-          ? { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY }
-          : null;
-    if (!cur) return;
-    if (
-      Math.abs(cur.x - pressStartRef.current.x) > MOVE_CANCEL_PX ||
-      Math.abs(cur.y - pressStartRef.current.y) > MOVE_CANCEL_PX
-    ) {
-      endPress();
-    }
-  };
-  const endPress = () => {
-    if (longPressRef.current) window.clearTimeout(longPressRef.current);
-    longPressRef.current = null;
-    pressStartRef.current = null;
-  };
-
 
   const matchedDateKeys = new Set<string>();
   if (matchList.length > 0) {
@@ -314,35 +230,7 @@ export function TimelineRail({
 
   return (
     <>
-      {/* Narrow long-press strip on the right edge — cancels on scroll/move to avoid accidental triggers. */}
-      <div
-        aria-label="Conversation timeline (long-press to jump)"
-        onMouseDown={startPress}
-        onMouseMove={movePress}
-        onMouseUp={endPress}
-        onMouseLeave={endPress}
-        onTouchStart={startPress}
-        onTouchMove={movePress}
-        onTouchEnd={endPress}
-        onTouchCancel={endPress}
-        style={{
-          position: "fixed",
-          top: topOffset,
-          bottom: bottomOffset,
-          right: 0,
-          width: 22,
-          zIndex: 270,
-          pointerEvents: "auto",
-          background: "transparent",
-          touchAction: "none",
-        }}
-      />
-
-
-      {/* Rail is hidden by default — appears only during long-press overlay below. */}
-
-
-      {/* Search affordance — small, top-right, always reachable */}
+      {/* Search magnifier — preserved, top-right */}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setShowSearch((v) => !v); }}
@@ -375,106 +263,82 @@ export function TimelineRail({
         </svg>
       </button>
 
-      {/* Long-press "golden thread" overlay — Compani style */}
-      {showOverlay && (
-        <>
+      {/* Always-visible chronological rail — Compani style */}
+      {dateDots.length > 0 && (
+        <div
+          aria-label="Conversation timeline"
+          style={{
+            position: "fixed",
+            top: topOffset + 32,
+            bottom: bottomOffset,
+            right: 6,
+            width: 14,
+            zIndex: 18,
+            pointerEvents: "none",
+          }}
+        >
+          {/* Vertical gold thread */}
           <div
-            onClick={() => setShowOverlay(false)}
+            aria-hidden
             style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 200,
-              background: "rgba(0,0,0,0.35)",
-              backdropFilter: "blur(2px)",
-              animation: "fadeIn 200ms ease",
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              right: 6,
+              width: 1,
+              background:
+                "linear-gradient(to bottom, transparent, rgba(201,162,76,0.35) 8%, rgba(201,162,76,0.35) 92%, transparent)",
             }}
           />
           <div
-            role="dialog"
-            aria-label="Jump to date"
-            onClick={(e) => e.stopPropagation()}
             style={{
-              position: "fixed",
-              top: "20%",
-              bottom: "20%",
-              right: 12,
-              width: 56,
-              zIndex: 201,
+              position: "relative",
+              height: "100%",
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              animation: "fadeIn 220ms ease",
+              justifyContent: dateDots.length <= 6 ? "space-around" : "space-between",
+              padding: "4px 0",
             }}
           >
-            {/* Vertical gold thread */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                width: 1,
-                background:
-                  "linear-gradient(to bottom, transparent, rgba(201,162,76,0.45), transparent)",
-              }}
-            />
-            {/* Date nodes */}
-            <div
-              style={{
-                position: "relative",
-                flex: 1,
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: dateDots.length <= 6 ? "center" : "flex-start",
-                gap: 4,
-                padding: "16px 0",
-                overflowY: "auto",
-                overscrollBehavior: "contain",
-                scrollbarWidth: "none",
-              }}
-            >
-
-              {dateDots.map((d) => {
-                const isFocused = focusedDateKey === d.key;
-                const isMatch = matchedDateKeys.has(d.key);
-                return (
+            {dateDots.map((d) => {
+              const isFocused = focusedDateKey === d.key;
+              const isMatch = matchedDateKeys.has(d.key);
+              return (
                 <button
                   key={d.key}
                   type="button"
-                  onClick={() => {
-                    setShowOverlay(false);
-                    scrollTo(d.firstIdx);
-                  }}
+                  onClick={() => scrollTo(d.firstIdx)}
                   aria-label={`Jump to ${d.label}`}
                   style={{
                     position: "relative",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "flex-end",
-                    gap: 10,
+                    gap: 6,
                     background: "transparent",
                     border: "none",
-                    padding: "6px 0",
+                    padding: 0,
                     cursor: "pointer",
                     width: "100%",
+                    pointerEvents: "auto",
                   }}
                 >
                   <span
                     style={{
                       fontFamily: "var(--app-font-mono)",
-                      fontSize: 9,
+                      fontSize: 8.5,
                       fontWeight: isFocused ? 600 : 300,
-                      letterSpacing: "0.16em",
+                      letterSpacing: "0.14em",
                       textTransform: "uppercase",
-                      padding: "3px 8px",
+                      padding: "2px 6px",
                       borderRadius: 4,
-                      border: `1px solid rgba(201,162,76,${isFocused ? 0.7 : 0.35})`,
-                      background: "rgba(10,11,30,0.85)",
-                      color: `rgba(201,162,76,${isFocused ? 1 : 0.9})`,
+                      border: `1px solid rgba(201,162,76,${isFocused ? 0.65 : 0.28})`,
+                      background: isFocused ? "rgba(10,11,30,0.92)" : "rgba(10,11,30,0.55)",
+                      color: `rgba(201,162,76,${isFocused ? 1 : 0.6})`,
                       backdropFilter: "blur(8px)",
                       whiteSpace: "nowrap",
-                      transition: "all 180ms ease",
+                      transition: "all 200ms ease",
+                      opacity: isFocused ? 1 : 0.75,
                     }}
                   >
                     {d.label}
@@ -482,29 +346,28 @@ export function TimelineRail({
                   <span
                     style={{
                       display: "block",
-                      width: isFocused ? 11 : 8,
-                      height: isFocused ? 11 : 8,
+                      width: isFocused ? 9 : 6,
+                      height: isFocused ? 9 : 6,
                       borderRadius: "50%",
                       background: isMatch
-                        ? "rgba(245,200,110,0.9)"
+                        ? "rgba(245,200,110,0.95)"
                         : isFocused
-                          ? "rgba(201,162,76,0.7)"
-                          : "rgba(201,162,76,0.3)",
-                      border: `1px solid rgba(201,162,76,${isFocused ? 1 : 0.6})`,
+                          ? "rgba(201,162,76,0.85)"
+                          : "rgba(201,162,76,0.35)",
+                      border: `1px solid rgba(201,162,76,${isFocused ? 1 : 0.55})`,
                       boxShadow: isFocused
-                        ? "0 0 12px rgba(201,162,76,0.65)"
-                        : "0 0 8px rgba(201,162,76,0.35)",
-                      marginRight: 18,
-                      transition: "all 180ms ease",
+                        ? "0 0 10px rgba(201,162,76,0.6)"
+                        : "0 0 4px rgba(201,162,76,0.25)",
+                      marginRight: 2,
+                      transition: "all 200ms ease",
+                      flexShrink: 0,
                     }}
                   />
                 </button>
-                );
-              })}
-
-            </div>
+              );
+            })}
           </div>
-        </>
+        </div>
       )}
 
       {showSearch && (
@@ -617,7 +480,6 @@ export function TimelineRail({
           </button>
         </div>
       )}
-
     </>
   );
 }
