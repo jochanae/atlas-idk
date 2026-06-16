@@ -4842,8 +4842,15 @@ export default function Workspace() {
 
     const imageFiles = files.filter(f => f.type.startsWith("image/")).slice(0, 10);
     const otherFiles = files.filter(f => !f.type.startsWith("image/"));
-    const suffix = otherFiles.length > 0 ? `\n[Attached: ${otherFiles.map(f => f.name).join(", ")}]` : "";
-    const fullText = text + suffix;
+    // Collect selected zip entries as text context for Atlas
+    const zipContext = zipFiles
+      .filter(z => z.selected && z.content)
+      .map(z => `// FILE: ${z.path}\n${z.content}`)
+      .join('\n\n---\n\n');
+    const suffix = (otherFiles.length > 0 || zipFiles.length > 0)
+      ? `\n[Attached: ${[...otherFiles.map(f => f.name), ...(zipFiles.length > 0 ? [`${zipName} (${zipFiles.filter(z=>z.selected).length}/${zipFiles.length} files)`] : [])].join(", ")}]`
+      : "";
+    const fullText = (text + suffix).trim() || (files.length > 0 ? "(attachment)" : "");
 
     if (fullText.includes("TERMINAL_CMD:") && leftTab !== "chat") {
       setLeftTab("chat");
@@ -4861,13 +4868,13 @@ export default function Workspace() {
       Promise.all(imageFiles.map(f =>
         fileToBase64Safe(f).then(({ base64, mediaType }) => ({ base64, mediaType, name: f.name }))
       ))
-        .then((attachments) => doSend(fullText, sid, current, undefined, attachments, sendOpts))
+        .then((attachments) => doSend(fullText, sid, current, zipContext || undefined, attachments, sendOpts))
         .catch(() => {
           const fallbackText = fullText || `[Attached: ${imageFiles.map(f => f.name).join(", ")}]`;
-          doSend(fallbackText, sid, current, undefined, undefined, sendOpts);
+          doSend(fallbackText, sid, current, zipContext || undefined, undefined, sendOpts);
         });
     } else {
-      doSend(fullText, sid, current, undefined, undefined, sendOpts);
+      doSend(fullText, sid, current, zipContext || undefined, undefined, sendOpts);
     }
   };
 
