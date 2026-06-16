@@ -6226,7 +6226,7 @@ export default function Workspace() {
             </div>
           ) : leftTab === "artifacts" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <WorkbenchPanel projectId={id} sessionId={sessionId} />
+              <ArtifactsPanel projectId={id} />
             </div>
           ) : null}
 
