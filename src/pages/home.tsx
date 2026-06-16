@@ -3827,7 +3827,7 @@ export default function Home() {
                           )}
 
                           {!msg.streaming && Boolean(msg.terminalCmd || msg.terminalResult) && (
-                            <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
+                            <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={focusProjectId ?? mostRecentActiveProjectId ?? undefined} />
                           )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;

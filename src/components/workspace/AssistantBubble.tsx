@@ -135,7 +135,14 @@ function InlineDiffCard({
   const fileEditKey = fileEdits.map((edit) => `${edit.path}:${edit.content.length}`).join("|");
 
   useEffect(() => {
-    if (!linkedRepo || !token || fileEdits.length === 0) return;
+    if (fileEdits.length === 0) return;
+    // Without a linked repo + token we can't fetch originals — render every edit as
+    // a "New file" diff so the FILE_EDIT flow stays visible. Pushing still requires
+    // the repo + token, but reviewing the change should not.
+    if (!linkedRepo || !token) {
+      setOriginals(Object.fromEntries(fileEdits.map((edit) => [edit.path, null])));
+      return;
+    }
     let cancelled = false;
     void Promise.all(
       fileEdits.map(async (edit) => {

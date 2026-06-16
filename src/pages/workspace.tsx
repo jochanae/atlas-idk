@@ -41,7 +41,7 @@ import { LinePatchReviewCard, ReviewPlanCard, ReviewTabPanel, PushDiffCard } fro
 import { MenuBtn, AtlasLogo } from "@/components/workspace/atoms";
 import { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow } from "@/components/workspace/CommitHistory";
 export { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow };
-import { WorkbenchPanel } from "../components/workspace/WorkbenchPanel";
+
 import { ArtifactsPanel } from "@/components/workspace/ArtifactsPanel";
 import { StatusGlyph } from "../components/StatusGlyph";
 import { CapsuleTag } from "../components/CapsuleTag";
@@ -86,7 +86,7 @@ import { ChatComposer } from "@/components/workspace/ChatComposer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { MemoryTab } from "@/components/workspace/MemoryTab";
-import { BlueprintsTab } from "@/components/workspace/BlueprintsTab";
+import { BlueprintsTab } from "@/components/BlueprintsTab";
 import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import { JobsPanel } from "@/components/workspace/JobsPanel";
 import { McpPanel } from "@/components/workspace/McpPanel";
@@ -6226,7 +6226,7 @@ export default function Workspace() {
             </div>
           ) : leftTab === "artifacts" ? (
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <WorkbenchPanel projectId={id} sessionId={sessionId} />
+              <ArtifactsPanel projectId={id} />
             </div>
           ) : null}
 
