@@ -5071,9 +5071,9 @@ export default function Home() {
         />
       )}
 
-      {/* Right-edge timeline rail — only when a thread exists (active or Global Insight). Hidden on ambient empty home. */}
-      {nexusChat.messages.length > 0 && (
-        <TimelineRail messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      {/* Right-edge timeline rail — always in Global Insight, otherwise only when a thread exists. Hidden on ambient empty home. */}
+      {(globalInsightOpen || nexusChat.messages.length > 0) && (
+        <TimelineRail alwaysVisible={globalInsightOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
       )}
 
       {/* Projects Drawer (slide-in menu) */}
