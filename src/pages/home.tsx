@@ -175,6 +175,8 @@ type HomeHandoffSignal = {
   projectName: string | null;
   reason: string | null;
   projectId?: number | null;
+  /** True when Atlas explicitly emitted PROJECT_READY in the stream — bypasses the 5-message gate. */
+  explicit?: boolean;
 };
 
 type AmbientSurface = {
