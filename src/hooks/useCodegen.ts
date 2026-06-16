@@ -1,11 +1,11 @@
-// useCodegen — frontend bridge to the Supabase edge function `atlas-codegen`.
-// Auth via the active Supabase session (JWT attached by supabase-js).
+// useCodegen — frontend bridge to the native `POST /api/codegen` endpoint on
+// our Cloud Run + Neon backend. Authenticates via the `atlas-session` cookie.
 //
 // Because the endpoint is request/response (not SSE), we synthesise progress
 // steps locally and feed them into the existing LiveGenerationCard.
 
 import { useCallback, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiUrl } from "@/lib/api";
 
 export type CodegenMode = "plan" | "blueprint" | "edit" | "thinking";
 
@@ -77,22 +77,27 @@ export function useCodegen(opts: UseCodegenOptions): UseCodegenReturn {
       });
 
       try {
-        const { data, error } = await supabase.functions.invoke("atlas-codegen", {
-          body: {
+        const res = await fetch(apiUrl("/api/codegen"), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             projectId,
             sessionId: sessionId ?? null,
             prompt,
             context: context ?? null,
             model: "claude-sonnet-4-6",
-          },
+          }),
         });
 
         clearTimers();
 
-        if (error) {
-          throw new Error(error.message ?? "Codegen request failed");
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody?.error ?? `Codegen request failed (${res.status})`);
         }
 
+        const data = await res.json();
         const file = (data?.file ?? null) as CodegenFile | null;
         if (!file?.content) throw new Error("Codegen returned no content");
 
