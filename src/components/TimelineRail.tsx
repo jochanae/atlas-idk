@@ -36,10 +36,12 @@ export function TimelineRail({
   messages,
   topOffset = 92,
   bottomOffset = 90,
+  alwaysVisible = false,
 }: {
   messages: RailMessage[];
   topOffset?: number;
   bottomOffset?: number;
+  alwaysVisible?: boolean;
 }) {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
@@ -148,14 +150,18 @@ export function TimelineRail({
     if (typeof window === "undefined") return;
     let raf = 0;
     const compute = () => {
-      const centerY = window.innerHeight / 2;
+      const container = document.querySelector<HTMLElement>(".atlas-chat-timeline, .atlas-home-chat-messages-scroll");
+      const cr = container?.getBoundingClientRect();
+      const viewportTop = cr ? Math.max(0, cr.top) : 0;
+      const viewportBottom = cr ? Math.min(window.innerHeight, cr.bottom) : window.innerHeight;
+      const centerY = (viewportTop + viewportBottom) / 2;
       let best = -1;
       let bestDist = Infinity;
       const visible = new Set<number>();
       const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
       nodes.forEach((n) => {
         const r = n.getBoundingClientRect();
-        if (r.bottom < 0 || r.top > window.innerHeight) return;
+        if (r.bottom < viewportTop || r.top > viewportBottom) return;
         const idx = Number(n.getAttribute("data-msg-idx"));
         visible.add(idx);
         const mid = (r.top + r.bottom) / 2;
@@ -168,10 +174,8 @@ export function TimelineRail({
       setFocusIdx(best);
       setVisibleIdxs(visible);
 
-      // Anchor the rail to the chat scroll container, not the viewport.
-      const container = document.querySelector<HTMLElement>(".atlas-chat-timeline");
-      if (container) {
-        const cr = container.getBoundingClientRect();
+      // Anchor the rail to the chat scroll container, not the viewport/header.
+      if (cr) {
         setContainerRect({ top: cr.top, bottom: window.innerHeight - cr.bottom, right: window.innerWidth - cr.right });
       }
     };
@@ -185,10 +189,13 @@ export function TimelineRail({
       if (raf) return;
       raf = window.requestAnimationFrame(() => { raf = 0; compute(); });
     };
+    const container = document.querySelector<HTMLElement>(".atlas-chat-timeline, .atlas-home-chat-messages-scroll");
     compute();
+    container?.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     window.addEventListener("resize", onScroll);
     return () => {
+      container?.removeEventListener("scroll", onScroll);
       window.removeEventListener("scroll", onScroll, { capture: true } as never);
       window.removeEventListener("resize", onScroll);
       if (raf) window.cancelAnimationFrame(raf);
@@ -295,8 +302,9 @@ export function TimelineRail({
           the rail fades in only while the user is scrolling or hovering it. */}
       {(() => {
         const visibleDots = dateDots.filter((d) => d.msgIdxs.some((i) => visibleIdxs.has(i)));
-        if (visibleDots.length === 0) return null;
-        const railVisible = isScrolling || isHovering;
+        const displayDots = visibleDots.length > 0 ? visibleDots : alwaysVisible ? dateDots.slice(0, 1) : [];
+        if (displayDots.length === 0) return null;
+        const railVisible = alwaysVisible || isScrolling || isHovering;
         const railTop = containerRect ? Math.max(containerRect.top, topOffset) : topOffset + 32;
         const railBottom = containerRect ? Math.max(containerRect.bottom, bottomOffset) : bottomOffset;
         const railRight = containerRect ? Math.max(containerRect.right, 4) : 6;
@@ -337,11 +345,11 @@ export function TimelineRail({
               height: "100%",
               display: "flex",
               flexDirection: "column",
-              justifyContent: visibleDots.length <= 4 ? "space-around" : "space-between",
+              justifyContent: displayDots.length <= 4 ? "space-around" : "space-between",
               padding: "4px 0",
             }}
           >
-            {visibleDots.map((d) => {
+            {displayDots.map((d) => {
               const isFocused = focusedDateKey === d.key;
               const isMatch = matchedDateKeys.has(d.key);
               return (
