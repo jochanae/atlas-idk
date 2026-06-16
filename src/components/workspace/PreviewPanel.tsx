@@ -665,27 +665,30 @@ ${t}
                   ) : null}
 
                   {detectResults.length > 0 && (
-                    <div style={{ position: "relative", flexShrink: 0 }}>
-                      <button onClick={() => setDetectMenuOpen((v) => !v)}
-                        style={{ padding: "3px 9px", borderRadius: 4, fontSize: 9.5, ...sMono, letterSpacing: "0.08em", background: "var(--atlas-glass-bg)", border: "1px solid var(--atlas-border)", color: "var(--atlas-muted)", cursor: "pointer" }}>
-                        {detectResults.length} suggestion{detectResults.length === 1 ? "" : "s"} ▾
-                      </button>
-                      {detectMenuOpen && (
-                        <>
-                          <div onClick={() => setDetectMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 41, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: 6, padding: 4, minWidth: 240, boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
-                            {detectResults.slice(0, 6).map((r) => (
-                              <button key={r.url} onClick={() => { applyUrl(r.url); setDetectResults([]); setDetectMenuOpen(false); setStatusVisible(true); }}
-                                style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 7px", borderRadius: 4, width: "100%", textAlign: "left", background: "transparent", border: "none", cursor: "pointer" }}>
-                                <span style={{ fontSize: 8.5, ...sMono, color: platformColor(r.platform), opacity: 0.9, flexShrink: 0 }}>{r.platform}</span>
-                                {r.confidence === "high" && <span style={{ fontSize: 7.5, ...sMono, color: "rgba(134,239,172,0.7)", flexShrink: 0 }}>✓</span>}
-                                <span style={{ flex: 1, fontSize: 9.5, ...sMono, color: "var(--atlas-fg)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.url}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <SuggestionsDropdown
+                      results={detectResults}
+                      open={detectMenuOpen}
+                      setOpen={setDetectMenuOpen}
+                      onPick={(url) => {
+                        applyUrl(url);
+                        setDetectResults([]);
+                        setDetectMenuOpen(false);
+                        setStatusVisible(true);
+                        // Persist the picked suggestion as the project URL
+                        updateProject.mutate(
+                          { id: projectId, data: { previewUrl: normalize(url) } },
+                          {
+                            onSuccess: () => {
+                              queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+                              setSavedIndicator(true);
+                              setTimeout(() => setSavedIndicator(false), 2500);
+                            },
+                          },
+                        );
+                      }}
+                      platformColor={platformColor}
+                      sMono={sMono}
+                    />
                   )}
 
                   {liveUrl && (
