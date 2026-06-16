@@ -73,7 +73,13 @@ export function ProjectsSheet({ onClose }: Props) {
       {/* Scrim */}
       <div
         onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(8,8,10,0.96)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+        }}
       />
 
       {/* Sheet */}
