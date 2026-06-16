@@ -290,20 +290,34 @@ export function TimelineRail({
         </svg>
       </button>
 
-      {/* Always-visible chronological rail — Compani style */}
-      {dateDots.length > 0 && (
+      {/* Scroll-linked chronological rail — Compani style.
+          Only the dates whose messages are currently in viewport render, and
+          the rail fades in only while the user is scrolling or hovering it. */}
+      {(() => {
+        const visibleDots = dateDots.filter((d) => d.msgIdxs.some((i) => visibleIdxs.has(i)));
+        if (visibleDots.length === 0) return null;
+        const railVisible = isScrolling || isHovering;
+        const railTop = containerRect ? Math.max(containerRect.top, topOffset) : topOffset + 32;
+        const railBottom = containerRect ? Math.max(containerRect.bottom, bottomOffset) : bottomOffset;
+        const railRight = containerRect ? Math.max(containerRect.right, 4) : 6;
+        return (
         <div
           aria-label="Conversation timeline"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
           style={{
             position: "fixed",
-            top: topOffset + 32,
-            bottom: bottomOffset,
-            right: 6,
+            top: railTop,
+            bottom: railBottom,
+            right: railRight,
             width: 14,
             zIndex: 18,
-            pointerEvents: "none",
+            pointerEvents: railVisible ? "auto" : "none",
+            opacity: railVisible ? 1 : 0,
+            transition: "opacity 260ms ease",
           }}
         >
+
           {/* Vertical gold thread */}
           <div
             aria-hidden
