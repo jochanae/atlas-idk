@@ -797,8 +797,8 @@ export function GlobalInsightSurface({
               marginTop: 2,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              {focusChip}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
+              {/* Left cluster: history, then +/⋯ from ComposerActions */}
               <UtilityButton
                 ariaLabel="Where were we"
                 title="Where were we?"
@@ -810,19 +810,6 @@ export function GlobalInsightSurface({
                   <polyline points="12 7 12 12 15 14" />
                 </svg>
               </UtilityButton>
-              {messages.length > 0 && (
-                <UtilityButton
-                  ariaLabel="Create project from this conversation"
-                  title="Create project from this conversation"
-                  onClick={() => onCreateProject?.()}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 6.5h5l2 2H20v9.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
-                    <path d="M12 12v5" />
-                    <path d="M9.5 14.5h5" />
-                  </svg>
-                </UtilityButton>
-              )}
               <ComposerActions
                 scope="global-insight"
                 hasProjectContext={false}
@@ -846,6 +833,26 @@ export function GlobalInsightSurface({
                 }}
                 onSketch={onSketch}
               />
+
+              {/* Center: active project pill — breathing room on both sides */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, minWidth: 0, marginInline: 8 }}>
+                {focusChip}
+              </div>
+
+              {/* Right of center: add-to-project (only when there's a conversation to capture) */}
+              {messages.length > 0 && (
+                <UtilityButton
+                  ariaLabel="Create project from this conversation"
+                  title="Create project from this conversation"
+                  onClick={() => onCreateProject?.()}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 6.5h5l2 2H20v9.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+                    <path d="M12 12v5" />
+                    <path d="M9.5 14.5h5" />
+                  </svg>
+                </UtilityButton>
+              )}
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
