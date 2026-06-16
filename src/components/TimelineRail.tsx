@@ -135,7 +135,15 @@ export function TimelineRail({
 
   useEffect(() => { setCursor(0); }, [query]);
 
-  // Track message closest to viewport center.
+  // Track focused message + which message indices are currently in viewport +
+  // the bounding rect of the chat scroll container so the rail stretches along
+  // it instead of hanging off the global header.
+  const [visibleIdxs, setVisibleIdxs] = useState<Set<number>>(new Set());
+  const [containerRect, setContainerRect] = useState<{ top: number; bottom: number; right: number } | null>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const scrollIdleTimer = useRef<number | null>(null);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     let raf = 0;
@@ -143,20 +151,37 @@ export function TimelineRail({
       const centerY = window.innerHeight / 2;
       let best = -1;
       let bestDist = Infinity;
+      const visible = new Set<number>();
       const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
       nodes.forEach((n) => {
         const r = n.getBoundingClientRect();
         if (r.bottom < 0 || r.top > window.innerHeight) return;
+        const idx = Number(n.getAttribute("data-msg-idx"));
+        visible.add(idx);
         const mid = (r.top + r.bottom) / 2;
         const d = Math.abs(mid - centerY);
         if (d < bestDist) {
           bestDist = d;
-          best = Number(n.getAttribute("data-msg-idx"));
+          best = idx;
         }
       });
       setFocusIdx(best);
+      setVisibleIdxs(visible);
+
+      // Anchor the rail to the chat scroll container, not the viewport.
+      const container = document.querySelector<HTMLElement>(".atlas-chat-timeline");
+      if (container) {
+        const cr = container.getBoundingClientRect();
+        setContainerRect({ top: cr.top, bottom: window.innerHeight - cr.bottom, right: window.innerWidth - cr.right });
+      }
+    };
+    const markScrolling = () => {
+      setIsScrolling(true);
+      if (scrollIdleTimer.current) window.clearTimeout(scrollIdleTimer.current);
+      scrollIdleTimer.current = window.setTimeout(() => setIsScrolling(false), 1100);
     };
     const onScroll = () => {
+      markScrolling();
       if (raf) return;
       raf = window.requestAnimationFrame(() => { raf = 0; compute(); });
     };
@@ -167,8 +192,10 @@ export function TimelineRail({
       window.removeEventListener("scroll", onScroll, { capture: true } as never);
       window.removeEventListener("resize", onScroll);
       if (raf) window.cancelAnimationFrame(raf);
+      if (scrollIdleTimer.current) window.clearTimeout(scrollIdleTimer.current);
     };
   }, [messages.length]);
+
 
   // One dot per unique date across all messages (user + assistant).
   const dateDots = useMemo(() => {
@@ -263,20 +290,34 @@ export function TimelineRail({
         </svg>
       </button>
 
-      {/* Always-visible chronological rail — Compani style */}
-      {dateDots.length > 0 && (
+      {/* Scroll-linked chronological rail — Compani style.
+          Only the dates whose messages are currently in viewport render, and
+          the rail fades in only while the user is scrolling or hovering it. */}
+      {(() => {
+        const visibleDots = dateDots.filter((d) => d.msgIdxs.some((i) => visibleIdxs.has(i)));
+        if (visibleDots.length === 0) return null;
+        const railVisible = isScrolling || isHovering;
+        const railTop = containerRect ? Math.max(containerRect.top, topOffset) : topOffset + 32;
+        const railBottom = containerRect ? Math.max(containerRect.bottom, bottomOffset) : bottomOffset;
+        const railRight = containerRect ? Math.max(containerRect.right, 4) : 6;
+        return (
         <div
           aria-label="Conversation timeline"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
           style={{
             position: "fixed",
-            top: topOffset + 32,
-            bottom: bottomOffset,
-            right: 6,
+            top: railTop,
+            bottom: railBottom,
+            right: railRight,
             width: 14,
             zIndex: 18,
-            pointerEvents: "none",
+            pointerEvents: railVisible ? "auto" : "none",
+            opacity: railVisible ? 1 : 0,
+            transition: "opacity 260ms ease",
           }}
         >
+
           {/* Vertical gold thread */}
           <div
             aria-hidden
@@ -296,11 +337,11 @@ export function TimelineRail({
               height: "100%",
               display: "flex",
               flexDirection: "column",
-              justifyContent: dateDots.length <= 6 ? "space-around" : "space-between",
+              justifyContent: visibleDots.length <= 4 ? "space-around" : "space-between",
               padding: "4px 0",
             }}
           >
-            {dateDots.map((d) => {
+            {visibleDots.map((d) => {
               const isFocused = focusedDateKey === d.key;
               const isMatch = matchedDateKeys.has(d.key);
               return (
@@ -368,7 +409,8 @@ export function TimelineRail({
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {showSearch && (
         <div
