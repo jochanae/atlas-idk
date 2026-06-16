@@ -376,67 +376,100 @@ export function GenerateBlueprintPill({
 }) {
   const [busy, setBusy] = useState(false);
 
+  const trace = (step: string, detail?: unknown) => {
+    // eslint-disable-next-line no-console
+    console.log(`[blueprint] ${step}`, detail ?? "");
+  };
+
+  const readBody = async (res: Response): Promise<{ json: any; text: string }> => {
+    const text = await res.text().catch(() => "");
+    let json: any = null;
+    try { json = text ? JSON.parse(text) : null; } catch { /* not json */ }
+    return { json, text };
+  };
+
   const ensureIdeaModeSession = async () => {
+    trace("ensureIdeaModeSession: list sessions", { projectId });
     const sessionsRes = await fetch(`/api/projects/${projectId}/sessions`, { credentials: "include" });
-    if (!sessionsRes.ok) throw new Error(`Could not inspect sessions (${sessionsRes.status})`);
+    const sessionsBody = await readBody(sessionsRes);
+    trace("sessions response", { status: sessionsRes.status, body: sessionsBody.json ?? sessionsBody.text });
+    if (!sessionsRes.ok) throw new Error(`List sessions failed ${sessionsRes.status}: ${sessionsBody.text.slice(0, 200)}`);
 
-    const sessions = await sessionsRes.json() as Array<{ id: number; mode?: string | null }>;
+    const sessions = (sessionsBody.json ?? []) as Array<{ id: number; mode?: string | null }>;
     const preferred = sessions.find((session) => session.mode === "idea") ?? sessions[0];
-
     let sessionId: number | null = preferred?.id ?? null;
+    trace("preferred session", { sessionId, totalSessions: sessions.length });
+
     if (!sessionId) {
+      trace("creating new session");
       const createRes = await fetch(`/api/projects/${projectId}/sessions`, {
-        method: "POST",
-        credentials: "include",
+        method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Blueprint session", mode: "idea" }),
       });
-      if (!createRes.ok) throw new Error(`Could not create a session (${createRes.status})`);
-      const created = await createRes.json() as { id?: number };
-      sessionId = created.id ?? null;
+      const createBody = await readBody(createRes);
+      trace("create session response", { status: createRes.status, body: createBody.json ?? createBody.text });
+      if (!createRes.ok) throw new Error(`Create session failed ${createRes.status}: ${createBody.text.slice(0, 200)}`);
+      sessionId = (createBody.json as { id?: number } | null)?.id ?? null;
     }
+    if (!sessionId) throw new Error("No session id returned after create");
 
-    if (!sessionId) throw new Error("No session available for blueprint generation");
-
-    await fetch(`/api/sessions/${sessionId}/idea-mode`, {
-      method: "POST",
-      credentials: "include",
+    trace("enabling idea mode", { sessionId });
+    const ideaRes = await fetch(`/api/sessions/${sessionId}/idea-mode`, {
+      method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: true }),
     });
+    const ideaBody = await readBody(ideaRes);
+    trace("idea-mode response", { status: ideaRes.status, body: ideaBody.json ?? ideaBody.text });
+    if (!ideaRes.ok) throw new Error(`Enable idea-mode failed ${ideaRes.status}: ${ideaBody.text.slice(0, 200)}`);
+  };
+
+  const callBlueprint = async () => {
+    trace("POST /blueprint", { projectId });
+    const res = await fetch(`/api/projects/${projectId}/blueprint`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const body = await readBody(res);
+    trace("blueprint response", { status: res.status, body: body.json ?? body.text });
+    return { res, body };
   };
 
   const generate = async () => {
     if (busy) return;
     setBusy(true);
+    trace("── generate start ──", { projectId });
     try {
-      let res = await fetch(`/api/projects/${projectId}/blueprint`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
+      let { res, body } = await callBlueprint();
       if (!res.ok) {
-        const data = await res.json().catch(() => null) as { error?: string } | null;
-        if (data?.error === "No idea mode session found for this project") {
+        const errMsg = (body.json?.error as string | undefined) ?? body.text;
+        trace("first attempt failed", { status: res.status, errMsg });
+        if (errMsg && /idea mode session/i.test(errMsg)) {
+          trace("no idea-mode session → bootstrapping");
           await ensureIdeaModeSession();
-          res = await fetch(`/api/projects/${projectId}/blueprint`, {
-            method: "POST", credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          });
+          ({ res, body } = await callBlueprint());
         }
       }
-      if (!res.ok) throw new Error(`Failed (${res.status})`);
-      const data = await res.json();
-      const bpId = data?.blueprint?.id ?? data?.id;
+      if (!res.ok) {
+        const detail = body.json?.error ?? body.text ?? `HTTP ${res.status}`;
+        throw new Error(`Blueprint API ${res.status}: ${String(detail).slice(0, 240)}`);
+      }
+      const bpId = body.json?.blueprint?.id ?? body.json?.id;
+      trace("success", { bpId });
       toast.success("Blueprint created.");
       onCreated?.(bpId);
     } catch (e: any) {
-      toast.error(e?.message || "Generation failed");
+      const msg = e?.message || "Generation failed";
+      console.error("[blueprint] FAILED", e);
+      toast.error(msg, { duration: 10000, description: "Check console for full trace." });
     } finally {
       setBusy(false);
+      trace("── generate end ──");
     }
   };
+
   return (
     <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
       <button
