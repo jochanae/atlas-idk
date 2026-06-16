@@ -4093,7 +4093,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  {showScrollBtn && (
+                  {showScrollBtn && !globalInsightOpen && (
                     <button
                       onClick={() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" })}
                       aria-label="Scroll to latest"
