@@ -1978,6 +1978,11 @@ export function AssistantBubble({
             }
           </button>
 
+          {/* Sketch this — icon-only, popover with style presets */}
+          {!message.imageB64 && !message.imageGen && message.content && (
+            <InlineSketchOffer text={message.content} onSend={onSend} />
+          )}
+
           {/* ───── OVERFLOW ───── three-dot menu */}
           <button
             className="atlas-icon-action"
