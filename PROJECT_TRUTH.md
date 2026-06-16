@@ -128,11 +128,32 @@ The frontend fetch shim (`src/lib/install-api-fetch.ts`) intercepts every bare `
 
 **Critical:** the `<supabase-tables>` Lovable sees in context (16 tables: `bought_lessons`, `build_states`, `chat_messages`, `entries`, `generated_files`, `knowledge_entries`, `ledger_entries`, `parked_items`, `profiles`, `project_compass`, `project_invitations`, `projects`, `recommendations`, `session_comments`, `sessions`, `workspace_nodes`) is the **Lovable Cloud project**, NOT the backend DB. Lovable cannot enumerate the production tables — the user must paste the list from `osuasytymbzurjvklhde` if needed here.
 
-### User-reported production tables (2026-06-15, manual paste)
+### Production tables (32, confirmed 2026-06-16 by user paste from `osuasytymbzurjvklhde`)
 
-> 32 tables: `admin_notes`, `artifacts`, `atlas_error_logs`, `atlas_incidents`, `atlas_self_map`, `blueprints`, `chat_messages`, `entries`, … (truncated in chat history — user has the full list). Includes: `project_flow_canvas`, `project_forge_state`, `projects`, `readiness_snapshots`, `scheduled_checks`, `secrets`, `sessions`, `thoughts`, `user_sessions`, `users`, `vault`.
+| # | Table | # | Table |
+|---|---|---|---|
+| 1 | `admin_notes` | 17 | `image_versions` |
+| 2 | `artifacts` | 18 | `invites` |
+| 3 | `atlas_error_logs` | 19 | `mcp_connections` |
+| 4 | `atlas_incidents` | 20 | `messages` |
+| 5 | `atlas_self_map` | 21 | `nexus_messages` |
+| 6 | `blueprints` | 22 | `project_flow_canvas` |
+| 7 | `chat_messages` | 23 | `project_forge_state` |
+| 8 | `check_results` | 24 | `projects` |
+| 9 | `connections` | 25 | `readiness_snapshots` |
+| 10 | `conversations` | 26 | `scheduled_checks` |
+| 11 | `entries` | 27 | `secrets` |
+| 12 | `error_logs` | 28 | `sessions` |
+| 13 | `gallery_images` | 29 | `thoughts` |
+| 14 | `generated_files` | 30 | `user_sessions` |
+| 15 | `generation_runs` | 31 | `users` |
+| 16 | `home_conversations` | 32 | `vault` |
 
-**Action:** paste the complete 32-table list here when convenient.
+**Heads-up: multiple chat-shaped tables exist** — `chat_messages`, `messages`, `nexus_messages`, `conversations`, `home_conversations`. The frontend should not assume which one a given `/api/*` route writes to; treat each as opaque to Lovable. Confirm with Cursor before changing any chat UI that depends on persistence shape.
+
+**In Lovable Cloud preview but NOT in prod** (preview-only — do NOT assume frontend can use these in production): `bought_lessons`, `build_states`, `knowledge_entries`, `ledger_entries`, `parked_items`, `profiles`, `project_compass`, `project_invitations`, `recommendations`, `session_comments`, `workspace_nodes`.
+
+**In prod but NOT in Lovable Cloud preview** (must go through Cloud Run `/api/*` — frontend never reads direct): `admin_notes`, `artifacts`, `atlas_error_logs`, `atlas_incidents`, `atlas_self_map`, `blueprints`, `check_results`, `connections`, `conversations`, `error_logs`, `gallery_images`, `generation_runs`, `home_conversations`, `image_versions`, `invites`, `mcp_connections`, `messages`, `nexus_messages`, `project_flow_canvas`, `project_forge_state`, `readiness_snapshots`, `scheduled_checks`, `secrets`, `thoughts`, `user_sessions`, `users`, `vault`.
 
 ---
 
