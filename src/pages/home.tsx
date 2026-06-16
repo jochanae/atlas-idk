@@ -3699,6 +3699,7 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
+                    justifyContent: globalInsightOpen ? "flex-end" : undefined,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
                     scrollbarWidth: "none", msOverflowStyle: "none",
@@ -4093,7 +4094,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  {showScrollBtn && (
+                  {showScrollBtn && !globalInsightOpen && (
                     <button
                       onClick={() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" })}
                       aria-label="Scroll to latest"
