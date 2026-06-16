@@ -36,11 +36,28 @@ function relTime(iso: string | null): string {
  */
 export function ProjectPulsePanel(props: Props) {
   const {
-    projectName, state, readinessScore, decisionCount, hasRepo,
+    projectId, projectName, state, readinessScore, decisionCount, hasRepo,
     lastActivityAt, themes, recentDecisions, onClose,
   } = props;
 
   const meta = LIFECYCLE_META[state];
+  const updateProject = useUpdateProject();
+  const queryClient = useQueryClient();
+  const [justMarked, setJustMarked] = useState(false);
+
+  const handleMarkBuilt = () => {
+    updateProject.mutate(
+      { id: projectId, data: { status: "built" } as any },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
+          setJustMarked(true);
+          setTimeout(() => { setJustMarked(false); onClose(); }, 900);
+        },
+      }
+    );
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
