@@ -1,6 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
+import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { LIFECYCLE_META, type Lifecycle } from "@/lib/lifecycle";
 
 interface Props {
