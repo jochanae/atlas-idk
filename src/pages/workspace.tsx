@@ -86,7 +86,7 @@ import { ChatComposer } from "@/components/workspace/ChatComposer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { MemoryTab } from "@/components/workspace/MemoryTab";
-import { BlueprintsTab } from "@/components/workspace/BlueprintsTab";
+import { BlueprintsTab } from "@/components/BlueprintsTab";
 import { SecretsPanel } from "@/components/workspace/SecretsPanel";
 import { JobsPanel } from "@/components/workspace/JobsPanel";
 import { McpPanel } from "@/components/workspace/McpPanel";
