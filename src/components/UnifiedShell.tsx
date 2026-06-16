@@ -479,7 +479,7 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
             <LifecycleGlyph
               projectId={projectId}
               projectName={name || "Project"}
-              status={(project?.status as "shaping" | "committed" | "archived" | undefined) ?? undefined}
+              status={(project?.status as "shaping" | "committed" | "built" | "archived" | undefined) ?? undefined}
               readinessScore={project?.latestSnapshotScore ?? null}
               decisionCount={ps.decisions?.length ?? 0}
               hasRepo={Boolean(project?.linkedRepo)}
