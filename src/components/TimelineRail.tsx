@@ -341,7 +341,7 @@ export function TimelineRail({
               padding: "4px 0",
             }}
           >
-            {dateDots.map((d) => {
+            {visibleDots.map((d) => {
               const isFocused = focusedDateKey === d.key;
               const isMatch = matchedDateKeys.has(d.key);
               return (
@@ -409,7 +409,8 @@ export function TimelineRail({
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {showSearch && (
         <div
