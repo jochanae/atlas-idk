@@ -20,7 +20,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const updateProject = useUpdateProject();
 
   // Mode toggle
-  const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "stackblitz" | "generated">("url");
+  const [previewMode, setPreviewMode] = useState<"url" | "sandbox" | "stackblitz" | "local" | "generated">("url");
   const [generatedPreviewUrl, setGeneratedPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
