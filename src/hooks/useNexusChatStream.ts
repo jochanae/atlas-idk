@@ -5,6 +5,31 @@ import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAuto
 
 const STREAM_TIMEOUT_MS = 90_000;
 const NAVIGATE_TO_RE = /\s*NAVIGATE_TO:\s*(\{[^\n]*"route"\s*:\s*"([^"]+)"[^\n]*\})\s*$/;
+const PROJECT_READY_RE = /PROJECT_READY:\s*(\{[\s\S]*?\})(?=\s|$)/;
+
+function parseProjectReady(content: string): { title: string | null; reason: string | null } | null {
+  const match = content.match(PROJECT_READY_RE);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]) as { title?: unknown; reason?: unknown };
+    return {
+      title: typeof parsed.title === "string" ? parsed.title : null,
+      reason: typeof parsed.reason === "string" ? parsed.reason : null,
+    };
+  } catch {
+    const titleMatch = match[1].match(/"title"\s*:\s*"([^"]+)"/);
+    const reasonMatch = match[1].match(/"reason"\s*:\s*"([^"]+)"/);
+    if (!titleMatch && !reasonMatch) return null;
+    return {
+      title: titleMatch?.[1] ?? null,
+      reason: reasonMatch?.[1] ?? null,
+    };
+  }
+}
+
+function stripProjectReady(content: string): string {
+  return content.replace(PROJECT_READY_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+}
 
 function stripNavigateTo(content: string): { content: string; route: string | null } {
   const match = content.match(NAVIGATE_TO_RE);
@@ -75,6 +100,9 @@ export interface NexusHandoffSignal {
   reason?: string | null;
   readyToHandoff?: boolean;
   confidence?: string;
+  projectId?: number | null;
+  /** True when emitted via explicit PROJECT_READY token (vs heuristic). */
+  explicit?: boolean;
 }
 
 export interface NexusFocusSuggestion {
@@ -359,11 +387,13 @@ export function useNexusChatStream(
                 return !t.startsWith('VISUALIZE:') &&
                        !t.startsWith('READY_TO_SHAPE:') &&
                        !t.startsWith('NAVIGATE_TO:') &&
+                       !t.startsWith('PROJECT_READY:') &&
                        !t.startsWith('MEMORY_CHIPS:');
               })
               .join('\n')
               .replace(/VISUALIZE:\{[\s\S]*$/g, '')
-              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '');
+              .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
+              .replace(/PROJECT_READY:\{[\s\S]*$/g, '');
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
@@ -488,7 +518,25 @@ export function useNexusChatStream(
               displayText = displayText.replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "").trim();
             }
 
-            const handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
+            // Parse explicit PROJECT_READY token from stream text and synthesize
+            // a handoff signal if backend didn't already include one in meta.
+            const projectReady = parseProjectReady(displayText);
+            if (projectReady) {
+              displayText = stripProjectReady(displayText);
+            }
+
+            let handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
+            if (projectReady && !handoff) {
+              handoff = {
+                readyToHandoff: true,
+                confidence: "high",
+                projectName: projectReady.title,
+                reason: projectReady.reason,
+                explicit: true,
+              };
+            } else if (projectReady && handoff) {
+              handoff = { ...handoff, explicit: true, readyToHandoff: true };
+            }
             if (handoff) setHandoffSignal(handoff);
             const focusSuggestion = meta.focusSuggestion as NexusFocusSuggestion | undefined;
 

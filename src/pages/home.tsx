@@ -175,6 +175,8 @@ type HomeHandoffSignal = {
   projectName: string | null;
   reason: string | null;
   projectId?: number | null;
+  /** True when Atlas explicitly emitted PROJECT_READY in the stream — bypasses the 5-message gate. */
+  explicit?: boolean;
 };
 
 type AmbientSurface = {
@@ -4018,7 +4020,7 @@ export default function Home() {
                               />
                             );
                           })()}
-                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && nexusChat.messages.filter(m => m.role === "user").length >= 5 && (
+                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && (msg.handoffSignal.explicit || nexusChat.messages.filter(m => m.role === "user").length >= 5) && (
                             <HomeHandoffCard
                               signal={msg.handoffSignal}
                               projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
