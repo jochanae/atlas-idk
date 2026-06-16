@@ -115,7 +115,7 @@ export interface UseChatStreamReturn {
     currentMessages: ChatMessage[],
     ctx?: string | null,
     attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
-    options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
+    options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean },
   ) => void;
   handleRegenerate: (assistantMsgIndex: number) => void;
 }
@@ -275,7 +275,7 @@ export function useChatStream(
       currentMessages: ChatMessage[],
       ctx?: string | null,
       attachments?: Array<{ base64: string; mediaType: string; name?: string }>,
-      options?: { displayAs?: ChatMessage["displayAs"]; planMode?: boolean },
+      options?: { displayAs?: ChatMessage["displayAs"]; mode?: "plan" | "build"; planMode?: boolean; buildMode?: boolean },
     ) => {
       const imgAttachments = (attachments ?? []).filter((a) => a.mediaType?.startsWith("image/"));
       const firstImg = imgAttachments[0];
@@ -381,6 +381,9 @@ export function useChatStream(
         sessionId: sid,
         ...(projectId ? { projectId } : {}),
         message: routedText,
+        ...(options?.mode ? { mode: options.mode } : {}),
+        planMode: options?.planMode,
+        buildMode: options?.buildMode,
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,
         workspaceLens: lensCtx.wsLens,
