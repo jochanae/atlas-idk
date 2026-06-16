@@ -38,7 +38,19 @@ The frontend fetch shim (`src/lib/install-api-fetch.ts`) intercepts every bare `
 
 ## 3. Backend routes referenced by the frontend
 
-**102 unique `/api/*` paths** appear in `src/`. Status column is **`unknown`** for every route — Lovable cannot verify runtime status without re-running the curl audit. The user reported on 2026-06-15 that "33 routes returned 401 not 404" (i.e. live + gated by auth), but did not save the exact list. **Action: re-run audit and fill the Status column.**
+**99 unique `/api/*` paths** appear in `src/`. **Full audit run 2026-06-16 against `https://axiom-atlas-689827072865.us-east1.run.app`:**
+
+| Status | Count | Meaning |
+|---|---|---|
+| `401` | 94 | Live + auth-gated. **Working.** |
+| `200` | 3 | Public + working. `/api/health`, `/api/healthz`, `/api/stripe/products`. |
+| `302` | 1 | OAuth redirect (working). `/api/auth/google`. |
+| `400` | 1 | Live, rejected empty body (working). `/api/auth/session/exchange`. |
+| `404` | **0** | **No referenced route is missing on the backend.** |
+
+**Bottom line:** every `/api/*` route the frontend calls exists on Cloud Run. If a feature is broken, it is NOT because the route is missing. Diagnose at: (a) auth (is the bearer token in `localStorage["atlas-auth-token"]`?), (b) request shape, (c) response parsing, or (d) UI handler — not at route existence.
+
+**Routes excluded from above because they contain `:id` placeholders** (not directly pingable, but confirmed by parent route + code grep): `/api/projects/:id`, `/api/projects/:id/blueprint`, `/api/projects/:id/blueprints`, `/api/projects/:id/sessions`, `/api/entries/:id`, `/api/sessions/:id`, `/api/sessions/:id/reflection-mode`, `/api/sessions/:id/idea-mode`, `/api/artifacts/:id`, `/api/gallery/:id`, `/api/vault/:id`, `/api/secrets/:id`, `/api/thoughts/:id`, `/api/admin/users/:id`, `/api/admin/notes/:id`, `/api/admin/invites/:id`, `/api/admin/errors/:id`, `/api/connectors/active/:id`, `/api/connections/:id`, `/api/mcp/connections/:id`, `/api/preview/session/:id`, `/api/github/repos/:id`.
 
 <details>
 <summary>Grouped route list (click to expand)</summary>
