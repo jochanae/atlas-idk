@@ -100,6 +100,9 @@ export interface NexusHandoffSignal {
   reason?: string | null;
   readyToHandoff?: boolean;
   confidence?: string;
+  projectId?: number | null;
+  /** True when emitted via explicit PROJECT_READY token (vs heuristic). */
+  explicit?: boolean;
 }
 
 export interface NexusFocusSuggestion {
