@@ -56,6 +56,7 @@ import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
+import { LIFECYCLE_META } from "@/lib/lifecycle";
 
 
 const PLACEHOLDERS = [
@@ -82,6 +83,91 @@ const THINK_FREELY_THREAD_STORAGE_KEY = "atlas-think-freely-thread";
 const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to think it through out loud — ";
 const GLOBAL_INSIGHT_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
+
+function GlobalInsightTitleCarousel({ earnedTitle }: { earnedTitle: string | null }) {
+  const resolvedEarnedTitle = earnedTitle?.trim() || null;
+  const [showEarnedTitle, setShowEarnedTitle] = useState(false);
+
+  useEffect(() => {
+    if (!resolvedEarnedTitle) {
+      setShowEarnedTitle(false);
+      return;
+    }
+
+    setShowEarnedTitle(true);
+    const id = window.setInterval(() => {
+      setShowEarnedTitle((current) => !current);
+    }, 3000);
+    return () => window.clearInterval(id);
+  }, [resolvedEarnedTitle]);
+
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          flexShrink: 0,
+          background: "var(--atlas-gold)",
+          boxShadow: "0 0 6px rgba(201,162,76,0.45)",
+        }}
+      />
+      <span
+        title={resolvedEarnedTitle ? `Global Insight / ${resolvedEarnedTitle}` : "Global Insight"}
+        style={{
+          display: "inline-grid",
+          gridTemplateAreas: "'title'",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+          maxWidth: "100%",
+          color: "var(--atlas-gold)",
+          fontFamily: "var(--app-font-sans)",
+          fontSize: "var(--ts-body)",
+          fontWeight: 500,
+          lineHeight: "var(--lh-snug)",
+          letterSpacing: "var(--ls-tight)",
+          opacity: 0.92,
+        }}
+      >
+        <span
+          style={{
+            gridArea: "title",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+            opacity: showEarnedTitle ? 0 : 1,
+            transition: "opacity 650ms ease",
+          }}
+        >
+          Global Insight
+        </span>
+        {resolvedEarnedTitle && (
+          <span
+            style={{
+              gridArea: "title",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              minWidth: 0,
+              opacity: showEarnedTitle ? 1 : 0,
+              transition: "opacity 650ms ease",
+            }}
+          >
+            {resolvedEarnedTitle}{" "}
+            <span aria-hidden style={{ color: LIFECYCLE_META.shaping.color }}>
+              🌱
+            </span>
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
 
 type HomeHandoffSignal = {
   readyToHandoff: boolean;
@@ -1818,11 +1904,23 @@ export default function Home() {
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
+  // Earned title: identity emerges, never derived from latest message.
+  // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
+  // Persisted per conversation id under `atlas-thread-title:<id>`.
+  const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
+  const handleNexusDataEvent = useCallback((data: unknown) => {
+    if (!data || typeof data !== "object") return;
+    const eventData = data as { type?: unknown; title?: unknown };
+    if (eventData.type === "conversationTitle" && typeof eventData.title === "string") {
+      setEarnedTitle(eventData.title);
+    }
+  }, []);
   const nexusChat = useNexusChatStream({
     focusProjectId: homeFocus ?? null,
     model: homeModel,
     mode: homeMode,
     conversationId: activeConversationId,
+    onData: handleNexusDataEvent,
     
     projectContext: homeFocus != null ? {
       projectId: homeFocus,
@@ -1887,11 +1985,6 @@ export default function Home() {
   const [pendingPhraseIdx, setPendingPhraseIdx] = useState(0);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   // Home lens state removed — lenses live in workspace only
-
-  // Earned title: identity emerges, never derived from latest message.
-  // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
-  // Persisted per conversation id under `atlas-thread-title:<id>`.
-  const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
 
   const [threadLoading, setThreadLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
@@ -1981,7 +2074,7 @@ export default function Home() {
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
 
   const homeConversationTitle = globalInsightOpen
-    ? "Global Insight"
+    ? null
     : homeFocus == null && nexusChat.messages.length > 0
       ? earnedTitle ?? "Untitled conversation"
       : null;
@@ -3320,7 +3413,30 @@ export default function Home() {
     const liveText = textareaRef.current?.value ?? input;
     return liveText.trim().length > 0 || attachedFiles.length > 0;
   };
+  const [globalInsightTitleSlot, setGlobalInsightTitleSlot] = useState<HTMLElement | null>(null);
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const header = document.querySelector(".atlas-app-header");
+    const titleRegion = header?.children[1] as HTMLElement | undefined;
+    if (!titleRegion) return;
+
+    const slot = document.createElement("div");
+    slot.setAttribute("data-home-global-insight-title-slot", "true");
+    slot.style.display = "flex";
+    slot.style.alignItems = "center";
+    slot.style.justifyContent = "center";
+    slot.style.maxWidth = "100%";
+    slot.style.minWidth = "0";
+
+    titleRegion.appendChild(slot);
+    setGlobalInsightTitleSlot(slot);
+
+    return () => {
+      slot.remove();
+      setGlobalInsightTitleSlot(null);
+    };
+  }, []);
 
   useEffect(() => {
     const header = document.querySelector(".atlas-app-header");
@@ -3387,10 +3503,13 @@ export default function Home() {
       }}
     >
       <FocusModeAura focus={resolvedPortfolioFocus} />
-      {/* Global Insight runs inline through the ambient home shell.
-          The "● Global Insight" pill in the subheader is the only visual marker —
-          no overlay, no duplicate header, no separate composer. */}
+      {/* Global Insight runs inline through the ambient home shell:
+          header title only, no overlay, no duplicate header, no separate composer. */}
 
+      {globalInsightTitleSlot && globalInsightOpen && createPortal(
+        <GlobalInsightTitleCarousel earnedTitle={earnedTitle} />,
+        globalInsightTitleSlot
+      )}
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
           onClick={async () => {

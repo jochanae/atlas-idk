@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { createTextPacer } from "@/lib/textPacer";
 
 export interface AtlasStreamEvent {
-  type: "token" | "step" | "done" | "error";
+  type: "token" | "step" | "done" | "error" | "data";
   data: unknown;
 }
 
@@ -11,6 +11,8 @@ export interface AtlasStreamCallbacks {
   onToken: (released: string) => void;
   /** Called when a step event arrives */
   onStep?: (step: { verb?: string; target?: string; detail?: string; status?: "ok" | "warn" | "fail" }) => void;
+  /** Called when a generic data event arrives */
+  onData?: (data: unknown) => void;
   /** Called when stream completes — receives final full text and raw meta */
   onDone: (fullText: string, meta: Record<string, unknown>) => void;
   /** Called on stream error */
@@ -172,6 +174,8 @@ export function useAtlasStream(): UseAtlasStreamReturn {
                   status?: "ok" | "warn" | "fail";
                 };
                 if (step?.verb) callbacks.onStep?.(step);
+              } else if (evtName === "data" || evtName === "") {
+                callbacks.onData?.(JSON.parse(evtData));
               } else if (evtName === "done") {
                 const meta = JSON.parse(evtData) as Record<string, unknown>;
                 await pacer.finish();

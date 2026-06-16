@@ -102,6 +102,7 @@ export interface UseNexusChatStreamOptions {
   model?: string;
   mode?: string;
   conversationId?: string | null;
+  onData?: (data: unknown) => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -135,7 +136,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
@@ -380,6 +381,7 @@ export function useNexusChatStream(
             setLiveStep(nextStep);
             setLiveSteps(prev => [...prev, nextStep].slice(-6));
           },
+          onData,
           onDone: (fullText, meta) => {
             if (meta && !(meta as any).imageGen && (meta as any).image_gen) {
               (meta as any).imageGen = (meta as any).image_gen;
@@ -533,7 +535,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [focusProjectId, isPending, model, mode, stream, abortStream, resetStreamState]);
+  }, [focusProjectId, isPending, model, mode, onData, stream, abortStream, resetStreamState]);
 
   return {
     messages,
