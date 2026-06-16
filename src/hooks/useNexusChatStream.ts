@@ -518,7 +518,25 @@ export function useNexusChatStream(
               displayText = displayText.replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "").trim();
             }
 
-            const handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
+            // Parse explicit PROJECT_READY token from stream text and synthesize
+            // a handoff signal if backend didn't already include one in meta.
+            const projectReady = parseProjectReady(displayText);
+            if (projectReady) {
+              displayText = stripProjectReady(displayText);
+            }
+
+            let handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
+            if (projectReady && !handoff) {
+              handoff = {
+                readyToHandoff: true,
+                confidence: "high",
+                projectName: projectReady.title,
+                reason: projectReady.reason,
+                explicit: true,
+              };
+            } else if (projectReady && handoff) {
+              handoff = { ...handoff, explicit: true, readyToHandoff: true };
+            }
             if (handoff) setHandoffSignal(handoff);
             const focusSuggestion = meta.focusSuggestion as NexusFocusSuggestion | undefined;
 
