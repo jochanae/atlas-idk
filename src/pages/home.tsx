@@ -148,6 +148,25 @@ type HomeMessage = {
   visualCaption?: string | null;
 };
 
+const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
+
+function parseNavigateTo(content: string): { projectId: number; cleanContent: string } | null {
+  const match = content.match(NAVIGATE_TO_RE);
+  if (!match) return null;
+
+  try {
+    const parsed = JSON.parse(match[1]) as { projectId?: unknown };
+    if (typeof parsed.projectId === "number") {
+      return {
+        projectId: parsed.projectId,
+        cleanContent: content.replace(NAVIGATE_TO_RE, "").replace(/\n{3,}/g, "\n\n").trim(),
+      };
+    }
+  } catch {}
+
+  return null;
+}
+
 function formatMessageTime(iso?: string): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -1890,6 +1909,7 @@ export default function Home() {
   const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const handledNavigateToRef = useRef<Set<string>>(new Set());
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
@@ -1904,6 +1924,21 @@ export default function Home() {
   const previousHomeMessageCountRef = useRef(0);
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
   const globalInsightSeedPendingRef = useRef(false);
+
+  useEffect(() => {
+    const messages = nexusChat.messages as HomeMessage[];
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== "assistant") return;
+
+    const parsed = parseNavigateTo(lastMessage.content);
+    if (!parsed) return;
+
+    const key = lastMessage.id ?? `${messages.length - 1}:${lastMessage.createdAt ?? ""}:${parsed.projectId}`;
+    if (handledNavigateToRef.current.has(key)) return;
+
+    handledNavigateToRef.current.add(key);
+    setLocation(`/project/${parsed.projectId}`);
+  }, [nexusChat.messages, setLocation]);
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
@@ -3732,7 +3767,13 @@ export default function Home() {
                       Gone.
                     </div>
                   )}
-                  {(nexusChat.messages as HomeMessage[]).map((msg, i) => (
+                  {(nexusChat.messages as HomeMessage[]).map((msg, i) => {
+                    const displayContent =
+                      msg.role === "assistant"
+                        ? (parseNavigateTo(msg.content)?.cleanContent ?? msg.content)
+                        : msg.content;
+
+                    return (
                     <Fragment key={i}>
                       {loadedHistoryCount > 0 && i === loadedHistoryCount && nexusChat.messages.length > loadedHistoryCount && (
                         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", opacity: 0.3 }}>
@@ -3771,7 +3812,7 @@ export default function Home() {
                             fontSize: 16, lineHeight: 1.85, color: "var(--atlas-fg)", opacity: 0.9,
                             fontFamily: "var(--app-font-sans)",
                           }}>
-                            <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
+                            <HomeChunkedBubbles text={displayContent} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                             {msg.imageGen?.images?.map((img, i) => (
                               <img
                                 key={i}
@@ -3874,12 +3915,12 @@ export default function Home() {
                             />
                           )}
                           {/* Action row — Copy + Sketch this */}
-                          {msg.content && (
+                          {displayContent && (
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 2, marginTop: 3 }}>
                               <button
                                 title={copiedMsgIdx === i ? "Copied!" : "Copy"}
                                 onClick={() => {
-                                  navigator.clipboard.writeText(msg.content).catch(() => {});
+                                  navigator.clipboard.writeText(displayContent).catch(() => {});
                                   setCopiedMsgIdx(i);
                                   setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
                                 }}
@@ -3900,7 +3941,7 @@ export default function Home() {
                               </button>
                               {!msg.streaming && (
                                 <InlineSketchOffer
-                                  text={msg.content}
+                                  text={displayContent}
                                   onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
                                 />
                               )}
@@ -4064,7 +4105,8 @@ export default function Home() {
                         )}
                     </div>
                     </Fragment>
-                  ))}
+                    );
+                  })}
 
                   {/* Thinking indicator — only before first token arrives.
                       Once the streaming assistant message has content, that
