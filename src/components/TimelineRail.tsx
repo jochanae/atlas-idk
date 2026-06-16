@@ -135,7 +135,15 @@ export function TimelineRail({
 
   useEffect(() => { setCursor(0); }, [query]);
 
-  // Track message closest to viewport center.
+  // Track focused message + which message indices are currently in viewport +
+  // the bounding rect of the chat scroll container so the rail stretches along
+  // it instead of hanging off the global header.
+  const [visibleIdxs, setVisibleIdxs] = useState<Set<number>>(new Set());
+  const [containerRect, setContainerRect] = useState<{ top: number; bottom: number; right: number } | null>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const scrollIdleTimer = useRef<number | null>(null);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     let raf = 0;
@@ -143,20 +151,37 @@ export function TimelineRail({
       const centerY = window.innerHeight / 2;
       let best = -1;
       let bestDist = Infinity;
+      const visible = new Set<number>();
       const nodes = document.querySelectorAll<HTMLElement>("[data-msg-idx]");
       nodes.forEach((n) => {
         const r = n.getBoundingClientRect();
         if (r.bottom < 0 || r.top > window.innerHeight) return;
+        const idx = Number(n.getAttribute("data-msg-idx"));
+        visible.add(idx);
         const mid = (r.top + r.bottom) / 2;
         const d = Math.abs(mid - centerY);
         if (d < bestDist) {
           bestDist = d;
-          best = Number(n.getAttribute("data-msg-idx"));
+          best = idx;
         }
       });
       setFocusIdx(best);
+      setVisibleIdxs(visible);
+
+      // Anchor the rail to the chat scroll container, not the viewport.
+      const container = document.querySelector<HTMLElement>(".atlas-chat-timeline");
+      if (container) {
+        const cr = container.getBoundingClientRect();
+        setContainerRect({ top: cr.top, bottom: window.innerHeight - cr.bottom, right: window.innerWidth - cr.right });
+      }
+    };
+    const markScrolling = () => {
+      setIsScrolling(true);
+      if (scrollIdleTimer.current) window.clearTimeout(scrollIdleTimer.current);
+      scrollIdleTimer.current = window.setTimeout(() => setIsScrolling(false), 1100);
     };
     const onScroll = () => {
+      markScrolling();
       if (raf) return;
       raf = window.requestAnimationFrame(() => { raf = 0; compute(); });
     };
@@ -167,8 +192,10 @@ export function TimelineRail({
       window.removeEventListener("scroll", onScroll, { capture: true } as never);
       window.removeEventListener("resize", onScroll);
       if (raf) window.cancelAnimationFrame(raf);
+      if (scrollIdleTimer.current) window.clearTimeout(scrollIdleTimer.current);
     };
   }, [messages.length]);
+
 
   // One dot per unique date across all messages (user + assistant).
   const dateDots = useMemo(() => {
