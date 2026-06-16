@@ -4629,15 +4629,9 @@ export default function Workspace() {
     })();
     if (!fromHome) return;
     if (messages.length > 0) { homeHandoffPrimed.current = true; return; }
-    if (!project?.memory) return;
-    try {
-      const mem = JSON.parse(project.memory);
-      const briefEntry = mem?.entries?.find((e: any) =>
-        e.tier === 1 && typeof e.text === "string" && e.text.startsWith("Project brief from home conversation:")
-      );
-      if (!briefEntry) { homeHandoffPrimed.current = true; return; }
+    if (!project) return;
+    const primeHomeHandoff = (prompt: string) => {
       homeHandoffPrimed.current = true;
-      const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
       void fetch(`/api/sessions/${sessionId}/idea-mode`, {
         method: "POST",
         credentials: "include",
@@ -4645,10 +4639,27 @@ export default function Workspace() {
         body: JSON.stringify({ enabled: true }),
       }).catch(() => {});
       setTimeout(() => {
-        doSend(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`, sessionId, []);
+        doSend(prompt, sessionId, []);
       }, 300);
-    } catch { homeHandoffPrimed.current = true; }
-  }, [sessionId, messages.length, project?.memory, doSend]);
+    };
+    const fallbackPrompt = `I've just arrived in the ${project.name} workspace. ${project.description ? `Here's what we're building: ${project.description}. ` : ""}Acknowledge we're starting and ask what's first.`;
+    if (!project.memory) {
+      primeHomeHandoff(fallbackPrompt);
+      return;
+    }
+    try {
+      const mem = JSON.parse(project.memory);
+      const briefEntry = mem?.entries?.find((e: any) =>
+        e.tier === 1 && typeof e.text === "string" && e.text.startsWith("Project brief from home conversation:")
+      );
+      if (!briefEntry) {
+        primeHomeHandoff(fallbackPrompt);
+        return;
+      }
+      const briefText = (briefEntry.text as string).replace("Project brief from home conversation: ", "");
+      primeHomeHandoff(`I've just arrived from our home conversation. You have my project brief in memory: "${briefText}". Acknowledge what we discussed and where we're starting — then ask what's first.`);
+    } catch { primeHomeHandoff(fallbackPrompt); }
+  }, [sessionId, messages.length, project, doSend]);
 
   const sendFromIntentCapture = useCallback((text: string) => {
     const trimmed = text.trim();
