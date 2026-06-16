@@ -375,6 +375,8 @@ export function GenerateBlueprintPill({
   onCreated?: (blueprintId: number | string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const trace = (step: string, detail?: unknown) => {
     // eslint-disable-next-line no-console
@@ -389,6 +391,7 @@ export function GenerateBlueprintPill({
   };
 
   const ensureIdeaModeSession = async () => {
+    setStatus("Preparing conversation context…");
     trace("ensureIdeaModeSession: list sessions", { projectId });
     const sessionsRes = await fetch(`/api/projects/${projectId}/sessions`, { credentials: "include" });
     const sessionsBody = await readBody(sessionsRes);
@@ -426,6 +429,7 @@ export function GenerateBlueprintPill({
   };
 
   const callBlueprint = async () => {
+    setStatus("Generating blueprint…");
     trace("POST /blueprint", { projectId });
     const res = await fetch(`/api/projects/${projectId}/blueprint`, {
       method: "POST", credentials: "include",
@@ -440,14 +444,16 @@ export function GenerateBlueprintPill({
   const generate = async () => {
     if (busy) return;
     setBusy(true);
+    setError(null);
+    setStatus("Generating blueprint…");
     trace("── generate start ──", { projectId });
     try {
       let { res, body } = await callBlueprint();
       if (!res.ok) {
         const errMsg = (body.json?.error as string | undefined) ?? body.text;
         trace("first attempt failed", { status: res.status, errMsg });
-        if (errMsg && /idea mode session/i.test(errMsg)) {
-          trace("no idea-mode session → bootstrapping");
+        if (errMsg && /idea mode|idea-mode|conversation messages/i.test(errMsg)) {
+          trace("missing idea-mode context → bootstrapping");
           await ensureIdeaModeSession();
           ({ res, body } = await callBlueprint());
         }
@@ -458,11 +464,14 @@ export function GenerateBlueprintPill({
       }
       const bpId = body.json?.blueprint?.id ?? body.json?.id;
       trace("success", { bpId });
+      setStatus(null);
       toast.success("Blueprint created.");
       onCreated?.(bpId);
     } catch (e: any) {
       const msg = e?.message || "Generation failed";
       console.error("[blueprint] FAILED", e);
+      setError(msg);
+      setStatus(null);
       toast.error(msg, { duration: 10000, description: "Check console for full trace." });
     } finally {
       setBusy(false);
@@ -471,7 +480,7 @@ export function GenerateBlueprintPill({
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 8 }}>
       <button
         onClick={generate}
         disabled={busy}
@@ -490,6 +499,19 @@ export function GenerateBlueprintPill({
       >
         ✦ {busy ? "Generating…" : "Generate Blueprint"}
       </button>
+      {(status || error) && (
+        <div style={{
+          maxWidth: 300,
+          fontFamily: MONO,
+          fontSize: 10,
+          lineHeight: 1.5,
+          color: error ? "var(--atlas-ember)" : MUTED,
+          opacity: error ? 0.95 : 0.72,
+          textAlign: "center",
+        }}>
+          {error ?? status}
+        </div>
+      )}
     </div>
   );
 }
