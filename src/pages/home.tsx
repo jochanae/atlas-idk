@@ -3473,7 +3473,9 @@ export default function Home() {
         </div>
       )}
 
-      {homeUnifiedSubheader}
+      <div style={{ position: "sticky", top: 0, zIndex: 19 }}>
+        {homeUnifiedSubheader}
+      </div>
       
 
 
