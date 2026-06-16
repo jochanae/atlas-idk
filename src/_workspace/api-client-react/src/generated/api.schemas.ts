@@ -14,6 +14,7 @@ export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 export const ProjectStatus = {
   shaping: "shaping",
   committed: "committed",
+  built: "built",
   archived: "archived",
 } as const;
 
