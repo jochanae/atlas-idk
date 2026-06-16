@@ -114,6 +114,19 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
     setRepoError(null);
   };
 
+  const isBuilt = (project as any).status === "built";
+  const handleMarkBuilt = () => {
+    if (isBuilt) return;
+    updateProject.mutate(
+      { id: project.id, data: { status: "built" } as any },
+      {
+        onSuccess: () => {
+          onSaved?.();
+        },
+      }
+    );
+  };
+
   const handleSave = () => {
     const primaryRepo = linkedRepos[0] ?? null;
     const data: UpdateProjectBodyWithLinkedRepos = {
