@@ -3146,6 +3146,7 @@ export default function Home() {
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
+      void callGlobalInsightMode(false);
       setGlobalInsightOpen(false);
       handleNewConversation();
       setDepth("ambient");
@@ -3153,7 +3154,7 @@ export default function Home() {
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [handleNewConversation, setDepth]);
+  }, [callGlobalInsightMode, handleNewConversation, setDepth]);
 
 
   // Hydrate earned title when the active conversation changes.
