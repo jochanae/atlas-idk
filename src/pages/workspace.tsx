@@ -2063,11 +2063,9 @@ function TerminalPanel({
         <div
           style={{
             flex: 1, minWidth: 0,
-            display: isDesktopView ? "grid" : "flex",
-            gridTemplateColumns: isDesktopView ? "repeat(4, minmax(0,1fr))" : undefined,
-            gap: 6,
-            overflowX: isDesktopView ? "visible" : "auto",
-            scrollbarWidth: "none",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
           }}
         >
           {MACROS.map(m => (
