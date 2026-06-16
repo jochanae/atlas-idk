@@ -1779,6 +1779,7 @@ function TerminalPanel({
     else runCommand(value);
   }, [input, nlMode, runCommand, runNaturalLanguage]);
 
+  const [activeMacro, setActiveMacro] = useState<string>("npm run build");
   const runMacro = useCallback((cmd: string) => {
     if (cmd === "__clear__") { setLines(welcomeLines()); return; }
     setNlMode(false);
