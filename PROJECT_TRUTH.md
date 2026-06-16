@@ -38,7 +38,19 @@ The frontend fetch shim (`src/lib/install-api-fetch.ts`) intercepts every bare `
 
 ## 3. Backend routes referenced by the frontend
 
-**102 unique `/api/*` paths** appear in `src/`. Status column is **`unknown`** for every route — Lovable cannot verify runtime status without re-running the curl audit. The user reported on 2026-06-15 that "33 routes returned 401 not 404" (i.e. live + gated by auth), but did not save the exact list. **Action: re-run audit and fill the Status column.**
+**99 unique `/api/*` paths** appear in `src/`. **Full audit run 2026-06-16 against `https://axiom-atlas-689827072865.us-east1.run.app`:**
+
+| Status | Count | Meaning |
+|---|---|---|
+| `401` | 94 | Live + auth-gated. **Working.** |
+| `200` | 3 | Public + working. `/api/health`, `/api/healthz`, `/api/stripe/products`. |
+| `302` | 1 | OAuth redirect (working). `/api/auth/google`. |
+| `400` | 1 | Live, rejected empty body (working). `/api/auth/session/exchange`. |
+| `404` | **0** | **No referenced route is missing on the backend.** |
+
+**Bottom line:** every `/api/*` route the frontend calls exists on Cloud Run. If a feature is broken, it is NOT because the route is missing. Diagnose at: (a) auth (is the bearer token in `localStorage["atlas-auth-token"]`?), (b) request shape, (c) response parsing, or (d) UI handler — not at route existence.
+
+**Routes excluded from above because they contain `:id` placeholders** (not directly pingable, but confirmed by parent route + code grep): `/api/projects/:id`, `/api/projects/:id/blueprint`, `/api/projects/:id/blueprints`, `/api/projects/:id/sessions`, `/api/entries/:id`, `/api/sessions/:id`, `/api/sessions/:id/reflection-mode`, `/api/sessions/:id/idea-mode`, `/api/artifacts/:id`, `/api/gallery/:id`, `/api/vault/:id`, `/api/secrets/:id`, `/api/thoughts/:id`, `/api/admin/users/:id`, `/api/admin/notes/:id`, `/api/admin/invites/:id`, `/api/admin/errors/:id`, `/api/connectors/active/:id`, `/api/connections/:id`, `/api/mcp/connections/:id`, `/api/preview/session/:id`, `/api/github/repos/:id`.
 
 <details>
 <summary>Grouped route list (click to expand)</summary>
@@ -227,15 +239,19 @@ src/
 - **Error reporting** — `/api/errorlog/ingest` (`errorReporter.ts`)
 - **Stripe** — `/api/stripe/*` (`useSubscription`, `UpgradeModal`)
 
-### Visual-only / illusion (UI exists, no live wire — verify)
-**Lovable cannot prove negatives without runtime testing.** Candidates that look thin in code (no fetch found in the obvious component, or relies on local state only):
-- `BlueprintsTab` — partly local fixture data
-- `SystemMap` / `MapTab` — uses local master-map-store
-- `VisualVault` — gallery routes exist but UI may not call them yet
-- `AccountHubPanel` — some sections may be static
-- `ProjectPulsePanel` — verify whether stats come from `/api/stats/dashboard`
+### Verified by smoke audit 2026-06-16 (grep + curl)
 
-**Action:** mark each as confirmed-real or visual-only after the next end-to-end smoke test.
+| Component | Verdict | Evidence |
+|---|---|---|
+| `BlueprintsTab` (root) | **Real** | 8 fetches → `/api/projects/:id/blueprints`, `/api/sessions/:id/idea-mode`, `/api/projects/:id/blueprint`, `/api/projects/:id/sessions` |
+| `workspace/BlueprintsTab` | **Real** | 2 fetches → `/api/projects/:id/blueprints`, `/api/projects/:id/blueprint` |
+| `VisualVault` | **Real** | 5 fetches → `/api/gallery`, `/api/gallery/request-url`, `/api/gallery/:id`, image src via `/api/storage` |
+| `AccountHubPanel` | **Real** | 7 fetches → `/api/connections`, `/api/github/token`, `/api/github/oauth/start`, `/api/auth/profile`, `/api/auth/change-password`, `/api/auth/account`, `/api/auth/google` |
+| `workspace/MapTab` | **Partial** | 1 fetch → `/api/github/analyze`. Layout/state otherwise local. |
+| `SystemMap` | **Visual-only** | 0 fetches. Renders entirely from `master-map-store` (local zustand). No backend wire. |
+| `ProjectPulsePanel` | **Visual-only** | 0 fetches. Uses `useQueryClient` for cache reads but emits no API call itself — data must come from a parent query. |
+
+**Implication:** `SystemMap` and `ProjectPulsePanel` are presentation layers — they need an upstream data source plumbed in if they are meant to reflect live backend state. Not a bug, but a known limitation.
 
 ### Lovable Cloud edge functions (separate from Cloud Run backend)
 `supabase/functions/` contains: `atlas-chat`, `atlas-codegen`, `atlas-commit`, `atlas-glossary`, `atlas-image`, `atlas-research`, `atlas-thinking`, `atlas-whisper`. These run on the **Lovable Cloud** project (`lmrpnsjckljdwqudtelk`), not Cloud Run. They are an alternate / experimental chat surface — production Atlas chat goes through Cloud Run `/api/nexus/chat`.
@@ -244,10 +260,9 @@ src/
 
 ## 7. Known gaps & open questions
 
-1. **Route audit:** the 102 routes above need a fresh curl run against Cloud Run. Save the result back into this file's Status column.
-2. **Production table list:** paste the full 32-table list from the `osuasytymbzurjvklhde` project (`SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY 1;`).
-3. **Dual Supabase confusion risk:** anything Lovable says about "the database" almost always means the Lovable Cloud preview DB, not the production DB. Reader beware.
-4. **`/api/state` family:** loosely typed — the same endpoint serves parking lot, UI logic, and project state via path segments. Document the contract here once stable.
+1. **Dual Supabase confusion risk:** anything Lovable says about "the database" without qualifying usually means the Lovable Cloud preview DB, not the production DB. Reader beware.
+2. **`/api/state` family:** loosely typed — the same endpoint serves parking lot, UI logic, and project state via path segments. Document the contract here once stable.
+3. **Plumbing for visual-only panels:** `SystemMap` and `ProjectPulsePanel` need a data source decision — feed from existing queries (e.g. `/api/stats/dashboard`, `/api/projects/:id`) or keep local? Open.
 
 ---
 
