@@ -272,9 +272,7 @@ export function ChatStream(props: ChatStreamProps) {
                 <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={projectId} />
               </div>
             )}
-            {!msg.imageB64 && !msg.imageGen && (
-              <InlineSketchOffer text={msg.content || ""} onSend={onSend} />
-            )}
+            {/* Sketch offer now lives as an icon in AssistantBubble's action bar. */}
           </div>
         )
       )}
