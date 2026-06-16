@@ -337,7 +337,7 @@ export function TimelineRail({
               height: "100%",
               display: "flex",
               flexDirection: "column",
-              justifyContent: dateDots.length <= 6 ? "space-around" : "space-between",
+              justifyContent: visibleDots.length <= 4 ? "space-around" : "space-between",
               padding: "4px 0",
             }}
           >
