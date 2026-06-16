@@ -9,6 +9,7 @@ type UnifiedSubheaderProps = {
   onTabChange: (tab: UnifiedSubheaderTab) => void;
   hasProject: boolean;
   isMobile: boolean;
+  topOffset?: number;
   showWorkspaceMenu?: boolean;
   showLaunchWhenNoProject?: boolean;
   onMenuAction?: (action: UnifiedSubheaderMenuAction) => void;
@@ -53,6 +54,7 @@ export function UnifiedSubheader({
   onTabChange,
   hasProject,
   isMobile,
+  topOffset = 50,
   showWorkspaceMenu = false,
   showLaunchWhenNoProject = false,
   onLaunch,
@@ -143,7 +145,7 @@ export function UnifiedSubheader({
     <div
       className={`atlas-unified-subheader atlas-unified-subheader--${expanded ? "expanded" : "collapsed"}`}
       style={{
-        marginTop: 50,
+        marginTop: topOffset,
         flexShrink: 0,
         position: "relative",
         zIndex: 20,

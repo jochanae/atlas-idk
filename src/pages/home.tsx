@@ -3330,6 +3330,7 @@ export default function Home() {
       onTabChange={handleHomeSubheaderTabChange}
       hasProject={false}
       isMobile={isMobile}
+      topOffset={globalInsightOpen ? 0 : 50}
       showWorkspaceMenu
       showLaunchWhenNoProject
       onLaunch={handleHomeLaunchWorkspace}
@@ -4094,7 +4095,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  {showScrollBtn && !globalInsightOpen && (
+                  {showScrollBtn && (
                     <button
                       onClick={() => chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" })}
                       aria-label="Scroll to latest"
