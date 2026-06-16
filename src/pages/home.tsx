@@ -1744,14 +1744,8 @@ export default function Home() {
   const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem("atlas-home-conversation-id") ||
-        localStorage.getItem("atlas-home-conversation-id");
-    } catch {
-      return null;
-    }
-  });
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
     try { sessionStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -2413,6 +2407,7 @@ export default function Home() {
     if (msgs.length === lastSavedTurnRef.current) return;
     lastSavedTurnRef.current = msgs.length;
     const conversationId = activeConversationId;
+    const resetGeneration = homeResetGenerationRef.current;
     fetch("/api/nexus/conversation/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2421,6 +2416,7 @@ export default function Home() {
     })
       .then(r => r.ok ? r.json().catch(() => null) : null)
       .then((data: any) => {
+        if (homeResetGenerationRef.current !== resetGeneration) return;
         const newId = data?.conversationId ?? data?.id;
         if (newId && newId !== activeConversationId) {
           rememberActiveConversationId(newId);
@@ -2460,6 +2456,7 @@ export default function Home() {
     }
     if (conversationThreadRequestRef.current?.conversationId === activeConversationId) return;
     const requestId = (conversationThreadRequestRef.current?.requestId ?? 0) + 1;
+    const resetGeneration = homeResetGenerationRef.current;
     conversationThreadRequestRef.current = { conversationId: activeConversationId, requestId };
     nexusChat.setMessages([]);
     setLoadedHistoryCount(0);
@@ -2473,6 +2470,7 @@ export default function Home() {
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(async (msgs: Array<{ role: string; content: string }>) => {
+        if (homeResetGenerationRef.current !== resetGeneration) return;
         if (conversationThreadRequestRef.current?.requestId !== requestId) return;
         const normalizedMessages = normalizeLoadedHomeMessages(msgs);
         if (normalizedMessages.length > 0) {
@@ -2483,6 +2481,7 @@ export default function Home() {
       })
       .catch(() => {})
       .finally(() => {
+        if (homeResetGenerationRef.current !== resetGeneration) return;
         if (conversationThreadRequestRef.current?.requestId === requestId) {
           setThreadLoading(false);
         }
