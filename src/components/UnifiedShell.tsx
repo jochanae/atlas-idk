@@ -1481,28 +1481,34 @@ function ShellFooterNavItem({ item, visible }: { item: ShellNavItem; visible: bo
 
 function ShellCenterButton({
   onTap,
+  onMediumPress,
   onLongPress,
 }: {
   onTap: () => void;
+  onMediumPress: () => void;
   onLongPress: () => void;
 }) {
   // Gesture thresholds (ms)
-  // tap        : < 600
-  // long-press : >= 600 → /projects
-  const LONG_MS = 600;
+  // tap         : < 350           → home
+  // medium      : 350 – 899        → last active project
+  // long        : >= 900           → all projects
+  const MED_MS = 350;
+  const LONG_MS = 900;
   const MOVE_CANCEL_PX = 10;
 
   const downAtRef = useRef<number | null>(null);
   const startXYRef = useRef<{ x: number; y: number } | null>(null);
+  const medTimerRef = useRef<number | null>(null);
   const longTimerRef = useRef<number | null>(null);
   const cancelledRef = useRef(false);
-  const [stage, setStage] = useState<"idle" | "tap" | "long">("idle");
+  const [stage, setStage] = useState<"idle" | "tap" | "medium" | "long">("idle");
 
   const haptic = useCallback((ms: number) => {
     try { if ("vibrate" in navigator) navigator.vibrate(ms); } catch {}
   }, []);
 
   const clearTimers = useCallback(() => {
+    if (medTimerRef.current) { window.clearTimeout(medTimerRef.current); medTimerRef.current = null; }
     if (longTimerRef.current) { window.clearTimeout(longTimerRef.current); longTimerRef.current = null; }
   }, []);
 
@@ -1521,6 +1527,10 @@ function ShellCenterButton({
     startXYRef.current = { x: e.clientX, y: e.clientY };
     cancelledRef.current = false;
     setStage("tap");
+    medTimerRef.current = window.setTimeout(() => {
+      setStage("medium");
+      haptic(20);
+    }, MED_MS);
     longTimerRef.current = window.setTimeout(() => {
       setStage("long");
       haptic(35);
@@ -1544,8 +1554,9 @@ function ShellCenterButton({
     setStage("idle");
     downAtRef.current = null;
     if (dur >= LONG_MS) onLongPress();
+    else if (dur >= MED_MS) onMediumPress();
     else onTap();
-  }, [clearTimers, reset, onTap, onLongPress]);
+  }, [clearTimers, reset, onTap, onMediumPress, onLongPress]);
 
   const ringColor =
     stage === "long" ? "rgba(var(--atlas-gold-rgb),0.95)" :
