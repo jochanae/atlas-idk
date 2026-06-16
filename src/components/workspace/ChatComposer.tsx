@@ -420,19 +420,13 @@ export function ChatComposer(props: ChatComposerProps) {
             as a single Atlas-voiced shaping question. No wizard, no setup card. */}
 
 
-        {/* Generate Blueprint pill — only surfaces when Atlas explicitly offers it */}
-        {(() => {
-          const assistantMsgs = messages.filter(m => m.role === "assistant");
-          const last = assistantMsgs[assistantMsgs.length - 1]?.content ?? "";
-          const phraseHit = /Want me to generate a blueprint|Blueprint ready|Shall I generate a blueprint/i.test(last);
-          if (!phraseHit) return null;
-          return (
-            <GenerateBlueprintPill
-              projectId={projectId}
-              onCreated={() => { if (isMobile) setMobileTab("blueprints"); else setDesktopForceTab("blueprints"); }}
-            />
-          );
-        })()}
+        {/* Generate Blueprint pill — always available above composer.
+            The pill itself ensures an idea-mode session exists before generating,
+            so it works even without Atlas explicitly offering it. */}
+        <GenerateBlueprintPill
+          projectId={projectId}
+          onCreated={() => { if (isMobile) setMobileTab("blueprints"); else setDesktopForceTab("blueprints"); }}
+        />
 
         {/* Attachment preview strip */}
         {attachedFiles.length > 0 && (

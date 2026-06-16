@@ -262,9 +262,10 @@ export function BlueprintsTab({
         }}>
           <FileText size={28} strokeWidth={1.3} style={{ opacity: 0.4, marginBottom: 12 }} />
           <div>No blueprints yet.</div>
-          <div style={{ opacity: 0.75, marginTop: 4 }}>
-            Start an idea conversation and Atlas will offer to generate one.
+          <div style={{ opacity: 0.75, marginTop: 4, marginBottom: 18 }}>
+            Generate one from the current conversation, or start an idea thread.
           </div>
+          <GenerateBlueprintPill projectId={projectId} onCreated={() => void loadList()} />
           {listError && (
             <div style={{ marginTop: 18, fontSize: 11, opacity: 0.5, fontFamily: MONO }}>
               {listError}
