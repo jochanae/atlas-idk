@@ -1785,11 +1785,11 @@ function TerminalPanel({
     runCommand(cmd);
   }, [runCommand, welcomeLines]);
 
-  const MACROS: { label: string; icon: string; cmd: string }[] = [
-    { label: "Build Project",         icon: "🛠️", cmd: "npm run build" },
-    { label: "Test Server",           icon: "🔄", cmd: "curl -s -o /dev/null -w 'HTTP %{http_code}\\n' http://localhost:5173 || echo offline" },
-    { label: "Install Dependencies",  icon: "📦", cmd: "npm install" },
-    { label: "Clear Terminal",        icon: "🧹", cmd: "__clear__" },
+  const MACROS: { label: string; shortLabel: string; icon: string; cmd: string }[] = [
+    { label: "Build Project",         shortLabel: "Build",   icon: "🛠️", cmd: "npm run build" },
+    { label: "Test Server",           shortLabel: "Test",    icon: "🔄", cmd: "curl -s -o /dev/null -w 'HTTP %{http_code}\\n' http://localhost:5173 || echo offline" },
+    { label: "Install Dependencies",  shortLabel: "Install", icon: "📦", cmd: "npm install" },
+    { label: "Clear Terminal",        shortLabel: "Clear",   icon: "🧹", cmd: "__clear__" },
   ];
 
   const HELP_GROUPS: { title: string; items: { cmd: string; desc: string }[] }[] = [
