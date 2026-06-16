@@ -5071,8 +5071,10 @@ export default function Home() {
         />
       )}
 
-      {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
-      <TimelineRail messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      {/* Right-edge timeline rail — only in active thread state, never in ambient/empty home */}
+      {nexusChat.messages.length > 0 && !globalInsightOpen && (
+        <TimelineRail messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
+      )}
 
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
