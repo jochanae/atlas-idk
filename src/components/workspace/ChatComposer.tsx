@@ -461,29 +461,36 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
-        {(planBannerVisible || (!composerModeIsPlan && chatPending)) && (
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
-              marginBottom: 6,
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
-              color: composerModeAccent,
-              opacity: 0.85,
-              animation: "fade-in 0.2s ease-out",
-              pointerEvents: "none",
-            }}
-          >
-            <span style={{
-              width: 5, height: 5, borderRadius: "50%",
-              background: composerModeAccent,
-              boxShadow: `0 0 6px ${composerModeShadow}`,
-            }} />
-            {composerModeIsPlan ? "Plan Mode Active · Strategizing" : `Build Mode · ${chatPending ? "Executing" : "Ready"}`}
-          </div>
-        )}
+        {(() => {
+          const bannerActive = planBannerVisible || chatPending;
+          return (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+                marginBottom: bannerActive ? 6 : 0,
+                height: bannerActive ? "auto" : 0,
+                overflow: "hidden",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+                color: composerModeAccent,
+                opacity: bannerActive ? 0.85 : 0,
+                transition: "opacity 1.5s ease-out",
+                pointerEvents: "none",
+              }}
+            >
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: composerModeAccent,
+                boxShadow: `0 0 6px ${composerModeShadow}`,
+              }} />
+              {composerModeIsPlan
+                ? `Plan Mode · ${chatPending ? "Strategizing" : "Active"}`
+                : `Build Mode · ${chatPending ? "Executing" : "Ready"}`}
+            </div>
+          );
+        })()}
 
         <div
           className="atlas-input-shell"
@@ -494,13 +501,13 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              {!hasInput && (composerModeIsPlan || !composerModeIsPlan) && (composerModeIsPlan ? planBannerVisible : true) ? (
+              {!hasInput && (planBannerVisible || chatPending) ? (
                 <div
                   aria-hidden
                   style={{
                     position: "absolute", top: 0, left: 2,
                     color: composerModeAccent, fontSize: 14, lineHeight: 1.6,
-                    opacity: composerModeIsPlan ? (planBannerVisible ? 0.75 : 0) : 0.75,
+                    opacity: (planBannerVisible || chatPending) ? 0.75 : 0,
                     transition: "opacity 1.5s ease-out",
                     pointerEvents: "none",
                     fontFamily: "var(--app-font-sans)",
@@ -508,8 +515,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   }}
                 >
                   {composerModeIsPlan
-                    ? "Strategizing…"
-                    : chatPending ? "Executing build…" : "Ready to build…"}
+                    ? (chatPending ? "Strategizing…" : "Ready to strategize…")
+                    : (chatPending ? "Executing build…" : "Ready to build…")}
                 </div>
               ) : (
                 <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
