@@ -203,6 +203,38 @@ export function ProjectPulsePanel(props: Props) {
           </>
         )}
 
+        {/* Mark as Built — user-confirmed transition */}
+        {state !== "built" && (
+          <div style={{ marginTop: 18 }}>
+            <button
+              type="button"
+              onClick={handleMarkBuilt}
+              disabled={updateProject.isPending || justMarked}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1px solid ${justMarked ? "rgba(120,180,160,0.55)" : "rgba(201,162,76,0.32)"}`,
+                background: justMarked ? "rgba(120,180,160,0.16)" : "rgba(201,162,76,0.10)",
+                color: justMarked ? "rgba(180,220,200,0.95)" : "var(--atlas-gold)",
+                cursor: updateProject.isPending ? "not-allowed" : "pointer",
+                fontSize: 12.5,
+                fontWeight: 600,
+                fontFamily: "var(--app-font-sans)",
+                letterSpacing: "0.02em",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                transition: "all 180ms ease",
+              }}
+            >
+              <Check size={14} strokeWidth={2} />
+              {justMarked ? "Marked as Built" : updateProject.isPending ? "Saving…" : "Mark as Built"}
+            </button>
+            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6, fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
+              Built means complete and successful. This is your call — Atlas won&apos;t make it for you.
+            </div>
+          </div>
+        )}
+
         {/* Footnote — explains who decides what */}
         <div style={{
           marginTop: 16, paddingTop: 12,
