@@ -3131,6 +3131,7 @@ export default function Home() {
   }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, queryClient, setLocation]);
 
   const handleNewConversation = useCallback(() => {
+    homeResetGenerationRef.current += 1;
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
