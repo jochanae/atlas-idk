@@ -494,20 +494,22 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              {composerModeIsPlan && !hasInput ? (
+              {!hasInput && (composerModeIsPlan || !composerModeIsPlan) && (composerModeIsPlan ? planBannerVisible : true) ? (
                 <div
                   aria-hidden
                   style={{
                     position: "absolute", top: 0, left: 2,
-                    color: "var(--atlas-gold)", fontSize: 14, lineHeight: 1.6,
-                    opacity: planBannerVisible ? 0.75 : 0,
+                    color: composerModeAccent, fontSize: 14, lineHeight: 1.6,
+                    opacity: composerModeIsPlan ? (planBannerVisible ? 0.75 : 0) : 0.75,
                     transition: "opacity 1.5s ease-out",
                     pointerEvents: "none",
                     fontFamily: "var(--app-font-sans)",
                     fontStyle: "italic",
                   }}
                 >
-                  Strategizing…
+                  {composerModeIsPlan
+                    ? "Strategizing…"
+                    : chatPending ? "Executing build…" : "Ready to build…"}
                 </div>
               ) : (
                 <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
