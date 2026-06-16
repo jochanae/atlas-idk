@@ -3776,12 +3776,7 @@ export default function Home() {
                               />
                             ))}
                           </div>
-                          {!msg.streaming && !!msg.content && (
-                            <InlineSketchOffer
-                              text={msg.content}
-                              onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
-                            />
-                          )}
+                          {/* Sketch offer is now an icon in the action row below, next to Copy. */}
                           {msg.researchResult && (
                             <ResearchCard
                               url={msg.researchResult.url}
