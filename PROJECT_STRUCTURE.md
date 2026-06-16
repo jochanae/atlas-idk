@@ -1,65 +1,58 @@
 # PROJECT_STRUCTURE.md
 
-Lane contract for Atlas (Lovable frontend) + Axiom (Railway/Neon/Drizzle backend).
+Lane contract for Atlas (Lovable frontend) + Axiom-Atlas (Google Cloud Run backend + Supabase DB).
 Both AI tools (Lovable agent and Cursor/Claude) read this file before editing.
 
-## Lanes
+## ⚠️ HARD RULE — LOVABLE IS FRONTEND ONLY
 
-| Path | Owner | Tool allowed to edit |
-|---|---|---|
-| `/src/**` | Frontend | **Lovable only** |
-| `/public/**` | Frontend | **Lovable only** |
-| `/supabase/**` | Frontend (Lovable Cloud, retired post-cutover) | **Lovable only** |
-| `/axiom/artifacts/atlas/**` | TRANSIENT — dissolved into `/src/` during merge | Lovable (during merge only) |
-| `/axiom/artifacts/api-server/**` | Backend | **Cursor / Claude only** |
-| `/axiom/lib/**` | Backend (Drizzle schema, shared types) | **Cursor / Claude only** |
-| `/axiom/pnpm-workspace.yaml` | Backend monorepo config | **Cursor / Claude only** |
-| `/axiom/package.json` | Backend monorepo root | **Cursor / Claude only** |
-| `/package.json` (repo root) | Frontend | **Lovable only** |
-| `PROJECT_STRUCTURE.md` | Both (read before editing) | Either, with care |
+Lovable works on **this repo only** (`/src/**`, `/public/**`, `index.html`, root config).
+Lovable does **NOT**:
+- Modify backend code
+- Modify the Cloud Run service
+- Modify Supabase schema, RLS, GRANTs, migrations, or edge functions intended to run server-side
+- Write or run SQL against the user's Supabase project
+- Touch `/axiom/**` (legacy path — backend now lives in a separate repo)
 
-**Hard rule:** Lovable does not touch anything under `/axiom/` after the merge completes (except to read shared types via path alias). Cursor does not touch anything under `/src/`.
+If a frontend change requires a backend change, Lovable **stops and hands a spec to the user** (route, request body, response shape, auth expectation). The user runs it through **Cursor** against the backend repo.
+
+## Backend (separate, NOT editable by Lovable)
+
+- **Repo:** `Axiom-Atlas` (GitHub)
+- **Runtime:** Google Cloud Run
+- **Base URL:** `https://axiom-atlas-689827072865.us-east1.run.app`
+- **Database:** Supabase (the user's own project)
+- **Edited by:** Cursor / Claude only
+
+## Frontend (this repo — Lovable's lane)
+
+| Path | Owner |
+|---|---|
+| `/src/**` | Lovable |
+| `/public/**` | Lovable |
+| `/index.html` | Lovable |
+| `/package.json`, root config | Lovable |
+| `/supabase/functions/**` | Lovable may edit (Lovable Cloud edge functions used by frontend) |
+| `PROJECT_STRUCTURE.md` | Either, with care |
 
 ## Deploy targets
 
-- **Frontend:** Vercel, root = repo root, framework = TanStack Start.
-- **Backend:** Railway, root = `axiom/`, install = `pnpm install --frozen-lockfile`, build = `pnpm --filter @workspace/api-server build`, start = `pnpm --filter @workspace/api-server start`.
-
-Two lockfiles (bun.lockb at root, pnpm-lock.yaml in `/axiom/`). Do not unify.
+- **Frontend:** Vercel (this repo)
+- **Backend:** Google Cloud Run (Axiom-Atlas repo, separate)
 
 ## Auth boundary
 
-**Express session auth (Axiom) wins.** Lovable Cloud auth is retired after cutover.
+- Frontend `fetch()` to backend uses `credentials: 'include'`.
+- Backend at Cloud Run owns sessions/cookies.
+- `useAuth()` calls `GET /api/auth/me` on the Cloud Run base URL.
+- Supabase client in `src/integrations/supabase/` is for Lovable Cloud edge functions only — not the primary auth.
 
-- Frontend `fetch()` uses `credentials: 'include'`.
-- Backend CORS: `Access-Control-Allow-Origin: <frontend-domain>`, `Access-Control-Allow-Credentials: true`.
-- Cookie: `SameSite=None; Secure` in production.
-- Login/signup POST to `/api/auth/login` on Railway, not Supabase.
-- `useAuth()` calls `GET /api/auth/me` (no Supabase SDK in frontend post-cutover).
-- `src/integrations/supabase/` is deleted once cutover is verified end-to-end.
+## When Lovable needs a backend change
 
-## Environment variables
+Lovable writes a handoff spec containing:
+1. Route + HTTP method
+2. Request body shape
+3. Expected response shape
+4. Auth requirement (cookie? bearer?)
+5. Which frontend file/line consumes it
 
-**Frontend (`.env.local`, Vercel env):**
-- `VITE_API_URL` — Railway backend URL (dev: `http://localhost:3001`)
-
-**Backend (`.env` in `/axiom/artifacts/api-server/`, Railway env):**
-- `DATABASE_URL` — Neon connection string
-- `SESSION_SECRET` — Express session secret
-- `ANTHROPIC_API_KEY`
-- `GITHUB_TOKEN`
-
-Frontend never sees backend secrets. Lovable never edits backend env.
-
-## Schema / types contract
-
-- Drizzle schema lives in `/axiom/lib/db/`.
-- Cursor regenerates shared types after every schema change.
-- Frontend imports types via path alias (configured in `tsconfig.json` after merge).
-- Schema changes are backend PRs; frontend may need follow-up to consume new fields.
-
-## Risk reminders
-
-- Session cookie cross-origin requires `SameSite=None; Secure` + matching CORS. Test before cutover.
-- Railway filter commands MUST use `@workspace/api-server` exactly.
-- Keep Supabase auth working in parallel until session auth verified.
+User pastes that into Cursor against the `Axiom-Atlas` repo. Lovable does not attempt the change itself.
