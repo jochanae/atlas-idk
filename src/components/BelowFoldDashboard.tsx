@@ -84,6 +84,16 @@ function formatRelative(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 const MODE_COLORS: Record<number, string> = {
   0: "#C9A24C",
   1: "#06B6D4",
@@ -209,6 +219,7 @@ function ActivityHubCard({
 function ActivityRowBody({ item }: { item: ActivityItem }) {
   const dot = TYPE_COLOR[item.type];
   const label = TYPE_LABEL[item.type];
+  const [showSheet, setShowSheet] = useState(false);
 
   return (
     <div
@@ -242,11 +253,28 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
           }}>
             {label}
           </span>
-          {item.sha && (
+          {item.type === "commit" && item.sha ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowSheet(true);
+              }}
+              style={{
+                background: "transparent", border: "none", padding: 0, margin: 0,
+                cursor: "pointer", lineHeight: 1, flexShrink: 0,
+              }}
+              aria-label="Show commit details"
+            >
+              <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.04em", textDecoration: "underline", textDecorationThickness: "1px", textUnderlineOffset: 2 }}>
+                {item.sha}
+              </span>
+            </button>
+          ) : item.sha ? (
             <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.04em" }}>
               {item.sha}
             </span>
-          )}
+          ) : null}
           {item.type === "commit" && item.url && (
             <a
               href={item.url}
@@ -278,6 +306,97 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
       <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, paddingTop: 2, letterSpacing: "0.02em" }}>
         {formatRelative(item.timestamp)}
       </span>
+
+      {showSheet && item.type === "commit" && item.sha && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Commit details"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9999,
+            maxHeight: "70vh", overflowY: "auto",
+            background: "rgba(var(--atlas-bg-rgb),0.96)",
+            borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.28)",
+            borderRadius: "18px 18px 0 0",
+            boxShadow: "0 -18px 48px rgba(var(--atlas-bg-rgb),0.85)",
+            backdropFilter: "blur(18px)",
+            padding: "18px 18px calc(18px + env(safe-area-inset-bottom))",
+          }}
+        >
+          <div style={{ width: 36, height: 3, borderRadius: 999, background: "rgba(var(--atlas-gold-rgb),0.28)", margin: "0 auto 16px" }} />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSheet(false);
+            }}
+            aria-label="Close commit details"
+            style={{
+              position: "absolute", top: 14, right: 16,
+              background: "transparent", border: "none", color: "var(--atlas-muted)",
+              fontSize: 20, cursor: "pointer", padding: 0, lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+          <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>
+                Commit SHA
+              </div>
+              <div style={{ fontSize: 12, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
+                {item.sha}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
+                Project
+              </div>
+              <div style={{ fontSize: 13, color: "var(--atlas-fg)", opacity: 0.88, lineHeight: 1.4 }}>
+                {item.projectName}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
+                Commit message
+              </div>
+              <div style={{ fontSize: 13, color: "var(--atlas-fg)", opacity: 0.88, lineHeight: 1.5 }}>
+                {item.title}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
+                Timestamp
+              </div>
+              <div style={{ fontSize: 12, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.8, lineHeight: 1.4 }}>
+                {formatTimestamp(item.timestamp)}
+              </div>
+            </div>
+            {item.url && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(item.url, "_blank", "noopener,noreferrer");
+                }}
+                style={{
+                  alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7,
+                  marginTop: 4, padding: "6px 10px", borderRadius: 7, cursor: "pointer",
+                  background: "transparent", border: "1px solid var(--atlas-border)",
+                  color: "var(--atlas-muted)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+                </svg>
+                View on GitHub
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
