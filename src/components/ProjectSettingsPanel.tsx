@@ -114,6 +114,19 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
     setRepoError(null);
   };
 
+  const isBuilt = (project as any).status === "built";
+  const handleMarkBuilt = () => {
+    if (isBuilt) return;
+    updateProject.mutate(
+      { id: project.id, data: { status: "built" } as any },
+      {
+        onSuccess: () => {
+          onSaved?.();
+        },
+      }
+    );
+  };
+
   const handleSave = () => {
     const primaryRepo = linkedRepos[0] ?? null;
     const data: UpdateProjectBodyWithLinkedRepos = {
@@ -321,6 +334,35 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
               </div>
             </div>
 
+          </div>
+
+          {/* Lifecycle — user-confirmed "Built" transition */}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--atlas-border)" }}>
+            <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.7, marginBottom: 8 }}>
+              Lifecycle
+            </div>
+            <button
+              type="button"
+              onClick={handleMarkBuilt}
+              disabled={isBuilt || updateProject.isPending}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: `1px solid ${isBuilt ? "rgba(120,180,160,0.55)" : "rgba(201,162,76,0.35)"}`,
+                background: isBuilt ? "rgba(120,180,160,0.16)" : "rgba(201,162,76,0.10)",
+                color: isBuilt ? "rgba(180,220,200,0.95)" : "var(--atlas-gold)",
+                cursor: isBuilt || updateProject.isPending ? "default" : "pointer",
+                fontSize: 12.5,
+                fontWeight: 600,
+                fontFamily: "var(--app-font-sans)",
+              }}
+            >
+              {isBuilt ? "✓ Built" : updateProject.isPending ? "Saving…" : "Mark as Built"}
+            </button>
+            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.6, fontFamily: "var(--app-font-mono)", lineHeight: 1.5 }}>
+              Marks this project as complete and successful. Distinct from archived.
+            </div>
           </div>
         </div>
 
