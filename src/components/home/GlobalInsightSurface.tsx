@@ -364,6 +364,10 @@ export function GlobalInsightSurface({
       <div
         ref={scrollRef}
         className="atlas-global-insight-scroll"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+        }}
         style={{
           flex: 1,
           minHeight: 0,
