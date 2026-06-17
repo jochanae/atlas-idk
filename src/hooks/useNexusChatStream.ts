@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
-import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAutoRouteToSketchPrompt, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
 
 const STREAM_TIMEOUT_MS = 90_000;
 const NAVIGATE_TO_RE = /\s*NAVIGATE_TO:\s*(\{[^\n]*"route"\s*:\s*"([^"]+)"[^\n]*\})\s*$/;
@@ -268,7 +268,9 @@ export function useNexusChatStream(
     const effectiveText = text.trim().length > 0
       ? text
       : (imgAttachments.length > 0 ? "(image attached)" : text);
-    const routedText = imgAttachments.length > 0 ? effectiveText : routeDirectImageRequestToSketchPrompt(effectiveText);
+    // Sketch auto-routing demoted to the inline offer pill (InlineSketchOffer).
+    // Only explicit [SKETCH:*] markers (user-confirmed) short-circuit to image gen below.
+    const routedText = effectiveText;
 
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
@@ -320,7 +322,7 @@ export function useNexusChatStream(
     // /api/chat does not generate images. Route direct image
     // asks (and explicit [SKETCH:*] picks) to /api/image/generate
     // and render the result inline as an assistant message.
-    const isImageIntent = imgAttachments.length === 0 && (shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text));
+    const isImageIntent = imgAttachments.length === 0 && SKETCH_PROMPT_MARKER_RE.test(text);
     if (isImageIntent) {
       const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
       const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
