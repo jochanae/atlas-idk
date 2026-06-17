@@ -120,6 +120,13 @@ export interface NexusFocusSuggestion {
   projectName: string;
 }
 
+export interface NexusProjectReadyDoneData {
+  projectReady?: {
+    projectName: string;
+    reason: string | null;
+  };
+}
+
 export interface NexusShapingPayload {
   title: string;
   audience: string;
@@ -141,7 +148,7 @@ export interface UseNexusChatStreamOptions {
   mode?: string;
   conversationId?: string | null;
   onData?: (data: unknown) => void;
-  onProjectReady?: () => void;
+  onProjectReady?: (doneData?: NexusProjectReadyDoneData) => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -370,10 +377,10 @@ export function useNexusChatStream(
     };
     setMessages(prev => [...prev, assistantMsg]);
 
-    const notifyProjectReady = () => {
+    const notifyProjectReady = (doneData?: NexusProjectReadyDoneData) => {
       if (projectReadyNotifiedStreamRef.current === streamingId) return;
       projectReadyNotifiedStreamRef.current = streamingId;
-      onProjectReady?.();
+      onProjectReady?.(doneData);
     };
 
     try {
@@ -450,6 +457,9 @@ export function useNexusChatStream(
             const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
             if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeldRef.current) {
               setShapingPayload(shapingFromMeta);
+            }
+            if (meta.projectReady) {
+              notifyProjectReady(meta as NexusProjectReadyDoneData);
             }
 
             // Parse VISUALIZE marker

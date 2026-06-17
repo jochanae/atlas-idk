@@ -50,7 +50,7 @@ import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useNexusChatStream } from "@/hooks/useNexusChatStream";
+import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1918,7 +1918,12 @@ export default function Home() {
     }
   }, []);
   const [projectReadyAutoHandoffCount, setProjectReadyAutoHandoffCount] = useState(0);
-  const handleNexusProjectReady = useCallback(() => {
+  const [projectReadyDoneData, setProjectReadyDoneData] = useState<NexusProjectReadyDoneData | null>(null);
+  const handleNexusProjectReady = useCallback((doneData?: NexusProjectReadyDoneData) => {
+    if (doneData?.projectReady) {
+      setProjectReadyDoneData(doneData);
+      return;
+    }
     setProjectReadyAutoHandoffCount(count => count + 1);
   }, []);
   const nexusChat = useNexusChatStream({
@@ -2006,7 +2011,7 @@ export default function Home() {
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
-  const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
+  const { setDepth, activeProjectId, setActiveProjectId, setActiveConversationTitle } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const handledNavigateToRef = useRef<Set<string>>(new Set());
@@ -3226,6 +3231,19 @@ export default function Home() {
     handledProjectReadyAutoHandoffRef.current = projectReadyAutoHandoffCount;
     void handleHandoff();
   }, [handleHandoff, projectReadyAutoHandoffCount]);
+  const handledProjectReadyDoneDataRef = useRef<NexusProjectReadyDoneData | null>(null);
+  useEffect(() => {
+    if (!projectReadyDoneData) return;
+    if (handledProjectReadyDoneDataRef.current === projectReadyDoneData) return;
+    handledProjectReadyDoneDataRef.current = projectReadyDoneData;
+    const doneData = projectReadyDoneData;
+    if (doneData.projectReady && !activeProjectId) {
+      handleHandoff(
+        { readyToHandoff: true, confidence: "high", projectName: doneData.projectReady.projectName, reason: doneData.projectReady.reason },
+        doneData.projectReady.projectName
+      );
+    }
+  }, [activeProjectId, handleHandoff, projectReadyDoneData]);
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
