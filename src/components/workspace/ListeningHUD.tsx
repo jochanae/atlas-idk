@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useHudFeed } from "@/hooks/useHudFeed";
-import { pushHudEvent, type HudEvent, type HudEventType } from "@/lib/hudBus";
+import { pushHudEvent, setHudDocked, useHudDocked, type HudEvent, type HudEventType } from "@/lib/hudBus";
 
 /**
  * Listening HUD — peripheral awareness of what Atlas is extracting from the
@@ -28,6 +28,7 @@ const COGNITIVE_CATEGORIES: HudEventType[] = [
   "DECISION",
   "NAVIGATED",
   "TENSION",
+  "PROJECT",
 ];
 
 const AMBER = "rgb(201,162,76)";
@@ -93,7 +94,7 @@ export function ListeningHUD({
 }: ListeningHUDProps) {
   const allEvents = useHudFeed();
   const [expanded, setExpanded] = useState(false);
-  const [closed, setClosed] = useState(false);
+  const docked = useHudDocked();
   const [pulseKey, setPulseKey] = useState(0);
 
   // Truthful seed: log the current route so the HUD has at least one signal.
@@ -112,7 +113,7 @@ export function ListeningHUD({
     if (events.length > 0) setPulseKey((k) => k + 1);
   }, [events.length]);
 
-  if (closed) return null;
+  if (docked) return null;
   if (events.length === 0 && hideWhenEmpty) return null;
 
   const latest = events[0];
@@ -209,7 +210,7 @@ export function ListeningHUD({
                 <path d="M5 12h14" />
               </svg>
             </IconBtn>
-            <IconBtn label="Close" onClick={() => setClosed(true)}>
+            <IconBtn label="Dock" onClick={() => { setExpanded(false); setHudDocked(true); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6 6 18" />
                 <path d="m6 6 12 12" />
@@ -218,8 +219,8 @@ export function ListeningHUD({
           </div>
         </div>
 
-        {/* Feed */}
-        <div>
+        {/* Feed — scrollable when content exceeds max height */}
+        <div style={{ maxHeight: 280, overflowY: "auto", overscrollBehavior: "contain" }}>
           {visible.length === 0 && (
             <div style={{ padding: "20px 12px", textAlign: "center", fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
               waiting for signal…
@@ -305,6 +306,43 @@ function PulseDot() {
         }
       `}</style>
     </span>
+  );
+}
+
+/**
+ * HudDockChip — small dot/chip rendered when the HUD is docked.
+ * Tap to re-expand the floating pill.
+ */
+export function HudDockChip() {
+  const docked = useHudDocked();
+  if (!docked) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => setHudDocked(false)}
+      aria-label="Re-open listening feed"
+      title="Listening feed"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 18,
+        padding: "0 8px",
+        marginLeft: 6,
+        borderRadius: 999,
+        border: "1px solid rgba(167,139,250,0.28)",
+        background: "rgba(139,92,246,0.10)",
+        color: "rgba(255,255,255,0.7)",
+        fontFamily: FONT_MONO,
+        fontSize: 9,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        cursor: "pointer",
+        verticalAlign: "middle",
+      }}
+    >
+      <PulseDot />
+    </button>
   );
 }
 

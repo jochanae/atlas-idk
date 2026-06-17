@@ -18,7 +18,8 @@ import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
-import { ListeningHUD, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { clearHudEvents, setHudDocked } from "@/lib/hudBus";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -258,6 +259,12 @@ export function GlobalInsightSurface({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [open, messages.length, isStreaming]);
 
+  // Reset HUD feed + dock state when conversation changes (new thread / fresh context).
+  useEffect(() => {
+    clearHudEvents();
+    setHudDocked(false);
+  }, [conversationId]);
+
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
@@ -389,6 +396,7 @@ export function GlobalInsightSurface({
           }}
         >
           <span>Global Insight · All projects</span>
+          <HudDockChip />
           {messages.length > 0 && (
             <button
               type="button"

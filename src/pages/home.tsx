@@ -1952,6 +1952,10 @@ export default function Home() {
     if (nexusChat.handoffSignal?.readyToHandoff === true) {
       setIsHandoffReady(true);
     }
+    const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
+    if (suggestedName) {
+      pushHudEvent("PROJECT", suggestedName);
+    }
   }, [nexusChat.handoffSignal]);
   const focusProjectId = homeFocus;
   useEffect(() => {
@@ -3561,8 +3565,13 @@ export default function Home() {
   );
   const handleGlobalInsightCreateProject = useCallback(() => {
     setIsHandoffReady(false);
-    performCreateProjectFromConversation();
-  }, [performCreateProjectFromConversation]);
+    const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
+    if (suggestedName) {
+      void handleHandoff((nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined, suggestedName);
+    } else {
+      performCreateProjectFromConversation();
+    }
+  }, [handleHandoff, nexusChat.handoffSignal, performCreateProjectFromConversation]);
 
   return (
     <div
