@@ -4063,6 +4063,43 @@ export default function Workspace() {
   const initialSent = useRef(false);
   const [openingMessage, setOpeningMessage] = useState<{ message: string; projectId: string | null } | null>(() => {
     try {
+      // Quick Action V2 handoff (resume=quickaction): consume the
+      // sessionStorage payload, hoist {intent, prompt} into the existing
+      // opening-message pipeline, strip the query param, and clear state.
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("resume") === "quickaction") {
+          const raw = sessionStorage.getItem(`atlas:quickaction:resume:${id}`);
+          sessionStorage.removeItem(`atlas:quickaction:resume:${id}`);
+          params.delete("resume");
+          const nextSearch = params.toString();
+          const nextUrl =
+            window.location.pathname +
+            (nextSearch ? `?${nextSearch}` : "") +
+            window.location.hash;
+          window.history.replaceState({}, "", nextUrl);
+          if (raw) {
+            const payload = JSON.parse(raw) as { intent?: string; prompt?: string };
+            const intent = (payload?.intent ?? "").toLowerCase();
+            const text = (payload?.prompt ?? "").trim();
+            if (text) {
+              const prefix =
+                intent === "build"
+                  ? "Build: "
+                  : intent === "think"
+                  ? "Think through: "
+                  : intent === "decide"
+                  ? "Decide: "
+                  : "";
+              const seeded = `${prefix}${text}`;
+              sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, seeded);
+              sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(id));
+              return { message: seeded, projectId: String(id) };
+            }
+          }
+        }
+      } catch {}
+
       const storedOpeningMessage = sessionStorage.getItem(OPENING_MESSAGE_STORAGE_KEY);
       const storedProjectId = sessionStorage.getItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY);
       if (storedOpeningMessage !== null) {
