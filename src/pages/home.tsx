@@ -57,6 +57,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
+import { pushHudEvent } from "@/lib/hudBus";
 
 
 const PLACEHOLDERS = [
@@ -2868,6 +2869,17 @@ export default function Home() {
 
     setCreateError(null);
     setIsAtlasStreaming(true);
+
+    // HUD emitters — surface what Atlas is hearing right now.
+    if (text) {
+      pushHudEvent("INTENT", text.length > 60 ? text.slice(0, 57) + "…" : text);
+    }
+    if (files.length > 0) {
+      const label = files.length === 1
+        ? files[0].name
+        : `${files.length} files (${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"})`;
+      pushHudEvent("INGESTED", label);
+    }
     setIsSending(true);
 
     const handleSubmitError = (err: unknown) => {
@@ -3041,6 +3053,7 @@ export default function Home() {
           JSON.stringify({ committedAt: createdAt.toISOString(), greeting: null }),
         );
       } catch {}
+      pushHudEvent("DECISION", `Committed → ${name}`);
       setLocation(`/project/${projectId}?from=home&source=commit-carryover`);
     } catch (err) {
       const msg =
