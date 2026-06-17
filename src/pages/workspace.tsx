@@ -9,6 +9,8 @@ import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
+import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+
 import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
@@ -4836,14 +4838,18 @@ export default function Workspace() {
     ]);
   }, []);
 
-  useEffect(() => {
-    const chatEl = chatPanelScrollRef.current;
-    if (chatEl) {
-      chatEl.scrollTop = chatEl.scrollHeight - chatEl.clientHeight;
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior: "instant" });
-    }
-  }, [messages, chatPending]);
+  // Smart Anchor: stick to bottom only when user is already near it.
+  // If they scrolled up to re-read while Atlas streams, freeze instead of yanking back.
+  // A fresh user message (userMsgCount increments) bypasses the freeze.
+  const userMsgCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+  useSmartAutoScroll(chatPanelScrollRef, [messages.length, chatPending], {
+    forceDeps: [userMsgCount],
+    behavior: "auto",
+  });
+
 
   // Close mobile panel on mobile→desktop resize
   useEffect(() => {

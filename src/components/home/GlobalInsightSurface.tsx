@@ -19,6 +19,8 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -250,13 +252,14 @@ export function GlobalInsightSurface({
     }
   }, [attachedFiles]);
 
-  // Auto-scroll on new messages / streaming
-  useEffect(() => {
-    if (!open) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [open, messages.length, isStreaming]);
+  // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
+  // If they scrolled up to re-read, freeze; don't yank them back during streaming.
+  useSmartAutoScroll(scrollRef, [messages.length, isStreaming], {
+    enabled: open,
+    // Force-jump only when message count increments (new turn), not on every streaming tick.
+    forceDeps: [messages.length],
+  });
+
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
