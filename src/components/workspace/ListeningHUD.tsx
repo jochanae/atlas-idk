@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useHudFeed } from "@/hooks/useHudFeed";
-import type { HudEvent } from "@/lib/hudBus";
+import { pushHudEvent, type HudEvent } from "@/lib/hudBus";
 
 /**
  * Listening HUD — peripheral awareness of what Atlas is extracting from the
@@ -62,6 +62,13 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
   const [expanded, setExpanded] = useState(false);
   const [closed, setClosed] = useState(false);
   const [pulseKey, setPulseKey] = useState(0);
+
+  // Truthful seed: log the current route so the HUD has at least one signal.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname + window.location.search;
+    pushHudEvent("NAVIGATED", path);
+  }, []);
 
   // Bump pulse on new event arrival.
   useEffect(() => {
