@@ -1,21 +1,18 @@
+import { useEffect } from "react";
 import { useSyncExternalStore } from "react";
 
 /**
- * Feeder channel attachment — stub backed by localStorage.
+ * Feeder channel attachment — backend-backed, localStorage-cached.
  *
- * Frontend-only signal that says "this Nexus / ambient thread is attached
- * to a committed project as a feeder channel." Written when CommitPill arms,
- * cleared on explicit detach. Backend persistence (attached_project_id on
- * threads row) will replace this later; the API surface here is what every
- * caller uses so the swap is mechanical.
+ * Backend infers the conversation from the authenticated user (Living Thread
+ * is 1-per-user), so PATCH /api/nexus/thread/attach only needs { projectId }.
+ * GET /api/nexus/conversations returns attached_project_id for hydration.
  *
- * The Living Thread is singular today, so a single global key is sufficient.
- * If/when per-conversation feeders land, switch `KEY_PREFIX` based callers
- * to `feederKey(conversationId)` — the read/write/subscribe contract stays
- * identical.
+ * localStorage stays as an optimistic cache so the header chip / sidebar chip
+ * light up the instant CommitPill arms, before the PATCH round-trips.
  */
 
-const GLOBAL_KEY = "atlas-nexus-feeder";
+const CACHE_KEY = "atlas-nexus-feeder";
 const EVENT = "atlas-feeder-change";
 
 export interface FeederAttachment {
@@ -29,10 +26,10 @@ function emit() {
   window.dispatchEvent(new Event(EVENT));
 }
 
-export function getFeeder(key: string = GLOBAL_KEY): FeederAttachment | null {
+export function getFeeder(): FeederAttachment | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as FeederAttachment;
     if (typeof parsed?.projectId !== "number" || !parsed?.projectTitle) return null;
@@ -42,20 +39,86 @@ export function getFeeder(key: string = GLOBAL_KEY): FeederAttachment | null {
   }
 }
 
-export function setFeeder(
-  attachment: Omit<FeederAttachment, "attachedAt">,
-  key: string = GLOBAL_KEY,
-) {
+function writeCache(attachment: FeederAttachment | null) {
   if (typeof window === "undefined") return;
-  const payload: FeederAttachment = { ...attachment, attachedAt: new Date().toISOString() };
-  window.localStorage.setItem(key, JSON.stringify(payload));
+  if (attachment) {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(attachment));
+  } else {
+    window.localStorage.removeItem(CACHE_KEY);
+  }
   emit();
 }
 
-export function clearFeeder(key: string = GLOBAL_KEY) {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(key);
-  emit();
+/**
+ * Optimistically attach a feeder. Writes cache immediately, then PATCHes the
+ * backend. On failure the cache is rolled back so the UI reflects truth.
+ */
+export async function setFeeder(
+  attachment: Omit<FeederAttachment, "attachedAt">,
+): Promise<void> {
+  const prev = getFeeder();
+  const optimistic: FeederAttachment = {
+    ...attachment,
+    attachedAt: new Date().toISOString(),
+  };
+  writeCache(optimistic);
+  try {
+    const res = await fetch("/api/nexus/thread/attach", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ projectId: attachment.projectId }),
+    });
+    if (!res.ok) throw new Error(`attach failed: ${res.status}`);
+  } catch (err) {
+    writeCache(prev);
+    throw err;
+  }
+}
+
+export async function clearFeeder(): Promise<void> {
+  const prev = getFeeder();
+  writeCache(null);
+  try {
+    const res = await fetch("/api/nexus/thread/attach", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ projectId: null }),
+    });
+    if (!res.ok) throw new Error(`detach failed: ${res.status}`);
+  } catch (err) {
+    writeCache(prev);
+    throw err;
+  }
+}
+
+/**
+ * Hydrate cache from backend. Call once on Nexus mount. Reconciles localStorage
+ * against the authenticated thread's attached_project_id.
+ */
+export async function hydrateFeeder(): Promise<void> {
+  try {
+    const res = await fetch("/api/nexus/conversations", { credentials: "include" });
+    if (!res.ok) return;
+    const data = await res.json();
+    // Accept either { attached_project_id, attached_project_title } at the top
+    // level or the first conversation in a `conversations` array.
+    const row = Array.isArray(data?.conversations) ? data.conversations[0] : data;
+    const projectId: number | null = row?.attached_project_id ?? null;
+    if (projectId == null) {
+      writeCache(null);
+      return;
+    }
+    const projectTitle: string = row?.attached_project_title ?? row?.project_title ?? "Project";
+    writeCache({
+      projectId,
+      projectTitle,
+      attachedAt: row?.attached_at ?? new Date().toISOString(),
+    });
+  } catch {
+    // network blip — keep whatever cache we have
+  }
 }
 
 function subscribe(cb: () => void) {
@@ -70,13 +133,18 @@ function subscribe(cb: () => void) {
 }
 
 /** React hook — re-renders when the feeder attachment changes. */
-export function useFeeder(key: string = GLOBAL_KEY): FeederAttachment | null {
-  return useSyncExternalStore(
+export function useFeeder(): FeederAttachment | null {
+  const snapshot = useSyncExternalStore(
     subscribe,
-    () => {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
-      return raw; // stable snapshot for change detection
-    },
+    () => (typeof window !== "undefined" ? window.localStorage.getItem(CACHE_KEY) : null),
     () => null,
-  ) ? getFeeder(key) : null;
+  );
+  return snapshot ? getFeeder() : null;
+}
+
+/** Hydrate on mount. Drop this in NexusPage. */
+export function useFeederHydration() {
+  useEffect(() => {
+    void hydrateFeeder();
+  }, []);
 }
