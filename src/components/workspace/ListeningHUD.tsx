@@ -309,5 +309,42 @@ function PulseDot() {
   );
 }
 
+/**
+ * HudDockChip — small dot/chip rendered when the HUD is docked.
+ * Tap to re-expand the floating pill.
+ */
+export function HudDockChip() {
+  const docked = useHudDocked();
+  if (!docked) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => setHudDocked(false)}
+      aria-label="Re-open listening feed"
+      title="Listening feed"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 18,
+        padding: "0 8px",
+        marginLeft: 6,
+        borderRadius: 999,
+        border: "1px solid rgba(167,139,250,0.28)",
+        background: "rgba(139,92,246,0.10)",
+        color: "rgba(255,255,255,0.7)",
+        fontFamily: FONT_MONO,
+        fontSize: 9,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        cursor: "pointer",
+        verticalAlign: "middle",
+      }}
+    >
+      <PulseDot />
+    </button>
+  );
+}
+
 export { COGNITIVE_CATEGORIES };
 export default ListeningHUD;
