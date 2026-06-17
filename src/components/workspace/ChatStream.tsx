@@ -95,6 +95,96 @@ function HomeHandoffDivider({ projectName }: { projectName?: string }) {
   );
 }
 
+function formatRelativeTime(iso: string): string {
+  try {
+    const then = new Date(iso).getTime();
+    if (!Number.isFinite(then)) return "just now";
+    const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (diffSec < 60) return "just now";
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    const days = Math.floor(diffSec / 86400);
+    if (days < 7) return `${days}d ago`;
+    if (days < 30) return `${Math.floor(days / 7)}w ago`;
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch {
+    return "just now";
+  }
+}
+
+function CommitThresholdMarker({ committedAt }: { committedAt: string }) {
+  const rel = formatRelativeTime(committedAt);
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "28px 0 22px",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          height: 1,
+          background: "linear-gradient(to right, transparent, rgba(201,162,76,0.45), transparent)",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          padding: "5px 12px",
+          borderRadius: 999,
+          background: "var(--atlas-bg)",
+          border: "1px solid rgba(201,162,76,0.32)",
+          color: "var(--atlas-gold)",
+          fontFamily: "var(--app-font-mono)",
+          fontSize: "var(--ts-micro)",
+          letterSpacing: "0.14em",
+          lineHeight: 1,
+          textTransform: "uppercase",
+          opacity: 0.92,
+          boxShadow: "0 0 18px rgba(201,162,76,0.18)",
+        }}
+        title={new Date(committedAt).toLocaleString()}
+      >
+        Committed as a project · {rel}
+      </div>
+    </div>
+  );
+}
+
+function CommitGreetingBubble({ text }: { text: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        padding: "4px 4px 18px",
+        gap: 8,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 540,
+          color: "var(--atlas-fg)",
+          fontSize: 17,
+          lineHeight: 1.55,
+          fontWeight: 400,
+          letterSpacing: "-0.005em",
+          opacity: 0.94,
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
 export interface ChatStreamProps {
   // scroll container
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -163,6 +253,10 @@ export interface ChatStreamProps {
 
   // push
   onPushSuccess: (records: PushRecordLike[]) => void;
+
+  // commit-carryover (ambient thread → committed project): marker + greeting bubble
+  // rendered at the tail of the carried thread.
+  commitCarryover?: { committedAt: string; greeting?: string | null } | null;
 }
 
 // Helper alias so we don't re-derive AssistantBubble prop types here.
@@ -185,6 +279,7 @@ export function ChatStream(props: ChatStreamProps) {
     onCommitCardDone,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
     onPushSuccess,
+    commitCarryover,
   } = props;
 
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
@@ -315,6 +410,20 @@ export function ChatStream(props: ChatStreamProps) {
           )}
         </Fragment>
       ))}
+
+      {commitCarryover && messages.length > 0 && (
+        <>
+          <CommitThresholdMarker committedAt={commitCarryover.committedAt} />
+          <CommitGreetingBubble
+            text={
+              commitCarryover.greeting?.trim() ||
+              "Okay — this is a project now. Where do you want to take it first?"
+            }
+          />
+        </>
+      )}
+
+
 
       {messages.filter(m => m.role !== "user").length >= 60 && !chatPending && wsModel !== "gemini" && (
         <div style={{

@@ -3864,6 +3864,40 @@ export default function Workspace() {
     try { return new URLSearchParams(window.location.search).get("source") ?? null; } catch { return null; }
   })();
   const isHomeHandoff = importSource === "home-handoff";
+
+  // Commit carryover: ambient thread on /home was committed into this project.
+  // Payload comes from sessionStorage seeded by the home-screen commit flow;
+  // `greeting` is optional and falls back to a generic line in ChatStream.
+  // Backend handoff (Cursor): persist `project.committed_at` + `project.commit_synthesis`
+  // and seed this sessionStorage key from the commit transition.
+  const [commitCarryover, setCommitCarryover] = useState<{ committedAt: string; greeting?: string | null } | null>(() => {
+    try {
+      if (importSource !== "commit-carryover") return null;
+      const raw = sessionStorage.getItem(`atlas-commit-carryover-${id}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { committedAt?: string; greeting?: string | null };
+      if (!parsed?.committedAt) return null;
+      return { committedAt: parsed.committedAt, greeting: parsed.greeting ?? null };
+    } catch { return null; }
+  });
+
+  // Strip the source param + clear the storage key after consumption so a refresh
+  // doesn't replay the marker against newer chat activity.
+  useEffect(() => {
+    if (!commitCarryover) return;
+    try { sessionStorage.removeItem(`atlas-commit-carryover-${id}`); } catch {}
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("source") === "commit-carryover") {
+        url.searchParams.delete("source");
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {}
+    // Keep the marker visible for the session; clear on unmount/navigation.
+    return () => setCommitCarryover(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const [homeHandoffMeta, setHomeHandoffMeta] = useState<HomeHandoffMeta | null>(() => {
     try {
       const raw = sessionStorage.getItem(`atlas-home-handoff-${id}`);
@@ -6399,6 +6433,7 @@ export default function Workspace() {
               onPlanExecutionChange: updatePlanExecution,
               onExecuteHomePlan: executeHomePlan,
               onPushSuccess: handleReviewPushSuccess,
+              commitCarryover,
             } : null}
             betweenSlot={
               agenticMode && agenticIterCount > 0 ? (
