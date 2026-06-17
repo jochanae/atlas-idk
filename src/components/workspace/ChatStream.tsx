@@ -253,6 +253,10 @@ export interface ChatStreamProps {
 
   // push
   onPushSuccess: (records: PushRecordLike[]) => void;
+
+  // commit-carryover (ambient thread → committed project): marker + greeting bubble
+  // rendered at the tail of the carried thread.
+  commitCarryover?: { committedAt: string; greeting?: string | null } | null;
 }
 
 // Helper alias so we don't re-derive AssistantBubble prop types here.
