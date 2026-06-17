@@ -411,6 +411,20 @@ export function ChatStream(props: ChatStreamProps) {
         </Fragment>
       ))}
 
+      {commitCarryover && messages.length > 0 && (
+        <>
+          <CommitThresholdMarker committedAt={commitCarryover.committedAt} />
+          <CommitGreetingBubble
+            text={
+              commitCarryover.greeting?.trim() ||
+              "Okay — this is a project now. Where do you want to take it first?"
+            }
+          />
+        </>
+      )}
+
+
+
       {messages.filter(m => m.role !== "user").length >= 60 && !chatPending && wsModel !== "gemini" && (
         <div style={{
           display: "flex", alignItems: "center", gap: 8, margin: "4px 0 16px",
