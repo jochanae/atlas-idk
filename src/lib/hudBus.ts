@@ -23,6 +23,7 @@ export interface HudEvent {
   id: string;
   type: HudEventType;
   payload: string;
+  projectName?: string;
   /** ISO timestamp */
   at: string;
 }
@@ -38,11 +39,12 @@ function emit() {
   for (const l of listeners) l(events);
 }
 
-export function pushHudEvent(type: HudEventType, payload: string) {
+export function pushHudEvent(type: HudEventType, payload: string, meta?: { projectName?: string }) {
   const ev: HudEvent = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     type,
     payload,
+    ...(meta?.projectName ? { projectName: meta.projectName } : {}),
     at: new Date().toISOString(),
   };
   events = [ev, ...events].slice(0, MAX_EVENTS);
@@ -63,6 +65,11 @@ export function getHudEvents(): HudEvent[] {
 
 export function clearHudEvents() {
   events = [];
+  emit();
+}
+
+export function setHudEvents(nextEvents: HudEvent[]) {
+  events = nextEvents.slice(0, MAX_EVENTS);
   emit();
 }
 

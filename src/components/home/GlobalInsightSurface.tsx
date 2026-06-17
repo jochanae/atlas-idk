@@ -19,7 +19,6 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
-import { clearHudEvents, setHudDocked } from "@/lib/hudBus";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -259,13 +258,6 @@ export function GlobalInsightSurface({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [open, messages.length, isStreaming]);
 
-  // Reset HUD feed + dock state when conversation changes (new thread / fresh context).
-  useEffect(() => {
-    clearHudEvents();
-    setHudDocked(false);
-  }, [conversationId]);
-
-
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
   const typed = useTypewriter(GLOBAL_INSIGHT_PLACEHOLDERS, !showPlaceholder);
@@ -357,7 +349,12 @@ export function GlobalInsightSurface({
       }}
     >
       {subheader}
-      <ListeningHUD position={{ top: 64, right: 12 }} categories={COGNITIVE_CATEGORIES} title="Shaping" />
+      <ListeningHUD
+        position={{ top: 64, right: 12 }}
+        conversationId={conversationId}
+        categories={COGNITIVE_CATEGORIES}
+        title="Shaping"
+      />
       {/* Isolated scroll container */}
       <div
         ref={scrollRef}

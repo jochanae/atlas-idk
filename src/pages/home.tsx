@@ -1954,7 +1954,7 @@ export default function Home() {
     }
     const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
     if (suggestedName) {
-      pushHudEvent("PROJECT", suggestedName);
+      pushHudEvent("PROJECT", suggestedName, { projectName: suggestedName });
     }
   }, [nexusChat.handoffSignal]);
   const focusProjectId = homeFocus;

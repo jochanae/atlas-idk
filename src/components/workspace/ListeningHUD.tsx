@@ -1,6 +1,14 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useHudFeed } from "@/hooks/useHudFeed";
-import { pushHudEvent, setHudDocked, useHudDocked, type HudEvent, type HudEventType } from "@/lib/hudBus";
+import {
+  clearHudEvents,
+  pushHudEvent,
+  setHudDocked,
+  setHudEvents,
+  useHudDocked,
+  type HudEvent,
+  type HudEventType,
+} from "@/lib/hudBus";
 
 /**
  * Listening HUD — peripheral awareness of what Atlas is extracting from the
@@ -31,9 +39,89 @@ const COGNITIVE_CATEGORIES: HudEventType[] = [
   "PROJECT",
 ];
 
+const SHAPING_PERSIST_TYPES: HudEventType[] = ["INTENT", "NAVIGATED", "PROJECT"];
+const HUD_EVENT_TYPES: HudEventType[] = [
+  "INTENT",
+  "MEMORY",
+  "DECISION",
+  "INGESTED",
+  "NAVIGATED",
+  "EXTRACTED",
+  "TENSION",
+  "PROJECT",
+];
+
 const AMBER = "rgb(201,162,76)";
 const VIOLET = "rgb(167,139,250)";
 const VIOLET_CORE = "rgb(139,92,246)";
+
+type PersistedShapingRecord = {
+  id?: unknown;
+  type?: unknown;
+  content?: unknown;
+  payload?: unknown;
+  projectName?: unknown;
+  at?: unknown;
+  createdAt?: unknown;
+  created_at?: unknown;
+  timestamp?: unknown;
+};
+
+function isHudEventType(value: unknown): value is HudEventType {
+  return typeof value === "string" && HUD_EVENT_TYPES.includes(value as HudEventType);
+}
+
+function isShapingPersistType(type: HudEventType) {
+  return SHAPING_PERSIST_TYPES.includes(type);
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function eventTime(ev: HudEvent) {
+  const ms = Date.parse(ev.at);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function normalizeShapingEntries(data: unknown): HudEvent[] {
+  const container = data && typeof data === "object" ? data as { entries?: unknown; items?: unknown } : null;
+  const rawEntries = Array.isArray(data)
+    ? data
+    : Array.isArray(container?.entries)
+      ? container.entries
+      : Array.isArray(container?.items)
+        ? container.items
+        : [];
+
+  return rawEntries.flatMap((raw, index): HudEvent[] => {
+    if (!raw || typeof raw !== "object") return [];
+    const entry = raw as PersistedShapingRecord;
+    if (!isHudEventType(entry.type) || !isShapingPersistType(entry.type)) return [];
+
+    const payload = readString(entry.content) ?? readString(entry.payload);
+    if (!payload) return [];
+
+    const at =
+      readString(entry.at) ??
+      readString(entry.createdAt) ??
+      readString(entry.created_at) ??
+      readString(entry.timestamp) ??
+      new Date().toISOString();
+    const id =
+      readString(entry.id) ??
+      (typeof entry.id === "number" ? String(entry.id) : `${at}-${entry.type}-${index}`);
+    const projectName = readString(entry.projectName);
+
+    return [{
+      id,
+      type: entry.type,
+      payload,
+      ...(projectName ? { projectName } : {}),
+      at,
+    }];
+  }).sort((a, b) => eventTime(b) - eventTime(a));
+}
 
 function fmtTime(iso: string): string {
   try {
@@ -78,6 +166,8 @@ function EventLine({ ev, dim }: { ev: HudEvent; dim?: boolean }) {
 export interface ListeningHUDProps {
   /** Pin position relative to the parent container (parent must be position: relative/fixed). */
   position?: { top?: number; right?: number };
+  /** Active Nexus conversation used to persist shaping history. */
+  conversationId?: string | null;
   /** Hide entirely when no events yet. Default true. */
   hideWhenEmpty?: boolean;
   /** Filter event types. Default = all. Pass `COGNITIVE_CATEGORIES` for shaping surfaces. */
@@ -88,6 +178,7 @@ export interface ListeningHUDProps {
 
 export function ListeningHUD({
   position = { top: 12, right: 12 },
+  conversationId,
   hideWhenEmpty = true,
   categories,
   title = "Live Extraction",
@@ -96,13 +187,71 @@ export function ListeningHUD({
   const [expanded, setExpanded] = useState(false);
   const docked = useHudDocked();
   const [pulseKey, setPulseKey] = useState(0);
+  const postedEventIdsRef = useRef<Set<string>>(new Set());
+  const loadRequestRef = useRef(0);
+
+  useEffect(() => {
+    if (conversationId === undefined) return;
+
+    const requestId = ++loadRequestRef.current;
+    clearHudEvents();
+    setHudDocked(false);
+    postedEventIdsRef.current = new Set();
+
+    if (!conversationId || typeof window === "undefined") return;
+
+    const controller = new AbortController();
+    fetch(`/api/nexus/shaping?conversationId=${encodeURIComponent(conversationId)}`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : { entries: [] }))
+      .then((data: unknown) => {
+        if (loadRequestRef.current !== requestId) return;
+        const savedEvents = normalizeShapingEntries(data);
+        postedEventIdsRef.current = new Set(savedEvents.map((ev) => ev.id));
+        setHudEvents(savedEvents);
+        if (savedEvents.length === 0) {
+          const path = window.location.pathname + window.location.search;
+          pushHudEvent("NAVIGATED", path);
+        }
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      });
+
+    return () => controller.abort();
+  }, [conversationId]);
 
   // Truthful seed: log the current route so the HUD has at least one signal.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (conversationId !== undefined) return;
     const path = window.location.pathname + window.location.search;
     pushHudEvent("NAVIGATED", path);
-  }, []);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const nextEvents = allEvents.filter((ev) => isShapingPersistType(ev.type) && !postedEventIdsRef.current.has(ev.id));
+    for (const ev of nextEvents) {
+      postedEventIdsRef.current.add(ev.id);
+      const projectName = ev.projectName ?? (ev.type === "PROJECT" ? ev.payload : undefined);
+
+      void fetch("/api/nexus/shaping", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          type: ev.type,
+          content: ev.payload,
+          projectName,
+        }),
+      });
+    }
+  }, [allEvents, conversationId]);
 
   const events = categories
     ? allEvents.filter((e) => categories.includes(e.type))
