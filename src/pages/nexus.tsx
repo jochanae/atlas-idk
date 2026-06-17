@@ -274,6 +274,7 @@ export default function NexusPage() {
   const [clearing, setClearing] = useState(false);
   const queryClient = useQueryClient();
   const clearThread = useClearNexusThread();
+  const feeder = useFeeder();
 
   // Hydrate messages from the Living Thread when it loads
   useEffect(() => {
