@@ -1820,7 +1820,11 @@ export default function Home() {
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const { user: authUser } = useRequireAuth();
   const { data: projects, isLoading } = useListProjects({
-    query: { refetchOnMount: "always", refetchOnWindowFocus: true },
+    query: {
+      queryKey: getListProjectsQueryKey(),
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+    },
   });
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
