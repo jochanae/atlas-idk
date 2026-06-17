@@ -3053,6 +3053,7 @@ export default function Home() {
           JSON.stringify({ committedAt: createdAt.toISOString(), greeting: null }),
         );
       } catch {}
+      pushHudEvent("DECISION", `Committed → ${name}`);
       setLocation(`/project/${projectId}?from=home&source=commit-carryover`);
     } catch (err) {
       const msg =
