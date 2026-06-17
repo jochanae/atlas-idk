@@ -279,6 +279,7 @@ export function ChatStream(props: ChatStreamProps) {
     onCommitCardDone,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
     onPushSuccess,
+    commitCarryover,
   } = props;
 
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
