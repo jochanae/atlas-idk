@@ -1580,9 +1580,8 @@ export function AssistantBubble({
           />
         )}
 
-        {message.pendingSketch && !message.imageB64 && !message.imageGen?.images?.length && (
-          <SketchReveal src={null} loading alt="Atlas sketch" />
-        )}
+
+
 
         {message.imageGen?.images?.map((img, i) => (
           <SketchReveal
