@@ -481,7 +481,16 @@ export default function NexusPage() {
           }}>
             Atlas
           </span>
+          {feeder && (
+            <FeederBadge
+              variant="header"
+              projectId={feeder.projectId}
+              projectTitle={feeder.projectTitle}
+              className="ml-2"
+            />
+          )}
         </div>
+
 
         {/* Toggle right panel */}
         {!isMobile && (
