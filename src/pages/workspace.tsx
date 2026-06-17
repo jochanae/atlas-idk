@@ -227,6 +227,7 @@ export interface ChatMessage {
   costUsd?: number | null;
   artifact?: { type: string; title: string; content: string } | null;
   imageGen?: { images: Array<{ imageUrl: string; prompt: string; model: string; mode: "render" | "schematic" }> } | null;
+  pendingSketch?: boolean;
   /** Time-travel: snapshot id linking this message to a workspace state. */
   snapshotId?: string;
   /** Time-travel: messages bypassed by a rollback. Kept in-array but filtered
