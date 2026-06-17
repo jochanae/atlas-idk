@@ -7,6 +7,8 @@
  * onto the same bus from an SSE handler.
  */
 
+import { useEffect, useState } from "react";
+
 export type HudEventType =
   | "INTENT"
   | "MEMORY"
@@ -14,7 +16,8 @@ export type HudEventType =
   | "INGESTED"
   | "NAVIGATED"
   | "EXTRACTED"
-  | "TENSION";
+  | "TENSION"
+  | "PROJECT";
 
 export interface HudEvent {
   id: string;
@@ -61,4 +64,33 @@ export function getHudEvents(): HudEvent[] {
 export function clearHudEvents() {
   events = [];
   emit();
+}
+
+// ── Dock state ──────────────────────────────────────────────────────────────
+// When `docked` is true the floating HUD pill collapses into a small chip
+// rendered next to "Global Insight" in the header subheader.
+
+let docked = false;
+const dockListeners = new Set<(v: boolean) => void>();
+
+export function setHudDocked(v: boolean) {
+  if (docked === v) return;
+  docked = v;
+  for (const l of dockListeners) l(docked);
+}
+
+export function getHudDocked() {
+  return docked;
+}
+
+export function useHudDocked(): boolean {
+  const [v, setV] = useState(docked);
+  useEffect(() => {
+    const l = (next: boolean) => setV(next);
+    dockListeners.add(l);
+    return () => {
+      dockListeners.delete(l);
+    };
+  }, []);
+  return v;
 }
