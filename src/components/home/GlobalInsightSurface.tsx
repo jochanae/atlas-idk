@@ -383,9 +383,58 @@ export function GlobalInsightSurface({
             letterSpacing: "0.12em",
             textTransform: "uppercase",
             textAlign: "center",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          Global Insight · All projects
+          <span>Global Insight · All projects</span>
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const lines = messages
+                  .filter((m) => m.content && m.content.trim().length > 0)
+                  .map((m) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
+                  .join("\n");
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                const blob = new Blob(
+                  [`GLOBAL INSIGHT · ALL PROJECTS\n${stamp}\n\n${lines}`],
+                  { type: "text/plain;charset=utf-8" },
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `global-insight-${stamp}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 0);
+              }}
+              aria-label="Download chat thread"
+              title="Download thread"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                padding: 0,
+                background: "transparent",
+                border: "none",
+                color: "var(--atlas-gold)",
+                opacity: 0.55,
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2.5v8.5" />
+                <path d="M4.5 7.5L8 11l3.5-3.5" />
+                <path d="M3 13.5h10" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {messages.length === 0 && (
@@ -570,38 +619,38 @@ export function GlobalInsightSurface({
                   </button>
                 )}
                 {!msg.streaming && displayContent.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(displayContent, i)}
-                    aria-label="Copy message"
-                    style={{
-                      alignSelf: "flex-start",
-                      marginTop: 2,
-                      background: "transparent",
-                      border: "none",
-                      padding: "4px 2px",
-                      cursor: "pointer",
-                      color: copiedIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                      opacity: copiedIdx === i ? 1 : 0.45,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: 11,
-                      fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.06em",
-                      WebkitTapHighlightColor: "transparent",
-                    }}
-                  >
-                    {copiedIdx === i ? "✓ copied" : (
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="5" y="5" width="8" height="9" rx="1.5" />
-                        <path d="M11 5V4a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 4v7A1.5 1.5 0 003.5 12.5H5" />
-                      </svg>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(displayContent, i)}
+                      aria-label="Copy message"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        padding: "4px 2px",
+                        cursor: "pointer",
+                        color: copiedIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        opacity: copiedIdx === i ? 1 : 0.45,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: 11,
+                        fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.06em",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      {copiedIdx === i ? "✓ copied" : (
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="5" y="5" width="8" height="9" rx="1.5" />
+                          <path d="M11 5V4a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 4v7A1.5 1.5 0 003.5 12.5H5" />
+                        </svg>
+                      )}
+                    </button>
+                    {!msg.imageUrl && onSketch && (
+                      <InlineSketchOffer text={displayContent} onSend={onSketch} />
                     )}
-                  </button>
-                )}
-                {!msg.streaming && !msg.imageUrl && displayContent.length > 0 && onSketch && (
-                  <InlineSketchOffer text={displayContent} onSend={onSketch} />
+                  </div>
                 )}
               </div>
             );
