@@ -3567,7 +3567,7 @@ export default function Home() {
     setIsHandoffReady(false);
     const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
     if (suggestedName) {
-      void handleHandoff(nexusChat.handoffSignal ?? undefined, suggestedName);
+      void handleHandoff((nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined, suggestedName);
     } else {
       performCreateProjectFromConversation();
     }
