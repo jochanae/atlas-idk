@@ -22,6 +22,7 @@ import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { CommitPill } from "./CommitPill";
+import { setFeeder } from "@/lib/feederStore";
 
 
 export type GlobalInsightMessage = {
