@@ -19,6 +19,8 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
