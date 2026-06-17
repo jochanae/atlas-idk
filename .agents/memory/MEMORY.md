@@ -1,2 +1,3 @@
-- [Atlas frontend setup](atlas-frontend-setup.md) — frontend sourced from atlas-idk repo; uses local _workspace/api-client-react alias; workspace.tsx is 400KB+ never read into context
-- [Critical file protection](critical-files.md) — lib/db/src/index.ts must NEVER be touched; caused 3-day outage
+- [Atlas frontend setup](atlas-frontend-setup.md) — local api-client alias, custom auth (not Supabase), VITE_API_URL must be empty for local backend
+- [Critical file protection](critical-files.md) — lib/db/src/index.ts and workspace.tsx must never be read/touched
+- [Axiom-Atlas backend migration](axiom-atlas-backend.md) — 68 src files, 28 DB tables, startup quirks, required API keys, drizzle push workaround

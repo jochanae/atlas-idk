@@ -34,6 +34,6 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
-VITE_API_URL = "https://axiom-atlas-689827072865.us-east1.run.app"
+VITE_API_URL = ""
 VITE_SUPABASE_URL = "https://lmrpnsjckljdwqudtelk.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtcnBuc2pja2xqZHdxdWR0ZWxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczMTg5ODAsImV4cCI6MjA5Mjg5NDk4MH0.f4HsQVkm2yKDwbs0qr91bv75dtq3DxMPkYbph7KMluo"
