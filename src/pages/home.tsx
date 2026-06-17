@@ -3034,7 +3034,14 @@ export default function Home() {
         },
       ]);
       await new Promise(resolve => setTimeout(resolve, 700));
-      setLocation(`/project/${projectId}?from=home`);
+      // Commit carryover: hand workspace the threshold marker + greeting payload.
+      try {
+        sessionStorage.setItem(
+          `atlas-commit-carryover-${projectId}`,
+          JSON.stringify({ committedAt: createdAt.toISOString(), greeting: null }),
+        );
+      } catch {}
+      setLocation(`/project/${projectId}?from=home&source=commit-carryover`);
     } catch (err) {
       const msg =
         extractApiErrorMessage(err) ??
