@@ -235,6 +235,7 @@ export function GlobalInsightSurface({
   const [deepDiveContext, setDeepDiveContext] = useState("");
   const isParchment = useThemeMode() === "parchment";
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   // Manage object URLs for image previews
   useEffect(() => {
