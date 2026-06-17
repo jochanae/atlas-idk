@@ -2869,6 +2869,17 @@ export default function Home() {
 
     setCreateError(null);
     setIsAtlasStreaming(true);
+
+    // HUD emitters — surface what Atlas is hearing right now.
+    if (text) {
+      pushHudEvent("INTENT", text.length > 60 ? text.slice(0, 57) + "…" : text);
+    }
+    if (files.length > 0) {
+      const label = files.length === 1
+        ? files[0].name
+        : `${files.length} files (${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"})`;
+      pushHudEvent("INGESTED", label);
+    }
     setIsSending(true);
 
     const handleSubmitError = (err: unknown) => {
