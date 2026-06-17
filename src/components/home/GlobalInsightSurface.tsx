@@ -59,7 +59,7 @@ interface Props {
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
-  onCreateProject?: () => void;
+  onCreateProject?: (nameOverride?: string) => void;
   onAddAsset?: () => void;
   onMore?: () => void;
   onFiles?: (files: File[]) => void;
@@ -599,7 +599,9 @@ export function GlobalInsightSurface({
                     projects={projects}
                     onNavigate={(id) => void handleProjectOpen(id)}
                     isParchment={isParchment}
+                    onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
                   />
+
                 </div>
                 {tokenTarget && (
                   <button
