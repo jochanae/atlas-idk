@@ -259,6 +259,12 @@ export function GlobalInsightSurface({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [open, messages.length, isStreaming]);
 
+  // Reset HUD feed + dock state when conversation changes (new thread / fresh context).
+  useEffect(() => {
+    clearHudEvents();
+    setHudDocked(false);
+  }, [conversationId]);
+
 
   const hasInput = input.length > 0;
   const showPlaceholder = open && !hasInput && !focused && messages.length === 0;
