@@ -1917,12 +1917,17 @@ export default function Home() {
       setEarnedTitle(eventData.title);
     }
   }, []);
+  const [projectReadyAutoHandoffCount, setProjectReadyAutoHandoffCount] = useState(0);
+  const handleNexusProjectReady = useCallback(() => {
+    setProjectReadyAutoHandoffCount(count => count + 1);
+  }, []);
   const nexusChat = useNexusChatStream({
     focusProjectId: homeFocus ?? null,
     model: homeModel,
     mode: homeMode,
     conversationId: activeConversationId,
     onData: handleNexusDataEvent,
+    onProjectReady: handleNexusProjectReady,
     
     projectContext: homeFocus != null ? {
       projectId: homeFocus,
@@ -3213,6 +3218,14 @@ export default function Home() {
       setHandoffStage("");
     }
   }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation]);
+
+  const handledProjectReadyAutoHandoffRef = useRef(0);
+  useEffect(() => {
+    if (projectReadyAutoHandoffCount === 0) return;
+    if (handledProjectReadyAutoHandoffRef.current === projectReadyAutoHandoffCount) return;
+    handledProjectReadyAutoHandoffRef.current = projectReadyAutoHandoffCount;
+    void handleHandoff();
+  }, [handleHandoff, projectReadyAutoHandoffCount]);
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
