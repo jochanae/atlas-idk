@@ -21,6 +21,7 @@ import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+import { CommitPill } from "./CommitPill";
 
 
 export type GlobalInsightMessage = {
@@ -607,29 +608,25 @@ export function GlobalInsightSurface({
 
                 </div>
                 {tokenTarget && (
-                  <button
-                    type="button"
-                    onClick={() => void handleProjectOpen(tokenTarget.projectId)}
-                    aria-label={`Open ${tokenTarget.projectName}`}
-                    style={{
-                      alignSelf: "flex-start",
-                      marginTop: 4,
-                      fontSize: 11,
-                      fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.06em",
-                      opacity: 0.6,
-                      padding: "3px 8px",
-                      border: "1px solid rgba(212,175,55,0.18)",
-                      borderRadius: 6,
-                      background: "transparent",
-                      color: "var(--atlas-gold)",
-                      cursor: "pointer",
-                      lineHeight: 1.2,
-                      WebkitTapHighlightColor: "transparent",
+                  <CommitPill
+                    projectId={tokenTarget.projectId}
+                    projectTitle={tokenTarget.projectName}
+                    onArm={async () => {
+                      // Best-effort handoff sync — never blocks navigation.
+                      try {
+                        await fetch("/api/nexus/handoff", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({
+                            messages: messages.slice(-10),
+                            projectId: tokenTarget.projectId,
+                            conversationId,
+                          }),
+                        });
+                      } catch {}
                     }}
-                  >
-                    → Open {tokenTarget.projectName}
-                  </button>
+                  />
                 )}
                 {!msg.streaming && displayContent.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>

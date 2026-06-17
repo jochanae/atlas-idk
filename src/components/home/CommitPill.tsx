@@ -6,20 +6,106 @@ import { haptics } from "@/lib/haptics";
 /**
  * CommitPill — the "door you walk through" at the end of a shaped thread.
  *
- * State choreography (all driven by shellStore.shapingStatus):
+ * Two modes:
+ *
+ *   1. INLINE MODE (props provided) — used today, anchored inline below the
+ *      assistant message that surfaced a project. Self-contained local state
+ *      machine. `onArm` fires when the user taps the ready pill (right before
+ *      the border-trace plays); use it for the handoff API call.
+ *
+ *   2. STORE MODE (no props) — driven by `shellStore.shapingStatus`. For the
+ *      future single-handoff-in-flight pattern where a backend "shaping →
+ *      ready" signal flows through the global store. Persists indefinitely
+ *      while `ready` (no timeout).
+ *
+ * State choreography (both modes):
  *   shaping       → "Shaping into structure…" with shimmer; non-interactive
  *   ready         → "Enter Workspace →" glowing gold; tap arms the handoff
- *   transitioning → "Preparing {Title}…" with border-trace; auto-navigates on completion
+ *   transitioning → "Preparing {Title}…" with border-trace; auto-navigates
  *
- * Anchored inline at the commit marker. Persists indefinitely while `ready`
- * (no timeout). Single-tap commits; haptic confirmation, silent.
- *
- * Wiring expectation:
- *   - Caller sets shapingStatus='shaping' when the commit endpoint fires
- *   - Backend responds → caller sets pendingWorkspaceId/Title + status='ready'
- *   - Pill handles the rest (transitioning → navigate → resetHandoff)
+ * Haptic confirmation on tap, silent (audio cue intentionally omitted).
  */
-export function CommitPill({ className = "" }: { className?: string }) {
+
+type Status = "shaping" | "ready" | "transitioning";
+
+interface InlineProps {
+  projectId: number;
+  projectTitle: string;
+  /** Optional async handoff (e.g. POST /api/nexus/handoff). Fires on tap before navigation. */
+  onArm?: () => Promise<void> | void;
+  /** Initial status. Defaults to 'ready' for the inline case. */
+  initialStatus?: Status;
+  className?: string;
+}
+
+interface StoreProps {
+  className?: string;
+}
+
+export function CommitPill(props: InlineProps | StoreProps = {}) {
+  const inline = "projectId" in props && typeof props.projectId === "number";
+  return inline ? (
+    <InlineCommitPill {...(props as InlineProps)} />
+  ) : (
+    <StoreCommitPill className={props.className} />
+  );
+}
+
+/* ---------------- inline mode ---------------- */
+
+function InlineCommitPill({
+  projectId,
+  projectTitle,
+  onArm,
+  initialStatus = "ready",
+  className = "",
+}: InlineProps) {
+  const [, navigate] = useLocation();
+  const [status, setStatus] = useState<Status>(initialStatus);
+  const [traceProgress, setTraceProgress] = useState(0);
+
+  useEffect(() => {
+    if (status !== "transitioning") return;
+    const start = performance.now();
+    const DURATION = 1200;
+    let raf = 0;
+    const tick = (t: number) => {
+      const pct = Math.min(1, (t - start) / DURATION);
+      setTraceProgress(pct);
+      if (pct < 1) raf = requestAnimationFrame(tick);
+      else navigate(`/project/${projectId}`);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [status, projectId, navigate]);
+
+  const handleTap = async () => {
+    if (status !== "ready") return;
+    haptics.cardConfirmed();
+    if (onArm) {
+      try {
+        await onArm();
+      } catch {
+        // best-effort; navigate anyway so user is never trapped
+      }
+    }
+    setStatus("transitioning");
+  };
+
+  return (
+    <PillVisual
+      status={status}
+      title={projectTitle}
+      traceProgress={traceProgress}
+      onTap={handleTap}
+      className={className}
+    />
+  );
+}
+
+/* ---------------- store mode ---------------- */
+
+function StoreCommitPill({ className = "" }: { className?: string }) {
   const [, navigate] = useLocation();
   const status = useShellStore((s) => s.shapingStatus);
   const projectId = useShellStore((s) => s.pendingWorkspaceId);
@@ -29,11 +115,10 @@ export function CommitPill({ className = "" }: { className?: string }) {
   const setShellMode = useShellStore((s) => s.setShellMode);
   const [traceProgress, setTraceProgress] = useState(0);
 
-  // Drive the border-trace + navigation during 'transitioning'.
   useEffect(() => {
     if (status !== "transitioning" || !projectId) return;
     const start = performance.now();
-    const DURATION = 1200; // ms — generous enough to feel cinematic
+    const DURATION = 1200;
     let raf = 0;
     const tick = (t: number) => {
       const pct = Math.min(1, (t - start) / DURATION);
@@ -41,11 +126,8 @@ export function CommitPill({ className = "" }: { className?: string }) {
       if (pct < 1) {
         raf = requestAnimationFrame(tick);
       } else {
-        // Handoff complete — flip shell, navigate, reset.
         setShellMode("operational");
         navigate(`/project/${projectId}?source=commit-handoff`);
-        // Defer reset so the workspace mount sees isHandoff=true for one frame,
-        // letting the header gate hold. workspace.tsx clears it on first paint.
         setTimeout(() => resetHandoff(), 50);
       }
     };
@@ -55,18 +137,42 @@ export function CommitPill({ className = "" }: { className?: string }) {
 
   if (status === "idle") return null;
 
-  const handleTap = () => {
-    if (status !== "ready") return;
-    haptics.cardConfirmed();
-    setShapingStatus("transitioning");
-  };
+  return (
+    <PillVisual
+      status={status as Status}
+      title={title ?? "workspace"}
+      traceProgress={traceProgress}
+      onTap={() => {
+        if (status !== "ready") return;
+        haptics.cardConfirmed();
+        setShapingStatus("transitioning");
+      }}
+      className={className}
+    />
+  );
+}
 
+/* ---------------- shared visual ---------------- */
+
+function PillVisual({
+  status,
+  title,
+  traceProgress,
+  onTap,
+  className,
+}: {
+  status: Status;
+  title: string;
+  traceProgress: number;
+  onTap: () => void;
+  className: string;
+}) {
   const label =
     status === "shaping"
       ? "Shaping into structure…"
       : status === "ready"
         ? "Enter Workspace →"
-        : `Preparing ${title ?? "workspace"}…`;
+        : `Preparing ${title}…`;
 
   const isReady = status === "ready";
   const isTransitioning = status === "transitioning";
@@ -75,7 +181,7 @@ export function CommitPill({ className = "" }: { className?: string }) {
     <div className={`flex justify-center w-full my-6 ${className}`}>
       <button
         type="button"
-        onClick={handleTap}
+        onClick={onTap}
         disabled={!isReady}
         aria-label={label}
         className="relative px-6 py-3 rounded-full select-none transition-all duration-300"
@@ -94,20 +200,20 @@ export function CommitPill({ className = "" }: { className?: string }) {
           textTransform: "uppercase",
           cursor: isReady ? "pointer" : "default",
           overflow: "hidden",
+          WebkitTapHighlightColor: "transparent",
         }}
       >
-        {/* Ambient breathing glow when ready */}
         {isReady && (
           <span
             className="absolute inset-0 rounded-full animate-pulse"
             style={{
-              background: "radial-gradient(circle at center, rgba(201,162,76,0.12), transparent 70%)",
+              background:
+                "radial-gradient(circle at center, rgba(201,162,76,0.12), transparent 70%)",
               pointerEvents: "none",
             }}
           />
         )}
 
-        {/* Shimmer band when shaping */}
         {status === "shaping" && (
           <span
             className="absolute inset-0 rounded-full"
@@ -121,7 +227,6 @@ export function CommitPill({ className = "" }: { className?: string }) {
           />
         )}
 
-        {/* Border trace during transitioning */}
         {isTransitioning && (
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none"
