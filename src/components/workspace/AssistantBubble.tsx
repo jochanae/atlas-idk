@@ -1316,6 +1316,11 @@ export function AssistantBubble({
           </div>
         )}
 
+        {message.pendingSketch && !message.imageB64 && !imageGenDataUrl && !inlineImageUrl && (
+          <div style={{ marginBottom: 12 }}>
+            <SketchReveal src={null} loading alt="Atlas sketch" />
+          </div>
+        )}
         {(message.imageB64 || imageGenDataUrl || inlineImageUrl) && (
           <div style={{ marginBottom: 12 }}>
             <button
