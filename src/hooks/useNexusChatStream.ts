@@ -360,13 +360,21 @@ export function useNexusChatStream(
         } as NexusMessage : m));
       } catch (err: any) {
         console.error("[useNexusChatStream] image generate failed:", err);
-        setMessages(prev => [...prev, {
-          id: streamingId,
-          role: "assistant",
-          content: `Image generation failed: ${err?.message ?? "unknown error"}`,
-          createdAt: new Date().toISOString(),
-          model: resolvedModel,
-        } as NexusMessage]);
+        setMessages(prev => {
+          const exists = prev.some(m => (m as any).id === streamingId);
+          const errMsg = {
+            id: streamingId,
+            role: "assistant" as const,
+            content: `Image generation failed: ${err?.message ?? "unknown error"}`,
+            createdAt: new Date().toISOString(),
+            model: resolvedModel,
+            pendingSketch: false,
+            streaming: false,
+          } as NexusMessage;
+          return exists
+            ? prev.map(m => (m as any).id === streamingId ? errMsg : m)
+            : [...prev, errMsg];
+        });
       } finally {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setIsPending(false);
