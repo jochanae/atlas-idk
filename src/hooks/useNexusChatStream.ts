@@ -268,7 +268,9 @@ export function useNexusChatStream(
     const effectiveText = text.trim().length > 0
       ? text
       : (imgAttachments.length > 0 ? "(image attached)" : text);
-    const routedText = imgAttachments.length > 0 ? effectiveText : routeDirectImageRequestToSketchPrompt(effectiveText);
+    // Sketch auto-routing demoted to the inline offer pill (InlineSketchOffer).
+    // Only explicit [SKETCH:*] markers (user-confirmed) short-circuit to image gen below.
+    const routedText = effectiveText;
 
     const resolvedModel = overrideOptions?.model ?? model;
     const resolvedMode = overrideOptions?.mode ?? mode;
