@@ -17,7 +17,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { createTextPacer } from "@/lib/textPacer";
 import { FeederBadge } from "@/components/home/FeederBadge";
-import { useFeeder } from "@/lib/feederStore";
+import { useFeeder, useFeederHydration } from "@/lib/feederStore";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface NexusMsg {
@@ -275,6 +275,7 @@ export default function NexusPage() {
   const queryClient = useQueryClient();
   const clearThread = useClearNexusThread();
   const feeder = useFeeder();
+  useFeederHydration();
 
   // Hydrate messages from the Living Thread when it loads
   useEffect(() => {
