@@ -360,6 +360,7 @@ export function GlobalInsightSurface({
         title="Shaping"
       />
       {/* Isolated scroll container */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div
         ref={scrollRef}
         className="atlas-global-insight-scroll"
