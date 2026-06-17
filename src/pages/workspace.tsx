@@ -6433,6 +6433,7 @@ export default function Workspace() {
               onPlanExecutionChange: updatePlanExecution,
               onExecuteHomePlan: executeHomePlan,
               onPushSuccess: handleReviewPushSuccess,
+              commitCarryover,
             } : null}
             betweenSlot={
               agenticMode && agenticIterCount > 0 ? (
