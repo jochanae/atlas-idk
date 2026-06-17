@@ -61,6 +61,14 @@ function resolveLinkedFullName(linkedRepo?: string | null): string | null {
   return getLinkedRepoFullName(linkedRepo);
 }
 
+type ProjectStatusTab = "committed" | "shaping" | "built";
+
+const PROJECT_STATUS_TABS: Array<{ value: ProjectStatusTab; label: string }> = [
+  { value: "committed", label: "Active" },
+  { value: "shaping", label: "In Progress" },
+  { value: "built", label: "Shipped" },
+];
+
 export default function Projects() {
   const { data: projectsRaw, isLoading: isLoadingData } = useListProjects();
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
@@ -97,6 +105,8 @@ export default function Projects() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProjectStatusTab>("committed");
+  const [committingId, setCommittingId] = useState<number | null>(null);
 
   // GitHub importer
   const [showGithubSheet, setShowGithubSheet] = useState(false);
@@ -291,15 +301,41 @@ export default function Projects() {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: archive ? "archived" : "active" }),
+        body: JSON.stringify({ status: archive ? "archived" : "committed" }),
       });
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     } catch {}
   }, [queryClient]);
 
+  const handleCommitProject = useCallback(async (id: number) => {
+    setCommittingId(id);
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "committed" }),
+      });
+      if (!res.ok) throw new Error("Failed to commit project");
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    } catch {
+      // Existing project actions fail quietly on this page.
+    } finally {
+      setCommittingId(null);
+    }
+  }, [queryClient]);
+
   const activeProjects = projects?.filter(p =>
     (p.status ?? "active") !== "archived" &&
     p.status !== "shaping" &&
+    (p as any).entity_type !== "idea"
+  ) ?? [];
+  const listableProjects = projects?.filter(p =>
+    p.status !== "archived" &&
+    (p as any).entity_type !== "idea"
+  ) ?? [];
+  const filteredProjects = projects?.filter(p =>
+    p.status === activeTab &&
     (p as any).entity_type !== "idea"
   ) ?? [];
   const archivedProjects = projects?.filter(p =>
@@ -465,7 +501,7 @@ export default function Projects() {
           <div style={{ display: "flex", justifyContent: "center", paddingTop: 60 }}>
             <LoadingSpinner size="lg" color="atlas" />
           </div>
-        ) : activeProjects.length === 0 && archivedProjects.length === 0 ? (
+        ) : listableProjects.length === 0 && archivedProjects.length === 0 ? (
           <div style={{
             marginTop: 60,
             border: "1px dashed var(--atlas-border)",
@@ -499,25 +535,97 @@ export default function Projects() {
           </div>
         ) : (
           <>
-            {/* Active projects */}
+            {/* Project status tabs */}
+            <div
+              role="tablist"
+              aria-label="Project status filter"
+              style={{
+                display: "flex",
+                gap: 6,
+                padding: 4,
+                marginBottom: 14,
+                borderRadius: 8,
+                border: "1px solid var(--atlas-border)",
+                background: "rgba(255,255,255,0.015)",
+              }}
+            >
+              {PROJECT_STATUS_TABS.map((tab) => {
+                const selected = activeTab === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setActiveTab(tab.value)}
+                    style={{
+                      ...sMono,
+                      flex: 1,
+                      fontSize: 10,
+                      letterSpacing: "0.12em",
+                      fontWeight: selected ? 700 : 500,
+                      textTransform: "uppercase",
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                      border: `1px solid ${selected ? "rgba(201,162,76,0.38)" : "transparent"}`,
+                      background: selected ? "rgba(201,162,76,0.10)" : "transparent",
+                      color: selected ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                      cursor: "pointer",
+                      transition: "all 160ms ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selected) {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.025)";
+                        e.currentTarget.style.color = "var(--atlas-fg)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selected) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--atlas-muted)";
+                      }
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Filtered projects */}
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {activeProjects.map((p, idx) => (
-                <ProjectRow
-                  key={p.id}
-                  project={p}
-                  index={idx}
-                  hovered={hoveredId === p.id}
-                  onMouseEnter={() => setHoveredId(p.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  confirmDelete={confirmDeleteId === p.id}
-                  deleting={deletingId === p.id}
-                  onRequestDelete={() => setConfirmDeleteId(p.id)}
-                  onCancelDelete={() => setConfirmDeleteId(null)}
-                  onConfirmDelete={() => handleDelete(p.id)}
-                  onArchive={() => handleArchive(p.id, true)}
-                  onLinkRepo={hasGithubAccess && backendReady ? () => openGithubSheet(p.id) : undefined}
-                />
-              ))}
+              {filteredProjects.length === 0 ? (
+                <div style={{
+                  border: "1px dashed var(--atlas-border)",
+                  borderRadius: 8,
+                  padding: "28px 16px",
+                  textAlign: "center",
+                }}>
+                  <p style={{ ...sMono, fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.08em", margin: 0 }}>
+                    No {PROJECT_STATUS_TABS.find(tab => tab.value === activeTab)?.label.toLowerCase()} projects.
+                  </p>
+                </div>
+              ) : (
+                filteredProjects.map((p, idx) => (
+                  <ProjectRow
+                    key={p.id}
+                    project={p}
+                    index={idx}
+                    hovered={hoveredId === p.id}
+                    onMouseEnter={() => setHoveredId(p.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    confirmDelete={confirmDeleteId === p.id}
+                    deleting={deletingId === p.id}
+                    committing={committingId === p.id}
+                    onRequestDelete={() => setConfirmDeleteId(p.id)}
+                    onCancelDelete={() => setConfirmDeleteId(null)}
+                    onConfirmDelete={() => handleDelete(p.id)}
+                    onArchive={() => handleArchive(p.id, true)}
+                    onCommit={activeTab === "shaping" ? () => handleCommitProject(p.id) : undefined}
+                    onLinkRepo={hasGithubAccess && backendReady ? () => openGithubSheet(p.id) : undefined}
+                  />
+                ))
+              )}
             </div>
 
             {/* Archived section */}
@@ -978,10 +1086,12 @@ function ProjectRow({
   onMouseLeave,
   confirmDelete,
   deleting,
+  committing,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
   onArchive,
+  onCommit,
   onLinkRepo,
   isArchived = false,
 }: {
@@ -992,10 +1102,12 @@ function ProjectRow({
   onMouseLeave: () => void;
   confirmDelete: boolean;
   deleting: boolean;
+  committing?: boolean;
   onRequestDelete: () => void;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onArchive: () => void;
+  onCommit?: () => void;
   onLinkRepo?: () => void;
   isArchived?: boolean;
 }) {
@@ -1131,6 +1243,31 @@ function ProjectRow({
           </svg>
         )}
       </Link>
+
+      {onCommit && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onCommit(); }}
+          disabled={committing}
+          style={{
+            ...sMono,
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            padding: "6px 10px",
+            borderRadius: 5,
+            border: "1px solid rgba(201,162,76,0.35)",
+            background: committing ? "rgba(201,162,76,0.05)" : hovered ? "rgba(201,162,76,0.14)" : "rgba(201,162,76,0.08)",
+            color: committing ? "var(--atlas-muted)" : "var(--atlas-gold)",
+            cursor: committing ? "not-allowed" : "pointer",
+            flexShrink: 0,
+            transition: "all 140ms ease",
+          }}
+        >
+          {committing ? "Committing…" : "Commit →"}
+        </button>
+      )}
 
       {/* Action buttons — always accessible via ⋯ button (mobile) or hover (desktop) */}
       {confirmDelete ? (
