@@ -732,6 +732,55 @@ export function GlobalInsightSurface({
           </div>
         )}
       </div>
+      {showScrollBtn && (
+        <button
+          onPointerDown={(e) => {
+            if (e.pointerType !== "mouse") {
+              e.preventDefault();
+              const el = scrollRef.current;
+              if (!el) return;
+              el.scrollTop = el.scrollHeight - el.clientHeight;
+              requestAnimationFrame(() => {
+                if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
+              });
+            }
+          }}
+          onClick={(e) => {
+            if (e.detail === 0) {
+              const el = scrollRef.current;
+              if (!el) return;
+              el.scrollTop = el.scrollHeight - el.clientHeight;
+              requestAnimationFrame(() => {
+                if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
+              });
+            }
+          }}
+          aria-label="Scroll to latest"
+          style={{
+            position: "absolute",
+            bottom: 10,
+            right: 12,
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: "var(--atlas-surface)",
+            border: "1px solid var(--atlas-gold)",
+            color: "var(--atlas-gold)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+            zIndex: 50,
+            pointerEvents: "auto",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3v10M4 9l4 4 4-4"/>
+          </svg>
+        </button>
+      )}
+      </div>
 
       {/* Composer — minimal, transparent. Cursor + action row only. */}
       <div
