@@ -31,6 +31,7 @@ export type GlobalInsightMessage = {
   streaming?: boolean;
   createdAt?: string;
   imageUrl?: string;
+  pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
 };
 
