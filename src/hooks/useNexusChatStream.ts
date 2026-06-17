@@ -70,6 +70,7 @@ export interface NexusMessage {
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
+  pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
     images: Array<{
