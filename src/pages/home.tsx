@@ -57,6 +57,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
+import { pushHudEvent } from "@/lib/hudBus";
 
 
 const PLACEHOLDERS = [
