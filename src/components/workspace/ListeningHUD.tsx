@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useHudFeed } from "@/hooks/useHudFeed";
-import { pushHudEvent, type HudEvent, type HudEventType } from "@/lib/hudBus";
+import { pushHudEvent, setHudDocked, useHudDocked, type HudEvent, type HudEventType } from "@/lib/hudBus";
 
 /**
  * Listening HUD — peripheral awareness of what Atlas is extracting from the
@@ -28,6 +28,7 @@ const COGNITIVE_CATEGORIES: HudEventType[] = [
   "DECISION",
   "NAVIGATED",
   "TENSION",
+  "PROJECT",
 ];
 
 const AMBER = "rgb(201,162,76)";
@@ -93,7 +94,7 @@ export function ListeningHUD({
 }: ListeningHUDProps) {
   const allEvents = useHudFeed();
   const [expanded, setExpanded] = useState(false);
-  const [closed, setClosed] = useState(false);
+  const docked = useHudDocked();
   const [pulseKey, setPulseKey] = useState(0);
 
   // Truthful seed: log the current route so the HUD has at least one signal.
@@ -112,7 +113,7 @@ export function ListeningHUD({
     if (events.length > 0) setPulseKey((k) => k + 1);
   }, [events.length]);
 
-  if (closed) return null;
+  if (docked) return null;
   if (events.length === 0 && hideWhenEmpty) return null;
 
   const latest = events[0];
