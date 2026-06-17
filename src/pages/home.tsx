@@ -5494,7 +5494,7 @@ export default function Home() {
           mode="ambient"
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          onProjects={() => setShowProjectsSheet(true)}
+          onProjects={() => setLocation("/projects")}
           onDecisions={() => setLocation("/ledger")}
           onYou={() => setShowProfile(true)}
           onMap={() => setLocation("/map")}
