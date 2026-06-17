@@ -3563,9 +3563,11 @@ export default function Home() {
       hasConversation={nexusChat.messages.length > 0}
     />
   );
-  const handleGlobalInsightCreateProject = useCallback(() => {
+  const handleGlobalInsightCreateProject = useCallback((nameOverride?: string) => {
     setIsHandoffReady(false);
-    const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
+    // Pill-stored name (from handoffSignal) wins over tapped bold text.
+    const pillName = nexusChat.handoffSignal?.projectName?.trim();
+    const suggestedName = pillName || nameOverride?.trim();
     if (suggestedName) {
       void handleHandoff((nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined, suggestedName);
     } else {
