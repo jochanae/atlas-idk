@@ -17,6 +17,7 @@ import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
+import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
