@@ -16,6 +16,7 @@ import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 import { fetchGitHubStatus } from "@/hooks/useGitHub";
 import { QuickEditRow, QuickActionLauncherButton, type QuickEditProjectOption } from "./home/QuickEditRow";
+import { QuickActionV2 } from "./home/QuickActionV2";
 
 type RecentProject = {
   id: number;
@@ -165,13 +166,12 @@ function ActivityHubCard({
       </div>
 
       {launcherOpen && defaultLauncherProjectId > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <QuickEditRow
-            key="quick-action-launcher"
-            mode="launcher"
-            projectId={defaultLauncherProjectId}
-            projectName={defaultLauncherProjectName}
+        <div style={{ marginBottom: 12 }}>
+          <QuickActionV2
+            key="quick-action-v2"
             projects={projectOptions}
+            defaultProjectId={defaultLauncherProjectId}
+            defaultProjectName={defaultLauncherProjectName}
             onClose={() => setLauncherOpen(false)}
           />
         </div>
