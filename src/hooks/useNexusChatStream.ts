@@ -322,7 +322,7 @@ export function useNexusChatStream(
     // /api/chat does not generate images. Route direct image
     // asks (and explicit [SKETCH:*] picks) to /api/image/generate
     // and render the result inline as an assistant message.
-    const isImageIntent = imgAttachments.length === 0 && (shouldAutoRouteToSketchPrompt(text) || SKETCH_PROMPT_MARKER_RE.test(text));
+    const isImageIntent = imgAttachments.length === 0 && SKETCH_PROMPT_MARKER_RE.test(text);
     if (isImageIntent) {
       const sketchPreset = (text.match(SKETCH_PROMPT_MARKER_RE)?.[1] ?? routedText.match(SKETCH_PROMPT_MARKER_RE)?.[1])?.toLowerCase();
       const imgPrompt = extractSketchSubject(SKETCH_PROMPT_MARKER_RE.test(text) ? text : routedText);
