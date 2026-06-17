@@ -59,7 +59,7 @@ interface Props {
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
-  onCreateProject?: () => void;
+  onCreateProject?: (nameOverride?: string) => void;
   onAddAsset?: () => void;
   onMore?: () => void;
   onFiles?: (files: File[]) => void;
