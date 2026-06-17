@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
 
