@@ -210,7 +210,7 @@ export function ListeningHUD({
                 <path d="M5 12h14" />
               </svg>
             </IconBtn>
-            <IconBtn label="Close" onClick={() => setClosed(true)}>
+            <IconBtn label="Dock" onClick={() => { setExpanded(false); setHudDocked(true); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6 6 18" />
                 <path d="m6 6 12 12" />
@@ -219,8 +219,8 @@ export function ListeningHUD({
           </div>
         </div>
 
-        {/* Feed */}
-        <div>
+        {/* Feed — scrollable when content exceeds max height */}
+        <div style={{ maxHeight: 280, overflowY: "auto", overscrollBehavior: "contain" }}>
           {visible.length === 0 && (
             <div style={{ padding: "20px 12px", textAlign: "center", fontFamily: FONT_MONO, fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
               waiting for signal…
