@@ -20,7 +20,7 @@ import { haptics } from "@/lib/haptics";
  *   - Pill handles the rest (transitioning → navigate → resetHandoff)
  */
 export function CommitPill({ className = "" }: { className?: string }) {
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
   const status = useShellStore((s) => s.shapingStatus);
   const projectId = useShellStore((s) => s.pendingWorkspaceId);
   const title = useShellStore((s) => s.pendingWorkspaceTitle);
