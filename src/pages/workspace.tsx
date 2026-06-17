@@ -134,6 +134,10 @@ type HomeHandoffMeta = {
   parkedTitles?: string[];
 };
 
+function hasHomeHandoffNodeData(meta: HomeHandoffMeta | null): boolean {
+  return Boolean((meta?.flowNodeCount ?? 0) > 0 || (meta?.nodes?.length ?? 0) > 0);
+}
+
 export interface LinePatch {
   path: string;
   find: string;
@@ -1005,7 +1009,9 @@ function RightPanel({
       const stored = sessionStorage.getItem("atlas-open-tab");
       if (stored === "map") {
         sessionStorage.removeItem("atlas-open-tab");
-        return "map";
+        if (new URLSearchParams(window.location.search).get("view") === "flow") {
+          return "map";
+        }
       }
     } catch {}
     return "ledger";
@@ -3907,6 +3913,7 @@ export default function Workspace() {
       return raw ? JSON.parse(raw) as HomeHandoffMeta : null;
     } catch { return null; }
   });
+  const [homeHandoffDataSettled, setHomeHandoffDataSettled] = useState(() => !isHomeHandoff || hasHomeHandoffNodeData(homeHandoffMeta));
   const [showHomeHandoffBanner, setShowHomeHandoffBanner] = useState(() => {
     try { return isHomeHandoff && sessionStorage.getItem(`atlas-home-handoff-banner-${id}`) !== "1"; } catch { return isHomeHandoff; }
   });
@@ -3939,10 +3946,24 @@ export default function Workspace() {
   }, [id, isHomeHandoff]);
 
   useEffect(() => {
-    if (!showHomeHandoffBanner || showHomeHandoffDrawer) return;
+    if (!isHomeHandoff) {
+      setHomeHandoffDataSettled(true);
+      return;
+    }
+    if (hasHomeHandoffNodeData(homeHandoffMeta)) {
+      setHomeHandoffDataSettled(true);
+      return;
+    }
+    setHomeHandoffDataSettled(false);
+    const timer = setTimeout(() => setHomeHandoffDataSettled(true), 1200);
+    return () => clearTimeout(timer);
+  }, [id, isHomeHandoff, homeHandoffMeta]);
+
+  useEffect(() => {
+    if (!homeHandoffDataSettled || !showHomeHandoffBanner || showHomeHandoffDrawer) return;
     const timer = setTimeout(() => setShowHomeHandoffBanner(false), 4000);
     return () => clearTimeout(timer);
-  }, [showHomeHandoffBanner, showHomeHandoffDrawer]);
+  }, [homeHandoffDataSettled, showHomeHandoffBanner, showHomeHandoffDrawer]);
 
   useEffect(() => {
     if (!Number.isFinite(id)) return;
@@ -4237,23 +4258,6 @@ export default function Workspace() {
       }));
     }
   }, [hasForgeNodes, id]);
-
-  // ── Shaping arrival toast (one-time) ───────────────────────────────────────────
-  useEffect(() => {
-    if (!project || !Number.isFinite(id)) return;
-    if (project.status !== "shaping") return;
-    if ((sessions?.length ?? 0) > 0) return;
-    if (!project.workingTitle) return;
-    const key = `atlas-shaping-arrival-${id}`;
-    try {
-      if (localStorage.getItem(key)) return;
-      toast("Picked up from your conversation", {
-        description: `"${project.workingTitle}" — rename it anytime by tapping the title.`,
-        duration: 5000,
-      });
-      localStorage.setItem(key, "1");
-    } catch { /* ignore localStorage errors */ }
-  }, [project, sessions, id]);
 
   // fallbackEntries + entries moved above (consumed by useChatStream).
   // createSession moved above (consumed by useChatStream).
@@ -5164,6 +5168,7 @@ export default function Workspace() {
     if (!isHomeHandoff || !Number.isFinite(id) || homeHandoffDbLoadedRef.current === id) return;
     homeHandoffDbLoadedRef.current = id;
     const controller = new AbortController();
+    let cancelled = false;
     void (async () => {
       try {
         const res = await fetch(`/api/projects/${id}`, {
@@ -5190,19 +5195,17 @@ export default function Workspace() {
             moscow: n.moscow,
           })),
         }));
-        if (isMobile) {
-          setMobileTab("map");
-          setRightOpen(true);
-        } else {
-          setDesktopForceTab("map");
-          setTimeout(() => setDesktopForceTab(undefined), 120);
-        }
       } catch {
         // Handoff details are a progressive enhancement; keep the workspace usable.
+      } finally {
+        if (!cancelled) setHomeHandoffDataSettled(true);
       }
     })();
-    return () => controller.abort();
-  }, [id, isHomeHandoff, isMobile, parkedEntries.length]);
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [id, isHomeHandoff, parkedEntries.length]);
   const [pendingTerminalCommand, setPendingTerminalCommand] = useState<string | null>(null);
   const handleRunCommand = useCallback((command: string) => {
     setPendingTerminalCommand(command);
@@ -5962,7 +5965,7 @@ export default function Workspace() {
         </div>
       )}
 
-      {(showHomeHandoffBanner || showHomeHandoffDrawer) && (
+      {homeHandoffDataSettled && (showHomeHandoffBanner || showHomeHandoffDrawer) && (
         <style>{`
           @keyframes atlas-handoff-drawer-in {
             from { transform: translateY(100%); opacity: 0; }
@@ -5971,8 +5974,8 @@ export default function Workspace() {
         `}</style>
       )}
 
-      {(showHomeHandoffBanner || showHomeHandoffDrawer) && (() => {
-        const handoffNodes = homeHandoffMeta?.nodes ?? [];
+      {homeHandoffDataSettled && (showHomeHandoffBanner || showHomeHandoffDrawer) && (() => {
+        const handoffNodes = homeHandoffNodes;
         const getMo = (n: HomeHandoffNode) => n.moscow ?? n.meta ?? (n.type === "wont" ? "wont" : undefined);
         const isDefined = (n: HomeHandoffNode) => Boolean(n.resolved) || Boolean(n.details && n.details.trim() && !/^tap to /i.test(n.details));
         const mustCount = handoffNodes.filter(n => getMo(n) === "must").length;
@@ -5980,7 +5983,7 @@ export default function Workspace() {
         const openDecisionCount = handoffNodes.filter(n => n.type === "decision" && !isDefined(n)).length;
         const blockerCount = handoffNodes.filter(n => n.type === "blocker").length;
         const definedCount = handoffNodes.filter(isDefined).length;
-        const totalCount = homeHandoffMeta?.flowNodeCount ?? handoffNodes.length;
+        const totalCount = Math.max(homeHandoffMeta?.flowNodeCount ?? 0, handoffNodes.length);
         const goalLabel = homeHandoffMeta?.goalLabel?.trim() || "your first node";
         const projectLabel = project?.name ?? "this project";
         const parkedCount = homeHandoffMeta?.parkedCount ?? 0;
@@ -6031,7 +6034,7 @@ export default function Workspace() {
         );
       })()}
 
-      {showHomeHandoffDrawer && (
+      {homeHandoffDataSettled && showHomeHandoffDrawer && (
         <div
           role="region"
           aria-label="Home handoff details"
@@ -6184,6 +6187,12 @@ export default function Workspace() {
             onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
             onCommandComplete={handleTerminalComplete}
             wsLens={wsLens}
+            onBackToChat={() => {
+              setLeftTab("chat");
+              setDesktopRightFull(false);
+              setDesktopForceTab("ledger");
+              setTimeout(() => setDesktopForceTab(undefined), 80);
+            }}
             onOpenForge={() => setShowForgeExternal(true)}
             externalForgeNodes={externalForgeNodes}
             onForgeNodesConsumed={() => setExternalForgeNodes([])}
