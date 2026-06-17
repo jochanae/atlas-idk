@@ -1926,6 +1926,7 @@ export default function Home() {
   }, []);
   const [projectReadyAutoHandoffCount, setProjectReadyAutoHandoffCount] = useState(0);
   const [projectReadyDoneData, setProjectReadyDoneData] = useState<NexusProjectReadyDoneData | null>(null);
+  const [isHandoffReady, setIsHandoffReady] = useState(false);
   const handleNexusProjectReady = useCallback((doneData?: NexusProjectReadyDoneData) => {
     if (doneData?.projectReady) {
       setProjectReadyDoneData(doneData);
@@ -1947,6 +1948,11 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
+  useEffect(() => {
+    if (nexusChat.handoffSignal?.readyToHandoff === true) {
+      setIsHandoffReady(true);
+    }
+  }, [nexusChat.handoffSignal]);
   const focusProjectId = homeFocus;
   useEffect(() => {
     setRecentFocusUserMessages(
@@ -3124,6 +3130,7 @@ export default function Home() {
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
     if (!nexusChat.messages.length) return;
+    setIsHandoffReady(false);
     setHandoffLoading(true);
     setHandoffStage("Setting up your workspace...");
     try {
@@ -3323,6 +3330,7 @@ export default function Home() {
 
   const handleNewConversation = useCallback(() => {
     homeResetGenerationRef.current += 1;
+    setIsHandoffReady(false);
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
@@ -3551,11 +3559,16 @@ export default function Home() {
       hasConversation={nexusChat.messages.length > 0}
     />
   );
+  const handleGlobalInsightCreateProject = useCallback(() => {
+    setIsHandoffReady(false);
+    performCreateProjectFromConversation();
+  }, [performCreateProjectFromConversation]);
 
   return (
     <div
       ref={ptrContainerRef}
       className="atlas-home-bg"
+      data-handoff-ready={isHandoffReady ? "true" : undefined}
       style={{
         height: "100dvh",
         backgroundColor: "var(--atlas-bg)",
@@ -5093,7 +5106,7 @@ export default function Home() {
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
-        onCreateProject={performCreateProjectFromConversation}
+        onCreateProject={handleGlobalInsightCreateProject}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => {
@@ -5390,6 +5403,23 @@ export default function Home() {
               0 0 16px 4px rgba(212,175,55,0.38),
               0 0 44px 12px rgba(212,175,55,0.14);
           }
+        }
+        @keyframes atlasHandoffReadyPulse {
+          0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(212,175,55,0.00);
+          }
+          50% {
+            transform: scale(1.04);
+            box-shadow:
+              0 0 0 4px rgba(212,175,55,0.08),
+              0 0 18px rgba(212,175,55,0.22);
+          }
+        }
+        .atlas-home-bg[data-handoff-ready="true"] button[aria-label="Create project from this conversation"] {
+          animation: atlasHandoffReadyPulse 2.2s ease-in-out infinite;
+          border-color: rgba(212,175,55,0.28) !important;
+          color: var(--atlas-gold) !important;
         }
         .atlas-home-chat-messages-scroll::-webkit-scrollbar {
           display: none;
