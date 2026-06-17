@@ -349,6 +349,7 @@ export function GlobalInsightSurface({
       }}
     >
       {subheader}
+      <ListeningHUD position={{ top: 64, right: 12 }} />
       {/* Isolated scroll container */}
       <div
         ref={scrollRef}

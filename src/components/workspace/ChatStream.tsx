@@ -7,6 +7,7 @@ import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
 import { TimelineRail } from "../TimelineRail";
+import { ListeningHUD } from "@/components/workspace/ListeningHUD";
 
 import type { ChatMessage, LinkedRepo, PushRecord } from "@/pages/workspace";
 import type { PlanExecution } from "@/lib/plan";
@@ -507,6 +508,7 @@ export function ChatStream(props: ChatStreamProps) {
         </button>
       )}
       <TimelineRail bottomOffset={isMobile ? 228 : 110} messages={messages.map((m) => ({ role: m.role as "user" | "assistant", createdAt: m.sentAt, hasSurfacedMemory: !!(m.memoryChips && m.memoryChips.length > 0), text: m.content }))} />
+      <ListeningHUD position={{ top: 12, right: isMobile ? 12 : 24 }} />
     </div>
   );
 }
