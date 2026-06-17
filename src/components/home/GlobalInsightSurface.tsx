@@ -18,7 +18,7 @@ import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
-import { ListeningHUD } from "@/components/workspace/ListeningHUD";
+import { ListeningHUD, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -350,7 +350,7 @@ export function GlobalInsightSurface({
       }}
     >
       {subheader}
-      <ListeningHUD position={{ top: 64, right: 12 }} />
+      <ListeningHUD position={{ top: 64, right: 12 }} categories={COGNITIVE_CATEGORIES} title="Shaping" />
       {/* Isolated scroll container */}
       <div
         ref={scrollRef}

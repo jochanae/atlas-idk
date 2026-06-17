@@ -1,14 +1,38 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useHudFeed } from "@/hooks/useHudFeed";
-import { pushHudEvent, type HudEvent } from "@/lib/hudBus";
+import { pushHudEvent, type HudEvent, type HudEventType } from "@/lib/hudBus";
 
 /**
  * Listening HUD — peripheral awareness of what Atlas is extracting from the
- * live conversation. Collapsed = single line latest event. Expanded = last 5.
+ * live conversation.
  *
- * Mounts as a floating panel anchored top-right inside a chat surface.
- * Content is sourced from `src/lib/hudBus.ts` (frontend pub/sub).
+ *   Collapsed = 30px pill (top-right), shows the latest event.
+ *   Expanded  = 320px obsidian-glass panel with last 5 events + timestamps.
+ *
+ * Visual system (locked):
+ *   - Obsidian glass shell (black/45% + 20px blur, white/10 hairline border).
+ *   - Amber/gold (#c9a24c) for event tag labels — premium terminal feel.
+ *   - Violet pulse dot — ambient "shaping" energy of the home surface.
+ *
+ * Content source: `src/lib/hudBus.ts` (frontend pub/sub). Backend SSE can
+ * later push onto the same bus without changing this component.
+ *
+ * Surface-aware filtering via `categories`:
+ *   - Home (shaping):    INTENT, MEMORY, DECISION, NAVIGATED, TENSION
+ *   - Workspace (build): all (default) — includes INGESTED, EXTRACTED
  */
+
+const COGNITIVE_CATEGORIES: HudEventType[] = [
+  "INTENT",
+  "MEMORY",
+  "DECISION",
+  "NAVIGATED",
+  "TENSION",
+];
+
+const AMBER = "rgb(201,162,76)";
+const VIOLET = "rgb(167,139,250)";
+const VIOLET_CORE = "rgb(139,92,246)";
 
 function fmtTime(iso: string): string {
   try {
@@ -36,14 +60,14 @@ function EventLine({ ev, dim }: { ev: HudEvent; dim?: boolean }) {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 2, fontFamily: FONT_MONO, minWidth: 0 }}>
-        <span style={{ fontSize: 9, letterSpacing: "-0.01em", textTransform: "uppercase", color: "rgb(167,139,250)", fontWeight: 700 }}>
-          {ev.type}
+        <span style={{ fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", color: AMBER, fontWeight: 700 }}>
+          [{ev.type}]
         </span>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.9)", lineHeight: 1.3, wordBreak: "break-word" }}>
           {ev.payload}
         </span>
       </div>
-      <span style={{ fontSize: 9, fontFamily: FONT_MONO, color: "rgba(255,255,255,0.2)", marginTop: 2, flexShrink: 0 }}>
+      <span style={{ fontSize: 9, fontFamily: FONT_MONO, color: "rgba(255,255,255,0.22)", marginTop: 2, flexShrink: 0 }}>
         {fmtTime(ev.at)}
       </span>
     </div>
@@ -51,14 +75,23 @@ function EventLine({ ev, dim }: { ev: HudEvent; dim?: boolean }) {
 }
 
 export interface ListeningHUDProps {
-  /** Pin position relative to the parent container (must be position: relative). */
+  /** Pin position relative to the parent container (parent must be position: relative/fixed). */
   position?: { top?: number; right?: number };
   /** Hide entirely when no events yet. Default true. */
   hideWhenEmpty?: boolean;
+  /** Filter event types. Default = all. Pass `COGNITIVE_CATEGORIES` for shaping surfaces. */
+  categories?: HudEventType[];
+  /** Label shown in the expanded panel header. */
+  title?: string;
 }
 
-export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty = true }: ListeningHUDProps) {
-  const events = useHudFeed();
+export function ListeningHUD({
+  position = { top: 12, right: 12 },
+  hideWhenEmpty = true,
+  categories,
+  title = "Live Extraction",
+}: ListeningHUDProps) {
+  const allEvents = useHudFeed();
   const [expanded, setExpanded] = useState(false);
   const [closed, setClosed] = useState(false);
   const [pulseKey, setPulseKey] = useState(0);
@@ -69,6 +102,10 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
     const path = window.location.pathname + window.location.search;
     pushHudEvent("NAVIGATED", path);
   }, []);
+
+  const events = categories
+    ? allEvents.filter((e) => categories.includes(e.type))
+    : allEvents;
 
   // Bump pulse on new event arrival.
   useEffect(() => {
@@ -109,7 +146,7 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
             gap: 10,
             borderRadius: 999,
             border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(0,0,0,0.45)",
+            background: "rgba(8,8,10,0.55)",
             backdropFilter: "blur(14px)",
             WebkitBackdropFilter: "blur(14px)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(167,139,250,0.18)",
@@ -121,10 +158,10 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
           <PulseDot key={pulseKey} />
           {latest && (
             <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT_MONO, fontSize: 10, minWidth: 0 }}>
-              <span style={{ color: "rgb(167,139,250)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "-0.01em" }}>
-                {latest.type}
+              <span style={{ color: AMBER, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                [{latest.type}]
               </span>
-              <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 300 }}>→</span>
+              <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 300 }}>→</span>
               <span style={{ color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
                 {latest.payload}
               </span>
@@ -142,10 +179,10 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
           width: 320,
           borderRadius: 16,
           border: "1px solid rgba(255,255,255,0.1)",
-          background: "rgba(0,0,0,0.5)",
+          background: "rgba(8,8,10,0.6)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(167,139,250,0.1)",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.65), 0 0 0 1px rgba(167,139,250,0.1)",
           overflow: "hidden",
         }}
       >
@@ -163,13 +200,13 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <PulseDot key={pulseKey} />
             <span style={{ fontFamily: FONT_SANS, fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.8)", letterSpacing: "-0.005em" }}>
-              Live Extraction
+              {title}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <IconBtn label="Collapse" onClick={() => setExpanded(false)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m18 15-6-6-6 6" />
+                <path d="M5 12h14" />
               </svg>
             </IconBtn>
             <IconBtn label="Close" onClick={() => setClosed(true)}>
@@ -194,7 +231,7 @@ export function ListeningHUD({ position = { top: 12, right: 12 }, hideWhenEmpty 
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "8px 12px", background: "rgba(167,139,250,0.05)", display: "flex", justifyContent: "center" }}>
+        <div style={{ padding: "8px 12px", background: "rgba(201,162,76,0.05)", display: "flex", justifyContent: "center" }}>
           <div style={{ height: 2, width: 32, borderRadius: 999, background: "rgba(255,255,255,0.1)" }} />
         </div>
       </div>
@@ -219,8 +256,8 @@ function IconBtn({ children, onClick, label }: { children: React.ReactNode; onCl
         justifyContent: "center",
         borderRadius: 4,
       }}
-      onMouseEnter={(e) => ((e.currentTarget.style.color = "rgba(255,255,255,0.7)"))}
-      onMouseLeave={(e) => ((e.currentTarget.style.color = "rgba(255,255,255,0.3)"))}
+      onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.75)")}
+      onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}
     >
       {children}
     </button>
@@ -235,7 +272,7 @@ function PulseDot() {
           position: "absolute",
           inset: 0,
           borderRadius: 999,
-          background: "rgb(167,139,250)",
+          background: VIOLET,
           opacity: 0.55,
           animation: "atlas-hud-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite",
         }}
@@ -245,7 +282,7 @@ function PulseDot() {
           position: "absolute",
           inset: -2,
           borderRadius: 999,
-          background: "rgb(139,92,246)",
+          background: VIOLET_CORE,
           opacity: 0.25,
           animation: "atlas-hud-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite 0.4s",
         }}
@@ -257,7 +294,7 @@ function PulseDot() {
           height: 8,
           width: 8,
           borderRadius: 999,
-          background: "rgb(139,92,246)",
+          background: VIOLET_CORE,
           boxShadow: "0 0 8px rgba(139,92,246,0.6)",
         }}
       />
@@ -271,4 +308,5 @@ function PulseDot() {
   );
 }
 
+export { COGNITIVE_CATEGORIES };
 export default ListeningHUD;
