@@ -3115,7 +3115,7 @@ export default function Home() {
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, status: "committed" }),
       });
       const project = await createRes.json();
       if (!createRes.ok || !project.id) throw new Error(project?.error ?? "Project creation failed");
