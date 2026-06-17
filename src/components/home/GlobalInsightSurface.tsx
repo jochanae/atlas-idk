@@ -22,6 +22,7 @@ import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { CommitPill } from "./CommitPill";
+import { setFeeder } from "@/lib/feederStore";
 
 
 export type GlobalInsightMessage = {
@@ -612,6 +613,13 @@ export function GlobalInsightSurface({
                     projectId={tokenTarget.projectId}
                     projectTitle={tokenTarget.projectName}
                     onArm={async () => {
+                      // Stub feeder-channel attachment (localStorage) so the
+                      // header chip + sidebar chip light up immediately.
+                      // Backend will replace this with attached_project_id.
+                      setFeeder({
+                        projectId: tokenTarget.projectId,
+                        projectTitle: tokenTarget.projectName,
+                      });
                       // Best-effort handoff sync — never blocks navigation.
                       try {
                         await fetch("/api/nexus/handoff", {
