@@ -599,7 +599,9 @@ export function GlobalInsightSurface({
                     projects={projects}
                     onNavigate={(id) => void handleProjectOpen(id)}
                     isParchment={isParchment}
+                    onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
                   />
+
                 </div>
                 {tokenTarget && (
                   <button
