@@ -9,6 +9,8 @@ import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
+import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+
 import { useChatLens } from "@/hooks/useChatLens";
 import { useComposerZip } from "@/hooks/useComposerZip";
 import { useParkingLot } from "@/hooks/useParkingLot";
