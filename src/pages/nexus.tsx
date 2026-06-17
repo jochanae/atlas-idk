@@ -17,7 +17,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { createTextPacer } from "@/lib/textPacer";
 import { FeederBadge } from "@/components/home/FeederBadge";
-import { useFeeder } from "@/lib/feederStore";
+import { useFeeder, useFeederHydration } from "@/lib/feederStore";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface NexusMsg {
