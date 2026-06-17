@@ -832,7 +832,13 @@ export const getListProjectsQueryOptions = <
     signal,
   }) => listProjects({ signal, ...requestOptions });
 
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+  return {
+    queryKey,
+    queryFn,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    ...queryOptions,
+  } as UseQueryOptions<
     Awaited<ReturnType<typeof listProjects>>,
     TError,
     TData

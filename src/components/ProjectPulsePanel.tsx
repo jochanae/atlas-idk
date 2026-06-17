@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Check } from "lucide-react";
-import { useUpdateProject, getGetProjectQueryKey } from "@workspace/api-client-react";
+import { useUpdateProject, getGetProjectQueryKey, getListProjectsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LIFECYCLE_META, type Lifecycle } from "@/lib/lifecycle";
 
@@ -51,7 +51,7 @@ export function ProjectPulsePanel(props: Props) {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          queryClient.invalidateQueries({ queryKey: ["projects"] });
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           setJustMarked(true);
           setTimeout(() => { setJustMarked(false); onClose(); }, 900);
         },

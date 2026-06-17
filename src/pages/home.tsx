@@ -1819,7 +1819,9 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const { user: authUser } = useRequireAuth();
-  const { data: projects, isLoading } = useListProjects();
+  const { data: projects, isLoading } = useListProjects({
+    query: { refetchOnMount: "always", refetchOnWindowFocus: true },
+  });
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -2348,9 +2350,13 @@ export default function Home() {
       fetch(`/api/projects/${p.id}`, {
         method: "DELETE",
         credentials: "include",
-      }).catch(() => {});
+      })
+        .then((res) => {
+          if (res.ok) queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        })
+        .catch(() => {});
     });
-  }, [projects]);
+  }, [projects, queryClient]);
   useEffect(() => {
     if (!projects || !Array.isArray(projects)) return;
     const existing = (projects as any[]).find(

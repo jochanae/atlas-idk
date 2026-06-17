@@ -70,7 +70,9 @@ const PROJECT_STATUS_TABS: Array<{ value: ProjectStatusTab; label: string }> = [
 ];
 
 export default function Projects() {
-  const { data: projectsRaw, isLoading: isLoadingData } = useListProjects();
+  const { data: projectsRaw, isLoading: isLoadingData } = useListProjects({
+    query: { refetchOnMount: "always", refetchOnWindowFocus: true },
+  });
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
   const [showSpinner, setShowSpinner] = useState(true);
   const spinnerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

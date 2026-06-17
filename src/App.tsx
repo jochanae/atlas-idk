@@ -254,6 +254,8 @@ function OnboardingGate() {
     queryKey: getListProjectsQueryKey(),
     queryFn: listProjects,
     enabled: shouldCheck && !!user,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
