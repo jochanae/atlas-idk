@@ -6,6 +6,8 @@ import { extractSketchSubject, routeDirectImageRequestToSketchPrompt, shouldAuto
 const STREAM_TIMEOUT_MS = 90_000;
 const NAVIGATE_TO_RE = /\s*NAVIGATE_TO:\s*(\{[^\n]*"route"\s*:\s*"([^"]+)"[^\n]*\})\s*$/;
 const PROJECT_READY_RE = /PROJECT_READY:\s*(\{[\s\S]*?\})(?=\s|$)/;
+const BARE_PROJECT_READY_RE = /(^|\s)PROJECT_READY(?=\s|$)/;
+const BARE_PROJECT_READY_RE_GLOBAL = /(^|\s)PROJECT_READY(?=\s|$)/g;
 
 function parseProjectReady(content: string): { title: string | null; reason: string | null } | null {
   const match = content.match(PROJECT_READY_RE);
@@ -29,6 +31,14 @@ function parseProjectReady(content: string): { title: string | null; reason: str
 
 function stripProjectReady(content: string): string {
   return content.replace(PROJECT_READY_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function hasBareProjectReady(content: string): boolean {
+  return BARE_PROJECT_READY_RE.test(content);
+}
+
+function stripBareProjectReady(content: string): string {
+  return content.replace(BARE_PROJECT_READY_RE_GLOBAL, "$1").replace(/\n{3,}/g, "\n\n");
 }
 
 function stripNavigateTo(content: string): { content: string; route: string | null } {
@@ -131,6 +141,7 @@ export interface UseNexusChatStreamOptions {
   mode?: string;
   conversationId?: string | null;
   onData?: (data: unknown) => void;
+  onProjectReady?: () => void;
   projectContext?: {
     projectId: number;
     memorySummary?: string | null;
@@ -164,7 +175,7 @@ export interface UseNexusChatStreamReturn {
 export function useNexusChatStream(
   options: UseNexusChatStreamOptions
 ): UseNexusChatStreamReturn {
-  const { focusProjectId, model = "claude", mode, conversationId, onData, projectContext } = options;
+  const { focusProjectId, model = "claude", mode, conversationId, onData, onProjectReady, projectContext } = options;
 
   const [messages, setMessages] = useState<NexusMessage[]>([]);
   const messagesRef = useRef<NexusMessage[]>([]);
@@ -195,6 +206,7 @@ export function useNexusChatStream(
   const cleanedUpRef = useRef(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stepSeqRef = useRef(0);
+  const projectReadyNotifiedStreamRef = useRef<string | null>(null);
 
   const resetStreamState = useCallback(() => {
     if (timeoutRef.current) {
@@ -261,6 +273,7 @@ export function useNexusChatStream(
     const streamingId = Date.now().toString();
     streamingIdRef.current = streamingId;
     stepSeqRef.current = 0;
+    projectReadyNotifiedStreamRef.current = null;
     cleanedUpRef.current = false;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
@@ -357,6 +370,12 @@ export function useNexusChatStream(
     };
     setMessages(prev => [...prev, assistantMsg]);
 
+    const notifyProjectReady = () => {
+      if (projectReadyNotifiedStreamRef.current === streamingId) return;
+      projectReadyNotifiedStreamRef.current = streamingId;
+      onProjectReady?.();
+    };
+
     try {
       await stream({
         endpoint: "/api/nexus/chat",
@@ -379,7 +398,8 @@ export function useNexusChatStream(
 
         callbacks: {
           onToken: (released) => {
-            const cleaned = stripNavigateTo(released)
+            if (hasBareProjectReady(released)) notifyProjectReady();
+            const cleaned = stripBareProjectReady(stripNavigateTo(released)
               .content
               .split('\n')
               .filter(line => {
@@ -393,7 +413,7 @@ export function useNexusChatStream(
               .join('\n')
               .replace(/VISUALIZE:\{[\s\S]*$/g, '')
               .replace(/READY_TO_SHAPE:\{[\s\S]*$/g, '')
-              .replace(/PROJECT_READY:\{[\s\S]*$/g, '');
+              .replace(/PROJECT_READY:\{[\s\S]*$/g, ''));
             setMessages(prev => prev.map(m =>
               (m as any).id === streamingId
                 ? { ...m, content: cleaned }
@@ -524,6 +544,10 @@ export function useNexusChatStream(
             if (projectReady) {
               displayText = stripProjectReady(displayText);
             }
+            if (hasBareProjectReady(displayText)) {
+              notifyProjectReady();
+              displayText = stripBareProjectReady(displayText).trim();
+            }
 
             let handoff = meta.handoffSignal as NexusHandoffSignal | undefined;
             if (projectReady && !handoff) {
@@ -583,7 +607,7 @@ export function useNexusChatStream(
       // Always reset — even if stream threw unexpectedly
       resetStreamState();
     }
-  }, [focusProjectId, isPending, model, mode, onData, stream, abortStream, resetStreamState]);
+  }, [focusProjectId, isPending, model, mode, onData, onProjectReady, stream, abortStream, resetStreamState]);
 
   return {
     messages,
