@@ -4836,14 +4836,18 @@ export default function Workspace() {
     ]);
   }, []);
 
-  useEffect(() => {
-    const chatEl = chatPanelScrollRef.current;
-    if (chatEl) {
-      chatEl.scrollTop = chatEl.scrollHeight - chatEl.clientHeight;
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior: "instant" });
-    }
-  }, [messages, chatPending]);
+  // Smart Anchor: stick to bottom only when user is already near it.
+  // If they scrolled up to re-read while Atlas streams, freeze instead of yanking back.
+  // A fresh user message (userMsgCount increments) bypasses the freeze.
+  const userMsgCount = useMemo(
+    () => messages.filter((m) => m.role === "user").length,
+    [messages],
+  );
+  useSmartAutoScroll(chatPanelScrollRef, [messages.length, chatPending], {
+    forceDeps: [userMsgCount],
+    behavior: "auto",
+  });
+
 
   // Close mobile panel on mobile→desktop resize
   useEffect(() => {
