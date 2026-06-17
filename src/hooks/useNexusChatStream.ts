@@ -70,6 +70,7 @@ export interface NexusMessage {
   kind?: "genesis";
   genesisData?: { projectName: string; timestamp: string };
   imageUrl?: string;
+  pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
   imageGen?: {
     images: Array<{
@@ -330,6 +331,17 @@ export function useNexusChatStream(
         setLiveSteps(prev => [...prev, step].slice(-6));
       };
       pushStep("Interpreting", `"${imgPrompt.slice(0, 48)}${imgPrompt.length > 48 ? "…" : ""}"`);
+      // Insert placeholder assistant bubble immediately so the user
+      // sees a shimmer instead of waiting in silence with their prompt text.
+      setMessages(prev => [...prev, {
+        id: streamingId,
+        role: "assistant",
+        content: "",
+        createdAt: new Date().toISOString(),
+        model: resolvedModel,
+        pendingSketch: true,
+        streaming: true,
+      } as NexusMessage]);
       try {
         pushStep("Sketching", `${styleLabel} style`);
         const { generateImage } = await import("@/lib/generateImage");
@@ -337,25 +349,32 @@ export function useNexusChatStream(
           style: (sketchPreset as "concept" | "wireframe" | "moodboard" | "blueprint" | "photoreal" | undefined) ?? "concept",
         });
         pushStep("Rendering", "image");
-        setMessages(prev => [...prev, {
-          id: streamingId,
-          role: "assistant",
+        setMessages(prev => prev.map(m => (m as any).id === streamingId ? {
+          ...m,
           content: "",
-          createdAt: new Date().toISOString(),
-          model: resolvedModel,
           imageUrl: img.dataUrl,
           imageGen: { images: [{ imageUrl: img.dataUrl, prompt: imgPrompt }] },
+          pendingSketch: false,
+          streaming: false,
           isNew: true,
-        } as NexusMessage]);
+        } as NexusMessage : m));
       } catch (err: any) {
         console.error("[useNexusChatStream] image generate failed:", err);
-        setMessages(prev => [...prev, {
-          id: streamingId,
-          role: "assistant",
-          content: `Image generation failed: ${err?.message ?? "unknown error"}`,
-          createdAt: new Date().toISOString(),
-          model: resolvedModel,
-        } as NexusMessage]);
+        setMessages(prev => {
+          const exists = prev.some(m => (m as any).id === streamingId);
+          const errMsg = {
+            id: streamingId,
+            role: "assistant" as const,
+            content: `Image generation failed: ${err?.message ?? "unknown error"}`,
+            createdAt: new Date().toISOString(),
+            model: resolvedModel,
+            pendingSketch: false,
+            streaming: false,
+          } as NexusMessage;
+          return exists
+            ? prev.map(m => (m as any).id === streamingId ? errMsg : m)
+            : [...prev, errMsg];
+        });
       } finally {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setIsPending(false);

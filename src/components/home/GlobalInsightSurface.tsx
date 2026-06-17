@@ -17,6 +17,7 @@ import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
+import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
@@ -30,6 +31,7 @@ export type GlobalInsightMessage = {
   streaming?: boolean;
   createdAt?: string;
   imageUrl?: string;
+  pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
 };
 
@@ -587,17 +589,12 @@ export function GlobalInsightSurface({
                     opacity: 0.92,
                   }}
                 >
-                  {msg.imageUrl && (
-                    <img
-                      src={msg.imageUrl}
+                  {(msg.imageUrl || msg.pendingSketch) && (
+                    <SketchReveal
+                      src={msg.imageUrl ?? null}
+                      loading={!!msg.pendingSketch && !msg.imageUrl}
                       alt="Atlas sketch"
-                      style={{
-                        display: "block",
-                        maxWidth: "100%",
-                        borderRadius: 12,
-                        border: "1px solid rgba(212,175,55,0.22)",
-                        marginBottom: displayContent ? 10 : 0,
-                      }}
+                      style={{ marginTop: 0, marginBottom: displayContent ? 10 : 0 }}
                     />
                   )}
                   <GlobalInsightRenderer
