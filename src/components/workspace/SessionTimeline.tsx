@@ -688,11 +688,49 @@ function PushNode({
 
 // ── Root ──────────────────────────────────────────────────────────────────
 
-export function SessionTimeline({ messages, pushHistory, onRollbackPush }: Props) {
+export function SessionTimeline({ messages, pushHistory, onRollbackPush, projectId }: Props) {
   const nodes = useMemo(() => buildNodes(messages, pushHistory), [messages, pushHistory]);
 
   const headerCount = nodes.length;
   const hasAny = headerCount > 0;
+
+  // Backend commit fallback — shows commits from GitHub (via Cursor pushes,
+  // prior sessions, etc.) when this session hasn't pushed anything yet.
+  // Endpoint is optional: if it 404s or isn't deployed, we silently render
+  // nothing extra. No mock data.
+  const [ghCommits, setGhCommits] = useState<GhCommitSummary[] | null>(null);
+  const [ghLoading, setGhLoading] = useState(false);
+  const [ghError, setGhError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (projectId == null) { setGhCommits(null); return; }
+    let cancelled = false;
+    const ctrl = new AbortController();
+    setGhLoading(true);
+    setGhError(null);
+    fetch(`/api/projects/${projectId}/commits`, {
+      credentials: "include",
+      headers: { ...getAuthHeaders() },
+      signal: ctrl.signal,
+    })
+      .then(async (res) => {
+        if (res.status === 404) { if (!cancelled) setGhCommits([]); return; }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const list: GhCommitSummary[] = Array.isArray(data) ? data : Array.isArray(data?.commits) ? data.commits : [];
+        setGhCommits(list);
+      })
+      .catch((e) => {
+        if (cancelled || e?.name === "AbortError") return;
+        setGhError(e?.message || "Failed to load commits");
+        setGhCommits([]);
+      })
+      .finally(() => { if (!cancelled) setGhLoading(false); });
+    return () => { cancelled = true; ctrl.abort(); };
+  }, [projectId]);
+
+  const ghHasAny = !!ghCommits && ghCommits.length > 0;
 
   return (
     <div style={{ padding: "0 12px 12px" }}>
@@ -711,8 +749,8 @@ export function SessionTimeline({ messages, pushHistory, onRollbackPush }: Props
             width: 6,
             height: 6,
             borderRadius: "50%",
-            background: hasAny ? "rgba(134,239,172,0.6)" : "var(--atlas-muted)",
-            opacity: hasAny ? 1 : 0.3,
+            background: hasAny || ghHasAny ? "rgba(134,239,172,0.6)" : "var(--atlas-muted)",
+            opacity: hasAny || ghHasAny ? 1 : 0.3,
             flexShrink: 0,
           }}
         />
@@ -745,7 +783,7 @@ export function SessionTimeline({ messages, pushHistory, onRollbackPush }: Props
         )}
       </div>
 
-      {!hasAny && (
+      {!hasAny && !ghLoading && !ghHasAny && (
         <div
           style={{
             fontSize: 11,
@@ -774,6 +812,60 @@ export function SessionTimeline({ messages, pushHistory, onRollbackPush }: Props
               </NodeFrame>
             );
           })}
+        </div>
+      )}
+
+      {/* Backend commit history — shown below in-session nodes (or alone
+          when this session hasn't pushed yet). Includes commits from Cursor
+          and prior sessions. */}
+      {(ghLoading || ghHasAny) && projectId != null && (
+        <div style={{ marginTop: hasAny ? 16 : 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              marginBottom: 8,
+              opacity: 0.75,
+            }}
+          >
+            <GitCommit size={11} style={{ color: "var(--atlas-muted)" }} />
+            <span
+              style={{
+                fontSize: 9.5,
+                fontFamily: "var(--app-font-mono)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--atlas-muted)",
+              }}
+            >
+              From GitHub
+            </span>
+            {ghHasAny && (
+              <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, marginLeft: "auto" }}>
+                {ghCommits!.length}
+              </span>
+            )}
+          </div>
+          {ghLoading && !ghHasAny ? (
+            <CommitHistorySkeleton />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {ghCommits!.map((c) => (
+                <CommitHistoryCard
+                  key={c.sha}
+                  commit={c}
+                  projectId={projectId}
+                  canRevert={false}
+                />
+              ))}
+            </div>
+          )}
+          {ghError && (
+            <div style={{ fontSize: 10, color: "var(--atlas-muted)", opacity: 0.45, marginTop: 6 }}>
+              Couldn't load commit history.
+            </div>
+          )}
         </div>
       )}
     </div>
