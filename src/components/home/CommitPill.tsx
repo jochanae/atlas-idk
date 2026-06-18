@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
