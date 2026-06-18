@@ -17,6 +17,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
 import { UserMenuDropdown } from "@/components/UserMenuDropdown";
+import { HudToggleDot } from "@/components/HudToggleDot";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
