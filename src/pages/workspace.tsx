@@ -950,6 +950,7 @@ function RightPanel({
   zipFileName,
   showModelPicker,
   onShowModelPickerChange,
+  messages: messagesProp,
 }: {
   projectId: number;
   projectName: string;
