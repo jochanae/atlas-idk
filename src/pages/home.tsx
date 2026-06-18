@@ -4442,7 +4442,7 @@ export default function Home() {
               <>
                 <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
                 <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Active project</div>
+                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
                   <button
                     type="button"
                     onClick={handleHomeFocusAllProjects}
@@ -4662,8 +4662,8 @@ export default function Home() {
 
               <button
                 type="button"
-                title="Active project"
-                aria-label={`Active project: ${focusChipLabel}`}
+                title="Focus scope"
+                aria-label={`Focus scope: ${focusChipLabel}`}
                 aria-expanded={showFocusPicker}
                 onPointerDown={(e) => { e.preventDefault(); }}
                 onMouseDown={(e) => { e.preventDefault(); }}
@@ -5157,8 +5157,8 @@ export default function Home() {
         focusChip={
           <button
             type="button"
-            title="Active project"
-            aria-label={`Active project: ${focusChipLabel}`}
+            title="Focus scope"
+            aria-label={`Focus scope: ${focusChipLabel}`}
             aria-expanded={showFocusPicker}
             onClick={() => setShowFocusPicker((open) => !open)}
             style={{
@@ -5221,7 +5221,7 @@ export default function Home() {
         <>
           <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
           <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Active project</div>
+            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
             <button
               type="button"
               onClick={handleHomeFocusAllProjects}
