@@ -6041,22 +6041,46 @@ export default function Workspace() {
             background: "rgba(201,162,76,0.07)",
             borderBottom: "1px solid rgba(201,162,76,0.18)",
             flexShrink: 0,
+            animation: "atlas-spec-banner-drop 520ms cubic-bezier(0.22, 1, 0.36, 1) both",
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block" }} />
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(90deg, transparent, rgba(201,162,76,0.18), transparent)",
+              transform: "translateX(-100%)",
+              animation: "atlas-spec-banner-shimmer 1.4s ease-out 280ms 1 forwards",
+              pointerEvents: "none",
+            }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block", boxShadow: "0 0 8px rgba(201,162,76,0.7)" }} />
             <span style={{ fontSize: "var(--ts-label)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em" }}>
               Spec loaded from {importSourceLabel ?? "external source"} — your architecture decisions are committed.
             </span>
           </div>
           <button
             onClick={dismissAxiomBanner}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0, position: "relative" }}
             title="Dismiss"
             aria-label="Dismiss"
           >
             ×
           </button>
+          <style>{`
+            @keyframes atlas-spec-banner-drop {
+              from { transform: translateY(-100%); opacity: 0; }
+              to   { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes atlas-spec-banner-shimmer {
+              from { transform: translateX(-100%); }
+              to   { transform: translateX(100%); }
+            }
+          `}</style>
         </div>
       )}
 
