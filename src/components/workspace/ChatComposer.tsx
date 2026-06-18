@@ -393,6 +393,18 @@ export function ChatComposer(props: ChatComposerProps) {
           zIndex: 30,
           transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}>
+        {/* Grip handle — visible only in expanded sheet mode. */}
+        {sheetVisible && (
+          <div
+            onMouseDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+            style={{
+              alignSelf: "center", width: 44, height: 4, borderRadius: 999,
+              background: "rgba(201,162,76,0.35)", marginBottom: 10, cursor: "grab",
+              flexShrink: 0,
+            }}
+            aria-label="Collapse composer"
+          />
+        )}
         {/* Hidden file input — unrestricted multi-mime; used by drag-drop/legacy callers.
             Primary picker is the unified ComposerActions sheet below. */}
         <input
