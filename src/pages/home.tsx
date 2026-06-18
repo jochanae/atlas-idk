@@ -3477,7 +3477,8 @@ export default function Home() {
     if (el.scrollHeight < currentH) {
       el.style.height = "auto";
     }
-    el.style.height = Math.min(el.scrollHeight, 160) + "px";
+    const maxH = parseFloat(getComputedStyle(el).maxHeight) || 160;
+    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
   };
 
   useEffect(() => {
@@ -4563,8 +4564,9 @@ export default function Home() {
                   position: "relative",
                   zIndex: 1,
                   minHeight: 52,
-                  maxHeight: 160,
-                  overflowY: "hidden",
+                  maxHeight: isMobile ? "25vh" : 160,
+                  overflowY: "auto",
+                  overscrollBehavior: "contain",
                   display: "block",
                 }}
               />
