@@ -950,6 +950,7 @@ function RightPanel({
   zipFileName,
   showModelPicker,
   onShowModelPickerChange,
+  messages: messagesProp,
 }: {
   projectId: number;
   projectName: string;
@@ -1003,6 +1004,7 @@ function RightPanel({
   zipFileName?: string;
   showModelPicker: boolean;
   onShowModelPickerChange: (v: boolean) => void;
+  messages?: ChatMessage[];
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
@@ -1339,7 +1341,7 @@ function RightPanel({
       {/* Tab content */}
       {tab === "ledger" && (
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <LedgerPanel projectId={projectId} entries={entries} pushHistory={pushHistory} onRollbackPush={onRollbackPush} />
+          <LedgerPanel projectId={projectId} entries={entries} pushHistory={pushHistory} onRollbackPush={onRollbackPush} messages={messagesProp} />
         </div>
       )}
       {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
@@ -6210,6 +6212,7 @@ export default function Workspace() {
               setShowModelPicker(val);
               try { localStorage.setItem("atlas-power-model-picker", val ? "1" : "0"); } catch {}
             }}
+            messages={messages}
           />
         ) : undefined}
         showFlow={!isMobile}
@@ -6823,6 +6826,7 @@ export default function Workspace() {
                   setShowModelPicker(val);
                   try { localStorage.setItem("atlas-power-model-picker", val ? "1" : "0"); } catch {}
                 }}
+                messages={messages}
               />
             </div>
           </div>
