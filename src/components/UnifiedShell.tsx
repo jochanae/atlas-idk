@@ -1917,7 +1917,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             ) : (
               <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
             )}
-            <HudToggleDot />
+            {!(location === "/home" && activeProjectId == null) && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
             <ShellCompletionChip projectId={activeProjectId} />
