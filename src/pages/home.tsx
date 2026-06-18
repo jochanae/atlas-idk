@@ -5560,6 +5560,32 @@ export default function Home() {
         }
 
       `}</style>
+
+      {/* Fork B: floating store-driven CommitPill — anchors above the bottom dock,
+          surfaces the instant a project name is proposed (shaping) and glows when
+          ready. Tap arms the same handleHandoff() the inline card used. */}
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+          display: "flex",
+          justifyContent: "center",
+          pointerEvents: "none",
+          zIndex: 90,
+        }}
+      >
+        <div style={{ pointerEvents: "auto" }}>
+          <CommitPill
+            onArm={() => handleHandoff(
+              nexusChat.handoffSignal,
+              nexusChat.handoffSignal?.projectName?.trim() || handoffProjectName || "New Project",
+            )}
+          />
+        </div>
+      </div>
+
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
           mode="ambient"
