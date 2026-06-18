@@ -5579,7 +5579,7 @@ export default function Home() {
         <div style={{ pointerEvents: "auto" }}>
           <CommitPill
             onArm={() => handleHandoff(
-              nexusChat.handoffSignal,
+              (nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined,
               nexusChat.handoffSignal?.projectName?.trim() || handoffProjectName || "New Project",
             )}
           />
