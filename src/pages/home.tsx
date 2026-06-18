@@ -3705,9 +3705,8 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ position: "sticky", top: 0, zIndex: 19 }}>
-        {homeUnifiedSubheader}
-      </div>
+      {/* Ambient home intentionally hides the workspace subheader (CHANGES/BLUEPRINTS/ARTIFACTS/CONSOLE).
+          The subheader belongs to project workspaces only. */}
       
 
 
