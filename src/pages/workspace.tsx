@@ -4238,7 +4238,7 @@ export default function Workspace() {
     isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
 
   async function handleManifest() {
-    if (!project?.id || !sessionId) return;
+    if (!project?.id) return;
     setManifestLoading(true);
     try {
       const res = await fetch("/api/manifest/decide", {
