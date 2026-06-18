@@ -4247,9 +4247,20 @@ export default function Workspace() {
         credentials: "include",
         body: JSON.stringify({ projectId: project.id, sessionId }),
       });
-      const data = await res.json() as ManifestDecisionResponse;
+
+      const contentType = res.headers.get("content-type") ?? "";
+      const data = contentType.includes("application/json")
+        ? await res.json() as ManifestDecisionResponse
+        : null;
       if (!res.ok) {
-        throw new Error(`Manifest failed with status ${res.status}`);
+        const errorMessage = data && "error" in data && typeof data.error === "string"
+          ? data.error
+          : `Manifest failed with status ${res.status}`;
+        throw new Error(errorMessage);
+      }
+
+      if (!data) {
+        throw new Error("Manifest returned an unreadable response");
       }
 
       if (!data.ready) {
@@ -4291,7 +4302,9 @@ export default function Workspace() {
       openPreviewPanel();
     } catch (err) {
       console.error("Manifest failed:", err);
-      toast.error("Manifest failed. Check the console.");
+      const message = err instanceof Error ? err.message : "Manifest failed";
+      toast.error(message);
+      addLocalMessage("assistant", `Manifest couldn't complete: ${message}`);
     } finally {
       setManifestLoading(false);
     }
