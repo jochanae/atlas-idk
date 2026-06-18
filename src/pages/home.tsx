@@ -1777,13 +1777,25 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const { user: authUser } = useRequireAuth();
-  const { data: projects, isLoading } = useListProjects({
+  const { data: projectsRaw, isLoading } = useListProjects({
     query: {
       queryKey: getListProjectsQueryKey(),
       refetchOnMount: "always",
       refetchOnWindowFocus: true,
     },
   });
+  // Defensive: backend may return an error object or unexpected shape on schema mismatch.
+  // Coerce to an array so downstream `.filter`/`.map` never crash the page.
+  const projects = useMemo(() => {
+    if (Array.isArray(projectsRaw)) return projectsRaw;
+    if (projectsRaw && typeof projectsRaw === "object") {
+      const maybe = (projectsRaw as { projects?: unknown; data?: unknown; items?: unknown }).projects
+        ?? (projectsRaw as { data?: unknown }).data
+        ?? (projectsRaw as { items?: unknown }).items;
+      if (Array.isArray(maybe)) return maybe as typeof projectsRaw;
+    }
+    return [] as NonNullable<typeof projectsRaw>;
+  }, [projectsRaw]);
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
