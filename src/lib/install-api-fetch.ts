@@ -62,11 +62,13 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
     let nextInit = init;
     if (isApiTarget(target)) {
       const token = localStorage.getItem("atlas-auth-token");
-      if (token) {
-        const headers = new Headers(init?.headers ?? (target instanceof Request ? target.headers : undefined));
-        if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
-        nextInit = { ...(init ?? {}), headers };
-      }
+      const headers = new Headers(init?.headers ?? (target instanceof Request ? target.headers : undefined));
+      if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+      nextInit = {
+        ...(init ?? {}),
+        credentials: init?.credentials ?? "include",
+        headers,
+      };
     }
     const res = await originalFetch(target as RequestInfo, nextInit);
 
