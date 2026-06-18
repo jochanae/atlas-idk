@@ -5010,7 +5010,8 @@ export default function Workspace() {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 180) + "px";
+    const maxH = parseFloat(getComputedStyle(el).maxHeight) || 180;
+    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
   };
 
   const sendPreparingSession = !sessionId && (sessionsLoading || createSession.isPending);
