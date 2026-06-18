@@ -1904,6 +1904,14 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
+  // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
+  // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
+  // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
+  // crosses the same ≥5-user-message gate the inline card used.
+  const setShapingStatus = useShellStore((s) => s.setShapingStatus);
+  const setPendingWorkspace = useShellStore((s) => s.setPendingWorkspace);
+  const shapingStatus = useShellStore((s) => s.shapingStatus);
+  const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
   useEffect(() => {
     if (nexusChat.handoffSignal?.readyToHandoff === true) {
       setIsHandoffReady(true);
@@ -1912,7 +1920,17 @@ export default function Home() {
     if (suggestedName) {
       pushHudEvent("PROJECT", suggestedName, { projectName: suggestedName });
     }
-  }, [nexusChat.handoffSignal]);
+    // Don't clobber the user-armed transition state.
+    if (shapingStatus === "transitioning") return;
+    if (suggestedName) {
+      setPendingWorkspace(null, suggestedName);
+      const ready =
+        nexusChat.handoffSignal?.readyToHandoff === true ||
+        nexusChat.handoffSignal?.explicit === true ||
+        userMsgCount >= 5;
+      setShapingStatus(ready ? "ready" : "shaping");
+    }
+  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace]);
   const focusProjectId = homeFocus;
   useEffect(() => {
     setRecentFocusUserMessages(
