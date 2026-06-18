@@ -18,7 +18,7 @@
 // glass cards, amber accents on active states. Mobile-first — every
 // horizontal surface (paths, diffs) scrolls inside its node.
 
-import { useMemo, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type CSSProperties } from "react";
 import {
   Lightbulb,
   FileCode2,
@@ -31,6 +31,8 @@ import {
 import DiffViewer from "@/components/code/DiffViewer";
 import { computeLineDiff, type DiffItem } from "@/components/workspace/chatShared";
 import type { PushRecord } from "@/pages/workspace";
+import { CommitHistoryCard, CommitHistorySkeleton, type GhCommitSummary } from "@/components/workspace/CommitHistory";
+import { getAuthHeaders } from "@/lib/api";
 
 // ── Minimal structural type for the messages we read. We deliberately
 // don't import workspace.tsx's ChatMessage to keep this leaf-component
