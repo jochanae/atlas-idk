@@ -3495,7 +3495,7 @@ export default function Home() {
     slot.style.maxWidth = "100%";
     slot.style.minWidth = "0";
 
-    titleRegion.appendChild(slot);
+    titleRegion.prepend(slot);
     setGlobalInsightTitleSlot(slot);
 
     return () => {
