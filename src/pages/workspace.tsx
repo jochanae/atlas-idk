@@ -32,7 +32,7 @@ import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/Unifie
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
 import { UserMenuDropdown } from "../components/UserMenuDropdown";
 import { AccountHubPanel } from "../components/AccountHubPanel";
-import { PreviewPanel } from "../components/workspace/PreviewPanel";
+import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
 import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { FilesPanel } from "../components/workspace/FilesPanel";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
@@ -246,6 +246,14 @@ export interface LinkedRepo {
   defaultBranch: string;
   name: string;
 }
+
+type ManifestDecisionResponse = {
+  ready?: boolean;
+  missingCriteria?: string[];
+  decision?: ManifestDecision;
+  generatedCode?: string;
+  componentName?: string;
+};
 
 type RightTab = "ledger" | "files" | "preview" | "memory" | "map" | "terminal" | "blueprints" | "connections" | "secrets" | "jobs" | "mcp" | "image" | "forge" | "artifacts" | "workbench";
 type WorkspaceLeftTab = "chat" | "review" | "diff" | "blueprints" | "terminal" | "artifacts";
@@ -932,6 +940,8 @@ function RightPanel({
   onSandboxConsumed,
   previewRefreshTrigger,
   sessionId,
+  manifestDecision,
+  manifestPreviewHtml,
   pendingTerminalCommand,
   onTerminalCommandConsumed,
   onCommandComplete,
@@ -986,6 +996,8 @@ function RightPanel({
   onSandboxConsumed?: () => void;
   previewRefreshTrigger?: number;
   sessionId?: number;
+  manifestDecision?: ManifestDecision | null;
+  manifestPreviewHtml?: string | null;
   pendingTerminalCommand?: string | null;
   onTerminalCommandConsumed?: () => void;
   onCommandComplete?: (command: string, output: string, exitCode: number | null) => void;
@@ -1380,7 +1392,7 @@ function RightPanel({
           <ImageGenerator compact />
         </div>
       )}
-      {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} />}
+      {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} manifestDecision={manifestDecision} manifestPreviewHtml={manifestPreviewHtml} />}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
       {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
       {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
@@ -3181,6 +3193,9 @@ export default function Workspace() {
     new URLSearchParams(window.location.search).get("view") === "flow" ? "map" : undefined
   );
   const [sandboxCode, setSandboxCode] = useState<string | null>(null);
+  const [manifestLoading, setManifestLoading] = useState(false);
+  const [manifestPreviewHtml, setManifestPreviewHtml] = useState<string | null>(null);
+  const [manifestDecision, setManifestDecision] = useState<ManifestDecision | null>(null);
   const openPreviewPanel = useCallback(() => {
     if (isMobile) {
       setMobileTab("preview");
@@ -3456,6 +3471,8 @@ export default function Workspace() {
     setPlanStates(new Map());
     setPlanExecutions(new Map());
     setThinkingState(null);
+    setManifestPreviewHtml(null);
+    setManifestDecision(null);
     homePlanLoadedRef.current = false;
     // Note: abort/chatPending/activityStream reset is owned by useChatStream.
     // Reset auto-prime guards so a fresh ?source=handoff load can seed its first message.
@@ -4189,6 +4206,16 @@ export default function Workspace() {
     query: { enabled: !!id && useProjectStateFallback, queryKey: getGetProjectQueryKey(id) },
   });
   const project = projectState.project ?? fallbackProject;
+  const addLocalMessage = useCallback((role: "user" | "assistant", content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        role,
+        content,
+        sentAt: new Date().toISOString(),
+      },
+    ]);
+  }, [setMessages]);
   const launchPreviewUrl = project?.previewUrl ?? (() => {
     if (typeof window === "undefined") return null;
     try {
@@ -4209,6 +4236,66 @@ export default function Workspace() {
     chatPending && messages.filter((message) => message.role === "user").length === 1;
   const showProjectNameSkeleton =
     isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
+
+  async function handleManifest() {
+    if (!project?.id || !sessionId) return;
+    setManifestLoading(true);
+    try {
+      const res = await fetch("/api/manifest/decide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ projectId: project.id, sessionId }),
+      });
+      const data = await res.json() as ManifestDecisionResponse;
+      if (!res.ok) {
+        throw new Error(`Manifest failed with status ${res.status}`);
+      }
+
+      if (!data.ready) {
+        const missing = (data.missingCriteria ?? []).join(", ");
+        addLocalMessage("assistant", `Atlas needs a bit more clarity before it can manifest this project.\n\nMissing: ${missing}\n\nContinue the conversation to fill in the gaps, then try again.`);
+        return;
+      }
+
+      if (!data.decision) {
+        throw new Error("Manifest response did not include a decision");
+      }
+
+      // V1 only supports atlas-generated.
+      if (data.decision.activeEngine !== "atlas-generated") {
+        addLocalMessage("assistant", `The manifest engine selected "${data.decision.activeEngine}" for this project. Only Atlas Generated is wired in V1 — escalation paths are coming soon.`);
+        return;
+      }
+
+      if (!data.generatedCode || !data.componentName) {
+        throw new Error("Manifest response did not include generated preview code");
+      }
+
+      setManifestDecision(data.decision);
+
+      const previewRes = await fetch("/api/preview/component", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        credentials: "include",
+        body: JSON.stringify({
+          code: data.generatedCode,
+          componentName: data.componentName,
+        }),
+      });
+      if (!previewRes.ok) {
+        throw new Error(`Preview render failed with status ${previewRes.status}`);
+      }
+      const previewHtml = await previewRes.text();
+      setManifestPreviewHtml(previewHtml);
+      openPreviewPanel();
+    } catch (err) {
+      console.error("Manifest failed:", err);
+      toast.error("Manifest failed. Check the console.");
+    } finally {
+      setManifestLoading(false);
+    }
+  }
 
   useEffect(() => {
     const titleSpan = document.querySelector<HTMLSpanElement>(
@@ -5805,6 +5892,9 @@ export default function Workspace() {
         hasProject={Boolean(project)}
         isMobile={isMobile}
         showWorkspaceMenu
+        projectStatus={project?.status}
+        onManifest={handleManifest}
+        manifestLoading={manifestLoading}
         onLaunch={() => {
           // Preview-first toggle. Play ALWAYS surfaces the running app preview,
           // regardless of which tab/module is currently active. Panel maximize
@@ -6187,6 +6277,8 @@ export default function Workspace() {
             onSandboxConsumed={() => setSandboxCode(null)}
             previewRefreshTrigger={previewRefreshTrigger}
             sessionId={sessionId ?? undefined}
+            manifestDecision={manifestDecision}
+            manifestPreviewHtml={manifestPreviewHtml}
             pendingTerminalCommand={pendingTerminalCommand}
             onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
             onCommandComplete={handleTerminalComplete}
@@ -6804,6 +6896,8 @@ export default function Workspace() {
                 onSandboxConsumed={() => setSandboxCode(null)}
                 previewRefreshTrigger={previewRefreshTrigger}
                 sessionId={sessionId ?? undefined}
+                manifestDecision={manifestDecision}
+                manifestPreviewHtml={manifestPreviewHtml}
                 pendingTerminalCommand={pendingTerminalCommand}
                 onTerminalCommandConsumed={() => setPendingTerminalCommand(null)}
                 onCommandComplete={handleTerminalComplete}
