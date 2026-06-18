@@ -7,6 +7,8 @@
  * onto the same bus from an SSE handler.
  */
 
+import { useEffect, useState } from "react";
+
 export type HudEventType =
   | "INTENT"
   | "MEMORY"
@@ -14,12 +16,14 @@ export type HudEventType =
   | "INGESTED"
   | "NAVIGATED"
   | "EXTRACTED"
-  | "TENSION";
+  | "TENSION"
+  | "PROJECT";
 
 export interface HudEvent {
   id: string;
   type: HudEventType;
   payload: string;
+  projectName?: string;
   /** ISO timestamp */
   at: string;
 }
@@ -35,11 +39,12 @@ function emit() {
   for (const l of listeners) l(events);
 }
 
-export function pushHudEvent(type: HudEventType, payload: string) {
+export function pushHudEvent(type: HudEventType, payload: string, meta?: { projectName?: string }) {
   const ev: HudEvent = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     type,
     payload,
+    ...(meta?.projectName ? { projectName: meta.projectName } : {}),
     at: new Date().toISOString(),
   };
   events = [ev, ...events].slice(0, MAX_EVENTS);
@@ -61,4 +66,38 @@ export function getHudEvents(): HudEvent[] {
 export function clearHudEvents() {
   events = [];
   emit();
+}
+
+export function setHudEvents(nextEvents: HudEvent[]) {
+  events = nextEvents.slice(0, MAX_EVENTS);
+  emit();
+}
+
+// ── Dock state ──────────────────────────────────────────────────────────────
+// When `docked` is true the floating HUD pill collapses into a small chip
+// rendered next to "Global Insight" in the header subheader.
+
+let docked = false;
+const dockListeners = new Set<(v: boolean) => void>();
+
+export function setHudDocked(v: boolean) {
+  if (docked === v) return;
+  docked = v;
+  for (const l of dockListeners) l(docked);
+}
+
+export function getHudDocked() {
+  return docked;
+}
+
+export function useHudDocked(): boolean {
+  const [v, setV] = useState(docked);
+  useEffect(() => {
+    const l = (next: boolean) => setV(next);
+    dockListeners.add(l);
+    return () => {
+      dockListeners.delete(l);
+    };
+  }, []);
+  return v;
 }

@@ -17,8 +17,13 @@ import { GenesisCard } from "./GenesisCard";
 import { GlobalInsightRenderer } from "./GlobalInsightRenderer";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
+import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
-import { ListeningHUD, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+import { CommitPill } from "./CommitPill";
+import { setFeeder } from "@/lib/feederStore";
+
 
 export type GlobalInsightMessage = {
   role: "user" | "assistant";
@@ -28,6 +33,7 @@ export type GlobalInsightMessage = {
   streaming?: boolean;
   createdAt?: string;
   imageUrl?: string;
+  pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
 };
 
@@ -58,7 +64,7 @@ interface Props {
   isListening: boolean;
   toggleVoice: () => void;
   onOpenHistory: () => void | Promise<void>;
-  onCreateProject?: () => void;
+  onCreateProject?: (nameOverride?: string) => void;
   onAddAsset?: () => void;
   onMore?: () => void;
   onFiles?: (files: File[]) => void;
@@ -233,6 +239,7 @@ export function GlobalInsightSurface({
   const [deepDiveContext, setDeepDiveContext] = useState("");
   const isParchment = useThemeMode() === "parchment";
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   // Manage object URLs for image previews
   useEffect(() => {
@@ -250,13 +257,13 @@ export function GlobalInsightSurface({
     }
   }, [attachedFiles]);
 
-  // Auto-scroll on new messages / streaming
-  useEffect(() => {
-    if (!open) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [open, messages.length, isStreaming]);
+  // Smart Anchor auto-scroll — stick to bottom only if user is already near bottom.
+  // If they scrolled up to re-read, freeze; don't yank them back during streaming.
+  useSmartAutoScroll(scrollRef, [messages.length, isStreaming], {
+    enabled: open,
+    // Force-jump only when message count increments (new turn), not on every streaming tick.
+    forceDeps: [messages.length],
+  });
 
 
   const hasInput = input.length > 0;
@@ -350,11 +357,21 @@ export function GlobalInsightSurface({
       }}
     >
       {subheader}
-      <ListeningHUD position={{ top: 64, right: 12 }} categories={COGNITIVE_CATEGORIES} title="Shaping" />
+      <ListeningHUD
+        position={{ top: 64, right: 12 }}
+        conversationId={conversationId}
+        categories={COGNITIVE_CATEGORIES}
+        title="Shaping"
+      />
       {/* Isolated scroll container */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div
         ref={scrollRef}
         className="atlas-global-insight-scroll"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+        }}
         style={{
           flex: 1,
           minHeight: 0,
@@ -383,9 +400,59 @@ export function GlobalInsightSurface({
             letterSpacing: "0.12em",
             textTransform: "uppercase",
             textAlign: "center",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          Global Insight · All projects
+          <span>Global Insight · All projects</span>
+          <HudDockChip />
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const lines = messages
+                  .filter((m) => m.content && m.content.trim().length > 0)
+                  .map((m) => `${m.role === "user" ? "YOU" : "ATLAS"}\n${m.content}\n`)
+                  .join("\n");
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                const blob = new Blob(
+                  [`GLOBAL INSIGHT · ALL PROJECTS\n${stamp}\n\n${lines}`],
+                  { type: "text/plain;charset=utf-8" },
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `global-insight-${stamp}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 0);
+              }}
+              aria-label="Download chat thread"
+              title="Download thread"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                padding: 0,
+                background: "transparent",
+                border: "none",
+                color: "var(--atlas-gold)",
+                opacity: 0.55,
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2.5v8.5" />
+                <path d="M4.5 7.5L8 11l3.5-3.5" />
+                <path d="M3 13.5h10" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {messages.length === 0 && (
@@ -524,17 +591,12 @@ export function GlobalInsightSurface({
                     opacity: 0.92,
                   }}
                 >
-                  {msg.imageUrl && (
-                    <img
-                      src={msg.imageUrl}
+                  {(msg.imageUrl || msg.pendingSketch) && (
+                    <SketchReveal
+                      src={msg.imageUrl ?? null}
+                      loading={!!msg.pendingSketch && !msg.imageUrl}
                       alt="Atlas sketch"
-                      style={{
-                        display: "block",
-                        maxWidth: "100%",
-                        borderRadius: 12,
-                        border: "1px solid rgba(212,175,55,0.22)",
-                        marginBottom: displayContent ? 10 : 0,
-                      }}
+                      style={{ marginTop: 0, marginBottom: displayContent ? 10 : 0 }}
                     />
                   )}
                   <GlobalInsightRenderer
@@ -542,66 +604,71 @@ export function GlobalInsightSurface({
                     projects={projects}
                     onNavigate={(id) => void handleProjectOpen(id)}
                     isParchment={isParchment}
+                    onCreateProject={msg.role === "assistant" ? onCreateProject : undefined}
                   />
+
                 </div>
                 {tokenTarget && (
-                  <button
-                    type="button"
-                    onClick={() => void handleProjectOpen(tokenTarget.projectId)}
-                    aria-label={`Open ${tokenTarget.projectName}`}
-                    style={{
-                      alignSelf: "flex-start",
-                      marginTop: 4,
-                      fontSize: 11,
-                      fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.06em",
-                      opacity: 0.6,
-                      padding: "3px 8px",
-                      border: "1px solid rgba(212,175,55,0.18)",
-                      borderRadius: 6,
-                      background: "transparent",
-                      color: "var(--atlas-gold)",
-                      cursor: "pointer",
-                      lineHeight: 1.2,
-                      WebkitTapHighlightColor: "transparent",
+                  <CommitPill
+                    projectId={tokenTarget.projectId}
+                    projectTitle={tokenTarget.projectName}
+                    onArm={async () => {
+                      // Stub feeder-channel attachment (localStorage) so the
+                      // header chip + sidebar chip light up immediately.
+                      // Backend will replace this with attached_project_id.
+                      setFeeder({
+                        projectId: tokenTarget.projectId,
+                        projectTitle: tokenTarget.projectName,
+                      });
+                      // Best-effort handoff sync — never blocks navigation.
+                      try {
+                        await fetch("/api/nexus/handoff", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({
+                            messages: messages.slice(-10),
+                            projectId: tokenTarget.projectId,
+                            conversationId,
+                          }),
+                        });
+                      } catch {}
                     }}
-                  >
-                    → Open {tokenTarget.projectName}
-                  </button>
+                  />
                 )}
                 {!msg.streaming && displayContent.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(displayContent, i)}
-                    aria-label="Copy message"
-                    style={{
-                      alignSelf: "flex-start",
-                      marginTop: 2,
-                      background: "transparent",
-                      border: "none",
-                      padding: "4px 2px",
-                      cursor: "pointer",
-                      color: copiedIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                      opacity: copiedIdx === i ? 1 : 0.45,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      fontSize: 11,
-                      fontFamily: "var(--app-font-mono)",
-                      letterSpacing: "0.06em",
-                      WebkitTapHighlightColor: "transparent",
-                    }}
-                  >
-                    {copiedIdx === i ? "✓ copied" : (
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="5" y="5" width="8" height="9" rx="1.5" />
-                        <path d="M11 5V4a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 4v7A1.5 1.5 0 003.5 12.5H5" />
-                      </svg>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(displayContent, i)}
+                      aria-label="Copy message"
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        padding: "4px 2px",
+                        cursor: "pointer",
+                        color: copiedIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                        opacity: copiedIdx === i ? 1 : 0.45,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: 11,
+                        fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.06em",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      {copiedIdx === i ? "✓ copied" : (
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="5" y="5" width="8" height="9" rx="1.5" />
+                          <path d="M11 5V4a1.5 1.5 0 00-1.5-1.5h-6A1.5 1.5 0 002 4v7A1.5 1.5 0 003.5 12.5H5" />
+                        </svg>
+                      )}
+                    </button>
+                    {!msg.imageUrl && onSketch && (
+                      <InlineSketchOffer text={displayContent} onSend={onSketch} />
                     )}
-                  </button>
-                )}
-                {!msg.streaming && !msg.imageUrl && displayContent.length > 0 && onSketch && (
-                  <InlineSketchOffer text={displayContent} onSend={onSketch} />
+                  </div>
                 )}
               </div>
             );
@@ -666,6 +733,55 @@ export function GlobalInsightSurface({
             </span>
           </div>
         )}
+      </div>
+      {showScrollBtn && (
+        <button
+          onPointerDown={(e) => {
+            if (e.pointerType !== "mouse") {
+              e.preventDefault();
+              const el = scrollRef.current;
+              if (!el) return;
+              el.scrollTop = el.scrollHeight - el.clientHeight;
+              requestAnimationFrame(() => {
+                if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
+              });
+            }
+          }}
+          onClick={(e) => {
+            if (e.detail === 0) {
+              const el = scrollRef.current;
+              if (!el) return;
+              el.scrollTop = el.scrollHeight - el.clientHeight;
+              requestAnimationFrame(() => {
+                if (el) el.scrollTop = el.scrollHeight - el.clientHeight;
+              });
+            }
+          }}
+          aria-label="Scroll to latest"
+          style={{
+            position: "absolute",
+            bottom: 10,
+            right: 12,
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: "var(--atlas-surface)",
+            border: "1px solid var(--atlas-gold)",
+            color: "var(--atlas-gold)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+            zIndex: 50,
+            pointerEvents: "auto",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3v10M4 9l4 4 4-4"/>
+          </svg>
+        </button>
+      )}
       </div>
 
       {/* Composer — minimal, transparent. Cursor + action row only. */}
