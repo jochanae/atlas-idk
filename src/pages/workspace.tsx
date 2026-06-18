@@ -4241,6 +4241,16 @@ export default function Workspace() {
     if (!project?.id) return;
     setManifestLoading(true);
     try {
+      const projectIdType = project.id === null
+        ? "null"
+        : project.id === undefined
+          ? "undefined"
+          : typeof project.id;
+      const projectIdStr = String(project.id);
+      const looksUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdStr);
+      const looksInt = /^\d+$/.test(projectIdStr);
+      const idShape = looksUuid ? "uuid" : looksInt ? "integer" : "other";
+
       const res = await fetch("/api/manifest/decide", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
@@ -4252,6 +4262,22 @@ export default function Workspace() {
       const data = contentType.includes("application/json")
         ? await res.json() as ManifestDecisionResponse
         : null;
+
+      if (res.status === 404) {
+        const backendError = data && "error" in data && typeof data.error === "string" ? data.error : "Project not found";
+        const diag = `Manifest 404 · ${backendError} · projectId=${projectIdStr} (type=${projectIdType}, shape=${idShape}, len=${projectIdStr.length}) · userId=${userId ?? "—"}`;
+        toast.error(diag, { duration: 10000 });
+        console.error("[Manifest 404 diagnostic]", {
+          projectId: project.id,
+          projectIdType,
+          projectIdString: projectIdStr,
+          idShape,
+          userId,
+          backendError,
+        });
+        throw new Error(diag);
+      }
+
       if (!res.ok) {
         const errorMessage = data && "error" in data && typeof data.error === "string"
           ? data.error
