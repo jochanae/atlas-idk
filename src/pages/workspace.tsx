@@ -1004,6 +1004,7 @@ function RightPanel({
   zipFileName?: string;
   showModelPicker: boolean;
   onShowModelPickerChange: (v: boolean) => void;
+  messages?: ChatMessage[];
 }) {
   const [tab, setTab] = useState<RightTab>(() => {
     try {
