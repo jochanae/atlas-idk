@@ -1,11 +1,8 @@
-// API base — defaults to local Replit backend (relative URLs through proxy).
-// Set VITE_API_URL to override (e.g. point at Cloud Run for production).
-const DEFAULT_API_BASE = "";
-const configuredApiBase = (import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== "")
-  ? import.meta.env.VITE_API_URL
-  : (import.meta.env.VITE_API_BASE_URL !== undefined && import.meta.env.VITE_API_BASE_URL !== "")
-    ? import.meta.env.VITE_API_BASE_URL
-    : DEFAULT_API_BASE;
+// API base = Cloud Run (Express backend). DB underneath is Supabase Postgres,
+// but the code is db-neutral (DATABASE_URL env var on Cloud Run). Override at
+// build time with VITE_API_URL when pointing at a different backend.
+const DEFAULT_API_BASE = "https://axiom-atlas-689827072865.us-east1.run.app";
+const configuredApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
 export const API_BASE = configuredApiBase.replace(/\/$/, "");
 
 export function apiUrl(path: string): string {

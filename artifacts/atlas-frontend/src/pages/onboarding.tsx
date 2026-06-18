@@ -31,7 +31,7 @@ const stageStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "48px 20px 64px",
+  padding: "32px 20px",
   boxSizing: "border-box",
 };
 
@@ -100,7 +100,7 @@ function MapBackdrop({ forging }: { forging: boolean }) {
     <div
       aria-hidden
       style={{
-        position: "fixed",
+        position: "absolute",
         inset: 0,
         zIndex: 0,
         background:
@@ -411,14 +411,6 @@ export default function OnboardingPage() {
     try { localStorage.setItem("axiom_onboarding_step", String(step)); } catch {}
   }, [step]);
 
-  const skipOnboarding = () => {
-    try {
-      localStorage.setItem("atlas-onboarded", "1");
-      localStorage.setItem("axiom_onboarding_complete", "1");
-      localStorage.removeItem("axiom_onboarding_step");
-    } catch {}
-    setLocation("/home");
-  };
 
   const onNameChange = (val: string) => {
     setProjectName(val);
@@ -576,9 +568,6 @@ export default function OnboardingPage() {
               The system that holds your thinking accountable.
             </p>
             <PrimaryButton onClick={() => setStep(3)}>Get Started →</PrimaryButton>
-            <button type="button" onClick={skipOnboarding} style={{ marginTop: 20, background: "transparent", border: "none", color: "var(--atlas-muted)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.6 }}>
-              Skip for now
-            </button>
           </section>
         )}
 
@@ -651,9 +640,6 @@ export default function OnboardingPage() {
               <PrimaryButton type="submit" disabled={!projectName.trim() || creating || forging}>
                 {creating || forging ? "Forging…" : "Begin →"}
               </PrimaryButton>
-              <button type="button" onClick={skipOnboarding} style={{ marginTop: 16, background: "transparent", border: "none", color: "var(--atlas-muted)", fontSize: 12, cursor: "pointer", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.6 }}>
-                Skip for now
-              </button>
             </form>
             <DeepDiveHelper
               intent={selectedIntent}
