@@ -4698,7 +4698,17 @@ export default function Home() {
                   transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
                 }}
               >
-                <FolderClosed size={13} strokeWidth={1.7} style={{ flexShrink: 0 }} />
+                <Crosshair
+                  size={13}
+                  strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
+                  style={{
+                    flexShrink: 0,
+                    filter: resolvedPortfolioFocus === "project"
+                      ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
+                      : "none",
+                    transition: "stroke-width 160ms ease, filter 160ms ease",
+                  }}
+                />
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
                   {focusChipLabel}
                 </span>
