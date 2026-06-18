@@ -55,6 +55,7 @@ interface Props {
   messages: TimelineMessage[];
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
+  projectId?: number | null;
 }
 
 // ── Node model ────────────────────────────────────────────────────────────
