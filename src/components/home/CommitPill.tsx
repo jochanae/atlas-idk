@@ -39,15 +39,20 @@ interface InlineProps {
 }
 
 interface StoreProps {
+  /**
+   * Optional handoff action. When provided, fires on tap (after border-trace) and
+   * is responsible for its own navigation. Default store-mode navigation is skipped.
+   */
+  onArm?: () => Promise<void> | void;
   className?: string;
 }
 
 export function CommitPill(props: InlineProps | StoreProps = {}) {
-  const inline = "projectId" in props && typeof props.projectId === "number";
+  const inline = "projectId" in props && typeof (props as InlineProps).projectId === "number";
   return inline ? (
     <InlineCommitPill {...(props as InlineProps)} />
   ) : (
-    <StoreCommitPill className={props.className} />
+    <StoreCommitPill {...(props as StoreProps)} />
   );
 }
 
