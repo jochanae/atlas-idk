@@ -4097,22 +4097,9 @@ export default function Home() {
                           })()}
                           {/* Fork B: inline HomeHandoffCard replaced by the global
                               store-driven <CommitPill /> floating above the composer.
-                              See useEffect that syncs handoffSignal → shellStore. */}
-                          {false && msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && (msg.handoffSignal.explicit || nexusChat.messages.filter(m => m.role === "user").length >= 5) && (
-                            <HomeHandoffCard
-                              signal={msg.handoffSignal}
-                              projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
-                              projectId={msg.handoffSignal.projectId ?? null}
-                              onProjectNameChange={setHandoffProjectName}
-                              loading={handoffLoading}
-                              stage={handoffStage}
-                              onStart={() => void handleHandoff(msg.handoffSignal, handoffProjectName || msg.handoffSignal?.projectName || "New Project")}
-                              onDismiss={() => {
-                                try { sessionStorage.setItem(`atlas-home-handoff-dismissed-${activeConversationId}`, "1"); } catch {}
-                                setHandoffCardDismissed(true);
-                              }}
-                            />
-                          )}
+                              See the useEffect that syncs handoffSignal → shellStore
+                              and the <CommitPill onArm={handleCommitPillArm} /> render
+                              near the bottom of this page. */}
                           {/* Action row — Copy + Sketch this */}
                           {displayContent && (
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 2, marginTop: 3 }}>
