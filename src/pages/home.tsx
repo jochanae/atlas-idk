@@ -49,6 +49,7 @@ import { Briefcase, ChevronDown, Crosshair, FolderClosed } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
+import { CommitPill } from "@/components/home/CommitPill";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
@@ -1903,6 +1904,14 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
+  // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
+  // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
+  // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
+  // crosses the same ≥5-user-message gate the inline card used.
+  const setShapingStatus = useShellStore((s) => s.setShapingStatus);
+  const setPendingWorkspace = useShellStore((s) => s.setPendingWorkspace);
+  const shapingStatus = useShellStore((s) => s.shapingStatus);
+  const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
   useEffect(() => {
     if (nexusChat.handoffSignal?.readyToHandoff === true) {
       setIsHandoffReady(true);
@@ -1911,7 +1920,17 @@ export default function Home() {
     if (suggestedName) {
       pushHudEvent("PROJECT", suggestedName, { projectName: suggestedName });
     }
-  }, [nexusChat.handoffSignal]);
+    // Don't clobber the user-armed transition state.
+    if (shapingStatus === "transitioning") return;
+    if (suggestedName) {
+      setPendingWorkspace(null, suggestedName);
+      const ready =
+        nexusChat.handoffSignal?.readyToHandoff === true ||
+        nexusChat.handoffSignal?.explicit === true ||
+        userMsgCount >= 5;
+      setShapingStatus(ready ? "ready" : "shaping");
+    }
+  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace]);
   const focusProjectId = homeFocus;
   useEffect(() => {
     setRecentFocusUserMessages(
@@ -4076,21 +4095,11 @@ export default function Home() {
                               />
                             );
                           })()}
-                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && (msg.handoffSignal.explicit || nexusChat.messages.filter(m => m.role === "user").length >= 5) && (
-                            <HomeHandoffCard
-                              signal={msg.handoffSignal}
-                              projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
-                              projectId={msg.handoffSignal.projectId ?? null}
-                              onProjectNameChange={setHandoffProjectName}
-                              loading={handoffLoading}
-                              stage={handoffStage}
-                              onStart={() => void handleHandoff(msg.handoffSignal, handoffProjectName || msg.handoffSignal?.projectName || "New Project")}
-                              onDismiss={() => {
-                                try { sessionStorage.setItem(`atlas-home-handoff-dismissed-${activeConversationId}`, "1"); } catch {}
-                                setHandoffCardDismissed(true);
-                              }}
-                            />
-                          )}
+                          {/* Fork B: inline HomeHandoffCard replaced by the global
+                              store-driven <CommitPill /> floating above the composer.
+                              See the useEffect that syncs handoffSignal → shellStore
+                              and the <CommitPill onArm={handleCommitPillArm} /> render
+                              near the bottom of this page. */}
                           {/* Action row — Copy + Sketch this */}
                           {displayContent && (
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 2, marginTop: 3 }}>
@@ -5551,6 +5560,32 @@ export default function Home() {
         }
 
       `}</style>
+
+      {/* Fork B: floating store-driven CommitPill — anchors above the bottom dock,
+          surfaces the instant a project name is proposed (shaping) and glows when
+          ready. Tap arms the same handleHandoff() the inline card used. */}
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+          display: "flex",
+          justifyContent: "center",
+          pointerEvents: "none",
+          zIndex: 90,
+        }}
+      >
+        <div style={{ pointerEvents: "auto" }}>
+          <CommitPill
+            onArm={() => handleHandoff(
+              (nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined,
+              nexusChat.handoffSignal?.projectName?.trim() || handoffProjectName || "New Project",
+            )}
+          />
+        </div>
+      </div>
+
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
           mode="ambient"

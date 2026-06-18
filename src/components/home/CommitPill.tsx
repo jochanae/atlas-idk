@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useShellStore } from "@/store/shellStore";
 import { haptics } from "@/lib/haptics";
@@ -39,15 +39,20 @@ interface InlineProps {
 }
 
 interface StoreProps {
+  /**
+   * Optional handoff action. When provided, fires on tap (after border-trace) and
+   * is responsible for its own navigation. Default store-mode navigation is skipped.
+   */
+  onArm?: () => Promise<void> | void;
   className?: string;
 }
 
 export function CommitPill(props: InlineProps | StoreProps = {}) {
-  const inline = "projectId" in props && typeof props.projectId === "number";
+  const inline = "projectId" in props && typeof (props as InlineProps).projectId === "number";
   return inline ? (
     <InlineCommitPill {...(props as InlineProps)} />
   ) : (
-    <StoreCommitPill className={props.className} />
+    <StoreCommitPill {...(props as StoreProps)} />
   );
 }
 
@@ -105,7 +110,7 @@ function InlineCommitPill({
 
 /* ---------------- store mode ---------------- */
 
-function StoreCommitPill({ className = "" }: { className?: string }) {
+function StoreCommitPill({ className = "", onArm }: { className?: string; onArm?: () => Promise<void> | void }) {
   const [, navigate] = useLocation();
   const status = useShellStore((s) => s.shapingStatus);
   const projectId = useShellStore((s) => s.pendingWorkspaceId);
@@ -114,26 +119,39 @@ function StoreCommitPill({ className = "" }: { className?: string }) {
   const resetHandoff = useShellStore((s) => s.resetHandoff);
   const setShellMode = useShellStore((s) => s.setShellMode);
   const [traceProgress, setTraceProgress] = useState(0);
+  const armedRef = useRef(false);
 
   useEffect(() => {
-    if (status !== "transitioning" || !projectId) return;
+    if (status !== "transitioning") return;
+    armedRef.current = false;
     const start = performance.now();
     const DURATION = 1200;
     let raf = 0;
+    let cancelled = false;
     const tick = (t: number) => {
       const pct = Math.min(1, (t - start) / DURATION);
       setTraceProgress(pct);
       if (pct < 1) {
         raf = requestAnimationFrame(tick);
-      } else {
-        setShellMode("operational");
-        navigate(`/project/${projectId}?source=commit-handoff`);
-        setTimeout(() => resetHandoff(), 50);
+      } else if (!cancelled) {
+        if (onArm) {
+          // Custom handoff owns navigation (creates project, then routes).
+          void Promise.resolve(onArm()).finally(() => {
+            setTimeout(() => resetHandoff(), 50);
+          });
+        } else if (projectId) {
+          setShellMode("operational");
+          navigate(`/project/${projectId}?source=commit-handoff`);
+          setTimeout(() => resetHandoff(), 50);
+        }
       }
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [status, projectId, navigate, setShellMode, resetHandoff]);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [status, projectId, navigate, setShellMode, resetHandoff, onArm]);
 
   if (status === "idle") return null;
 
