@@ -1906,8 +1906,8 @@ export default function Home() {
         : detectedPortfolioFocus.focus;
   const focusChipLabel =
     resolvedPortfolioFocus === "project"
-      ? manualFocusProject?.name ?? detectedFocusProject?.name ?? detectedPortfolioFocus.matchedProject ?? "Project"
-      : "All Projects";
+      ? `FOCUS · ${manualFocusProject?.name ?? detectedFocusProject?.name ?? detectedPortfolioFocus.matchedProject ?? "Project"}`
+      : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [homeModel] = useState<string>("claude");
