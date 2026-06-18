@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { StatusGlyph } from "../StatusGlyph";
 import { CapsuleTag } from "../CapsuleTag";
-import { PushDiffCard } from "@/components/workspace/ReviewCards";
+
 import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
 import { SessionTimeline, type TimelineMessage } from "@/components/workspace/SessionTimeline";
 import { type PushRecord } from "../../pages/workspace";
