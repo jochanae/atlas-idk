@@ -1,5 +1,6 @@
-- [Atlas frontend setup](atlas-frontend-setup.md) — local api-client alias, custom auth (not Supabase), VITE_API_URL must be empty for local backend
+- [Axiom project architecture](axiom-architecture.md) — frontend→Cloud Run→Supabase prod; local backend DB is Replit built-in; never set DATABASE_URL secret
+- [Sync workflow](sync-workflow.md) — scripts/sync-frontend.sh pulls atlas-idk from GitHub; onboarding.tsx always needs scroll patch after sync; vite.config.ts is Replit-patched, never overwrite
+- [Database isolation](database-isolation.md) — prod Supabase is osuasytymbzurjvklhde; Lovable Supabase is lmrpnsjckljdwqudtelk; drizzle push previously hit Lovable DB by mistake
 - [Critical file protection](critical-files.md) — lib/db/src/index.ts and workspace.tsx must never be read/touched
 - [Axiom-Atlas backend migration](axiom-atlas-backend.md) — 68 src files, 28 DB tables, startup quirks, required API keys, drizzle push workaround
-- [ATLAS_ZERO constitution](atlas-zero.md) — June 16 strategic reset; Phase 1 = Idea→Build→Continue only; complexity must be earned; ATLAS_ZERO.md at workspace root wins over all code/features
-- [Database — Replit Postgres](database-replit.md) — DB migrated from external Supabase to Replit built-in Postgres; push-force also hits TTY bug; solution is wipe schema then plain push
+- [ATLAS_ZERO constitution](atlas-zero.md) — June 16 strategic reset; Phase 1 = Idea→Build→Continue only
