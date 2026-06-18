@@ -1009,11 +1009,13 @@ function RightPanel({
   const [tab, setTab] = useState<RightTab>(() => {
     try {
       const stored = sessionStorage.getItem("atlas-open-tab");
-      if (stored === "map") {
-        sessionStorage.removeItem("atlas-open-tab");
-        if (new URLSearchParams(window.location.search).get("view") === "flow") {
-          return "map";
-        }
+      const viewFlow = new URLSearchParams(window.location.search).get("view") === "flow";
+      // Either signal is sufficient to open directly on the flow map —
+      // sessionStorage flag (set by intra-app handoffs) OR ?view=flow
+      // (set by Master Map warp / "Open flow map" buttons).
+      if (stored === "map" || viewFlow) {
+        if (stored === "map") sessionStorage.removeItem("atlas-open-tab");
+        return "map";
       }
     } catch {}
     return "ledger";
