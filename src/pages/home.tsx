@@ -50,6 +50,7 @@ import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
 import { CommitPill } from "@/components/home/CommitPill";
+import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
@@ -5585,6 +5586,8 @@ export default function Home() {
           />
         </div>
       </div>
+
+      <HandoffCinemaOverlay />
 
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
