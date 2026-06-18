@@ -614,9 +614,11 @@ export function ChatComposer(props: ChatComposerProps) {
                   color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
                   resize: "none", fontFamily: "var(--app-font-sans)",
                   position: "relative", zIndex: 1,
-                  minHeight: 24, maxHeight: isMobile ? "25vh" : 180,
+                  minHeight: sheetVisible ? "calc(60vh - 160px)" : 24,
+                  maxHeight: sheetVisible ? "calc(60vh - 160px)" : (isMobile ? "25vh" : 180),
                   overflowY: "auto", overscrollBehavior: "contain", display: "block",
                   padding: "2px 2px",
+                  transition: "min-height 320ms cubic-bezier(0.22, 1, 0.36, 1), max-height 320ms cubic-bezier(0.22, 1, 0.36, 1)",
                 }}
               />
             </div>
