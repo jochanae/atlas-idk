@@ -6212,6 +6212,7 @@ export default function Workspace() {
               setShowModelPicker(val);
               try { localStorage.setItem("atlas-power-model-picker", val ? "1" : "0"); } catch {}
             }}
+            messages={messages}
           />
         ) : undefined}
         showFlow={!isMobile}
