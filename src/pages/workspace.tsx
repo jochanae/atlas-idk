@@ -5028,7 +5028,14 @@ export default function Workspace() {
     const files = attachedFiles;
     setInput("");
     setAttachedFiles([]);
-    if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
+    if (textareaRef.current) {
+      // Clear inline height so the textarea collapses back to its ambient
+      // single-line size (driven by style minHeight), then blur to dismiss
+      // the expanded sheet — draft state is already cleared above.
+      textareaRef.current.style.height = "";
+      textareaRef.current.blur();
+    }
+    setInputFocused(false);
 
     const imageFiles = files.filter(f => f.type.startsWith("image/")).slice(0, 10);
     const otherFiles = files.filter(f => !f.type.startsWith("image/"));
