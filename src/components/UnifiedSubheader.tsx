@@ -136,7 +136,7 @@ export function UnifiedSubheader({
 
   const showRow = expanded && hasProject;
   const showLaunchButton = showWorkspaceMenu && (hasProject || showLaunchWhenNoProject);
-  const showManifestButton = hasProject && projectStatus === "active";
+  const showManifestButton = hasProject && projectStatus !== "archived";
   const showActionBar = showLaunchButton || showManifestButton;
   const launchTitle = hasProject
     ? expanded
