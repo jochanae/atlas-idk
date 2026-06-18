@@ -447,7 +447,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         <div
           style={{
             flex: 1,
-            background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
+            background: "var(--atlas-nav-arch-fill, rgb(var(--atlas-bg-rgb)))",
             borderTop: "1px solid var(--atlas-gold-border)",
           }}
         />
@@ -459,7 +459,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         >
           <path
             d="M0,0 C15,0 24,22 47,22 C70,22 79,0 94,0 L94,64 L0,64 Z"
-            fill="var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))"
+            fill="var(--atlas-nav-arch-fill, rgb(var(--atlas-bg-rgb)))"
           />
           <path
             d="M0,0.5 C15,0.5 24,22 47,22 C70,22 79,0.5 94,0.5"
@@ -471,7 +471,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         <div
           style={{
             flex: 1,
-            background: "var(--atlas-nav-arch-fill, rgba(var(--atlas-bg-rgb),0.97))",
+            background: "var(--atlas-nav-arch-fill, rgb(var(--atlas-bg-rgb)))",
             borderTop: "1px solid var(--atlas-gold-border)",
           }}
         />
