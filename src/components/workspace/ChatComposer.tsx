@@ -353,7 +353,9 @@ export function ChatComposer(props: ChatComposerProps) {
       {composerActive && (
         <div
           aria-hidden={!sheetVisible}
-          onMouseDown={(e) => {
+          onPointerDown={(e) => {
+            // Tap-outside blur: collapses the sheet without clearing the draft
+            // (input state lives upstream and is untouched on blur).
             e.preventDefault();
             textareaRef.current?.blur();
           }}
