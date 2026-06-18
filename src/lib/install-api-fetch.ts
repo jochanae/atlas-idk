@@ -10,6 +10,10 @@ declare global {
   }
 }
 
+const SILENT_401_PATTERNS = ["/api/nexus/activity", "/api/nexus/briefing", "/api/stripe/", "/api/connections"];
+
+let _401redirectPending = false;
+
 if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
   const originalFetch = window.fetch.bind(window);
 
@@ -64,7 +68,39 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
         nextInit = { ...(init ?? {}), headers };
       }
     }
-    return originalFetch(target as RequestInfo, nextInit);
+    const res = await originalFetch(target as RequestInfo, nextInit);
+
+    if (res.status === 401) {
+      const urlStr =
+        typeof target === "string"
+          ? target
+          : target instanceof URL
+            ? target.toString()
+            : target.url;
+      if (urlStr.includes("/api/") && !urlStr.includes("/api/auth/")) {
+        const isSilent = SILENT_401_PATTERNS.some((p) => urlStr.includes(p));
+        const alreadyOnLogin = window.location.pathname.includes("/login");
+        if (!isSilent && !alreadyOnLogin && !_401redirectPending) {
+          _401redirectPending = true;
+          setTimeout(async () => {
+            try {
+              const baseUrl = API_BASE || window.location.origin;
+              const check = await originalFetch(`${baseUrl}/api/auth/me`, { credentials: "include" });
+              if (check.status === 401) {
+                const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+                window.location.href = `${base}/login?reason=session_expired`;
+              } else {
+                _401redirectPending = false;
+              }
+            } catch {
+              _401redirectPending = false;
+            }
+          }, 1500);
+        }
+      }
+    }
+
+    return res;
   };
 
   window.__atlasFetchPatched = true;
