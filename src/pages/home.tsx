@@ -85,23 +85,9 @@ const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to thi
 const GLOBAL_INSIGHT_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
-function GlobalInsightTitleCarousel({ earnedTitle }: { earnedTitle: string | null }) {
-  const resolvedEarnedTitle = earnedTitle?.trim() || null;
-  const [showEarnedTitle, setShowEarnedTitle] = useState(false);
-
-  useEffect(() => {
-    if (!resolvedEarnedTitle) {
-      setShowEarnedTitle(false);
-      return;
-    }
-
-    setShowEarnedTitle(true);
-    const id = window.setInterval(() => {
-      setShowEarnedTitle((current) => !current);
-    }, 3000);
-    return () => window.clearInterval(id);
-  }, [resolvedEarnedTitle]);
-
+function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
+  // Header title rotation stripped (Pass 1). Header is permanently
+  // "Global Insight"; the project name lives in the CommitPill only.
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
       <span
@@ -116,10 +102,8 @@ function GlobalInsightTitleCarousel({ earnedTitle }: { earnedTitle: string | nul
         }}
       />
       <span
-        title={resolvedEarnedTitle ? `Global Insight / ${resolvedEarnedTitle}` : "Global Insight"}
+        title="Global Insight"
         style={{
-          display: "inline-grid",
-          gridTemplateAreas: "'title'",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -134,41 +118,12 @@ function GlobalInsightTitleCarousel({ earnedTitle }: { earnedTitle: string | nul
           opacity: 0.92,
         }}
       >
-        <span
-          style={{
-            gridArea: "title",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            minWidth: 0,
-            opacity: showEarnedTitle ? 0 : 1,
-            transition: "opacity 650ms ease",
-          }}
-        >
-          Global Insight
-        </span>
-        {resolvedEarnedTitle && (
-          <span
-            style={{
-              gridArea: "title",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              minWidth: 0,
-              opacity: showEarnedTitle ? 1 : 0,
-              transition: "opacity 650ms ease",
-            }}
-          >
-            {resolvedEarnedTitle}{" "}
-            <span aria-hidden style={{ color: LIFECYCLE_META.shaping.color }}>
-              🌱
-            </span>
-          </span>
-        )}
+        Global Insight
       </span>
     </div>
   );
 }
+
 
 type HomeHandoffSignal = {
   readyToHandoff: boolean;
@@ -5464,11 +5419,10 @@ export default function Home() {
               0 0 18px rgba(212,175,55,0.22);
           }
         }
-        .atlas-home-bg[data-handoff-ready="true"] button[aria-label="Create project from this conversation"] {
-          animation: atlasHandoffReadyPulse 2.2s ease-in-out infinite;
-          border-color: rgba(212,175,55,0.28) !important;
-          color: var(--atlas-gold) !important;
-        }
+        /* Pass 1 cleanup: removed dead selector targeting the deprecated
+           folder+ "Create project from this conversation" button — that button
+           no longer exists in the composer. */
+
         .atlas-home-chat-messages-scroll::-webkit-scrollbar {
           display: none;
         }
