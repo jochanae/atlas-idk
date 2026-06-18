@@ -5419,11 +5419,10 @@ export default function Home() {
               0 0 18px rgba(212,175,55,0.22);
           }
         }
-        .atlas-home-bg[data-handoff-ready="true"] button[aria-label="Create project from this conversation"] {
-          animation: atlasHandoffReadyPulse 2.2s ease-in-out infinite;
-          border-color: rgba(212,175,55,0.28) !important;
-          color: var(--atlas-gold) !important;
-        }
+        /* Pass 1 cleanup: removed dead selector targeting the deprecated
+           folder+ "Create project from this conversation" button — that button
+           no longer exists in the composer. */
+
         .atlas-home-chat-messages-scroll::-webkit-scrollbar {
           display: none;
         }
