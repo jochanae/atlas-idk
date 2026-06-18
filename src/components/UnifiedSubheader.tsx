@@ -136,7 +136,7 @@ export function UnifiedSubheader({
 
   const showRow = expanded && hasProject;
   const showLaunchButton = showWorkspaceMenu && (hasProject || showLaunchWhenNoProject);
-  const showManifestButton = hasProject && projectStatus === "active";
+  const showManifestButton = hasProject && projectStatus !== "archived";
   const showActionBar = showLaunchButton || showManifestButton;
   const launchTitle = hasProject
     ? expanded
@@ -163,10 +163,13 @@ export function UnifiedSubheader({
         transition: "margin-top 240ms ease",
       }}
     >
-      {/* Collapsible tab row — slides up and out of DOM flow when collapsed */}
+      {/* Collapsible tab row — slides up and out of DOM flow when collapsed.
+          When collapsed but the action bar is showing, we still reserve enough
+          vertical space so the absolutely-positioned Manifest/Launch pills don't
+          overlay the chat content below. */}
       <div
         style={{
-          maxHeight: showRow ? 56 : 0,
+          maxHeight: showRow ? 56 : showActionBar ? 36 : 0,
           overflow: "hidden",
           transition: "max-height 240ms ease",
         }}

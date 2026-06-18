@@ -318,6 +318,7 @@ export function LedgerPanel({
         messages={messages}
         pushHistory={pushHistory}
         onRollbackPush={onRollbackPush}
+        projectId={projectId}
       />
 
 

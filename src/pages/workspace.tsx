@@ -4238,18 +4238,54 @@ export default function Workspace() {
     isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
 
   async function handleManifest() {
-    if (!project?.id || !sessionId) return;
+    if (!project?.id) return;
     setManifestLoading(true);
     try {
+      const projectIdType = project.id === null
+        ? "null"
+        : project.id === undefined
+          ? "undefined"
+          : typeof project.id;
+      const projectIdStr = String(project.id);
+      const looksUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdStr);
+      const looksInt = /^\d+$/.test(projectIdStr);
+      const idShape = looksUuid ? "uuid" : looksInt ? "integer" : "other";
+
       const res = await fetch("/api/manifest/decide", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({ projectId: project.id, sessionId }),
       });
-      const data = await res.json() as ManifestDecisionResponse;
+
+      const contentType = res.headers.get("content-type") ?? "";
+      const data = contentType.includes("application/json")
+        ? await res.json() as ManifestDecisionResponse
+        : null;
+
+      if (res.status === 404) {
+        const backendError = data && "error" in data && typeof data.error === "string" ? data.error : "Project not found";
+        const diag = `Manifest 404 · ${backendError} · projectId=${projectIdStr} (type=${projectIdType}, shape=${idShape}, len=${projectIdStr.length})`;
+        toast.error(diag, { duration: 10000 });
+        console.error("[Manifest 404 diagnostic]", {
+          projectId: project.id,
+          projectIdType,
+          projectIdString: projectIdStr,
+          idShape,
+          backendError,
+        });
+        throw new Error(diag);
+      }
+
       if (!res.ok) {
-        throw new Error(`Manifest failed with status ${res.status}`);
+        const errorMessage = data && "error" in data && typeof data.error === "string"
+          ? data.error
+          : `Manifest failed with status ${res.status}`;
+        throw new Error(errorMessage);
+      }
+
+      if (!data) {
+        throw new Error("Manifest returned an unreadable response");
       }
 
       if (!data.ready) {
@@ -4291,7 +4327,9 @@ export default function Workspace() {
       openPreviewPanel();
     } catch (err) {
       console.error("Manifest failed:", err);
-      toast.error("Manifest failed. Check the console.");
+      const message = err instanceof Error ? err.message : "Manifest failed";
+      toast.error(message);
+      addLocalMessage("assistant", `Manifest couldn't complete: ${message}`);
     } finally {
       setManifestLoading(false);
     }
@@ -5028,7 +5066,14 @@ export default function Workspace() {
     const files = attachedFiles;
     setInput("");
     setAttachedFiles([]);
-    if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
+    if (textareaRef.current) {
+      // Clear inline height so the textarea collapses back to its ambient
+      // single-line size (driven by style minHeight), then blur to dismiss
+      // the expanded sheet — draft state is already cleared above.
+      textareaRef.current.style.height = "";
+      textareaRef.current.blur();
+    }
+    setInputFocused(false);
 
     const imageFiles = files.filter(f => f.type.startsWith("image/")).slice(0, 10);
     const otherFiles = files.filter(f => !f.type.startsWith("image/"));
@@ -6041,22 +6086,46 @@ export default function Workspace() {
             background: "rgba(201,162,76,0.07)",
             borderBottom: "1px solid rgba(201,162,76,0.18)",
             flexShrink: 0,
+            animation: "atlas-spec-banner-drop 520ms cubic-bezier(0.22, 1, 0.36, 1) both",
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block" }} />
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(90deg, transparent, rgba(201,162,76,0.18), transparent)",
+              transform: "translateX(-100%)",
+              animation: "atlas-spec-banner-shimmer 1.4s ease-out 280ms 1 forwards",
+              pointerEvents: "none",
+            }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, display: "inline-block", boxShadow: "0 0 8px rgba(201,162,76,0.7)" }} />
             <span style={{ fontSize: "var(--ts-label)", color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em" }}>
               Spec loaded from {importSourceLabel ?? "external source"} — your architecture decisions are committed.
             </span>
           </div>
           <button
             onClick={dismissAxiomBanner}
-            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", color: "rgba(201,162,76,0.5)", fontSize: "var(--ts-base)", lineHeight: 1, padding: "2px 4px", flexShrink: 0, position: "relative" }}
             title="Dismiss"
             aria-label="Dismiss"
           >
             ×
           </button>
+          <style>{`
+            @keyframes atlas-spec-banner-drop {
+              from { transform: translateY(-100%); opacity: 0; }
+              to   { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes atlas-spec-banner-shimmer {
+              from { transform: translateX(-100%); }
+              to   { transform: translateX(100%); }
+            }
+          `}</style>
         </div>
       )}
 

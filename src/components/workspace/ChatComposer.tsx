@@ -353,7 +353,9 @@ export function ChatComposer(props: ChatComposerProps) {
       {composerActive && (
         <div
           aria-hidden={!sheetVisible}
-          onMouseDown={(e) => {
+          onPointerDown={(e) => {
+            // Tap-outside blur: collapses the sheet without clearing the draft
+            // (input state lives upstream and is untouched on blur).
             e.preventDefault();
             textareaRef.current?.blur();
           }}
@@ -396,7 +398,7 @@ export function ChatComposer(props: ChatComposerProps) {
         {/* Grip handle — visible only in expanded sheet mode. */}
         {sheetVisible && (
           <div
-            onMouseDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+            onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
             style={{
               alignSelf: "center", width: 44, height: 4, borderRadius: 999,
               background: "rgba(201,162,76,0.35)", marginBottom: 10, cursor: "grab",
