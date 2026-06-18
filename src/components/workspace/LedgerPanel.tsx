@@ -120,11 +120,13 @@ export function LedgerPanel({
   entries,
   pushHistory,
   onRollbackPush,
+  messages = [],
 }: {
   projectId: number;
   entries: Entry[];
   pushHistory: PushRecord[];
   onRollbackPush: (record: PushRecord) => Promise<void>;
+  messages?: TimelineMessage[];
 }) {
   const parked = entries.filter((e) => e.status === "parked");
 
