@@ -3553,19 +3553,20 @@ export default function Home() {
     };
   }, []);
 
-  const homeUnifiedSubheader = (
+  const homeUnifiedSubheader = globalInsightOpen ? null : (
     <UnifiedSubheader
       activeTab="chat"
       onTabChange={handleHomeSubheaderTabChange}
       hasProject={false}
       isMobile={isMobile}
-      topOffset={globalInsightOpen ? 0 : 50}
+      topOffset={50}
       showWorkspaceMenu
       showLaunchWhenNoProject
       onLaunch={handleHomeLaunchWorkspace}
       hasConversation={nexusChat.messages.length > 0}
     />
   );
+
   const handleGlobalInsightCreateProject = useCallback((nameOverride?: string) => {
     setIsHandoffReady(false);
     // Pill-stored name (from handoffSignal) wins over tapped bold text.
