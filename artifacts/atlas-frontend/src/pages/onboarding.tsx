@@ -19,7 +19,8 @@ const shellStyle: CSSProperties = {
   minHeight: "100svh",
   background: "var(--atlas-bg)",
   color: "var(--atlas-fg)",
-  overflow: "hidden",
+  overflowX: "hidden",
+  overflowY: "auto",
   isolation: "isolate",
 };
 
@@ -30,7 +31,7 @@ const stageStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  padding: "32px 20px",
+  padding: "48px 20px 64px",
   boxSizing: "border-box",
 };
 
@@ -99,7 +100,7 @@ function MapBackdrop({ forging }: { forging: boolean }) {
     <div
       aria-hidden
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         zIndex: 0,
         background:
