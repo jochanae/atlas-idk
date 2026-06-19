@@ -19,7 +19,7 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
-import { ListeningHUD, HudDockChip, COGNITIVE_CATEGORIES } from "@/components/workspace/ListeningHUD";
+import { HudDockChip } from "@/components/workspace/ListeningHUD";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
@@ -357,12 +357,6 @@ export function GlobalInsightSurface({
       }}
     >
       {subheader}
-      <ListeningHUD
-        position={{ top: 64, right: 12 }}
-        conversationId={conversationId}
-        categories={COGNITIVE_CATEGORIES}
-        title="Shaping"
-      />
       {/* Isolated scroll container */}
       <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div

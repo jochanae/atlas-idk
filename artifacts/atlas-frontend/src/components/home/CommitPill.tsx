@@ -34,6 +34,7 @@ interface InlineProps {
 
 interface StoreProps {
   onArm?: () => Promise<void> | void;
+  overrideLabel?: string;
   className?: string;
 }
 
@@ -102,7 +103,7 @@ function InlineCommitPill({
 
 /* ---------------- store mode ---------------- */
 
-function StoreCommitPill({ className = "", onArm }: { className?: string; onArm?: () => Promise<void> | void }) {
+function StoreCommitPill({ className = "", onArm, overrideLabel }: { className?: string; onArm?: () => Promise<void> | void; overrideLabel?: string }) {
   const [, navigate] = useLocation();
   const status = useShellStore((s) => s.shapingStatus);
   const projectId = useShellStore((s) => s.pendingWorkspaceId);
@@ -177,6 +178,7 @@ function StoreCommitPill({ className = "", onArm }: { className?: string; onArm?
       title={title ?? "workspace"}
       traceProgress={traceProgress}
       errorMsg={errorMsg}
+      overrideLabel={overrideLabel}
       onTap={() => {
         if (effectiveStatus === "error") {
           setLocalStatus("none");
@@ -204,6 +206,7 @@ function PillVisual({
   errorMsg,
   onTap,
   className,
+  overrideLabel,
 }: {
   status: Status;
   title: string;
@@ -211,15 +214,16 @@ function PillVisual({
   errorMsg: string | null;
   onTap: () => void;
   className: string;
+  overrideLabel?: string;
 }) {
   const label =
     status === "ready"
-      ? "Open Workspace"
+      ? (overrideLabel ?? "Enter Workspace →")
       : status === "transitioning"
         ? "Opening workspace…"
         : status === "error"
           ? "Handoff failed — Retry"
-          : "Open Workspace";
+          : "Enter Workspace →";
 
   const isReady = status === "ready";
   const isTransitioning = status === "transitioning";

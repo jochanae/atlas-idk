@@ -1926,6 +1926,19 @@ export default function Home() {
   const shapingStatus = useShellStore((s) => s.shapingStatus);
   const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
   useEffect(() => {
+    // Project-focus mode: show "Save to {project}" pill the moment the user sends a message.
+    if (resolvedPortfolioFocus === "project" && homeFocus != null) {
+      if (shapingStatus === "transitioning") return;
+      if (userMsgCount > 0) {
+        const name = (projects as Project[] | undefined)?.find((p: Project) => p.id === homeFocus)?.name ?? "Project";
+        setPendingWorkspace(null, name);
+        setShapingStatus("ready");
+      } else if (shapingStatus !== "idle") {
+        setShapingStatus("idle");
+      }
+      return;
+    }
+    // All-Projects mode: handoffSignal drives the pill.
     if (nexusChat.handoffSignal?.readyToHandoff === true) {
       setIsHandoffReady(true);
     }
@@ -1943,7 +1956,8 @@ export default function Home() {
         userMsgCount >= 5;
       setShapingStatus(ready ? "ready" : "shaping");
     }
-  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace]);
+  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace,
+      resolvedPortfolioFocus, homeFocus, projects, setIsHandoffReady]);
   const focusProjectId = homeFocus;
   useEffect(() => {
     setRecentFocusUserMessages(
@@ -5456,10 +5470,25 @@ export default function Home() {
       >
         <div style={{ pointerEvents: "auto" }}>
           <CommitPill
-            onArm={() => handleHandoff(
-              (nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined,
-              nexusChat.handoffSignal?.projectName?.trim() || handoffProjectName || "New Project",
-            )}
+            overrideLabel={resolvedPortfolioFocus === "project" && homeFocus != null
+              ? `Save to ${(projects as Project[] | undefined)?.find((p: Project) => p.id === homeFocus)?.name ?? "Project"} →`
+              : undefined}
+            onArm={async () => {
+              if (resolvedPortfolioFocus === "project" && homeFocus != null) {
+                await fetch(`/api/projects/${homeFocus}/append-thread`, {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ conversationId: activeConversationId }),
+                });
+                setLocation(`/project/${homeFocus}?source=home-append`);
+                return;
+              }
+              await handleHandoff(
+                (nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined,
+                nexusChat.handoffSignal?.projectName?.trim() || handoffProjectName || "New Project",
+              );
+            }}
           />
         </div>
       </div>
