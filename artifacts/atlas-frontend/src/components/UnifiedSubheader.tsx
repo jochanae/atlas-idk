@@ -268,8 +268,8 @@ export function UnifiedSubheader({
               disabled={manifestLoading}
               onMouseEnter={() => setManifestHover(true)}
               onMouseLeave={() => setManifestHover(false)}
-              title="Manifest First Artifact"
-              aria-label="Manifest First Artifact"
+              title="Manifest Mode"
+              aria-label="Manifest Mode"
               style={{
                 background: manifestHover && !manifestLoading
                   ? "color-mix(in oklab, #C9A24C 10%, transparent)"
@@ -296,7 +296,7 @@ export function UnifiedSubheader({
                 whiteSpace: "nowrap",
               }}
             >
-              {isMobile ? "Manifest" : "Manifest First Artifact"}
+              Manifest
             </button>
           )}
           {showLaunchButton && (

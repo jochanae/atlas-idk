@@ -1,2 +1,3 @@
 - [Project Health computation](project-health.md) — health is computed server-side on every GET /genome call, not cached; momentum from 7-day nexus message count
 - [Atlas Shaping & Threshold Architecture](atlas-shaping-threshold.md) — 5-dimension internal shaping model, PROJECT_READY signal, CommitPill states, Global boundaries
+- [ManifestMode Architecture](manifest-mode.md) — V1 built: canvas overlay (not a tab), DNA→Targets→Materialize flow, client-side lock logic from genome data

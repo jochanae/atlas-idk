@@ -26,6 +26,7 @@ import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 import { ImageGenerator } from "../components/ImageGenerator";
+import { ManifestMode } from "../components/ManifestMode";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
 import { UnifiedSubheader, type UnifiedSubheaderTab } from "../components/UnifiedSubheader";
@@ -3194,6 +3195,7 @@ export default function Workspace() {
   );
   const [sandboxCode, setSandboxCode] = useState<string | null>(null);
   const [manifestLoading, setManifestLoading] = useState(false);
+  const [manifestModeOpen, setManifestModeOpen] = useState(false);
   const [manifestPreviewHtml, setManifestPreviewHtml] = useState<string | null>(null);
   const [manifestDecision, setManifestDecision] = useState<ManifestDecision | null>(null);
   const openPreviewPanel = useCallback(() => {
@@ -4237,7 +4239,7 @@ export default function Workspace() {
   const showProjectNameSkeleton =
     isFirstMessage && autoNameKey === 0 && DEFAULT_NAMES.has(projectName);
 
-  async function handleManifest() {
+  async function handleManifest(selectedTarget?: string) {
     if (!project?.id) return;
     setManifestLoading(true);
     try {
@@ -4255,7 +4257,7 @@ export default function Workspace() {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
-        body: JSON.stringify({ projectId: project.id, sessionId }),
+        body: JSON.stringify({ projectId: project.id, sessionId, ...(selectedTarget ? { target: selectedTarget } : {}) }),
       });
 
       const contentType = res.headers.get("content-type") ?? "";
@@ -5955,7 +5957,7 @@ export default function Workspace() {
         isMobile={isMobile}
         showWorkspaceMenu
         projectStatus={project?.status}
-        onManifest={handleManifest}
+        onManifest={() => setManifestModeOpen(true)}
         manifestLoading={manifestLoading}
         onLaunch={() => {
           // Preview-first toggle. Play ALWAYS surfaces the running app preview,
@@ -5974,6 +5976,19 @@ export default function Workspace() {
         expanded={subheaderOpen}
         onExpandedChange={setSubheaderOpen}
       />
+
+      {manifestModeOpen && (
+        <ManifestMode
+          projectId={typeof id === "number" ? id : null}
+          projectName={project?.name ?? null}
+          onClose={() => setManifestModeOpen(false)}
+          onMaterialize={(target) => {
+            setManifestModeOpen(false);
+            void handleManifest(target);
+          }}
+          loading={manifestLoading}
+        />
+      )}
 
       <LaunchModal
         open={launchModal.open}
