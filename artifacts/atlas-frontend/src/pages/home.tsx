@@ -1955,6 +1955,9 @@ export default function Home() {
         nexusChat.handoffSignal?.explicit === true ||
         userMsgCount >= 5;
       setShapingStatus(ready ? "ready" : "shaping");
+    } else if (userMsgCount === 0 && shapingStatus !== "idle") {
+      // No active conversation — ambient home state. Reset any stale pill.
+      setShapingStatus("idle");
     }
   }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace,
       resolvedPortfolioFocus, homeFocus, projects, setIsHandoffReady]);
