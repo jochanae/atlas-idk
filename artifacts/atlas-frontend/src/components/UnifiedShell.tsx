@@ -1912,7 +1912,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
               zIndex: 1,
             }}
           >
-            {activeProjectId != null ? (
+            {activeProjectId != null && location !== "/home" ? (
               <ShellProjectSwitcher projectId={activeProjectId} />
             ) : (
               <ShellConversationTitle title={location === "/home" ? activeConversationTitle : null} />
@@ -1920,7 +1920,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             {!(location === "/home" && currentDepth === "ambient") && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
-            <ShellCompletionChip projectId={activeProjectId} />
+            <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 

@@ -2134,18 +2134,13 @@ export default function Home() {
       setShowHistory(false);
       setShowFocusPicker(false);
       setGlobalInsightOpen(true);
-      if (mostRecentActiveProjectId) {
-        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
-      } else {
-        setLocation("/projects");
-      }
       window.setTimeout(() => window.dispatchEvent(new Event("atlas:focus-composer")), 120);
       toast("Global Insight · Strategic view", {
         className: "atlas-toast-premium",
         description: "Macro view across every project.",
       });
     }
-  }, [globalInsightOpen, mostRecentActiveProjectId, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth, setLocation]);
+  }, [globalInsightOpen, vibrate, callGlobalInsightMode, nexusChat.setMessages, setDepth]);
 
   const handleKeepIt = useCallback(async () => {
     const messagesToKeep = nexusChat.messages;
