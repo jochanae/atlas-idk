@@ -6,7 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './buildTarget';
+export * from './dnaAnchor';
+export * from './dnaAnchorCompleteness';
 export * from './getPortfolioResumeBust';
 export * from './getPortfolioResumeParams';
 export * from './healthStatus';
 export * from './portfolioResume';
+export * from './projectManifest';
+export * from './projectManifestAnchors';
+export * from './projectManifestStage';

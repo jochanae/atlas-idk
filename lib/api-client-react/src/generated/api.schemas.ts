@@ -10,6 +10,105 @@ export interface HealthStatus {
 }
 
 /**
+ * Signal density gradient. "absent" — no value. "thin" — value exists but lacks extractable structure. "sufficient" — Manifest can reason over this anchor with confidence. "locked" — user has confirmed this anchor is stable and should not be re-extracted.
+
+ */
+export type DnaAnchorCompleteness = typeof DnaAnchorCompleteness[keyof typeof DnaAnchorCompleteness];
+
+
+export const DnaAnchorCompleteness = {
+  absent: 'absent',
+  thin: 'thin',
+  sufficient: 'sufficient',
+  locked: 'locked',
+} as const;
+
+/**
+ * One of the four foundational anchors of a project's DNA. Each anchor carries its current value (or null if absent), a completeness gradient, and the question the anchor is designed to answer.
+
+ */
+export interface DnaAnchor {
+  /** Human-readable anchor name (e.g. "Core Intent") */
+  label: string;
+  /** The question this anchor answers (e.g. "What is this, why does it matter, and what makes it different?") */
+  question: string;
+  /** The current value extracted into this anchor, or null if absent. */
+  value?: string | null;
+  /** Signal density gradient. "absent" — no value. "thin" — value exists but lacks extractable structure. "sufficient" — Manifest can reason over this anchor with confidence. "locked" — user has confirmed this anchor is stable and should not be re-extracted.
+   */
+  completeness: DnaAnchorCompleteness;
+}
+
+/**
+ * A materialisation target Manifest can unlock when the relevant DNA anchors reach sufficient completeness.
+
+ */
+export interface BuildTarget {
+  /** Stable machine identifier (e.g. "landing-page") */
+  id: string;
+  /** Human-readable label (e.g. "Landing Page") */
+  label: string;
+  /** Whether this target is unlocked given current DNA completeness. */
+  unlocked: boolean;
+  /** If locked, the human-readable explanation of what is missing. */
+  reason?: string | null;
+}
+
+/**
+ * The current genome stage of the project.
+ */
+export type ProjectManifestStage = typeof ProjectManifestStage[keyof typeof ProjectManifestStage];
+
+
+export const ProjectManifestStage = {
+  Think: 'Think',
+  Shape: 'Shape',
+  Decide: 'Decide',
+  Workspace: 'Workspace',
+  Strategize: 'Strategize',
+  Build: 'Build',
+  Operate: 'Operate',
+  Evolve: 'Evolve',
+} as const;
+
+/**
+ * The four DNA anchors, each with label, question, value, and completeness.
+ */
+export type ProjectManifestAnchors = {
+  coreIntent: DnaAnchor;
+  surfaceStrategy: DnaAnchor;
+  coreAudience: DnaAnchor;
+  brandPosture: DnaAnchor;
+};
+
+/**
+ * The Manifest consumption layer for a single project. Reads from the project_genome table and maps the four DNA anchors, confidence score, build targets, and open questions into a structured surface. This is what the Manifest UI renders — it never guesses, it only reads what the genome already contains.
+
+ */
+export interface ProjectManifest {
+  projectId: number;
+  projectName: string;
+  /** The current genome stage of the project. */
+  stage: ProjectManifestStage;
+  /**
+     * Integer 0–100 representing how much of the DNA is populated with sufficient signal for Manifest to reason accurately.
+
+     * @minimum 0
+     * @maximum 100
+     */
+  confidenceScore: number;
+  /** The four DNA anchors, each with label, question, value, and completeness. */
+  anchors: ProjectManifestAnchors;
+  /** Questions Atlas has flagged that only the human can answer. */
+  openQuestions: string[];
+  /** Ordered list of materialisation targets. Unlocked targets are immediately actionable. Locked targets show what DNA is missing.
+   */
+  buildTargets: BuildTarget[];
+  /** When the genome was last populated by AI extraction. Null if never extracted. */
+  lastExtractedAt?: string | null;
+}
+
+/**
  * A curated, Atlas-generated brief across the user's full portfolio. This is a first-class platform service — not a Home widget. Consumed by Home, future Mobile, Notifications, Daily Briefings, and any surface that needs to surface "what matters right now."
 
  */

@@ -18,6 +18,63 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Reads the project's DNA (genome) and returns the Manifest consumption layer — four anchors mapped from existing genome fields, a completeness gradient for each anchor (absent / thin / sufficient), the current confidence score, which build targets are unlocked, and any open questions Atlas has flagged.
+This endpoint never writes. It is a pure reader of the project_genome table. Use POST /nexus/manifest/{projectId}/extract to trigger AI-powered DNA extraction from existing sessions and entries.
+
+ * @summary Project Manifest
+ */
+export const GetProjectManifestParams = zod.object({
+  "projectId": zod.coerce.number().describe('The project ID to read the manifest for.')
+})
+
+export const getProjectManifestResponseConfidenceScoreMin = 0;
+export const getProjectManifestResponseConfidenceScoreMax = 100;
+
+
+
+export const GetProjectManifestResponse = zod.object({
+  "projectId": zod.number(),
+  "projectName": zod.string(),
+  "stage": zod.enum(['Think', 'Shape', 'Decide', 'Workspace', 'Strategize', 'Build', 'Operate', 'Evolve']).describe('The current genome stage of the project.'),
+  "confidenceScore": zod.number().min(getProjectManifestResponseConfidenceScoreMin).max(getProjectManifestResponseConfidenceScoreMax).describe('Integer 0–100 representing how much of the DNA is populated with sufficient signal for Manifest to reason accurately.\n'),
+  "anchors": zod.object({
+  "coreIntent": zod.object({
+  "label": zod.string().describe('Human-readable anchor name (e.g. \"Core Intent\")'),
+  "question": zod.string().describe('The question this anchor answers (e.g. \"What is this, why does it matter, and what makes it different?\")'),
+  "value": zod.string().nullish().describe('The current value extracted into this anchor, or null if absent.'),
+  "completeness": zod.enum(['absent', 'thin', 'sufficient', 'locked']).describe('Signal density gradient. \"absent\" — no value. \"thin\" — value exists but lacks extractable structure. \"sufficient\" — Manifest can reason over this anchor with confidence. \"locked\" — user has confirmed this anchor is stable and should not be re-extracted.\n')
+}).describe('One of the four foundational anchors of a project\'s DNA. Each anchor carries its current value (or null if absent), a completeness gradient, and the question the anchor is designed to answer.\n'),
+  "surfaceStrategy": zod.object({
+  "label": zod.string().describe('Human-readable anchor name (e.g. \"Core Intent\")'),
+  "question": zod.string().describe('The question this anchor answers (e.g. \"What is this, why does it matter, and what makes it different?\")'),
+  "value": zod.string().nullish().describe('The current value extracted into this anchor, or null if absent.'),
+  "completeness": zod.enum(['absent', 'thin', 'sufficient', 'locked']).describe('Signal density gradient. \"absent\" — no value. \"thin\" — value exists but lacks extractable structure. \"sufficient\" — Manifest can reason over this anchor with confidence. \"locked\" — user has confirmed this anchor is stable and should not be re-extracted.\n')
+}).describe('One of the four foundational anchors of a project\'s DNA. Each anchor carries its current value (or null if absent), a completeness gradient, and the question the anchor is designed to answer.\n'),
+  "coreAudience": zod.object({
+  "label": zod.string().describe('Human-readable anchor name (e.g. \"Core Intent\")'),
+  "question": zod.string().describe('The question this anchor answers (e.g. \"What is this, why does it matter, and what makes it different?\")'),
+  "value": zod.string().nullish().describe('The current value extracted into this anchor, or null if absent.'),
+  "completeness": zod.enum(['absent', 'thin', 'sufficient', 'locked']).describe('Signal density gradient. \"absent\" — no value. \"thin\" — value exists but lacks extractable structure. \"sufficient\" — Manifest can reason over this anchor with confidence. \"locked\" — user has confirmed this anchor is stable and should not be re-extracted.\n')
+}).describe('One of the four foundational anchors of a project\'s DNA. Each anchor carries its current value (or null if absent), a completeness gradient, and the question the anchor is designed to answer.\n'),
+  "brandPosture": zod.object({
+  "label": zod.string().describe('Human-readable anchor name (e.g. \"Core Intent\")'),
+  "question": zod.string().describe('The question this anchor answers (e.g. \"What is this, why does it matter, and what makes it different?\")'),
+  "value": zod.string().nullish().describe('The current value extracted into this anchor, or null if absent.'),
+  "completeness": zod.enum(['absent', 'thin', 'sufficient', 'locked']).describe('Signal density gradient. \"absent\" — no value. \"thin\" — value exists but lacks extractable structure. \"sufficient\" — Manifest can reason over this anchor with confidence. \"locked\" — user has confirmed this anchor is stable and should not be re-extracted.\n')
+}).describe('One of the four foundational anchors of a project\'s DNA. Each anchor carries its current value (or null if absent), a completeness gradient, and the question the anchor is designed to answer.\n')
+}).describe('The four DNA anchors, each with label, question, value, and completeness.'),
+  "openQuestions": zod.array(zod.string()).describe('Questions Atlas has flagged that only the human can answer.'),
+  "buildTargets": zod.array(zod.object({
+  "id": zod.string().describe('Stable machine identifier (e.g. \"landing-page\")'),
+  "label": zod.string().describe('Human-readable label (e.g. \"Landing Page\")'),
+  "unlocked": zod.boolean().describe('Whether this target is unlocked given current DNA completeness.'),
+  "reason": zod.string().nullish().describe('If locked, the human-readable explanation of what is missing.')
+}).describe('A materialisation target Manifest can unlock when the relevant DNA anchors reach sufficient completeness.\n')).describe('Ordered list of materialisation targets. Unlocked targets are immediately actionable. Locked targets show what DNA is missing.\n'),
+  "lastExtractedAt": zod.coerce.date().nullish().describe('When the genome was last populated by AI extraction. Null if never extracted.')
+}).describe('The Manifest consumption layer for a single project. Reads from the project_genome table and maps the four DNA anchors, confidence score, build targets, and open questions into a structured surface. This is what the Manifest UI renders — it never guesses, it only reads what the genome already contains.\n')
+
+
+/**
  * Atlas reads the portfolio and generates a structured brief with four curated sections: what moved, what emerged, what is waiting on the user, and the single suggested next move.
 The response is cached per user for five minutes so repeated fast opens do not trigger re-generation. Pass `?bust=1` to bypass the cache and force a fresh read.
 

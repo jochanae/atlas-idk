@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, projectGenomeTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, projectGenomeTable, readinessSnapshotsTable } from "@workspace/db";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { getGithubTokenForUser, bootstrapGitHubRepo } from "../lib/githubBootstrap";
@@ -2736,6 +2736,194 @@ If no clear project name was discussed, use "New Project".`,
   } catch (err) {
     req.log?.error({ err }, "Handoff error");
     res.status(500).json({ error: "Handoff failed" });
+  }
+});
+
+// ── Manifest helpers ──────────────────────────────────────────────────────
+type AnchorCompleteness = "absent" | "thin" | "sufficient" | "locked";
+
+function anchorCompleteness(value: string | null | undefined): AnchorCompleteness {
+  if (!value?.trim()) return "absent";
+  if (value.trim().length < 30) return "thin";
+  return "sufficient";
+}
+
+type DnaAnchor = {
+  label: string;
+  question: string;
+  value: string | null;
+  completeness: AnchorCompleteness;
+};
+
+type BuildTarget = {
+  id: string;
+  label: string;
+  unlocked: boolean;
+  reason: string | null;
+};
+
+function buildManifestTargets(anchors: {
+  coreIntent: AnchorCompleteness;
+  surfaceStrategy: AnchorCompleteness;
+  coreAudience: AnchorCompleteness;
+  brandPosture: AnchorCompleteness;
+}): BuildTarget[] {
+  const hasIntent = anchors.coreIntent !== "absent";
+  const intentSufficient = anchors.coreIntent === "sufficient" || anchors.coreIntent === "locked";
+  const hasSurface = anchors.surfaceStrategy !== "absent";
+  const surfaceSufficient = anchors.surfaceStrategy === "sufficient" || anchors.surfaceStrategy === "locked";
+  const hasAudience = anchors.coreAudience !== "absent";
+
+  return [
+    {
+      id: "landing-page",
+      label: "Landing Page",
+      unlocked: hasIntent && hasSurface,
+      reason: hasIntent && hasSurface ? null : "Requires Core Intent and Surface Strategy",
+    },
+    {
+      id: "web-app",
+      label: "Web App",
+      unlocked: intentSufficient && surfaceSufficient,
+      reason: intentSufficient && surfaceSufficient ? null : "Core Intent and Surface Strategy must reach sufficient detail",
+    },
+    {
+      id: "mobile-app",
+      label: "Mobile App",
+      unlocked: surfaceSufficient,
+      reason: surfaceSufficient ? null : "Requires a fully described Surface Strategy",
+    },
+    {
+      id: "database-schema",
+      label: "Database Schema",
+      unlocked: hasIntent && hasSurface,
+      reason: hasIntent && hasSurface ? null : "Requires Core Intent and Surface Strategy",
+    },
+    {
+      id: "investor-pitch",
+      label: "Investor Pitch",
+      unlocked: intentSufficient && hasAudience,
+      reason: intentSufficient && hasAudience ? null : "Requires Core Intent and Core Audience",
+    },
+    {
+      id: "api-backend",
+      label: "API / Backend",
+      unlocked: hasSurface,
+      reason: hasSurface ? null : "Requires Surface Strategy",
+    },
+  ];
+}
+
+function computeConfidenceScore(anchors: {
+  coreIntent: AnchorCompleteness;
+  surfaceStrategy: AnchorCompleteness;
+  coreAudience: AnchorCompleteness;
+  brandPosture: AnchorCompleteness;
+}): number {
+  const score = (Object.values(anchors) as AnchorCompleteness[]).reduce((sum, c) => {
+    if (c === "sufficient" || c === "locked") return sum + 25;
+    if (c === "thin") return sum + 10;
+    return sum;
+  }, 0);
+  return Math.min(100, score);
+}
+
+// GET /api/nexus/manifest/:projectId — Manifest consumption layer
+router.get("/nexus/manifest/:projectId", async (req, res): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const projectId = parseInt(req.params.projectId, 10);
+    if (isNaN(projectId)) {
+      res.status(400).json({ error: "Invalid projectId" });
+      return;
+    }
+
+    // 1. Verify project exists and belongs to this user
+    const [project] = await db
+      .select({ id: projectsTable.id, name: projectsTable.name, userId: projectsTable.userId })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+    if (project.userId !== userId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    // 2. Fetch genome (upsert default row if missing)
+    let [genome] = await db
+      .select()
+      .from(projectGenomeTable)
+      .where(eq(projectGenomeTable.projectId, projectId))
+      .limit(1);
+
+    if (!genome) {
+      [genome] = await db
+        .insert(projectGenomeTable)
+        .values({ projectId })
+        .returning();
+    }
+
+    // 3. Map genome fields → 4 anchors with completeness gradient
+    const coreIntentValue = genome.purpose;
+    const surfaceStrategyValue = genome.surfaceStrategy;
+    const coreAudienceValue = genome.audience;
+    const brandPostureValue = [genome.identity, genome.coreEmotion].filter(Boolean).join(" — ") || null;
+
+    const anchors = {
+      coreIntent: anchorCompleteness(coreIntentValue),
+      surfaceStrategy: anchorCompleteness(surfaceStrategyValue),
+      coreAudience: anchorCompleteness(coreAudienceValue),
+      brandPosture: anchorCompleteness(brandPostureValue),
+    };
+
+    const dnaAnchors: { coreIntent: DnaAnchor; surfaceStrategy: DnaAnchor; coreAudience: DnaAnchor; brandPosture: DnaAnchor } = {
+      coreIntent: {
+        label: "Core Intent",
+        question: "What is this, why does it matter, and what makes it different?",
+        value: coreIntentValue ?? null,
+        completeness: anchors.coreIntent,
+      },
+      surfaceStrategy: {
+        label: "Surface Strategy",
+        question: "What are we trying to create first, and what does the user actually do?",
+        value: surfaceStrategyValue ?? null,
+        completeness: anchors.surfaceStrategy,
+      },
+      coreAudience: {
+        label: "Core Audience",
+        question: "Who is it for, and what emotional or practical need drives them?",
+        value: coreAudienceValue ?? null,
+        completeness: anchors.coreAudience,
+      },
+      brandPosture: {
+        label: "Brand Posture",
+        question: "How should it feel, sound, and present itself?",
+        value: brandPostureValue,
+        completeness: anchors.brandPosture,
+      },
+    };
+
+    const confidenceScore = computeConfidenceScore(anchors);
+    const buildTargets = buildManifestTargets(anchors);
+
+    res.json({
+      projectId: project.id,
+      projectName: project.name,
+      stage: genome.stage,
+      confidenceScore,
+      anchors: dnaAnchors,
+      openQuestions: genome.openQuestions ?? [],
+      buildTargets,
+      lastExtractedAt: genome.lastExtractedAt?.toISOString() ?? null,
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /nexus/manifest/:projectId failed");
+    res.status(500).json({ error: "Failed to load manifest" });
   }
 });
 

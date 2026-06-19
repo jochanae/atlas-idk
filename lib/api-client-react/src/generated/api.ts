@@ -18,7 +18,8 @@ import type {
 import type {
   GetPortfolioResumeParams,
   HealthStatus,
-  PortfolioResume
+  PortfolioResume,
+  ProjectManifest
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -99,6 +100,86 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetProjectManifestUrl = (projectId: number,) => {
+
+
+
+
+  return `/api/nexus/manifest/${projectId}`
+}
+
+/**
+ * Reads the project's DNA (genome) and returns the Manifest consumption layer — four anchors mapped from existing genome fields, a completeness gradient for each anchor (absent / thin / sufficient), the current confidence score, which build targets are unlocked, and any open questions Atlas has flagged.
+This endpoint never writes. It is a pure reader of the project_genome table. Use POST /nexus/manifest/{projectId}/extract to trigger AI-powered DNA extraction from existing sessions and entries.
+
+ * @summary Project Manifest
+ */
+export const getProjectManifest = async (projectId: number, options?: RequestInit): Promise<ProjectManifest> => {
+
+  return customFetch<ProjectManifest>(getGetProjectManifestUrl(projectId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProjectManifestQueryKey = (projectId: number,) => {
+    return [
+    `/api/nexus/manifest/${projectId}`
+    ] as const;
+    }
+
+
+export const getGetProjectManifestQueryOptions = <TData = Awaited<ReturnType<typeof getProjectManifest>>, TError = ErrorType<void>>(projectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProjectManifest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProjectManifestQueryKey(projectId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectManifest>>> = ({ signal }) => getProjectManifest(projectId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProjectManifest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProjectManifestQueryResult = NonNullable<Awaited<ReturnType<typeof getProjectManifest>>>
+export type GetProjectManifestQueryError = ErrorType<void>
+
+
+/**
+ * @summary Project Manifest
+ */
+
+export function useGetProjectManifest<TData = Awaited<ReturnType<typeof getProjectManifest>>, TError = ErrorType<void>>(
+ projectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProjectManifest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProjectManifestQueryOptions(projectId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

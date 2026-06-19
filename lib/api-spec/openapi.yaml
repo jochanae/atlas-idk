@@ -29,6 +29,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /nexus/manifest/{projectId}:
+    get:
+      operationId: getProjectManifest
+      tags: [nexus]
+      summary: Project Manifest
+      description: >
+        Reads the project's DNA (genome) and returns the Manifest consumption
+        layer — four anchors mapped from existing genome fields, a completeness
+        gradient for each anchor (absent / thin / sufficient), the current
+        confidence score, which build targets are unlocked, and any open
+        questions Atlas has flagged.
+
+        This endpoint never writes. It is a pure reader of the project_genome
+        table. Use POST /nexus/manifest/{projectId}/extract to trigger
+        AI-powered DNA extraction from existing sessions and entries.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The project ID to read the manifest for.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Project manifest successfully read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectManifest"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Project does not belong to the authenticated user
+        "404":
+          description: Project not found
+
   /nexus/resume:
     get:
       operationId: getPortfolioResume
@@ -79,6 +117,127 @@ components:
           type: string
       required:
         - status
+
+    DnaAnchor:
+      type: object
+      description: >
+        One of the four foundational anchors of a project's DNA. Each anchor
+        carries its current value (or null if absent), a completeness gradient,
+        and the question the anchor is designed to answer.
+      properties:
+        label:
+          type: string
+          description: Human-readable anchor name (e.g. "Core Intent")
+        question:
+          type: string
+          description: The question this anchor answers (e.g. "What is this, why does it matter, and what makes it different?")
+        value:
+          type: string
+          nullable: true
+          description: The current value extracted into this anchor, or null if absent.
+        completeness:
+          type: string
+          enum: [absent, thin, sufficient, locked]
+          description: >
+            Signal density gradient. "absent" — no value. "thin" — value exists
+            but lacks extractable structure. "sufficient" — Manifest can reason
+            over this anchor with confidence. "locked" — user has confirmed this
+            anchor is stable and should not be re-extracted.
+      required:
+        - label
+        - question
+        - completeness
+
+    BuildTarget:
+      type: object
+      description: >
+        A materialisation target Manifest can unlock when the relevant DNA
+        anchors reach sufficient completeness.
+      properties:
+        id:
+          type: string
+          description: Stable machine identifier (e.g. "landing-page")
+        label:
+          type: string
+          description: Human-readable label (e.g. "Landing Page")
+        unlocked:
+          type: boolean
+          description: Whether this target is unlocked given current DNA completeness.
+        reason:
+          type: string
+          nullable: true
+          description: If locked, the human-readable explanation of what is missing.
+      required:
+        - id
+        - label
+        - unlocked
+
+    ProjectManifest:
+      type: object
+      description: >
+        The Manifest consumption layer for a single project. Reads from the
+        project_genome table and maps the four DNA anchors, confidence score,
+        build targets, and open questions into a structured surface. This is
+        what the Manifest UI renders — it never guesses, it only reads what
+        the genome already contains.
+      properties:
+        projectId:
+          type: integer
+        projectName:
+          type: string
+        stage:
+          type: string
+          enum: [Think, Shape, Decide, Workspace, Strategize, Build, Operate, Evolve]
+          description: The current genome stage of the project.
+        confidenceScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: >
+            Integer 0–100 representing how much of the DNA is populated with
+            sufficient signal for Manifest to reason accurately.
+        anchors:
+          type: object
+          description: The four DNA anchors, each with label, question, value, and completeness.
+          properties:
+            coreIntent:
+              $ref: "#/components/schemas/DnaAnchor"
+            surfaceStrategy:
+              $ref: "#/components/schemas/DnaAnchor"
+            coreAudience:
+              $ref: "#/components/schemas/DnaAnchor"
+            brandPosture:
+              $ref: "#/components/schemas/DnaAnchor"
+          required:
+            - coreIntent
+            - surfaceStrategy
+            - coreAudience
+            - brandPosture
+        openQuestions:
+          type: array
+          items:
+            type: string
+          description: Questions Atlas has flagged that only the human can answer.
+        buildTargets:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildTarget"
+          description: >
+            Ordered list of materialisation targets. Unlocked targets are
+            immediately actionable. Locked targets show what DNA is missing.
+        lastExtractedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the genome was last populated by AI extraction. Null if never extracted.
+      required:
+        - projectId
+        - projectName
+        - stage
+        - confidenceScore
+        - anchors
+        - openQuestions
+        - buildTargets
 
     PortfolioResume:
       type: object

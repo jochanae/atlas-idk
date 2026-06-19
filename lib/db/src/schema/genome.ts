@@ -19,6 +19,7 @@ export const projectGenomeTable = pgTable("project_genome", {
   coreEmotion: text("core_emotion"),
   audience: text("audience"),
   identity: text("identity"),
+  surfaceStrategy: text("surface_strategy"),
   constraints: text("constraints").array().notNull().default([]),
   openQuestions: text("open_questions").array().notNull().default([]),
   stage: genomeStagePgEnum("stage").notNull().default("Think"),
