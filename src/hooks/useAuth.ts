@@ -55,21 +55,25 @@ async function fetchMe(): Promise<AuthUser | null> {
 }
 
 export function useAuth() {
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading, isError } = useQuery({
     queryKey: ["auth", "me"],
     queryFn: fetchMe,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
-  return { user: user ?? null, isLoading };
+  return { user: user ?? null, isLoading, isError };
 }
 
 export function useRequireAuth() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isError } = useAuth();
   const [, navigate] = useLocation();
   useEffect(() => {
-    if (!isLoading && !user) navigate("/login");
-  }, [user, isLoading, navigate]);
+    // Only redirect to /login when auth has definitively resolved with no user.
+    // Do NOT redirect on a service error (503/500) — that would log the user out
+    // during a transient DB hiccup. isError means the request threw, not that
+    // the session is invalid.
+    if (!isLoading && !isError && !user) navigate("/login");
+  }, [user, isLoading, isError, navigate]);
   return { user, isLoading };
 }
 
