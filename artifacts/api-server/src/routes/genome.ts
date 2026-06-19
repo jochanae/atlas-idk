@@ -33,6 +33,7 @@ function clampConfidence(n: unknown): number {
 
 type MomentumLevel = "Low" | "Medium" | "High";
 type ConfidenceLevel = "Low" | "Medium" | "High";
+export type AtlasState = "Discovering" | "Pressure Testing" | "Structuring" | "Building" | "Operating";
 
 function momentumFromCount(n: number): MomentumLevel {
   if (n >= 16) return "High";
@@ -44,6 +45,30 @@ function confidenceLevelFromScore(score: number): ConfidenceLevel {
   if (score >= 70) return "High";
   if (score >= 35) return "Medium";
   return "Low";
+}
+
+function computeAtlasState(
+  stage: string,
+  confidenceScore: number,
+  openQuestionCount: number,
+  constraintCount: number,
+  blockerCount: number,
+  recentMsgCount: number,
+  objectCount: number,
+): AtlasState {
+  if (stage === "Operate" || stage === "Evolve") return "Operating";
+  if (stage === "Build") return "Building";
+  if (stage === "Workspace" || stage === "Strategize") return "Building";
+  if (stage === "Decide") return "Structuring";
+  if (stage === "Shape") {
+    if (blockerCount > 0 || constraintCount > 1 || openQuestionCount > 2) return "Pressure Testing";
+    return "Structuring";
+  }
+  // Think stage — differentiate Discovering vs Pressure Testing
+  if (blockerCount > 0 || constraintCount > 0 || openQuestionCount > 2 || recentMsgCount > 8 || objectCount > 3) {
+    return "Pressure Testing";
+  }
+  return "Discovering";
 }
 
 function nextActionForStage(stage: string, openQuestions: string[], constraints: string[]): string {
@@ -65,16 +90,25 @@ function nextActionForStage(stage: string, openQuestions: string[], constraints:
 async function computeProjectHealth(projectId: number, genome: typeof projectGenomeTable.$inferSelect) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [msgRow] = await db
-    .select({ n: count() })
-    .from(nexusMessagesTable)
-    .where(and(
+  const [msgRow, blockerCountRow, objectCountRow] = await Promise.all([
+    db.select({ n: count() }).from(nexusMessagesTable).where(and(
       eq(nexusMessagesTable.projectId, projectId),
       sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
       sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'reflection'`,
       sql`${nexusMessagesTable.createdAt} >= ${sevenDaysAgo.toISOString()}`,
-    ));
+    )).then(r => r[0]),
+    db.select({ n: count() }).from(entriesTable).where(and(
+      eq(entriesTable.projectId, projectId),
+      eq(entriesTable.type, "Blocker"),
+      ne(entriesTable.status, "archived"),
+    )).then(r => r[0]),
+    db.select({ n: count() }).from(entriesTable).where(and(
+      eq(entriesTable.projectId, projectId),
+      ne(entriesTable.status, "archived"),
+    )).then(r => r[0]),
+  ]);
 
+  // top blocker title for risk display
   const [topBlocker] = await db
     .select({ title: entriesTable.title })
     .from(entriesTable)
@@ -87,9 +121,21 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
     .limit(1);
 
   const recentMsgCount = Number(msgRow?.n ?? 0);
+  const blockerCount = Number(blockerCountRow?.n ?? 0);
+  const objectCount = Number(objectCountRow?.n ?? 0);
   const constraints = genome.constraints ?? [];
   const openQuestions = genome.openQuestions ?? [];
   const risk = topBlocker?.title ?? constraints[0] ?? null;
+
+  const atlasState = computeAtlasState(
+    genome.stage,
+    genome.confidenceScore,
+    openQuestions.length,
+    constraints.length,
+    blockerCount,
+    recentMsgCount,
+    objectCount,
+  );
 
   return {
     clarity: genome.confidenceScore,
@@ -97,6 +143,7 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
     confidence: confidenceLevelFromScore(genome.confidenceScore),
     risk,
     nextAction: nextActionForStage(genome.stage, openQuestions, constraints),
+    atlasState,
   };
 }
 

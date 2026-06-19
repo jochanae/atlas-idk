@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, projectGenomeTable } from "@workspace/db";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { getGithubTokenForUser, bootstrapGitHubRepo } from "../lib/githubBootstrap";
@@ -1667,7 +1667,38 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       const tensionLines = projectTensions.length > 0
         ? projectTensions.map((tension) => `${tension.projectA.name} ↔ ${tension.projectB.name}: "${tension.entryA.title}" conflicts with "${tension.entryB.title}"`).join("\n")
         : "None detected.";
+
+      // Atlas State — fetch genome to determine conversational posture
+      const [focusGenomeRow] = await db
+        .select()
+        .from(projectGenomeTable)
+        .where(eq(projectGenomeTable.projectId, focusProjectId))
+        .limit(1);
+
+      const atlasStateLabel: string = (() => {
+        if (!focusGenomeRow) return "Discovering";
+        const stage = focusGenomeRow.stage ?? "Think";
+        const oq = (focusGenomeRow.openQuestions ?? []).length;
+        const con = (focusGenomeRow.constraints ?? []).length;
+        const conf = focusGenomeRow.confidenceScore ?? 0;
+        if (stage === "Operate" || stage === "Evolve") return "Operating";
+        if (stage === "Build") return "Building";
+        if (stage === "Workspace" || stage === "Strategize") return "Building";
+        if (stage === "Decide") return "Structuring";
+        if (stage === "Shape") return (con > 1 || oq > 2) ? "Pressure Testing" : "Structuring";
+        return (con > 0 || oq > 2) ? "Pressure Testing" : "Discovering";
+      })();
+
+      const ATLAS_STATE_GUIDANCE: Record<string, string> = {
+        "Discovering": "The project is in early exploration. Ask expansive, curious questions. Surface hidden assumptions. Help the user find the core insight they haven't articulated yet. Be generative, not prescriptive.",
+        "Pressure Testing": "The project has shape but key assumptions are unresolved. Push back gently on weak spots. Surface constraints and blockers. Ask the hard question the user is avoiding. Be precise and honest.",
+        "Structuring": "The project is crystallizing. Help the user organize thinking into decisions, priorities, and structure. Ask 'what does done look like?' and 'what's the sequence?' Be crisp and decisive.",
+        "Building": "The project is in execution mode. Focus on unblocking, clarifying implementation choices, and maintaining momentum. Ask 'what's the next shipped thing?' Be direct and action-oriented.",
+        "Operating": "The project is live and running. Focus on learning from real-world signals, improving, and identifying the next evolution. Ask 'what is the data telling you?' Be reflective and forward-looking.",
+      };
+
       systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user has zoomed in on "${focusProject.name}" for this conversation. Prioritize this project's context. Open your FIRST response by explicitly naming the project — begin with "${focusProject.name} —" or "On ${focusProject.name}:" so the user knows the focus is active. After that, answer normally without repeating the label on every message.`;
+      systemPrompt += `\n\nATLAS STATE: ${atlasStateLabel}\n${ATLAS_STATE_GUIDANCE[atlasStateLabel] ?? ""}\nLet this state shape the texture of every response — not just what you say, but how you engage.`;
       if (focusEntries) systemPrompt += `\nCommitted decisions:\n${focusEntries}`;
       if (focusMemory) systemPrompt += `\nProject memory:\n${focusMemory}`;
       if (focusRecentCommits) {

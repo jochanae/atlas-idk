@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 
+export type AtlasState = "Discovering" | "Pressure Testing" | "Structuring" | "Building" | "Operating";
+
 export type ProjectHealth = {
   clarity: number;
   momentum: "Low" | "Medium" | "High";
   confidence: "Low" | "Medium" | "High";
   risk: string | null;
   nextAction: string;
+  atlasState?: AtlasState;
 };
 
 export type ProjectGenome = {
@@ -52,6 +55,52 @@ function clarityColor(pct: number): string {
   if (pct >= 70) return GREEN;
   if (pct >= 35) return AMBER;
   return "rgba(255,255,255,0.3)";
+}
+
+const ATLAS_STATES: AtlasState[] = ["Discovering", "Pressure Testing", "Structuring", "Building", "Operating"];
+
+function AtlasStateTrack({ state }: { state: AtlasState | undefined }) {
+  const activeIdx = state ? ATLAS_STATES.indexOf(state) : -1;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <span style={{
+        fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em",
+        textTransform: "uppercase", color: MUTED, opacity: 0.4,
+      }}>
+        Atlas State
+      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        {ATLAS_STATES.map((s, i) => {
+          const isPast = i < activeIdx;
+          const isCurrent = i === activeIdx;
+          const isFuture = i > activeIdx;
+          return (
+            <div key={s} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              {/* dot */}
+              <div style={{
+                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                background: isCurrent ? GOLD : isPast ? "rgba(201,162,76,0.35)" : "transparent",
+                border: isFuture ? "1px solid rgba(255,255,255,0.12)" : "none",
+                boxShadow: isCurrent ? `0 0 6px ${GOLD}` : "none",
+                transition: "all 300ms",
+              }} />
+              {/* label */}
+              <span style={{
+                fontFamily: MONO,
+                fontSize: isCurrent ? 9.5 : 9,
+                letterSpacing: "0.06em",
+                color: isCurrent ? GOLD : isPast ? "rgba(201,162,76,0.5)" : "rgba(255,255,255,0.18)",
+                fontWeight: isCurrent ? 600 : 400,
+                transition: "all 300ms",
+              }}>
+                {s}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function StageBar({ stage }: { stage: string }) {
@@ -102,11 +151,19 @@ function HealthMetric({
 function HealthPanel({ health, stage }: { health: ProjectHealth; stage: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Three metrics row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-        <HealthMetric label="Clarity" value={`${health.clarity}%`} color={clarityColor(health.clarity)} />
-        <HealthMetric label="Momentum" value={health.momentum} color={momentumColor(health.momentum)} />
-        <HealthMetric label="Confidence" value={health.confidence} color={confidenceColor(health.confidence)} />
+      {/* Atlas State track + metrics side-by-side */}
+      <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+        {/* Atlas State track — left column */}
+        <div style={{ flexShrink: 0 }}>
+          <AtlasStateTrack state={health.atlasState} />
+        </div>
+
+        {/* Metrics — right column */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+          <HealthMetric label="Clarity" value={`${health.clarity}%`} color={clarityColor(health.clarity)} />
+          <HealthMetric label="Momentum" value={health.momentum} color={momentumColor(health.momentum)} />
+          <HealthMetric label="Confidence" value={health.confidence} color={confidenceColor(health.confidence)} />
+        </div>
       </div>
 
       {/* Stage row */}
