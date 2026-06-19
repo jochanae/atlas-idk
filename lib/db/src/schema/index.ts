@@ -1,4 +1,5 @@
 export * from "./projects";
+export * from "./genome";
 export * from "./sessions";
 export * from "./chat_messages";
 export * from "./entries";

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { BlueprintVisual } from "@/components/BlueprintVisual";
 import type { ManifestDecision } from "@/components/workspace/PreviewPanel";
+import { GenomeCard } from "@/components/GenomeCard";
 
 export type Blueprint = {
   id: number | string;
@@ -378,6 +379,9 @@ export function BlueprintsTab({
   // ── List view ──────────────────────────────────────────────────────────────
   return (
     <div style={{ height: "100%", overflowY: "auto", padding: "14px 14px" }}>
+      {/* Genome card — living project DNA */}
+      <GenomeCard projectId={projectId} />
+
       {/* Manifest summary — always visible at top */}
       <ManifestSummaryCard decision={manifestDecision} loading={manifestLoading} onBuild={onBuild} />
 

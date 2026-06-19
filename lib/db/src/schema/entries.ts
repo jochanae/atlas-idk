@@ -9,6 +9,7 @@ export const entriesTable = pgTable("entries", {
   projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
   sessionId: integer("session_id").references(() => sessionsTable.id, { onDelete: "set null" }),
   status: text("status").notNull().default("committed"),
+  type: text("type").notNull().default("Decision"),
   title: text("title").notNull(),
   summary: text("summary"),
   details: text("details"),

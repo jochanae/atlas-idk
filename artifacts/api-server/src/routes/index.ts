@@ -38,6 +38,7 @@ import stateRouter from "./state";
 import imagineRouter from "./imagine";
 import previewRouter from "./preview";
 import manifestRouter from "./manifest";
+import genomeRouter from "./genome";
 import artifactsRouter from "./artifacts";
 import codegenRouter from "./codegen";
 import errorsRouter from "./errors";
@@ -108,6 +109,7 @@ router.use(requireAuth, terminalRouter);
 router.use(requireAuth, imagineRouter);
 router.use(requireAuth, previewRouter);
 router.use(requireAuth, manifestRouter);
+router.use(requireAuth, genomeRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);

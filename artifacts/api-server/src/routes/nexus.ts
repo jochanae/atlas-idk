@@ -13,6 +13,7 @@ import { logger } from "../lib/logger";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_IDENTITY } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
+import { maybeExtractGenome } from "../lib/genomeExtract";
 
 const router: IRouter = Router();
 
@@ -2076,6 +2077,9 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     await updateSessionRunMetadata(sessionId, runMetadata).catch((err) => {
       logger.warn({ err }, "updateSessionRunMetadata failed — continuing");
     });
+
+    // Background genome extraction — non-blocking, rate-limited
+    void maybeExtractGenome(focusProjectId ?? null);
 
     // If a project was just created, inject NAVIGATE_TO so the frontend auto-navigates
     if (pendingNavProjectId !== null) {
