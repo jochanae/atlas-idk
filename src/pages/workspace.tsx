@@ -55,7 +55,7 @@ import { NewProjectModal } from "../components/NewProjectModal";
 import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useThemeMode } from "@/lib/theme";
-import { getAuthHeaders } from "@/lib/api";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
@@ -4251,7 +4251,7 @@ export default function Workspace() {
       const looksInt = /^\d+$/.test(projectIdStr);
       const idShape = looksUuid ? "uuid" : looksInt ? "integer" : "other";
 
-      const res = await fetch("/api/manifest/decide", {
+      const res = await fetch(apiUrl("/api/manifest/decide"), {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",

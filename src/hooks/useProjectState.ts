@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Project, Session, Entry } from "@workspace/api-client-react";
 import { useShellStore } from "@/store/shellStore";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 
 export type ProjectForgeState = {
   forged?: boolean;
@@ -59,8 +60,9 @@ export function useProjectState(projectId: number | null) {
       setError(null);
 
       try {
-        const res = await fetch(`/api/projects/${projectId}/state`, {
+        const res = await fetch(apiUrl(`/api/projects/${projectId}/state`), {
           credentials: "include",
+          headers: { ...getAuthHeaders() },
           signal,
         });
         if (res.status === 404) clearStoredActiveProject();

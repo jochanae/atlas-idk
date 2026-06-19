@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { apiUrl } from "@/lib/api";
 
 export interface AuthUser {
   id: number;
@@ -41,7 +42,7 @@ export function authHeaders(): Record<string, string> {
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
-  const res = await fetch("/api/auth/me", {
+  const res = await fetch(apiUrl("/api/auth/me"), {
     credentials: "include",
     headers: { ...authHeaders() },
   });
@@ -76,7 +77,7 @@ export function useLogout() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   return async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    await fetch(apiUrl("/api/auth/logout"), { method: "POST", credentials: "include" });
     try {
       localStorage.removeItem("atlas-auth-token");
     } catch {
