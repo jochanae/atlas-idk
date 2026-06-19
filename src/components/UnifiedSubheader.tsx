@@ -163,10 +163,8 @@ export function UnifiedSubheader({
         transition: "margin-top 240ms ease",
       }}
     >
-      {/* Collapsible tab row — slides up and out of DOM flow when collapsed.
-          When collapsed but the action bar is showing, we still reserve enough
-          vertical space so the absolutely-positioned Manifest/Launch pills don't
-          overlay the chat content below. */}
+      {/* Collapsible tab row. When collapsed, keep spacer height for the
+          absolutely-positioned Manifest/Launch controls, but hide the tabs. */}
       <div
         style={{
           maxHeight: showRow ? 56 : showActionBar ? 36 : 0,
@@ -182,6 +180,10 @@ export function UnifiedSubheader({
             alignItems: "center",
             gap: 10,
             padding: isMobile ? "8px 16px 6px" : "10px 22px 8px",
+            visibility: showRow ? "visible" : "hidden",
+            opacity: showRow ? 1 : 0,
+            pointerEvents: showRow ? "auto" : "none",
+            transition: "opacity 160ms ease",
           }}
         >
           <nav
@@ -240,8 +242,8 @@ export function UnifiedSubheader({
         </div>
       </div>
 
-      {/* Play button — pinned. Tap = primary (launch when collapsed, collapse when expanded).
-          Long-press = secondary (expand when collapsed, launch when expanded). Icon rotates 90° when expanded. */}
+      {/* Play button — pinned. Tap launches preview. Long-press toggles tabs.
+          Icon rotates 90° when expanded. */}
       {showActionBar && (
         <div
           style={{
