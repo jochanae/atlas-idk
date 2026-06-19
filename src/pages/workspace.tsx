@@ -5057,15 +5057,22 @@ export default function Workspace() {
   const handleSend = async (opts?: { mode: "plan" | "build" }) => {
     const text = input.trim();
     if ((!text && attachedFiles.length === 0) || chatPending) return;
+    // Snapshot and clear UI immediately so the user sees feedback
+    // and can't double-click Send while the session is prepared.
+    const files = attachedFiles;
+    setInput("");
+    setAttachedFiles([]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "";
+      textareaRef.current.blur();
+    }
+    setInputFocused(false);
     const sid = sessionId ?? await ensureSessionId().catch(() => null);
     if (!sid) return;
     if (atlasGreeting) setAtlasGreeting(null);
     setShowHomeHandoffBanner(false);
     playSend();
     const current = messages;
-    const files = attachedFiles;
-    setInput("");
-    setAttachedFiles([]);
     if (textareaRef.current) {
       // Clear inline height so the textarea collapses back to its ambient
       // single-line size (driven by style minHeight), then blur to dismiss
