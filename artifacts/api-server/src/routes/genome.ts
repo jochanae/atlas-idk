@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, projectGenomeTable, projectsTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, count, ne } from "drizzle-orm";
 import { runGenomeExtraction, isOnCooldown } from "../lib/genomeExtract";
 import { GENOME_STAGES, OBJECT_TYPES } from "@workspace/db";
 import type { GenomeStage } from "@workspace/db";
@@ -31,7 +31,77 @@ function clampConfidence(n: unknown): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-function serializeGenome(row: typeof projectGenomeTable.$inferSelect) {
+type MomentumLevel = "Low" | "Medium" | "High";
+type ConfidenceLevel = "Low" | "Medium" | "High";
+
+function momentumFromCount(n: number): MomentumLevel {
+  if (n >= 16) return "High";
+  if (n >= 6) return "Medium";
+  return "Low";
+}
+
+function confidenceLevelFromScore(score: number): ConfidenceLevel {
+  if (score >= 70) return "High";
+  if (score >= 35) return "Medium";
+  return "Low";
+}
+
+function nextActionForStage(stage: string, openQuestions: string[], constraints: string[]): string {
+  const q = openQuestions[0] ?? null;
+  const c = constraints[0] ?? null;
+  switch (stage) {
+    case "Think":      return q ?? "Start shaping your core idea — what problem are you solving?";
+    case "Shape":      return q ? `Answer: ${q}` : "Define who needs this most and why it matters to them";
+    case "Decide":     return c ? `Pressure-test: ${c}` : "Commit to your biggest assumption and test it";
+    case "Workspace":  return q ?? "Set up your execution environment and define what 'done' means";
+    case "Strategize": return q ?? "Define the phased approach — what comes first?";
+    case "Build":      return "Pick one feature and ship it — learn from real usage";
+    case "Operate":    return "Monitor and learn — what is the data telling you?";
+    case "Evolve":     return "Identify the next evolution — what would 10x this?";
+    default:           return q ?? "Keep the conversation going — Atlas is listening";
+  }
+}
+
+async function computeProjectHealth(projectId: number, genome: typeof projectGenomeTable.$inferSelect) {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [msgRow] = await db
+    .select({ n: count() })
+    .from(nexusMessagesTable)
+    .where(and(
+      eq(nexusMessagesTable.projectId, projectId),
+      sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
+      sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'reflection'`,
+      sql`${nexusMessagesTable.createdAt} >= ${sevenDaysAgo.toISOString()}`,
+    ));
+
+  const [topBlocker] = await db
+    .select({ title: entriesTable.title })
+    .from(entriesTable)
+    .where(and(
+      eq(entriesTable.projectId, projectId),
+      eq(entriesTable.type, "Blocker"),
+      ne(entriesTable.status, "archived"),
+    ))
+    .orderBy(desc(entriesTable.createdAt))
+    .limit(1);
+
+  const recentMsgCount = Number(msgRow?.n ?? 0);
+  const constraints = genome.constraints ?? [];
+  const openQuestions = genome.openQuestions ?? [];
+  const risk = topBlocker?.title ?? constraints[0] ?? null;
+
+  return {
+    clarity: genome.confidenceScore,
+    momentum: momentumFromCount(recentMsgCount),
+    confidence: confidenceLevelFromScore(genome.confidenceScore),
+    risk,
+    nextAction: nextActionForStage(genome.stage, openQuestions, constraints),
+  };
+}
+
+async function serializeGenome(projectId: number, row: typeof projectGenomeTable.$inferSelect) {
+  const health = await computeProjectHealth(projectId, row);
   return {
     id: row.id,
     projectId: row.projectId,
@@ -47,6 +117,7 @@ function serializeGenome(row: typeof projectGenomeTable.$inferSelect) {
     lastExtractedAt: row.lastExtractedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    health,
   };
 }
 
@@ -78,7 +149,7 @@ router.get("/projects/:id/genome", async (req, res): Promise<void> => {
     if (!owns) { res.status(404).json({ error: "Project not found" }); return; }
 
     const genome = await getOrCreateGenome(projectId);
-    res.json(serializeGenome(genome));
+    res.json(await serializeGenome(projectId, genome));
   } catch (err) {
     req.log?.error({ err }, "genome GET error");
     res.status(500).json({ error: "Failed to fetch genome" });
@@ -109,7 +180,7 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
 
     if (Object.keys(update).length === 0) {
       const genome = await getOrCreateGenome(projectId);
-      res.json(serializeGenome(genome));
+      res.json(await serializeGenome(projectId, genome));
       return;
     }
 
@@ -126,7 +197,7 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
     }
 
     const genome = await getOrCreateGenome(projectId);
-    res.json(serializeGenome(genome));
+    res.json(await serializeGenome(projectId, genome));
   } catch (err) {
     req.log?.error({ err }, "genome PATCH error");
     res.status(500).json({ error: "Failed to update genome" });
@@ -146,14 +217,14 @@ router.post("/projects/:id/genome/extract", async (req, res): Promise<void> => {
     const force = (req.body as Record<string, unknown>)?.force === true;
     if (!force && isOnCooldown(projectId)) {
       const genome = await getOrCreateGenome(projectId);
-      res.json({ genome: serializeGenome(genome), skipped: true, reason: "cooldown" });
+      res.json({ genome: await serializeGenome(projectId, genome), skipped: true, reason: "cooldown" });
       return;
     }
 
     await runGenomeExtraction(projectId);
 
     const genome = await getOrCreateGenome(projectId);
-    res.json({ genome: serializeGenome(genome), skipped: false });
+    res.json({ genome: await serializeGenome(projectId, genome), skipped: false });
   } catch (err) {
     req.log?.error({ err }, "genome extract error");
     res.status(500).json({ error: "Extraction failed" });

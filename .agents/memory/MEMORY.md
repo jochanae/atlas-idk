@@ -1,4 +1,1 @@
-- [Database isolation](database-isolation.md) — never set DATABASE_URL secret; Replit auto-provides its own isolated PostgreSQL
-- [API base and sync-protected files](api-base-sync.md) — api.ts DEFAULT_API_BASE must stay ""; vite.config.ts and src/lib/api.ts are both skip-listed in sync-frontend.sh
-- [Session auth fix](session-auth-fix.md) — App.tsx session-expired check used _originalFetch with full URL, bypassing bearer token; fixed to use relative /api/auth/me with manual bearer header
-- [Google OAuth setup](google-oauth.md) — backend fully wired in google-auth.ts; redirect URI is dynamically derived from x-forwarded-host; GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set as Replit secrets
+- [Project Health computation](project-health.md) — health is computed server-side on every GET /genome call, not cached; momentum from 7-day nexus message count

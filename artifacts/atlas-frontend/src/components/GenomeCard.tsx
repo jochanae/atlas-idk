@@ -1,5 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 
+export type ProjectHealth = {
+  clarity: number;
+  momentum: "Low" | "Medium" | "High";
+  confidence: "Low" | "Medium" | "High";
+  risk: string | null;
+  nextAction: string;
+};
+
 export type ProjectGenome = {
   id: number;
   projectId: number;
@@ -15,6 +23,7 @@ export type ProjectGenome = {
   lastExtractedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  health: ProjectHealth;
 };
 
 const STAGES = ["Think", "Shape", "Decide", "Workspace", "Strategize", "Build", "Operate", "Evolve"] as const;
@@ -24,50 +33,189 @@ const MUTED = "var(--atlas-muted)";
 const FG = "var(--atlas-fg)";
 const BORDER = "var(--atlas-border)";
 const MONO = "var(--app-font-mono)";
+const GREEN = "#4ade80";
+const AMBER = "#f59e0b";
+
+function momentumColor(m: ProjectHealth["momentum"]): string {
+  if (m === "High") return GREEN;
+  if (m === "Medium") return AMBER;
+  return "rgba(255,255,255,0.3)";
+}
+
+function confidenceColor(c: ProjectHealth["confidence"]): string {
+  if (c === "High") return GREEN;
+  if (c === "Medium") return AMBER;
+  return "rgba(255,255,255,0.3)";
+}
+
+function clarityColor(pct: number): string {
+  if (pct >= 70) return GREEN;
+  if (pct >= 35) return AMBER;
+  return "rgba(255,255,255,0.3)";
+}
 
 function StageBar({ stage }: { stage: string }) {
   const idx = STAGES.indexOf(stage as (typeof STAGES)[number]);
   const active = idx >= 0 ? idx : 0;
-
   return (
     <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
       {STAGES.map((s, i) => (
-        <div
-          key={s}
-          title={s}
-          style={{
-            height: 3,
-            flex: 1,
-            borderRadius: 2,
-            background: i <= active ? GOLD : "rgba(201,162,76,0.12)",
-            opacity: i === active ? 1 : i < active ? 0.6 : 0.3,
-            transition: "background 300ms",
-          }}
-        />
+        <div key={s} title={s} style={{
+          height: 2,
+          flex: 1,
+          borderRadius: 2,
+          background: i <= active ? GOLD : "rgba(201,162,76,0.1)",
+          opacity: i === active ? 1 : i < active ? 0.55 : 0.25,
+          transition: "background 300ms",
+        }} />
       ))}
     </div>
   );
 }
 
-function ConfidencePip({ score }: { score: number }) {
-  const filled = Math.round((score / 100) * 5);
+function HealthMetric({
+  label, value, color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
   return (
-    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <div
-          key={i}
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: i < filled ? GOLD : "rgba(201,162,76,0.15)",
-            transition: "background 300ms",
-          }}
-        />
-      ))}
-      <span style={{ fontFamily: MONO, fontSize: 9, color: MUTED, opacity: 0.55, marginLeft: 4 }}>
-        {score}%
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span style={{
+        fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em",
+        textTransform: "uppercase", color: MUTED, opacity: 0.4,
+      }}>
+        {label}
       </span>
+      <span style={{
+        fontFamily: MONO, fontSize: 12, fontWeight: 600,
+        color: color ?? FG, opacity: color ? 1 : 0.85,
+        letterSpacing: "0.04em",
+      }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function HealthPanel({ health, stage }: { health: ProjectHealth; stage: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Three metrics row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+        <HealthMetric label="Clarity" value={`${health.clarity}%`} color={clarityColor(health.clarity)} />
+        <HealthMetric label="Momentum" value={health.momentum} color={momentumColor(health.momentum)} />
+        <HealthMetric label="Confidence" value={health.confidence} color={confidenceColor(health.confidence)} />
+      </div>
+
+      {/* Stage row */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <StageBar stage={stage} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: MONO, fontSize: 8.5, color: MUTED, opacity: 0.4, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            Stage
+          </span>
+          <span style={{ fontFamily: MONO, fontSize: 8.5, color: GOLD, opacity: 0.75, letterSpacing: "0.08em" }}>
+            {stage}
+          </span>
+        </div>
+      </div>
+
+      {/* Risk */}
+      {health.risk && (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: MUTED, opacity: 0.4, flexShrink: 0 }}>
+            Risk
+          </span>
+          <span style={{ fontSize: 11, color: "rgba(251,146,60,0.85)", lineHeight: 1.4, opacity: 0.9 }}>
+            {health.risk}
+          </span>
+        </div>
+      )}
+
+      {/* Next Action */}
+      <div style={{
+        padding: "8px 10px",
+        borderRadius: 6,
+        border: "1px solid rgba(201,162,76,0.2)",
+        background: "rgba(201,162,76,0.04)",
+        display: "flex", flexDirection: "column", gap: 4,
+      }}>
+        <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em", textTransform: "uppercase", color: GOLD, opacity: 0.55 }}>
+          Next Action
+        </span>
+        <span style={{ fontSize: 11.5, color: FG, lineHeight: 1.5, opacity: 0.9 }}>
+          {health.nextAction}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function GenomeDetails({ genome }: { genome: ProjectGenome }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      {genome.purpose && (
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: MUTED, opacity: 0.35, marginBottom: 3 }}>
+            Purpose
+          </div>
+          <div style={{ fontSize: 11.5, color: FG, lineHeight: 1.5, opacity: 0.82 }}>
+            {genome.purpose}
+          </div>
+        </div>
+      )}
+
+      {genome.audience && (
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: MUTED, opacity: 0.35, marginBottom: 3 }}>
+            For
+          </div>
+          <div style={{ fontSize: 11.5, color: FG, lineHeight: 1.5, opacity: 0.82 }}>
+            {genome.audience}
+          </div>
+        </div>
+      )}
+
+      {genome.coreEmotion && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: MUTED, opacity: 0.35 }}>
+            Core
+          </span>
+          <span style={{
+            fontFamily: MONO, fontSize: 9, color: GOLD, opacity: 0.75,
+            background: "rgba(201,162,76,0.08)", padding: "2px 7px",
+            borderRadius: 4, border: "1px solid rgba(201,162,76,0.12)",
+          }}>
+            {genome.coreEmotion}
+          </span>
+        </div>
+      )}
+
+      {genome.openQuestions.length > 0 && (
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: MUTED, opacity: 0.35, marginBottom: 5 }}>
+            Open Questions
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {genome.openQuestions.slice(0, 2).map((q, i) => (
+              <div key={i} style={{
+                fontSize: 11, color: MUTED, lineHeight: 1.5, opacity: 0.7,
+                paddingLeft: 8,
+                borderLeft: "1px solid rgba(201,162,76,0.18)",
+              }}>
+                {q}
+              </div>
+            ))}
+            {genome.openQuestions.length > 2 && (
+              <div style={{ fontFamily: MONO, fontSize: 8, color: MUTED, opacity: 0.3, paddingLeft: 8 }}>
+                +{genome.openQuestions.length - 2} more
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -83,6 +231,7 @@ export function GenomeCard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -91,7 +240,7 @@ export function GenomeCard({
       setGenome(await res.json());
       setError(null);
     } catch (e: any) {
-      setError(e?.message ?? "Failed to load genome");
+      setError(e?.message ?? "Failed to load");
     } finally {
       setLoading(false);
     }
@@ -99,7 +248,6 @@ export function GenomeCard({
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
-  // Poll every 60 seconds
   useEffect(() => {
     const t = setInterval(() => { void load(); }, 60_000);
     return () => clearInterval(t);
@@ -124,26 +272,29 @@ export function GenomeCard({
     }
   };
 
-  const isEmpty = !genome?.purpose && !genome?.audience && (genome?.confidenceScore ?? 0) === 0;
-  const hasContent = genome && !isEmpty;
+  const hasHealth = genome && (
+    genome.health.clarity > 0 ||
+    genome.purpose ||
+    genome.confidenceScore > 0
+  );
 
   return (
     <div style={{
       marginBottom: 14,
       borderRadius: 10,
-      border: `1px solid ${hasContent ? "rgba(201,162,76,0.18)" : BORDER}`,
-      background: hasContent ? "rgba(201,162,76,0.025)" : "rgba(255,255,255,0.012)",
+      border: `1px solid ${hasHealth ? "rgba(201,162,76,0.2)" : BORDER}`,
+      background: hasHealth ? "rgba(201,162,76,0.02)" : "rgba(255,255,255,0.012)",
       overflow: "hidden",
       transition: "border-color 300ms, background 300ms",
     }}>
       {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 13px 8px",
-        borderBottom: `1px solid ${hasContent ? "rgba(201,162,76,0.1)" : "rgba(255,255,255,0.04)"}`,
+        padding: "9px 12px 8px",
+        borderBottom: `1px solid ${hasHealth ? "rgba(201,162,76,0.1)" : "rgba(255,255,255,0.04)"}`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {hasContent && (
+          {hasHealth && (
             <span style={{
               display: "inline-block", width: 5, height: 5, borderRadius: "50%",
               background: GOLD, flexShrink: 0,
@@ -153,130 +304,71 @@ export function GenomeCard({
           <span style={{
             fontFamily: MONO, fontSize: 9, letterSpacing: "0.18em",
             textTransform: "uppercase",
-            color: hasContent ? GOLD : MUTED,
-            opacity: hasContent ? 0.8 : 0.4,
+            color: hasHealth ? GOLD : MUTED,
+            opacity: hasHealth ? 0.75 : 0.35,
           }}>
-            Genome
+            Project Health
           </span>
-          {hasContent && genome?.stage && (
-            <span style={{
-              fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.1em",
-              color: MUTED, opacity: 0.5,
-              textTransform: "uppercase",
-            }}>
-              · {genome.stage}
-            </span>
-          )}
         </div>
 
-        {!loading && (
-          <button
-            onClick={triggerExtract}
-            disabled={extracting}
-            style={{
-              background: "transparent", border: "none",
-              fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: MUTED, opacity: extracting ? 0.3 : 0.45,
-              cursor: extracting ? "default" : "pointer", padding: "2px 0",
-            }}
-          >
-            {extracting ? "reading…" : "update"}
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {hasHealth && (
+            <button
+              onClick={() => setShowDetails(d => !d)}
+              style={{
+                background: "transparent", border: "none",
+                fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em",
+                textTransform: "uppercase", color: MUTED, opacity: 0.35,
+                cursor: "pointer", padding: "2px 0",
+              }}
+            >
+              {showDetails ? "less" : "details"}
+            </button>
+          )}
+          {!loading && (
+            <button
+              onClick={triggerExtract}
+              disabled={extracting}
+              style={{
+                background: "transparent", border: "none",
+                fontFamily: MONO, fontSize: 8, letterSpacing: "0.12em",
+                textTransform: "uppercase", color: MUTED, opacity: extracting ? 0.25 : 0.4,
+                cursor: extracting ? "default" : "pointer", padding: "2px 0",
+              }}
+            >
+              {extracting ? "reading…" : "sync"}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ padding: "10px 13px 12px" }}>
+      <div style={{ padding: "10px 12px 12px" }}>
         {loading && (
-          <div style={{ fontSize: 11, color: MUTED, opacity: 0.4, textAlign: "center", padding: "8px 0" }}>
+          <div style={{ fontSize: 11, color: MUTED, opacity: 0.35, textAlign: "center", padding: "8px 0" }}>
             Loading…
           </div>
         )}
 
         {!loading && error && (
-          <div style={{ fontSize: 11, color: MUTED, opacity: 0.4 }}>{error}</div>
+          <div style={{ fontSize: 11, color: MUTED, opacity: 0.35 }}>{error}</div>
         )}
 
-        {!loading && !error && !hasContent && (
-          <div style={{ fontSize: 11, color: MUTED, opacity: 0.4, lineHeight: 1.6 }}>
-            Genome builds as you converse. Keep talking — Atlas listens.
+        {!loading && !error && !hasHealth && (
+          <div style={{ fontSize: 11, color: MUTED, opacity: 0.35, lineHeight: 1.6 }}>
+            Health builds as you work. Keep going — Atlas is learning.
           </div>
         )}
 
-        {!loading && !error && hasContent && genome && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {/* Stage bar + confidence */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <StageBar stage={genome.stage} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontFamily: MONO, fontSize: 8.5, color: MUTED, opacity: 0.45, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  {genome.stage}
-                </span>
-                <ConfidencePip score={genome.confidenceScore} />
-              </div>
-            </div>
+        {!loading && !error && hasHealth && genome && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <HealthPanel health={genome.health} stage={genome.stage} />
 
-            {/* Purpose */}
-            {genome.purpose && (
-              <div>
-                <div style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, opacity: 0.4, marginBottom: 3 }}>
-                  Purpose
-                </div>
-                <div style={{ fontSize: 12, color: FG, lineHeight: 1.5, opacity: 0.88 }}>
-                  {genome.purpose}
-                </div>
-              </div>
-            )}
-
-            {/* Audience */}
-            {genome.audience && (
-              <div>
-                <div style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, opacity: 0.4, marginBottom: 3 }}>
-                  Audience
-                </div>
-                <div style={{ fontSize: 12, color: FG, lineHeight: 1.5, opacity: 0.88 }}>
-                  {genome.audience}
-                </div>
-              </div>
-            )}
-
-            {/* Core emotion */}
-            {genome.coreEmotion && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, opacity: 0.4 }}>
-                  Core
-                </span>
-                <span style={{
-                  fontFamily: MONO, fontSize: 9.5, color: GOLD, opacity: 0.8,
-                  background: "rgba(201,162,76,0.08)", padding: "2px 8px",
-                  borderRadius: 4, border: "1px solid rgba(201,162,76,0.15)",
-                }}>
-                  {genome.coreEmotion}
-                </span>
-              </div>
-            )}
-
-            {/* Open questions */}
-            {genome.openQuestions.length > 0 && (
-              <div>
-                <div style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, opacity: 0.4, marginBottom: 5 }}>
-                  Open Questions
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {genome.openQuestions.slice(0, 2).map((q, i) => (
-                    <div key={i} style={{
-                      fontSize: 11, color: MUTED, lineHeight: 1.5, opacity: 0.75,
-                      paddingLeft: 8,
-                      borderLeft: "1px solid rgba(201,162,76,0.2)",
-                    }}>
-                      {q}
-                    </div>
-                  ))}
-                  {genome.openQuestions.length > 2 && (
-                    <div style={{ fontFamily: MONO, fontSize: 8.5, color: MUTED, opacity: 0.35, paddingLeft: 8 }}>
-                      +{genome.openQuestions.length - 2} more
-                    </div>
-                  )}
-                </div>
+            {showDetails && (genome.purpose || genome.audience || genome.coreEmotion || genome.openQuestions.length > 0) && (
+              <div style={{
+                paddingTop: 10,
+                borderTop: "1px solid rgba(255,255,255,0.05)",
+              }}>
+                <GenomeDetails genome={genome} />
               </div>
             )}
           </div>
