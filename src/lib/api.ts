@@ -16,5 +16,10 @@ export function apiUrl(path: string): string {
 // can keep using bare fetch("/api/..."); use apiUrl() only for non-fetch URLs
 // (window.location redirects, <a href>, OAuth start).
 export function getAuthHeaders(): Record<string, string> {
-  return {};
+  try {
+    const token = localStorage.getItem("atlas-auth-token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
 }
