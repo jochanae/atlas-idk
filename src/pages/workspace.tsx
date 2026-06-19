@@ -4778,7 +4778,12 @@ export default function Workspace() {
       setOpeningMessage(null);
       return;
     }
-    if (!sessionId || sessionsLoading) return;
+    if (!sessionId || sessionsLoading) {
+      // Session not ready — pre-fill input so the message is not silently lost
+      const msg = openingMessage.message.trim();
+      if (msg) setInput(msg);
+      return;
+    }
     const trimmedOpeningMessage = openingMessage.message.trim();
     if (!trimmedOpeningMessage) {
       try {
