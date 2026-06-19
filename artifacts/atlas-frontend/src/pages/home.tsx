@@ -33,7 +33,7 @@ import { InviteModal } from "../components/InviteModal";
 
 import { extractApiErrorMessage } from "../lib/atlas-utils";
 import { ingestRepository } from "../lib/repoIngest";
-import { chooseGreeting, readLastActive, markActiveNow } from "../lib/atlas-voice";
+import { markActiveNow } from "../lib/atlas-voice";
 import { useRequireAuth } from "../hooks/useAuth";
 import { useThemeMode } from "../lib/theme";
 import { useSubscription } from "../hooks/useSubscription";
@@ -45,7 +45,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, ChevronDown, Crosshair, FolderClosed } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
@@ -2009,7 +2009,6 @@ export default function Home() {
   const [showTimeTravel, setShowTimeTravel] = useState(false);
   const [briefing, setBriefing] = useState<string | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(true);
-  const [showBriefingPanel, setShowBriefingPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const globalInsightComposerRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
@@ -2134,7 +2133,6 @@ export default function Home() {
       setDepth("ambient");
     } else {
       setShowOverviewSheet(false);
-      setShowBriefingPanel(false);
       setShowHistory(false);
       setShowFocusPicker(false);
       setGlobalInsightOpen(true);
@@ -2496,16 +2494,15 @@ export default function Home() {
   }, []);
 
 
-  // Compute greeting once on mount with full micro-state context
+  // Compute greeting once on mount — time-aware, conversational
   if (greetingRef.current === null) {
-    const lastActive = readLastActive();
-    greetingRef.current = chooseGreeting({
-      hour: new Date().getHours(),
-      projectCount: projects?.length ?? 0,
-      hasHistory: conversations.length > 0,
-      msSinceLastActive: lastActive ? Date.now() - lastActive : null,
-      name: greetingNameRef.current,
-    });
+    const _h = new Date().getHours();
+    const _tod = _h >= 5 && _h < 12 ? "morning" : _h >= 12 && _h < 17 ? "afternoon" : "evening";
+    const _n = greetingNameRef.current;
+    greetingRef.current = {
+      head: _n ? `Good ${_tod}, ${_n}.` : `Good ${_tod}.`,
+      sub: "What's taking up mental space today?",
+    };
     markActiveNow();
     try {
       if (typeof localStorage !== "undefined") localStorage.setItem("atlas-home-visited", "1");
@@ -4567,54 +4564,6 @@ export default function Home() {
                 style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
               >
 
-              {/* Global Insight history — gold clock pill, far left for quick "where were we?" access */}
-              <button
-                type="button"
-                title="Where were we? · Resume Global Insight"
-                aria-label="Open Global Insight history"
-                onClick={() => { void handleOpenHistory(); }}
-                onFocus={(e) => {
-                  e.currentTarget.style.color = "var(--atlas-gold)";
-                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(212,175,55,0.12)";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.color = "rgba(212,175,55,0.85)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "var(--atlas-gold)";
-                  e.currentTarget.style.background = "rgba(212,175,55,0.16)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "rgba(212,175,55,0.85)";
-                  e.currentTarget.style.background = "rgba(212,175,55,0.10)";
-                }}
-                style={{
-                  width: 34,
-                  height: 34,
-                  minWidth: 34,
-                  minHeight: 34,
-                  flexShrink: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  background: "rgba(212,175,55,0.10)",
-                  border: "1px solid rgba(212,175,55,0.28)",
-                  color: "rgba(212,175,55,0.85)",
-                  cursor: "pointer",
-                  transition: "color 160ms ease, background 160ms ease, box-shadow 160ms ease",
-                  WebkitTapHighlightColor: "transparent",
-                  padding: 0,
-                  marginRight: 2,
-                }}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                  <polyline points="12 7 12 12 15 14" />
-                </svg>
-              </button>
-
               <ComposerActions
                 scope="home"
                 hasProjectContext={false}
@@ -4800,7 +4749,6 @@ export default function Home() {
             };
 
             const intents: Array<{ label: string; action: () => void; premium?: boolean }> = [
-              { label: "Where were we", action: () => setShowBriefingPanel(true), premium: true },
               { label: "Think out loud", action: () => pickStarter(THINK_OUT_LOUD_STARTER, true) },
               { label: "Untangle something", action: () => pickStarter("Something's tangled and I can't quite see the shape of it. Here's what I know: ") },
               { label: "Weigh a decision", action: () => pickStarter("I'm trying to decide between ") },
@@ -5231,57 +5179,6 @@ export default function Home() {
             <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
           </div>
           {renderOverviewDashboard()}
-        </div>
-      )}
-
-      {showBriefingPanel && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 500, display: "flex", justifyContent: "flex-end" }}
-          onClick={() => setShowBriefingPanel(false)}
-        >
-          <div style={{ position: "absolute", inset: 0, background: "var(--atlas-bg)", opacity: 0.4 }} />
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              position: "relative",
-              width: "min(420px, 92vw)",
-              maxHeight: "100vh",
-              background: "var(--atlas-surface)",
-              borderLeft: "1px solid var(--atlas-border)",
-              padding: "20px 18px",
-              overflowY: "auto",
-              animation: "fadeIn 200ms ease forwards",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Briefcase size={13} strokeWidth={1.75} color="var(--atlas-gold)" />
-                <span style={{ fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase", opacity: 0.8 }}>
-                  Briefing
-                </span>
-              </div>
-              <button
-                onClick={() => setShowBriefingPanel(false)}
-                style={{ background: "transparent", border: "none", color: "var(--atlas-muted)", cursor: "pointer", fontSize: "var(--ts-h2)", lineHeight: 1, padding: 4 }}
-                aria-label="Close briefing"
-              >
-                ×
-              </button>
-            </div>
-            {briefingLoading ? (
-              <div style={{ fontSize: "var(--ts-label)", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.6 }}>
-                Atlas is preparing your briefing…
-              </div>
-            ) : briefing ? (
-              <p style={{ margin: 0, fontSize: "var(--ts-body)", color: "var(--atlas-fg)", lineHeight: 1.6, fontFamily: "var(--app-font-sans)", opacity: 0.9, whiteSpace: "pre-wrap" }}>
-                {briefing}
-              </p>
-            ) : (
-              <p style={{ margin: 0, fontSize: "var(--ts-label)", color: "var(--atlas-muted)", fontStyle: "italic", opacity: 0.6 }}>
-                No briefing available yet.
-              </p>
-            )}
-          </div>
         </div>
       )}
 
