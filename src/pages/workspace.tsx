@@ -5775,19 +5775,6 @@ export default function Workspace() {
     },
     [activityStream.content, chatPending, codegen.running, codegen.steps, codegen.mode]
   );
-  useEffect(() => {
-    if (/FILE_EDIT/i.test(activityStream.content)) setSubheaderOpen(true);
-  }, [activityStream.content]);
-  useEffect(() => {
-    const msg = messages[messages.length - 1];
-    if (
-      msg?.role === "assistant" &&
-      !msg.streaming &&
-      ((msg.fileEdits?.length ?? 0) > 0 || /FILE_EDIT/i.test(msg.content ?? ""))
-    ) {
-      setSubheaderOpen(true);
-    }
-  }, [messages]);
 
   // ── Project not found ────────────────────────────────────────────────────
   // Do NOT redirect on fetch failure — stay on the workspace and show an inline
@@ -6469,7 +6456,6 @@ export default function Workspace() {
                   msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
                 ].filter(Boolean).join("\n");
                 const activityContent = [content, markers].filter(Boolean).join("\n");
-                if (/FILE_EDIT/i.test(activityContent)) setSubheaderOpen(true);
                 setActivityStream({ active: true, content: activityContent });
               }}
               onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
@@ -6609,7 +6595,6 @@ export default function Workspace() {
                   msg.linePatches && msg.linePatches.length > 0 ? "LINE_PATCH" : "",
                 ].filter(Boolean).join("\n");
                 const activityContent = [content, markers].filter(Boolean).join("\n");
-                if (/FILE_EDIT/i.test(activityContent)) setSubheaderOpen(true);
                 setActivityStream({ active: true, content: activityContent });
               },
               onStreamActivityComplete: () => setActivityStream({ active: false, content: "" }),
