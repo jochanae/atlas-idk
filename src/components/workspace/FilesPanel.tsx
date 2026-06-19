@@ -773,7 +773,7 @@ export function FilesPanel({
           </>
         )}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-          {selectedRepo && (
+          {isConnected && (
             <button
               onClick={unlinkRepo}
               disabled={isUnlinking}
@@ -1177,12 +1177,12 @@ export function FilesPanel({
       {/* File tree */}
       {filesSubTab === "files" && view === "tree" && (
         <>
-          {selectedRepo && (
+          {isConnected && (
             <div style={{
               margin: "8px 10px",
               borderRadius: 8,
-              border: `1px solid ${importStatus === "done" ? "rgba(201,162,76,0.25)" : "rgba(255,255,255,0.06)"}`,
-              background: importStatus === "done" ? "rgba(201,162,76,0.04)" : "rgba(255,255,255,0.02)",
+              border: `1px solid ${importStatus === "done" ? "rgba(201,162,76,0.25)" : importStatus === "idle" ? "rgba(201,162,76,0.3)" : "rgba(255,255,255,0.06)"}`,
+              background: importStatus === "done" ? "rgba(201,162,76,0.04)" : importStatus === "idle" ? "rgba(201,162,76,0.06)" : "rgba(255,255,255,0.02)",
               padding: "10px 12px",
               flexShrink: 0,
             }}>
