@@ -4395,22 +4395,62 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
+          {homeSheetVisible && createPortal(
+            <div
+              aria-hidden={!homeSheetVisible}
+              onPointerDown={(e) => {
+                // Tap-outside blur: collapses sheet without clearing draft
+                // (input state lives in parent useState, untouched on blur).
+                e.preventDefault();
+                textareaRef.current?.blur();
+              }}
+              style={{
+                position: "fixed", inset: 0, zIndex: 240,
+                background: "rgba(8,8,10,0.55)",
+                backdropFilter: "blur(6px) saturate(120%)",
+                WebkitBackdropFilter: "blur(6px) saturate(120%)",
+                opacity: 1,
+                transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+              }}
+            />,
+            document.body
+          )}
           <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
-          <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
-            position: globalInsightOpen ? "relative" : "sticky",
+          <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" data-composer-expanded={homeSheetVisible ? "true" : "false"} style={{
+            position: globalInsightOpen ? "relative" : (homeSheetVisible ? "fixed" : "sticky"),
             left: globalInsightOpen ? undefined : 0,
             right: globalInsightOpen ? undefined : 0,
-            bottom: globalInsightOpen ? undefined : "calc(64px + env(safe-area-inset-bottom, 0px))",
+            bottom: globalInsightOpen ? undefined : (homeSheetVisible ? 0 : "calc(64px + env(safe-area-inset-bottom, 0px))"),
+            height: homeSheetVisible ? "60vh" : undefined,
             padding: globalInsightOpen
               ? "12px 0 0"
-              : "14px 20px 14px",
+              : (homeSheetVisible ? "18px 16px 20px" : "14px 20px 14px"),
             flexShrink: 0,
-            zIndex: globalInsightOpen ? 1 : 250,
+            zIndex: globalInsightOpen ? 1 : (homeSheetVisible ? 260 : 250),
             pointerEvents: "auto",
-            background: "transparent",
-            maxWidth: globalInsightOpen ? undefined : 680,
+            background: homeSheetVisible ? "var(--atlas-surface, rgba(14,12,10,0.96))" : "transparent",
+            maxWidth: globalInsightOpen ? undefined : (homeSheetVisible ? undefined : 680),
             margin: globalInsightOpen ? 0 : undefined,
+            borderTopLeftRadius: homeSheetVisible ? 20 : undefined,
+            borderTopRightRadius: homeSheetVisible ? 20 : undefined,
+            boxShadow: homeSheetVisible ? "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)" : undefined,
+            display: "flex",
+            flexDirection: "column",
+            overflow: homeSheetVisible ? "hidden" : undefined,
+            transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}>
+          {homeSheetVisible && (
+            <div
+              onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
+              aria-label="Collapse composer"
+              style={{
+                alignSelf: "center", width: 44, height: 4, borderRadius: 999,
+                background: "rgba(201,162,76,0.35)", marginBottom: 10, cursor: "grab",
+                flexShrink: 0,
+              }}
+            />
+          )}
+
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
             <input
