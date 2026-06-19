@@ -294,9 +294,31 @@ export default function Projects() {
   const handleDelete = useCallback(async (id: number) => {
     setDeletingId(id);
     try {
-      await fetch(`/api/projects/${id}`, { method: "DELETE", credentials: "include" });
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    } catch {}
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) {
+        let detail = "";
+        try { detail = (await res.text()).slice(0, 200); } catch {}
+        // Surface the real reason so the user knows why nothing happened
+        if (typeof window !== "undefined") {
+          const { toast } = await import("sonner");
+          toast.error(`Couldn't delete project (HTTP ${res.status})`, { description: detail || undefined });
+        }
+        console.error("[projects] DELETE failed", res.status, detail);
+      } else {
+        // Optimistically remove from cache so it doesn't flash back
+        queryClient.setQueryData(getListProjectsQueryKey(), (prev: any) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.filter((p: any) => p.id !== id);
+        });
+        await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      }
+    } catch (err) {
+      console.error("[projects] DELETE error", err);
+      if (typeof window !== "undefined") {
+        const { toast } = await import("sonner");
+        toast.error("Couldn't delete project", { description: err instanceof Error ? err.message : "Network error" });
+      }
+    }
     setDeletingId(null);
     setConfirmDeleteId(null);
   }, [queryClient]);
