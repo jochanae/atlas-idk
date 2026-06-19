@@ -20,6 +20,7 @@ type Props = {
   onOpenParking?: () => void;
   committedCount?: number;
   parkedCount?: number;
+  bustSignal?: number;
 };
 
 type ActivityItem = {
@@ -375,7 +376,7 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
   );
 }
 
-export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount }: Props) {
+export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, bustSignal }: Props) {
   const mostRecentProjectId = projects.reduce<number | null>((latestId, project) => {
     if (latestId == null) return project.id;
     const latestProject = projects.find((p) => p.id === latestId);
@@ -414,6 +415,7 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <Resume
           recentProjects={projects.slice(0, 4)}
           onOpenProject={onOpenProject}
+          bustSignal={bustSignal}
         />
       </RevealOnScroll>
 

@@ -1820,6 +1820,7 @@ export default function Home() {
     window.addEventListener("axiom:open-invite", open);
     return () => window.removeEventListener("axiom:open-invite", open);
   }, []);
+  const [resumeBustSignal, setResumeBustSignal] = useState(0);
   const [showProjectsSheet, setShowProjectsSheet] = useState(false);
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
   const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
@@ -2253,6 +2254,7 @@ export default function Home() {
     refreshing: ptr_refreshing,
   } = usePullToRefresh(
     async () => {
+      setResumeBustSignal((s) => s + 1);
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     },
     !isAtlasStreaming,
@@ -2780,6 +2782,7 @@ export default function Home() {
       }}
       parkedCount={0}
       committedCount={0}
+      bustSignal={resumeBustSignal}
     />
   );
 

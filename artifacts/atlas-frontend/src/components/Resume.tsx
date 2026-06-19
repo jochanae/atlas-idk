@@ -1,4 +1,10 @@
-import { useGetPortfolioResume, getGetPortfolioResumeQueryKey } from "@workspace/api-client-local";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetPortfolioResume,
+  getGetPortfolioResumeQueryKey,
+  GetPortfolioResumeBust,
+} from "@workspace/api-client-local";
 
 export { getGetPortfolioResumeQueryKey };
 
@@ -11,6 +17,7 @@ type RecentProject = {
 type Props = {
   recentProjects?: RecentProject[];
   onOpenProject?: (id: number) => void;
+  bustSignal?: number;
 };
 
 function formatRelative(iso: string): string {
@@ -25,8 +32,28 @@ function formatRelative(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function Resume({ recentProjects = [], onOpenProject }: Props) {
-  const { data, isLoading } = useGetPortfolioResume();
+export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: Props) {
+  const [busting, setBusting] = useState(false);
+  const bustHandledRef = useRef(0);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (bustSignal > bustHandledRef.current) {
+      setBusting(true);
+    }
+  }, [bustSignal]);
+
+  const { data, isLoading } = useGetPortfolioResume(
+    busting ? { bust: GetPortfolioResumeBust.NUMBER_1 } : undefined,
+  );
+
+  useEffect(() => {
+    if (busting && !isLoading && data) {
+      bustHandledRef.current = bustSignal;
+      queryClient.setQueryData(getGetPortfolioResumeQueryKey(), data);
+      setBusting(false);
+    }
+  }, [busting, isLoading, data, bustSignal, queryClient]);
 
   const isEmpty =
     !isLoading &&
@@ -74,7 +101,7 @@ export function Resume({ recentProjects = [], onOpenProject }: Props) {
             fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
             opacity: 0.5, letterSpacing: "0.04em",
           }}>
-            Atlas is reading the ledger…
+            {busting ? "Atlas is recalibrating…" : "Atlas is reading the ledger…"}
           </span>
         </div>
       )}
