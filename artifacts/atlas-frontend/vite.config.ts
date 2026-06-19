@@ -53,6 +53,10 @@ export default defineConfig({
         import.meta.dirname,
         "src/_workspace/api-client-react/src/index.ts",
       ),
+      "@workspace/api-client-local": path.resolve(
+        import.meta.dirname,
+        "../../lib/api-client-react/src/index.ts",
+      ),
     },
     dedupe: ["react", "react-dom"],
   },

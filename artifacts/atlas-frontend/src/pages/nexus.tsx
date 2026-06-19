@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createTextPacer } from "@/lib/textPacer";
 import { FeederBadge } from "@/components/home/FeederBadge";
 import { useFeeder, useFeederHydration } from "@/lib/feederStore";
+import { ManifestPanel } from "@/components/ManifestPanel";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface NexusMsg {
@@ -269,6 +270,7 @@ export default function NexusPage() {
   const initialSent = useRef(false);
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const [rightTab, setRightTab] = useState<"ledger" | "manifest">("ledger");
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -853,7 +855,7 @@ export default function NexusPage() {
           </div>
         </div>
 
-        {/* ── Right pane: Global Ledger ── */}
+        {/* ── Right pane: Ledger / Manifest ── */}
         {!isMobile && rightOpen && (
           <div style={{
             width: 300, flexShrink: 0,
@@ -862,10 +864,53 @@ export default function NexusPage() {
             display: "flex", flexDirection: "column",
             overflow: "hidden",
           }}>
-            <GlobalLedger
-              projects={(allProjects ?? []).map(p => ({ id: p.id, name: p.name }))}
-              onNavigate={(id) => setLocation(`/ledger/${id}`)}
-            />
+            {/* Tab strip */}
+            <div style={{
+              flexShrink: 0,
+              display: "flex",
+              borderBottom: "1px solid var(--atlas-border)",
+              background: "var(--atlas-surface)",
+            }}>
+              {(["ledger", "manifest"] as const).map(tab => {
+                const active = rightTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setRightTab(tab)}
+                    style={{
+                      flex: 1, padding: "8px 4px",
+                      background: "transparent", border: "none",
+                      borderBottom: `2px solid ${active ? "rgba(201,162,76,0.7)" : "transparent"}`,
+                      marginBottom: -1,
+                      cursor: "pointer",
+                      fontFamily: "var(--app-font-mono)", fontSize: 9,
+                      fontWeight: 700, letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: active ? "rgba(201,162,76,0.85)" : "var(--atlas-muted)",
+                      opacity: active ? 1 : 0.55,
+                      transition: "color 150ms ease, opacity 150ms ease, border-color 150ms ease",
+                    }}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Content */}
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              {rightTab === "ledger" ? (
+                <GlobalLedger
+                  projects={(allProjects ?? []).map(p => ({ id: p.id, name: p.name }))}
+                  onNavigate={(id) => setLocation(`/ledger/${id}`)}
+                />
+              ) : (
+                <ManifestPanel
+                  projectId={feeder?.projectId ?? null}
+                  projectName={feeder?.projectTitle ?? null}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>
