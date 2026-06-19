@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { StatCard } from "./stat-card";
+import { PortfolioHealthDashboard } from "./PortfolioHealthDashboard";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 import { fetchGitHubStatus } from "@/hooks/useGitHub";
@@ -562,65 +563,9 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
         <StatsHero />
       </RevealOnScroll>
 
-      {/* 1. WHERE WERE WE */}
+      {/* 1. PORTFOLIO HEALTH DASHBOARD */}
       <RevealOnScroll delayMs={40} className="bfd-col-left">
-
-        <div className="atlas-discovery-card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
-                Where were we
-              </h3>
-            </div>
-            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.4 }}>
-              Last 30 days
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {recent.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onOpenProject(p.id)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 11,
-                  width: "100%", padding: "8px 8px", borderRadius: 8,
-                  border: "none", background: "transparent", cursor: "pointer", textAlign: "left",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.05)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                <div style={{
-                  width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
-                  background: MODE_COLORS[i % 4], opacity: 0.8,
-                }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-sans)" }}>
-                    {p.name}
-                  </div>
-                  {p.description && (
-                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>
-                      {p.description}
-                    </div>
-                  )}
-                </div>
-                <CompactReadinessRing score={p.latestSnapshotScore ?? 0} />
-                <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.45, flexShrink: 0 }}>
-                  {formatRelative(p.updatedAt)}
-                </div>
-              </button>
-            ))}
-          </div>
-          {projects.length > 5 && (
-            <button type="button"
-              style={{ marginTop: 8, background: "transparent", border: "none", fontSize: 10.5, color: "var(--atlas-gold)", fontFamily: "var(--app-font-mono)", cursor: "pointer", letterSpacing: "0.04em", opacity: 0.7, padding: "4px 8px" }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
-            >
-              VIEW ALL →
-            </button>
-          )}
-        </div>
+        <PortfolioHealthDashboard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
       {/* 2. ACTIVITY HUB */}

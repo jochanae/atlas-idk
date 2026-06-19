@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, projectGenomeTable, projectsTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable } from "@workspace/db";
-import { eq, and, desc, sql, count, ne } from "drizzle-orm";
+import { eq, and, desc, sql, count, ne, inArray } from "drizzle-orm";
 import { runGenomeExtraction, isOnCooldown } from "../lib/genomeExtract";
 import { GENOME_STAGES, OBJECT_TYPES } from "@workspace/db";
 import type { GenomeStage } from "@workspace/db";
@@ -315,6 +315,65 @@ router.get("/projects/:id/objects", async (req, res): Promise<void> => {
   } catch (err) {
     req.log?.error({ err }, "objects GET error");
     res.status(500).json({ error: "Failed to fetch objects" });
+  }
+});
+
+// GET /api/portfolio/health — all projects with health snapshots in one batch
+router.get("/portfolio/health", async (req, res): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+
+    const projects = await db
+      .select({ id: projectsTable.id, name: projectsTable.name, updatedAt: projectsTable.updatedAt })
+      .from(projectsTable)
+      .where(eq(projectsTable.userId, userId))
+      .orderBy(desc(projectsTable.updatedAt));
+
+    if (projects.length === 0) { res.json([]); return; }
+
+    const genomes = await db
+      .select()
+      .from(projectGenomeTable)
+      .where(inArray(projectGenomeTable.projectId, projects.map(p => p.id)));
+
+    const genomeMap = new Map(genomes.map(g => [g.projectId, g]));
+
+    const results = await Promise.all(projects.map(async (p) => {
+      const genome = genomeMap.get(p.id);
+      const updatedAt = p.updatedAt?.toISOString() ?? new Date().toISOString();
+      if (!genome) {
+        return {
+          projectId: p.id,
+          projectName: p.name,
+          updatedAt,
+          stage: "Think",
+          atlasState: "Discovering" as AtlasState,
+          momentum: "Low" as const,
+          clarity: 0,
+          confidence: "Low" as const,
+          risk: null,
+          nextAction: "Start shaping your core idea — what problem are you solving?",
+        };
+      }
+      const health = await computeProjectHealth(p.id, genome);
+      return {
+        projectId: p.id,
+        projectName: p.name,
+        updatedAt,
+        stage: genome.stage,
+        atlasState: health.atlasState,
+        momentum: health.momentum,
+        clarity: health.clarity,
+        confidence: health.confidence,
+        risk: health.risk,
+        nextAction: health.nextAction,
+      };
+    }));
+
+    res.json(results);
+  } catch (err) {
+    req.log?.error({ err }, "portfolio/health error");
+    res.status(500).json({ error: "Failed to fetch portfolio health" });
   }
 });
 
