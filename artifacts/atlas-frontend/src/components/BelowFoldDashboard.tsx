@@ -20,8 +20,6 @@ type Props = {
   onOpenParking?: () => void;
   committedCount?: number;
   parkedCount?: number;
-  briefing?: string | null;
-  briefingLoading?: boolean;
 };
 
 type ActivityItem = {
@@ -377,7 +375,7 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
   );
 }
 
-export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount, briefing, briefingLoading }: Props) {
+export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOpenParking, committedCount = 0, parkedCount }: Props) {
   const mostRecentProjectId = projects.reduce<number | null>((latestId, project) => {
     if (latestId == null) return project.id;
     const latestProject = projects.find((p) => p.id === latestId);
@@ -414,8 +412,6 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
       {/* RESUME — continuity surface */}
       <RevealOnScroll delayMs={0} className="bfd-col-left">
         <Resume
-          briefing={briefing}
-          briefingLoading={briefingLoading}
           recentProjects={projects.slice(0, 4)}
           onOpenProject={onOpenProject}
         />

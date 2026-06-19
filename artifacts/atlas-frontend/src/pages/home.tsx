@@ -1763,7 +1763,6 @@ export default function Home() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [isTinyScreen, setIsTinyScreen] = useState(() => window.innerWidth < 390);
   const isMobile = useIsMobile();
-  const briefingRequestRef = useRef(0);
   const conversationsRequestRef = useRef(0);
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
@@ -2007,8 +2006,6 @@ export default function Home() {
   const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showTimeTravel, setShowTimeTravel] = useState(false);
-  const [briefing, setBriefing] = useState<string | null>(null);
-  const [briefingLoading, setBriefingLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const globalInsightComposerRef = useRef<HTMLDivElement>(null);
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
@@ -2256,18 +2253,7 @@ export default function Home() {
     refreshing: ptr_refreshing,
   } = usePullToRefresh(
     async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }),
-        fetch("/api/nexus/briefing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({}),
-        })
-          .then((r) => (r.ok ? r.json() : { briefing: null }))
-          .then((data: any) => setBriefing(data.briefing ?? null))
-          .catch(() => {}),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     },
     !isAtlasStreaming,
     ptrContainerRef,
@@ -2509,27 +2495,6 @@ export default function Home() {
     } catch {}
   }
 
-  useEffect(() => {
-    if (briefingRequestRef.current > 0) return;
-    const requestId = 1;
-    briefingRequestRef.current = requestId;
-    setBriefingLoading(true);
-    fetch("/api/nexus/briefing", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({}),
-    })
-      .then(r => r.ok ? r.json() : { briefing: null })
-      .then((data: any) => {
-        if (briefingRequestRef.current !== requestId) return;
-        setBriefing(data.briefing ?? null);
-        setBriefingLoading(false);
-      })
-      .catch(() => {
-        if (briefingRequestRef.current === requestId) setBriefingLoading(false);
-      });
-  }, []);
 
   useEffect(() => {
     if (conversationsRequestRef.current > 0) return;
@@ -2815,8 +2780,6 @@ export default function Home() {
       }}
       parkedCount={0}
       committedCount={0}
-      briefing={briefing}
-      briefingLoading={briefingLoading}
     />
   );
 

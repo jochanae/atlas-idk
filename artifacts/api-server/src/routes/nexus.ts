@@ -24,6 +24,16 @@ const anthropic = new Anthropic({
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
 
+// ── Resume cache (per-user, 5-minute TTL) ─────────────────────────────────
+type ResumeData = {
+  whatMoved: string[];
+  whatEmerged: string;
+  waitingOnYou: string;
+  suggestedNextMove: string;
+};
+const resumeCache = new Map<number, { data: ResumeData; expiresAt: number }>();
+const RESUME_CACHE_TTL_MS = 5 * 60 * 1000;
+
 type HandoffSignal = {
   readyToHandoff: boolean;
   confidence: "high" | "medium" | "low";
@@ -2726,6 +2736,159 @@ If no clear project name was discussed, use "New Project".`,
   } catch (err) {
     req.log?.error({ err }, "Handoff error");
     res.status(500).json({ error: "Handoff failed" });
+  }
+});
+
+// GET /api/nexus/resume — Atlas-written structured brief (4-section continuity engine)
+router.get("/nexus/resume", async (req, res): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+
+    // Serve from cache if fresh
+    const cached = resumeCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.json(cached.data);
+      return;
+    }
+
+    // 1. Fetch user's projects
+    const projects = await db
+      .select({ id: projectsTable.id, name: projectsTable.name, status: projectsTable.status, description: projectsTable.description, updatedAt: projectsTable.updatedAt })
+      .from(projectsTable)
+      .where(eq(projectsTable.userId, userId))
+      .orderBy(desc(projectsTable.updatedAt))
+      .limit(20);
+
+    if (projects.length === 0) {
+      const empty: ResumeData = {
+        whatMoved: [],
+        whatEmerged: "",
+        waitingOnYou: "",
+        suggestedNextMove: "",
+      };
+      res.json(empty);
+      return;
+    }
+
+    const projectIds = projects.map(p => p.id);
+    const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+    // 2. Fetch context in parallel: committed decisions, genomes, recent sessions, recent home messages
+    const [committedDecisions, genomes, recentSessions, recentMessages] = await Promise.all([
+      db
+        .select({ projectId: entriesTable.projectId, title: entriesTable.title, summary: entriesTable.summary, createdAt: entriesTable.createdAt })
+        .from(entriesTable)
+        .where(and(inArray(entriesTable.projectId, projectIds), eq(entriesTable.status, "committed")))
+        .orderBy(desc(entriesTable.createdAt))
+        .limit(15),
+      db
+        .select({ projectId: projectGenomeTable.projectId, purpose: projectGenomeTable.purpose, stage: projectGenomeTable.stage, openQuestions: projectGenomeTable.openQuestions })
+        .from(projectGenomeTable)
+        .where(inArray(projectGenomeTable.projectId, projectIds)),
+      db
+        .select({ projectId: sessionsTable.projectId, title: sessionsTable.title, createdAt: sessionsTable.createdAt })
+        .from(sessionsTable)
+        .where(and(inArray(sessionsTable.projectId, projectIds), gte(sessionsTable.createdAt, since48h)))
+        .orderBy(desc(sessionsTable.createdAt))
+        .limit(10),
+      db
+        .select({ role: nexusMessagesTable.role, content: nexusMessagesTable.content, createdAt: nexusMessagesTable.createdAt })
+        .from(nexusMessagesTable)
+        .where(and(eq(nexusMessagesTable.userId, userId), isNull(nexusMessagesTable.projectId)))
+        .orderBy(desc(nexusMessagesTable.createdAt))
+        .limit(10),
+    ]);
+
+    // 3. Build context string for Claude
+    const projectNameById = new Map(projects.map(p => [p.id, p.name]));
+    const genomeByProjectId = new Map(genomes.map(g => [g.projectId, g]));
+
+    const projectContext = projects.map(p => {
+      const genome = genomeByProjectId.get(p.id);
+      const parts = [`• ${p.name} (${p.status})`];
+      if (genome?.stage) parts.push(`  Stage: ${genome.stage}`);
+      if (genome?.purpose) parts.push(`  Purpose: ${genome.purpose}`);
+      if (genome?.openQuestions?.length) parts.push(`  Open questions: ${genome.openQuestions.slice(0, 2).join("; ")}`);
+      return parts.join("\n");
+    }).join("\n\n");
+
+    const decisionsContext = committedDecisions.length > 0
+      ? committedDecisions.map(d => `• [${projectNameById.get(d.projectId) ?? "Unknown"}] ${d.title}${d.summary ? ` — ${d.summary}` : ""}`).join("\n")
+      : "No committed decisions yet.";
+
+    const sessionsContext = recentSessions.length > 0
+      ? recentSessions.map(s => `• [${projectNameById.get(s.projectId) ?? "Unknown"}] ${s.title} (${s.createdAt.toISOString().slice(0, 10)})`).join("\n")
+      : "No sessions in the last 48h.";
+
+    const messagesContext = recentMessages.length > 0
+      ? recentMessages
+          .slice()
+          .reverse()
+          .map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content.slice(0, 300)}`)
+          .join("\n\n")
+      : "No recent Global Insight conversation.";
+
+    const prompt = `${ATLAS_IDENTITY}
+
+You are generating the Resume — the structured brief Atlas writes at the start of every session to orient the user across their entire portfolio. This is curated continuity, not a raw activity log.
+
+PORTFOLIO:
+${projectContext}
+
+COMMITTED DECISIONS (recent):
+${decisionsContext}
+
+SESSIONS IN LAST 48H:
+${sessionsContext}
+
+RECENT GLOBAL INSIGHT CONVERSATION:
+${messagesContext}
+
+Generate a structured JSON object with exactly these four fields:
+
+{
+  "whatMoved": [array of 2-4 short bullet strings — factual, specific things that changed across projects since last active],
+  "whatEmerged": "1-2 sentences max — one key insight or pattern you notice across the portfolio",
+  "waitingOnYou": "1 sentence — the one decision or question only the human can answer right now",
+  "suggestedNextMove": "1 sentence — exactly one concrete next action, no alternatives"
+}
+
+Rules:
+- whatMoved bullets: factual and specific, reference real project names, no speculation
+- whatEmerged: one genuine insight or tension, not a summary of facts — find the pattern
+- waitingOnYou: surface the most blocking open question; if nothing is blocking, surface the most important strategic choice
+- suggestedNextMove: be decisive, one action only
+- If there is insufficient data, use what you know and keep it honest — do not hallucinate activity
+- Respond with ONLY the JSON object. No preamble, no explanation.`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 600,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const raw = response.content[0]?.type === "text" ? response.content[0].text.trim() : null;
+    const parsed = raw ? parseJsonObject<ResumeData>(raw) : null;
+
+    if (!parsed) {
+      res.json({ whatMoved: [], whatEmerged: "", waitingOnYou: "", suggestedNextMove: "" });
+      return;
+    }
+
+    const data: ResumeData = {
+      whatMoved: Array.isArray(parsed.whatMoved) ? parsed.whatMoved.map(String).filter(Boolean) : [],
+      whatEmerged: typeof parsed.whatEmerged === "string" ? parsed.whatEmerged.trim() : "",
+      waitingOnYou: typeof parsed.waitingOnYou === "string" ? parsed.waitingOnYou.trim() : "",
+      suggestedNextMove: typeof parsed.suggestedNextMove === "string" ? parsed.suggestedNextMove.trim() : "",
+    };
+
+    // Cache for 5 minutes
+    resumeCache.set(userId, { data, expiresAt: Date.now() + RESUME_CACHE_TTL_MS });
+
+    res.json(data);
+  } catch (err) {
+    req.log?.error({ err }, "Resume generation error");
+    res.json({ whatMoved: [], whatEmerged: "", waitingOnYou: "", suggestedNextMove: "" });
   }
 });
 
