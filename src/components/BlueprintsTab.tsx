@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { GenomeCard } from "@/components/GenomeCard";
 import { FileText, ArrowLeft, Trash2, Copy, Download, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
@@ -254,6 +255,7 @@ export function BlueprintsTab({
   // ── List view ──────────────────────────────────────────────────────────────
   return (
     <div style={{ height: "100%", overflowY: "auto", padding: "16px 14px" }}>
+      <GenomeCard projectId={projectId} />
       {list === null && <div style={{ color: MUTED, fontSize: 12, padding: 24, textAlign: "center" }}>Loading…</div>}
       {list !== null && list.length === 0 && (
         <div style={{
