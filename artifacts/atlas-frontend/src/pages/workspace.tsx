@@ -5987,6 +5987,10 @@ export default function Workspace() {
             void handleManifest(target);
           }}
           loading={manifestLoading}
+          messages={messages as import("@/components/workspace/SessionTimeline").TimelineMessage[]}
+          pushHistory={pushHistory}
+          onRollbackPush={handleRollbackPush}
+          manifestDecision={manifestDecision}
         />
       )}
 
