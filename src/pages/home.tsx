@@ -3487,6 +3487,23 @@ export default function Home() {
   const hasInput = input.trim().length > 0;
   const hasAttachments = attachedFiles.length > 0;
   const canSubmit = hasInput || hasAttachments;
+
+  // Option 2 — expand-on-focus bottom sheet (matches workspace ChatComposer).
+  // Sheet only activates on the ambient/active home composer, not when the
+  // Global Insight surface is open (it owns its own composer layout).
+  const homeSheetVisible = inputFocused && !globalInsightOpen;
+  useEffect(() => {
+    if (!homeSheetVisible) return;
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, [homeSheetVisible]);
+
   const canSubmitNow = () => {
     const liveText = textareaRef.current?.value ?? input;
     return liveText.trim().length > 0 || attachedFiles.length > 0;
