@@ -71,10 +71,12 @@ export function useAtlasStream(): UseAtlasStreamReturn {
     });
 
     try {
+      const authToken = localStorage.getItem("atlas-auth-token");
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
           ...headers,
         },
         credentials: "include",
