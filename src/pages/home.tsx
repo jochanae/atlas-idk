@@ -1827,7 +1827,9 @@ export default function Home() {
   const overviewCloseTimerRef = useRef<number | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
+    try { return localStorage.getItem("atlas-home-conversation-id"); } catch { return null; }
+  });
   const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
