@@ -1978,23 +1978,30 @@ export default function Home() {
   // Keep showScrollBtn in sync as streaming content grows the scroll container.
   // Without this, the arrow only updates on user scroll events and can miss
   // backlog produced while Atlas streams a reply.
+  // Also re-runs when globalInsightOpen changes so the container ref is valid
+  // after GI mode mounts the scroll div.
   useEffect(() => {
-    const el = chatScrollRef.current;
-    if (!el) return;
-    const recompute = () => {
-      setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
-    };
-    recompute();
-    const ro = new ResizeObserver(recompute);
-    ro.observe(el);
-    Array.from(el.children).forEach((c) => ro.observe(c as Element));
-    const mo = new MutationObserver(() => {
-      Array.from(el.children).forEach((c) => ro.observe(c as Element));
+    const attach = () => {
+      const el = chatScrollRef.current;
+      if (!el) return;
+      const recompute = () => {
+        setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+      };
       recompute();
-    });
-    mo.observe(el, { childList: true, subtree: true, characterData: true });
-    return () => { ro.disconnect(); mo.disconnect(); };
-  }, [nexusChat.messages.length]);
+      const ro = new ResizeObserver(recompute);
+      ro.observe(el);
+      Array.from(el.children).forEach((c) => ro.observe(c as Element));
+      const mo = new MutationObserver(() => {
+        Array.from(el.children).forEach((c) => ro.observe(c as Element));
+        recompute();
+      });
+      mo.observe(el, { childList: true, subtree: true, characterData: true });
+      return () => { ro.disconnect(); mo.disconnect(); };
+    };
+    // Give the layout a frame to settle after GI mode mounts the scroll div
+    const id = window.requestAnimationFrame(() => { attach(); });
+    return () => { window.cancelAnimationFrame(id); };
+  }, [nexusChat.messages.length, globalInsightOpen]);
   const [loadedHistoryCount, setLoadedHistoryCount] = useState(0);
   const [isAtlasStreaming, setIsAtlasStreaming] = useState(false);
   const [isSending, setIsSending] = useState(false);
