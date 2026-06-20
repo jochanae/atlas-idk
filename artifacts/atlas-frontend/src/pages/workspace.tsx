@@ -88,6 +88,7 @@ import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import { ChatStream } from "@/components/workspace/ChatStream";
 import { ChatComposer } from "@/components/workspace/ChatComposer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
+import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
 import { MemoryTab } from "@/components/workspace/MemoryTab";
 import { BlueprintsTab } from "@/components/BlueprintsTab";
@@ -4022,6 +4023,7 @@ export default function Workspace() {
   const [showProjectSettings, setShowProjectSettings] = useState(false);
   const [forgeIntakeSheetOpen, setForgeIntakeSheetOpen] = useState(false);
   const [showHistorySheet, setShowHistorySheet] = useState(false);
+  const [showParkSheet, setShowParkSheet] = useState(false);
   const [showDeepDive, setShowDeepDive] = useState(false);
   const [deepDiveContext, setDeepDiveContext] = useState("");
   const [cloningProject, setCloningProject] = useState(false);
@@ -6812,7 +6814,7 @@ export default function Workspace() {
               },
               onComposerMenuAction: (action) => {
 
-                if (action === "park") { setLocation(`/parking?project=${id}`); return; }
+                if (action === "park") { setShowParkSheet(true); return; }
                 if (action === "settings") { setShowProjectSettings(true); return; }
                 if (action === "forge-intake") { setForgeIntakeSheetOpen(true); return; }
                 if (action === "history") { setShowHistorySheet(true); return; }
@@ -6920,6 +6922,17 @@ export default function Workspace() {
             </>
           )}
         </div>
+
+        {/* ParkSheet — quick park without leaving the workspace */}
+        {showParkSheet && (
+          <ParkSheet
+            projectId={id}
+            projects={[{ id, name: project?.name ?? "This project" }]}
+            onClose={() => setShowParkSheet(false)}
+            onOpenFull={() => { setShowParkSheet(false); setLocation(`/parking?project=${id}`); }}
+            onParked={() => { void refreshParkedEntries(); }}
+          />
+        )}
 
         {/* Desktop resize handle + right panel now live in the outer
             UnifiedConversationSurface hostShell above (RightPanel is the

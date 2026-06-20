@@ -2,3 +2,4 @@
 - [Atlas Shaping & Threshold Architecture](atlas-shaping-threshold.md) — 5-dimension internal shaping model, PROJECT_READY signal, CommitPill states, Global boundaries
 - [ManifestMode Architecture](manifest-mode.md) — V1 built: canvas overlay (not a tab), DNA→Targets→Materialize flow, client-side lock logic from genome data
 - [Continuity Architecture](continuity-architecture.md) — transcript (human) + Resume artifact (system) both survive handoff; transcript gap closed via two-layer approach
+- [Parking Lot two-tier enrichment](parking-lot-enrichment.md) — lite on park (category+complexity+whyItMatters), full on panel open; _level field distinguishes; ParkSheet is the canonical entry point

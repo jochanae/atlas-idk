@@ -2303,7 +2303,7 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Run remaining DB queries in parallel — previously sequential, added 400-600ms per request
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [recentErrorsRows, selfMapRows, portfolioRows, committedRows] = await Promise.all([
+  const [recentErrorsRows, selfMapRows, portfolioRows, committedRows, parkedRows] = await Promise.all([
     db
       .select({ errorMessage: atlasErrorLogsTable.errorMessage, route: atlasErrorLogsTable.route, timestamp: atlasErrorLogsTable.timestamp })
       .from(atlasErrorLogsTable)
@@ -2329,6 +2329,13 @@ router.post("/chat", async (req, res): Promise<void> => {
       .orderBy(desc(entriesTable.createdAt))
       .limit(25)
       .catch(() => [] as Array<{ title: string; summary: string | null; createdAt: Date }>),
+    db
+      .select({ title: entriesTable.title, enrichmentJson: entriesTable.enrichmentJson, createdAt: entriesTable.createdAt })
+      .from(entriesTable)
+      .where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.status, "parked")))
+      .orderBy(desc(entriesTable.createdAt))
+      .limit(12)
+      .catch(() => [] as Array<{ title: string; enrichmentJson: string | null; createdAt: Date }>),
   ]);
 
   const recentErrorContext = recentErrorsRows
@@ -2421,6 +2428,21 @@ router.post("/chat", async (req, res): Promise<void> => {
       .map(e => `• ${e.title}${e.summary ? ` — ${e.summary}` : ""}`)
       .join("\n");
     systemPrompt += `\n\n--- COMMITTED DECISIONS (Decision Ledger — reference these naturally, never cite entry numbers) ---\n${ledgerText}\n--- END COMMITTED DECISIONS ---`;
+  }
+
+  if (parkedRows.length > 0) {
+    const parkedText = parkedRows.map(e => {
+      let line = `• ${e.title}`;
+      if (e.enrichmentJson) {
+        try {
+          const enrichment = JSON.parse(e.enrichmentJson) as { atlasCategory?: string; whyItMatters?: string };
+          if (enrichment.atlasCategory) line += ` [${enrichment.atlasCategory}]`;
+          if (enrichment.whyItMatters) line += ` — ${enrichment.whyItMatters}`;
+        } catch { /* ignore */ }
+      }
+      return line;
+    }).join("\n");
+    systemPrompt += `\n\n--- DEFERRED ITEMS (Parking Lot — user intentionally set these aside for later) ---\n${parkedText}\nIf any of these are directly relevant to what the user is working on right now, surface it naturally — e.g. "You parked [item] earlier — this might be a good moment to revisit it." Be specific and timely. Don't list them all at once. Don't force it if nothing is relevant.\n--- END DEFERRED ITEMS ---`;
   }
 
   if (projectMap) {

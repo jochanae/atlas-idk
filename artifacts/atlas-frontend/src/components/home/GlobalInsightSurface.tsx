@@ -19,6 +19,7 @@ import { ComposerActions, type ComposerMenuAction } from "@/components/composer/
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import SketchReveal from "@/components/chat/SketchReveal";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
+import { ParkSheet } from "@/components/ParkSheet";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 import { CommitPill } from "./CommitPill";
@@ -236,6 +237,7 @@ export function GlobalInsightSurface({
   const [focused, setFocused] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showDeepDive, setShowDeepDive] = useState(false);
+  const [showParkSheet, setShowParkSheet] = useState(false);
   const [deepDiveContext, setDeepDiveContext] = useState("");
   const isParchment = useThemeMode() === "parchment";
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
@@ -928,7 +930,7 @@ export function GlobalInsightSurface({
                 globalContext={true}
                 onFiles={(files) => onFiles?.(files)}
                 onMenuAction={(action) => {
-                  if (action === "park") { setLocation("/parking"); return; }
+                  if (action === "park") { setShowParkSheet(true); return; }
                   if (action === "more:deep-dive") {
                     const recent = messages.slice(-6).map((m) => {
                       const role = m.role === "user" ? "ME" : "ATLAS";
@@ -1030,6 +1032,15 @@ export function GlobalInsightSurface({
           setInput(input.trim() ? `${input.trim()}\n\n${text}` : text);
         }}
       />
+
+      {showParkSheet && (
+        <ParkSheet
+          projectId={null}
+          projects={projects}
+          onClose={() => setShowParkSheet(false)}
+          onOpenFull={() => { setShowParkSheet(false); setLocation("/parking"); }}
+        />
+      )}
     </div>
   );
 }

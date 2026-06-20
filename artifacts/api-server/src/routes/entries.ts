@@ -29,6 +29,13 @@ type EntryContextResponse = {
   atlasCategory?: string;
 };
 
+type ParkEnrichmentLite = {
+  atlasCategory: string;
+  complexity: "Low" | "Medium" | "High";
+  whyItMatters: string;
+  _level: "lite";
+};
+
 type ParkEnrichment = {
   whyItMatters: string;
   options: string[];
@@ -37,6 +44,7 @@ type ParkEnrichment = {
   atlasCategory: string;
   whatItMeans: string;
   whyItComesUp: string;
+  _level?: "full";
 };
 
 function serializeEntry(e: typeof entriesTable.$inferSelect) {
@@ -69,13 +77,30 @@ function parseContextJson(raw: string): EntryContextResponse | null {
   }
 }
 
+const COMPLEXITIES = ["Low", "Medium", "High"] as const;
+const CATEGORIES = ["Opportunity", "Decision", "Improvement", "Question", "Future Build"] as const;
+
+function parseLiteEnrichmentJson(raw: string): ParkEnrichmentLite | null {
+  try {
+    const cleaned = raw.replace(/```(?:json)?\s*/g, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(cleaned) as Partial<ParkEnrichmentLite>;
+    if (!parsed.whyItMatters) return null;
+    return {
+      atlasCategory: CATEGORIES.includes(parsed.atlasCategory as never) ? parsed.atlasCategory as string : "Opportunity",
+      complexity: COMPLEXITIES.includes(parsed.complexity as never) ? parsed.complexity as "Low" | "Medium" | "High" : "Medium",
+      whyItMatters: String(parsed.whyItMatters).trim(),
+      _level: "lite",
+    };
+  } catch {
+    return null;
+  }
+}
+
 function parseParkEnrichmentJson(raw: string): ParkEnrichment | null {
   try {
     const cleaned = raw.replace(/```(?:json)?\s*/g, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleaned) as Partial<ParkEnrichment>;
     if (!parsed.whyItMatters || !parsed.whatItMeans) return null;
-    const COMPLEXITIES = ["Low", "Medium", "High"] as const;
-    const CATEGORIES = ["Opportunity", "Decision", "Improvement", "Question", "Future Build"] as const;
     return {
       whyItMatters: String(parsed.whyItMatters).trim(),
       options: Array.isArray(parsed.options) ? (parsed.options as unknown[]).map(String) : [],
@@ -84,44 +109,86 @@ function parseParkEnrichmentJson(raw: string): ParkEnrichment | null {
       atlasCategory: CATEGORIES.includes(parsed.atlasCategory as never) ? parsed.atlasCategory as string : "Opportunity",
       whatItMeans: String(parsed.whatItMeans).trim(),
       whyItComesUp: String(parsed.whyItComesUp ?? parsed.whyItMatters).trim(),
+      _level: "full",
     };
   } catch {
     return null;
   }
 }
 
+// Lightweight enrichment — runs immediately on park (fast, cheap).
+// Generates only category + complexity + one-sentence whyItMatters.
+// Deep enrichment (options, revisitWhen, alternatives) happens on demand
+// when the detail panel is opened via POST /entries/:id/context.
 async function enrichParkedEntry(entryId: number, title: string, summary: string | null, projectName: string): Promise<void> {
   const prompt = `You are Atlas — a strategic thinking partner inside Axiom, a product development workspace.
 
-A user just parked this thought for later. Analyze it and return ONLY a JSON object, no markdown.
+A user just parked this thought for later. Return ONLY a JSON object, no markdown, no explanation.
 
 Parked thought: "${title}"
-${summary ? `Summary: ${summary}` : ""}
+${summary ? `Context: ${summary}` : ""}
 Project: ${projectName}
 
-Return this exact shape:
+Return exactly:
 {
-  "whyItMatters": "One sentence — why this matters for the project.",
-  "options": ["Option A", "Option B", "Option C"],
-  "complexity": "Medium",
-  "revisitWhen": "One sentence — best trigger or condition to revisit this.",
   "atlasCategory": "Opportunity",
-  "whatItMeans": "One sentence in everyday language, no jargon.",
-  "whyItComesUp": "One sentence — why this surfaced now."
+  "complexity": "Medium",
+  "whyItMatters": "One sentence — why this matters for the project."
 }
 
-complexity values: Low, Medium, High
-atlasCategory values: Opportunity, Decision, Improvement, Question, Future Build`;
+atlasCategory values: Opportunity, Decision, Improvement, Question, Future Build
+complexity values: Low, Medium, High`;
 
   try {
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 600,
+      max_tokens: 200,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+    const parsed = parseLiteEnrichmentJson(raw);
+    if (!parsed) return;
+    await db
+      .update(entriesTable)
+      .set({ enrichmentJson: JSON.stringify(parsed) })
+      .where(eq(entriesTable.id, entryId));
+  } catch {
+    // fire-and-forget: silently skip on error
+  }
+}
+
+// Deep enrichment — runs on demand when the detail panel is opened.
+// Upgrades a lite enrichment to a full one with options, revisitWhen, etc.
+async function deepEnrichParkedEntry(entryId: number, title: string, summary: string | null, projectName: string, lite: ParkEnrichmentLite): Promise<ParkEnrichment | null> {
+  const prompt = `You are Atlas — a strategic thinking partner inside Axiom, a product development workspace.
+
+A user parked this thought and is now looking at it more closely. Return ONLY a JSON object, no markdown.
+
+Parked thought: "${title}"
+${summary ? `Context: ${summary}` : ""}
+Project: ${projectName}
+Already known: category=${lite.atlasCategory}, complexity=${lite.complexity}
+
+Return exactly:
+{
+  "whyItMatters": "${lite.whyItMatters}",
+  "options": ["Concrete option A", "Concrete option B", "Concrete option C"],
+  "complexity": "${lite.complexity}",
+  "revisitWhen": "One sentence — best trigger or condition to act on this.",
+  "atlasCategory": "${lite.atlasCategory}",
+  "whatItMeans": "One analogy sentence in everyday language, no jargon.",
+  "whyItComesUp": "One sentence — why this is on their mind now."
+}`;
+
+  try {
+    const msg = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 500,
       messages: [{ role: "user", content: prompt }],
     });
     const raw = msg.content[0]?.type === "text" ? msg.content[0].text : "";
     const parsed = parseParkEnrichmentJson(raw);
-    if (!parsed) return;
+    if (!parsed) return null;
     await db
       .update(entriesTable)
       .set({
@@ -130,8 +197,9 @@ atlasCategory values: Opportunity, Decision, Improvement, Question, Future Build
         contextWhy: parsed.whyItComesUp,
       })
       .where(eq(entriesTable.id, entryId));
+    return parsed;
   } catch {
-    // fire-and-forget: silently skip on error
+    return null;
   }
 }
 
@@ -285,12 +353,23 @@ router.post("/entries/:id/context", async (req, res): Promise<void> => {
 
   const { projectName, ...entry } = row;
 
-  // Return stored enrichment if available (fastest path)
+  // Return stored enrichment if it's already full (fastest path)
   if (entry.enrichmentJson) {
     try {
-      const enrichment = JSON.parse(entry.enrichmentJson) as ParkEnrichment;
-      res.json(enrichment);
-      return;
+      const stored = JSON.parse(entry.enrichmentJson) as ParkEnrichmentLite | ParkEnrichment;
+      // Full enrichment — return immediately
+      if (stored._level === "full" || ("options" in stored && Array.isArray(stored.options))) {
+        res.json(stored);
+        return;
+      }
+      // Lite enrichment — upgrade to full on demand
+      if (stored._level === "lite") {
+        const full = await deepEnrichParkedEntry(id, row.title, row.summary ?? null, projectName, stored as ParkEnrichmentLite);
+        if (full) { res.json(full); return; }
+        // Fall through: return lite so the panel still shows something
+        res.json(stored);
+        return;
+      }
     } catch { /* fall through to regenerate */ }
   }
 
