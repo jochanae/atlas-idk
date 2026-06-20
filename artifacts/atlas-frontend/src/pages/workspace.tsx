@@ -63,6 +63,7 @@ import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "
 import { loadProfile } from "@/lib/userProfile";
 import type { Plan, PlanExecution } from "../lib/plan";
 import { useQueryClient } from "@tanstack/react-query";
+import { useProjectResume } from "@/hooks/useProjectResume";
 import {
   ReadinessRing,
   ReadinessTrend,
@@ -3940,19 +3941,10 @@ export default function Workspace() {
   const [showHomeHandoffBanner, setShowHomeHandoffBanner] = useState(() => {
     try { return isHomeHandoff && sessionStorage.getItem(`atlas-home-handoff-banner-${id}`) !== "1"; } catch { return isHomeHandoff; }
   });
-  const [showFromHomeCard, setShowFromHomeCard] = useState(isHomeHandoff);
-  const fromHomeCardMessages = useMemo(() => {
-    if (!isHomeHandoff) return [];
-    try {
-      const raw = sessionStorage.getItem("atlas-opening-conversation");
-      if (!raw) return [];
-      const msgs = JSON.parse(raw) as Array<{ role: string; content: string }>;
-      return msgs
-        .filter(m => m.role === "assistant" && m.content?.trim().length > 20)
-        .slice(-2)
-        .map(m => m.content.trim());
-    } catch { return []; }
-  }, [isHomeHandoff]);
+  const [showFromHomeCard, setShowFromHomeCard] = useState(() => {
+    try { return localStorage.getItem(`atlas-resume-card-dismissed-${id}`) !== "1"; } catch { return true; }
+  });
+  const { data: resumeBrief } = useProjectResume(id);
   const [showHomeHandoffDrawer, setShowHomeHandoffDrawer] = useState(false);
   const importSourceLabel = importSource === "compani" ? "Compani Blueprints" : importSource === "axiom" ? "Axiom" : importSource ? importSource.charAt(0).toUpperCase() + importSource.slice(1) : null;
   const [showAxiomBanner, setShowAxiomBanner] = useState(() => {
@@ -6558,37 +6550,75 @@ export default function Workspace() {
             </div>
           ) : null}
 
-          {showFromHomeCard && fromHomeCardMessages.length > 0 && (
+          {showFromHomeCard && resumeBrief && (
             <div
               style={{
                 margin: "12px 16px 0",
-                padding: "12px 14px",
+                padding: "14px 16px",
                 borderRadius: "10px",
-                border: "1px solid rgba(212,175,55,0.25)",
-                background: "rgba(212,175,55,0.06)",
+                border: "1px solid rgba(212,175,55,0.2)",
+                background: "rgba(212,175,55,0.05)",
                 display: "flex",
                 flexDirection: "column",
-                gap: "6px",
+                gap: "10px",
                 flexShrink: 0,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", color: "rgba(212,175,55,0.7)", textTransform: "uppercase" }}>
-                  From your home thread
+                <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.09em", color: "rgba(212,175,55,0.65)", textTransform: "uppercase" }}>
+                  Atlas · Resume
                 </span>
                 <button
-                  onClick={() => setShowFromHomeCard(false)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(212,175,55,0.4)", fontSize: "14px", lineHeight: 1, padding: "0 2px" }}
+                  onClick={() => {
+                    setShowFromHomeCard(false);
+                    try { localStorage.setItem(`atlas-resume-card-dismissed-${id}`, "1"); } catch {}
+                  }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(212,175,55,0.35)", fontSize: "14px", lineHeight: 1, padding: "0 2px" }}
                   aria-label="Dismiss"
                 >
                   ×
                 </button>
               </div>
-              {fromHomeCardMessages.map((msg, i) => (
-                <p key={i} style={{ margin: 0, fontSize: "13px", lineHeight: 1.5, color: "rgba(255,255,255,0.65)" }}>
-                  {msg.length > 280 ? msg.slice(0, 277) + "…" : msg}
+
+              {resumeBrief.threadSummary && (
+                <p style={{ margin: 0, fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.7)", fontStyle: "italic" }}>
+                  {resumeBrief.threadSummary.length > 320 ? resumeBrief.threadSummary.slice(0, 317) + "…" : resumeBrief.threadSummary}
                 </p>
-              ))}
+              )}
+
+              {(resumeBrief.intent || resumeBrief.audience) && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  {resumeBrief.intent && (
+                    <div style={{ display: "flex", gap: "6px", alignItems: "flex-start" }}>
+                      <span style={{ fontSize: "10px", color: "rgba(212,175,55,0.5)", marginTop: "2px", flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.55)", lineHeight: 1.4 }}>{resumeBrief.intent}</span>
+                    </div>
+                  )}
+                  {resumeBrief.audience && (
+                    <div style={{ display: "flex", gap: "6px", alignItems: "flex-start" }}>
+                      <span style={{ fontSize: "10px", color: "rgba(212,175,55,0.5)", marginTop: "2px", flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.55)", lineHeight: 1.4 }}>For {resumeBrief.audience}</span>
+                    </div>
+                  )}
+                  {resumeBrief.openQuestions.slice(0, 2).map((q, i) => (
+                    <div key={i} style={{ display: "flex", gap: "6px", alignItems: "flex-start" }}>
+                      <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.25)", marginTop: "2px", flexShrink: 0 }}>·</span>
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>{q}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {resumeBrief.suggestedFirstBuild && (
+                <div style={{ paddingTop: "6px", borderTop: "1px solid rgba(212,175,55,0.1)" }}>
+                  <span style={{ fontSize: "10px", letterSpacing: "0.06em", color: "rgba(212,175,55,0.45)", textTransform: "uppercase" }}>
+                    Suggested next step
+                  </span>
+                  <p style={{ margin: "3px 0 0", fontSize: "12px", color: "rgba(255,255,255,0.6)" }}>
+                    {resumeBrief.suggestedFirstBuild}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
