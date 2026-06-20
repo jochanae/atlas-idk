@@ -2814,8 +2814,12 @@ export default function Home() {
   const resolveFocusProjectIdForTurn = useCallback((turnDetection?: PortfolioFocusDetection) => {
     if (manualFocus?.focus === "project") return manualFocus.projectId;
     if (manualFocus?.focus === "portfolio") return null;
-    return resolveProjectIdForDetection(turnDetection ?? detectedPortfolioFocus);
-  }, [detectedPortfolioFocus, manualFocus, resolveProjectIdForDetection]);
+    // Only use the current-turn detection — never fall back to accumulated
+    // detectedPortfolioFocus, which can carry stale project references from
+    // earlier in the conversation and misroute unrelated new messages.
+    if (!turnDetection) return null;
+    return resolveProjectIdForDetection(turnDetection);
+  }, [manualFocus, resolveProjectIdForDetection]);
 
   const handleSubmit = useCallback(async (
     messageOverride?: string,
@@ -2858,7 +2862,11 @@ export default function Home() {
         ? ` [${imageFiles.length} images attached — showing first]`
         : "";
     const messageText = fullText + imageNote;
-    const turnFocusDetection = detectPortfolioFocus([...recentFocusUserMessages, messageText]);
+    // Use only the current message for per-turn focus detection.
+    // The accumulated recentFocusUserMessages can carry stale project names
+    // from earlier in the conversation, which misroutes new unrelated topics
+    // to a previously-focused project via NAVIGATE_TO.
+    const turnFocusDetection = detectPortfolioFocus([messageText]);
     const turnFocusProjectId = resolveFocusProjectIdForTurn(turnFocusDetection);
 
     setCreateError(null);
@@ -2968,7 +2976,6 @@ export default function Home() {
     backendReady,
     isFree,
     projects,
-    recentFocusUserMessages,
     queryClient,
     nexusChat.send,
     resolveFocusProjectIdForTurn,
