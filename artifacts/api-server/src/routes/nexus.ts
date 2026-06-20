@@ -2171,7 +2171,9 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
           { role: "user", content: message },
           { role: "assistant", content: visibleContent },
         ]);
-    if (!focusProjectId && !ideaMode && isExplicitCreate && handoffSignal?.readyToHandoff && handoffSignal.confidence === "high" && pendingNavProjectId === null) {
+    // Auto-create requires all three: Atlas in COMMIT state, explicit commit phrase, AND high-confidence handoff.
+    // CommitPill tap remains the primary consent path — this only fires on unmistakable signals.
+    if (!focusProjectId && !ideaMode && convState === "COMMIT" && isExplicitCreate && handoffSignal?.readyToHandoff && handoffSignal.confidence === "high" && pendingNavProjectId === null) {
       try {
         const autoName = handoffSignal.projectName ?? "New Project";
         writeStep({ verb: "Creating", target: autoName, detail: "Project workspace" });
