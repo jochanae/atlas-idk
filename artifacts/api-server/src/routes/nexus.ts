@@ -445,6 +445,14 @@ MEMORY_T4: [current state — 30 days]
 MEMORY_T5: [passing note — 7 days]
 
 Up to 3 lines per response, only when genuinely significant.
+
+## Conversation State Signal
+At the END of EVERY response, emit your current read of the conversation's intent on its own line:
+CONV_STATE:{"state":"THINK"}    — user is exploring, analyzing, mapping, or asking for a breakdown
+CONV_STATE:{"state":"SHAPE"}    — user is structuring, defining scope, or building a plan
+CONV_STATE:{"state":"COMMIT"}   — user has explicitly said they want to build or create something
+
+This governs system behavior (CommitPill visibility, auto-creation gates). It is stripped before display — never shown to the user. Emit it on every response, after MEMORY lines and before any PROJECT_READY signal.
 `;
 
 const CREATE_PROJECT_TOOL: Anthropic.Tool = {
@@ -1990,6 +1998,21 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       return "";
     }).trim();
 
+    // Parse CONV_STATE — Atlas's self-reported intent classification (THINK / SHAPE / COMMIT).
+    // Must parse before PROJECT_READY so we can gate CommitPill based on the state.
+    const CONV_STATE_RE = /^CONV_STATE:\s*(\{[^\n]+\})\s*$/gm;
+    type ConvStateValue = "THINK" | "SHAPE" | "COMMIT";
+    let convState: ConvStateValue = "THINK"; // default to most conservative
+    rawContent = rawContent.replace(CONV_STATE_RE, (_match, json: string) => {
+      try {
+        const parsed = JSON.parse(json) as { state?: string };
+        if (parsed.state === "THINK" || parsed.state === "SHAPE" || parsed.state === "COMMIT") {
+          convState = parsed.state;
+        }
+      } catch { /* ignore malformed */ }
+      return "";
+    }).trim();
+
     const PROJECT_READY_RE = /^PROJECT_READY:\s*(\{[^\n]+\})\s*$/gm;
     type ProjectReadyToken = { projectName: string; reason: string };
     let projectReadyToken: ProjectReadyToken | null = null;
@@ -2004,6 +2027,12 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       }
       return "";
     }).trim();
+
+    // Gate: in THINK mode, suppress CommitPill — recognition is not commitment.
+    // PROJECT_READY only arms the pill in SHAPE or COMMIT state.
+    if (convState === "THINK") {
+      projectReadyToken = null;
+    }
 
     // Execute image generation if Atlas emitted IMAGE_GEN token(s)
     interface NexusGeneratedImage { imageUrl: string; prompt: string; model: string; mode: "render" | "schematic"; }
@@ -2216,7 +2245,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
 
     await emitConversationTitle(visibleContent);
 
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, ...(handoffSignal ? { handoffSignal } : {}), ...(nexusImageGenResult ? { imageGen: nexusImageGenResult } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(handoffSignal ? { handoffSignal } : {}), ...(nexusImageGenResult ? { imageGen: nexusImageGenResult } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
     res.end();
   };
 
@@ -2607,12 +2636,17 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     });
   };
 
+  // Explicit commit signals — require clear project/workspace intent to avoid false positives.
+  // Intentionally excludes context-free phrases like "do it", "set it up", "make it",
+  // "go ahead", "yes", "ok", "sure" — these need object context ("set up a table" ≠ commit).
   const EXPLICIT_CREATE_SIGNALS = [
-    "yes", "yes please", "ok", "okay", "yeah", "yep", "sure",
-    "sounds good", "let's go", "lets go", "do it", "create it",
-    "set it up", "build it", "let's build it", "lets build it",
-    "create the workspace", "start the project", "create the project",
-    "make it", "go ahead", "please create", "create a workspace",
+    "let's build it", "lets build it",
+    "let's build this", "lets build this",
+    "create the workspace", "start the project",
+    "create the project", "create a workspace",
+    "move this into a project", "turn this into a project",
+    "move this to a workspace", "create it",
+    "please create", "build this project",
   ];
   const messageLC = message.toLowerCase();
   const isExplicitCreate = EXPLICIT_CREATE_SIGNALS.some(s => messageLC.includes(s));

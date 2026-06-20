@@ -126,6 +126,7 @@ export interface NexusProjectReadyDoneData {
     projectName: string;
     reason: string | null;
   };
+  convState?: "THINK" | "SHAPE" | "COMMIT";
 }
 
 export interface NexusShapingPayload {
