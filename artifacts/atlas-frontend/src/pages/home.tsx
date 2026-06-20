@@ -53,7 +53,6 @@ import { CommitPill } from "@/components/home/CommitPill";
 import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
-import { useProjectResume } from "@/hooks/useProjectResume";
 import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1883,8 +1882,6 @@ export default function Home() {
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
-  const { data: homeFocusResume } = useProjectResume(homeFocus);
-  const [focusChipPeekOpen, setFocusChipPeekOpen] = useState(false);
   // Earned title: identity emerges, never derived from latest message.
   // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
   // Persisted per conversation id under `atlas-thread-title:<id>`.
@@ -5150,111 +5147,57 @@ export default function Home() {
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
         subheader={homeUnifiedSubheader}
         focusChip={
-          <div
-            style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
-            onMouseEnter={() => resolvedPortfolioFocus === "project" && homeFocusResume && setFocusChipPeekOpen(true)}
-            onMouseLeave={() => setFocusChipPeekOpen(false)}
+          /* FOCUS chip: one job only — "where is Atlas focused?"
+             Memory is the HUD's responsibility, not this chip's. */
+          <button
+            type="button"
+            title="Focus scope"
+            aria-label={`Focus scope: ${focusChipLabel}`}
+            aria-expanded={showFocusPicker}
+            onClick={() => setShowFocusPicker((open) => !open)}
+            style={{
+              height: 34,
+              maxWidth: 178,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "0 10px",
+              borderRadius: 999,
+              background: resolvedPortfolioFocus === "project"
+                ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
+                : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
+              border: resolvedPortfolioFocus === "project"
+                ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
+                : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+              color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
+              cursor: "pointer",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              minWidth: 0,
+              flexShrink: 1,
+              WebkitTapHighlightColor: "transparent",
+              transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+            }}
           >
-            <button
-              type="button"
-              title="Focus scope"
-              aria-label={`Focus scope: ${focusChipLabel}`}
-              aria-expanded={showFocusPicker}
-              onClick={() => setShowFocusPicker((open) => !open)}
+            <Crosshair
+              size={13}
+              strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
               style={{
-                height: 34,
-                maxWidth: 178,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "0 10px",
-                borderRadius: 999,
-                background: resolvedPortfolioFocus === "project"
-                  ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
-                  : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-                border: resolvedPortfolioFocus === "project"
-                  ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
-                  : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
-                cursor: "pointer",
-                fontFamily: "var(--app-font-mono)",
-                fontSize: 10,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                whiteSpace: "nowrap",
-                minWidth: 0,
-                flexShrink: 1,
-                WebkitTapHighlightColor: "transparent",
-                transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
+                flexShrink: 0,
+                filter: resolvedPortfolioFocus === "project"
+                  ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
+                  : "none",
+                transition: "stroke-width 160ms ease, filter 160ms ease",
               }}
-            >
-              <Crosshair
-                size={13}
-                strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
-                style={{
-                  flexShrink: 0,
-                  filter: resolvedPortfolioFocus === "project"
-                    ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
-                    : "none",
-                  transition: "stroke-width 160ms ease, filter 160ms ease",
-                }}
-              />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                {focusChipLabel}
-              </span>
-              <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
-            </button>
-            {/* Memory peek — appears on hover when focused on a project */}
-            {focusChipPeekOpen && resolvedPortfolioFocus === "project" && homeFocusResume && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "calc(100% + 10px)",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 220,
-                  background: "color-mix(in oklab, var(--atlas-surface, #0d0d10) 96%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--atlas-phosphor) 18%, transparent)",
-                  borderRadius: 10,
-                  padding: "10px 12px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                  zIndex: 200,
-                  pointerEvents: "none",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
-                  animation: "chip-peek-in 120ms ease",
-                }}
-              >
-                <style>{`@keyframes chip-peek-in { from { opacity:0; transform:translateX(-50%) translateY(4px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
-                <div style={{ fontFamily: "var(--app-font-sans)", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.88)", letterSpacing: "-0.01em" }}>
-                  {homeFocusResume.projectName}
-                </div>
-                {homeFocusResume.threadSummary && (
-                  <p style={{ margin: 0, fontFamily: "var(--app-font-sans)", fontSize: 11, lineHeight: 1.5, color: "rgba(255,255,255,0.45)" }}>
-                    {homeFocusResume.threadSummary.length > 120
-                      ? homeFocusResume.threadSummary.slice(0, 117) + "…"
-                      : homeFocusResume.threadSummary}
-                  </p>
-                )}
-                {homeFocusResume.openQuestions.length > 0 && (
-                  <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "rgba(255,255,255,0.28)", letterSpacing: "0.04em" }}>
-                    {homeFocusResume.openQuestions.length} open {homeFocusResume.openQuestions.length === 1 ? "question" : "questions"}
-                  </div>
-                )}
-                {homeFocusResume.suggestedFirstBuild && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--atlas-phosphor)", opacity: 0.55 }}>
-                      Next
-                    </span>
-                    <span style={{ fontFamily: "var(--app-font-sans)", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
-                      {homeFocusResume.suggestedFirstBuild}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+            />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
+              {focusChipLabel}
+            </span>
+            <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+          </button>
         }
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
