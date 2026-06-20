@@ -1923,6 +1923,7 @@ export default function Home() {
   // crosses the same ≥5-user-message gate the inline card used.
   const setShapingStatus = useShellStore((s) => s.setShapingStatus);
   const setPendingWorkspace = useShellStore((s) => s.setPendingWorkspace);
+  const setShellHandoffStage = useShellStore((s) => s.setHandoffStage);
   const shapingStatus = useShellStore((s) => s.shapingStatus);
   const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
   useEffect(() => {
@@ -3169,6 +3170,14 @@ export default function Home() {
         }
         if (!name) name = "New Project";
       }
+
+      // Cinema begins: dim the page, trace the gold border, show real stage labels
+      // while the handoff work happens in the background. The user can read
+      // Atlas's final response through the dimmed glass before navigating.
+      setPendingWorkspace(null, name);
+      setShapingStatus("transitioning");
+      setShellHandoffStage("Creating workspace\u2026");
+
       const authToken = localStorage.getItem("atlas-auth-token");
       const createRes = await fetch("/api/projects", {
         method: "POST",
@@ -3187,6 +3196,7 @@ export default function Home() {
       const transcript = transcriptMessages.map(m => `${m.role === "user" ? "User" : "Atlas"}: ${m.content}`).join("\n\n");
       const summary = signal?.reason || transcriptMessages.map(m => m.content).join(" ").slice(0, 800);
 
+      setShellHandoffStage("Loading your conversation\u2026");
       setHandoffStage("Loading your conversation...");
       await fetch(`/api/projects/${projectId}/memories`, {
         method: "POST",
@@ -3195,6 +3205,7 @@ export default function Home() {
         body: JSON.stringify({ tier: "episodic", summary, messages: transcriptMessages }),
       }).catch(() => {});
 
+      setShellHandoffStage("Mapping your ideas\u2026");
       setHandoffStage("Mapping your ideas...");
       const forgeRes = await fetch("/api/forge", {
         method: "POST",
@@ -3250,6 +3261,7 @@ export default function Home() {
         }),
       }).catch(() => null)));
 
+      setShellHandoffStage("Packaging your resume\u2026");
       setHandoffStage("Ready.");
       try {
         sessionStorage.setItem(`atlas-home-handoff-${projectId}`, JSON.stringify({
@@ -3279,15 +3291,24 @@ export default function Home() {
       }).catch(() => {});
 
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+
+      // Hold on "Ready." for a beat so the user can read the final stage
+      // label before the workspace opens. Cinema has been running since
+      // project creation — this is just the closing beat.
+      setShellHandoffStage("Ready.");
+      await new Promise<void>(resolve => setTimeout(resolve, 900));
+
       setLocation(`/project/${projectId}?source=home-handoff`);
       return;
     } catch {
+      setShapingStatus("idle");
+      setShellHandoffStage("");
       toast("Handoff failed — try again");
     } finally {
       setHandoffLoading(false);
       setHandoffStage("");
     }
-  }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation]);
+  }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation, setPendingWorkspace, setShapingStatus, setShellHandoffStage]);
 
   const handledProjectReadyAutoHandoffRef = useRef(0);
   useEffect(() => {

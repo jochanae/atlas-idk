@@ -44,8 +44,10 @@ interface ShellStore {
   shapingStatus: ShapingStatus;
   pendingWorkspaceId: number | null;
   pendingWorkspaceTitle: string | null;
+  handoffStage: string;
   setShapingStatus: (status: ShapingStatus) => void;
   setPendingWorkspace: (id: number | null, title?: string | null) => void;
+  setHandoffStage: (stage: string) => void;
   resetHandoff: () => void;
   isHandoff: () => boolean;
   activeThread: ActiveThread;
@@ -73,11 +75,13 @@ export const useShellStore = create<ShellStore>((set, get) => ({
   shapingStatus: 'idle',
   pendingWorkspaceId: null,
   pendingWorkspaceTitle: null,
+  handoffStage: '',
   setShapingStatus: (shapingStatus) => set({ shapingStatus }),
   setPendingWorkspace: (id, title = null) =>
     set({ pendingWorkspaceId: id, pendingWorkspaceTitle: title }),
+  setHandoffStage: (handoffStage) => set({ handoffStage }),
   resetHandoff: () =>
-    set({ shapingStatus: 'idle', pendingWorkspaceId: null, pendingWorkspaceTitle: null }),
+    set({ shapingStatus: 'idle', pendingWorkspaceId: null, pendingWorkspaceTitle: null, handoffStage: '' }),
   isHandoff: () => {
     const s = get().shapingStatus;
     return s === 'shaping' || s === 'ready' || s === 'transitioning';

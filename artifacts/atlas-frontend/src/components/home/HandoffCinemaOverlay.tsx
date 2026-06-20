@@ -19,6 +19,7 @@ import { useShellStore } from "@/store/shellStore";
 export function HandoffCinemaOverlay() {
   const status = useShellStore((s) => s.shapingStatus);
   const title = useShellStore((s) => s.pendingWorkspaceTitle);
+  const stage = useShellStore((s) => s.handoffStage);
   const active = status === "transitioning";
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export function HandoffCinemaOverlay() {
         />
       </svg>
 
-      {/* Quiet caption above the pill area. */}
+      {/* Caption stack above the pill area. */}
       <div
         style={{
           position: "absolute",
@@ -89,16 +90,36 @@ export function HandoffCinemaOverlay() {
           right: 0,
           bottom: "calc(env(safe-area-inset-bottom, 0px) + 168px)",
           display: "flex",
-          justifyContent: "center",
-          fontFamily: "var(--app-font-mono)",
-          fontSize: 10,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "rgba(201,162,76,0.7)",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
           animation: "atlas-cinema-caption 600ms ease-out 120ms both",
         }}
       >
-        Focusing on {title?.trim() || "your workspace"}
+        <div
+          style={{
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "rgba(201,162,76,0.7)",
+          }}
+        >
+          Focusing on {title?.trim() || "your workspace"}
+        </div>
+        {stage && (
+          <div
+            style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(201,162,76,0.45)",
+            }}
+          >
+            {stage}
+          </div>
+        )}
       </div>
 
       <style>{`
