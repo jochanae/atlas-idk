@@ -3263,7 +3263,20 @@ export default function Home() {
         if (plan) {
           sessionStorage.setItem(`atlas-home-plan-${projectId}`, JSON.stringify(plan));
         }
+        // Snapshot the conversation so the workspace chat shows the full thread
+        // (visual layer — workspace normalizeThinkFreelyThread reads this on mount)
+        const conversationSnapshot = (nexusChat.messages as HomeMessage[]).map(({ role, content }) => ({ role, content }));
+        sessionStorage.setItem(OPENING_CONVERSATION_STORAGE_KEY, JSON.stringify(conversationSnapshot));
+        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
       } catch {}
+
+      // Fire-and-forget Resume brief generation (persistence layer + AI context)
+      fetch(`/api/projects/${projectId}/append-thread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ messages: transcriptMessages }),
+      }).catch(() => {});
 
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setLocation(`/project/${projectId}?source=home-handoff`);
