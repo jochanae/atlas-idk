@@ -339,6 +339,43 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
+      {commitCarryover && messages.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "4px 0 18px",
+            opacity: 0.85,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--app-font-mono)",
+              fontSize: "var(--ts-micro)",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "var(--atlas-gold)",
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(201,162,76,0.32)",
+              background: "rgba(201,162,76,0.06)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            From your home thread
+          </span>
+          <span
+            aria-hidden
+            style={{
+              flex: 1,
+              height: 1,
+              background: "linear-gradient(to right, rgba(201,162,76,0.32), transparent)",
+            }}
+          />
+        </div>
+      )}
+
       {messages.map((msg, i) => (
         <Fragment key={i}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
