@@ -12,6 +12,7 @@ import type { ChatMessage, LinkedRepo, PushRecord } from "@/pages/workspace";
 import type { PlanExecution } from "@/lib/plan";
 import type { Plan } from "@/lib/plan";
 import type { PlanState } from "@/components/workspace/chatShared";
+import type { ResumeBrief } from "@/hooks/useProjectResume";
 
 // Minimal structural types — avoid importing private types from workspace.tsx
 type ProjectLike = { name?: string } | null | undefined;
@@ -209,6 +210,7 @@ export interface ChatStreamProps {
   isBrandNewProject: boolean;
   atlasGreeting?: string | null;
   greetingLoading?: boolean;
+  resumeBrief?: ResumeBrief | null;
   project: ProjectLike;
   onStarterPrompt: (label: string) => void;
 
@@ -268,7 +270,7 @@ export function ChatStream(props: ChatStreamProps) {
     scrollRef, bottomRef, onScroll, showScrollBtn, onScrollToLatest,
     messages, chatPending, activityStream, liveGeneration, thinkingBlock, historyMsgCountRef,
     priorLoaded,
-    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading, project,
+    isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading, resumeBrief, project,
     wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
     projectId, sessionId, linkedRepo, trustMode,
@@ -305,14 +307,65 @@ export function ChatStream(props: ChatStreamProps) {
       style={containerStyle}
       className="scrollbar-none atlas-chat-timeline"
     >
-      {messages.length === 0 && !chatPending && priorLoaded !== false && isHomeHandoff && homeHandoffMeta && (
+      {messages.length === 0 && !chatPending && priorLoaded !== false && isHomeHandoff && resumeBrief && (
+        <div style={{ padding: "36px 4px 16px", display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ maxWidth: 560 }}>
+            <p style={{ margin: "0 0 18px", fontSize: 16, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.9, fontWeight: 400, letterSpacing: "-0.005em" }}>
+              I brought over the thread.
+            </p>
+
+            {resumeBrief.threadSummary && (
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ display: "block", fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(212,175,55,0.55)", marginBottom: 6 }}>
+                  Here's what we established
+                </span>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.72 }}>
+                  {resumeBrief.threadSummary}
+                </p>
+              </div>
+            )}
+
+            {resumeBrief.suggestedFirstBuild && (
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ display: "block", fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(212,175,55,0.55)", marginBottom: 6 }}>
+                  Suggested first build
+                </span>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.78 }}>
+                  {resumeBrief.suggestedFirstBuild}
+                </p>
+              </div>
+            )}
+
+            {resumeBrief.openQuestions.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <span style={{ display: "block", fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 6 }}>
+                  Still open
+                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {resumeBrief.openQuestions.slice(0, 3).map((q, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 13, marginTop: 1, flexShrink: 0 }}>·</span>
+                      <span style={{ fontSize: 13, lineHeight: 1.5, color: "var(--atlas-fg)", opacity: 0.38 }}>{q}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "var(--atlas-fg)", opacity: 0.55, fontStyle: "italic" }}>
+              We can continue from here.
+            </p>
+          </div>
+        </div>
+      )}
+      {messages.length === 0 && !chatPending && priorLoaded !== false && isHomeHandoff && !resumeBrief && homeHandoffMeta && (
         <div style={{ padding: "52px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={{ maxWidth: 520, color: "var(--atlas-fg)", fontSize: 15, lineHeight: 1.75, textAlign: "center", opacity: 0.88 }}>
             Picked up where we left off. Your flow map has {homeHandoffMeta.flowNodeCount} nodes — {homeHandoffMeta.goalLabel} is the center. What do you want to tackle first?
           </div>
         </div>
       )}
-      {messages.length === 0 && !chatPending && priorLoaded !== false && !(isHomeHandoff && homeHandoffMeta) && (
+      {messages.length === 0 && !chatPending && priorLoaded !== false && !isHomeHandoff && (
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "flex-start",
           padding: "32px 4px 8px", gap: 8,

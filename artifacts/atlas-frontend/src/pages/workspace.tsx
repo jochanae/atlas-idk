@@ -3454,7 +3454,7 @@ export default function Workspace() {
   }, [historyMsgCountRef, id, priorLoaded, setMessages]);
 
   useEffect(() => {
-    if (messages.length > 0 || greetingLoading || atlasGreeting) return;
+    if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief)) return;
     setGreetingLoading(true);
     fetch(`/api/projects/${id}/greeting`, {
       credentials: "include",
@@ -6660,6 +6660,7 @@ export default function Workspace() {
               isBrandNewProject,
               atlasGreeting,
               greetingLoading,
+              resumeBrief,
               project,
               onStarterPrompt: (label) => {
                 setInput(label);
