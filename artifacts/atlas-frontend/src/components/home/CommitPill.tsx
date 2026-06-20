@@ -126,6 +126,14 @@ function StoreCommitPill({ className = "", onArm, overrideLabel }: { className?:
     }
   }, [status]);
 
+  // Ephemeral: auto-collapse after 20s in "ready" state with no interaction.
+  // If the user ignores the pill and keeps talking, Atlas reads that as "still exploring".
+  useEffect(() => {
+    if (status !== "ready") return;
+    const timer = setTimeout(() => setShapingStatus("idle"), 20_000);
+    return () => clearTimeout(timer);
+  }, [status, setShapingStatus]);
+
   // Trace animation runs during packaging/opening/transitioning as visual cover.
   useEffect(() => {
     const active = status === "packaging" || status === "opening" || status === "transitioning";

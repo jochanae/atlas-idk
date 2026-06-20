@@ -480,9 +480,8 @@ export function useNexusChatStream(
             if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeldRef.current) {
               setShapingPayload(shapingFromMeta);
             }
-            if (meta.projectReady) {
-              notifyProjectReady(meta as NexusProjectReadyDoneData);
-            }
+            // Always notify — handler reads convState on every response, not just projectReady ones
+            notifyProjectReady(meta as NexusProjectReadyDoneData);
 
             // Parse VISUALIZE marker
             const visualMatch = fullText.match(

@@ -34,6 +34,11 @@ type ResumeData = {
 const resumeCache = new Map<number, { data: ResumeData; expiresAt: number }>();
 const RESUME_CACHE_TTL_MS = 5 * 60 * 1000;
 
+/** Call after any operation that writes new content to a project (e.g. append-thread). */
+export function bustResumeCache(userId: number): void {
+  resumeCache.delete(userId);
+}
+
 type HandoffSignal = {
   readyToHandoff: boolean;
   confidence: "high" | "medium" | "low";
@@ -337,7 +342,9 @@ async function detectHomeHandoff(
 It is ready to handoff ONLY if the user has explicitly said they want to build or create something — not simply because the idea is clear or the conversation has been productive.
 
 Required signal: The user must have used explicit commitment language such as:
-"let's build this", "create a workspace", "move this into a project", "set this up", "I'm ready to build", "build it", "do it", "make it", "let's go", "create it", "start the project"
+"let's build this", "let's build it", "create a workspace", "move this into a project", "turn this into a project", "create the project", "start the project", "create it", "please create", "build this project"
+
+Intentionally NOT sufficient (too context-free): "do it", "set it up", "make it", "build it", "go ahead", "yes", "ok", "sure", "let's go"
 
 Return readyToHandoff: false for ALL of the following, regardless of how detailed the conversation is:
 - Exploring, mapping, analyzing, or understanding an idea ("let's map out...", "break this down...", "what do you think about...")

@@ -1896,7 +1896,11 @@ export default function Home() {
   const [projectReadyAutoHandoffCount, setProjectReadyAutoHandoffCount] = useState(0);
   const [projectReadyDoneData, setProjectReadyDoneData] = useState<NexusProjectReadyDoneData | null>(null);
   const [isHandoffReady, setIsHandoffReady] = useState(false);
+  const [lastConvState, setLastConvState] = useState<"THINK" | "SHAPE" | "COMMIT">("THINK");
   const handleNexusProjectReady = useCallback((doneData?: NexusProjectReadyDoneData) => {
+    if (doneData?.convState) {
+      setLastConvState(doneData.convState);
+    }
     if (doneData?.projectReady) {
       setProjectReadyDoneData(doneData);
       return;
@@ -1927,14 +1931,18 @@ export default function Home() {
   const shapingStatus = useShellStore((s) => s.shapingStatus);
   const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
   useEffect(() => {
-    // Project-focus mode: show "Save to {project}" pill the moment the user sends a message.
+    // Project-focus mode: arm CommitPill only when Atlas signals structured work (SHAPE/COMMIT).
+    // THINK = exploring — pill stays idle, no prompt to commit.
     if (resolvedPortfolioFocus === "project" && homeFocus != null) {
-      if (shapingStatus === "transitioning") return;
-      if (userMsgCount > 0) {
+      if (shapingStatus === "transitioning" || shapingStatus === "packaging" || shapingStatus === "opening") return;
+      if (userMsgCount > 0 && (lastConvState === "SHAPE" || lastConvState === "COMMIT")) {
         const name = (projects as Project[] | undefined)?.find((p: Project) => p.id === homeFocus)?.name ?? "Project";
         setPendingWorkspace(null, name);
         setShapingStatus("ready");
-      } else if (shapingStatus !== "idle") {
+      } else if (userMsgCount > 0 && lastConvState === "THINK" && shapingStatus === "ready") {
+        // Conversation is in THINK — collapse any previously-armed pill
+        setShapingStatus("idle");
+      } else if (userMsgCount === 0 && shapingStatus !== "idle") {
         setShapingStatus("idle");
       }
       return;
@@ -1961,7 +1969,7 @@ export default function Home() {
       // No active conversation — ambient home state. Reset any stale pill.
       setShapingStatus("idle");
     }
-  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace,
+  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, lastConvState, setShapingStatus, setPendingWorkspace,
       resolvedPortfolioFocus, homeFocus, projects, setIsHandoffReady]);
   const focusProjectId = homeFocus;
   useEffect(() => {
@@ -5546,7 +5554,7 @@ export default function Home() {
         <div style={{ pointerEvents: "auto" }}>
           <CommitPill
             overrideLabel={resolvedPortfolioFocus === "project" && homeFocus != null
-              ? `Save to ${(projects as Project[] | undefined)?.find((p: Project) => p.id === homeFocus)?.name ?? "Project"} →`
+              ? `Append to ${(projects as Project[] | undefined)?.find((p: Project) => p.id === homeFocus)?.name ?? "Project"} →`
               : undefined}
             onArm={async () => {
               if (resolvedPortfolioFocus === "project" && homeFocus != null) {

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
+import { bustResumeCache } from "./nexus";
 import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, projectGenomeTable, nexusMessagesTable } from "@workspace/db";
 import { encryptToken, decryptToken } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
@@ -911,6 +912,10 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
       .returning();
     artifact = inserted;
   }
+
+  // Invalidate the resume cache so the workspace opens with fresh context,
+  // not the pre-append snapshot. Fixes: "still being defined" showing after append.
+  bustResumeCache(userId);
 
   res.json({ ok: true, artifact, brief });
 });
