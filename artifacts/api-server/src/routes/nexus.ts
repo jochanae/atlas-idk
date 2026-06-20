@@ -3233,6 +3233,34 @@ router.get("/nexus/activity", async (req, res): Promise<void> => {
   res.json({ items: items.slice(0, 40) });
 });
 
+// POST /api/nexus/visualize — generate an image from a prompt (called by useNexusChatStream)
+router.post("/nexus/visualize", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { prompt } = req.body as { prompt?: string };
+  if (!prompt?.trim()) { res.status(400).json({ error: "prompt required" }); return; }
+
+  try {
+    const enginePrompt = `${prompt.trim()} Ultra-premium, cinematic quality. Sleek dark-mode aesthetic with obsidian depth, luxury glassmorphism elements, subtle amber/gold accent glows. Sophisticated editorial lighting, presentation-ready professional finish.`;
+    const r = await genai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: enginePrompt,
+      config: { responseModalities: ["IMAGE", "TEXT"] },
+    });
+    const parts = r.candidates?.[0]?.content?.parts ?? [];
+    const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("image/"));
+    if (imagePart?.inlineData?.data) {
+      res.json({ imageBase64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType });
+    } else {
+      res.status(502).json({ error: "Image generation returned no image" });
+    }
+  } catch (err) {
+    logger.warn({ err }, "nexus/visualize image generation failed");
+    res.status(502).json({ error: "Image generation failed" });
+  }
+});
+
 // POST /api/nexus/name — generate a short project name from a message
 router.post("/nexus/name", async (req, res): Promise<void> => {
   const { message } = req.body as { message?: string };

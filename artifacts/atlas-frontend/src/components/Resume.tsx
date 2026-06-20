@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetPortfolioResume,
-  getGetPortfolioResumeQueryKey,
-  GetPortfolioResumeBust,
-} from "@workspace/api-client-local";
 
-export { getGetPortfolioResumeQueryKey };
+type ResumeData = {
+  whatMoved: string[];
+  whatEmerged: string;
+  waitingOnYou: string;
+  suggestedNextMove: string;
+};
 
 type RecentProject = {
   id: number;
@@ -33,27 +32,31 @@ function formatRelative(iso: string): string {
 }
 
 export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: Props) {
-  const [busting, setBusting] = useState(false);
+  const [data, setData] = useState<ResumeData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const bustHandledRef = useRef(0);
-  const queryClient = useQueryClient();
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (bustSignal > bustHandledRef.current) {
-      setBusting(true);
-    }
+    const isBust = bustSignal > bustHandledRef.current;
+    if (fetchingRef.current && !isBust) return;
+
+    fetchingRef.current = true;
+    setIsLoading(true);
+
+    const url = isBust ? "/api/nexus/resume?bust=1" : "/api/nexus/resume";
+    fetch(url, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: ResumeData | null) => {
+        if (d) setData(d);
+        if (isBust) bustHandledRef.current = bustSignal;
+      })
+      .catch(() => {})
+      .finally(() => {
+        setIsLoading(false);
+        fetchingRef.current = false;
+      });
   }, [bustSignal]);
-
-  const { data, isLoading } = useGetPortfolioResume(
-    busting ? { bust: GetPortfolioResumeBust.NUMBER_1 } : undefined,
-  );
-
-  useEffect(() => {
-    if (busting && !isLoading && data) {
-      bustHandledRef.current = bustSignal;
-      queryClient.setQueryData(getGetPortfolioResumeQueryKey(), data);
-      setBusting(false);
-    }
-  }, [busting, isLoading, data, bustSignal, queryClient]);
 
   const isEmpty =
     !isLoading &&
@@ -101,7 +104,7 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
             fontSize: 11, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
             opacity: 0.5, letterSpacing: "0.04em",
           }}>
-            {busting ? "Atlas is recalibrating…" : "Atlas is reading the ledger…"}
+            {bustSignal > 0 ? "Atlas is recalibrating…" : "Atlas is reading the ledger…"}
           </span>
         </div>
       )}
@@ -121,7 +124,6 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
       {!isLoading && data && !isEmpty && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: hasProjects ? 16 : 0 }}>
 
-          {/* whatMoved — factual bullets of what changed */}
           {data.whatMoved.length > 0 && (
             <div>
               <div style={{
@@ -152,7 +154,6 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
             </div>
           )}
 
-          {/* whatEmerged — insight or pattern Atlas noticed */}
           {data.whatEmerged && (
             <div style={{
               padding: "9px 11px",
@@ -176,7 +177,6 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
             </div>
           )}
 
-          {/* waitingOnYou — decisions only the human can answer */}
           {data.waitingOnYou && (
             <div>
               <div style={{
@@ -195,7 +195,6 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
             </div>
           )}
 
-          {/* suggestedNextMove — exactly one action */}
           {data.suggestedNextMove && (
             <div style={{
               padding: "9px 11px",
@@ -224,7 +223,7 @@ export function Resume({ recentProjects = [], onOpenProject, bustSignal = 0 }: P
       {/* Recent projects list */}
       {hasProjects && (
         <>
-          {(hasContent) && (
+          {hasContent && (
             <div style={{ height: 1, background: "var(--atlas-border)", marginBottom: 10 }} />
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>

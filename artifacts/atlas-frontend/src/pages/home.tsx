@@ -3042,24 +3042,29 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 700));
 
       // Snapshot the Nexus conversation into a Resume artifact before navigating.
-      // Fires in the background; navigation never blocks on failure.
+      // Capture threadSummary from the response to use as the workspace greeting.
+      let resumeGreeting: string | null = null;
       try {
         const snapshotMessages = conversationMessages
           .filter((m) => typeof m.content === "string" && m.content.trim().length > 0)
           .map((m) => ({ role: m.role as string, content: m.content as string }));
-        await fetch(`/api/projects/${projectId}/append-thread`, {
+        const snapRes = await fetch(`/api/projects/${projectId}/append-thread`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: snapshotMessages }),
         });
+        if (snapRes.ok) {
+          const snapData = await snapRes.json() as { brief?: { threadSummary?: string } };
+          resumeGreeting = snapData?.brief?.threadSummary ?? null;
+        }
       } catch {}
 
       // Commit carryover: hand workspace the threshold marker + greeting payload.
       try {
         sessionStorage.setItem(
           `atlas-commit-carryover-${projectId}`,
-          JSON.stringify({ committedAt: createdAt.toISOString(), greeting: null }),
+          JSON.stringify({ committedAt: createdAt.toISOString(), greeting: resumeGreeting }),
         );
       } catch {}
       pushHudEvent("DECISION", `Committed → ${name}`);
