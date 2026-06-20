@@ -3493,7 +3493,11 @@ export default function Home() {
   // Option 2 — expand-on-focus bottom sheet (matches workspace ChatComposer).
   // Sheet only activates on the ambient/active home composer, not when the
   // Global Insight surface is open (it owns its own composer layout).
-  const homeSheetVisible = inputFocused && !globalInsightOpen;
+  // Disabled: the focus-expanded sheet was intrusive on home. Composer now
+  // stays as a normal sticky composer when focused (workspace-style behavior
+  // is reserved for /project). Keep the variable false to preserve all the
+  // downstream conditional styling without restructuring the JSX.
+  const homeSheetVisible = false && inputFocused && !globalInsightOpen;
   useEffect(() => {
     if (!homeSheetVisible) return;
     const prevBody = document.body.style.overflow;
