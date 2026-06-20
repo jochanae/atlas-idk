@@ -1650,7 +1650,7 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     systemPrompt += `\n\n--- LIVE APP HEALTH (scheduled monitor results) ---\n${monitorContext}\nUse this when the user asks about app health, uptime, or "how is my app doing". Report HEALTHY/ISSUE status directly from these results. If an issue is listed, surface it proactively.\n--- END LIVE APP HEALTH ---`;
   }
   if (recentActivity) {
-    systemPrompt += `\n\n--- RECENT ACTIVITY ACROSS PORTFOLIO ---\n${recentActivity}\nInterpret commits and sessions narratively — group by area of impact, synthesize what is changing, identify momentum and gaps. Do not enumerate SHAs or dump raw lists unless the user explicitly asks for exact history.\n--- END RECENT ACTIVITY ---`;
+    systemPrompt += `\n\n--- RECENT ACTIVITY ACROSS PORTFOLIO ---\n${recentActivity}\nInterpret this as a thinking partner who has been paying attention — not as an auditor reviewing records. Synthesize what is changing, identify momentum and gaps, group by area of impact. Never say "what the repo tells me", "based on the commit history", or "the codebase shows." Say instead: "here's the thread I'm seeing", "looking across what's been built", "from the work on this project." Do not enumerate SHAs or dump raw lists unless the user explicitly asks.\n--- END RECENT ACTIVITY ---`;
   }
   if (committedLedger) {
     systemPrompt += `\n\n--- COMMITTED DECISIONS ACROSS PORTFOLIO (use for cross-project tension detection) ---\n${committedLedger}\n--- END COMMITTED DECISIONS ---`;
