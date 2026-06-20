@@ -3269,26 +3269,29 @@ export default function Home() {
     }
   }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation]);
 
+  // Auto-detection NEVER navigates anymore — it only arms the CommitPill to "ready".
+  // The user must tap "Enter Workspace →" to actually hand off. This preserves control
+  // and prevents the thread from being yanked mid-read.
   const handledProjectReadyAutoHandoffRef = useRef(0);
   useEffect(() => {
     if (projectReadyAutoHandoffCount === 0) return;
     if (handledProjectReadyAutoHandoffRef.current === projectReadyAutoHandoffCount) return;
     handledProjectReadyAutoHandoffRef.current = projectReadyAutoHandoffCount;
-    void handleHandoff();
-  }, [handleHandoff, projectReadyAutoHandoffCount]);
+    if (shapingStatus !== "transitioning") {
+      setShapingStatus("ready");
+    }
+  }, [projectReadyAutoHandoffCount, shapingStatus, setShapingStatus]);
   const handledProjectReadyDoneDataRef = useRef<NexusProjectReadyDoneData | null>(null);
   useEffect(() => {
     if (!projectReadyDoneData) return;
     if (handledProjectReadyDoneDataRef.current === projectReadyDoneData) return;
     handledProjectReadyDoneDataRef.current = projectReadyDoneData;
     const doneData = projectReadyDoneData;
-    if (doneData.projectReady && !activeProjectId) {
-      handleHandoff(
-        { readyToHandoff: true, confidence: "high", projectName: doneData.projectReady.projectName, reason: doneData.projectReady.reason },
-        doneData.projectReady.projectName
-      );
+    if (doneData.projectReady && !activeProjectId && shapingStatus !== "transitioning") {
+      setPendingWorkspace(null, doneData.projectReady.projectName);
+      setShapingStatus("ready");
     }
-  }, [activeProjectId, handleHandoff, projectReadyDoneData]);
+  }, [activeProjectId, projectReadyDoneData, shapingStatus, setPendingWorkspace, setShapingStatus]);
 
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
