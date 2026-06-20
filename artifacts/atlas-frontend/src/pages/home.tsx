@@ -4554,7 +4554,7 @@ export default function Home() {
                 }}
                 onKeyDown={handleKeyDown}
                 onFocus={() => { setInputFocused(true); setTypewriterPaused(true); }}
-                onBlur={() => setInputFocused(false)}
+                onBlur={() => { setInputFocused(false); setTypewriterPaused(false); }}
                 rows={2}
                 style={{
                   width: "100%",

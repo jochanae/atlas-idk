@@ -211,10 +211,6 @@ export function ListeningHUD({
         const savedEvents = normalizeShapingEntries(data);
         postedEventIdsRef.current = new Set(savedEvents.map((ev) => ev.id));
         setHudEvents(savedEvents);
-        if (savedEvents.length === 0) {
-          const path = window.location.pathname + window.location.search;
-          pushHudEvent("NAVIGATED", path);
-        }
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
@@ -223,13 +219,9 @@ export function ListeningHUD({
     return () => controller.abort();
   }, [conversationId]);
 
-  // Truthful seed: log the current route so the HUD has at least one signal.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (conversationId !== undefined) return;
-    const path = window.location.pathname + window.location.search;
-    pushHudEvent("NAVIGATED", path);
-  }, [conversationId]);
+  // No NAVIGATED seed — the HUD should only show cognitive extractions
+  // (INTENT, MEMORY, DECISION, TENSION). Navigation is implementation detail,
+  // not user-facing Atlas memory.
 
   useEffect(() => {
     if (!conversationId) return;
