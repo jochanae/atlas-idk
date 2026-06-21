@@ -5,14 +5,11 @@ import type { ManifestDecision } from "@/components/workspace/PreviewPanel";
 const MONO = "var(--app-font-mono)";
 const SANS = "var(--app-font-sans)";
 const GOLD = "rgba(201,162,76,0.9)";
-const GOLD_DIM = "rgba(201,162,76,0.22)";
 const MUTED = "var(--atlas-muted)";
 const FG = "var(--atlas-fg)";
 const BORDER = "var(--atlas-border)";
 const GREEN = "#6EE7B7";
 const AMBER = "#f59e0b";
-const BG = "var(--atlas-bg)";
-const SURFACE = "var(--atlas-surface)";
 
 const READINESS_THRESHOLD = 40;
 
@@ -26,13 +23,11 @@ interface ProjectGenome {
   openQuestions: string[];
 }
 
-type Completeness = "absent" | "thin" | "sufficient";
 type TargetStatus = "available" | "warning" | "locked";
 
 interface DnaAnchor {
   label: string;
   value: string | null;
-  completeness: Completeness;
 }
 
 interface Target {
@@ -44,33 +39,21 @@ interface Target {
 
 // ── Derivation helpers ────────────────────────────────────────────────────────
 function deriveAnchors(genome: ProjectGenome | null): DnaAnchor[] {
-  if (!genome) {
-    return [
-      { label: "Core Intent", value: null, completeness: "absent" },
-      { label: "Core Audience", value: null, completeness: "absent" },
-      { label: "Brand Posture", value: null, completeness: "absent" },
-    ];
-  }
-  const clarity = genome.health.clarity;
-  function comp(value: string | null, threshold = 40): Completeness {
-    if (!value) return "absent";
-    if (clarity < threshold) return "thin";
-    return "sufficient";
-  }
   return [
-    { label: "Core Intent", value: genome.purpose, completeness: comp(genome.purpose, 35) },
-    { label: "Core Audience", value: genome.audience, completeness: comp(genome.audience, 40) },
-    { label: "Brand Posture", value: genome.coreEmotion, completeness: comp(genome.coreEmotion, 45) },
+    { label: "Core intent", value: genome?.purpose ?? null },
+    { label: "Core audience", value: genome?.audience ?? null },
+    { label: "Brand voice", value: genome?.coreEmotion ?? null },
   ];
 }
 
 function deriveTargets(genome: ProjectGenome | null): Target[] {
   if (!genome) {
     return [
-      { id: "landing-page", label: "Landing Page", status: "locked", reason: "Awaiting analysis…" },
-      { id: "web-app", label: "Web App", status: "locked", reason: "Awaiting analysis…" },
-      { id: "beta-program", label: "Beta Program", status: "locked", reason: "Awaiting analysis…" },
-      { id: "investor-deck", label: "Investor Deck", status: "locked", reason: "Awaiting analysis…" },
+      { id: "landing-page", label: "Landing page", status: "locked", reason: "Awaiting analysis…" },
+      { id: "web-app", label: "Web app", status: "locked", reason: "Awaiting analysis…" },
+      { id: "beta-program", label: "Beta program", status: "locked", reason: "Awaiting analysis…" },
+      { id: "investor-deck", label: "Investor deck", status: "locked", reason: "Awaiting analysis…" },
+      { id: "mobile-app", label: "Mobile app", status: "locked", reason: "Awaiting analysis…" },
     ];
   }
   const { clarity } = genome.health;
@@ -84,37 +67,31 @@ function deriveTargets(genome: ProjectGenome | null): Target[] {
   }
   return [
     {
-      id: "landing-page", label: "Landing Page",
+      id: "landing-page", label: "Landing page",
       status: status(hasIntent && clarity >= 30, hasIntent && clarity >= 15),
-      reason: !hasIntent ? "Needs core intent" : clarity < 30 ? "Nearly ready" : "Ready to manifest",
+      reason: !hasIntent ? "Needs core intent" : clarity < 30 ? "Nearly ready" : "Ready to materialize",
     },
     {
-      id: "web-app", label: "Web App",
+      id: "web-app", label: "Web app",
       status: status(hasIntent && hasAudience && clarity >= 50, hasIntent && clarity >= 35),
-      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : clarity < 50 ? `${50 - clarity}% more clarity` : "Ready to manifest",
+      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : clarity < 50 ? `${50 - clarity}% more clarity` : "Ready to materialize",
     },
     {
-      id: "beta-program", label: "Beta Program",
+      id: "beta-program", label: "Beta program",
       status: status(hasIntent && hasAudience && clarity >= 55, hasIntent && hasAudience && clarity >= 40),
-      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : clarity < 55 ? "Needs more clarity" : "Ready to manifest",
+      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : clarity < 55 ? "Needs more clarity" : "Ready to materialize",
     },
     {
-      id: "investor-deck", label: "Investor Deck",
+      id: "investor-deck", label: "Investor deck",
       status: status(hasIntent && hasAudience && hasBrand && clarity >= 65, hasIntent && hasAudience && clarity >= 50),
-      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : !hasBrand ? "Needs brand posture" : clarity < 65 ? "Needs conviction" : "Ready to manifest",
+      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : !hasBrand ? "Needs brand voice" : clarity < 65 ? "Needs conviction" : "Ready to materialize",
     },
     {
-      id: "mobile-app", label: "Mobile App",
+      id: "mobile-app", label: "Mobile app",
       status: status(hasIntent && hasAudience && hasBrand && clarity >= 75, hasIntent && hasAudience && hasBrand && clarity >= 60),
-      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : !hasBrand ? "Needs brand posture" : clarity < 75 ? "Needs stronger foundation" : "Ready to manifest",
+      reason: !hasIntent ? "Needs core intent" : !hasAudience ? "Needs audience" : !hasBrand ? "Needs brand voice" : clarity < 75 ? "Needs stronger foundation" : "Ready to materialize",
     },
   ];
-}
-
-function completenessColor(c: Completeness) {
-  if (c === "sufficient") return GREEN;
-  if (c === "thin") return AMBER;
-  return "rgba(255,255,255,0.22)";
 }
 
 // ── Readiness ring ────────────────────────────────────────────────────────────
@@ -142,96 +119,6 @@ function ReadinessRing({ score }: { score: number }) {
   );
 }
 
-// ── Low-signal state ──────────────────────────────────────────────────────────
-function LowSignalState({ genome, readiness }: { genome: ProjectGenome | null; readiness: number }) {
-  const anchors = deriveAnchors(genome);
-  const known = anchors.filter(a => a.value);
-  const missing = anchors.filter(a => !a.value);
-  const questions = genome?.openQuestions ?? [];
-
-  return (
-    <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 20 }}>
-      <div>
-        <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: MUTED, opacity: 0.45, marginBottom: 8 }}>
-          Signal
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: 2,
-              width: `${Math.min(100, readiness)}%`,
-              background: readiness >= 34 ? AMBER : "rgba(255,255,255,0.22)",
-              transition: "width 600ms ease",
-            }} />
-          </div>
-          <span style={{ fontFamily: MONO, fontSize: 9, color: MUTED, opacity: 0.55, flexShrink: 0 }}>
-            {readiness}% · need {READINESS_THRESHOLD}%
-          </span>
-        </div>
-      </div>
-
-      {known.length > 0 && (
-        <div>
-          <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: MUTED, opacity: 0.45, marginBottom: 10 }}>
-            Atlas understands
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {known.map(a => (
-              <div key={a.label} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <span style={{ color: GREEN, fontSize: 10, marginTop: 2, flexShrink: 0 }}>✓</span>
-                <div>
-                  <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED, opacity: 0.5, marginBottom: 2 }}>{a.label}</div>
-                  <div style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.75, lineHeight: 1.5 }}>{a.value}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(missing.length > 0 || questions.length > 0) && (
-        <div>
-          <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: MUTED, opacity: 0.45, marginBottom: 10 }}>
-            Still unresolved
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {missing.map(a => (
-              <div key={a.label} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 10, marginTop: 2, flexShrink: 0 }}>○</span>
-                <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase", color: MUTED, opacity: 0.45 }}>{a.label}</div>
-              </div>
-            ))}
-            {questions.slice(0, 3).map((q, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <span style={{ color: AMBER, fontSize: 10, marginTop: 2, flexShrink: 0 }}>?</span>
-                <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.6, lineHeight: 1.45 }}>{q}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{
-        padding: "12px 14px",
-        borderRadius: 8,
-        background: "rgba(255,255,255,0.03)",
-        border: `1px solid ${BORDER}`,
-      }}>
-        <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: MUTED, opacity: 0.4, marginBottom: 6 }}>
-          Recommended next action
-        </div>
-        <div style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.65, lineHeight: 1.5 }}>
-          {known.length === 0
-            ? "Tell Atlas what you're building. Start with the problem it solves."
-            : missing.some(a => a.label === "Core Audience")
-            ? "Define who this is for — their situation before and after your product exists."
-            : "Keep the conversation going. Atlas is building a clearer picture."}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Target row ────────────────────────────────────────────────────────────────
 function TargetRow({ target, selected, onSelect }: { target: Target; selected: boolean; onSelect: () => void }) {
   const [hovered, setHovered] = useState(false);
@@ -245,7 +132,7 @@ function TargetRow({ target, selected, onSelect }: { target: Target; selected: b
       onMouseEnter={() => !isLocked && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 7,
+        display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 7,
         cursor: isLocked ? "default" : "pointer",
         background: selected ? "rgba(201,162,76,0.09)" : hovered ? "rgba(255,255,255,0.035)" : "transparent",
         border: `1px solid ${selected ? "rgba(201,162,76,0.28)" : "transparent"}`,
@@ -254,20 +141,26 @@ function TargetRow({ target, selected, onSelect }: { target: Target; selected: b
         marginBottom: 1,
       }}
     >
-      <div style={{
-        width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-        background: isAvailable ? "rgba(201,162,76,0.1)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${iconColor}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 8,
-      }}>
-        {isAvailable ? "✓" : target.status === "warning" ? "⚠" : "🔒"}
-      </div>
+      <span style={{ color: iconColor, fontSize: 11, flexShrink: 0, lineHeight: 1 }}>
+        {isAvailable ? "▶" : isLocked ? "🔒" : "⚠"}
+      </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontFamily: SANS, color: FG, fontWeight: selected ? 600 : 400 }}>{target.label}</div>
-        <div style={{ fontSize: 9, fontFamily: MONO, color: MUTED, opacity: 0.45, letterSpacing: "0.02em", marginTop: 1 }}>{target.reason}</div>
+        <div style={{ fontSize: 12, fontFamily: SANS, color: FG, fontWeight: selected ? 600 : 400, opacity: 0.85 }}>{target.label}</div>
+        <div style={{ fontSize: 9, fontFamily: MONO, color: MUTED, opacity: 0.4, letterSpacing: "0.02em", marginTop: 1 }}>{target.reason}</div>
       </div>
       {selected && <div style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />}
+    </div>
+  );
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontFamily: MONO, fontSize: 8, letterSpacing: "0.16em",
+      textTransform: "uppercase", color: MUTED, opacity: 0.45, marginBottom: 10,
+    }}>
+      {children}
     </div>
   );
 }
@@ -287,7 +180,6 @@ export function ManifestPanel({
   projectName,
   readiness,
   onMaterialize,
-  manifestDecision,
   manifestLoading = false,
 }: ManifestPanelProps) {
   const [genome, setGenome] = useState<ProjectGenome | null>(null);
@@ -314,10 +206,20 @@ export function ManifestPanel({
       .finally(() => setGenomeLoading(false));
   }, [projectId]);
 
-  const targets = deriveTargets(genome);
   const anchors = deriveAnchors(genome);
+  const targets = deriveTargets(genome);
+  const known = anchors.filter(a => a.value);
+  const missing = anchors.filter(a => !a.value);
+  const openQuestions = genome?.openQuestions ?? [];
+
   const hasSelected = Boolean(selectedTarget);
   const selectedIsAvailable = targets.find(t => t.id === selectedTarget)?.status === "available";
+
+  const nextAction = known.length === 0
+    ? "Tell Atlas what you're building. Start with the problem it solves."
+    : missing.some(a => a.label === "Core audience")
+    ? "Define who this is for — their situation before and after your product exists."
+    : "Keep going. Atlas is building a clearer picture with every exchange.";
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--atlas-surface-alt)" }}>
@@ -332,7 +234,7 @@ export function ManifestPanel({
             Manifest
           </div>
           <div style={{ fontFamily: SANS, fontSize: 11, color: MUTED, opacity: 0.55 }}>
-            {isReady ? "What can become real" : "Building signal…"}
+            What can become real
           </div>
         </div>
         <ReadinessRing score={readiness} />
@@ -340,47 +242,63 @@ export function ManifestPanel({
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        {genomeLoading && (
+        {genomeLoading ? (
           <div style={{ padding: 24, display: "flex", justifyContent: "center" }}>
             <div style={{ fontFamily: MONO, fontSize: 9, color: MUTED, opacity: 0.4, letterSpacing: "0.12em" }}>
               Reading project…
             </div>
           </div>
-        )}
+        ) : (
+          <div style={{ padding: "16px 16px 12px", display: "flex", flexDirection: "column", gap: 20 }}>
 
-        {!genomeLoading && !isReady && (
-          <LowSignalState genome={genome} readiness={readiness} />
-        )}
-
-        {!genomeLoading && isReady && (
-          <div style={{ padding: "16px 16px 12px" }}>
-            {/* DNA anchors — what Atlas understands */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: MUTED, opacity: 0.45, marginBottom: 10 }}>
-                Atlas understands
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {anchors.map(a => (
-                  <div key={a.label} style={{ padding: "8px 0", borderBottom: `1px solid ${BORDER}` }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: a.value ? 4 : 0 }}>
-                      <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.1em", textTransform: "uppercase", color: MUTED, opacity: 0.5 }}>{a.label}</span>
-                      <span style={{ fontFamily: MONO, fontSize: 8, color: completenessColor(a.completeness), opacity: 0.8 }}>
-                        {a.completeness === "sufficient" ? "✓" : a.completeness === "thin" ? "~" : "—"}
-                      </span>
-                    </div>
-                    {a.value && (
-                      <div style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.78, lineHeight: 1.5 }}>{a.value}</div>
-                    )}
+            {/* Atlas knows */}
+            <div>
+              <SectionLabel>Atlas knows</SectionLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {projectName && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                    <span style={{ fontFamily: MONO, fontSize: 9, color: MUTED, opacity: 0.4, flexShrink: 0, minWidth: 60 }}>Project</span>
+                    <span style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.65 }}>{projectName}</span>
+                  </div>
+                )}
+                {known.length === 0 && (
+                  <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.4, lineHeight: 1.5, paddingLeft: 2 }}>
+                    Keep talking with Atlas — understanding builds with every message.
+                  </div>
+                )}
+                {known.map(a => (
+                  <div key={a.label} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ color: GREEN, fontSize: 11, flexShrink: 0, marginTop: 1, lineHeight: 1 }}>✓</span>
+                    <div style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.78, lineHeight: 1.5 }}>{a.value}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Materialization opportunities */}
-            <div>
-              <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.18em", textTransform: "uppercase", color: MUTED, opacity: 0.45, marginBottom: 8 }}>
-                Materialization opportunities
+            {/* Atlas still needs */}
+            {(missing.length > 0 || openQuestions.length > 0) && (
+              <div>
+                <SectionLabel>Atlas still needs</SectionLabel>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {missing.map(a => (
+                    <div key={a.label} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                      <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11, flexShrink: 0, lineHeight: 1 }}>○</span>
+                      <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.55 }}>{a.label}</div>
+                    </div>
+                  ))}
+                  {openQuestions.slice(0, 3).map((q, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>○</span>
+                      <div style={{ fontFamily: SANS, fontSize: 12, color: MUTED, opacity: 0.5, lineHeight: 1.45 }}>{q}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* Available opportunities */}
+            <div>
+              <SectionLabel>Available opportunities</SectionLabel>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 {targets.map(t => (
                   <TargetRow
@@ -392,11 +310,28 @@ export function ManifestPanel({
                 ))}
               </div>
             </div>
+
+            {/* Recommended next action — shown only below threshold */}
+            {!isReady && (
+              <div style={{
+                padding: "11px 13px",
+                borderRadius: 8,
+                background: "rgba(255,255,255,0.03)",
+                border: `1px solid ${BORDER}`,
+              }}>
+                <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: MUTED, opacity: 0.35, marginBottom: 5 }}>
+                  Next
+                </div>
+                <div style={{ fontFamily: SANS, fontSize: 12, color: FG, opacity: 0.58, lineHeight: 1.55 }}>
+                  {nextAction}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Footer — ▶ action */}
+      {/* Footer — ▶ Materialize */}
       <div style={{ padding: "12px 16px", borderTop: `1px solid ${BORDER}`, flexShrink: 0 }}>
         {isReady ? (
           <button
@@ -427,7 +362,7 @@ export function ManifestPanel({
             </span>
           </button>
         ) : (
-          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: MUTED, opacity: 0.3, textAlign: "center" }}>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: MUTED, opacity: 0.28, textAlign: "center" }}>
             ▶ available at {READINESS_THRESHOLD}% signal
           </div>
         )}

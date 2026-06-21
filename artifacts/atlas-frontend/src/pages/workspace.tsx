@@ -26,7 +26,6 @@ import { GlossaryTip } from "../components/GlossaryTip";
 import { VisualVault } from "../components/VisualVault";
 import { GenerateBlueprintPill } from "../components/BlueprintsTab";
 import { ImageGenerator } from "../components/ImageGenerator";
-import { ManifestMode } from "../components/ManifestMode";
 import { ManifestPanel } from "../components/ManifestPanel";
 
 import { UnifiedContextDock } from "../components/UnifiedContextDock";
@@ -3221,7 +3220,6 @@ export default function Workspace() {
   );
   const [sandboxCode, setSandboxCode] = useState<string | null>(null);
   const [manifestLoading, setManifestLoading] = useState(false);
-  const [manifestModeOpen, setManifestModeOpen] = useState(false);
   const [manifestPreviewHtml, setManifestPreviewHtml] = useState<string | null>(null);
   const [manifestDecision, setManifestDecision] = useState<ManifestDecision | null>(null);
   const openPreviewPanel = useCallback(() => {
@@ -6021,22 +6019,6 @@ export default function Workspace() {
         onExpandedChange={setSubheaderOpen}
       />
 
-      {manifestModeOpen && (
-        <ManifestMode
-          projectId={typeof id === "number" ? id : null}
-          projectName={project?.name ?? null}
-          onClose={() => setManifestModeOpen(false)}
-          onMaterialize={(target) => {
-            setManifestModeOpen(false);
-            void handleManifest(target);
-          }}
-          loading={manifestLoading}
-          messages={messages as import("@/components/workspace/SessionTimeline").TimelineMessage[]}
-          pushHistory={pushHistory}
-          onRollbackPush={handleRollbackPush}
-          manifestDecision={manifestDecision}
-        />
-      )}
 
       <LaunchModal
         open={launchModal.open}
