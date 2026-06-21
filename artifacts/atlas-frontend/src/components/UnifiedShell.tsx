@@ -101,7 +101,7 @@ function ShellWordmark() {
         aria-label={location === "/home" ? "Return to ambient Nexus" : "Go home"}
         style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}
       >
-        <svg width={isTinyMobile ? 22 : 28} height={isTinyMobile ? 22 : 28} viewBox="0 0 512 512" display="block" style={{ flexShrink: 0, borderRadius: "50%" }} aria-hidden>
+        <svg width={isTinyMobile ? 22 : 28} height={isTinyMobile ? 22 : 28} viewBox="0 0 512 512" display="block" style={{ flexShrink: 0, borderRadius: 5 }} aria-hidden>
           <defs>
             <radialGradient id="hwmpg" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#5B21B6" stopOpacity="0.35" />
@@ -1251,23 +1251,32 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
         aria-label={`Completion ${completion}%. ${decisionsCount} ledger entries. Open breakdown.`}
         title={`Completion ${completion}% — tap for breakdown`}
         style={{
-          display: "inline-flex", alignItems: "center", gap: 3,
-          padding: "4px 2px",
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "2px",
           background: "transparent",
           border: "none",
           cursor: "pointer", userSelect: "none", WebkitUserSelect: "none",
-          color: ringColor,
+          color: "var(--atlas-fg)",
           flexShrink: 0,
         }}
       >
-        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, lineHeight: 1, opacity: 0.75 }}>◔</span>
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
+          <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(var(--atlas-muted-rgb),0.22)" strokeWidth={2.5} />
+          <circle
+            cx={CX} cy={CY} r={R} fill="none"
+            stroke={ringColor} strokeWidth={2.5} strokeLinecap="round"
+            strokeDasharray={`${dash} ${C - dash}`}
+            transform={`rotate(-90 ${CX} ${CY})`}
+            style={{ transition: "stroke-dasharray 240ms ease" }}
+          />
+          {active && (
+            <circle cx={CX} cy={CY} r={2.2} fill="#4ade80" className="atlas-pulse-dot" />
+          )}
+        </svg>
         <span style={{
-          fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700,
-          letterSpacing: "0.02em", lineHeight: 1,
+          fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
+          letterSpacing: "0.02em", lineHeight: 1, color: ringColor,
         }}>{completion}%</span>
-        {active && (
-          <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#4ade80", display: "inline-block", marginLeft: 1 }} className="atlas-pulse-dot" />
-        )}
       </button>
 
       {open && (
@@ -1928,7 +1937,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             {!(location === "/home" && currentDepth === "ambient") && <HudToggleDot />}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, position: "relative", zIndex: 2 }}>
-            <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />
+            {!isTinyMobile && <ShellCompletionChip projectId={location === "/home" ? null : activeProjectId} />}
             <UserMenuDropdown onOpenProfile={() => window.dispatchEvent(new CustomEvent("axiom:open-account-hub"))} />
           </div>
 
