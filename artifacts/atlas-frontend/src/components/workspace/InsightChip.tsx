@@ -59,6 +59,26 @@ export function InsightChip({
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <button
               type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("atlas:inject-composer", { detail: { text: chip.label } }));
+                onExecute?.(chip.label);
+                setOpen(false);
+              }}
+              style={{
+                background: "color-mix(in oklab, var(--atlas-fg) 8%, transparent)",
+                border: "1px solid rgba(var(--atlas-muted-rgb),0.22)",
+                borderRadius: 6, color: "var(--atlas-muted)",
+                fontSize: 10, fontFamily: "var(--app-font-mono)",
+                cursor: "pointer", padding: "4px 10px",
+                letterSpacing: "0.05em", transition: "background 130ms",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-fg) 14%, transparent)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-fg) 8%, transparent)")}
+            >
+              Execute
+            </button>
+            <button
+              type="button"
               onClick={() => { onPark(chip); setOpen(false); }}
               style={{
                 background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
@@ -71,7 +91,7 @@ export function InsightChip({
               onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 20%, transparent)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in oklab, var(--atlas-gold) 12%, transparent)")}
             >
-              Park this →
+              Park →
             </button>
             {onDismiss && (
               <button
@@ -81,7 +101,7 @@ export function InsightChip({
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.38")}
               >
-                Dismiss
+                Ignore
               </button>
             )}
             <button

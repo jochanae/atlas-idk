@@ -1310,7 +1310,11 @@ export function AssistantBubble({
               <InsightChip
                 key={chip.label}
                 chip={chip}
-                onPark={(c) => onPark(`${c.label}${c.insight ? `: ${c.insight}` : ""}`)}
+                onPark={(c) => onPark(
+                  `${c.label}${c.insight ? `: ${c.insight}` : ""}`,
+                  message.id,
+                  c.label,
+                )}
               />
             ))}
           </div>
@@ -2089,7 +2093,7 @@ export function AssistantBubble({
                   icon={<Archive size={13} strokeWidth={1.6} />}
                   label={parkDone ? "Parked" : "Park to inbox"}
                   disabled={parkDone}
-                  onClick={() => { setMenuOpen(false); if (!parkDone) { onPark(message.content); setParkDone(true); } }}
+                  onClick={() => { setMenuOpen(false); if (!parkDone) { onPark(message.content, message.id); setParkDone(true); } }}
                 />
                 {onForgeIntake && (
                   <MenuItem

@@ -3566,6 +3566,18 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
 
+  // Chip Execute action → inject text into composer
+  useEffect(() => {
+    const onInject = (e: Event) => {
+      const text = (e as CustomEvent<{ text: string }>).detail?.text ?? "";
+      if (!text) return;
+      setInput((prev: string) => prev ? `${prev} ${text}` : text);
+      setTimeout(() => { try { textareaRef.current?.focus(); } catch {} }, 80);
+    };
+    window.addEventListener("atlas:inject-composer", onInject);
+    return () => window.removeEventListener("atlas:inject-composer", onInject);
+  }, []);
+
   // Default split: chat-leaning. Tablets (768–1279) get 62/38 so the chat
   // pane has room for the composer; desktop (≥1280) gets 55/45.
   const defaultChatPct = () => {
@@ -4840,6 +4852,21 @@ export default function Workspace() {
     }
   }, [sessionId, id, doSend]);
 
+  // Resume from Parking Lot → pre-fill composer with parked item title
+  useEffect(() => {
+    const key = `atlas-resume-fill-${id}`;
+    let text: string | null = null;
+    try { text = sessionStorage.getItem(key); } catch {}
+    if (text) {
+      try { sessionStorage.removeItem(key); } catch {}
+      const resumeText = text;
+      setTimeout(() => {
+        setInput(resumeText);
+        try { textareaRef.current?.focus(); } catch {}
+      }, 150);
+    }
+  }, [id]);
+
   // Auto-prime AI context when arriving via external import (Compani, Axiom, etc.)
   // Only fires once, only when no messages exist, only when project has memory
   useEffect(() => {
@@ -5167,12 +5194,12 @@ export default function Workspace() {
   };
 
   const handlePark = useCallback(
-    (content: string) => {
+    (content: string, sourceMessageId?: number, contextWhat?: string) => {
       if (!sessionId) return;
       haptic.short();
       playPark();
       createEntry.mutate(
-        { projectId: id, data: { ...buildParkedEntryPayload(content, sessionId) } },
+        { projectId: id, data: { ...buildParkedEntryPayload(content, sessionId, sourceMessageId, contextWhat) } },
         { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(id, {}) }); void refreshParkedEntries(); } }
       );
     },

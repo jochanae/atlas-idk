@@ -213,6 +213,8 @@ export interface Entry {
   mode?: string | null;
   /** @nullable */
   sourceMessageId?: number | null;
+  /** @nullable */
+  contextWhat?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -267,6 +269,8 @@ export interface CreateEntryBody {
   mode?: string | null;
   /** @nullable */
   sourceMessageId?: number | null;
+  /** @nullable */
+  contextWhat?: string | null;
 }
 
 export type UpdateEntryBodyStatus =

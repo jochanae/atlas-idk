@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Entry, updateEntry, useUpdateEntry, getListEntriesQueryKey } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Entry, useUpdateEntry, useDeleteEntry, getListEntriesQueryKey } from "@workspace/api-client-react";
+import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { timeAgo } from "@/lib/formatters";
 import { haptic } from "@/lib/long-press-tip";
@@ -12,19 +12,31 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
   const [expanded, setExpanded] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
-  const handleResolve = () => {
-    if (done) return;
-    updateEntry.mutate(
-      { id: entry.id, data: { status: "archived" } },
-      { onSuccess: () => { setDone(true); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) }); } }
-    );
+  const [, navigate] = useLocation();
+  const deleteEntry = useDeleteEntry();
+
+  const handleResume = () => {
+    try { sessionStorage.setItem(`atlas-resume-fill-${entry.projectId}`, entry.title); } catch {}
+    navigate(`/project/${entry.projectId}`);
   };
 
-  const handleCommit = () => {
+  const handleSpecify = () => {
+    window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail: { change: entry.title } }));
+  };
+
+  const handleConvertToDecision = () => {
     if (done) return;
     haptic.short();
     updateEntry.mutate(
       { id: entry.id, data: { status: "committed", severity: "committed" } },
+      { onSuccess: () => { setDone(true); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) }); } }
+    );
+  };
+
+  const handleDelete = () => {
+    if (done) return;
+    deleteEntry.mutate(
+      { id: entry.id },
       { onSuccess: () => { setDone(true); queryClient.invalidateQueries({ queryKey: getListEntriesQueryKey(entry.projectId, {}) }); } }
     );
   };
@@ -73,7 +85,7 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
       {/* Source line (collapsed) */}
       {!expanded && (
         <div style={{ paddingLeft: 20, paddingBottom: 6, fontSize: "var(--ts-micro)", color: "rgba(var(--atlas-muted-rgb),0.38)", fontFamily: "var(--app-font-mono)" }}>
-          chat message · {timeAgo(entry.createdAt)}
+          {entry.contextWhat ? `From: ${entry.contextWhat}` : "Parked"} · {timeAgo(entry.createdAt)}
         </div>
       )}
 
@@ -188,21 +200,31 @@ export function ParkingLotEntry({ entry }: { entry: Entry }) {
 
           {/* Source */}
           <div style={{ fontSize: "var(--ts-micro)", color: "rgba(var(--atlas-muted-rgb),0.35)", fontFamily: "var(--app-font-mono)", marginBottom: 12 }}>
-            chat message · {timeAgo(entry.createdAt)}
+            {entry.contextWhat ? `From: ${entry.contextWhat}` : "Parked"} · {timeAgo(entry.createdAt)}
           </div>
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={handleResolve} disabled={done || updateEntry.isPending}
-              style={{ flex: 1, padding: "7px", borderRadius: 7, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.22)", color: "var(--atlas-muted)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
-              onMouseEnter={(e) => { if (!done) e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.5)"; }}
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 5 }}>
+            <button onClick={handleResume}
+              style={{ padding: "5px 10px", borderRadius: 6, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.22)", color: "var(--atlas-muted)", cursor: "pointer", transition: "all 150ms ease" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.5)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.22)"; }}
-            >Resolve</button>
-            <button onClick={handleCommit} disabled={done || updateEntry.isPending}
-              style={{ flex: 1, padding: "7px", borderRadius: 7, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
+            >Resume</button>
+            <button onClick={handleSpecify}
+              style={{ padding: "5px 10px", borderRadius: 6, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "transparent", border: "1px solid rgba(var(--atlas-muted-rgb),0.22)", color: "var(--atlas-muted)", cursor: "pointer", transition: "all 150ms ease" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.5)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(var(--atlas-muted-rgb),0.22)"; }}
+            >Specify</button>
+            <button onClick={handleConvertToDecision} disabled={done || updateEntry.isPending}
+              style={{ padding: "5px 10px", borderRadius: 6, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "rgba(201,162,76,0.08)", border: "1px solid rgba(201,162,76,0.2)", color: "var(--atlas-gold)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
               onMouseEnter={(e) => { if (!done) e.currentTarget.style.background = "rgba(201,162,76,0.15)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; }}
-            >Commit</button>
+            >→ Decision</button>
+            <button onClick={handleDelete} disabled={done || deleteEntry.isPending}
+              style={{ padding: "5px 10px", borderRadius: 6, fontSize: "var(--ts-micro)", fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", background: "transparent", border: "1px solid rgba(239,68,68,0.18)", color: "rgba(239,68,68,0.55)", cursor: done ? "default" : "pointer", transition: "all 150ms ease" }}
+              onMouseEnter={(e) => { if (!done) e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(239,68,68,0.18)"; }}
+            >Delete</button>
           </div>
         </div>
       )}
