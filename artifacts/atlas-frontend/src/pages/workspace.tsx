@@ -43,6 +43,7 @@ import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
 import { StreamingText, ChunkedBubbles } from "@/components/workspace/StreamingText";
 import { LinePatchReviewCard, ReviewPlanCard, ReviewTabPanel, PushDiffCard } from "@/components/workspace/ReviewCards";
 import { SessionTimeline } from "@/components/workspace/SessionTimeline";
+import { ViewChangesPanel } from "@/components/workspace/ViewChangesPanel";
 import { MenuBtn, AtlasLogo } from "@/components/workspace/atoms";
 import { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow } from "@/components/workspace/CommitHistory";
 export { CommitHistoryCard, CommitHistorySkeleton, buildTree, GhTreeNodeRow };
@@ -6622,11 +6623,12 @@ export default function Workspace() {
             />
           ) : leftTab === "diff" ? (
             <div style={{ flex: 1, height: "100%", overflowY: "auto" }} className="scrollbar-none">
-              <SessionTimeline
+              <ViewChangesPanel
+                projectId={id}
+                linkedRepo={linkedRepo}
                 messages={messages}
                 pushHistory={pushHistory}
                 onRollbackPush={handleRollbackPush}
-                projectId={id}
               />
             </div>
           ) : leftTab === "terminal" ? (
