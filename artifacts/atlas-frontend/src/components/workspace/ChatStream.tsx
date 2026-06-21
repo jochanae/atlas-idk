@@ -257,6 +257,9 @@ export interface ChatStreamProps {
   // push
   onPushSuccess: (records: PushRecordLike[]) => void;
 
+  // file writing confirmation callback (optional — workspace.tsx wires this to append a chat line)
+  onWriteFile?: (path: string) => void;
+
   // commit-carryover (ambient thread → committed project): marker + greeting bubble
   // rendered at the tail of the carried thread.
   commitCarryover?: { committedAt: string; greeting?: string | null } | null;
@@ -282,6 +285,7 @@ export function ChatStream(props: ChatStreamProps) {
     onCommitCardDone,
     planStates, planExecutions, onPlanStateChange, onPlanExecutionChange, onExecuteHomePlan,
     onPushSuccess,
+    onWriteFile,
     commitCarryover,
   } = props;
 
@@ -465,6 +469,7 @@ export function ChatStream(props: ChatStreamProps) {
                     filePath={msg.writeFileProposal.path}
                     content={msg.content}
                     projectId={projectId}
+                    onWriteSuccess={onWriteFile}
                   />
                 </div>
               )}

@@ -6543,6 +6543,12 @@ export default function Workspace() {
               }}
               onStreamActivityComplete={() => setActivityStream({ active: false, content: "" })}
               onPushSuccess={handleReviewPushSuccess}
+              onWriteFile={(path) => {
+                setMessages((prev) => [
+                  ...prev,
+                  { role: "assistant", content: `✓ Wrote ${path}`, sentAt: new Date().toISOString() },
+                ]);
+              }}
               onPrCreated={(url) => { setSessionPrUrl(url); setLeftTab("diff"); }}
             />
           ) : leftTab === "diff" ? (

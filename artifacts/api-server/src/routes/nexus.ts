@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
+import fsPromises from "fs/promises";
+import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, projectGenomeTable, readinessSnapshotsTable } from "@workspace/db";
@@ -13,6 +15,7 @@ import { logger } from "../lib/logger";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_IDENTITY } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
+import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 
 const router: IRouter = Router();
@@ -3375,6 +3378,62 @@ router.post("/nexus/name", async (req, res): Promise<void> => {
     res.json({ name: name || "" });
   } catch {
     res.json({ name: "" });
+  }
+});
+
+// POST /api/nexus/write-file — nexus-layer file write (auth + ownership validated here)
+// Body: { projectId: number, path: string, content: string }
+// Returns: { ok: true, path: string, lines: number, existed: boolean }
+router.post("/nexus/write-file", async (req, res): Promise<void> => {
+  try {
+    const userId = (req as any).authUser?.id as number | undefined;
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const { projectId, path: userPath, content } = req.body as {
+      projectId?: unknown; path?: unknown; content?: unknown;
+    };
+
+    const numericProjectId = Number(projectId);
+    if (!numericProjectId || !Number.isFinite(numericProjectId)) {
+      res.status(400).json({ error: "Invalid project id" }); return;
+    }
+    if (typeof userPath !== "string" || !userPath.trim()) {
+      res.status(400).json({ error: "Missing path" }); return;
+    }
+    if (typeof content !== "string") {
+      res.status(400).json({ error: "Missing content" }); return;
+    }
+    if (Buffer.byteLength(content, "utf-8") > 512_000) {
+      res.status(413).json({ error: "Content too large (max 500 KB)" }); return;
+    }
+
+    if (!await assertProjectOwner(numericProjectId, userId)) {
+      res.status(404).json({ error: "Project not found" }); return;
+    }
+
+    const workspaceDir = await ensureProjectWorkspaceDir(numericProjectId);
+    let absPath: string;
+    try {
+      absPath = resolveWorkspacePath(workspaceDir, userPath);
+    } catch {
+      res.status(400).json({ error: "Invalid path" }); return;
+    }
+
+    let existed = false;
+    try {
+      await fsPromises.access(absPath);
+      existed = true;
+    } catch { /* new file */ }
+
+    await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+    await fsPromises.writeFile(absPath, content, "utf-8");
+
+    const lines = content.split("\n").length;
+    logger.info({ userId, projectId: numericProjectId, path: userPath, lines, existed }, "nexus write-file");
+    res.json({ ok: true, path: userPath, lines, existed });
+  } catch (err) {
+    logger.error({ err }, "nexus write-file error");
+    res.status(500).json({ error: "Failed to write file" });
   }
 });
 

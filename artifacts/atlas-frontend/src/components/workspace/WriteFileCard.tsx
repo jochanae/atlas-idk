@@ -6,6 +6,7 @@ interface Props {
   filePath: string;
   content: string;
   projectId: number;
+  onWriteSuccess?: (path: string) => void;
 }
 
 function extractCodeFromContent(content: string): string {
@@ -16,25 +17,26 @@ function extractCodeFromContent(content: string): string {
   return content;
 }
 
-export function WriteFileCard({ filePath, content, projectId }: Props) {
+export function WriteFileCard({ filePath, content, projectId, onWriteSuccess }: Props) {
   const qc = useQueryClient();
   const [status, setStatus] = useState<"idle" | "writing" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [existingLines, setExistingLines] = useState<number | null>(null);
   const [overwriteConfirm, setOverwriteConfirm] = useState(false);
 
   const codeContent = extractCodeFromContent(content);
-  const lineCount = codeContent.split("\n").length;
+  const newLineCount = codeContent.split("\n").length;
   const fileName = filePath.split("/").pop() ?? filePath;
 
   const doWrite = async () => {
     setStatus("writing");
     setErrorMsg(null);
     try {
-      const res = await fetch(`/api/fs/${projectId}/file`, {
+      const res = await fetch("/api/nexus/write-file", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: filePath, content: codeContent }),
+        body: JSON.stringify({ projectId, path: filePath, content: codeContent }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string };
@@ -43,6 +45,7 @@ export function WriteFileCard({ filePath, content, projectId }: Props) {
       setStatus("done");
       qc.invalidateQueries({ queryKey: ["ws-tree", projectId] });
       qc.invalidateQueries({ queryKey: ["ws-gitstatus", projectId] });
+      onWriteSuccess?.(filePath);
     } catch (err) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Write failed");
@@ -60,6 +63,8 @@ export function WriteFileCard({ filePath, content, projectId }: Props) {
         { credentials: "include" },
       );
       if (check.ok) {
+        const text = await check.text().catch(() => "");
+        setExistingLines(text.split("\n").length);
         setOverwriteConfirm(true);
         return;
       }
@@ -96,7 +101,10 @@ export function WriteFileCard({ filePath, content, projectId }: Props) {
           fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.55,
           fontFamily: "var(--app-font-mono)", marginTop: 1,
         }}>
-          {filePath !== fileName ? filePath + " · " : ""}{lineCount} line{lineCount !== 1 ? "s" : ""}
+          {filePath !== fileName ? filePath + " · " : ""}
+          {status === "done"
+            ? `✓ wrote ${newLineCount} line${newLineCount !== 1 ? "s" : ""}`
+            : `${newLineCount} line${newLineCount !== 1 ? "s" : ""}`}
         </div>
       </div>
 
@@ -116,14 +124,21 @@ export function WriteFileCard({ filePath, content, projectId }: Props) {
           </button>
         </div>
       ) : overwriteConfirm ? (
-        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-          <span style={{ fontSize: 10.5, color: "rgba(201,162,76,0.8)", alignSelf: "center" }}>Overwrite?</span>
-          <button type="button" onClick={() => setOverwriteConfirm(false)} style={btnSecondary}>
-            Cancel
-          </button>
-          <button type="button" onClick={doWrite} disabled={status === "writing"} style={btnPrimary}>
-            Yes, overwrite
-          </button>
+        <div style={{ flexShrink: 0, textAlign: "right" }}>
+          {existingLines !== null && (
+            <div style={{ fontSize: 10, color: "rgba(201,162,76,0.65)", fontFamily: "var(--app-font-mono)", marginBottom: 5 }}>
+              {existingLines} lines → {newLineCount} lines
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 6 }}>
+            <span style={{ fontSize: 10.5, color: "rgba(201,162,76,0.8)", alignSelf: "center" }}>Overwrite?</span>
+            <button type="button" onClick={() => { setOverwriteConfirm(false); setExistingLines(null); }} style={btnSecondary}>
+              Cancel
+            </button>
+            <button type="button" onClick={doWrite} disabled={status === "writing"} style={btnPrimary}>
+              Yes, overwrite
+            </button>
+          </div>
         </div>
       ) : (
         <button
