@@ -2347,13 +2347,23 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   // Build layered system prompt — use project data already fetched in the first Promise.all
   let systemPrompt = isFoundationMode ? FOUNDATION_SYSTEM_PROMPT : DEV_SYSTEM_PROMPT;
-  systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
+  // ACTIVE PROJECT is injected FIRST — before platform knowledge — so the model knows
+  // exactly which project it is in before any other context is loaded.
   if (!isFoundationMode && project) {
     const projectAlreadyNamedInstruction = !DEFAULT_NAMES.has((project.name ?? "").trim())
-      ? `\nThis project is already named ${project.name}. Do not suggest renaming it, do not ask the user for a name, and do not propose alternative names unless the user explicitly asks.`
+      ? `\nThis project is already named "${project.name}". Do not suggest renaming it, do not ask the user for a name, and do not propose alternative names unless the user explicitly asks.`
       : "";
-    systemPrompt += `\n\n--- ACTIVE PROJECT ---\nProject name: ${project.name}${project.description ? `\nDescription: ${project.description}` : ""}\nThis is the project you are currently working in. Always refer to it by name. Never ask the user what project they are working on.${projectAlreadyNamedInstruction}\n--- END ACTIVE PROJECT ---`;
+    systemPrompt += `\n\n╔══════════════════════════════════╗
+║  ACTIVE PROJECT: ${project.name.toUpperCase().slice(0, 30).padEnd(30, " ")}  ║
+╚══════════════════════════════════╝
+You are currently inside the workspace for: **${project.name}**${project.description ? `\n${project.description}` : ""}
+
+This is your locked context for this entire conversation. Every question, every answer, every suggestion refers to **${project.name}** — not to any other project in the portfolio. If the user asks "what can we do here?" or "what are we building?" the answer is always about **${project.name}**.
+
+HARD RULE: Never answer from the context of a different project unless the user explicitly names it by asking a cross-project question ("how does this compare to IntoIQ?" / "across all my projects…"). A general question like "what can we do here?" is always about the active project.${projectAlreadyNamedInstruction}
+--- END ACTIVE PROJECT ---`;
   }
+  systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
   if (userId && portfolioRows.length > 0) {
     const portfolioSummary = portfolioRows.map((p) => {
       const parts = [`- **${p.name}**`];
@@ -2367,8 +2377,8 @@ router.post("/chat", async (req, res): Promise<void> => {
       .join("\n");
     const portfolioLabel = isFoundationMode
       ? "YOUR FULL PORTFOLIO (all projects — use this to answer cross-portfolio questions)"
-      : "YOUR PORTFOLIO (other projects — use this for cross-project questions, prioritization, and portfolio-wide insight)";
-    systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### What you already know about each:\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
+      : "YOUR PORTFOLIO (other projects — BACKGROUND ONLY — do NOT answer from this context unless the user explicitly asks about multiple projects or their portfolio)";
+    systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### Background knowledge (do NOT surface unless cross-project question):\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
   }
 
   // If user is asking a portfolio-wide question from inside a workspace, pull committed
