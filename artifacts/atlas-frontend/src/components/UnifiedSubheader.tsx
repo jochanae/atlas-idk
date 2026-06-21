@@ -195,6 +195,7 @@ export function UnifiedSubheader({
               WebkitOverflowScrolling: "touch",
               scrollbarWidth: "none",
               flex: 1,
+              paddingRight: showActionBar ? (isMobile ? 52 : 58) : 8,
             }}
           >
             {TABS.map((tab) => {

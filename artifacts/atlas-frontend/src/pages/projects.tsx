@@ -9,6 +9,7 @@ import { NewProjectModal } from "../components/NewProjectModal";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "../lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { fetchGitHubStatus, type NormalizedGitHubStatus } from "@/hooks/useGitHub";
 
 const sMono = { fontFamily: "'IBM Plex Mono', var(--app-font-mono)" } as const;
@@ -70,6 +71,7 @@ const PROJECT_STATUS_TABS: Array<{ value: ProjectStatusTab; label: string }> = [
 ];
 
 export default function Projects() {
+  const isTinyMobile = useIsTinyScreen();
   const { data: projectsRaw, isLoading: isLoadingData } = useListProjects({
     query: {
       queryKey: getListProjectsQueryKey(),
@@ -421,9 +423,11 @@ export default function Projects() {
       }}>
         <Link href="/home" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
           <img src="/axiom-logo.svg" alt="Axiom" width={24} height={24} style={{ borderRadius: "20%", flexShrink: 0 }} />
-          <span style={{ ...sMono, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
-            AXIOM
-          </span>
+          {!isTinyMobile && (
+            <span style={{ ...sMono, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
+              AXIOM
+            </span>
+          )}
         </Link>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
