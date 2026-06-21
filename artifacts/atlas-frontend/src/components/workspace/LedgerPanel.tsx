@@ -311,7 +311,6 @@ export function LedgerPanel({
             </div>
           </>
         )}
-      </div>
 
       {/* ── Changes (unified session timeline: prompts, thoughts, edits, pushes) ── */}
       <SessionTimeline
@@ -321,9 +320,8 @@ export function LedgerPanel({
         projectId={projectId}
       />
 
-
       {/* Footer buttons */}
-      <div style={{ padding: "8px 12px", borderTop: "1px solid var(--atlas-border)", flexShrink: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ padding: "8px 12px", borderTop: "1px solid var(--atlas-border)", display: "flex", flexDirection: "column", gap: 6 }}>
         <button
           onClick={() => setShowAdd(!showAdd)}
           style={{
@@ -361,6 +359,7 @@ export function LedgerPanel({
         >
           {vaultSaved ? "◆ Saved to Vault" : vaultSaving ? "Saving…" : "◆ Save to Vault"}
         </button>
+      </div>
       </div>
     </div>
   );

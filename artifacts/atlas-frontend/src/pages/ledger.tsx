@@ -879,7 +879,11 @@ function GlobalDecisionsView({
               return (
                 <div
                   key={group.key}
-                  style={{ marginBottom: 8, borderRadius: 8, border: "1px solid var(--border)", background: "transparent", padding: "11px 14px", display: "flex", flexDirection: "column" as const, gap: 5 }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setLocation(`/entry/${entry.id}`)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setLocation(`/entry/${entry.id}`); }}
+                  style={{ marginBottom: 8, borderRadius: 8, border: "1px solid var(--border)", background: "transparent", padding: "11px 14px", display: "flex", flexDirection: "column" as const, gap: 5, cursor: "pointer" }}
                 >
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: severityColor, flexShrink: 0, marginTop: 4 }} />
@@ -907,7 +911,7 @@ function GlobalDecisionsView({
                   <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 17, flexWrap: "wrap" as const }}>
                     {entry.projectName && (
                       <span
-                        onClick={() => setFocusProjectId(entry.projectId)}
+                        onClick={(e) => { e.stopPropagation(); setFocusProjectId(entry.projectId); }}
                         style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--accent-gold)", background: "color-mix(in oklab, var(--accent-gold) 10%, transparent)", border: "0.5px solid color-mix(in oklab, var(--accent-gold) 28%, transparent)", padding: "1px 7px", borderRadius: 3, textTransform: "uppercase" as const, cursor: "pointer", flexShrink: 0 }}
                       >
                         {entry.projectName}
