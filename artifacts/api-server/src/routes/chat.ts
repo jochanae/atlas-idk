@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable } from "@workspace/db";
+import { maybeExtractGenome } from "../lib/genomeExtract";
 import { eq, sql, and, gte, desc, ne, isNotNull } from "drizzle-orm";
 import { decryptToken } from "../lib/tokenCrypto";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -3494,6 +3495,9 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     }).catch((err) => {
       logger.warn({ err, userId }, "user memory extraction failed");
     });
+  }
+  if (projectId) {
+    void maybeExtractGenome(projectId);
   }
 });
 

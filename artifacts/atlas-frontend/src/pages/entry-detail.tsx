@@ -289,6 +289,27 @@ export default function EntryDetail() {
           <span style={{ opacity: 0.4 }}>· #{entry.id}</span>
         </div>
 
+        {/* Blocker callout */}
+        {entry.severity === "blocker" && (
+          <div style={{ padding: "11px 14px", borderRadius: 6, background: "color-mix(in oklab, var(--ember) 9%, transparent)", border: "1px solid color-mix(in oklab, var(--ember) 30%, transparent)", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ color: "var(--ember)", fontSize: 14, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚑</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ ...sMono, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "var(--ember)", marginBottom: 4, opacity: 0.9 }}>
+                Flagged as Blocker
+              </div>
+              {entry.deviationReason ? (
+                <p style={{ margin: 0, fontSize: 12.5, color: "var(--foreground)", opacity: 0.85, lineHeight: 1.65 }}>
+                  {entry.deviationReason}
+                </p>
+              ) : (
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted-text)", opacity: 0.6, lineHeight: 1.65, fontStyle: "italic" as const }}>
+                  No reason recorded. Edit this entry to add context.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Supersedes provenance */}
         {entry.supersedesId && (
           <OriginLink entryId={entry.supersedesId} projectId={entry.projectId} />

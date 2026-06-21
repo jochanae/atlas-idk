@@ -134,7 +134,7 @@ async function loadCommittedEntries(projectId: number): Promise<string> {
 }
 
 async function countProjectMessages(projectId: number): Promise<number> {
-  const [row] = await db
+  const [nexusRow] = await db
     .select({ n: count() })
     .from(nexusMessagesTable)
     .where(and(
@@ -142,7 +142,15 @@ async function countProjectMessages(projectId: number): Promise<number> {
       sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
       sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'reflection'`,
     ));
-  return row?.n ?? 0;
+  const nexusCount = Number(nexusRow?.n ?? 0);
+  if (nexusCount >= MIN_MESSAGES) return nexusCount;
+
+  const [chatRow] = await db
+    .select({ n: count() })
+    .from(chatMessagesTable)
+    .innerJoin(sessionsTable, eq(chatMessagesTable.sessionId, sessionsTable.id))
+    .where(eq(sessionsTable.projectId, projectId));
+  return nexusCount + Number(chatRow?.n ?? 0);
 }
 
 async function upsertObjects(

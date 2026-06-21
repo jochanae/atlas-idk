@@ -600,8 +600,12 @@ export function AxiomFlow({
   const theme = useThemeMode();
   const palette = flowPaletteFor(theme);
   const [, setLocation] = useLocation();
-  const [nodes, setNodes] = useState<ArchNode[]>(() => loadNodes(storageKey, projectName));
-  const [edges, setEdges] = useState<ArchEdge[]>(() => loadEdges(storageKey));
+  const [nodes, setNodes] = useState<ArchNode[]>(() =>
+    projectId ? buildInitialNodes(projectName) : loadNodes(storageKey, projectName)
+  );
+  const [edges, setEdges] = useState<ArchEdge[]>(() =>
+    projectId ? INITIAL_EDGES : loadEdges(storageKey)
+  );
   const mapSeenKey = projectId ? `atlas-map-seen-${projectId}` : "atlas-map-seen-standalone";
   const [summaryCollapsed, setSummaryCollapsed] = useState(() => {
     try { return localStorage.getItem(mapSeenKey) === "1"; } catch { return false; }
@@ -876,8 +880,10 @@ export function AxiomFlow({
 
   useEffect(() => {
     onNodesChange?.(nodes);
-    try { localStorage.setItem(storageKey, JSON.stringify(nodes)); } catch {}
-  }, [nodes, onNodesChange, storageKey]);
+    if (!projectId) {
+      try { localStorage.setItem(storageKey, JSON.stringify(nodes)); } catch {}
+    }
+  }, [nodes, onNodesChange, storageKey, projectId]);
 
   const flowSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -897,8 +903,10 @@ export function AxiomFlow({
   }, [nodes, edges, projectId]);
 
   useEffect(() => {
-    try { localStorage.setItem(`${storageKey}-edges`, JSON.stringify(edges)); } catch {}
-  }, [edges, storageKey]);
+    if (!projectId) {
+      try { localStorage.setItem(`${storageKey}-edges`, JSON.stringify(edges)); } catch {}
+    }
+  }, [edges, storageKey, projectId]);
 
   useEffect(() => {
     if (nodes.filter(n => n.type === "goal").length <= 1) return;

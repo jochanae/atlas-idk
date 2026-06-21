@@ -1062,7 +1062,8 @@ function EntryRow({
               )
             )}
             {entry.costOfLesson != null && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, color: "var(--ember)", letterSpacing: "0.06em" }}>{formatCost(entry.costOfLesson)}</span>}
-            {entry.isViolation && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--ember)", background: "rgba(146,64,14,0.12)", border: "1px solid rgba(146,64,14,0.25)", padding: "1px 6px", borderRadius: 3, textTransform: "uppercase" as const }}>shifted</span>}
+            {entry.severity === "blocker" && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--ember)", background: "color-mix(in oklab, var(--ember) 11%, transparent)", border: "0.5px solid color-mix(in oklab, var(--ember) 30%, transparent)", padding: "1px 6px", borderRadius: 3, textTransform: "uppercase" as const }}>⚑ Flagged</span>}
+            {entry.isViolation && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.08em", color: "var(--ember)", background: "rgba(146,64,14,0.12)", border: "1px solid rgba(146,64,14,0.25)", padding: "1px 6px", borderRadius: 3, textTransform: "uppercase" as const }}>override</span>}
           </div>
         </div>
 
@@ -1081,6 +1082,12 @@ function EntryRow({
             <p style={{ fontSize: 12, lineHeight: 1.7, color: "var(--muted-text)", margin: "8px 0 0", fontStyle: "italic" as const }}>
               {entry.details}
             </p>
+          )}
+          {entry.severity === "blocker" && entry.deviationReason && (
+            <div style={{ marginTop: 10, padding: "8px 11px", borderRadius: 5, background: "color-mix(in oklab, var(--ember) 8%, transparent)", border: "0.5px solid color-mix(in oklab, var(--ember) 25%, transparent)" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "var(--ember)", marginBottom: 4, opacity: 0.85 }}>Flagged reason</div>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--foreground)", opacity: 0.8 }}>{entry.deviationReason}</p>
+            </div>
           )}
           {entry.touched && entry.touched.length > 0 && (
             <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
