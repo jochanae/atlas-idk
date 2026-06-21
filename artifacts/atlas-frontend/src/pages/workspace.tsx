@@ -920,6 +920,7 @@ function RightPanel({
   onToggleFullscreen,
   onFileContext,
   onLinkedRepoChange,
+  hasLinkedRepo = false,
   dbUrl,
   onDbUrlChange,
   pushHistory,
@@ -978,6 +979,7 @@ function RightPanel({
   onToggleFullscreen?: () => void;
   onFileContext: (ctx: string | null) => void;
   onLinkedRepoChange: (repo: LinkedRepo | null) => void;
+  hasLinkedRepo?: boolean;
   dbUrl: string | null;
   onDbUrlChange: (url: string | null) => void;
   pushHistory: PushRecord[];
@@ -1043,6 +1045,7 @@ function RightPanel({
     return "ledger";
   });
   const [ledgerSubTab, setLedgerSubTab] = useState<"entries" | "memory">("entries");
+  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github">("workspace");
 
   useEffect(() => {
     if (forceTab) setTab(forceTab);
@@ -1380,7 +1383,68 @@ function RightPanel({
       {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
       {tab === "files" && (
-        <WorkspaceFilesPanel projectId={projectId} />
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
+          {/* Sub-tab bar: Workspace (primary) + GitHub (secondary, only when a repo is linked) */}
+          <div style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: 0,
+            padding: "0 10px",
+            borderBottom: "1px solid rgba(201,162,76,0.10)",
+            flexShrink: 0,
+            height: 33,
+          }}>
+            {(["workspace", ...(hasLinkedRepo ? ["github"] : [])] as const).map((st) => {
+              const active = workspaceSubTab === st;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setWorkspaceSubTab(st)}
+                  style={{
+                    padding: "0 10px",
+                    height: "100%",
+                    fontSize: 10.5,
+                    fontFamily: "var(--app-font-mono)",
+                    letterSpacing: "0.09em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    borderBottom: active ? "2px solid var(--atlas-gold)" : "2px solid transparent",
+                    background: "transparent",
+                    cursor: "pointer",
+                    color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    opacity: active ? 1 : (st === "github" ? 0.45 : 0.6),
+                    fontWeight: active ? 600 : 400,
+                    transition: "color 120ms ease, opacity 120ms ease",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {st === "workspace" ? "Workspace" : "GitHub"}
+                </button>
+              );
+            })}
+          </div>
+          {/* Sub-tab content */}
+          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+            {workspaceSubTab === "workspace" && (
+              <WorkspaceFilesPanel projectId={projectId} />
+            )}
+            {workspaceSubTab === "github" && hasLinkedRepo && (
+              <FilesPanel
+                projectId={projectId}
+                onFileContext={onFileContext}
+                onLinkedRepoChange={onLinkedRepoChange}
+                dbUrl={dbUrl}
+                onDbUrlChange={onDbUrlChange}
+                onZipTrigger={onZipTrigger}
+                zipLoaded={zipLoaded}
+                zipFileName={zipFileName}
+                onOpenConnections={openConnections}
+                wsLens={wsLens}
+              />
+            )}
+          </div>
+        </div>
       )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} onOpenAccountSettings={onOpenAccountSettings} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
       {tab === "secrets" && (
@@ -6394,6 +6458,7 @@ export default function Workspace() {
             entries={entries || []}
             onFileContext={setFileContext}
             onLinkedRepoChange={setLinkedRepo}
+            hasLinkedRepo={!!linkedRepo}
             dbUrl={dbUrl}
             onDbUrlChange={setDbUrl}
             pushHistory={pushHistory}
@@ -7025,6 +7090,7 @@ export default function Workspace() {
                 onToggleFullscreen={() => setRightFullscreen((f) => !f)}
                 onFileContext={setFileContext}
                 onLinkedRepoChange={setLinkedRepo}
+                hasLinkedRepo={!!linkedRepo}
                 dbUrl={dbUrl}
                 onDbUrlChange={setDbUrl}
                 pushHistory={pushHistory}
