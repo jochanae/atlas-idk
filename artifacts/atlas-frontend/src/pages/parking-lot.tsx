@@ -113,6 +113,12 @@ export default function ParkingLot() {
   // Resume: navigate back to source project workspace
   const handleResume = (entry: Entry) => {
     if (entry.projectId) {
+      try {
+        const prefill = entry.contextWhat
+          ? `${entry.title} (${entry.contextWhat})`
+          : entry.title;
+        sessionStorage.setItem(`atlas-resume-fill-${entry.projectId}`, prefill);
+      } catch {}
       setLocation(`/project/${entry.projectId}`);
     } else {
       setLocation("/home");
