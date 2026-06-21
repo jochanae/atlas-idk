@@ -1251,31 +1251,23 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
         aria-label={`Completion ${completion}%. ${decisionsCount} ledger entries. Open breakdown.`}
         title={`Completion ${completion}% — tap for breakdown`}
         style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "3px 8px", borderRadius: 999,
-          background: open ? "rgba(var(--atlas-muted-rgb),0.12)" : "transparent",
-          border: "1px solid transparent",
+          display: "inline-flex", alignItems: "center", gap: 3,
+          padding: "4px 2px",
+          background: "transparent",
+          border: "none",
           cursor: "pointer", userSelect: "none", WebkitUserSelect: "none",
-          color: "var(--atlas-fg)",
+          color: ringColor,
+          flexShrink: 0,
         }}
       >
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ display: "block" }}>
-          <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(var(--atlas-muted-rgb),0.22)" strokeWidth={2.5} />
-          <circle
-            cx={CX} cy={CY} r={R} fill="none"
-            stroke={ringColor} strokeWidth={2.5} strokeLinecap="round"
-            strokeDasharray={`${dash} ${C - dash}`}
-            transform={`rotate(-90 ${CX} ${CY})`}
-            style={{ transition: "stroke-dasharray 240ms ease" }}
-          />
-          {active && (
-            <circle cx={CX} cy={CY} r={2.2} fill="#4ade80" className="atlas-pulse-dot" />
-          )}
-        </svg>
+        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, lineHeight: 1, opacity: 0.75 }}>◔</span>
         <span style={{
-          fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
+          fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700,
           letterSpacing: "0.02em", lineHeight: 1,
         }}>{completion}%</span>
+        {active && (
+          <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#4ade80", display: "inline-block", marginLeft: 1 }} className="atlas-pulse-dot" />
+        )}
       </button>
 
       {open && (

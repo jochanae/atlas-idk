@@ -783,6 +783,12 @@ export function ChatComposer(props: ChatComposerProps) {
 
               <button
                 className="atlas-send-btn"
+                onPointerDown={(e) => {
+                  // Prevent textarea blur before click fires on mobile —
+                  // without this, blur→inputFocused=false→sheet collapses
+                  // and the first tap never reaches handleSend.
+                  e.preventDefault();
+                }}
                 onClick={() => {
                   if (chatPending && onAbort) { onAbort(); return; }
                   handleSend({ mode: composerMode });
