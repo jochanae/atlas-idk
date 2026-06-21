@@ -12,7 +12,7 @@ import {
   assertProjectOwner,
 } from "../lib/projectWorkspace";
 import {
-  getAccountGithubToken,
+  resolveGithubTokenForRequest,
   parseLinkedRepo,
   buildCloneUrl,
   redactToken,
@@ -314,7 +314,14 @@ router.get("/fs/:projectId/gitstatus", async (req: Request, res: Response): Prom
       });
     });
 
-    res.json({ files });
+    const hasRemote = await new Promise<boolean>((resolve) => {
+      execFile("git", ["remote"], { cwd: workspaceDir, maxBuffer: 4096 }, (err, stdout) => {
+        if (err) { resolve(false); return; }
+        resolve(stdout.trim().length > 0);
+      });
+    });
+
+    res.json({ files, hasRemote });
   } catch (err) {
     req.log?.error({ err }, "fs gitstatus error");
     res.status(500).json({ error: "Failed to get git status" });
@@ -349,13 +356,13 @@ router.post("/fs/:projectId/git/commit-push", async (req: Request, res: Response
   let pushUrl: string | null = null;
   try {
     const [project] = await db
-      .select({ linkedRepo: projectsTable.linkedRepo })
+      .select({ linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken })
       .from(projectsTable)
       .where(eq(projectsTable.id, projectId))
       .limit(1);
     const repo = parseLinkedRepo(project?.linkedRepo ?? null);
     if (repo) {
-      githubToken = await getAccountGithubToken(userId);
+      githubToken = await resolveGithubTokenForRequest(userId, project?.githubToken ?? null);
       pushUrl = buildCloneUrl(repo, githubToken);
     }
   } catch {

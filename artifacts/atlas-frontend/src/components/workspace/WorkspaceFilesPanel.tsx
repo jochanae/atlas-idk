@@ -17,10 +17,12 @@ interface TreeResponse extends FsNode {
 
 interface GitStatusResponse {
   files: Record<string, string>;
+  hasRemote?: boolean;
 }
 
 interface Props {
   projectId: number;
+  onOpenTerminal?: () => void;
 }
 
 const BASE = `/api/fs`;
@@ -47,7 +49,7 @@ function gitBadge(code: string): { label: string; color: string } | null {
   return { label: code.trim().slice(0, 1) || "~", color: "rgba(180,180,180,0.7)" };
 }
 
-export function WorkspaceFilesPanel({ projectId }: Props) {
+export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
   const qc = useQueryClient();
   const treeKey = ["ws-tree", projectId];
   const gitKey = ["ws-gitstatus", projectId];
@@ -235,6 +237,8 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
   };
 
   const changedCount = Object.keys(gitFiles).length;
+  const hasRemote = gitStatus?.hasRemote ?? false;
+  const canCommit = changedCount > 0 && hasRemote;
 
   return (
     <div style={{
@@ -275,7 +279,7 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
             )}
           </div>
           <div style={{ display: "flex", gap: 2 }}>
-            {changedCount > 0 && (
+            {canCommit && (
               <IconBtn title="Commit & Push" onClick={() => setCommitPanelOpen(o => !o)}>
                 <GitCommit size={12} strokeWidth={1.8} style={{ color: commitPanelOpen ? "var(--atlas-gold)" : undefined }} />
               </IconBtn>
@@ -331,7 +335,7 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
         )}
 
         {/* Commit panel */}
-        {changedCount > 0 && commitPanelOpen && (
+        {canCommit && commitPanelOpen && (
           <div style={{
             borderTop: "1px solid rgba(201,162,76,0.15)",
             background: "rgba(201,162,76,0.03)",
@@ -345,6 +349,32 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
               textTransform: "uppercase", opacity: 0.8,
             }}>
               Commit & Push
+            </div>
+
+            {/* Changed files — read-only list */}
+            <div style={{
+              maxHeight: 80, overflowY: "auto",
+              display: "flex", flexDirection: "column", gap: 1,
+            }}>
+              {Object.entries(gitFiles).map(([filePath, code]) => {
+                const b = gitBadge(code);
+                return (
+                  <div key={filePath} style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    fontSize: 10, fontFamily: "var(--app-font-mono)",
+                    color: "var(--atlas-fg)", opacity: 0.75,
+                  }}>
+                    {b && (
+                      <span style={{ color: b.color, flexShrink: 0, width: 10, textAlign: "center", fontWeight: 700 }}>
+                        {b.label}
+                      </span>
+                    )}
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {filePath}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Commit message input */}
@@ -419,12 +449,31 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
                   </div>
                 )}
                 {commitError && (
-                  <div style={{
-                    fontSize: 10.5, color: "rgba(220,80,80,0.85)",
-                    fontFamily: "var(--app-font-sans)",
-                    padding: "4px 0", lineHeight: 1.4,
-                  }}>
-                    {commitError}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{
+                      fontSize: 10.5, color: "rgba(220,80,80,0.85)",
+                      fontFamily: "var(--app-font-sans)",
+                      lineHeight: 1.4,
+                    }}>
+                      {commitError}
+                    </div>
+                    {onOpenTerminal && (
+                      <button
+                        type="button"
+                        onClick={onOpenTerminal}
+                        style={{
+                          alignSelf: "flex-start",
+                          padding: "3px 8px", borderRadius: 5,
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          background: "transparent",
+                          color: "var(--atlas-muted)",
+                          fontSize: 10, fontFamily: "var(--app-font-mono)",
+                          cursor: "pointer", opacity: 0.75,
+                        }}
+                      >
+                        View in Terminal →
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

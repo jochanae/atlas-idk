@@ -921,6 +921,7 @@ function RightPanel({
   onFileContext,
   onLinkedRepoChange,
   hasLinkedRepo = false,
+  onOpenTerminal,
   dbUrl,
   onDbUrlChange,
   pushHistory,
@@ -980,6 +981,7 @@ function RightPanel({
   onFileContext: (ctx: string | null) => void;
   onLinkedRepoChange: (repo: LinkedRepo | null) => void;
   hasLinkedRepo?: boolean;
+  onOpenTerminal?: () => void;
   dbUrl: string | null;
   onDbUrlChange: (url: string | null) => void;
   pushHistory: PushRecord[];
@@ -1427,7 +1429,7 @@ function RightPanel({
           {/* Sub-tab content */}
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
             {workspaceSubTab === "workspace" && (
-              <WorkspaceFilesPanel projectId={projectId} />
+              <WorkspaceFilesPanel projectId={projectId} onOpenTerminal={onOpenTerminal} />
             )}
             {workspaceSubTab === "github" && hasLinkedRepo && (
               <FilesPanel
@@ -6459,6 +6461,7 @@ export default function Workspace() {
             onFileContext={setFileContext}
             onLinkedRepoChange={setLinkedRepo}
             hasLinkedRepo={!!linkedRepo}
+            onOpenTerminal={() => setLeftTab("terminal")}
             dbUrl={dbUrl}
             onDbUrlChange={setDbUrl}
             pushHistory={pushHistory}
@@ -7091,6 +7094,7 @@ export default function Workspace() {
                 onFileContext={setFileContext}
                 onLinkedRepoChange={setLinkedRepo}
                 hasLinkedRepo={!!linkedRepo}
+                onOpenTerminal={() => setLeftTab("terminal")}
                 dbUrl={dbUrl}
                 onDbUrlChange={setDbUrl}
                 pushHistory={pushHistory}
