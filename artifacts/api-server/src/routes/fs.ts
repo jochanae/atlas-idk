@@ -2,13 +2,21 @@ import { Router, type Request, type Response, type IRouter } from "express";
 import fsNode from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
+import { eq } from "drizzle-orm";
+import { db, projectsTable } from "@workspace/db";
 import {
   projectWorkspaceDir,
   ensureProjectWorkspaceDir,
   resolveWorkspacePath,
   assertProjectOwner,
 } from "../lib/projectWorkspace";
+import {
+  getAccountGithubToken,
+  parseLinkedRepo,
+  buildCloneUrl,
+  redactToken,
+} from "../lib/terminalSandbox";
 
 const router: IRouter = Router();
 
@@ -310,6 +318,96 @@ router.get("/fs/:projectId/gitstatus", async (req: Request, res: Response): Prom
   } catch (err) {
     req.log?.error({ err }, "fs gitstatus error");
     res.status(500).json({ error: "Failed to get git status" });
+  }
+});
+
+// POST /api/fs/:projectId/git/commit-push  { message }
+router.post("/fs/:projectId/git/commit-push", async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const projectId = parseProjectId(req.params.projectId);
+  if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+  if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const { message } = req.body as { message?: string };
+  if (!message?.trim()) { res.status(400).json({ error: "Missing commit message" }); return; }
+  if (message.trim().length > 500) { res.status(400).json({ error: "Commit message too long (max 500 chars)" }); return; }
+
+  const workspaceDir = projectWorkspaceDir(projectId);
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const send = (event: string, data: string) => {
+    try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
+  };
+
+  // Resolve GitHub token + push URL for authenticated push
+  let githubToken: string | null = null;
+  let pushUrl: string | null = null;
+  try {
+    const [project] = await db
+      .select({ linkedRepo: projectsTable.linkedRepo })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+    const repo = parseLinkedRepo(project?.linkedRepo ?? null);
+    if (repo) {
+      githubToken = await getAccountGithubToken(userId);
+      pushUrl = buildCloneUrl(repo, githubToken);
+    }
+  } catch {
+    // no linked repo or token — push will use whatever credentials git has configured
+  }
+
+  const runCmd = (args: string[], display: string): Promise<number> => {
+    return new Promise((resolve) => {
+      send("status", `$ git ${display}\n`);
+      const proc = spawn("git", args, {
+        cwd: workspaceDir,
+        env: { ...process.env as Record<string, string>, GIT_TERMINAL_PROMPT: "0" },
+        stdio: "pipe",
+      });
+      req.on("close", () => { try { proc.kill("SIGTERM"); } catch {} });
+      proc.stdout.on("data", (chunk: Buffer) => {
+        const text = githubToken ? redactToken(chunk.toString(), githubToken) : chunk.toString();
+        send("output", text);
+      });
+      proc.stderr.on("data", (chunk: Buffer) => {
+        const text = githubToken ? redactToken(chunk.toString(), githubToken) : chunk.toString();
+        send("output", text);
+      });
+      proc.on("error", (err) => { send("output", `error: ${err.message}\n`); resolve(1); });
+      proc.on("close", (code) => resolve(code ?? 1));
+    });
+  };
+
+  try {
+    const addCode = await runCmd(["add", "-A"], "add -A");
+    if (addCode !== 0) {
+      send("done", JSON.stringify({ ok: false, error: "git add failed" }));
+      res.end(); return;
+    }
+
+    const commitCode = await runCmd(["commit", "-m", message.trim()], `commit -m "${message.trim()}"`);
+    if (commitCode !== 0) {
+      send("done", JSON.stringify({ ok: false, error: "git commit failed — nothing to commit, or check output above" }));
+      res.end(); return;
+    }
+
+    const pushArgs = pushUrl ? ["push", pushUrl] : ["push"];
+    const pushDisplay = pushUrl ? `push <authenticated-url>` : "push";
+    const pushCode = await runCmd(pushArgs, pushDisplay);
+    const ok = pushCode === 0;
+    send("done", JSON.stringify({ ok, error: ok ? null : "git push failed — check output above" }));
+    res.end();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Git operation failed";
+    req.log?.error({ err }, "fs git commit-push error");
+    send("error", msg);
+    res.end();
   }
 });
 

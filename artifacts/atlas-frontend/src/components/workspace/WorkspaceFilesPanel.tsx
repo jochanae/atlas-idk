@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus, Save, Trash2, RefreshCw } from "lucide-react";
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus, Save, Trash2, RefreshCw, GitCommit } from "lucide-react";
 
 interface FsNode {
   name: string;
@@ -79,6 +79,15 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
   const [newNamePath, setNewNamePath] = useState<string | null>(null);
   const [newNameValue, setNewNameValue] = useState("");
 
+  // Commit panel state
+  const [commitMsg, setCommitMsg] = useState("");
+  const [isCommitting, setIsCommitting] = useState(false);
+  const [commitOutput, setCommitOutput] = useState("");
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const [commitSuccess, setCommitSuccess] = useState(false);
+  const [commitPanelOpen, setCommitPanelOpen] = useState(false);
+  const outputRef = useRef<HTMLDivElement>(null);
+
   const isDirty = editContent !== savedContent;
 
   const openFileFn = useCallback(async (filePath: string) => {
@@ -144,6 +153,87 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
     openFileFn(name.trim());
   };
 
+  const commitAndPush = async () => {
+    if (!commitMsg.trim() || isCommitting) return;
+    setIsCommitting(true);
+    setCommitOutput("");
+    setCommitError(null);
+    setCommitSuccess(false);
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/${projectId}/git/commit-push`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: commitMsg.trim() }),
+      });
+    } catch (err) {
+      setCommitError(err instanceof Error ? err.message : "Network error");
+      setIsCommitting(false);
+      return;
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setCommitError((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      setIsCommitting(false);
+      return;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) { setCommitError("No response body"); setIsCommitting(false); return; }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          let type = "";
+          let data = "";
+          for (const line of part.split("\n")) {
+            if (line.startsWith("event: ")) type = line.slice(7).trim();
+            if (line.startsWith("data: ")) data = line.slice(6);
+          }
+          if (!type || !data) continue;
+          try {
+            const parsed: string = JSON.parse(data);
+            if (type === "output" || type === "status") {
+              setCommitOutput(prev => {
+                const next = prev + parsed;
+                setTimeout(() => {
+                  if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
+                }, 0);
+                return next;
+              });
+            } else if (type === "done") {
+              const result: { ok: boolean; error: string | null } = JSON.parse(parsed);
+              if (result.ok) {
+                setCommitSuccess(true);
+                setCommitMsg("");
+                invalidateAll();
+              } else {
+                setCommitError(result.error ?? "Failed");
+              }
+            } else if (type === "error") {
+              setCommitError(parsed);
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch (err) {
+      setCommitError(err instanceof Error ? err.message : "Stream error");
+    }
+    setIsCommitting(false);
+  };
+
   const changedCount = Object.keys(gitFiles).length;
 
   return (
@@ -165,6 +255,7 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
           padding: "10px 12px 8px",
           borderBottom: "1px solid rgba(201,162,76,0.08)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexShrink: 0,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.8 }}>
@@ -184,6 +275,11 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
             )}
           </div>
           <div style={{ display: "flex", gap: 2 }}>
+            {changedCount > 0 && (
+              <IconBtn title="Commit & Push" onClick={() => setCommitPanelOpen(o => !o)}>
+                <GitCommit size={12} strokeWidth={1.8} style={{ color: commitPanelOpen ? "var(--atlas-gold)" : undefined }} />
+              </IconBtn>
+            )}
             <IconBtn title="New file" onClick={createNewFile}><Plus size={12} strokeWidth={1.8} /></IconBtn>
             <IconBtn title="Refresh" onClick={invalidateAll}>
               <RefreshCw size={11} strokeWidth={1.8} />
@@ -228,8 +324,111 @@ export function WorkspaceFilesPanel({ projectId }: Props) {
             fontSize: 9.5, fontFamily: "var(--app-font-mono)",
             color: "var(--atlas-muted)", opacity: 0.45,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            flexShrink: 0,
           }}>
             {tree.workspaceDir}
+          </div>
+        )}
+
+        {/* Commit panel */}
+        {changedCount > 0 && commitPanelOpen && (
+          <div style={{
+            borderTop: "1px solid rgba(201,162,76,0.15)",
+            background: "rgba(201,162,76,0.03)",
+            padding: "10px 12px 12px",
+            flexShrink: 0,
+            display: "flex", flexDirection: "column", gap: 8,
+          }}>
+            <div style={{
+              fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+              color: "var(--atlas-gold)", letterSpacing: "0.12em",
+              textTransform: "uppercase", opacity: 0.8,
+            }}>
+              Commit & Push
+            </div>
+
+            {/* Commit message input */}
+            <input
+              type="text"
+              placeholder="Commit message…"
+              value={commitMsg}
+              onChange={(e) => setCommitMsg(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitAndPush(); }}
+              disabled={isCommitting}
+              style={{
+                width: "100%", padding: "6px 8px",
+                borderRadius: 6,
+                border: "1px solid rgba(201,162,76,0.25)",
+                background: "rgba(255,255,255,0.03)",
+                color: "var(--atlas-fg)",
+                fontSize: 11.5, fontFamily: "var(--app-font-sans)",
+                outline: "none", boxSizing: "border-box",
+                opacity: isCommitting ? 0.5 : 1,
+              }}
+            />
+
+            {/* Commit & Push button */}
+            <button
+              type="button"
+              onClick={commitAndPush}
+              disabled={!commitMsg.trim() || isCommitting}
+              style={{
+                padding: "6px 10px", borderRadius: 6,
+                border: "1px solid rgba(201,162,76,0.35)",
+                background: commitMsg.trim() && !isCommitting ? "rgba(201,162,76,0.12)" : "transparent",
+                color: commitMsg.trim() && !isCommitting ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                fontSize: 11.5, fontFamily: "var(--app-font-sans)", fontWeight: 600,
+                cursor: commitMsg.trim() && !isCommitting ? "pointer" : "default",
+                opacity: commitMsg.trim() && !isCommitting ? 1 : 0.4,
+                transition: "all 150ms ease",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              }}
+            >
+              <GitCommit size={11} strokeWidth={1.8} />
+              {isCommitting ? "Working…" : "Commit & Push"}
+            </button>
+
+            {/* Output area */}
+            {(commitOutput || commitError || commitSuccess) && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {commitOutput && (
+                  <div
+                    ref={outputRef}
+                    style={{
+                      maxHeight: 100, overflowY: "auto",
+                      fontFamily: "var(--app-font-mono)", fontSize: 10,
+                      color: "var(--atlas-fg)", opacity: 0.75,
+                      background: "rgba(0,0,0,0.2)",
+                      border: "1px solid rgba(201,162,76,0.1)",
+                      borderRadius: 5,
+                      padding: "6px 8px",
+                      whiteSpace: "pre-wrap", wordBreak: "break-all",
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {commitOutput}
+                  </div>
+                )}
+                {commitSuccess && (
+                  <div style={{
+                    fontSize: 11, color: "rgba(100,200,120,0.9)",
+                    fontFamily: "var(--app-font-mono)",
+                    padding: "4px 0",
+                  }}>
+                    ✓ Pushed successfully
+                  </div>
+                )}
+                {commitError && (
+                  <div style={{
+                    fontSize: 10.5, color: "rgba(220,80,80,0.85)",
+                    fontFamily: "var(--app-font-sans)",
+                    padding: "4px 0", lineHeight: 1.4,
+                  }}>
+                    {commitError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
