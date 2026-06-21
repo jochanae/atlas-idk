@@ -3535,18 +3535,18 @@ router.post("/scenario-keep", async (req, res): Promise<void> => {
 
 // ── Quick Prompt generation ───────────────────────────────────────────────────
 router.post("/specify", async (req, res) => {
-  const { intent, targetSurfaces, targetDevice, doNotChange, currentProblem, projectName, projectContext } = req.body as {
-    intent: string;
-    targetSurfaces?: string;
-    targetDevice?: string;
-    doNotChange?: string;
-    currentProblem?: string;
+  const { change, scope, exclusions, broken, success, projectName, projectContext } = req.body as {
+    change: string;
+    scope?: string;
+    exclusions?: string;
+    broken?: string;
+    success?: string;
     projectName?: string;
     projectContext?: string;
   };
 
-  if (!intent?.trim()) {
-    res.status(400).json({ error: "intent is required" });
+  if (!change?.trim()) {
+    res.status(400).json({ error: "change is required" });
     return;
   }
 
@@ -3556,11 +3556,11 @@ router.post("/specify", async (req, res) => {
 
   const userText = [
     contextParts.length > 0 ? contextParts.join("\n") : null,
-    `INTENT: ${intent.trim()}`,
-    targetSurfaces ? `TARGET SURFACES (user-specified): ${targetSurfaces}` : null,
-    targetDevice ? `TARGET DEVICE/BREAKPOINT (user-specified): ${targetDevice}` : null,
-    doNotChange ? `DO NOT CHANGE (user-specified): ${doNotChange}` : null,
-    currentProblem ? `CURRENT PROBLEM (user-specified): ${currentProblem}` : null,
+    `CHANGE (what to build/fix): ${change.trim()}`,
+    scope ? `SCOPE & TARGET SURFACES (user-specified): ${scope}` : null,
+    exclusions ? `DO NOT CHANGE (user-specified): ${exclusions}` : null,
+    broken ? `CURRENT PROBLEM (user-specified): ${broken}` : null,
+    success ? `SUCCESS LOOKS LIKE (user-specified): ${success}` : null,
   ].filter(Boolean).join("\n\n");
 
   const specSystemPrompt = `You are Atlas — the strategic intelligence inside Axiom. Convert raw human intent into a precise 10-section change specification that acts as a boundary document before any AI builder touches the code.
@@ -3604,8 +3604,11 @@ RULES:
 - Every section must be present, even if you must infer from context.
 - Be precise and surgical. This is a contract, not a wish list.
 - Never use vague language like "various files" or "as needed."
-- Sections GOAL, TARGET SURFACES, TARGET BREAKPOINT/DEVICE, DO NOT CHANGE, and CURRENT PROBLEM draw from user input.
-- Sections ALLOWED TO CHANGE, SUCCESS CRITERIA, RISK LEVEL, BLAST RADIUS, and VALIDATION STEPS are Atlas-generated.`;
+- GOAL, TARGET SURFACES, TARGET BREAKPOINT/DEVICE draw from CHANGE and SCOPE inputs.
+- DO NOT CHANGE draws from the EXCLUSIONS input; supplement with sensible defaults.
+- CURRENT PROBLEM draws from the BROKEN input.
+- SUCCESS CRITERIA: if the user supplied "SUCCESS LOOKS LIKE", use it as the seed and expand into 3-5 testable bullet points; otherwise generate from context.
+- ALLOWED TO CHANGE, RISK LEVEL, BLAST RADIUS, and VALIDATION STEPS are Atlas-generated.`;
 
   try {
     const msg = await anthropic.messages.create({

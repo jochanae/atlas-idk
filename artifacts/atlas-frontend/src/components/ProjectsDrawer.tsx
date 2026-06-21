@@ -343,7 +343,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
 
           <SectionLabel>Tools</SectionLabel>
           {onOpenSpecify && (
-            <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify" onClick={() => { onOpenSpecify(); onClose(); }} />
+            <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />
           )}
           <NavRow icon={<Hammer size={14} strokeWidth={1.6} />} label="Workshop" onClick={() => navigate("/workshop")} />
           {activeProjectId && (

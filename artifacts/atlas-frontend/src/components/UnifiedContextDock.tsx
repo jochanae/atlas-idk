@@ -252,14 +252,9 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const resolveLongPress = (): boolean => {
     cancelLongPress();
     const duration = Date.now() - pressStartTime.current;
-    if (duration >= 1200) {
-      try { (navigator as any).vibrate?.([30]); } catch {}
-      goToProjects();
-      return true;
-    }
-    if (duration >= 500) {
-      try { (navigator as any).vibrate?.([18]); } catch {}
-      goToLastProject();
+    if (duration >= 900) {
+      try { (navigator as any).vibrate?.([35]); } catch {}
+      window.dispatchEvent(new CustomEvent("axiom:open-specify"));
       return true;
     }
     return false;

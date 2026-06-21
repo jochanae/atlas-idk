@@ -44,27 +44,25 @@ function parseSpec(raw: string): Array<{ title: string; body: string }> {
 
 export function SpecifySheet() {
   const [open, setOpen] = useState(false);
-  const [projectId, setProjectId] = useState<number | undefined>();
   const [projectName, setProjectName] = useState("");
 
-  const [intent, setIntent] = useState("");
-  const [targetSurfaces, setTargetSurfaces] = useState("");
-  const [targetDevice, setTargetDevice] = useState("");
-  const [doNotChange, setDoNotChange] = useState("");
-  const [currentProblem, setCurrentProblem] = useState("");
+  const [change, setChange] = useState("");
+  const [scope, setScope] = useState("");
+  const [exclusions, setExclusions] = useState("");
+  const [broken, setBroken] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [specOutput, setSpecOutput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const intentRef = useRef<HTMLTextAreaElement>(null);
+  const changeRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail ?? {};
       setOpen(true);
-      if (detail.projectId != null) setProjectId(detail.projectId);
       if (detail.projectName) setProjectName(detail.projectName);
       setSpecOutput("");
       setError(null);
@@ -74,23 +72,22 @@ export function SpecifySheet() {
   }, []);
 
   useEffect(() => {
-    if (open) setTimeout(() => intentRef.current?.focus(), 120);
+    if (open) setTimeout(() => changeRef.current?.focus(), 120);
   }, [open]);
 
   const close = useCallback(() => {
     setOpen(false);
-    setIntent("");
-    setTargetSurfaces("");
-    setTargetDevice("");
-    setDoNotChange("");
-    setCurrentProblem("");
+    setChange("");
+    setScope("");
+    setExclusions("");
+    setBroken("");
+    setSuccess("");
     setSpecOutput("");
     setError(null);
-    setProjectId(undefined);
     setProjectName("");
   }, []);
 
-  const canGenerate = intent.trim().length > 0 && !isGenerating;
+  const canGenerate = change.trim().length > 0 && !isGenerating;
 
   const handleGenerate = useCallback(async () => {
     if (!canGenerate) return;
@@ -98,11 +95,11 @@ export function SpecifySheet() {
     setError(null);
     setSpecOutput("");
     try {
-      const body: Record<string, string> = { intent: intent.trim() };
-      if (targetSurfaces.trim()) body.targetSurfaces = targetSurfaces.trim();
-      if (targetDevice.trim()) body.targetDevice = targetDevice.trim();
-      if (doNotChange.trim()) body.doNotChange = doNotChange.trim();
-      if (currentProblem.trim()) body.currentProblem = currentProblem.trim();
+      const body: Record<string, string> = { change: change.trim() };
+      if (scope.trim()) body.scope = scope.trim();
+      if (exclusions.trim()) body.exclusions = exclusions.trim();
+      if (broken.trim()) body.broken = broken.trim();
+      if (success.trim()) body.success = success.trim();
       if (projectName.trim()) body.projectName = projectName.trim();
       const res = await fetch("/api/specify", {
         method: "POST",
@@ -117,7 +114,7 @@ export function SpecifySheet() {
     } finally {
       setIsGenerating(false);
     }
-  }, [canGenerate, intent, targetSurfaces, targetDevice, doNotChange, currentProblem, projectName]);
+  }, [canGenerate, change, scope, exclusions, broken, success, projectName]);
 
   const handleCopy = useCallback(async () => {
     if (!specOutput) return;
@@ -186,9 +183,9 @@ export function SpecifySheet() {
                   What do you want to change? *
                 </p>
                 <textarea
-                  ref={intentRef}
-                  value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
+                  ref={changeRef}
+                  value={change}
+                  onChange={(e) => setChange(e.target.value)}
                   placeholder="e.g. Add a dismiss button to the decision log card that clears it without logging. Top-right corner, no confirmation."
                   rows={4}
                   style={{
@@ -203,30 +200,13 @@ export function SpecifySheet() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div>
                   <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 6, fontFamily: "var(--app-font-mono)" }}>
-                    Target surfaces <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+                    Scope & target surfaces <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
                   </p>
                   <input
                     type="text"
-                    value={targetSurfaces}
-                    onChange={(e) => setTargetSurfaces(e.target.value)}
-                    placeholder="e.g. workspace chat, decision ledger, mobile home"
-                    style={{
-                      width: "100%", ...FIELD_STYLE, padding: "9px 12px",
-                      color: "var(--atlas-fg)", fontSize: 12, outline: "none",
-                      boxSizing: "border-box", fontFamily: "inherit",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 6, fontFamily: "var(--app-font-mono)" }}>
-                    Target device / breakpoint <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
-                  </p>
-                  <input
-                    type="text"
-                    value={targetDevice}
-                    onChange={(e) => setTargetDevice(e.target.value)}
-                    placeholder="e.g. mobile-first, ≤390px, desktop ≥1024px"
+                    value={scope}
+                    onChange={(e) => setScope(e.target.value)}
+                    placeholder="e.g. workspace chat, mobile ≤390px, decision ledger"
                     style={{
                       width: "100%", ...FIELD_STYLE, padding: "9px 12px",
                       color: "var(--atlas-fg)", fontSize: 12, outline: "none",
@@ -241,8 +221,8 @@ export function SpecifySheet() {
                   </p>
                   <input
                     type="text"
-                    value={doNotChange}
-                    onChange={(e) => setDoNotChange(e.target.value)}
+                    value={exclusions}
+                    onChange={(e) => setExclusions(e.target.value)}
                     placeholder="e.g. workspace.tsx, the API schema, existing animations"
                     style={{
                       width: "100%", ...FIELD_STYLE, padding: "9px 12px",
@@ -254,12 +234,29 @@ export function SpecifySheet() {
 
                 <div>
                   <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 6, fontFamily: "var(--app-font-mono)" }}>
-                    Current problem <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+                    What's broken right now? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
                   </p>
                   <textarea
-                    value={currentProblem}
-                    onChange={(e) => setCurrentProblem(e.target.value)}
+                    value={broken}
+                    onChange={(e) => setBroken(e.target.value)}
                     placeholder="What is broken, missing, or frustrating right now?"
+                    rows={2}
+                    style={{
+                      width: "100%", ...FIELD_STYLE, padding: "9px 12px",
+                      color: "var(--atlas-fg)", fontSize: 12, lineHeight: 1.6,
+                      outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", color: "rgba(var(--atlas-muted-rgb),0.75)", textTransform: "uppercase", marginBottom: 6, fontFamily: "var(--app-font-mono)" }}>
+                    What does success look like? <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+                  </p>
+                  <textarea
+                    value={success}
+                    onChange={(e) => setSuccess(e.target.value)}
+                    placeholder="e.g. The button appears, clicking it dismisses the card instantly, nothing else changes"
                     rows={2}
                     style={{
                       width: "100%", ...FIELD_STYLE, padding: "9px 12px",
