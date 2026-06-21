@@ -1221,13 +1221,20 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     try { localStorage.setItem(READINESS_MODE_KEY, m); } catch {}
   };
 
-  const SIZE = isTinyMobile ? 20 : 26;
-  const R = isTinyMobile ? 7.5 : 10;
+  const SIZE = 26;
+  const R = 10;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
   const C = 2 * Math.PI * R;
   const dash = (completion / 100) * C;
   const ringColor = completion >= 80 ? "#4ade80" : completion >= 50 ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)";
+
+  const PANEL_SIZE = 44;
+  const PANEL_R = 18;
+  const PANEL_CX = PANEL_SIZE / 2;
+  const PANEL_CY = PANEL_SIZE / 2;
+  const PANEL_C = 2 * Math.PI * PANEL_R;
+  const PANEL_DASH = (completion / 100) * PANEL_C;
 
   const go = (path: string) => { setOpen(false); navigate(path); };
 
@@ -1250,21 +1257,23 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
           flexShrink: 0,
         }}
       >
-        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
-          <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(var(--atlas-muted-rgb),0.22)" strokeWidth={2.5} />
-          <circle
-            cx={CX} cy={CY} r={R} fill="none"
-            stroke={ringColor} strokeWidth={2.5} strokeLinecap="round"
-            strokeDasharray={`${dash} ${C - dash}`}
-            transform={`rotate(-90 ${CX} ${CY})`}
-            style={{ transition: "stroke-dasharray 240ms ease" }}
-          />
-          {active && (
-            <circle cx={CX} cy={CY} r={2.2} fill="#4ade80" className="atlas-pulse-dot" />
-          )}
-        </svg>
+        {!isTinyMobile && (
+          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
+            <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(var(--atlas-muted-rgb),0.22)" strokeWidth={2.5} />
+            <circle
+              cx={CX} cy={CY} r={R} fill="none"
+              stroke={ringColor} strokeWidth={2.5} strokeLinecap="round"
+              strokeDasharray={`${dash} ${C - dash}`}
+              transform={`rotate(-90 ${CX} ${CY})`}
+              style={{ transition: "stroke-dasharray 240ms ease" }}
+            />
+            {active && (
+              <circle cx={CX} cy={CY} r={2.2} fill="#4ade80" className="atlas-pulse-dot" />
+            )}
+          </svg>
+        )}
         <span style={{
-          fontFamily: "var(--app-font-mono)", fontSize: isTinyMobile ? 8.5 : 10, fontWeight: 700,
+          fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
           letterSpacing: "0.02em", lineHeight: 1, color: ringColor,
         }}>{completion}%</span>
       </button>
@@ -1274,11 +1283,12 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
           role="dialog"
           aria-label="Project completion"
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
-            width: 300,
-            maxWidth: "calc(100vw - 24px)",
+            position: isTinyMobile ? "fixed" : "absolute",
+            top: isTinyMobile ? 50 : "calc(100% + 8px)",
+            left: isTinyMobile ? 14 : undefined,
+            right: isTinyMobile ? 14 : 0,
+            width: isTinyMobile ? "auto" : 300,
+            maxWidth: isTinyMobile ? undefined : "calc(100vw - 24px)",
             background: "var(--atlas-bg)",
             backdropFilter: "blur(20px)",
             border: "1px solid var(--atlas-border)",
@@ -1291,6 +1301,21 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
           }}
         >
           <div style={{ padding: "14px 14px 10px", borderBottom: "1px solid rgba(var(--atlas-muted-rgb),0.12)", display: "flex", alignItems: "center", gap: 10 }}>
+            {isTinyMobile && (
+              <svg width={PANEL_SIZE} height={PANEL_SIZE} viewBox={`0 0 ${PANEL_SIZE} ${PANEL_SIZE}`} aria-hidden="true" style={{ display: "block", flexShrink: 0 }}>
+                <circle cx={PANEL_CX} cy={PANEL_CY} r={PANEL_R} fill="none" stroke="rgba(var(--atlas-muted-rgb),0.22)" strokeWidth={3} />
+                <circle
+                  cx={PANEL_CX} cy={PANEL_CY} r={PANEL_R} fill="none"
+                  stroke={ringColor} strokeWidth={3} strokeLinecap="round"
+                  strokeDasharray={`${PANEL_DASH} ${PANEL_C - PANEL_DASH}`}
+                  transform={`rotate(-90 ${PANEL_CX} ${PANEL_CY})`}
+                  style={{ transition: "stroke-dasharray 240ms ease" }}
+                />
+                {active && (
+                  <circle cx={PANEL_CX} cy={PANEL_CY} r={3} fill="#4ade80" className="atlas-pulse-dot" />
+                )}
+              </svg>
+            )}
             <div style={{
               fontFamily: "var(--app-font-mono)", fontSize: 18, fontWeight: 700, color: "var(--atlas-fg)", lineHeight: 1,
             }}>{completion}%</div>

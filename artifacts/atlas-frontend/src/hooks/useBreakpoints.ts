@@ -35,9 +35,9 @@ function useIsMobile() {
 
 function useIsTinyScreen() {
   const forceDesktop = useForceDesktop();
-  const [tiny, setTiny] = useState(() => window.innerWidth < 420);
+  const [tiny, setTiny] = useState(() => window.innerWidth < 390);
   useEffect(() => {
-    const handler = () => setTiny(window.innerWidth < 420);
+    const handler = () => setTiny(window.innerWidth < 390);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
