@@ -36,6 +36,7 @@ import { AccountHubPanel } from "../components/AccountHubPanel";
 import { PreviewPanel, type ManifestDecision } from "../components/workspace/PreviewPanel";
 import { LedgerPanel } from "../components/workspace/LedgerPanel";
 import { FilesPanel } from "../components/workspace/FilesPanel";
+import { WorkspaceFilesPanel } from "../components/workspace/WorkspaceFilesPanel";
 import { FlowPanel, extractPersistedFlowNodes } from "../components/workspace/FlowPanel";
 import { MapTab } from "@/components/workspace/MapTab";
 import { ParkingLotEntry } from "@/components/workspace/ParkingLotEntry";
@@ -1377,18 +1378,7 @@ function RightPanel({
       {tab === "artifacts" && <ArtifactsPanel projectId={projectId} />}
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
       {tab === "files" && (
-        <FilesPanel
-          projectId={projectId}
-          onFileContext={onFileContext}
-          onLinkedRepoChange={onLinkedRepoChange}
-          dbUrl={dbUrl}
-          onDbUrlChange={onDbUrlChange}
-          onZipTrigger={onZipTrigger}
-          zipLoaded={zipLoaded}
-          zipFileName={zipFileName}
-          onOpenConnections={openConnections}
-          wsLens={wsLens}
-        />
+        <WorkspaceFilesPanel projectId={projectId} />
       )}
       {tab === "connections" && <ConnectionsTab projectId={projectId} onSwitchToFiles={() => setTab("files")} onOpenAccountSettings={onOpenAccountSettings} showModelPicker={showModelPicker} onShowModelPickerChange={onShowModelPickerChange} />}
       {tab === "secrets" && (

@@ -39,6 +39,7 @@ import imagineRouter from "./imagine";
 import previewRouter from "./preview";
 import manifestRouter from "./manifest";
 import genomeRouter from "./genome";
+import fsRouter from "./fs";
 import artifactsRouter from "./artifacts";
 import codegenRouter from "./codegen";
 import errorsRouter from "./errors";
@@ -110,6 +111,9 @@ router.use(requireAuth, imagineRouter);
 router.use(requireAuth, previewRouter);
 router.use(requireAuth, manifestRouter);
 router.use(requireAuth, genomeRouter);
+
+// Project file system — local workspace read/write
+router.use(requireAuth, fsRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);
