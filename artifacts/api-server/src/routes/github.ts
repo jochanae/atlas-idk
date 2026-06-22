@@ -1368,11 +1368,20 @@ router.post("/github/bootstrap-repo", async (req, res): Promise<void> => {
     .where(eq(projectGenomeTable.projectId, projectId))
     .limit(1);
 
+  // Fetch recent ledger entries to seed ATLAS.md context (most recent 15, newest first)
+  const recentEntries = await db
+    .select({ title: entriesTable.title, mode: entriesTable.mode })
+    .from(entriesTable)
+    .where(eq(entriesTable.projectId, projectId))
+    .orderBy(desc(entriesTable.createdAt))
+    .limit(15);
+
   // Caller can override; otherwise: idea projects → docs-only, everything else → code scaffold
   const isCodeProject = reqIsCodeProject ?? (project?.entityType !== "idea");
   const projectBrief = genome ?? undefined;
+  const atlasContext = { genome: projectBrief, recentEntries };
 
-  const result = await bootstrapGitHubRepo({ token, projectId, projectName, projectBrief, isCodeProject });
+  const result = await bootstrapGitHubRepo({ token, projectId, projectName, projectBrief, isCodeProject, atlasContext });
   if (!result.ok) { res.status(500).json({ error: result.error }); return; }
 
   res.json({ linkedRepo: result.linkedRepo, htmlUrl: result.htmlUrl, repoName: result.repoName });
