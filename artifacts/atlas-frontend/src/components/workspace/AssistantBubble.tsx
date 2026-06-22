@@ -250,7 +250,9 @@ function InlineDiffCard({
       });
       if (!r.ok) { const d = await r.json() as { error?: string }; throw new Error(d.error ?? "Apply failed"); }
       setInlineApplied(edits.map(e => e.path));
-      onPushSuccess([]);
+      // Pass paths so the onPushSuccess handler in workspace.tsx can build the correct message.
+      // PushRecord has many required fields — we only need `path` here, cast through unknown.
+      onPushSuccess(edits.map(e => ({ path: e.path } as unknown as import("@/pages/workspace").PushRecord)));
     } catch (e) {
       setInlineApplyError(e instanceof Error ? e.message : "Apply failed");
     } finally {

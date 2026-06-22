@@ -29,7 +29,7 @@ type LiveStepLike = { verb: string; target?: string; status?: string } | null;
 type PlanExecutionLike = PlanExecution;
 
 function isAutoVerifyMessage(msg: ChatMessage): boolean {
-  return msg.displayAs === "autoVerify" || msg.content.startsWith("[FILE_COMMITTED]");
+  return msg.displayAs === "autoVerify" || msg.content.startsWith("[FILE_COMMITTED]") || msg.content.startsWith("[LOCAL_APPLY_SUCCESS]");
 }
 
 function AutoVerifyMessage({ content }: { content: string }) {

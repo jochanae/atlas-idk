@@ -5718,19 +5718,34 @@ export default function Workspace() {
       if (agenticMode && agenticIterCount >= 8) {
         return;
       }
-      const repoName = linkedRepo?.fullName ?? "unknown repo";
       const filePaths = records.map((record) => record.path).join(", ");
       if (agenticMode) setAgenticIterCount((count) => count + 1);
-      doSend(
-        `[FILE_COMMITTED] ${records.length} file(s) committed to ${repoName}: ${filePaths}. Verify the build.`,
-        sessionId,
-        messagesRef.current,
-        undefined,
-        undefined,
-        { displayAs: "autoVerify" },
-      );
+      if (!linkedRepo) {
+        // Local workspace apply — no GitHub, no commits
+        const count = records.length;
+        const fileList = filePaths ? `: ${filePaths}` : "";
+        doSend(
+          `[LOCAL_APPLY_SUCCESS] ${count} file${count === 1 ? "" : "s"} written to local workspace${fileList}. File tree updated — you can now read these files back.`,
+          sessionId,
+          messagesRef.current,
+          undefined,
+          undefined,
+          { displayAs: "autoVerify" },
+        );
+      } else {
+        // GitHub push — existing commit flow
+        const repoName = linkedRepo.fullName;
+        doSend(
+          `[FILE_COMMITTED] ${records.length} file(s) committed to ${repoName}: ${filePaths}. Verify the build.`,
+          sessionId,
+          messagesRef.current,
+          undefined,
+          undefined,
+          { displayAs: "autoVerify" },
+        );
+      }
     }
-  }, [agenticIterCount, agenticMode, createEntry, doSend, id, linkedRepo?.fullName, queryClient, refreshParkedEntries, sessionId, updateProjectHeader]);
+  }, [agenticIterCount, agenticMode, createEntry, doSend, id, linkedRepo, queryClient, refreshParkedEntries, sessionId, updateProjectHeader]);
 
   // ── Readiness Snapshots ───────────────────────────────────────────────────
   const { data: readinessSnapshots } = useListReadinessSnapshots(

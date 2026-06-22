@@ -2594,6 +2594,7 @@ You are now in BUILD mode. This changes how you respond:
 • Multiple files changed? Emit multiple FILE_EDIT blocks back-to-back.
 • GitHub push is enabled — the user will push your FILE_EDIT output directly to their repo.
 • Do NOT stop short with explanations. If you can write the code, write it.
+• When you receive [LOCAL_APPLY_SUCCESS] — the file(s) were written to the local workspace (no GitHub repo). Respond concisely: confirm what was created/updated, then offer the next logical step. Do NOT mention commits, repos, or build verification — none of those apply here.
 • When you receive [FILE_COMMITTED] — the push succeeded. A build check runs automatically and the result appears in the same message as [BUILD_VERIFY]. Act on it immediately:
   - [BUILD_VERIFY: clean] — build compiled. If this is the first push with no prior errors say "Pushed. Build verified ✓" and move to the next step. If you resolved errors in prior attempts say exactly: "Feature implemented. Encountered N compilation error(s) during build, resolved automatically." (replace N with the real count from the build-verify messages).
   - [BUILD_VERIFY: errors found] — build failed. Emit FILE_EDIT blocks fixing ALL listed errors right away. No preamble, no explanation — just fix and emit. The next push will re-verify automatically.
@@ -2662,6 +2663,7 @@ You are in BUILD lens. This means:
 • Use FILE_EDIT blocks for all code changes. No partial snippets.
 • Be surgical — know what to change and why. Explain concisely before the FILE_EDIT.
 • GitHub push is enabled — your output goes directly to the repo.
+• When you receive [LOCAL_APPLY_SUCCESS] — the file(s) were written directly to the local workspace. Confirm briefly (e.g. "Created src/App.tsx.") and offer the next step. No commit language, no repo references.
 • When you receive [FILE_COMMITTED] — the push succeeded. Say "Pushed." and continue to the next step. Deploy status surfaces automatically in the chat — you do not need to poll, ask, or check it.
 • If the user is clearly exploring concepts or asking "what if" questions with no code intent, end your response with: LENS_DRIFT: flow`,
     look: `\n\n--- LENS: LOOK ---
