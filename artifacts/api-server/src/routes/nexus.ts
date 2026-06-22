@@ -1809,8 +1809,35 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         "Operating": "The project is live and running. Focus on learning from real-world signals, improving, and identifying the next evolution. Ask 'what is the data telling you?' Be reflective and forward-looking.",
       };
 
+      // Build shaping layer string from genome
+      const shapingLines: string[] = [];
+      if (focusGenomeRow?.purpose) shapingLines.push(`Purpose: ${focusGenomeRow.purpose}`);
+      if (focusGenomeRow?.audience) shapingLines.push(`Who: ${focusGenomeRow.audience}`);
+      if (focusGenomeRow?.wedge) shapingLines.push(`Wedge: ${focusGenomeRow.wedge}`);
+      if (focusGenomeRow?.differentiator) shapingLines.push(`Differentiator: ${focusGenomeRow.differentiator}`);
+      if ((focusGenomeRow?.openQuestions ?? []).length > 0) {
+        shapingLines.push(`Unresolved: ${(focusGenomeRow!.openQuestions ?? []).slice(0, 3).join("; ")}`);
+      }
+      const shapingBlock = shapingLines.length > 0
+        ? `\n\nSHAPING LAYER:\n${shapingLines.join("\n")}`
+        : "";
+
       systemPrompt += `\n\n--- FOCUSED PROJECT: ${focusProject.name.toUpperCase()} ---\nThe user has zoomed in on "${focusProject.name}" for this conversation. Prioritize this project's context. Open your FIRST response by explicitly naming the project — begin with "${focusProject.name} —" or "On ${focusProject.name}:" so the user knows the focus is active. After that, answer normally without repeating the label on every message.`;
+      systemPrompt += shapingBlock;
       systemPrompt += `\n\nATLAS STATE: ${atlasStateLabel}\n${ATLAS_STATE_GUIDANCE[atlasStateLabel] ?? ""}\nLet this state shape the texture of every response — not just what you say, but how you engage.`;
+
+      // Response structure for overview/status responses
+      systemPrompt += `\n\nWHEN GIVING AN OVERVIEW OR STATUS OF THIS PROJECT, use this structure (markdown headings, concise):
+**Identity** — what it is + who it's for. If you know the wedge or differentiator, lead with that — not just the file count.
+**Technical State** — architecture, stack, key tensions (e.g. two routers coexisting).
+**Recent Momentum** — what's actually changed recently. Interpret commit patterns narratively.
+**Unresolved Tensions** — what's not locked in yet. Be direct about weak spots.
+**Portfolio Pattern** *(optional — only include if you see a cross-project pattern worth naming)* — does this project share a tendency with others in the portfolio? Name it if real.
+
+CLOSING QUESTION RULE: Never end with "What are you trying to figure out or build right now?" — that's too broad inside a project workspace. Instead, after your overview, offer a lens:
+"Which lens? Positioning / Market readiness / UX / Infrastructure / Prioritization / Portfolio patterns"
+Or ask ONE narrow question that assumes they already know what they're building and pushes one level deeper.`;
+
       if (focusEntries) systemPrompt += `\nCommitted decisions:\n${focusEntries}`;
       if (focusMemory) systemPrompt += `\nProject memory:\n${focusMemory}`;
       if (focusRecentCommits) {

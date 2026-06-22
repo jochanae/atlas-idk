@@ -31,3 +31,19 @@ If user volunteers any of these → treat as signal, transition immediately.
 ## Workspace Arrival (Threshold Moment)
 When fresh workspace has memories from Global shaping, first message should surface what was brought over (✓ Problem, ✓ Audience, ✓ Constraints) then ask for name only if generic.
 Rule: never ask user to re-explain what was already shaped in Global.
+
+## Focused-Project Response Structure
+When Atlas gives an overview/status of a focused project, it uses this structure:
+**Identity** → **Technical State** → **Recent Momentum** → **Unresolved Tensions** → **Portfolio Pattern** (optional)
+
+Identity leads with wedge/differentiator from the shaping layer — NOT file counts.
+Portfolio Pattern only appears when a real cross-project pattern exists (e.g. "shares ecosystem-before-wedge tendency with PresentQ").
+
+**Why:** Previous structure (What it is / Where it stands / Recent work / Thing I'd name) was too technical-metadata-heavy and guessed at positioning instead of reading from the shaping layer.
+
+## Focused-Project Closing Question Rule
+Never end a focused-project overview with "What are you trying to figure out or build right now?" — too broad for a workspace context.
+Instead: offer a lens picker ("Which lens? Positioning / Market readiness / UX / Infrastructure / Prioritization / Portfolio patterns") or ask ONE narrow question that pushes one level deeper.
+
+## Shaping Layer Injection (focused project)
+`focusGenomeRow` is fetched in nexus.ts for Atlas State label. The shaping fields (purpose, audience, wedge, differentiator, openQuestions) are now also built into a `shapingBlock` and injected into the system prompt so Atlas can read and lead with them — not just use them for posture detection.
