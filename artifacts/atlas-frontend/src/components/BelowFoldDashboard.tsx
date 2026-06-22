@@ -387,7 +387,52 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
   }, null);
   const projectState = useProjectState(mostRecentProjectId);
 
-  if (projects.length === 0) return null;
+  if (projects.length === 0) {
+    return (
+      <div className="atlas-below-fold-dashboard" style={{ width: "100%", maxWidth: 560, padding: "0 0 120px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+          <div style={{ flex: 1, height: 1, background: "var(--atlas-gold-border)" }} />
+          <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.4 }}>
+            Your overview
+          </span>
+          <div style={{ flex: 1, height: 1, background: "var(--atlas-gold-border)" }} />
+        </div>
+
+        <div className="atlas-discovery-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10, padding: "32px 24px" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(201,162,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(201,162,76,0.5)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8M12 17v4" />
+            </svg>
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--atlas-fg)", opacity: 0.75, lineHeight: 1.5, fontFamily: "var(--app-font-sans)" }}>
+            Your workspace overview appears here
+          </p>
+          <p style={{ margin: 0, fontSize: 11.5, color: "var(--atlas-muted)", opacity: 0.5, lineHeight: 1.6, fontStyle: "italic", maxWidth: 300 }}>
+            Activity, portfolio health, and momentum will populate as you start working on projects.
+          </p>
+        </div>
+
+        <div className="atlas-discovery-card" style={{ opacity: 0.45 }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+            Activity
+          </h3>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--atlas-muted)", fontStyle: "italic", lineHeight: 1.5 }}>
+            No activity yet. Link a GitHub repo or start a workspace session.
+          </p>
+        </div>
+
+        <div className="atlas-discovery-card" style={{ opacity: 0.45 }}>
+          <h3 style={{ margin: "0 0 10px", fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
+            Cognitive Momentum
+          </h3>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--atlas-muted)", fontStyle: "italic", lineHeight: 1.5 }}>
+            Ideas waiting for their moment.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const actualParked = projectState.state ? projectState.parkedCount : parkedCount ?? projects.length;
 
