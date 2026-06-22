@@ -427,7 +427,7 @@ export function GitHubPushModal({
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       credentials: "include",
-                      body: JSON.stringify({ files: fileEdits.map(fe => ({ path: fe.path, content: fe.content })) }),
+                      body: JSON.stringify({ projectId, files: fileEdits.map(fe => ({ path: fe.path, content: fe.content })) }),
                     });
                     if (!r.ok) { const d = await r.json() as { error?: string }; throw new Error(d.error ?? "Apply failed"); }
                     const result = await r.json() as { applied: string[]; requiresServerBuild: boolean };

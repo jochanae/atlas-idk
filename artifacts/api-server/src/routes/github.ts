@@ -7,6 +7,7 @@ import { writeFile, mkdir, rm } from "fs/promises";
 import { randomBytes } from "crypto";
 import * as nodePath from "path";
 import { decryptToken } from "../lib/tokenCrypto";
+import { projectWorkspaceDir, resolveWorkspacePath, assertProjectOwner, ensureProjectWorkspaceDir } from "../lib/projectWorkspace";
 
 const router: IRouter = Router();
 
@@ -1351,28 +1352,70 @@ router.post("/github/bootstrap-repo", async (req, res): Promise<void> => {
   res.json({ linkedRepo: result.linkedRepo, htmlUrl: result.htmlUrl, repoName: result.repoName });
 });
 
-// POST /api/github/apply-local — write proposed file(s) directly to workspace filesystem (triggers Vite HMR)
+// POST /api/github/apply-local — write proposed file(s) to the project workspace (no GitHub needed)
+// When projectId is provided and the project has no linked GitHub repo, writes to the per-project
+// workspace at /home/runner/workspace/.project-workspaces/{projectId}/.
+// Falls back to writing to the Replit workspace root for legacy callers without a projectId.
 router.post("/github/apply-local", async (req, res): Promise<void> => {
-  const { files } = req.body as { files?: Array<{ path: string; content: string }> };
+  const { files, projectId: rawProjectId } = req.body as {
+    files?: Array<{ path: string; content: string }>;
+    projectId?: number;
+  };
   if (!files?.length) { res.status(400).json({ error: "Missing files" }); return; }
 
-  const WORKSPACE_ROOT = "/home/runner/workspace";
+  const userId = (req as any).authUser?.id as number | undefined;
+  const projectId = rawProjectId ? Number(rawProjectId) : null;
+
+  // Determine write root: per-project workspace when projectId provided and no GitHub repo linked
+  let writeRoot: string;
+  let useProjectWorkspace = false;
+
+  if (projectId && userId) {
+    const isOwner = await assertProjectOwner(projectId, userId);
+    if (!isOwner) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const [project] = await db
+      .select({ linkedRepo: projectsTable.linkedRepo })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+
+    const hasLinkedRepo = !!(project?.linkedRepo);
+    if (!hasLinkedRepo) {
+      writeRoot = await ensureProjectWorkspaceDir(projectId);
+      useProjectWorkspace = true;
+    } else {
+      writeRoot = "/home/runner/workspace";
+    }
+  } else {
+    writeRoot = "/home/runner/workspace";
+  }
+
   const applied: string[] = [];
   const needsBuild: boolean[] = [];
 
   for (const { path: filePath, content } of files) {
-    const resolved = nodePath.resolve(WORKSPACE_ROOT, filePath);
-    if (!resolved.startsWith(WORKSPACE_ROOT + "/")) {
+    let resolved: string;
+    try {
+      resolved = useProjectWorkspace
+        ? resolveWorkspacePath(writeRoot, filePath)
+        : nodePath.resolve(writeRoot, filePath);
+    } catch {
       res.status(400).json({ error: `Disallowed path: ${filePath}` }); return;
     }
+
+    if (!resolved.startsWith(writeRoot + nodePath.sep) && resolved !== writeRoot) {
+      res.status(400).json({ error: `Disallowed path: ${filePath}` }); return;
+    }
+
     await mkdir(nodePath.dirname(resolved), { recursive: true });
     await writeFile(resolved, content, "utf-8");
     applied.push(filePath);
-    needsBuild.push(filePath.startsWith("artifacts/api-server/"));
+    needsBuild.push(!useProjectWorkspace && filePath.startsWith("artifacts/api-server/"));
   }
 
   const requiresServerBuild = needsBuild.some(Boolean);
-  res.json({ applied, requiresServerBuild });
+  res.json({ applied, requiresServerBuild, projectWorkspace: useProjectWorkspace });
 });
 
 // POST /api/github/typecheck — syntax-check a proposed file before pushing
