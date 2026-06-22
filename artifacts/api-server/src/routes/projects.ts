@@ -415,6 +415,101 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
   res.json(serializeProject(project, true));
 });
 
+router.post("/projects/:id/activate", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.id, 10);
+  if (Number.isNaN(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = (req as any).authUser.id as number;
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (project.status === "committed") {
+    const [genome] = await db
+      .select({ id: projectGenomeTable.id })
+      .from(projectGenomeTable)
+      .where(eq(projectGenomeTable.projectId, projectId))
+      .limit(1);
+    if (genome) {
+      res.json(serializeProject(project, true));
+      return;
+    }
+  }
+
+  try {
+    const [existingGenome] = await db
+      .select({ id: projectGenomeTable.id })
+      .from(projectGenomeTable)
+      .where(eq(projectGenomeTable.projectId, projectId))
+      .limit(1);
+
+    if (!existingGenome) {
+      await db.insert(projectGenomeTable).values({ projectId });
+    }
+
+    const [existingSession] = await db
+      .select({ id: sessionsTable.id })
+      .from(sessionsTable)
+      .where(eq(sessionsTable.projectId, projectId))
+      .limit(1);
+
+    let seedSessionId = existingSession?.id ?? null;
+    if (!seedSessionId) {
+      const [newSession] = await db
+        .insert(sessionsTable)
+        .values({ projectId, title: "Session 1", status: "active" })
+        .returning({ id: sessionsTable.id });
+      seedSessionId = newSession?.id ?? null;
+    }
+
+    const [existingEntry] = await db
+      .select({ id: entriesTable.id })
+      .from(entriesTable)
+      .where(eq(entriesTable.projectId, projectId))
+      .limit(1);
+
+    if (!existingEntry && seedSessionId) {
+      await db.insert(entriesTable).values({
+        projectId,
+        sessionId: seedSessionId,
+        title: "Project activated.",
+        summary: project.linkedRepo
+          ? `Workspace opened from GitHub repo: ${project.linkedRepo.replace(/^github:\/\//, "")}`
+          : "Workspace initialized.",
+        status: "committed",
+        severity: "committed",
+        mode: "decide",
+      });
+    }
+
+    const [updated] = await db
+      .update(projectsTable)
+      .set({ status: "committed" })
+      .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    res.json(serializeProject(updated, true));
+  } catch (err) {
+    req.log?.error({ err }, "activate error");
+    res.status(500).json({ error: "Activation failed" });
+  }
+});
+
 router.post("/projects/:id/memories", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (Number.isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid project id" }); return; }

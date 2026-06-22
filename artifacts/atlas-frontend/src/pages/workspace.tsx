@@ -4385,7 +4385,8 @@ export default function Workspace() {
           idShape,
           backendError,
         });
-        throw new Error(diag);
+        addLocalMessage("assistant", "This project's context couldn't be loaded (manifest not found). The workspace is open — you can still chat, or refresh the page to retry.");
+        return;
       }
 
       if (!res.ok) {
@@ -5997,6 +5998,39 @@ export default function Workspace() {
     );
   }
 
+  // ── Project still shaping ──────────────────────────────────────────────────
+  const projectIsShaping = !projectLoading && !!project && project.status === "shaping";
+  if (projectIsShaping) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 14, padding: 24,
+        background: "var(--atlas-bg)", color: "var(--atlas-fg)", textAlign: "center",
+      }}>
+        <div style={{ fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--atlas-gold)", opacity: 0.6 }}>
+          Not yet a workspace
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 400, letterSpacing: "-0.01em", maxWidth: 360 }}>
+          This project is still being shaped.
+        </div>
+        <div style={{ fontSize: 12, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.6, maxWidth: 320, lineHeight: 1.6 }}>
+          Commit the project on the Projects page to open the workspace.
+        </div>
+        <button
+          onClick={() => setLocation("/projects")}
+          style={{
+            marginTop: 4, padding: "9px 20px", borderRadius: 8,
+            background: "color-mix(in oklab, var(--atlas-gold) 12%, transparent)",
+            border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)",
+            fontSize: 11, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+            textTransform: "uppercase", cursor: "pointer",
+          }}
+        >
+          Back to Projects
+        </button>
+      </div>
+    );
+  }
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (projectLoading || (sessionsLoading && !sessionId)) {

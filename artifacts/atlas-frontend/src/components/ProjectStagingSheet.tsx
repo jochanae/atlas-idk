@@ -47,6 +47,7 @@ export function ProjectStagingSheet({ project, onClose, onCommit, onRemove }: Pr
   const [, setLocation] = useLocation();
   const [committing, setCommitting] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [commitError, setCommitError] = useState<string | null>(null);
 
   if (!project) return null;
 
@@ -58,10 +59,13 @@ export function ProjectStagingSheet({ project, onClose, onCommit, onRemove }: Pr
 
   const handleCommit = async () => {
     setCommitting(true);
+    setCommitError(null);
     try {
       await onCommit(project.id);
       onClose();
       setLocation(`/project/${project.id}`);
+    } catch (err) {
+      setCommitError(err instanceof Error ? err.message : "Activation failed — try again");
     } finally {
       setCommitting(false);
     }
@@ -225,6 +229,18 @@ export function ProjectStagingSheet({ project, onClose, onCommit, onRemove }: Pr
                 {canCommit ? "CREATE WORKSPACE →" : "NAME REQUIRED"}
               </span>
             </button>
+
+            {commitError && (
+              <div style={{
+                padding: "8px 12px",
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.25)",
+                borderRadius: 6,
+                ...sMono, fontSize: 11, color: "rgba(252,165,165,0.9)", lineHeight: 1.5,
+              }}>
+                {commitError}
+              </div>
+            )}
 
             <button
               onClick={handleRemove}

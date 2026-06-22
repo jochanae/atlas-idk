@@ -320,16 +320,16 @@ export default function Projects() {
   const handleCommitProject = useCallback(async (id: number) => {
     setCommittingId(id);
     try {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/projects/${id}/activate`, {
+        method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "committed" }),
       });
-      if (!res.ok) throw new Error("Failed to commit project");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Failed to activate project");
+      }
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    } catch {
-      // Existing project actions fail quietly on this page.
     } finally {
       setCommittingId(null);
     }
