@@ -5030,6 +5030,13 @@ export default function Workspace() {
     return () => window.removeEventListener("atlas:workspace-send", handler);
   }, [sessionId, doSend]);
 
+  // "atlas:open-history-sheet" — dispatched from AssistantBubble "View session history" menu item.
+  useEffect(() => {
+    const handler = () => setShowHistorySheet(true);
+    window.addEventListener("atlas:open-history-sheet", handler);
+    return () => window.removeEventListener("atlas:open-history-sheet", handler);
+  }, []);
+
   // ARTIFACT protocol — intercept ARTIFACT: <json> lines in assistant responses.
   // Strips the line from display and POSTs the artifact to /api/artifacts.
   const processedArtifactRef = useRef<Set<string>>(new Set());

@@ -2131,6 +2131,11 @@ export function AssistantBubble({
                     onClick={() => { setMenuOpen(false); onExtractToForge(message.content); }}
                   />
                 )}
+                <MenuItem
+                  icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="5.5" /><path d="M7 4.5v3l2 1.5" /></svg>}
+                  label="View session history"
+                  onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent("atlas:open-history-sheet")); }}
+                />
               </div>
             </>,
             document.body

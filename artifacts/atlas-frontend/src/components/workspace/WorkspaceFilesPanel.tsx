@@ -767,7 +767,7 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
       </div>
 
       {/* Main — editor */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {!openFile ? (
           <div style={{
             flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
