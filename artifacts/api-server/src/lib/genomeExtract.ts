@@ -336,6 +336,34 @@ export async function maybeExtractGenome(projectId: number | null | undefined): 
   }
 }
 
+// Run extraction for all projects that have never been extracted (lastExtractedAt IS NULL).
+// Called once on server startup — non-blocking, runs serially to avoid hammering the AI API.
+export async function backfillEmptyGenomes(): Promise<void> {
+  try {
+    const rows = await db
+      .select({ id: projectGenomeTable.projectId })
+      .from(projectGenomeTable)
+      .where(sql`${projectGenomeTable.lastExtractedAt} IS NULL`);
+
+    if (rows.length === 0) return;
+
+    logger.info({ count: rows.length }, "genome backfill: starting extraction for projects with no shaping data");
+
+    for (const { id } of rows) {
+      try {
+        await runGenomeExtraction(id);
+        logger.info({ projectId: id }, "genome backfill: extracted");
+      } catch (err) {
+        logger.warn({ err, projectId: id }, "genome backfill: extraction failed — skipping");
+      }
+    }
+
+    logger.info({ count: rows.length }, "genome backfill: complete");
+  } catch (err) {
+    logger.warn({ err }, "genome backfill on startup failed — non-fatal");
+  }
+}
+
 // Seed default genome rows for all projects that don't have one yet.
 // Called once on server startup — non-blocking.
 export async function seedMissingGenomes(): Promise<void> {
