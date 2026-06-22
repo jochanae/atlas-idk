@@ -5,6 +5,7 @@ import { bustResumeCache } from "./nexus";
 import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, projectGenomeTable, nexusMessagesTable } from "@workspace/db";
 import { encryptToken, decryptToken } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
+import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { ensureProjectWorkspaceDir } from "../lib/projectWorkspace";
 import {
   CreateProjectBody,
@@ -509,10 +510,42 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
       return;
     }
 
+    // Event 1 — fire Atlas Memory refresh on activation (fire-and-forget, non-blocking)
+    pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});
+
     res.json(serializeProject(updated, true));
   } catch (err) {
     req.log?.error({ err }, "activate error");
     res.status(500).json({ error: "Activation failed" });
+  }
+});
+
+// POST /api/projects/:id/refresh-atlas-memory — Event 3: manual "Refresh Atlas Memory"
+router.post("/projects/:id/refresh-atlas-memory", async (req, res): Promise<void> => {
+  const projectId = parseInt(req.params.id, 10);
+  if (Number.isNaN(projectId) || projectId <= 0) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = (req as any).authUser.id as number;
+
+  const [project] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  try {
+    await pushAtlasMdToRepo(projectId, userId, req.log);
+    res.json({ ok: true });
+  } catch (err) {
+    req.log?.error({ err }, "refresh-atlas-memory error");
+    res.status(500).json({ error: "Failed to refresh Atlas Memory" });
   }
 });
 

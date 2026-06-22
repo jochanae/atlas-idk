@@ -1362,6 +1362,10 @@ router.post("/github/bootstrap-repo", async (req, res): Promise<void> => {
       purpose: projectGenomeTable.purpose,
       audience: projectGenomeTable.audience,
       wedge: projectGenomeTable.wedge,
+      stage: projectGenomeTable.stage,
+      stack: projectGenomeTable.stack,
+      protectedAreas: projectGenomeTable.protectedAreas,
+      constraints: projectGenomeTable.constraints,
       openQuestions: projectGenomeTable.openQuestions,
     })
     .from(projectGenomeTable)
@@ -1379,9 +1383,25 @@ router.post("/github/bootstrap-repo", async (req, res): Promise<void> => {
   // Caller can override; otherwise: idea projects → docs-only, everything else → code scaffold
   const isCodeProject = reqIsCodeProject ?? (project?.entityType !== "idea");
   const projectBrief = genome ?? undefined;
-  const atlasContext = { genome: projectBrief, recentEntries };
+  const projectMemory = genome
+    ? {
+        projectName,
+        genome: {
+          purpose: genome.purpose,
+          audience: genome.audience,
+          wedge: genome.wedge,
+          stage: genome.stage,
+          stack: genome.stack ?? [],
+          protectedAreas: genome.protectedAreas ?? [],
+          constraints: genome.constraints ?? [],
+          openQuestions: genome.openQuestions ?? [],
+        },
+        recentSessions: [] as Array<{ title: string; status: string }>,
+        recentEntries,
+      }
+    : undefined;
 
-  const result = await bootstrapGitHubRepo({ token, projectId, projectName, projectBrief, isCodeProject, atlasContext });
+  const result = await bootstrapGitHubRepo({ token, projectId, projectName, projectBrief, isCodeProject, projectMemory });
   if (!result.ok) { res.status(500).json({ error: result.error }); return; }
 
   res.json({ linkedRepo: result.linkedRepo, htmlUrl: result.htmlUrl, repoName: result.repoName });

@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { db, projectGenomeTable, projectsTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable } from "@workspace/db";
 import { eq, and, desc, sql, count, ne, inArray, isNull } from "drizzle-orm";
 import { runGenomeExtraction, isOnCooldown } from "../lib/genomeExtract";
@@ -266,6 +267,8 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
     if ("differentiator" in body) update.differentiator = typeof body.differentiator === "string" ? body.differentiator : null;
     if ("constraints" in body && Array.isArray(body.constraints)) update.constraints = body.constraints.filter((x: unknown) => typeof x === "string").slice(0, 5);
     if ("openQuestions" in body && Array.isArray(body.openQuestions)) update.openQuestions = body.openQuestions.filter((x: unknown) => typeof x === "string").slice(0, 5);
+    if ("stack" in body && Array.isArray(body.stack)) update.stack = body.stack.filter((x: unknown) => typeof x === "string");
+    if ("protectedAreas" in body && Array.isArray(body.protectedAreas)) update.protectedAreas = body.protectedAreas.filter((x: unknown) => typeof x === "string");
     if ("stage" in body) update.stage = validStage(body.stage);
     // confidenceScore is extraction-computed — not user-editable
 
@@ -276,7 +279,15 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
     }
 
     const [existing] = await db
-      .select({ id: projectGenomeTable.id })
+      .select({
+        id: projectGenomeTable.id,
+        purpose: projectGenomeTable.purpose,
+        audience: projectGenomeTable.audience,
+        wedge: projectGenomeTable.wedge,
+        stack: projectGenomeTable.stack,
+        protectedAreas: projectGenomeTable.protectedAreas,
+        constraints: projectGenomeTable.constraints,
+      })
       .from(projectGenomeTable)
       .where(eq(projectGenomeTable.projectId, projectId))
       .limit(1);
@@ -285,6 +296,15 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
       await db.update(projectGenomeTable).set(update).where(eq(projectGenomeTable.projectId, projectId));
     } else {
       await db.insert(projectGenomeTable).values({ projectId, ...update });
+    }
+
+    // Event 2 — Refresh Atlas Memory when major fields change (fire-and-forget)
+    const majorFields = ["purpose", "audience", "wedge", "stack", "protectedAreas", "constraints"] as const;
+    const hasMajorChange = existing && majorFields.some(
+      f => f in update && JSON.stringify((update as Record<string, unknown>)[f]) !== JSON.stringify((existing as Record<string, unknown>)[f]),
+    );
+    if (hasMajorChange) {
+      pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});
     }
 
     const genome = await getOrCreateGenome(projectId);
