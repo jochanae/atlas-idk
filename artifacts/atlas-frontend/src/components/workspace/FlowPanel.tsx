@@ -661,31 +661,64 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               );
             })}
           </div>
-          {/* Empty map nudge — show Forge prompt when canvas has no nodes yet */}
-          {nodes.length === 0 && onOpenForge && (
+          {/* Empty map nudge — context-aware: decisions exist vs. blank slate */}
+          {nodes.length === 0 && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
-              <button
-                onClick={onOpenForge}
-                aria-label="Open Forge"
-                style={{
-                  pointerEvents: "auto", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 6,
-                  padding: "14px 20px", borderRadius: 12, cursor: "pointer",
+              {(entryCount ?? 0) > 0 ? (
+                // Decisions exist but haven't been mapped to Flow yet — surface the gap
+                <div style={{
+                  pointerEvents: "auto", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 8,
+                  padding: "18px 24px", borderRadius: 12, maxWidth: 240, textAlign: "center" as const,
                   background: "rgba(var(--atlas-gold-rgb),0.06)",
                   border: "1px dashed rgba(var(--atlas-gold-rgb),0.3)",
-                  color: "rgba(var(--atlas-gold-rgb),0.6)",
                   backdropFilter: "blur(4px)",
-                  transition: "all 200ms ease",
-                }}
-              >
-                <svg width={18} height={18} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
-                  <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
-                  <path d="M5.5 11L2 14.5" />
-                  <path d="M11 3.5L13 5.5" />
-                </svg>
-                <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" as const }}>
-                  Forge — populate from a transcript
-                </span>
-              </button>
+                }}>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: "rgba(var(--atlas-gold-rgb),0.85)" }}>
+                    {entryCount} decision{entryCount !== 1 ? "s" : ""} logged
+                  </span>
+                  <span style={{ fontFamily: "var(--app-font-sans)", fontSize: 11, color: "rgba(var(--atlas-muted-rgb),0.65)", lineHeight: 1.5 }}>
+                    Not yet mapped to Flow. Use Forge to extract them into structured nodes.
+                  </span>
+                  {onOpenForge && (
+                    <button
+                      onClick={onOpenForge}
+                      style={{
+                        marginTop: 4, padding: "6px 16px", borderRadius: 20, cursor: "pointer",
+                        border: "1px solid rgba(var(--atlas-gold-rgb),0.4)",
+                        background: "transparent",
+                        color: "rgba(var(--atlas-gold-rgb),0.9)",
+                        fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" as const,
+                      }}
+                    >
+                      Generate Flow
+                    </button>
+                  )}
+                </div>
+              ) : onOpenForge ? (
+                // Blank slate — no decisions yet, prompt to forge
+                <button
+                  onClick={onOpenForge}
+                  aria-label="Open Forge"
+                  style={{
+                    pointerEvents: "auto", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 6,
+                    padding: "14px 20px", borderRadius: 12, cursor: "pointer",
+                    background: "rgba(var(--atlas-gold-rgb),0.06)",
+                    border: "1px dashed rgba(var(--atlas-gold-rgb),0.3)",
+                    color: "rgba(var(--atlas-gold-rgb),0.6)",
+                    backdropFilter: "blur(4px)",
+                    transition: "all 200ms ease",
+                  }}
+                >
+                  <svg width={18} height={18} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8 }}>
+                    <path d="M9 2L3 8.5l2.5 2.5L12 4.5 9 2z" />
+                    <path d="M5.5 11L2 14.5" />
+                    <path d="M11 3.5L13 5.5" />
+                  </svg>
+                  <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" as const }}>
+                    Forge — populate from a transcript
+                  </span>
+                </button>
+              ) : null}
             </div>
           )}
           {lensView === "designer" && (

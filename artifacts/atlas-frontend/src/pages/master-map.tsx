@@ -184,14 +184,27 @@ function nodePos3D(i: number, total: number): THREE.Vector3 {
     Math.sin(i * 1.618) * 55,
   );
 }
+// Connections are earned — projects must share meaningful keywords in name+description.
+// "Both have entries and both are active" is too loose; it creates a complete graph.
+const CONN_STOP = new Set(["a","an","and","are","as","at","be","by","for","from","in","into","is","it","of","on","or","the","to","with","app","use","new","get","set","add","all","any","can","has","let","was","did","one","two","way","day","our","your","this","that","will","have","more","also","just"]);
+function projectWords(p: Project): Set<string> {
+  const text = `${p.name ?? ""} ${(p as any).description ?? ""}`;
+  return new Set(
+    text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+      .filter(w => w.length > 2 && !CONN_STOP.has(w))
+  );
+}
 function buildConns(projects: Project[]): Connection[] {
   const out: Connection[] = [];
   for (let i = 0; i < projects.length; i++) {
     for (let j = i + 1; j < projects.length; j++) {
       const a = projects[i], b = projects[j];
+      if ((a.entryCount ?? 0) === 0 || (b.entryCount ?? 0) === 0) continue;
+      const wA = projectWords(a), wB = projectWords(b);
+      const shared = [...wA].filter(w => wB.has(w));
+      if (shared.length < 2) continue; // connections must be earned via shared keywords
       const s = Math.min(actLevel(a.updatedAt), actLevel(b.updatedAt));
-      if ((a.entryCount ?? 0) > 0 && (b.entryCount ?? 0) > 0 && s >= 0.3)
-        out.push({ a: i, b: j, strength: s });
+      out.push({ a: i, b: j, strength: s });
     }
   }
   return out;
@@ -586,21 +599,19 @@ export default function MasterMap() {
       const hueCol = nodeColor(p.name);
       const hueGlass = nodeGlassColor(p.name);
 
-      // Decision health → color + emissive intensity
-      let bodyColor: THREE.Color;
-      let emissiveColor: THREE.Color;
+      // Identity color is permanent — status is an emissive overlay only.
+      // Never let status overwrite the project's unique hue.
+      const bodyColor = hueGlass.clone();
+      let emissiveColor = hueCol.clone();
       let emissiveBoost = 0;
-      if (stats.committed === 0) {
-        bodyColor = hueGlass;
-        emissiveColor = hueCol;
-      } else if (stats.tension > 0) {
-        bodyColor = AMBER.clone();
-        emissiveColor = AMBER.clone();
-        emissiveBoost = 0.18;
-      } else {
-        bodyColor = GOLD.clone();
-        emissiveColor = GOLD.clone();
+      if (stats.tension > 0) {
+        // Tension state: warm amber tint bleeds into the glow, body stays identity
+        emissiveColor = hueCol.clone().lerp(AMBER, 0.55);
         emissiveBoost = 0.22;
+      } else if (stats.committed > 0) {
+        // Committed: subtle gold shimmer, identity preserved
+        emissiveColor = hueCol.clone().lerp(GOLD, 0.35);
+        emissiveBoost = 0.15;
       }
 
       // Size: scale 1.0x → 2.0x by committed count (saturates at 8)
