@@ -440,10 +440,16 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
       .from(projectGenomeTable)
       .where(eq(projectGenomeTable.projectId, projectId))
       .limit(1);
-    if (genome) {
+    const [session] = await db
+      .select({ id: sessionsTable.id })
+      .from(sessionsTable)
+      .where(eq(sessionsTable.projectId, projectId))
+      .limit(1);
+    if (genome && session) {
       res.json(serializeProject(project, true));
       return;
     }
+    // Fall through — committed but hollow; create missing records below
   }
 
   try {

@@ -4,7 +4,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { logger } from "./lib/logger";
 import { spawn } from "node:child_process";
 import { startScheduledChecksWorker } from "./lib/scheduledChecksWorker";
-import { seedMissingGenomes, backfillEmptyGenomes } from "./lib/genomeExtract";
+import { seedMissingGenomes, backfillEmptyGenomes, seedMissingSessionsForCommitted } from "./lib/genomeExtract";
 
 const rawPort = process.env["PORT"];
 
@@ -128,6 +128,10 @@ async function main() {
   // Non-blocking — errors are logged, not thrown.
   seedMissingGenomes().catch((err) => {
     logger.warn({ err }, "genome seed on startup failed — non-fatal");
+  });
+
+  seedMissingSessionsForCommitted().catch((err) => {
+    logger.warn({ err }, "session seed on startup failed — non-fatal");
   });
 
   // Backfill shaping data (wedge, differentiator, audience, purpose) for projects

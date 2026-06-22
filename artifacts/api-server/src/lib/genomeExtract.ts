@@ -390,3 +390,29 @@ export async function seedMissingGenomes(): Promise<void> {
     logger.warn({ err }, "genome seed: failed — non-fatal");
   }
 }
+
+export async function seedMissingSessionsForCommitted(): Promise<void> {
+  try {
+    const committedProjects = await db
+      .select({ id: projectsTable.id })
+      .from(projectsTable)
+      .where(eq(projectsTable.status, "committed"));
+
+    const existingSessions = await db
+      .select({ projectId: sessionsTable.projectId })
+      .from(sessionsTable);
+
+    const existingSet = new Set(existingSessions.map(s => s.projectId));
+    const missing = committedProjects.filter(p => !existingSet.has(p.id));
+
+    if (missing.length === 0) return;
+
+    await db.insert(sessionsTable).values(
+      missing.map(p => ({ projectId: p.id, title: "Session 1", status: "active" })),
+    );
+
+    logger.info({ count: missing.length }, "session seed: inserted default sessions for committed projects without one");
+  } catch (err) {
+    logger.warn({ err }, "session seed: failed — non-fatal");
+  }
+}
