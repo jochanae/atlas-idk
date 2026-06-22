@@ -530,14 +530,17 @@ export default function Projects() {
             padding: "48px 24px",
             textAlign: "center",
           }}>
-            <p style={{ ...sMono, fontSize: 11, color: "var(--atlas-muted)", letterSpacing: "0.08em" }}>
-              No projects yet. What are we building?
+            <p style={{ ...sMono, fontSize: 12, color: "var(--atlas-muted)", letterSpacing: "0.06em", marginBottom: 6 }}>
+              No projects yet.
+            </p>
+            <p style={{ fontFamily: "var(--app-font-sans)", fontSize: 13, color: "rgba(var(--atlas-muted-rgb),0.65)", lineHeight: 1.5, margin: 0 }}>
+              Create your first project and Atlas will begin building your architecture.
             </p>
             <button
               onClick={handleNew}
               disabled={createProject.isPending}
               style={{
-                marginTop: 20,
+                marginTop: 24,
                 ...sMono,
                 fontSize: 11,
                 letterSpacing: "0.12em",
@@ -551,7 +554,7 @@ export default function Projects() {
                 cursor: "pointer",
               }}
             >
-              + Initialize First Project
+              + New Project
             </button>
           </div>
         ) : (

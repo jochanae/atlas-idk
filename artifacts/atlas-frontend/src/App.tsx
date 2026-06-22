@@ -32,7 +32,6 @@ import Admin from "./pages/admin";
 import ResetPassword from "./pages/reset-password";
 import AuthCallback from "./pages/auth-callback";
 import TokenBridge from "./pages/token-bridge";
-import OnboardingPage from "./pages/onboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { listProjects, getListProjectsQueryKey } from "@/_workspace/api-client-react/src/generated/api";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
@@ -160,48 +159,6 @@ function PageTransition() {
   );
 }
 
-// ── First-login onboarding redirect ───────────────────────────────────────────
-function OnboardingGate() {
-  const [location, setLocation] = useLocation();
-  const { user } = useAuth();
-  const shouldCheck =
-    location !== "/" &&
-    ![
-      "/landing",
-      "/login",
-      "/auth/",
-      "/reset-password",
-      "/onboarding",
-      "/terms",
-      "/privacy",
-      "/help",
-    ].some((path) => location.startsWith(path));
-  const { data: projects, isLoading } = useQuery({
-    queryKey: getListProjectsQueryKey(),
-    queryFn: listProjects,
-    enabled: shouldCheck && !!user,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-  });
-
-  useEffect(() => {
-    if (!shouldCheck || isLoading || !projects) return;
-    try {
-      const onboardingComplete = 
-        localStorage.getItem("axiom_onboarding_complete") ||
-        localStorage.getItem("atlas-onboarded");
-      if (!onboardingComplete && projects.length > 0) {
-        localStorage.setItem("axiom_onboarding_complete", "1");
-        return;
-      }
-      if (!onboardingComplete && projects.length === 0) {
-        setLocation("/onboarding", { replace: true });
-      }
-    } catch {}
-  }, [isLoading, location, projects, setLocation, shouldCheck]);
-
-  return null;
-}
 
 // ── Router ────────────────────────────────────────────────────────────────────
 function UnifiedShellRoutes() {
@@ -239,7 +196,6 @@ function Router() {
 
   return (
     <>
-      <OnboardingGate />
       {isUnifiedShellPath(location) ? (
         <UnifiedShellRoutes />
       ) : (
@@ -250,7 +206,7 @@ function Router() {
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/auth/token-bridge" component={TokenBridge} />
           <Route path="/reset-password" component={ResetPassword} />
-          <Route path="/onboarding" component={OnboardingPage} />
+          <Route path="/onboarding" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/projects" component={Projects} />
           <Route path="/ledger" component={Ledger} />
           <Route path="/ledger/:projectId" component={Ledger} />
