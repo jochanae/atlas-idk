@@ -661,15 +661,29 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
   const userId = (req as any).authUser?.id as number | undefined;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const [project] = await db
-    .select({
-      name: projectsTable.name,
-      linkedRepo: projectsTable.linkedRepo,
-      memory: projectsTable.memory,
-      createdAt: projectsTable.createdAt,
-    })
-    .from(projectsTable)
-    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)));
+  const [[project], [genome]] = await Promise.all([
+    db
+      .select({
+        name: projectsTable.name,
+        linkedRepo: projectsTable.linkedRepo,
+        memory: projectsTable.memory,
+        createdAt: projectsTable.createdAt,
+      })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
+    db
+      .select({
+        purpose: projectGenomeTable.purpose,
+        audience: projectGenomeTable.audience,
+        wedge: projectGenomeTable.wedge,
+        differentiator: projectGenomeTable.differentiator,
+        openQuestions: projectGenomeTable.openQuestions,
+        confidenceScore: projectGenomeTable.confidenceScore,
+      })
+      .from(projectGenomeTable)
+      .where(eq(projectGenomeTable.projectId, id))
+      .limit(1),
+  ]);
 
   if (!project) { res.status(404).json({ error: "Project not found" }); return; }
 
@@ -693,12 +707,27 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
   const ageMs = Date.now() - new Date(project.createdAt).getTime();
   const isFreshBootstrap = !!repoName && ageMs < 60 * 60 * 1000 && sessionCount <= 1;
 
+  // Build shaping layer lines from genome
+  const shapingLines: string[] = [];
+  if (genome?.wedge) shapingLines.push(genome.wedge);
+  else if (genome?.purpose) shapingLines.push(genome.purpose);
+  if (genome?.audience) shapingLines.push(`For: ${genome.audience}`);
+  if (genome?.differentiator) shapingLines.push(`Edge: ${genome.differentiator}`);
+  const firstOpenQ = Array.isArray(genome?.openQuestions) ? (genome.openQuestions as string[])[0] : undefined;
+  if (firstOpenQ) shapingLines.push(`Open: ${firstOpenQ}`);
+
+  const hasShaping = shapingLines.length > 0;
+
   let message: string;
 
   if (isFreshBootstrap) {
     message = `Scaffold's live. I pushed a React + Vite + Tailwind base to \`${repoName}\` — \`src/App.tsx\`, \`vite.config.ts\`, \`tailwind.config.js\`, and 7 more files. Open the StackBlitz tab to see it.\n\nWhat are we building?`;
+  } else if (repoName && hasShaping) {
+    message = `Back on \`${repoName}\`.\n\n${shapingLines.join("\n")}\n\nWhat are we working on?`;
   } else if (repoName) {
     message = `Back on \`${repoName}\`. What are we working on?`;
+  } else if (hasShaping) {
+    message = `${project.name}.\n\n${shapingLines.join("\n")}\n\nWhat are we building today?`;
   } else {
     message = `${project.name} — what are we working on?`;
   }
@@ -760,20 +789,73 @@ router.get("/projects/:id/resume", async (req, res): Promise<void> => {
   const userId = (req as any).authUser?.id as number | undefined;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const [proj] = await db
-    .select({ id: projectsTable.id })
-    .from(projectsTable)
-    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)));
+  const [[proj], [existing]] = await Promise.all([
+    db
+      .select({ id: projectsTable.id, name: projectsTable.name })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
+    db
+      .select()
+      .from(artifactsTable)
+      .where(and(eq(artifactsTable.projectId, id), eq(artifactsTable.type, "resume")))
+      .orderBy(desc(artifactsTable.updatedAt))
+      .limit(1),
+  ]);
   if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
 
-  const [artifact] = await db
+  // Return existing artifact if present
+  if (existing) { res.json({ artifact: existing }); return; }
+
+  // No resume artifact yet — auto-generate one from genome so the workspace
+  // empty state (resumeBrief) is never null for a project with shaping data.
+  const [genome] = await db
     .select()
-    .from(artifactsTable)
-    .where(and(eq(artifactsTable.projectId, id), eq(artifactsTable.type, "resume")))
-    .orderBy(desc(artifactsTable.updatedAt))
+    .from(projectGenomeTable)
+    .where(eq(projectGenomeTable.projectId, id))
     .limit(1);
 
-  res.json({ artifact: artifact ?? null });
+  const hasShaping = genome && (genome.purpose || genome.wedge || genome.audience);
+  if (!hasShaping) { res.json({ artifact: null }); return; }
+
+  const clarityScore: number = typeof genome.confidenceScore === "number" ? genome.confidenceScore : 0;
+  const openQuestions = Array.isArray(genome.openQuestions) ? genome.openQuestions as string[] : [];
+
+  function suggestedBuildFromGenome(score: number, intent: boolean, audience: boolean): string {
+    if (!intent) return "Start by defining your core intent";
+    if (score < 30) return "Landing Page — begin with presence";
+    if (!audience) return "Landing Page — clarify who this is for";
+    if (score < 50) return "Database Schema — structure your data model";
+    if (score < 65) return "Web App — your foundation is ready";
+    return "Full Web App — you have everything needed";
+  }
+
+  const threadSummary = genome.wedge
+    ? `${genome.wedge}${genome.differentiator ? ` — ${genome.differentiator}` : ""}${genome.audience ? ` Built for ${genome.audience}.` : ""}`
+    : genome.purpose
+      ? `${proj.name} is ${genome.purpose}${genome.audience ? `, built for ${genome.audience}` : ""}.`
+      : `${proj.name} — still being shaped.`;
+
+  const brief = {
+    generatedAt: new Date().toISOString(),
+    projectName: proj.name,
+    clarityScore,
+    intent: genome.purpose ?? null,
+    audience: genome.audience ?? null,
+    tone: genome.coreEmotion ?? null,
+    openQuestions,
+    suggestedFirstBuild: suggestedBuildFromGenome(clarityScore, !!genome.purpose, !!genome.audience),
+    threadSummary,
+    fromConversation: false,
+  };
+
+  const content = JSON.stringify(brief);
+  const title = `Resume — ${proj.name}`;
+  const [inserted] = await db
+    .insert(artifactsTable)
+    .values({ projectId: id, userId, type: "resume", title, content, status: "active", pinned: true })
+    .returning();
+
+  res.json({ artifact: inserted ?? null });
 });
 
 router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
