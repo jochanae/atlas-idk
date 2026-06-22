@@ -194,6 +194,11 @@ export interface ChatComposerProps {
   /** Manual image-generation entry point from the composer "+" sheet.
    *  Receives the composed `[SKETCH:<preset>] …` prompt — wire to doSend. */
   onSketch?: (prompt: string) => void;
+
+  /** Seed the initial composer mode. Defaults to "plan" when omitted.
+   *  For local (no-GitHub) project workspaces pass "build" so Atlas emits
+   *  FILE_EDIT blocks by default. User can still toggle to Plan freely. */
+  defaultComposerMode?: "plan" | "build";
 }
 
 
@@ -261,6 +266,7 @@ export function ChatComposer(props: ChatComposerProps) {
     onOpenModelSheet,
     onComposerMenuAction,
     onOpenSessionsHistory,
+    defaultComposerMode,
   } = props;
 
 
@@ -275,7 +281,7 @@ export function ChatComposer(props: ChatComposerProps) {
   })();
   const isMultiAgent = !wsModel || wsModel === "multi";
 
-  const [composerMode, setComposerMode] = useState<"plan" | "build">("plan");
+  const [composerMode, setComposerMode] = useState<"plan" | "build">(defaultComposerMode ?? "plan");
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
