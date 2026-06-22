@@ -903,19 +903,19 @@ export function GlobalInsightSurface({
             />
           </div>
 
-          {/* Action row — left utilities, right send cluster */}
+          {/* Action row — left cluster | pill (abs center) | right cluster */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              position: "relative",
               gap: 8,
               paddingTop: 6,
               borderTop: "none",
               marginTop: 2,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {/* Left cluster: history, then +/⋯ from ComposerActions */}
               <UtilityButton
                 ariaLabel="Where were we"
@@ -954,12 +954,17 @@ export function GlobalInsightSurface({
                 onSketch={onSketch}
               />
 
-              {/* Center: active project pill — breathing room on both sides */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, minWidth: 0, marginInline: 8 }}>
+            </div>
+
+            {/* Focus pill — dead-centered relative to the full action row width */}
+            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
+              <div style={{ pointerEvents: "auto" }}>
                 {focusChip}
               </div>
+            </div>
 
-              {/* Right of center: add-to-project (only when there's a conversation to capture) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+              {/* Add-to-project — only when there's a conversation to capture */}
               {messages.length > 0 && (
                 <UtilityButton
                   ariaLabel="Create project from this conversation"
@@ -973,9 +978,6 @@ export function GlobalInsightSurface({
                   </svg>
                 </UtilityButton>
               )}
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <UtilityButton
                 ariaLabel={isListening ? "Stop voice" : "Voice input"}
                 onClick={toggleVoice}
