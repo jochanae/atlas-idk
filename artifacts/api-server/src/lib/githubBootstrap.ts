@@ -58,20 +58,138 @@ export function sanitizeRepoName(name: string): string {
 
 type ScaffoldFile = { path: string; content: string };
 
-export function getScaffoldFiles(appName: string): ScaffoldFile[] {
+export type ProjectBrief = {
+  purpose?: string | null;
+  audience?: string | null;
+  wedge?: string | null;
+  openQuestions?: string[] | null;
+};
+
+export function getScaffoldFiles(appName: string, opts: {
+  projectBrief?: ProjectBrief;
+  isCodeProject?: boolean;
+} = {}): ScaffoldFile[] {
+  const { projectBrief, isCodeProject = true } = opts;
   const title = appName
     .split(/[-_\s]+/)
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
-  return [
+  const today = new Date().toISOString().slice(0, 10);
+  const purpose = projectBrief?.purpose?.trim() || null;
+  const audience = projectBrief?.audience?.trim() || null;
+  const wedge = projectBrief?.wedge?.trim() || null;
+  const openQuestions = (projectBrief?.openQuestions ?? []).filter((q): q is string => !!q?.trim());
+
+  // ── README.md ─────────────────────────────────────────────────────────────
+  const readmeLines: string[] = [
+    `# ${title}`,
+    "",
+    `> Created with [Axiom](https://axiomsystem.app) — a strategic thinking partner.`,
+    "",
+  ];
+  if (purpose) readmeLines.push("## What this is", "", purpose, "");
+  if (isCodeProject) {
+    readmeLines.push(
+      "## Getting started",
+      "",
+      "```bash",
+      "npm install",
+      "npm run dev",
+      "```",
+      "",
+    );
+  }
+  readmeLines.push(
+    "## Project context",
+    "",
+    "See [PROJECT.md](./PROJECT.md) for the full project brief and [docs/roadmap.md](./docs/roadmap.md) for direction.",
+  );
+
+  // ── PROJECT.md ────────────────────────────────────────────────────────────
+  const projectLines: string[] = [
+    `# ${title} — Project Brief`,
+    "",
+    `> This file is maintained by Axiom Atlas. Update it as the project evolves.`,
+    "",
+    "## Purpose",
+    "",
+    purpose ?? "*Not yet defined.*",
+    "",
+    "## Audience",
+    "",
+    audience ?? "*Not yet defined.*",
+    "",
+    "## Wedge",
+    "",
+    wedge ?? "*Not yet defined.*",
+    "",
+    "## Open questions",
+    "",
+  ];
+  if (openQuestions.length > 0) {
+    openQuestions.forEach(q => projectLines.push(`- ${q}`));
+    projectLines.push("");
+  } else {
+    projectLines.push("*None recorded yet.*", "");
+  }
+  projectLines.push("---", "", `*Activated on ${today} via Axiom Atlas.*`);
+
+  // ── docs/decisions.md ─────────────────────────────────────────────────────
+  const decisionsContent = [
+    "# Decision Log",
+    "",
+    `> Decisions made during the life of **${title}**, tracked for context and accountability.`,
+    "",
+    "---",
+    "",
+    `## ${today} — Project initialized`,
+    "",
+    "**Decision:** Created and activated this project via Axiom Atlas.",
+    "**Rationale:** Initial activation — no prior decisions recorded.",
+    "**Status:** Committed",
+  ].join("\n") + "\n";
+
+  // ── docs/roadmap.md ───────────────────────────────────────────────────────
+  const roadmapLines: string[] = [
+    "# Roadmap",
+    "",
+    `> High-level direction and milestones for **${title}**.`,
+    "",
+    "---",
+    "",
+    "## Phase 1 — Foundation",
+    "",
+    "- [ ] Define purpose and audience",
+    "- [ ] Identify the wedge",
+  ];
+  if (openQuestions.length > 0) {
+    openQuestions.forEach(q => roadmapLines.push(`- [ ] ${q}`));
+  } else {
+    roadmapLines.push("- [ ] Start the first working session");
+  }
+  roadmapLines.push("", "## Backlog", "", "*Add items here as the project evolves.*");
+
+  // ── Base files (every Atlas-created repo gets these) ──────────────────────
+  const files: ScaffoldFile[] = [
+    { path: "README.md", content: readmeLines.join("\n") + "\n" },
+    { path: "PROJECT.md", content: projectLines.join("\n") + "\n" },
     {
       path: ".gitignore",
-      content: `node_modules\ndist\n.env\n.env.local\n.DS_Store\n`,
+      content: isCodeProject
+        ? "node_modules\ndist\n.env\n.env.local\n.DS_Store\n*.tsbuildinfo\n"
+        : ".DS_Store\n.env\n.env.local\n",
     },
-    {
-      path: "index.html",
-      content: `<!doctype html>
+    { path: "docs/decisions.md", content: decisionsContent },
+    { path: "docs/roadmap.md", content: roadmapLines.join("\n") + "\n" },
+  ];
+
+  // ── Code scaffold (build/app projects only) ───────────────────────────────
+  if (isCodeProject) {
+    files.push(
+      {
+        path: "index.html",
+        content: `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -84,67 +202,67 @@ export function getScaffoldFiles(appName: string): ScaffoldFile[] {
   </body>
 </html>
 `,
-    },
-    {
-      path: "package.json",
-      content: JSON.stringify({
-        name: sanitizeRepoName(appName),
-        private: true,
-        version: "0.0.0",
-        type: "module",
-        scripts: {
-          dev: "vite",
-          build: "tsc && vite build",
-          preview: "vite preview",
-        },
-        dependencies: {
-          react: "^18.3.1",
-          "react-dom": "^18.3.1",
-        },
-        devDependencies: {
-          "@types/react": "^18.3.1",
-          "@types/react-dom": "^18.3.1",
-          "@vitejs/plugin-react": "^4.3.2",
-          autoprefixer: "^10.4.20",
-          postcss: "^8.4.47",
-          tailwindcss: "^3.4.14",
-          typescript: "^5.5.3",
-          vite: "^5.4.8",
-        },
-      }, null, 2),
-    },
-    {
-      path: "tsconfig.json",
-      content: JSON.stringify({
-        compilerOptions: {
-          target: "ES2020",
-          useDefineForClassFields: true,
-          lib: ["ES2020", "DOM", "DOM.Iterable"],
-          module: "ESNext",
-          skipLibCheck: true,
-          moduleResolution: "bundler",
-          allowImportingTsExtensions: true,
-          isolatedModules: true,
-          noEmit: true,
-          jsx: "react-jsx",
-          strict: true,
-        },
-        include: ["src"],
-      }, null, 2),
-    },
-    {
-      path: "vite.config.ts",
-      content: `import { defineConfig } from 'vite'
+      },
+      {
+        path: "package.json",
+        content: JSON.stringify({
+          name: sanitizeRepoName(appName),
+          private: true,
+          version: "0.0.0",
+          type: "module",
+          scripts: {
+            dev: "vite",
+            build: "tsc && vite build",
+            preview: "vite preview",
+          },
+          dependencies: {
+            react: "^18.3.1",
+            "react-dom": "^18.3.1",
+          },
+          devDependencies: {
+            "@types/react": "^18.3.1",
+            "@types/react-dom": "^18.3.1",
+            "@vitejs/plugin-react": "^4.3.2",
+            autoprefixer: "^10.4.20",
+            postcss: "^8.4.47",
+            tailwindcss: "^3.4.14",
+            typescript: "^5.5.3",
+            vite: "^5.4.8",
+          },
+        }, null, 2),
+      },
+      {
+        path: "tsconfig.json",
+        content: JSON.stringify({
+          compilerOptions: {
+            target: "ES2020",
+            useDefineForClassFields: true,
+            lib: ["ES2020", "DOM", "DOM.Iterable"],
+            module: "ESNext",
+            skipLibCheck: true,
+            moduleResolution: "bundler",
+            allowImportingTsExtensions: true,
+            isolatedModules: true,
+            noEmit: true,
+            jsx: "react-jsx",
+            strict: true,
+          },
+          include: ["src"],
+        }, null, 2),
+      },
+      {
+        path: "vite.config.ts",
+        content: `import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
 })
 `,
-    },
-    {
-      path: "tailwind.config.js",
-      content: `/** @type {import('tailwindcss').Config} */
+      },
+      {
+        path: "tailwind.config.js",
+        content: `/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
@@ -153,24 +271,24 @@ export default {
   plugins: [],
 }
 `,
-    },
-    {
-      path: "postcss.config.js",
-      content: `export default {
+      },
+      {
+        path: "postcss.config.js",
+        content: `export default {
   plugins: {
     tailwindcss: {},
     autoprefixer: {},
   },
 }
 `,
-    },
-    {
-      path: "src/index.css",
-      content: `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
-    },
-    {
-      path: "src/main.tsx",
-      content: `import { StrictMode } from 'react'
+      },
+      {
+        path: "src/index.css",
+        content: `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
+      },
+      {
+        path: "src/main.tsx",
+        content: `import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
@@ -181,10 +299,10 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 `,
-    },
-    {
-      path: "src/App.tsx",
-      content: `export default function App() {
+      },
+      {
+        path: "src/App.tsx",
+        content: `export default function App() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center p-8">
       <div className="text-center space-y-4 max-w-lg">
@@ -197,8 +315,11 @@ createRoot(document.getElementById('root')!).render(
   )
 }
 `,
-    },
-  ];
+      },
+    );
+  }
+
+  return files;
 }
 
 export type BootstrapResult =
@@ -209,6 +330,8 @@ export async function bootstrapGitHubRepo(opts: {
   token: string;
   projectId: number;
   projectName: string;
+  projectBrief?: ProjectBrief;
+  isCodeProject?: boolean;
 }): Promise<BootstrapResult> {
   const { token, projectId, projectName } = opts;
 
@@ -217,7 +340,7 @@ export async function bootstrapGitHubRepo(opts: {
   if (!meResp.ok) {
     return { ok: false, error: `GitHub auth failed (${meResp.status})` };
   }
-  const me = await meResp.json() as { login: string };
+  await meResp.json();
   const repoName = sanitizeRepoName(projectName);
 
   // 2. Create the repository
@@ -226,7 +349,9 @@ export async function bootstrapGitHubRepo(opts: {
     headers: ghHeaders(token),
     body: JSON.stringify({
       name: repoName,
-      description: `Built with Axiom Atlas`,
+      description: opts.projectBrief?.purpose
+        ? opts.projectBrief.purpose.slice(0, 255)
+        : "Built with Axiom Atlas",
       private: true,
       auto_init: false,
     }),
@@ -242,7 +367,10 @@ export async function bootstrapGitHubRepo(opts: {
   const fullName = repoData.full_name;
 
   // 3. Create blobs for each scaffold file
-  const files = getScaffoldFiles(repoName);
+  const files = getScaffoldFiles(repoName, {
+    projectBrief: opts.projectBrief,
+    isCodeProject: opts.isCodeProject,
+  });
   const blobResults = await Promise.all(
     files.map(async (f) => {
       const r = await fetch(`${GH_API}/repos/${fullName}/git/blobs`, {
@@ -266,11 +394,14 @@ export async function bootstrapGitHubRepo(opts: {
   const treeData = await treeResp.json() as { sha: string };
 
   // 5. Create initial commit
+  const commitMessage = opts.isCodeProject === false
+    ? "Initial Atlas scaffold — docs project"
+    : "Initial Atlas scaffold — app project";
   const commitResp = await fetch(`${GH_API}/repos/${fullName}/git/commits`, {
     method: "POST",
     headers: ghHeaders(token),
     body: JSON.stringify({
-      message: "Initial scaffold — created with Axiom Atlas",
+      message: commitMessage,
       tree: treeData.sha,
       parents: [],
     }),

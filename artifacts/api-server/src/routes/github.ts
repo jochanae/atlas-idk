@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
-import { atlasIncidentsTable, connectionsTable, db, entriesTable, projectsTable } from "@workspace/db";
+import { atlasIncidentsTable, connectionsTable, db, entriesTable, projectGenomeTable, projectsTable } from "@workspace/db";
 import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 import { spawn } from "child_process";
 import { writeFile, mkdir, rm } from "fs/promises";
@@ -1339,14 +1339,40 @@ router.post("/github/bootstrap-repo", async (req, res): Promise<void> => {
   const userId = (req as any).authUser?.id as number | undefined;
   if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const { projectId, projectName } = req.body as { projectId?: number; projectName?: string };
+  const { projectId, projectName, isCodeProject: reqIsCodeProject } = req.body as {
+    projectId?: number;
+    projectName?: string;
+    isCodeProject?: boolean;
+  };
   if (!projectId || !projectName) { res.status(400).json({ error: "projectId and projectName are required" }); return; }
 
   const { getGithubTokenForUser, bootstrapGitHubRepo } = await import("../lib/githubBootstrap");
   const token = await getGithubTokenForUser(userId);
   if (!token) { res.status(401).json({ error: "No GitHub token found. Connect GitHub in your account settings." }); return; }
 
-  const result = await bootstrapGitHubRepo({ token, projectId, projectName });
+  // Read project entity type + genome brief to seed scaffold context files
+  const [project] = await db
+    .select({ entityType: projectsTable.entityType })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
+    .limit(1);
+
+  const [genome] = await db
+    .select({
+      purpose: projectGenomeTable.purpose,
+      audience: projectGenomeTable.audience,
+      wedge: projectGenomeTable.wedge,
+      openQuestions: projectGenomeTable.openQuestions,
+    })
+    .from(projectGenomeTable)
+    .where(eq(projectGenomeTable.projectId, projectId))
+    .limit(1);
+
+  // Caller can override; otherwise: idea projects → docs-only, everything else → code scaffold
+  const isCodeProject = reqIsCodeProject ?? (project?.entityType !== "idea");
+  const projectBrief = genome ?? undefined;
+
+  const result = await bootstrapGitHubRepo({ token, projectId, projectName, projectBrief, isCodeProject });
   if (!result.ok) { res.status(500).json({ error: result.error }); return; }
 
   res.json({ linkedRepo: result.linkedRepo, htmlUrl: result.htmlUrl, repoName: result.repoName });
