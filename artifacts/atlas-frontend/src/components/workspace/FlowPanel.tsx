@@ -133,6 +133,20 @@ export function extractPersistedFlowNodes(nodeState: unknown): ArchNode[] {
     const strategicAnswer = typeof raw.strategicAnswer === "string" && raw.strategicAnswer.trim()
       ? raw.strategicAnswer.trim()
       : undefined;
+    const details = typeof raw.details === "string" && raw.details.trim() ? raw.details.trim() : undefined;
+    const question = typeof raw.question === "string" && raw.question.trim() ? raw.question.trim() : undefined;
+
+    // Generic template placeholders ("Foundation", "Open Blocker", etc.) are shells
+    // created by AI before real project knowledge is extracted. Filter them out until
+    // they carry actual content — otherwise the canvas looks like a category template.
+    const GENERIC_SHELL_LABELS = new Set([
+      "foundation", "core requirement", "initial milestone", "open decision",
+      "open blocker", "should-have", "should have", "nice to have",
+      "won't have", "wont have", "key decision", "milestone",
+    ]);
+    const hasRealContent = !!(strategicAnswer || details || question);
+    if (GENERIC_SHELL_LABELS.has(label.toLowerCase()) && !hasRealContent) return [];
+
     return [{
       id,
       label,
@@ -140,10 +154,10 @@ export function extractPersistedFlowNodes(nodeState: unknown): ArchNode[] {
       resolved: Boolean(strategicAnswer) || raw.resolved === true,
       x: typeof raw.x === "number" ? raw.x : fallback.x,
       y: typeof raw.y === "number" ? raw.y : fallback.y,
-      details: typeof raw.details === "string" && raw.details.trim() ? raw.details.trim() : undefined,
+      details,
       meta: asFlowMeta(raw.meta),
       moscow: asFlowMeta(raw.moscow),
-      question: typeof raw.question === "string" && raw.question.trim() ? raw.question.trim() : undefined,
+      question,
       strategicAnswer,
     }];
   });
@@ -237,7 +251,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
   const [nodes, setNodes] = useState<ArchNode[]>([]);
   const [pendingNodes, setPendingNodes] = useState<ArchNode[]>([]);
   const [lensView, setLensView] = useState<"designer" | "builder" | "storyteller">("designer");
-  const [showChat, setShowChat] = useState(true);
+  const [showChat, setShowChat] = useState(false);
   const [signals, setSignals] = useState<string[]>([""]);
   const [activeSignalIdx, setActiveSignalIdx] = useState(0);
   const [signalAdded, setSignalAdded] = useState(false);

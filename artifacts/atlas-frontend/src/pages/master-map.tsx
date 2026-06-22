@@ -640,6 +640,8 @@ export default function MasterMap() {
       nodeMeshes.push(mesh);
 
       // Active project halo ring — persistent pulsing ring
+      // depthTest:false + renderOrder:10 ensures ring always draws on top of
+      // satellite bodies, labels, and filaments (stacking order fix)
       const haloRing = new THREE.Mesh(
         new THREE.TorusGeometry(NODE_R * 2.1, 3.5, 16, 80),
         new THREE.MeshBasicMaterial({
@@ -647,8 +649,10 @@ export default function MasterMap() {
           transparent: true,
           opacity: 0,
           side: THREE.DoubleSide,
+          depthTest: false,
         }),
       );
+      haloRing.renderOrder = 10;
       haloRing.position.copy(positions[i]);
       haloRing.scale.setScalar(sizeBoost);
       scene.add(haloRing);
