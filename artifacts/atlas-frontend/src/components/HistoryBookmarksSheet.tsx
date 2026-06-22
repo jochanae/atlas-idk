@@ -275,6 +275,10 @@ export function HistoryBookmarksSheet({
           from { transform: translateY(20px); opacity: 0.6; }
           to { transform: translateY(0); opacity: 1; }
         }
+        @keyframes atlasTabIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
       <div
         style={{ ...SHEET, animation: "atlasHistorySlide 220ms ease" }}
@@ -339,6 +343,15 @@ export function HistoryBookmarksSheet({
             gap: 16,
           }}
         >
+          <div
+            key={tab}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              animation: "atlasTabIn 150ms ease",
+            }}
+          >
           {tab === "history" ? (
             grouped.length === 0 ? (
               <EmptyState
@@ -408,6 +421,7 @@ export function HistoryBookmarksSheet({
               {bookmarkSorted.map((i) => renderRow(i, { dim: !!i.reverted }))}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
