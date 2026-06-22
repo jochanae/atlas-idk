@@ -194,6 +194,7 @@ async function serializeGenome(projectId: number, row: typeof projectGenomeTable
     coreEmotion: row.coreEmotion,
     audience: row.audience,
     identity: row.identity,
+    format: row.format,
     wedge: row.wedge,
     differentiator: row.differentiator,
     constraints: row.constraints ?? [],
@@ -260,6 +261,7 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
     if ("coreEmotion" in body) update.coreEmotion = typeof body.coreEmotion === "string" ? body.coreEmotion : null;
     if ("audience" in body) update.audience = typeof body.audience === "string" ? body.audience : null;
     if ("identity" in body) update.identity = typeof body.identity === "string" ? body.identity : null;
+    if ("format" in body) update.format = typeof body.format === "string" ? body.format : null;
     if ("wedge" in body) update.wedge = typeof body.wedge === "string" ? body.wedge : null;
     if ("differentiator" in body) update.differentiator = typeof body.differentiator === "string" ? body.differentiator : null;
     if ("constraints" in body && Array.isArray(body.constraints)) update.constraints = body.constraints.filter((x: unknown) => typeof x === "string").slice(0, 5);

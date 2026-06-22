@@ -260,7 +260,6 @@ export function ProjectSettingsPanel({ project, onClose, onSaved }: Props) {
               </div>
               <ProjectDnaEditor
                 projectId={project.id}
-                initialShape={(project as { shape?: Record<string, unknown> }).shape ?? undefined}
                 variant="drawer"
               />
             </div>

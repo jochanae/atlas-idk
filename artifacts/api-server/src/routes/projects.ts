@@ -359,55 +359,6 @@ router.get("/projects/:id/map-nodes", async (req, res): Promise<void> => {
   res.json({ projectId, entityType, nodes });
 });
 
-router.get("/projects/:id/shape", async (req, res): Promise<void> => {
-  const params = GetProjectParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const userId = (req as any).authUser.id as number;
-  const [project] = await db
-    .select({ shape: (projectsTable as any).shape })
-    .from(projectsTable)
-    .where(and(eq(projectsTable.id, params.data.id), eq(projectsTable.userId, userId)))
-    .limit(1);
-
-  if (!project) {
-    res.status(404).json({ error: "Project not found" });
-    return;
-  }
-
-  res.json({ shape: (project as any).shape });
-});
-
-router.put("/projects/:id/shape", async (req, res): Promise<void> => {
-  const params = GetProjectParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  if (!isPlainObject(req.body) || !isPlainObject(req.body.shape)) {
-    res.status(400).json({ error: "Shape must be an object" });
-    return;
-  }
-
-  const userId = (req as any).authUser.id as number;
-  const [project] = await db
-    .update(projectsTable)
-    .set({ shape: req.body.shape } as any)
-    .where(and(eq(projectsTable.id, params.data.id), eq(projectsTable.userId, userId)))
-    .returning({ shape: (projectsTable as any).shape } as any);
-
-  if (!project) {
-    res.status(404).json({ error: "Project not found" });
-    return;
-  }
-
-  res.json({ shape: project.shape });
-});
-
 router.get("/projects/:id", async (req, res): Promise<void> => {
   const params = GetProjectParams.safeParse(req.params);
   if (!params.success) {

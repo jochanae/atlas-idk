@@ -1,11 +1,11 @@
 /**
- * ProjectDnaEditor — self-contained editor for project.shape (Identity /
- * Constraints / Format) + "Copy Strategic Payload" action.
+ * ProjectDnaEditor — editor for project identity/constraints/format.
+ * Reads from GET /api/projects/{id}/genome, saves via PATCH /api/projects/{id}/genome.
  *
- * Extracted verbatim from TheForge.tsx so the behavior is identical:
- *   • Hydrates from GET /api/projects/{id} when initialShape is not provided
- *   • PUT /api/projects/{id}/shape on save, free-form shape
- *   • Same copy text, same pill chrome, same three cards
+ * Field mapping:
+ *   Identity    → genome.identity  (text)
+ *   Constraints → genome.constraints (text[], joined/split by newline)
+ *   Format      → genome.format    (text)
  *
  * variant controls density only — same logic everywhere it mounts.
  */
@@ -49,6 +49,19 @@ const DNA_KEYS = [
   },
 ];
 
+function genomeToShape(genome: Record<string, unknown>): Shape {
+  const constraints = Array.isArray(genome.constraints)
+    ? (genome.constraints as string[]).join("\n")
+    : typeof genome.constraints === "string"
+      ? genome.constraints
+      : "";
+  return {
+    identity: typeof genome.identity === "string" ? genome.identity : "",
+    constraints,
+    format: typeof genome.format === "string" ? genome.format : "",
+  };
+}
+
 export function ProjectDnaEditor({
   projectId,
   initialShape,
@@ -62,17 +75,14 @@ export function ProjectDnaEditor({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Hydrate from backend when no initial shape was handed in
   useEffect(() => {
     if (initialShape !== undefined) return;
     let cancelled = false;
-    fetch(`/api/projects/${projectId}`, { credentials: "include" })
+    fetch(`/api/projects/${projectId}/genome`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((proj: { shape?: Shape | null } | null) => {
-        if (cancelled) return;
-        if (proj?.shape && typeof proj.shape === "object") {
-          setProjectShape(proj.shape);
-        }
+      .then((genome: Record<string, unknown> | null) => {
+        if (cancelled || !genome) return;
+        setProjectShape(genomeToShape(genome));
       })
       .catch(() => { /* silent */ });
     return () => { cancelled = true; };
@@ -102,17 +112,22 @@ export function ProjectDnaEditor({
     setSaving(true);
     setError(null);
     const key = editingKey;
-    const nextShape: Shape = { ...projectShape, [key]: draft };
+
+    const payload: Record<string, unknown> =
+      key === "constraints"
+        ? { constraints: draft.split("\n").filter(Boolean) }
+        : { [key]: draft };
+
     try {
-      const r = await fetch(`/api/projects/${projectId}/shape`, {
-        method: "PUT",
+      const r = await fetch(`/api/projects/${projectId}/genome`, {
+        method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shape: nextShape }),
+        body: JSON.stringify(payload),
       });
       if (!r.ok) throw new Error(`Save failed (${r.status})`);
-      const data = (await r.json().catch(() => null)) as { shape?: Shape } | null;
-      const resolved = data?.shape && typeof data.shape === "object" ? data.shape : nextShape;
+      const genome = (await r.json().catch(() => null)) as Record<string, unknown> | null;
+      const resolved = genome ? genomeToShape(genome) : { ...projectShape, [key]: draft };
       setProjectShape(resolved);
       onShapeChange?.(resolved);
       setEditingKey(null);
