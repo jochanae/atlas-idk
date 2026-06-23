@@ -4135,6 +4135,7 @@ export default function Workspace() {
     return [...entryMap.values()];
   }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
   const [thinkingState, setThinkingState] = useState<{ status: "processing"|"streaming"|"completed"; currentStep: any; history: any[]; developerLens?: any } | null>(null);
+  const [pendingAutoApply, setPendingAutoApply] = useState<string[] | null>(null);
   const stepStartRef = useRef<number>(Date.now());
   const handleThinkingSendStart = useCallback(() => {
     stepStartRef.current = Date.now();
@@ -4154,6 +4155,9 @@ export default function Workspace() {
   }, []);
   const handleThinkingDone = useCallback((payload: any) => {
     setThinkingState(prev => prev ? { ...prev, status: "completed", developerLens: payload?.developerLens } : prev);
+    if (payload?.autoApplied && Array.isArray(payload?.autoAppliedPaths) && payload.autoAppliedPaths.length > 0) {
+      setPendingAutoApply(payload.autoAppliedPaths as string[]);
+    }
   }, []);
 
   const {
@@ -4243,6 +4247,23 @@ export default function Workspace() {
       });
     },
   });
+
+  // When the server auto-applies FILE_EDIT blocks during a build handoff, send
+  // LOCAL_APPLY_SUCCESS so Atlas knows files are on disk and can read them back.
+  useEffect(() => {
+    if (!pendingAutoApply || !sessionId) return;
+    const count = pendingAutoApply.length;
+    const fileList = pendingAutoApply.length > 0 ? `: ${pendingAutoApply.join(", ")}` : "";
+    doSend(
+      `[LOCAL_APPLY_SUCCESS] ${count} file${count === 1 ? "" : "s"} written to local workspace${fileList}. File tree updated — you can now read these files back.`,
+      sessionId,
+      messagesRef.current,
+      undefined,
+      undefined,
+      { displayAs: "autoVerify" },
+    );
+    setPendingAutoApply(null);
+  }, [pendingAutoApply, sessionId, doSend, messagesRef]);
 
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {

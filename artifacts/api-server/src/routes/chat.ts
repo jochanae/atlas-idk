@@ -23,7 +23,7 @@ import { ATLAS_IDENTITY } from "../lib/atlasIdentity";
 import { runBuildCheck } from "./devserver";
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
-import { projectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
+import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -2252,6 +2252,8 @@ router.post("/chat", async (req, res): Promise<void> => {
   const hasVercelConnection = vercelRows.length > 0;
   const sessionBuildIntent = sessionRows[0]?.buildIntent ?? null;
   const sessionMessageCount = sessionRows[0]?.messageCount ?? 1;
+  // Hoisted so auto-apply and file-source logic share the same flag
+  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount === 0 && projectId);
 
   // Derive server-side forge foundation from persisted AxiomFlow node state
   // This is the authoritative source — client-sent forgeContext supplements but never replaces it
@@ -2601,7 +2603,6 @@ HARD RULE: Never answer from the context of a different project unless the user 
     // local workspace as available even if the directory doesn't exist on disk yet.
     // ensureProjectWorkspaceDir() is called lazily on the first FILE_EDIT write, so the
     // directory will be created the moment Atlas emits its first block.
-    const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount === 0 && projectId);
     const effectiveLocalWsAvailable = localWsExists || isBuildHandoff;
 
     const fileSource = hasGithub ? "github" : effectiveLocalWsAvailable ? "local" : "none";
@@ -2642,6 +2643,11 @@ What "complete initial scaffold" means:
 - Working navigation between them
 - Realistic placeholder content (not lorem ipsum — actual labels, buttons, structure that reflects the domain)
 - Any config files needed to run it (package.json, tsconfig, etc. if this is a new project)
+
+FILE FORMAT RULES — these are absolute in a build handoff:
+- Use FILE_EDIT blocks for ALL code. Every file must be a FILE_EDIT block.
+- ARTIFACT blocks are for standalone HTML previews and exportable documents only. They do NOT create project files. NEVER use ARTIFACT in a build handoff — the files will not land in the workspace.
+- The local workspace is ready. FILE_EDIT blocks are applied automatically — files are written directly to the project directory. No GitHub required.
 
 Do NOT ask clarifying questions.
 Do NOT explain what you're about to do.
@@ -3406,6 +3412,26 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   const responseFileEdits = fileChangesAllowed ? fileEdits : [];
   const responseLinePatches = fileChangesAllowed ? linePatches : [];
 
+  // Build handoff auto-apply: first response in a build handoff writes files directly to disk
+  // so the user never needs to manually click Apply (eliminates the refresh race).
+  let autoApplied = false;
+  const autoAppliedPaths: string[] = [];
+  if (isBuildHandoff && responseFileEdits.length > 0 && projectId) {
+    try {
+      const wsDir = await ensureProjectWorkspaceDir(projectId);
+      for (const edit of responseFileEdits) {
+        const absPath = resolveWorkspacePath(wsDir, edit.path);
+        await fsPromises.mkdir(nodePath.dirname(absPath), { recursive: true });
+        await fsPromises.writeFile(absPath, edit.content, "utf-8");
+        autoAppliedPaths.push(edit.path);
+      }
+      autoApplied = true;
+      logger.info({ projectId, count: autoAppliedPaths.length }, "Build handoff: auto-applied FILE_EDIT blocks to local workspace");
+    } catch (err) {
+      logger.warn({ err, projectId }, "Build handoff: auto-apply failed — user will need to click Apply");
+    }
+  }
+
   // Dual-engine image generation — process IMAGE_GEN tokens Atlas emitted.
   // Must run BEFORE the DB insert so image data is available when we persist.
   // RENDER mode → Gemini Imagen 3  (cinematic, premium, client-facing)
@@ -3739,7 +3765,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     if (lines.length > 0) fullText = fullText.trimEnd() + "\n\n" + lines.join("\n");
   }
   const inputTokenCount = assistantUsage.inputTokens;
-  res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);
   res.end();
   void recordGenerationRunInBackground({
     projectId,
