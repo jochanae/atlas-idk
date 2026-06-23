@@ -524,6 +524,7 @@ export function useChatStream(
               model: res.model ?? sendCtxRef.current.wsModel,
               isDeepDive: !!res.isDeepDive,
               ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
+              ...(res.autoApplied && fes.length > 0 ? { autoPushed: true } : {}),
               ...(lps.length > 0 ? { linePatches: lps } : {}),
               ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
               ...(res.imageB64
@@ -795,6 +796,7 @@ export function useChatStream(
             model: res.model ?? sendCtxRef.current.wsModel,
             isDeepDive: !!res.isDeepDive,
             ...(fes.length > 0 ? { fileEdits: fes, fileEdit: fes[0] } : {}),
+            ...(res.autoApplied && fes.length > 0 ? { autoPushed: true } : {}),
             ...(lps.length > 0 ? { linePatches: lps } : {}),
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
             ...(res.imageB64
