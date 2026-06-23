@@ -623,6 +623,83 @@ function GithubTokenInput({
   );
 }
 
+// ── GitHubSettingsTab ─────────────────────────────────────────────────────────
+function GitHubSettingsTab({ projectId }: { projectId: number }) {
+  const { canWrite, canRead, isLoading, error, status, statusLabel } = useGitHub(projectId);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const mono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
+
+  const isConnected = canRead || canWrite;
+
+  const handleConnect = () => {
+    void import("@/lib/oauthReturn").then(({ stashOauthReturn }) => stashOauthReturn());
+    fetch("/api/github/oauth/start", { headers: { Accept: "application/json" }, credentials: "include" })
+      .then(r => r.status === 401 ? (window.location.href = "/login?reason=session_expired", null) : r.json() as Promise<{ url?: string }>)
+      .then(d => { if (d?.url) window.location.href = d.url; });
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    await fetch("/api/github/token", { method: "DELETE", credentials: "include" }).catch(() => {});
+    setDisconnecting(false);
+    window.location.reload();
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "18px 16px", display: "flex", flexDirection: "column", gap: 20 }} className="scrollbar-none">
+      {/* Connection status */}
+      <section>
+        <div style={{ ...mono, fontSize: 9, letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55, marginBottom: 10 }}>GitHub Connection</div>
+        {isLoading ? (
+          <div style={{ ...mono, fontSize: 11, color: "var(--atlas-muted)", opacity: 0.5 }}>Checking…</div>
+        ) : isConnected ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: status === "connected" ? "rgba(74,222,128,0.9)" : "rgba(201,162,76,0.85)", flexShrink: 0 }} />
+              <span style={{ ...mono, fontSize: 11.5, color: "var(--atlas-fg)", opacity: 0.85 }}>{statusLabel}</span>
+            </div>
+            {status === "read-only" && (
+              <div style={{ fontSize: 11, color: "var(--atlas-muted)", opacity: 0.6, lineHeight: 1.6 }}>
+                Read-only — Atlas can read files but cannot push commits. Re-connect with write permissions to enable push.
+              </div>
+            )}
+            {error && <div style={{ ...mono, fontSize: 10, color: "rgba(252,165,165,0.85)" }}>{error}</div>}
+            <button type="button" onClick={() => { void handleDisconnect(); }} disabled={disconnecting} style={{ alignSelf: "flex-start", padding: "6px 14px", borderRadius: 6, background: "transparent", border: "1px solid rgba(239,68,68,0.3)", color: "rgba(252,165,165,0.8)", fontSize: 10, ...mono, cursor: disconnecting ? "not-allowed" : "pointer", letterSpacing: "0.06em", opacity: disconnecting ? 0.5 : 1 }}>
+              {disconnecting ? "Disconnecting…" : "Disconnect"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 12, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.7 }}>
+              Connect GitHub once for this account. All projects inherit the connection automatically.
+            </div>
+            {error && <div style={{ ...mono, fontSize: 10, color: "rgba(252,165,165,0.85)" }}>{error}</div>}
+            <button type="button" onClick={handleConnect} style={{ alignSelf: "flex-start", padding: "8px 16px", borderRadius: 6, background: "var(--atlas-gold)", border: "none", color: "#0D0B09", fontSize: 10, ...mono, letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
+              Connect with GitHub
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Permissions */}
+      <section>
+        <div style={{ ...mono, fontSize: 9, letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55, marginBottom: 10 }}>Permissions</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { label: "Read repositories", granted: canRead },
+            { label: "Write / push commits", granted: canWrite },
+          ].map(({ label, granted }) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: granted ? "rgba(74,222,128,0.8)" : "rgba(100,100,100,0.4)", boxShadow: granted ? "0 0 5px rgba(74,222,128,0.3)" : "none" }} />
+              <span style={{ fontSize: 11.5, color: granted ? "var(--atlas-fg)" : "var(--atlas-muted)", opacity: granted ? 0.85 : 0.5 }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 // ── ConnectionsTab ────────────────────────────────────────────────────────────
 function ConnectionsTab({
   projectId,
@@ -1553,7 +1630,8 @@ function RightPanel({
     return "ledger";
   });
   const [ledgerSubTab, setLedgerSubTab] = useState<"entries" | "memory">("entries");
-  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github" | "database" | "source">("workspace");
+  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github" | "database">("workspace");
+  const [githubSubTab, setGithubSubTab] = useState<"repository" | "activity" | "settings">("activity");
 
   useEffect(() => {
     if (forceTab) setTab(forceTab);
@@ -1892,13 +1970,12 @@ function RightPanel({
           }}
           className="scrollbar-none"
           >
-            {(["workspace", "github", "database", "source"] as const).map((st) => {
+            {(["workspace", "github", "database"] as const).map((st) => {
               const active = workspaceSubTab === st;
               const labels: Record<typeof st, string> = {
                 workspace: "Workspace",
                 github: "GitHub",
                 database: "Database",
-                source: "Source",
               };
               return (
                 <button
@@ -1935,30 +2012,52 @@ function RightPanel({
               <WorkspaceFilesPanel projectId={projectId} onOpenTerminal={onOpenTerminal} />
             )}
             {workspaceSubTab === "github" && (
-              <FilesPanel
-                projectId={projectId}
-                onFileContext={onFileContext}
-                onLinkedRepoChange={onLinkedRepoChange}
-                dbUrl={dbUrl}
-                onDbUrlChange={onDbUrlChange}
-                onZipTrigger={onZipTrigger}
-                zipLoaded={zipLoaded}
-                zipFileName={zipFileName}
-                onOpenConnections={openConnections}
-                onSwitchToSource={() => setWorkspaceSubTab("source")}
-                wsLens={wsLens}
-              />
+              <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
+                {/* Repository | Activity | Settings pill bar */}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, padding: "0 8px", borderBottom: "1px solid rgba(201,162,76,0.08)", flexShrink: 0, height: 30, overflowX: "auto" }} className="scrollbar-none">
+                  {(["repository", "activity", "settings"] as const).map((gt) => {
+                    const gActive = githubSubTab === gt;
+                    const gLabels: Record<typeof gt, string> = { repository: "Repository", activity: "Activity", settings: "Settings" };
+                    return (
+                      <button key={gt} type="button" onClick={() => setGithubSubTab(gt)} style={{ padding: "0 10px", height: "100%", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.09em", textTransform: "uppercase", border: "none", borderBottom: gActive ? "2px solid var(--atlas-gold)" : "2px solid transparent", background: "transparent", cursor: "pointer", color: gActive ? "var(--atlas-gold)" : "var(--atlas-muted)", opacity: gActive ? 1 : 0.45, fontWeight: gActive ? 600 : 400, transition: "color 120ms ease, opacity 120ms ease", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {gLabels[gt]}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Content */}
+                <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+                  {githubSubTab === "repository" && (
+                    <SourceTab
+                      projectId={projectId}
+                      onLinkedRepoChange={onLinkedRepoChange}
+                      onZipFile={onZipFile}
+                      onSwitchToGitHub={() => setGithubSubTab("activity")}
+                    />
+                  )}
+                  {githubSubTab === "activity" && (
+                    <FilesPanel
+                      projectId={projectId}
+                      onFileContext={onFileContext}
+                      onLinkedRepoChange={onLinkedRepoChange}
+                      dbUrl={dbUrl}
+                      onDbUrlChange={onDbUrlChange}
+                      onZipTrigger={onZipTrigger}
+                      zipLoaded={zipLoaded}
+                      zipFileName={zipFileName}
+                      onOpenConnections={openConnections}
+                      onSwitchToSource={() => setGithubSubTab("repository")}
+                      wsLens={wsLens}
+                    />
+                  )}
+                  {githubSubTab === "settings" && (
+                    <GitHubSettingsTab projectId={projectId} />
+                  )}
+                </div>
+              </div>
             )}
             {workspaceSubTab === "database" && (
               <DatabaseTab projectId={projectId} projectName={projectName} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
-            )}
-            {workspaceSubTab === "source" && (
-              <SourceTab
-                projectId={projectId}
-                onLinkedRepoChange={onLinkedRepoChange}
-                onZipFile={onZipFile}
-                onSwitchToGitHub={() => setWorkspaceSubTab("github")}
-              />
             )}
           </div>
         </div>

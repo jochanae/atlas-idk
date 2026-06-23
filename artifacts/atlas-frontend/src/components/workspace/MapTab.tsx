@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject, Project } from "@workspace/api-client-react";
+import { useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import type React from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getAuthHeaders } from "@/lib/api";
 import { parseLinkedRepo } from "@/lib/githubRepo";
@@ -34,10 +33,6 @@ function MapSection({ label, items, color = "var(--atlas-muted)" }: { label: str
 }
 
 export function MapTab({ projectId }: { projectId: number }) {
-  const queryClient = useQueryClient();
-  const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
-  const updateProject = useUpdateProject();
-
   const scanKey = `atlas-scan-${projectId}`;
   const [scan, setScan] = useState<ProjectScan | null>(() => {
     try {
@@ -47,40 +42,15 @@ export function MapTab({ projectId }: { projectId: number }) {
   });
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedToMemory, setSavedToMemory] = useState(false);
 
   const { data: mapProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const token = mapProject?.githubToken ?? null;
   const linkedRepo = parseLinkedRepo(mapProject?.linkedRepo);
 
-  const saveMapToMemory = (data: ProjectScan, existingMemory: string) => {
-    const scanBlock = [
-      `[Project map — ${data.repo} — scanned ${data.scannedAt.slice(0, 10)}]`,
-      data.description ? `Description: ${data.description}` : "",
-      data.stack?.length ? `Stack: ${data.stack.join(", ")}` : "",
-      data.routes?.length ? `Routes (${data.routes.length}): ${data.routes.slice(0, 12).join(", ")}` : "",
-      data.pages?.length ? `Pages: ${data.pages.slice(0, 12).join(", ")}` : "",
-      data.tables?.length ? `Tables: ${data.tables.join(", ")}` : "",
-      `Auth: ${data.authEnabled ? "enabled" : "not found"}`,
-      `Total files: ${data.totalFiles}`,
-    ].filter(Boolean).join("\n");
-
-    // Replace any previous project map block, or append
-    const MAP_RE = /\[Project map —[^\]]*\][^\[]*/g;
-    const stripped = existingMemory.replace(MAP_RE, "").trim();
-    const updated = stripped ? `${stripped}\n\n${scanBlock}` : scanBlock;
-
-    updateProject.mutate(
-      { id: projectId, data: { memory: updated } },
-      { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) }); setSavedToMemory(true); } }
-    );
-  };
-
   const handleScan = async () => {
     if (!linkedRepo || !token) return;
     setScanning(true);
     setError(null);
-    setSavedToMemory(false);
     try {
       const res = await fetch("/api/github/analyze", {
         method: "POST",
@@ -94,8 +64,6 @@ export function MapTab({ projectId }: { projectId: number }) {
       const data = await res.json() as ProjectScan;
       setScan(data);
       try { localStorage.setItem(scanKey, JSON.stringify(data)); } catch {}
-      // Auto-save to Atlas memory so every future chat knows the structure
-      saveMapToMemory(data, project?.memory ?? "");
     } catch (e: any) {
       setError(e.message ?? "Scan failed");
     } finally {
@@ -249,19 +217,6 @@ export function MapTab({ projectId }: { projectId: number }) {
             ))}
           </div>
 
-          {/* Memory save status — auto-saved after every scan */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 7,
-            padding: "8px 11px", borderRadius: 6,
-            background: savedToMemory ? "rgba(34,197,94,0.06)" : "rgba(255,255,255,0.025)",
-            border: `1px solid ${savedToMemory ? "rgba(34,197,94,0.2)" : "var(--atlas-border)"}`,
-            transition: "all 300ms ease",
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: savedToMemory ? "#34d399" : "var(--atlas-muted)", opacity: savedToMemory ? 1 : 0.3 }} />
-            <span style={{ fontSize: "var(--ts-micro)", ...sMono, color: savedToMemory ? "rgba(134,239,172,0.8)" : "var(--atlas-muted)", opacity: savedToMemory ? 1 : 0.45, letterSpacing: "0.04em" }}>
-              {updateProject.isPending ? "Saving to memory…" : savedToMemory ? "Saved to Atlas memory — active in chat" : "Scan to save map to Atlas memory"}
-            </span>
-          </div>
         </div>
       )}
     </div>
