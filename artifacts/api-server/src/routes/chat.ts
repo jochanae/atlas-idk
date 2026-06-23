@@ -3331,7 +3331,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     linePatches,
     repoFiles,
   });
-  const fileChangesAllowed = !hasProposedFileChanges || canProceedWithFileChanges({
+  const fileChangesAllowed = isBuildHandoff || !hasProposedFileChanges || canProceedWithFileChanges({
     fileEdits,
     linePatches,
     repoFiles,
