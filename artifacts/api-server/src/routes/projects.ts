@@ -809,11 +809,29 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
     }
   }
 
-  // Count sessions to detect fresh bootstrapped project
-  const [{ sessionCount }] = await db
-    .select({ sessionCount: sql<number>`count(*)::int` })
-    .from(sessionsTable)
-    .where(eq(sessionsTable.projectId, id));
+  // Count sessions + fetch active session's buildIntent
+  const [[{ sessionCount }], activeSessionRows] = await Promise.all([
+    db
+      .select({ sessionCount: sql<number>`count(*)::int` })
+      .from(sessionsTable)
+      .where(eq(sessionsTable.projectId, id)),
+    db
+      .select({ buildIntent: sessionsTable.buildIntent, messageCount: sessionsTable.messageCount })
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.projectId, id), eq(sessionsTable.status, "active")))
+      .orderBy(desc(sessionsTable.createdAt))
+      .limit(1),
+  ]);
+
+  // If the active session has a buildIntent and no messages yet, hand straight back to the
+  // workspace — it will auto-send this as a user message through /api/chat so the
+  // BUILD_HANDOFF fires and Atlas starts writing FILE_EDIT blocks immediately.
+  const activeBuildIntent = activeSessionRows[0]?.buildIntent ?? null;
+  const activeMessageCount = activeSessionRows[0]?.messageCount ?? 1;
+  if (activeBuildIntent && activeMessageCount === 0) {
+    res.json({ buildIntent: activeBuildIntent });
+    return;
+  }
 
   const ageMs = Date.now() - new Date(project.createdAt).getTime();
   const isFreshBootstrap = !!repoName && ageMs < 60 * 60 * 1000 && sessionCount <= 1;

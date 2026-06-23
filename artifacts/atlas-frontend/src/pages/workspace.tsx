@@ -4293,7 +4293,13 @@ export default function Workspace() {
     })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
-        if (data?.message) setAtlasGreeting(data.message);
+        if (data?.buildIntent) {
+          // Build-handoff path: auto-send through /api/chat so BUILD_HANDOFF fires
+          // and Atlas starts writing FILE_EDIT blocks without user typing anything.
+          setOpeningMessage({ message: data.buildIntent, projectId: String(id) });
+        } else if (data?.message) {
+          setAtlasGreeting(data.message);
+        }
       })
       .catch(() => {})
       .finally(() => setGreetingLoading(false));
