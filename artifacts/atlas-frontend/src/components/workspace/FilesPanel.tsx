@@ -163,6 +163,223 @@ function DatabaseConnectionSection({
   );
 }
 
+function RepoControlBar({
+  repoFullName,
+  scanStatus,
+  importStatus,
+  importResult,
+  permissionStatus,
+  statusLabel,
+  onRunImport,
+  onHydrate,
+  onUnlink,
+  onConnectGitHub,
+  isUnlinking,
+}: {
+  repoFullName: string;
+  scanStatus: "idle" | "scanning" | "done" | "error";
+  importStatus: "idle" | "importing" | "done" | "error";
+  importResult: { ledgerEntriesCreated: number; summary: string | null } | null;
+  permissionStatus: "connected" | "read-only" | "not-connected";
+  statusLabel: string;
+  onRunImport: () => void;
+  onHydrate: () => void;
+  onUnlink: () => void;
+  onConnectGitHub: () => void;
+  isUnlinking: boolean;
+}) {
+  const repoShort = repoFullName.includes("/") ? repoFullName.split("/")[1] : repoFullName;
+
+  const importBtn = (() => {
+    if (importStatus === "importing") {
+      return (
+        <button disabled style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 5,
+          border: "1px solid var(--atlas-border)", background: "transparent",
+          color: "var(--atlas-muted)", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.07em", cursor: "default", opacity: 0.65,
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, animation: "pulse 1.2s ease-in-out infinite" }} />
+          Importing…
+        </button>
+      );
+    }
+    if (importStatus === "done") {
+      return (
+        <button onClick={onRunImport} title={importResult ? `${importResult.ledgerEntriesCreated} decisions added · click to re-run` : "Re-run deep import"} style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 5,
+          border: "1px solid rgba(52,211,153,0.2)", background: "rgba(52,211,153,0.05)",
+          color: "#34d399", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.07em", cursor: "pointer",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(52,211,153,0.4)"; e.currentTarget.style.background = "rgba(52,211,153,0.1)"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(52,211,153,0.2)"; e.currentTarget.style.background = "rgba(52,211,153,0.05)"; }}
+        >
+          ✓ Imported · Re-run
+        </button>
+      );
+    }
+    if (importStatus === "error") {
+      return (
+        <button onClick={onRunImport} style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "4px 10px", borderRadius: 5,
+          border: "1px solid rgba(239,68,68,0.25)", background: "rgba(239,68,68,0.06)",
+          color: "rgba(252,165,165,0.85)", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+          letterSpacing: "0.07em", cursor: "pointer",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(239,68,68,0.45)"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(239,68,68,0.25)"; }}
+        >
+          ↺ Retry Import
+        </button>
+      );
+    }
+    return (
+      <button onClick={onRunImport} style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "4px 10px", borderRadius: 5,
+        border: "1px solid rgba(201,162,76,0.3)", background: "rgba(201,162,76,0.07)",
+        color: "var(--atlas-gold)", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+        letterSpacing: "0.07em", cursor: "pointer", fontWeight: 600,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.55)"; e.currentTarget.style.background = "rgba(201,162,76,0.13)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(201,162,76,0.3)"; e.currentTarget.style.background = "rgba(201,162,76,0.07)"; }}
+      >
+        Deep Import
+      </button>
+    );
+  })();
+
+  const permBadge = (() => {
+    if (permissionStatus === "connected") {
+      return (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 3, background: "rgba(52,211,153,0.07)", border: "0.5px solid rgba(52,211,153,0.2)" }}>
+          <span style={{ fontSize: 8, color: "#34d399" }}>✓</span>
+          <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#34d399" }}>GitHub connected</span>
+        </span>
+      );
+    }
+    if (permissionStatus === "read-only") {
+      return (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 3, background: "rgba(201,162,76,0.06)", border: "0.5px solid rgba(201,162,76,0.2)" }}>
+          <span style={{ fontSize: 8, color: "var(--atlas-gold)" }}>🔒</span>
+          <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>Read-only</span>
+        </span>
+      );
+    }
+    return null;
+  })();
+
+  return (
+    <div style={{
+      padding: "8px 10px 6px",
+      borderBottom: "1px solid var(--atlas-border)",
+      flexShrink: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    }}>
+      {/* Row 1: repo name + status badges */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flexWrap: "wrap" }}>
+        <span style={{
+          fontSize: 11, fontFamily: "var(--app-font-mono)", fontWeight: 600,
+          color: "var(--atlas-fg)", overflow: "hidden", textOverflow: "ellipsis",
+          whiteSpace: "nowrap", maxWidth: 120, flexShrink: 0,
+        }} title={repoFullName}>
+          {repoShort}
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 5px", borderRadius: 3, flexShrink: 0, background: "rgba(52,211,153,0.07)", border: "0.5px solid rgba(52,211,153,0.2)" }}>
+          <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />
+          <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#34d399" }}>linked</span>
+        </span>
+        {scanStatus === "scanning" && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 5px", borderRadius: 3, flexShrink: 0, background: "rgba(201,162,76,0.07)", border: "0.5px solid rgba(201,162,76,0.2)" }}>
+            <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, opacity: 0.7, animation: "pulse 1.2s ease-in-out infinite" }} />
+            <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-gold)", opacity: 0.8 }}>analyzing…</span>
+          </span>
+        )}
+        {scanStatus === "done" && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 5px", borderRadius: 3, flexShrink: 0, background: "rgba(201,162,76,0.07)", border: "0.5px solid rgba(201,162,76,0.2)" }}>
+            <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>◆ mapped</span>
+          </span>
+        )}
+        {permBadge}
+      </div>
+
+      {/* Row 2: action buttons */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+        {importBtn}
+        <button
+          onClick={onHydrate}
+          disabled={scanStatus === "scanning"}
+          title="Re-sync repo structure into chat context"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "4px 10px", borderRadius: 5,
+            border: "1px solid var(--atlas-border)", background: "transparent",
+            color: "var(--atlas-muted)", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.07em", cursor: scanStatus === "scanning" ? "default" : "pointer",
+            opacity: scanStatus === "scanning" ? 0.5 : 1,
+            transition: "opacity 160ms, border-color 160ms",
+          }}
+          onMouseEnter={e => { if (scanStatus !== "scanning") { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "var(--atlas-fg)"; } }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--atlas-border)"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+        >
+          ↺ Hydrate
+        </button>
+        <button
+          onClick={onUnlink}
+          disabled={isUnlinking}
+          title="Unlink repo from this project"
+          style={{
+            display: "inline-flex", alignItems: "center",
+            padding: "4px 8px", borderRadius: 5,
+            border: "1px solid var(--atlas-border)", background: "transparent",
+            color: "var(--atlas-muted)", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+            letterSpacing: "0.07em", cursor: isUnlinking ? "default" : "pointer",
+            opacity: isUnlinking ? 0.45 : 0.6,
+            marginLeft: "auto",
+          }}
+          onMouseEnter={e => { if (!isUnlinking) { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)"; e.currentTarget.style.color = "rgba(252,165,165,0.8)"; } }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = isUnlinking ? "0.45" : "0.6"; e.currentTarget.style.borderColor = "var(--atlas-border)"; e.currentTarget.style.color = "var(--atlas-muted)"; }}
+        >
+          {isUnlinking ? "unlinking…" : "Unlink"}
+        </button>
+      </div>
+
+      {/* Row 3: read-only upgrade prompt */}
+      {permissionStatus === "read-only" && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "5px 8px", borderRadius: 5,
+          background: "rgba(201,162,76,0.04)", border: "0.5px solid rgba(201,162,76,0.15)",
+          marginTop: 1,
+        }}>
+          <span style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.7, flex: 1 }}>
+            Add a personal token to enable write access
+          </span>
+          <button
+            onClick={onConnectGitHub}
+            style={{
+              flexShrink: 0, padding: "3px 8px", borderRadius: 4,
+              border: "none", background: "rgba(201,162,76,0.12)",
+              color: "var(--atlas-gold)", fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+              fontWeight: 600, letterSpacing: "0.07em", cursor: "pointer",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,162,76,0.22)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(201,162,76,0.12)"; }}
+          >
+            Connect GitHub →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function FilesPanel({
   projectId,
   onFileContext,
@@ -213,9 +430,11 @@ export function FilesPanel({
 
   const {
     canRead,
+    canWrite,
     isLoading,
     error: githubConnectionError,
     statusLabel: githubStatusLabelFromHook,
+    status: githubPermissionStatus,
     tokenHeader,
     connect,
   } = useGitHub(projectId);
@@ -734,30 +953,6 @@ export function FilesPanel({
             >
               {selectedRepo.name}
             </button>
-            {/* Linked badge + unlink */}
-            <span
-              title="Linked to this project — auto-loads next time"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 3,
-                padding: "1px 5px", borderRadius: 3, flexShrink: 0,
-                background: "rgba(52,211,153,0.07)",
-                border: "0.5px solid rgba(52,211,153,0.2)",
-              }}
-            >
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />
-              <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#34d399" }}>linked</span>
-            </span>
-            {scanStatus === "scanning" && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 5px", borderRadius: 3, flexShrink: 0, background: "rgba(201,162,76,0.07)", border: "0.5px solid rgba(201,162,76,0.2)" }}>
-                <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--atlas-gold)", flexShrink: 0, opacity: 0.7, animation: "pulse 1.2s ease-in-out infinite" }} />
-                <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-gold)", opacity: 0.8 }}>analyzing…</span>
-              </span>
-            )}
-            {scanStatus === "done" && (
-              <span title="Repo structure analyzed and injected into chat context" style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 5px", borderRadius: 3, flexShrink: 0, background: "rgba(201,162,76,0.07)", border: "0.5px solid rgba(201,162,76,0.2)" }}>
-                <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "var(--atlas-gold)" }}>◆ mapped</span>
-              </span>
-            )}
           </>
         )}
         {selectedPath && (
@@ -768,24 +963,32 @@ export function FilesPanel({
             </span>
           </>
         )}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-          {selectedRepo && (
-            <button
-              onClick={unlinkRepo}
-              disabled={isUnlinking}
-              title="Unlink repo from this project"
-              style={{ background: "transparent", border: "none", cursor: isUnlinking ? "default" : "pointer", color: "var(--atlas-muted)", fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", opacity: isUnlinking ? 0.55 : 0.35, padding: "2px 4px" }}
-              onMouseEnter={(e) => { if (!isUnlinking) e.currentTarget.style.opacity = "0.8"; }}
-              onMouseLeave={(e) => { if (!isUnlinking) e.currentTarget.style.opacity = "0.35"; }}
-            >
-              {isUnlinking ? "unlinking…" : "unlink"}
-            </button>
-          )}
-          <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", color: githubStatusLabel === "GitHub connected" ? "#34d399" : "var(--atlas-gold)", opacity: 0.75 }}>
-            {githubStatusLabel}
-          </span>
-        </div>
       </div>
+
+      {selectedRepo && (
+        <RepoControlBar
+          repoFullName={selectedRepo.fullName}
+          scanStatus={scanStatus}
+          importStatus={importStatus}
+          importResult={importResult}
+          permissionStatus={githubPermissionStatus}
+          statusLabel={githubStatusLabel}
+          onRunImport={runFullImport}
+          onHydrate={() => { if (selectedRepo && token) runAutoScan(selectedRepo, token); }}
+          onUnlink={unlinkRepo}
+          onConnectGitHub={async () => {
+            try {
+              const { stashOauthReturn } = await import("@/lib/oauthReturn");
+              stashOauthReturn();
+              const res = await fetch("/api/github/oauth/start", { method: "GET", credentials: "include", headers: { Accept: "application/json" } });
+              if (res.status === 401) { window.location.href = "/login?reason=session_expired"; return; }
+              const data = await res.json();
+              if (data.url) window.location.href = data.url;
+            } catch {}
+          }}
+          isUnlinking={isUnlinking}
+        />
+      )}
 
       {selectedRepo && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
@@ -871,126 +1074,6 @@ export function FilesPanel({
       {/* File tree */}
       {filesSubTab === "files" && view === "tree" && (
         <>
-          {isConnected && (
-            <div style={{
-              margin: "8px 10px",
-              borderRadius: 8,
-              border: `1px solid ${importStatus === "done" ? "rgba(201,162,76,0.25)" : importStatus === "idle" ? "rgba(201,162,76,0.3)" : "rgba(255,255,255,0.06)"}`,
-              background: importStatus === "done" ? "rgba(201,162,76,0.04)" : importStatus === "idle" ? "rgba(201,162,76,0.06)" : "rgba(255,255,255,0.02)",
-              padding: "10px 12px",
-              flexShrink: 0,
-            }}>
-              {importStatus === "idle" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 2 }}>
-                      Deep Import
-                    </div>
-                    <div style={{ fontSize: 10, color: "var(--atlas-muted)", lineHeight: 1.4 }}>
-                      Atlas reads your repo and seeds your ledger with the architectural decisions already made.
-                    </div>
-                  </div>
-                  <button
-                    onClick={runFullImport}
-                    style={{
-                      flexShrink: 0,
-                      padding: "6px 12px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(201,162,76,0.35)",
-                      background: "rgba(201,162,76,0.1)",
-                      color: "var(--atlas-gold)",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      letterSpacing: "0.04em",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Import
-                  </button>
-                </div>
-              )}
-
-              {importStatus === "importing" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: "var(--atlas-gold)", opacity: 0.7,
-                    animation: "pulse 1.2s ease-in-out infinite", flexShrink: 0,
-                  }} />
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: 1 }}>
-                      Analyzing repo…
-                    </div>
-                    <div style={{ fontSize: 10, color: "var(--atlas-muted)" }}>
-                      Reading files and extracting decisions. This takes ~20 seconds.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {importStatus === "done" && importResult && (
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <span style={{ fontSize: 10, color: "var(--atlas-gold)", fontWeight: 700, letterSpacing: "0.06em" }}>◆ IMPORTED</span>
-                    <span style={{ fontSize: 9, color: "var(--atlas-muted)" }}>
-                      {importResult.ledgerEntriesCreated} decision{importResult.ledgerEntriesCreated !== 1 ? "s" : ""} added to ledger
-                    </span>
-                    <button
-                      onClick={runFullImport}
-                      title="Re-run full import"
-                      style={{
-                        marginLeft: "auto", background: "transparent", border: "none",
-                        cursor: "pointer", color: "var(--atlas-muted)", fontSize: 9,
-                        fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em", opacity: 0.5,
-                        padding: "2px 4px",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
-                      onMouseLeave={e => { e.currentTarget.style.opacity = "0.5"; }}
-                    >
-                      re-import
-                    </button>
-                  </div>
-                  {importResult.summary && (
-                    <p style={{ fontSize: 10, color: "var(--atlas-muted)", lineHeight: 1.5, margin: "0 0 6px" }}>
-                      {importResult.summary}
-                    </p>
-                  )}
-                  {importResult.decisions.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {importResult.decisions.slice(0, 5).map((d, i) => (
-                        <span key={i} style={{
-                          fontSize: 9, padding: "2px 6px", borderRadius: 4,
-                          background: "rgba(201,162,76,0.08)", color: "var(--atlas-gold)",
-                          border: "0.5px solid rgba(201,162,76,0.2)",
-                        }}>
-                          {d.length > 40 ? d.slice(0, 40) + "…" : d}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {importStatus === "error" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ flex: 1, fontSize: 10, color: "var(--atlas-muted)" }}>
-                    Import failed. Check your GitHub token in the Files tab.
-                  </div>
-                  <button
-                    onClick={runFullImport}
-                    style={{
-                      flexShrink: 0, padding: "5px 10px", borderRadius: 6,
-                      border: "1px solid rgba(255,255,255,0.1)", background: "transparent",
-                      color: "var(--atlas-muted)", fontSize: 10, cursor: "pointer",
-                    }}
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           <div style={{ flex: 1, overflowY: "auto", padding: "6px 2px" }} className="scrollbar-none">
             {treeLoading && (
