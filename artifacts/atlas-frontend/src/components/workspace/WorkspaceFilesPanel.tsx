@@ -88,6 +88,17 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
 
   const gitFiles: Record<string, string> = gitStatus?.files ?? {};
 
+  const hydrationKey = ["ws-hydration", projectId];
+  const { data: hydrationInfo, refetch: refetchHydration } = useQuery<{
+    linkedRepo: string | null;
+    isEmpty: boolean;
+    isGitInitialized: boolean;
+  }>({
+    queryKey: hydrationKey,
+    queryFn: () => apiFetch(`${BASE}/${projectId}/hydration`),
+    staleTime: 15_000,
+  });
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: treeKey });
     qc.invalidateQueries({ queryKey: gitKey });
@@ -118,6 +129,12 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
   const [pullSuccess, setPullSuccess] = useState(false);
   const [pullPanelOpen, setPullPanelOpen] = useState(false);
   const pullOutputRef = useRef<HTMLDivElement>(null);
+
+  // Hydration state (first-time clone from GitHub)
+  const [isCloning, setIsCloning] = useState(false);
+  const [cloneOutput, setCloneOutput] = useState("");
+  const [cloneError, setCloneError] = useState<string | null>(null);
+  const cloneOutputRef = useRef<HTMLDivElement>(null);
 
   // Diff state (in commit panel)
   const [showDiff, setShowDiff] = useState(false);
@@ -347,6 +364,81 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
     setIsPulling(false);
   };
 
+  const doClone = async () => {
+    if (isCloning) return;
+    setIsCloning(true);
+    setCloneOutput("");
+    setCloneError(null);
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/${projectId}/git/clone`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      setCloneError(err instanceof Error ? err.message : "Network error");
+      setIsCloning(false);
+      return;
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setCloneError((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      setIsCloning(false);
+      return;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) { setCloneError("No response body"); setIsCloning(false); return; }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          let type = "";
+          let data = "";
+          for (const line of part.split("\n")) {
+            if (line.startsWith("event: ")) type = line.slice(7).trim();
+            if (line.startsWith("data: ")) data = line.slice(6);
+          }
+          if (!type || !data) continue;
+          try {
+            const parsed: string = JSON.parse(data);
+            if (type === "output" || type === "status") {
+              setCloneOutput(prev => {
+                const next = prev + parsed;
+                setTimeout(() => {
+                  if (cloneOutputRef.current) cloneOutputRef.current.scrollTop = cloneOutputRef.current.scrollHeight;
+                }, 0);
+                return next;
+              });
+            } else if (type === "done") {
+              const result: { ok: boolean; error: string | null } = JSON.parse(parsed);
+              if (result.ok) {
+                invalidateAll();
+                void refetchHydration();
+              } else {
+                setCloneError(result.error ?? "Hydration failed");
+              }
+            } else if (type === "error") {
+              setCloneError(parsed);
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch (err) {
+      setCloneError(err instanceof Error ? err.message : "Stream error");
+    }
+    setIsCloning(false);
+  };
+
   const toggleDiff = async () => {
     if (showDiff) { setShowDiff(false); return; }
     setShowDiff(true);
@@ -499,9 +591,79 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
             </div>
           )}
           {tree && tree.children.length === 0 && (
-            <div style={{ padding: "14px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.5 }}>
-              Empty workspace.<br />Create a file to start.
-            </div>
+            hydrationInfo?.linkedRepo ? (
+              <div style={{ padding: "16px 14px" }}>
+                {isCloning ? (
+                  <>
+                    <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", marginBottom: 8, opacity: 0.75 }}>
+                      Hydrating workspace…
+                    </div>
+                    <div
+                      ref={cloneOutputRef}
+                      style={{
+                        fontFamily: "monospace", fontSize: 10.5, color: "rgba(180,180,180,0.85)",
+                        background: "rgba(0,0,0,0.25)", borderRadius: 4, padding: "8px 10px",
+                        maxHeight: 140, overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all",
+                      }}
+                    >
+                      {cloneOutput || "Connecting…"}
+                    </div>
+                  </>
+                ) : cloneError ? (
+                  <>
+                    <div style={{ fontSize: 11.5, color: "rgba(220,80,80,0.9)", marginBottom: 6 }}>
+                      Workspace hydration failed
+                    </div>
+                    <div style={{
+                      fontSize: 10.5, color: "rgba(220,80,80,0.7)", marginBottom: 10,
+                      fontFamily: "monospace", whiteSpace: "pre-wrap", lineHeight: 1.5,
+                    }}>
+                      {cloneError}
+                    </div>
+                    <button
+                      onClick={doClone}
+                      style={{
+                        fontSize: 11.5, padding: "5px 12px", borderRadius: 4,
+                        border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer",
+                        background: "rgba(255,255,255,0.06)", color: "var(--atlas-fg)",
+                      }}
+                    >
+                      Retry
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", marginBottom: 3, opacity: 0.6 }}>
+                      Linked to{" "}
+                      <span style={{ color: "var(--atlas-fg)", opacity: 0.85 }}>
+                        {hydrationInfo.linkedRepo}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: 11.5, color: "var(--atlas-muted)", marginBottom: 12,
+                      opacity: 0.5, lineHeight: 1.6,
+                    }}>
+                      Workspace is empty. Import files from the linked repository to get started.
+                    </div>
+                    <button
+                      onClick={doClone}
+                      style={{
+                        fontSize: 12, padding: "6px 14px", borderRadius: 4,
+                        border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer",
+                        background: "rgba(255,255,255,0.07)", color: "var(--atlas-fg)",
+                        transition: "background 120ms",
+                      }}
+                    >
+                      Hydrate Workspace
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div style={{ padding: "14px", fontSize: 12, color: "var(--atlas-muted)", opacity: 0.55, lineHeight: 1.5 }}>
+                Empty workspace.<br />Create a file to start.
+              </div>
+            )
           )}
           {tree && tree.children.map(node => (
             <TreeNode

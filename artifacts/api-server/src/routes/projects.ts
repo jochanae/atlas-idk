@@ -7,6 +7,7 @@ import { encryptToken, decryptToken } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
 import { ensureProjectWorkspaceDir } from "../lib/projectWorkspace";
+import { cloneRepoBackground } from "../lib/workspaceHydration";
 import {
   CreateProjectBody,
   UpdateProjectBody,
@@ -512,6 +513,11 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
 
     // Event 1 — fire Atlas Memory refresh on activation (fire-and-forget, non-blocking)
     pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});
+
+    // Hydrate workspace: clone linked repo if workspace dir is empty (fire-and-forget)
+    if (project.linkedRepo) {
+      cloneRepoBackground(projectId, userId, req.log).catch(() => {});
+    }
 
     res.json(serializeProject(updated, true));
   } catch (err) {

@@ -546,4 +546,145 @@ router.get("/fs/:projectId/git/log", async (req: Request, res: Response): Promis
   }
 });
 
+// GET /api/fs/:projectId/hydration — workspace hydration status
+router.get("/fs/:projectId/hydration", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const projectId = parseProjectId(req.params.projectId);
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const [project] = await db
+      .select({ linkedRepo: projectsTable.linkedRepo })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+
+    const workspaceDir = projectWorkspaceDir(projectId);
+    const repo = parseLinkedRepo(project?.linkedRepo ?? null);
+
+    let isGitInitialized = false;
+    let isEmpty = true;
+    try {
+      await fsPromises.access(path.join(workspaceDir, ".git"));
+      isGitInitialized = true;
+    } catch {}
+    try {
+      const entries = await fsPromises.readdir(workspaceDir);
+      isEmpty = entries.length === 0;
+    } catch {}
+
+    res.json({
+      linkedRepo: repo?.fullName ?? null,
+      isEmpty,
+      isGitInitialized,
+    });
+  } catch (err) {
+    req.log?.error({ err }, "fs hydration status error");
+    res.status(500).json({ error: "Failed to get hydration status" });
+  }
+});
+
+// POST /api/fs/:projectId/git/clone  (SSE streaming)
+// If the workspace already has a .git dir, falls back to git pull.
+router.post("/fs/:projectId/git/clone", async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const projectId = parseProjectId(req.params.projectId);
+  if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+  if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const send = (event: string, data: string) => {
+    try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
+  };
+
+  let githubToken: string | null = null;
+  let targetUrl: string | null = null;
+  let repoName: string | null = null;
+
+  try {
+    const [project] = await db
+      .select({ linkedRepo: projectsTable.linkedRepo, githubToken: projectsTable.githubToken })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+    const repo = parseLinkedRepo(project?.linkedRepo ?? null);
+    if (!repo) {
+      send("done", JSON.stringify({ ok: false, error: "No linked repository — link a GitHub repo first." }));
+      res.end();
+      return;
+    }
+    repoName = repo.fullName;
+    githubToken = await resolveGithubTokenForRequest(userId, project?.githubToken ?? null);
+    targetUrl = buildCloneUrl(repo, githubToken);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to resolve repo";
+    send("done", JSON.stringify({ ok: false, error: msg }));
+    res.end();
+    return;
+  }
+
+  const workspaceDir = await ensureProjectWorkspaceDir(projectId);
+
+  // Detect whether this is a first-time clone or a subsequent pull
+  let isInitialized = false;
+  try {
+    await fsPromises.access(path.join(workspaceDir, ".git"));
+    isInitialized = true;
+  } catch {}
+
+  try {
+    let gitArgs: string[];
+    let displayCmd: string;
+    if (isInitialized) {
+      gitArgs = ["pull", targetUrl];
+      displayCmd = `git pull  # (workspace already cloned — pulling latest)\n`;
+    } else {
+      gitArgs = ["clone", targetUrl, "."];
+      displayCmd = `git clone ${repoName}\n`;
+    }
+
+    send("status", `$ ${displayCmd}`);
+    const proc = spawn("git", gitArgs, {
+      cwd: workspaceDir,
+      env: { ...(process.env as Record<string, string>), GIT_TERMINAL_PROMPT: "0" },
+      stdio: "pipe",
+    });
+
+    req.on("close", () => { try { proc.kill("SIGTERM"); } catch {} });
+
+    proc.stdout.on("data", (chunk: Buffer) => {
+      const text = githubToken ? redactToken(chunk.toString(), githubToken) : chunk.toString();
+      send("output", text);
+    });
+    proc.stderr.on("data", (chunk: Buffer) => {
+      const text = githubToken ? redactToken(chunk.toString(), githubToken) : chunk.toString();
+      send("output", text);
+    });
+    proc.on("error", (err) => {
+      send("done", JSON.stringify({ ok: false, error: err.message }));
+      res.end();
+    });
+    proc.on("close", (code) => {
+      const ok = code === 0;
+      send("done", JSON.stringify({
+        ok,
+        error: ok ? null : `git ${isInitialized ? "pull" : "clone"} failed — check output above`,
+      }));
+      res.end();
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Hydration failed";
+    req.log?.error({ err }, "fs git clone error");
+    send("error", msg);
+    res.end();
+  }
+});
+
 export default router;
+
