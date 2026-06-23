@@ -472,7 +472,20 @@ export function useNexusChatStream(
 
             const { content: navCleanedText, route } = stripNavigateTo(fullText);
             let displayText = navCleanedText;
-            if (route) setTimeout(() => { window.location.href = route; }, 800);
+            if (route) {
+              const projectMatch = route.match(/^\/project\/(\d+)$/);
+              if (projectMatch) {
+                const projectId = parseInt(projectMatch[1], 10);
+                fetch(`/api/projects/${projectId}/activate`, {
+                  method: "POST",
+                  credentials: "include",
+                })
+                  .catch(() => {})
+                  .finally(() => { window.location.href = route; });
+              } else {
+                setTimeout(() => { window.location.href = route; }, 800);
+              }
+            }
 
             // Read shapingPayload from meta — backend parses and 
             // sends it in the done event already cleaned
