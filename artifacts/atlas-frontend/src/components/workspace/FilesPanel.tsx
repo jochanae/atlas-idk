@@ -545,9 +545,7 @@ export function FilesPanel({
 
   const runFullImport = () => {
     if (importStatus === "importing") return;
-    const token = selectedRepo
-      ? (localStorage.getItem(`atlas-github-token-${projectId}`) || localStorage.getItem("atlas-github-token") || "__server__")
-      : "__server__";
+    const token = tokenHeader ?? "__server__";
     setImportStatus("importing");
     fetch("/api/github/full-import", {
       method: "POST",
