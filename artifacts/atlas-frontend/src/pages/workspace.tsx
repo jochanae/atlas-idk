@@ -6698,6 +6698,19 @@ export default function Workspace() {
     }
   }, [messages]);
 
+  // ── Auto-activate shaping projects ───────────────────────────────────────
+  // When Atlas navigates directly to a project that is still in "shaping" status,
+  // activate it in-place rather than showing a dead-end guard screen.
+  const autoActivateFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoActivateFiredRef.current) return;
+    if (!id || !project || project.status !== "shaping") return;
+    autoActivateFiredRef.current = true;
+    fetch(`/api/projects/${id}/activate`, { method: "POST", credentials: "include" })
+      .catch(() => {})
+      .finally(() => { queryClient.invalidateQueries(); });
+  }, [id, project, queryClient]);
+
   // ── Project not found ────────────────────────────────────────────────────
   // Do NOT redirect on fetch failure — stay on the workspace and show an inline
   // notice. Auto-redirecting back to /home masked real backend errors.
