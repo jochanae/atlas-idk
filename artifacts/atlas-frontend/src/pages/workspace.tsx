@@ -4255,7 +4255,7 @@ export default function Workspace() {
     const count = pendingAutoApply.length;
     const fileList = pendingAutoApply.length > 0 ? `: ${pendingAutoApply.join(", ")}` : "";
     doSend(
-      `[LOCAL_APPLY_SUCCESS] ${count} file${count === 1 ? "" : "s"} written to local workspace${fileList}. File tree updated — you can now read these files back.`,
+      `[LOCAL_APPLY_SUCCESS] ${count} file${count === 1 ? "" : "s"} written to local workspace${fileList}. File tree updated.\n\nAUDIT REQUIRED: Check the file list above. Are all required project files present? Look for anything missing — package.json, remaining screens, component files, config files. If anything is missing, write it immediately using FILE_EDIT blocks. Repeat until the workspace is complete. When nothing is missing, output a clear completion message: "✅ Build complete. Your project workspace is ready — use the Files tab to browse, download, or preview your project."`,
       sessionId,
       messagesRef.current,
       undefined,

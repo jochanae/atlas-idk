@@ -2253,7 +2253,9 @@ router.post("/chat", async (req, res): Promise<void> => {
   const sessionBuildIntent = sessionRows[0]?.buildIntent ?? null;
   const sessionMessageCount = sessionRows[0]?.messageCount ?? 1;
   // Hoisted so auto-apply and file-source logic share the same flag
-  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount === 0 && projectId);
+  // Keep build-handoff mode active for the first few turns so the audit/completion
+  // rounds after LOCAL_APPLY_SUCCESS still run with the BUILD_HANDOFF system prompt.
+  const isBuildHandoff = !!(sessionBuildIntent && sessionMessageCount <= 4 && projectId);
 
   // Derive server-side forge foundation from persisted AxiomFlow node state
   // This is the authoritative source — client-sent forgeContext supplements but never replaces it
