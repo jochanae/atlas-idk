@@ -241,7 +241,7 @@ const router = Router();
 router.post("/devserver/start", (req, res): void => {
   const { repoFullName, branch = "main", envVars = {} } = req.body as { repoFullName: string; branch?: string; envVars?: Record<string, string> };
   const rawToken = req.headers["x-github-token"] as string | undefined;
-  const token = (rawToken && rawToken !== "__server__") ? rawToken : (process.env.GITHUB_TOKEN ?? undefined);
+  const token = (rawToken && rawToken !== "__server__" && rawToken !== "__account__" && rawToken !== "__oauth__") ? rawToken : (process.env.GITHUB_TOKEN ?? undefined);
 
   if (!repoFullName) {
     res.status(400).json({ error: "Missing repoFullName" });
@@ -423,7 +423,7 @@ router.get("/devserver/status", (_req, res): void => {
 router.post("/devserver/build-check", (req, res): void => {
   const { repo } = req.body as { repo?: string };
   const rawToken = req.headers["x-github-token"] as string | undefined;
-  const token = (rawToken && rawToken !== "__server__") ? rawToken : (process.env.GITHUB_TOKEN ?? "");
+  const token = (rawToken && rawToken !== "__server__" && rawToken !== "__account__" && rawToken !== "__oauth__") ? rawToken : (process.env.GITHUB_TOKEN ?? "");
 
   if (!repo) { res.status(400).json({ error: "Missing repo" }); return; }
   if (!token) { res.status(400).json({ error: "No GitHub token available" }); return; }
