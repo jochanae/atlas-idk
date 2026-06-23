@@ -742,8 +742,17 @@ From here you see everything at once. You are not inside any single workspace �
 
 You cannot read code files or push to GitHub from here — that lives in individual workspaces. But you can see every project, every committed decision, every cross-project pattern.
 
-When the user wants to go to a specific project workspace, end your response with exactly:
+## Navigating to an existing project
+When the user wants to go to a specific project workspace that already exists, end your response with exactly:
 NAVIGATE_TO:{"route":"/project/<id>"}
+
+## Handling explicit build/create requests
+When the user makes an explicit request to build, create, or make something new ("build X", "create X", "make X", "I want to build X"), you must:
+1. Call POST /api/projects/create-and-activate with { "name": "<concise project name>", "description": "<one sentence>" }
+2. The response returns { "id": <number>, "name": "...", ... }
+3. End your response with exactly: NAVIGATE_TO:{"route":"/project/<returned-id>"}
+
+Never emit NAVIGATE_TO for a build request without first calling create-and-activate. The project must be fully ready before the user is routed there.
 
 When she commits a decision, says "lock that in" — call POST /api/entries with a committed decision.
 When she says "park that" — call POST /api/entries with a parked item.

@@ -526,6 +526,70 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
   }
 });
 
+// POST /api/projects/create-and-activate — create a committed workspace in one shot
+// Used by Atlas when the user makes an explicit "Build X" request from Global Insight.
+// Returns a fully committed project (genome + session seeded) so NAVIGATE_TO can fire
+// immediately without any secondary activation step.
+router.post("/projects/create-and-activate", async (req, res): Promise<void> => {
+  const userId = (req as any).authUser.id as number;
+  const { name, description } = req.body as { name?: unknown; description?: unknown };
+
+  if (typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+
+  try {
+    // 1. Create project row with committed status from the start
+    const [project] = await db
+      .insert(projectsTable)
+      .values({
+        userId,
+        name: name.trim(),
+        description: typeof description === "string" ? description.trim() || null : null,
+        status: "committed",
+      })
+      .returning();
+
+    if (!project) {
+      res.status(500).json({ error: "Failed to create project" });
+      return;
+    }
+
+    const projectId = project.id;
+
+    // 2. Seed genome
+    await db.insert(projectGenomeTable).values({ projectId });
+
+    // 3. Seed session
+    const [session] = await db
+      .insert(sessionsTable)
+      .values({ projectId, title: "Session 1", status: "active" })
+      .returning({ id: sessionsTable.id });
+
+    // 4. Seed activation entry
+    if (session?.id) {
+      await db.insert(entriesTable).values({
+        projectId,
+        sessionId: session.id,
+        title: "Project created.",
+        summary: "Workspace initialized from Global Insight build request.",
+        status: "committed",
+        severity: "committed",
+        mode: "decide",
+      });
+    }
+
+    // Fire-and-forget memory refresh (non-blocking)
+    pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});
+
+    res.status(201).json(serializeProject(project, true));
+  } catch (err) {
+    req.log?.error({ err }, "create-and-activate error");
+    res.status(500).json({ error: "Failed to create and activate project" });
+  }
+});
+
 // POST /api/projects/:id/refresh-atlas-memory — Event 3: manual "Refresh Atlas Memory"
 router.post("/projects/:id/refresh-atlas-memory", async (req, res): Promise<void> => {
   const projectId = parseInt(req.params.id, 10);
