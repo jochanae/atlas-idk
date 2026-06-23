@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus, Save, Trash2, RefreshCw, GitCommit, GitMerge, History, FileCode, Download } from "lucide-react";
 
