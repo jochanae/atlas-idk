@@ -6,6 +6,7 @@ import { AssistantBubble } from "@/components/workspace/AssistantBubble";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
+import { ExecutionJournal, LedgerSurface, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
 
@@ -32,7 +33,14 @@ function isAutoVerifyMessage(msg: ChatMessage): boolean {
   return msg.displayAs === "autoVerify" || msg.content.startsWith("[FILE_COMMITTED]") || msg.content.startsWith("[LOCAL_APPLY_SUCCESS]");
 }
 
+function isLedgerContent(content: string): boolean {
+  return content.startsWith("[FILE_COMMITTED]") || content.startsWith("[LOCAL_APPLY_SUCCESS]");
+}
+
 function AutoVerifyMessage({ content }: { content: string }) {
+  if (isLedgerContent(content)) {
+    return <LedgerSurface content={content} />;
+  }
   return (
     <div
       style={{
@@ -424,6 +432,8 @@ export function ChatStream(props: ChatStreamProps) {
                     steps={liveGeneration.steps as never}
                     isComplete={false}
                   />
+                ) : isExecutionStream(activityStream.content) ? (
+                  <ExecutionJournal content={activityStream.content} isStreaming={true} />
                 ) : (
                   <AtlasActivityBar content={activityStream.content} lens={wsLens} />
                 )
@@ -527,6 +537,8 @@ export function ChatStream(props: ChatStreamProps) {
             steps={liveGeneration.steps as never}
             isComplete={false}
           />
+        ) : isExecutionStream(activityStream.content) ? (
+          <ExecutionJournal content={activityStream.content} isStreaming={true} />
         ) : (
           <AtlasActivityBar content={activityStream.content} lens={wsLens} />
         )
