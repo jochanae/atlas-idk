@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { db, sessionsTable, chatMessagesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { promises as fsp } from "fs";
+import path from "path";
+import { projectWorkspaceDir } from "../lib/projectWorkspace";
 
 const router = Router();
 
@@ -17,6 +20,51 @@ function parseFileEdits(content: string): Array<{ path: string; language: string
     });
   }
   return files;
+}
+
+// Determine language from file extension
+function langFromExt(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
+    css: 'css', html: 'html', json: 'json', md: 'markdown',
+  };
+  return map[ext] ?? 'text';
+}
+
+// Recursively collect all files from a workspace directory
+async function readWorkspaceFiles(
+  dir: string,
+  base: string = dir,
+  skipBinary = true
+): Promise<Array<{ path: string; language: string; content: string }>> {
+  const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.cache']);
+  const BINARY_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'zip', 'tar', 'gz']);
+  const results: Array<{ path: string; language: string; content: string }> = [];
+  let entries;
+  try {
+    entries = await fsp.readdir(dir, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      results.push(...await readWorkspaceFiles(fullPath, base, skipBinary));
+    } else if (entry.isFile()) {
+      const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+      if (skipBinary && BINARY_EXTS.has(ext)) continue;
+      try {
+        const content = await fsp.readFile(fullPath, 'utf-8');
+        const relPath = path.relative(base, fullPath);
+        results.push({ path: relPath, language: langFromExt(entry.name), content });
+      } catch {
+        // skip unreadable files
+      }
+    }
+  }
+  return results;
 }
 
 // Build a standalone HTML page that renders a React component
@@ -118,21 +166,59 @@ function buildComponentPreview(componentCode: string, componentName: string): st
 </html>`;
 }
 
-// Build a preview HTML page from multiple files
-function buildMultiFilePreview(files: Array<{ path: string; content: string }>): string {
-  // Find the main component (largest file, or first .tsx file)
-  const mainFile = files.find(f => f.path.endsWith('.tsx')) || files[0];
-  const componentName = mainFile?.path.split('/').pop()?.replace(/\.tsx?$/, '') || 'Component';
+// Strip ES module import/export statements so Babel-standalone can run the code inline.
+// All modules are concatenated into a single script, so imports are resolved by load order.
+function stripModuleStatements(code: string): string {
+  return code
+    // Remove: import ... from '...'  /  import '...'
+    .replace(/^import\s+.*?from\s+['"][^'"]*['"]\s*;?\s*$/gm, '')
+    .replace(/^import\s+['"][^'"]*['"]\s*;?\s*$/gm, '')
+    // Remove: export default  /  export { ... }  /  export const/function/class
+    .replace(/^export\s+default\s+/gm, 'var __defaultExport = ')
+    .replace(/^export\s+\{[^}]*\}\s*;?\s*$/gm, '')
+    .replace(/^export\s+(const|let|var|function|class)\s+/gm, '$1 ');
+}
 
-  // Build imports from other files
-  const otherFiles = files.filter(f => f.path !== mainFile?.path);
-  const moduleCode = otherFiles.map(f => {
-    const name = f.path.split('/').pop()?.replace(/\.tsx?$/, '') || 'Module';
-    return `
-// ${f.path}
-${f.content}
-`;
-  }).join('\n');
+// Build a preview HTML page from multiple workspace files.
+// Concatenates all JS/JSX/TS/TSX files (with imports stripped) and inlines CSS.
+// Entry point priority: App.jsx > App.tsx > index.jsx > index.tsx > first JS file.
+function buildMultiFilePreview(files: Array<{ path: string; content: string }>): string {
+  const jsExts = new Set(['.jsx', '.tsx', '.js', '.ts']);
+  const cssExts = new Set(['.css']);
+
+  const isJs = (p: string) => jsExts.has('.' + (p.split('.').pop() ?? ''));
+  const isCss = (p: string) => cssExts.has('.' + (p.split('.').pop() ?? ''));
+
+  // Collect CSS (inline as <style>)
+  const cssContent = files
+    .filter(f => isCss(f.path))
+    .map(f => f.content)
+    .join('\n');
+
+  // Collect JS files, ordered: support files first, then main entry
+  const jsFiles = files.filter(f => isJs(f.path));
+
+  const ENTRY_PRIORITY = ['App.jsx', 'App.tsx', 'app.jsx', 'app.tsx', 'index.jsx', 'index.tsx'];
+  const basename = (p: string) => p.split('/').pop() ?? p;
+
+  const mainFile = ENTRY_PRIORITY
+    .map(name => jsFiles.find(f => basename(f.path) === name))
+    .find(Boolean) ?? jsFiles[0];
+
+  const componentName = mainFile
+    ? basename(mainFile.path).replace(/\.[jt]sx?$/, '')
+    : 'App';
+
+  // All support files first (context, screens, components) then the main entry
+  const supportFiles = jsFiles.filter(f => f !== mainFile);
+  // Sort: context before components before screens before root
+  const sortOrder = (p: string) =>
+    p.includes('context') ? 0 : p.includes('components') ? 1 : p.includes('screens') ? 2 : 3;
+  supportFiles.sort((a, b) => sortOrder(a.path) - sortOrder(b.path));
+
+  const allJsCode = [...supportFiles, ...(mainFile ? [mainFile] : [])]
+    .map(f => `\n// ---- ${f.path} ----\n${stripModuleStatements(f.content)}`)
+    .join('\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -163,40 +249,54 @@ ${f.content}
       margin: 16px;
       white-space: pre-wrap;
     }
+    ${cssContent.replace(/`/g, '\\`')}
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+    /* globals React, ReactDOM */
+    const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } = React;
+
+    // Stub react-router-dom so apps that import it don't crash
+    const __routerStubs = {
+      BrowserRouter: ({ children }) => children,
+      HashRouter: ({ children }) => children,
+      MemoryRouter: ({ children }) => children,
+      Routes: ({ children }) => children,
+      Route: ({ element }) => element ?? null,
+      Link: ({ children, to, ...p }) => React.createElement('a', { href: to ?? '#', ...p }, children),
+      NavLink: ({ children, to, ...p }) => React.createElement('a', { href: to ?? '#', ...p }, children),
+      useNavigate: () => () => {},
+      useLocation: () => ({ pathname: '/', search: '', hash: '' }),
+      useParams: () => ({}),
+      Outlet: () => null,
+    };
 
     class ErrorBoundary extends React.Component {
-      constructor(props) {
-        super(props);
-        this.state = { hasError: false, error: null };
-      }
-      static getDerivedStateFromError(error) {
-        return { hasError: true, error };
-      }
+      constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+      static getDerivedStateFromError(error) { return { hasError: true, error }; }
       render() {
         if (this.state.hasError) {
           return React.createElement('div', { className: 'error-banner' },
-            'Preview error: ' + (this.state.error?.message || 'Unknown error')
-          );
+            'Preview render error: ' + (this.state.error?.message ?? 'Unknown error'));
         }
         return this.props.children;
       }
     }
 
-    ${moduleCode}
+    ${allJsCode}
 
-    ${mainFile?.content || ''}
+    const RootComponent = typeof ${componentName} !== 'undefined'
+      ? ${componentName}
+      : (typeof __defaultExport !== 'undefined' ? __defaultExport : null);
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    const Component = typeof ${componentName} !== 'undefined' ? ${componentName} : () => React.createElement('div', null, 'Component not found');
     root.render(
       React.createElement(ErrorBoundary, null,
-        React.createElement(Component)
+        RootComponent
+          ? React.createElement(__routerStubs.MemoryRouter, null, React.createElement(RootComponent))
+          : React.createElement('div', { className: 'error-banner' }, 'Component "${componentName}" not found')
       )
     );
   </script>
@@ -227,9 +327,24 @@ router.get("/preview/session/:sessionId", async (req, res): Promise<void> => {
       return;
     }
 
-    const files = parseFileEdits(assistantMsg.content);
+    let files = parseFileEdits(assistantMsg.content);
+
+    // Fallback: FILE_EDIT blocks are stripped before DB persistence during auto-apply.
+    // Read the generated files directly from the project workspace directory instead.
     if (files.length === 0) {
-      res.status(404).json({ error: "No FILE_EDIT blocks found in this session" });
+      const [session] = await db
+        .select({ projectId: sessionsTable.projectId })
+        .from(sessionsTable)
+        .where(eq(sessionsTable.id, sessionId))
+        .limit(1);
+      if (session) {
+        const wsDir = projectWorkspaceDir(session.projectId);
+        files = await readWorkspaceFiles(wsDir);
+      }
+    }
+
+    if (files.length === 0) {
+      res.status(404).json({ error: "No generated files found for this session" });
       return;
     }
 
