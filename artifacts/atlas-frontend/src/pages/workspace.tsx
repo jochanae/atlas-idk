@@ -912,6 +912,339 @@ function ConnectionsTab({
   );
 }
 
+// ── DatabaseTab ──────────────────────────────────────────────────────────────
+function DatabaseTab({
+  projectId,
+  dbUrl,
+  onDbUrlChange,
+}: {
+  projectId: number;
+  dbUrl: string | null;
+  onDbUrlChange: (url: string | null) => void;
+}) {
+  const [value, setValue] = useState("");
+  const mono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
+  const muted: React.CSSProperties = { color: "var(--atlas-muted)", ...mono };
+
+  const save = () => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    try { localStorage.setItem(`atlas-db-url-${projectId}`, trimmed); } catch {}
+    onDbUrlChange(trimmed);
+    setValue("");
+  };
+
+  const remove = () => {
+    try { localStorage.removeItem(`atlas-db-url-${projectId}`); } catch {}
+    onDbUrlChange(null);
+  };
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ padding: "7px 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+        <span style={{ ...mono, fontSize: 9, letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55 }}>
+          Database Connection
+        </span>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
+        {dbUrl ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.2)" }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px rgba(74,222,128,0.5)", flexShrink: 0 }} />
+              <span style={{ ...mono, fontSize: 11, color: "var(--atlas-fg)", opacity: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                {dbUrl.replace(/:[^:@]*@/, ":***@")}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, ...muted, opacity: 0.55, lineHeight: 1.6 }}>
+              Atlas can reference this schema when answering questions about your database structure.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => {
+                const next = window.prompt("Paste new PostgreSQL connection string:");
+                if (next === null) return;
+                if (!next.trim()) { remove(); return; }
+                try { localStorage.setItem(`atlas-db-url-${projectId}`, next.trim()); } catch {}
+                onDbUrlChange(next.trim());
+              }} style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "transparent", color: "var(--atlas-gold)", fontSize: 10, ...mono, letterSpacing: "0.06em", cursor: "pointer" }}>
+                Change
+              </button>
+              <button type="button" onClick={remove} style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.25)", background: "transparent", color: "rgba(252,165,165,0.85)", fontSize: 10, ...mono, letterSpacing: "0.06em", cursor: "pointer" }}>
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 11, ...muted, opacity: 0.6, lineHeight: 1.7 }}>
+              Paste your project's Postgres connection string so Atlas can inspect its schema.
+            </div>
+            <input
+              type="password"
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") save(); }}
+              placeholder="postgres://user:pass@host/db"
+              autoComplete="off"
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 8,
+                background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
+                color: "var(--atlas-fg)", fontSize: 12, ...mono,
+                outline: "none", boxSizing: "border-box",
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = "rgba(201,162,76,0.4)")}
+              onBlur={e => (e.currentTarget.style.borderColor = "var(--atlas-border)")}
+            />
+            <button
+              type="button"
+              disabled={!value.trim()}
+              onClick={save}
+              style={{
+                padding: "9px", borderRadius: 8,
+                background: value.trim() ? "rgba(201,162,76,0.14)" : "var(--atlas-surface)",
+                border: `1px solid ${value.trim() ? "rgba(201,162,76,0.35)" : "var(--atlas-border)"}`,
+                color: value.trim() ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                fontSize: 10, ...mono, letterSpacing: "0.12em", textTransform: "uppercase",
+                cursor: value.trim() ? "pointer" : "not-allowed",
+                transition: "all 120ms ease",
+              }}
+            >
+              Connect
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── SourceTab ─────────────────────────────────────────────────────────────────
+function SourceTab({
+  projectId,
+  onLinkedRepoChange,
+  onZipTrigger,
+  zipLoaded,
+  zipFileName,
+  onSwitchToGitHub,
+}: {
+  projectId: number;
+  onLinkedRepoChange: (repo: any) => void;
+  onZipTrigger?: () => void;
+  zipLoaded?: boolean;
+  zipFileName?: string;
+  onSwitchToGitHub: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const { data: allProjects } = useListProjects();
+  const { data: filesProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
+  const createProjectMut = useCreateProject();
+  const updateProjectMut = useUpdateProject();
+  const [, navigate] = useLocation();
+  const [oauthConnected, setOauthConnected] = useState(false);
+  const [repos, setRepos] = useState<GhRepo[]>([]);
+  const [reposLoading, setReposLoading] = useState(false);
+  const [reposError, setReposError] = useState<string | null>(null);
+  const [autoLinkStatus, setAutoLinkStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [autoLinkResult, setAutoLinkResult] = useState<{ linked: Array<{ projectName: string; repoFullName: string }>; skipped: string[] } | null>(null);
+
+  const mono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
+
+  useEffect(() => {
+    fetch("/api/github/status", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: any) => { if (d?.hasUserToken || d?.hasAccountToken) setOauthConnected(true); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!oauthConnected) return;
+    setReposLoading(true);
+    fetch("/api/github/repos", { headers: { "x-github-token": "__oauth__" } })
+      .then(r => r.ok ? r.json() : [])
+      .then((d: any) => setRepos(d))
+      .catch(() => setReposError("Could not load repos"))
+      .finally(() => setReposLoading(false));
+  }, [oauthConnected]);
+
+  const linkedFullName = parseLinkedRepo(filesProject?.linkedRepo)?.fullName ?? null;
+
+  const handleAutoLink = async () => {
+    if (autoLinkStatus === "running") return;
+    setAutoLinkStatus("running");
+    setAutoLinkResult(null);
+    try {
+      const res = await fetch("/api/github/auto-link", { method: "POST", headers: { "x-github-token": "__oauth__" } });
+      const data = await res.json() as any;
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setAutoLinkResult({ linked: data.linked ?? [], skipped: data.skipped ?? [] });
+      setAutoLinkStatus("done");
+      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    } catch (e: any) {
+      setAutoLinkStatus("error");
+      setAutoLinkResult({ linked: [], skipped: [e.message ?? "Unknown error"] });
+    }
+  };
+
+  const pickRepo = (repo: GhRepo) => {
+    updateProjectMut.mutate(
+      { id: projectId, data: { linkedRepo: serializeLinkedRepo(repo) } },
+      {
+        onSuccess: () => {
+          onLinkedRepoChange(repo);
+          onSwitchToGitHub();
+        },
+      }
+    );
+  };
+
+  const glassCard: React.CSSProperties = {
+    background: "rgba(10,10,10,0.55)",
+    backdropFilter: "blur(20px) saturate(140%)",
+    border: "1px solid rgba(38,38,38,0.85)",
+    borderRadius: 14,
+    transition: "border-color 200ms ease",
+  };
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ padding: "7px 14px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+        <span style={{ ...mono, fontSize: 9, letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.55 }}>
+          Sources
+        </span>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px 24px", display: "flex", flexDirection: "column", gap: 20 }} className="scrollbar-none">
+
+        {/* ── Upload ZIP ── */}
+        <section>
+          <div style={{ ...mono, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.6, marginBottom: 10 }}>
+            Upload ZIP
+          </div>
+          <button
+            type="button"
+            onClick={() => onZipTrigger?.()}
+            style={{
+              ...glassCard,
+              width: "100%", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+              cursor: "pointer", textAlign: "left",
+              borderColor: zipLoaded ? "rgba(201,162,76,0.35)" : "rgba(38,38,38,0.85)",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(201,162,76,0.45)")}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = zipLoaded ? "rgba(201,162,76,0.35)" : "rgba(38,38,38,0.85)")}
+          >
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-gold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 13, color: "var(--atlas-fg)", fontWeight: 500 }}>
+                {zipLoaded ? (zipFileName ?? "ZIP loaded") : "Import from ZIP"}
+              </div>
+              <div style={{ ...mono, fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55, marginTop: 3 }}>
+                {zipLoaded ? "Active — files in context" : "No GitHub repo needed"}
+              </div>
+            </div>
+            {zipLoaded && (
+              <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 999, background: "rgba(201,162,76,0.1)", border: "1px solid rgba(201,162,76,0.3)", color: "var(--atlas-gold)", ...mono, letterSpacing: "0.08em", flexShrink: 0 }}>
+                Active
+              </span>
+            )}
+          </button>
+        </section>
+
+        {/* ── Active Repos ── */}
+        <section>
+          <div style={{ ...mono, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--atlas-muted)", opacity: 0.6, marginBottom: 10 }}>
+            GitHub Repos
+          </div>
+
+          {!oauthConnected && (
+            <div style={{ padding: "16px 14px", borderRadius: 10, background: "rgba(201,162,76,0.04)", border: "1px solid rgba(201,162,76,0.15)", fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.6 }}>
+              Connect GitHub to see your repos and link them to projects.
+            </div>
+          )}
+
+          {reposLoading && (
+            <div style={{ padding: "20px 12px", textAlign: "center", ...mono, fontSize: 10, color: "var(--atlas-muted)", opacity: 0.4 }}>Loading repos…</div>
+          )}
+          {reposError && (
+            <div style={{ padding: "12px", fontSize: 10.5, color: "var(--atlas-ember)", ...mono }}>{reposError}</div>
+          )}
+
+          {!reposLoading && repos.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Auto-link banner */}
+              {(allProjects ?? []).some(p => !p.linkedRepo) && (
+                <div style={{ ...glassCard, padding: "10px 14px", borderColor: "rgba(201,162,76,0.2)", marginBottom: 4 }}>
+                  {autoLinkStatus !== "done" ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ fontSize: 11, color: "var(--atlas-muted)", lineHeight: 1.4, opacity: 0.8 }}>
+                        {(allProjects ?? []).filter(p => !p.linkedRepo).length} project{(allProjects ?? []).filter(p => !p.linkedRepo).length !== 1 ? "s" : ""} need a repo
+                      </div>
+                      <button onClick={handleAutoLink} disabled={autoLinkStatus === "running"} style={{ flexShrink: 0, padding: "5px 11px", borderRadius: 6, background: "rgba(201,162,76,0.14)", border: "1px solid rgba(201,162,76,0.35)", color: "var(--atlas-gold)", fontSize: 10, ...mono, letterSpacing: "0.06em", cursor: autoLinkStatus === "running" ? "not-allowed" : "pointer", opacity: autoLinkStatus === "running" ? 0.6 : 1 }}>
+                        {autoLinkStatus === "running" ? "Linking…" : "Auto-link all →"}
+                      </button>
+                    </div>
+                  ) : autoLinkResult && (
+                    <div style={{ fontSize: 10.5, ...mono, lineHeight: 1.7 }}>
+                      {autoLinkResult.linked.length > 0 && <div style={{ color: "#34d399" }}>✓ Linked: {autoLinkResult.linked.map(l => l.projectName).join(", ")}</div>}
+                      {autoLinkResult.skipped.length > 0 && <div style={{ color: "var(--atlas-muted)", opacity: 0.65 }}>— No match: {autoLinkResult.skipped.join(", ")}</div>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {repos.map((repo) => {
+                const isLinked = linkedFullName === repo.fullName;
+                const emblem = (repo.language ?? repo.name).charAt(0).toUpperCase();
+                return (
+                  <div key={repo.id} style={{ ...glassCard, padding: 12, display: "flex", alignItems: "center", gap: 10, borderColor: isLinked ? "rgba(52,211,153,0.28)" : "rgba(38,38,38,0.85)", background: isLinked ? "rgba(52,211,153,0.04)" : "rgba(10,10,10,0.55)" }}>
+                    <button type="button" onClick={() => pickRepo(repo)} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(201,162,76,0.06)", border: "1px solid rgba(201,162,76,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ fontSize: 13, ...mono, fontWeight: 700, color: "var(--atlas-gold)" }}>{emblem}</span>
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {isLinked && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", flexShrink: 0 }} />}
+                          <span style={{ fontSize: 13, color: "var(--atlas-fg)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{repo.name}</span>
+                          {repo.private && <span style={{ fontSize: 8, ...mono, letterSpacing: "0.08em", padding: "1px 5px", borderRadius: 3, background: "rgba(120,113,108,0.15)", color: "var(--atlas-muted)", border: "0.5px solid rgba(120,113,108,0.25)", flexShrink: 0 }}>private</span>}
+                        </div>
+                        <div style={{ fontSize: 10, color: "var(--atlas-muted)", ...mono, opacity: 0.55, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {repo.language ?? "—"}{repo.description ? ` · ${repo.description}` : ""}
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      title={`Create a new project for ${repo.name}`}
+                      onClick={() => {
+                        createProjectMut.mutate(
+                          { data: { name: repo.name } },
+                          {
+                            onSuccess: (newProject) => {
+                              updateProjectMut.mutate(
+                                { id: newProject.id, data: { linkedRepo: serializeLinkedRepo(repo) } },
+                                { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }); navigate(`/project/${newProject.id}`); } }
+                              );
+                            },
+                          }
+                        );
+                      }}
+                      disabled={createProjectMut.isPending}
+                      style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4, padding: "6px 9px", borderRadius: 6, background: "rgba(201,162,76,0.06)", border: "1px solid rgba(201,162,76,0.22)", cursor: createProjectMut.isPending ? "not-allowed" : "pointer", color: "rgba(201,162,76,0.85)", opacity: createProjectMut.isPending ? 0.4 : 1 }}
+                    >
+                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 1v10M1 6h10" /></svg>
+                      <span style={{ fontSize: 9, ...mono, letterSpacing: "0.05em" }}>project</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
 // ── RightPanel (tabbed) ──────────────────────────────────────────────────────
 function RightPanel({
   projectId,
@@ -1049,7 +1382,7 @@ function RightPanel({
     return "ledger";
   });
   const [ledgerSubTab, setLedgerSubTab] = useState<"entries" | "memory">("entries");
-  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github">("workspace");
+  const [workspaceSubTab, setWorkspaceSubTab] = useState<"workspace" | "github" | "database" | "source">("workspace");
 
   useEffect(() => {
     if (forceTab) setTab(forceTab);
@@ -1388,18 +1721,27 @@ function RightPanel({
       {tab === "blueprints" && <BlueprintsTab projectId={projectId} />}
       {tab === "files" && (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
-          {/* Sub-tab bar: Workspace (primary) + GitHub (secondary, only when a repo is linked) */}
+          {/* Sub-tab bar: 4 focused tabs */}
           <div style={{
             display: "flex",
             alignItems: "flex-end",
             gap: 0,
-            padding: "0 10px",
+            padding: "0 8px",
             borderBottom: "1px solid rgba(201,162,76,0.10)",
             flexShrink: 0,
             height: 33,
-          }}>
-            {(["workspace", ...(hasLinkedRepo ? ["github"] : [])] as ("workspace" | "github")[]).map((st) => {
+            overflowX: "auto",
+          }}
+          className="scrollbar-none"
+          >
+            {(["workspace", "github", "database", "source"] as const).map((st) => {
               const active = workspaceSubTab === st;
+              const labels: Record<typeof st, string> = {
+                workspace: "Workspace",
+                github: "GitHub",
+                database: "Database",
+                source: "Source",
+              };
               return (
                 <button
                   key={st}
@@ -1417,13 +1759,14 @@ function RightPanel({
                     background: "transparent",
                     cursor: "pointer",
                     color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                    opacity: active ? 1 : (st === "github" ? 0.45 : 0.6),
+                    opacity: active ? 1 : 0.5,
                     fontWeight: active ? 600 : 400,
                     transition: "color 120ms ease, opacity 120ms ease",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
                   }}
                 >
-                  {st === "workspace" ? "Workspace" : "GitHub"}
+                  {labels[st]}
                 </button>
               );
             })}
@@ -1433,7 +1776,7 @@ function RightPanel({
             {workspaceSubTab === "workspace" && (
               <WorkspaceFilesPanel projectId={projectId} onOpenTerminal={onOpenTerminal} />
             )}
-            {workspaceSubTab === "github" && hasLinkedRepo && (
+            {workspaceSubTab === "github" && (
               <FilesPanel
                 projectId={projectId}
                 onFileContext={onFileContext}
@@ -1444,7 +1787,21 @@ function RightPanel({
                 zipLoaded={zipLoaded}
                 zipFileName={zipFileName}
                 onOpenConnections={openConnections}
+                onSwitchToSource={() => setWorkspaceSubTab("source")}
                 wsLens={wsLens}
+              />
+            )}
+            {workspaceSubTab === "database" && (
+              <DatabaseTab projectId={projectId} dbUrl={dbUrl} onDbUrlChange={onDbUrlChange} />
+            )}
+            {workspaceSubTab === "source" && (
+              <SourceTab
+                projectId={projectId}
+                onLinkedRepoChange={onLinkedRepoChange}
+                onZipTrigger={onZipTrigger}
+                zipLoaded={zipLoaded}
+                zipFileName={zipFileName}
+                onSwitchToGitHub={() => setWorkspaceSubTab("github")}
               />
             )}
           </div>
