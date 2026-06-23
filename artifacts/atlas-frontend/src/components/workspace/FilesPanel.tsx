@@ -564,6 +564,7 @@ export function FilesPanel({
         try { localStorage.setItem(importKey, JSON.stringify(result)); } catch {}
         setImportResult(result);
         setImportStatus("done");
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
       })
       .catch(() => setImportStatus("error"));
   };
