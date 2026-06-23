@@ -291,7 +291,11 @@ export function AtlasMemoryHUD({
 
   // ── Derived display state ──
   const activityEvents = allEvents.filter(e => e.type !== "NAVIGATED");
-  const hasActivity = isActive && activityEvents.length > 0;
+  // On home (surface="activity") stay visible for the whole conversation once events arrive.
+  // On workspace (surface="memory") respect the 8 s idle fade.
+  const hasActivity = surface === "activity"
+    ? activityEvents.length > 0
+    : isActive && activityEvents.length > 0;
   const hasMemory = !!resumeBrief;
 
   if (docked || (!hasActivity && !hasMemory)) return null;

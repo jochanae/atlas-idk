@@ -2048,7 +2048,7 @@ export default function Home() {
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
-  const { setDepth, activeProjectId, setActiveProjectId, setActiveConversationTitle } = useShellState();
+  const { setDepth, activeProjectId, setActiveProjectId, setActiveConversationTitle, setActiveConversationId: setShellConversationId } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const handledNavigateToRef = useRef<Set<string>>(new Set());
@@ -2132,6 +2132,11 @@ export default function Home() {
     setActiveConversationTitle(homeConversationTitle);
     return () => setActiveConversationTitle(null);
   }, [homeConversationTitle, setActiveConversationTitle]);
+
+  useEffect(() => {
+    setShellConversationId(activeConversationId);
+    return () => setShellConversationId(null);
+  }, [activeConversationId, setShellConversationId]);
 
   const vibrate = useCallback((pattern: number | number[]) => {
     try { if (typeof navigator !== "undefined" && "vibrate" in navigator) (navigator as any).vibrate(pattern); } catch {}

@@ -41,6 +41,8 @@ type ShellState = {
   setActiveProjectId: (id: number | null) => void;
   activeConversationTitle: string | null;
   setActiveConversationTitle: (title: string | null) => void;
+  activeConversationId: string | null;
+  setActiveConversationId: (id: string | null) => void;
 };
 
 type ShellNavIcon =
@@ -1803,6 +1805,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const [currentDepth, setCurrentDepth] = useState<ShellDepth>(() => depthFromPath(location));
   const [activeProjectId, setActiveProjectIdState] = useState<number | null>(() => projectIdFromPath(location));
   const [activeConversationTitle, setActiveConversationTitleState] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
 
   useEffect(() => {
     const projectId = projectIdFromPath(location);
@@ -1826,6 +1829,9 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
   const setActiveConversationTitle = useCallback((title: string | null) => {
     setActiveConversationTitleState(title);
   }, []);
+  const setActiveConversationId = useCallback((id: string | null) => {
+    setActiveConversationIdState(id);
+  }, []);
 
   const value = useMemo<ShellState>(() => ({
     currentDepth,
@@ -1834,7 +1840,9 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
     setActiveProjectId,
     activeConversationTitle,
     setActiveConversationTitle,
-  }), [activeConversationTitle, activeProjectId, currentDepth, setActiveConversationTitle, setActiveProjectId, setDepth]);
+    activeConversationId,
+    setActiveConversationId,
+  }), [activeConversationId, activeConversationTitle, activeProjectId, currentDepth, setActiveConversationId, setActiveConversationTitle, setActiveProjectId, setDepth]);
 
   const shellBackgroundImage = currentDepth === "operational"
     ? "none"
@@ -1977,6 +1985,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             Answers: "What does Atlas currently know?" */}
       <AtlasMemoryHUD
         position={{ top: 64, right: 16 }}
+        conversationId={location === "/home" ? activeConversationId : undefined}
         activeProjectId={location !== "/home" ? activeProjectId : null}
         surface={location !== "/home" ? "memory" : "activity"}
       />
