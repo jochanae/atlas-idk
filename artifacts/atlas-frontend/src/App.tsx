@@ -26,7 +26,6 @@ import Terms from "./pages/terms";
 import Privacy from "./pages/privacy";
 import Pricing from "./pages/pricing";
 import Help from "./pages/help";
-import Secrets from "./pages/secrets";
 import Admin from "./pages/admin";
 
 import ResetPassword from "./pages/reset-password";
@@ -224,7 +223,7 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/help" component={Help} />
           <Route path="/vault" component={Vault} />
-          <Route path="/secrets" component={Secrets} />
+          <Route path="/secrets" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
