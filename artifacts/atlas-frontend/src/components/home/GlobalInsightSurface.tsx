@@ -970,6 +970,7 @@ export function GlobalInsightSurface({
                   ariaLabel="Create project from this conversation"
                   title="Create project from this conversation"
                   onClick={() => onCreateProject?.()}
+                  tinted
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M4 6.5h5l2 2H20v9.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
