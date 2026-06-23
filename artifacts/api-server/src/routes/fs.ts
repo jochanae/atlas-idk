@@ -546,6 +546,84 @@ router.get("/fs/:projectId/git/log", async (req: Request, res: Response): Promis
   }
 });
 
+// GET /api/fs/:projectId/zip — stream the workspace as a downloadable ZIP archive
+router.get("/fs/:projectId/zip", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const projectId = parseProjectId(req.params.projectId);
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const workspaceDir = projectWorkspaceDir(projectId);
+
+    // Check workspace exists and has content
+    let entries: string[];
+    try {
+      entries = await fsPromises.readdir(workspaceDir);
+    } catch {
+      res.status(404).json({ error: "Workspace not found" }); return;
+    }
+    if (entries.length === 0) {
+      res.status(404).json({ error: "Workspace is empty" }); return;
+    }
+
+    // Fetch project name for the ZIP filename
+    const [project] = await db
+      .select({ name: projectsTable.name })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId))
+      .limit(1);
+    const safeName = (project?.name ?? "workspace")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 64) || "workspace";
+
+    // Dynamically import JSZip (CJS interop)
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+
+    // Walk workspace recursively and add all non-excluded files
+    async function addDir(absDir: string, zipPath: string) {
+      let dirEntries: fsNode.Dirent[];
+      try {
+        dirEntries = await fsPromises.readdir(absDir, { withFileTypes: true });
+      } catch { return; }
+
+      for (const entry of dirEntries) {
+        if (EXCLUDED_NAMES.has(entry.name)) continue;
+        if (entry.name.startsWith(".") && entry.name !== ".env" && entry.name !== ".gitignore") continue;
+
+        const childAbs = path.join(absDir, entry.name);
+        const childZip = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+
+        if (entry.isDirectory()) {
+          await addDir(childAbs, childZip);
+        } else if (entry.isFile()) {
+          try {
+            const stat = await fsPromises.stat(childAbs);
+            if (stat.size > 5_000_000) continue; // skip files >5 MB
+            const buf = await fsPromises.readFile(childAbs);
+            zip.file(childZip, buf);
+          } catch { /* skip unreadable files */ }
+        }
+      }
+    }
+
+    await addDir(workspaceDir, "");
+
+    const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}.zip"`);
+    res.setHeader("Content-Length", buffer.length);
+    res.send(buffer);
+  } catch (err) {
+    req.log?.error({ err }, "fs zip error");
+    res.status(500).json({ error: "Failed to create ZIP" });
+  }
+});
+
 // POST /api/fs/:projectId/seed — write foundation files into an empty workspace
 // No-ops if the workspace already has content. Never overwrites existing files.
 router.post("/fs/:projectId/seed", async (req: Request, res: Response): Promise<void> => {

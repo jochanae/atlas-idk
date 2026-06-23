@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus, Save, Trash2, RefreshCw, GitCommit, GitMerge, History, FileCode } from "lucide-react";
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, Plus, Save, Trash2, RefreshCw, GitCommit, GitMerge, History, FileCode, Download } from "lucide-react";
 
 interface FsNode {
   name: string;
@@ -140,6 +140,32 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
   const [showDiff, setShowDiff] = useState(false);
   const [diffContent, setDiffContent] = useState<string | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
+
+  // ZIP download state
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const downloadZip = useCallback(async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const res = await fetch(`${BASE}/${projectId}/zip`, { credentials: "include" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? "workspace.zip";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch { /* silently fail */ } finally {
+      setIsDownloading(false);
+    }
+  }, [projectId, isDownloading]);
 
   // Foundation seed state
   const [isSeeding, setIsSeeding] = useState(false);
@@ -538,6 +564,9 @@ export function WorkspaceFilesPanel({ projectId, onOpenTerminal }: Props) {
               <History size={12} strokeWidth={1.8} style={{ color: logExpanded ? "var(--atlas-gold)" : undefined }} />
             </IconBtn>
             <IconBtn title="New file" onClick={createNewFile}><Plus size={12} strokeWidth={1.8} /></IconBtn>
+            <IconBtn title={isDownloading ? "Preparing…" : "Download ZIP"} onClick={downloadZip}>
+              <Download size={11} strokeWidth={1.8} style={{ color: isDownloading ? "var(--atlas-gold)" : undefined }} />
+            </IconBtn>
             <IconBtn title="Refresh" onClick={invalidateAll}>
               <RefreshCw size={11} strokeWidth={1.8} />
             </IconBtn>
