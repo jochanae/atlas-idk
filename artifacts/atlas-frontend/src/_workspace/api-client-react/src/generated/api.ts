@@ -2691,3 +2691,46 @@ export const useSendNexusMessage = <
 > => {
   return useMutation(getSendNexusMessageMutationOptions(options));
 };
+
+
+// ── Readiness resolver hook (added by codegen sync) ───────────────────────
+import type { ProjectReadiness } from './api.schemas';
+
+export const getGetProjectReadinessUrl = (id: number) => `/api/projects/${id}/readiness`;
+
+export const getProjectReadiness = async (id: number, options?: RequestInit): Promise<ProjectReadiness> => {
+  const res = await fetch(getGetProjectReadinessUrl(id), { ...options, method: 'GET' });
+  if (!res.ok) throw new Error(`GET /api/projects/${id}/readiness → ${res.status}`);
+  return res.json() as Promise<ProjectReadiness>;
+};
+
+export const getGetProjectReadinessQueryKey = (id: number) =>
+  [`/api/projects/${id}/readiness`] as const;
+
+export const getGetProjectReadinessQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectReadiness>>,
+  TError = unknown
+>(
+  id: number,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getProjectReadiness>>, TError, TData> }
+) => {
+  const { query: queryOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetProjectReadinessQueryKey(id);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectReadiness>>> = ({ signal }) =>
+    getProjectReadiness(id, { signal });
+  return { queryKey, queryFn, enabled: !!(id), ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectReadiness>>, TError, TData
+  > & { queryKey: QueryKey };
+};
+
+export function useGetProjectReadiness<
+  TData = Awaited<ReturnType<typeof getProjectReadiness>>,
+  TError = unknown
+>(
+  id: number,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getProjectReadiness>>, TError, TData> }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectReadinessQueryOptions(id, options);
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  return { ...query, queryKey: queryOptions.queryKey };
+}

@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { updateProject, useUpdateProject, getGetProjectQueryKey, Session, ProjectNodeState, Project } from "@workspace/api-client-react";
+import { updateProject, useUpdateProject, getGetProjectQueryKey, Session, ProjectNodeState, Project, useGetProjectReadiness, type ProjectReadiness } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
@@ -680,38 +680,15 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
   });
   const longPressRef = useRef<number | null>(null);
   const longPressFiredRef = useRef(false);
+  const { data: readiness } = useGetProjectReadiness(projectId ?? 0);
 
   if (projectId == null) return null;
   const proj = ps.project as {
-    latestSnapshotScore?: number | null;
     nodeState?: ProjectNodeState | null;
     name?: string;
-    projectType?: string | null;
-    appSourceFileCount?: number | null;
-    appBuildSucceeded?: boolean | null;
   } | null;
-  const ns = (proj?.nodeState ?? {}) as Record<string, unknown>;
   const decisionsCount = ps.decisions?.length ?? 0;
-
-  const isAppProject = proj?.projectType === "app";
-
-  // App signals
-  const appFilesOk = Boolean(proj?.appSourceFileCount && proj.appSourceFileCount > 0);
-  const appBuildOk = proj?.appBuildSucceeded === true;
-  const appScore = Math.round(([appFilesOk, appBuildOk, appBuildOk, appFilesOk].filter(Boolean).length / 4) * 100);
-
-  // General (service/general) signals
-  const ARCH_IDS = new Set(["auth", "db", "api", "state", "ui", "logic"]);
-  let archTotal = 0, archResolved = 0, decTotal = 0, decResolved = 0;
-  Object.entries(ns).forEach(([nid, raw]) => {
-    const resolved = raw === true || (typeof raw === "object" && raw !== null && (raw as { resolved?: unknown }).resolved === true);
-    if (ARCH_IDS.has(nid)) { archTotal++; if (resolved) archResolved++; }
-    else { decTotal++; if (resolved) decResolved++; }
-  });
-  const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
-  const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  const blendedScore = proj?.latestSnapshotScore ?? (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
-  const score = isAppProject ? appScore : (mode === "arch" ? archScore : mode === "decisions" ? decisionsScore : blendedScore);
+  const score = readiness?.overallScore ?? 0;
   const meta = MODE_META[mode];
 
   const cycleMode = () => {
@@ -773,10 +750,11 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
       </button>
       {open && (
         <SovereignReadinessSheet
-          score={blendedScore}
+          score={score}
           projectName={proj?.name ?? null}
           decisionsCount={decisionsCount}
           nodeState={proj?.nodeState ?? null}
+          readiness={readiness ?? null}
           onClose={() => setOpen(false)}
         />
       )}
@@ -786,8 +764,8 @@ function ShellReadinessChip({ projectId }: { projectId: number | null }) {
 
 
 function SovereignReadinessSheet({
-  score, projectName, decisionsCount, nodeState, onClose,
-}: { score: number; projectName: string | null; decisionsCount: number; nodeState: ProjectNodeState | null; onClose: () => void }) {
+  score, projectName, decisionsCount, nodeState, readiness, onClose,
+}: { score: number; projectName: string | null; decisionsCount: number; nodeState: ProjectNodeState | null; readiness?: ProjectReadiness | null; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -944,10 +922,63 @@ function SovereignReadinessSheet({
             letterSpacing: "0.1em", textTransform: "uppercase",
           }}>{projectName ?? "Project"}</div>
         </div>
-        <div style={{
-          fontFamily: "var(--app-font-mono)", fontSize: 32, fontWeight: 700,
-          color: "var(--atlas-gold)", lineHeight: 1.1, marginBottom: 18,
-        }}>{score}%</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: readiness ? 4 : 18 }}>
+          <div style={{
+            fontFamily: "var(--app-font-mono)", fontSize: 32, fontWeight: 700,
+            color: "var(--atlas-gold)", lineHeight: 1.1,
+          }}>{readiness?.overallScore ?? score}%</div>
+          {readiness?.overallLabel && (
+            <div style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.14em", textTransform: "uppercase",
+              color: "rgba(201,162,76,0.65)", lineHeight: 1,
+            }}>{readiness.overallLabel}</div>
+          )}
+        </div>
+
+        {/* Dimension breakdown — from canonical readiness resolver */}
+        {readiness?.dimensions && (
+          <div style={{ marginBottom: 22 }}>
+            <SectionLabel>Readiness Breakdown</SectionLabel>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(["build", "strategy", "activity", "delivery"] as const).map((key) => {
+                const dim = readiness.dimensions[key];
+                if (!dim) return null;
+                const dimColor = !dim.applicable ? "var(--atlas-muted)" : dim.score >= 80 ? "#4ade80" : dim.score >= 40 ? "var(--atlas-gold)" : "rgba(252,165,165,0.9)";
+                const dimLabels: Record<string, string> = { build: "Build", strategy: "Strategy", activity: "Activity", delivery: "Delivery" };
+                return (
+                  <div key={key}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: 999, background: dimColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: "var(--atlas-fg)" }}>{dimLabels[key]}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 10, color: "var(--atlas-muted)" }}>{dim.label}</span>
+                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 11, fontWeight: 700, color: dimColor, minWidth: 32, textAlign: "right" }}>
+                          {dim.applicable ? `${dim.score}%` : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    {dim.applicable && (
+                      <div style={{ height: 3, borderRadius: 999, background: "rgba(201,162,76,0.08)", overflow: "hidden" }}>
+                        <div style={{ width: `${dim.score}%`, height: "100%", background: dimColor, transition: "width 300ms ease" }} />
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, color: "var(--atlas-muted)", marginTop: 3, lineHeight: 1.4 }}>{dim.evidence}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {readiness.warnings.length > 0 && (
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 4 }}>
+                {readiness.warnings.map((w, i) => (
+                  <div key={i} style={{ fontSize: 10, color: "rgba(252,165,165,0.85)", lineHeight: 1.4 }}>⚠ {w}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Mix bar */}
         <SectionLabel>Core Mix</SectionLabel>
@@ -1199,6 +1230,8 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
     };
   }, [open]);
 
+  const { data: chipReadiness } = useGetProjectReadiness(projectId ?? 0);
+
   if (projectId == null) return null;
 
 
@@ -1246,7 +1279,8 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   const urlPct = previewLinked ? 100 : 0;
   const generalCompletion = Math.round((archScore + decisionsScore + repoPct + urlPct) / 4);
 
-  const completion = isAppProject ? appCompletion : generalCompletion;
+  const localCompletion = isAppProject ? appCompletion : generalCompletion;
+  const completion = chipReadiness?.overallScore ?? localCompletion;
 
   const displayScore = isAppProject
     ? appCompletion

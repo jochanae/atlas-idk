@@ -75,6 +75,83 @@ export const GetProjectManifestResponse = zod.object({
 
 
 /**
+ * Returns a canonical ProjectReadiness object for a single project. Every UI surface (workspace header ring, Master Map, Portfolio Health) should read from this endpoint instead of computing its own score. Combines build signals, strategic node coverage, ledger activity, and delivery signals into a weighted composite with per-dimension breakdown.
+
+ * @summary Project Readiness
+ */
+export const GetProjectReadinessParams = zod.object({
+  "id": zod.coerce.number().describe('The project ID.')
+})
+
+export const getProjectReadinessResponseOverallScoreMin = 0;
+export const getProjectReadinessResponseOverallScoreMax = 100;
+
+export const getProjectReadinessResponseDimensionsBuildScoreMin = 0;
+export const getProjectReadinessResponseDimensionsBuildScoreMax = 100;
+
+export const getProjectReadinessResponseDimensionsStrategyScoreMin = 0;
+export const getProjectReadinessResponseDimensionsStrategyScoreMax = 100;
+
+export const getProjectReadinessResponseDimensionsActivityScoreMin = 0;
+export const getProjectReadinessResponseDimensionsActivityScoreMax = 100;
+
+export const getProjectReadinessResponseDimensionsDeliveryScoreMin = 0;
+export const getProjectReadinessResponseDimensionsDeliveryScoreMax = 100;
+
+
+
+export const GetProjectReadinessResponse = zod.object({
+  "overallScore": zod.number().min(getProjectReadinessResponseOverallScoreMin).max(getProjectReadinessResponseOverallScoreMax).describe('Weighted composite of all applicable dimensions.'),
+  "overallLabel": zod.enum(['Getting started', 'Building', 'Taking shape', 'Preview ready', 'Shipping']).describe('Human-readable label matching the overallScore bracket.'),
+  "projectKind": zod.enum(['app', 'strategy', 'general']).describe('Detected project kind — drives dimension weights.'),
+  "dimensions": zod.object({
+  "build": zod.object({
+  "score": zod.number().min(getProjectReadinessResponseDimensionsBuildScoreMin).max(getProjectReadinessResponseDimensionsBuildScoreMax),
+  "label": zod.enum(['Not started', 'Initializing', 'In progress', 'Taking shape', 'Complete', 'N/A']),
+  "weight": zod.number().describe('Fractional contribution to overallScore (0.0–1.0, sums to 1 across applicable dimensions).'),
+  "applicable": zod.boolean().describe('False means this dimension does not apply — show \"N\/A\", never 0%.'),
+  "evidence": zod.string().describe('Human-readable explanation of how this score was computed.')
+}).optional().describe('One dimension of project readiness. If applicable is false, the dimension does not apply to this project kind and should show \"N\/A\" rather than 0%.\n'),
+  "strategy": zod.object({
+  "score": zod.number().min(getProjectReadinessResponseDimensionsStrategyScoreMin).max(getProjectReadinessResponseDimensionsStrategyScoreMax),
+  "label": zod.enum(['Not started', 'Initializing', 'In progress', 'Taking shape', 'Complete', 'N/A']),
+  "weight": zod.number().describe('Fractional contribution to overallScore (0.0–1.0, sums to 1 across applicable dimensions).'),
+  "applicable": zod.boolean().describe('False means this dimension does not apply — show \"N\/A\", never 0%.'),
+  "evidence": zod.string().describe('Human-readable explanation of how this score was computed.')
+}).optional().describe('One dimension of project readiness. If applicable is false, the dimension does not apply to this project kind and should show \"N\/A\" rather than 0%.\n'),
+  "activity": zod.object({
+  "score": zod.number().min(getProjectReadinessResponseDimensionsActivityScoreMin).max(getProjectReadinessResponseDimensionsActivityScoreMax),
+  "label": zod.enum(['Not started', 'Initializing', 'In progress', 'Taking shape', 'Complete', 'N/A']),
+  "weight": zod.number().describe('Fractional contribution to overallScore (0.0–1.0, sums to 1 across applicable dimensions).'),
+  "applicable": zod.boolean().describe('False means this dimension does not apply — show \"N\/A\", never 0%.'),
+  "evidence": zod.string().describe('Human-readable explanation of how this score was computed.')
+}).optional().describe('One dimension of project readiness. If applicable is false, the dimension does not apply to this project kind and should show \"N\/A\" rather than 0%.\n'),
+  "delivery": zod.object({
+  "score": zod.number().min(getProjectReadinessResponseDimensionsDeliveryScoreMin).max(getProjectReadinessResponseDimensionsDeliveryScoreMax),
+  "label": zod.enum(['Not started', 'Initializing', 'In progress', 'Taking shape', 'Complete', 'N/A']),
+  "weight": zod.number().describe('Fractional contribution to overallScore (0.0–1.0, sums to 1 across applicable dimensions).'),
+  "applicable": zod.boolean().describe('False means this dimension does not apply — show \"N\/A\", never 0%.'),
+  "evidence": zod.string().describe('Human-readable explanation of how this score was computed.')
+}).optional().describe('One dimension of project readiness. If applicable is false, the dimension does not apply to this project kind and should show \"N\/A\" rather than 0%.\n')
+}).describe('Per-dimension breakdown. Only applicable dimensions are included.'),
+  "warnings": zod.array(zod.string()).describe('Human-readable warnings about signal quality (e.g. build predates tracking).'),
+  "sourceBreakdown": zod.object({
+  "appBuildSucceeded": zod.boolean().nullish(),
+  "appSourceFileCount": zod.number().nullish(),
+  "flowDefinedNodes": zod.number(),
+  "flowTotalNodes": zod.number(),
+  "committedEntries": zod.number(),
+  "totalEntries": zod.number(),
+  "genomeConfidenceScore": zod.number(),
+  "genomeStage": zod.string(),
+  "latestSnapshotScore": zod.number().nullish(),
+  "hasLinkedRepo": zod.boolean(),
+  "hasPreviewUrl": zod.boolean()
+}).describe('Raw signal values that fed into the readiness computation.')
+}).describe('Canonical readiness signal for a project. Every UI surface reads this instead of computing its own score. overallScore and overallLabel are the single source of truth for any \"%  complete\" or \"% ready\" display.\n')
+
+
+/**
  * Atlas reads the portfolio and generates a structured brief with four curated sections: what moved, what emerged, what is waiting on the user, and the single suggested next move.
 The response is cached per user for five minutes so repeated fast opens do not trigger re-generation. Pass `?bust=1` to bypass the cache and force a fresh read.
 

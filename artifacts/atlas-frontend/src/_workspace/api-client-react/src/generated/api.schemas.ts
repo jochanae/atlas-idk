@@ -519,3 +519,73 @@ export const ListEntriesStatus = {
   draft: "draft",
   archived: "archived",
 } as const;
+
+
+// ── Readiness resolver types (added by codegen sync) ──────────────────────
+
+export type ReadinessDimensionLabel = typeof ReadinessDimensionLabel[keyof typeof ReadinessDimensionLabel];
+
+export const ReadinessDimensionLabel = {
+  Not_started: 'Not started',
+  Initializing: 'Initializing',
+  In_progress: 'In progress',
+  Taking_shape: 'Taking shape',
+  Complete: 'Complete',
+  'N/A': 'N/A',
+} as const;
+
+export interface ReadinessDimension {
+  score: number;
+  label: ReadinessDimensionLabel;
+  weight: number;
+  applicable: boolean;
+  evidence: string;
+}
+
+export interface ReadinessSourceBreakdown {
+  appBuildSucceeded?: boolean | null;
+  appSourceFileCount?: number | null;
+  flowDefinedNodes: number;
+  flowTotalNodes: number;
+  committedEntries: number;
+  totalEntries: number;
+  genomeConfidenceScore: number;
+  genomeStage: string;
+  latestSnapshotScore?: number | null;
+  hasLinkedRepo: boolean;
+  hasPreviewUrl: boolean;
+}
+
+export type ProjectReadinessOverallLabel = typeof ProjectReadinessOverallLabel[keyof typeof ProjectReadinessOverallLabel];
+
+export const ProjectReadinessOverallLabel = {
+  Getting_started: 'Getting started',
+  Building: 'Building',
+  Taking_shape: 'Taking shape',
+  Preview_ready: 'Preview ready',
+  Shipping: 'Shipping',
+} as const;
+
+export type ProjectReadinessProjectKind = typeof ProjectReadinessProjectKind[keyof typeof ProjectReadinessProjectKind];
+
+export const ProjectReadinessProjectKind = {
+  app: 'app',
+  strategy: 'strategy',
+  general: 'general',
+} as const;
+
+export type ProjectReadinessDimensions = {
+  build?: ReadinessDimension;
+  strategy?: ReadinessDimension;
+  activity?: ReadinessDimension;
+  delivery?: ReadinessDimension;
+};
+
+export interface ProjectReadiness {
+  overallScore: number;
+  overallLabel: ProjectReadinessOverallLabel;
+  projectKind: ProjectReadinessProjectKind;
+  dimensions: ProjectReadinessDimensions;
+  warnings: string[];
+  sourceBreakdown: ReadinessSourceBreakdown;
+}

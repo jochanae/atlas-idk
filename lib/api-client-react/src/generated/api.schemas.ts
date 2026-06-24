@@ -108,6 +108,112 @@ export interface ProjectManifest {
   lastExtractedAt?: string | null;
 }
 
+export type ReadinessDimensionLabel = typeof ReadinessDimensionLabel[keyof typeof ReadinessDimensionLabel];
+
+
+export const ReadinessDimensionLabel = {
+  Not_started: 'Not started',
+  Initializing: 'Initializing',
+  In_progress: 'In progress',
+  Taking_shape: 'Taking shape',
+  Complete: 'Complete',
+  'N/A': 'N/A',
+} as const;
+
+/**
+ * One dimension of project readiness. If applicable is false, the dimension does not apply to this project kind and should show "N/A" rather than 0%.
+
+ */
+export interface ReadinessDimension {
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  score: number;
+  label: ReadinessDimensionLabel;
+  /** Fractional contribution to overallScore (0.0–1.0, sums to 1 across applicable dimensions). */
+  weight: number;
+  /** False means this dimension does not apply — show "N/A", never 0%. */
+  applicable: boolean;
+  /** Human-readable explanation of how this score was computed. */
+  evidence: string;
+}
+
+/**
+ * Raw signal values that fed into the readiness computation.
+ */
+export interface ReadinessSourceBreakdown {
+  appBuildSucceeded?: boolean | null;
+  appSourceFileCount?: number | null;
+  flowDefinedNodes: number;
+  flowTotalNodes: number;
+  committedEntries: number;
+  totalEntries: number;
+  genomeConfidenceScore: number;
+  genomeStage: string;
+  latestSnapshotScore?: number | null;
+  hasLinkedRepo: boolean;
+  hasPreviewUrl: boolean;
+}
+
+/**
+ * Human-readable label matching the overallScore bracket.
+ */
+export type ProjectReadinessOverallLabel = typeof ProjectReadinessOverallLabel[keyof typeof ProjectReadinessOverallLabel];
+
+
+export const ProjectReadinessOverallLabel = {
+  Getting_started: 'Getting started',
+  Building: 'Building',
+  Taking_shape: 'Taking shape',
+  Preview_ready: 'Preview ready',
+  Shipping: 'Shipping',
+} as const;
+
+/**
+ * Detected project kind — drives dimension weights.
+ */
+export type ProjectReadinessProjectKind = typeof ProjectReadinessProjectKind[keyof typeof ProjectReadinessProjectKind];
+
+
+export const ProjectReadinessProjectKind = {
+  app: 'app',
+  strategy: 'strategy',
+  general: 'general',
+} as const;
+
+/**
+ * Per-dimension breakdown. Only applicable dimensions are included.
+ */
+export type ProjectReadinessDimensions = {
+  build?: ReadinessDimension;
+  strategy?: ReadinessDimension;
+  activity?: ReadinessDimension;
+  delivery?: ReadinessDimension;
+};
+
+/**
+ * Canonical readiness signal for a project. Every UI surface reads this instead of computing its own score. overallScore and overallLabel are the single source of truth for any "%  complete" or "% ready" display.
+
+ */
+export interface ProjectReadiness {
+  /**
+     * Weighted composite of all applicable dimensions.
+     * @minimum 0
+     * @maximum 100
+     */
+  overallScore: number;
+  /** Human-readable label matching the overallScore bracket. */
+  overallLabel: ProjectReadinessOverallLabel;
+  /** Detected project kind — drives dimension weights. */
+  projectKind: ProjectReadinessProjectKind;
+  /** Per-dimension breakdown. Only applicable dimensions are included. */
+  dimensions: ProjectReadinessDimensions;
+  /** Human-readable warnings about signal quality (e.g. build predates tracking). */
+  warnings: string[];
+  sourceBreakdown: ReadinessSourceBreakdown;
+}
+
 /**
  * A curated, Atlas-generated brief across the user's full portfolio. This is a first-class platform service — not a Home widget. Consumed by Home, future Mobile, Notifications, Daily Briefings, and any surface that needs to surface "what matters right now."
 

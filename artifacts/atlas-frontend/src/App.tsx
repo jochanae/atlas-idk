@@ -226,6 +226,7 @@ function Router() {
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/map" component={MasterMap} />
+          <Route path="/master-map" component={MasterMap} />
           <Route path="/nexus" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route component={NotFound} />
         </Switch>

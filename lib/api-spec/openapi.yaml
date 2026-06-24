@@ -67,6 +67,38 @@ paths:
         "404":
           description: Project not found
 
+  /projects/{id}/readiness:
+    get:
+      operationId: getProjectReadiness
+      tags: [nexus]
+      summary: Project Readiness
+      description: >
+        Returns a canonical ProjectReadiness object for a single project.
+        Every UI surface (workspace header ring, Master Map, Portfolio Health)
+        should read from this endpoint instead of computing its own score.
+        Combines build signals, strategic node coverage, ledger activity, and
+        delivery signals into a weighted composite with per-dimension breakdown.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The project ID.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Project readiness successfully computed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectReadiness"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Project not found
+
   /nexus/resume:
     get:
       operationId: getPortfolioResume
@@ -238,6 +270,122 @@ components:
         - anchors
         - openQuestions
         - buildTargets
+
+    ReadinessDimension:
+      type: object
+      description: >
+        One dimension of project readiness. If applicable is false, the
+        dimension does not apply to this project kind and should show "N/A"
+        rather than 0%.
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        label:
+          type: string
+          enum: [Not started, Initializing, In progress, Taking shape, Complete, "N/A"]
+        weight:
+          type: number
+          description: Fractional contribution to overallScore (0.0–1.0, sums to 1 across applicable dimensions).
+        applicable:
+          type: boolean
+          description: False means this dimension does not apply — show "N/A", never 0%.
+        evidence:
+          type: string
+          description: Human-readable explanation of how this score was computed.
+      required:
+        - score
+        - label
+        - weight
+        - applicable
+        - evidence
+
+    ReadinessSourceBreakdown:
+      type: object
+      description: Raw signal values that fed into the readiness computation.
+      properties:
+        appBuildSucceeded:
+          type: boolean
+          nullable: true
+        appSourceFileCount:
+          type: integer
+          nullable: true
+        flowDefinedNodes:
+          type: integer
+        flowTotalNodes:
+          type: integer
+        committedEntries:
+          type: integer
+        totalEntries:
+          type: integer
+        genomeConfidenceScore:
+          type: integer
+        genomeStage:
+          type: string
+        latestSnapshotScore:
+          type: integer
+          nullable: true
+        hasLinkedRepo:
+          type: boolean
+        hasPreviewUrl:
+          type: boolean
+      required:
+        - flowDefinedNodes
+        - flowTotalNodes
+        - committedEntries
+        - totalEntries
+        - genomeConfidenceScore
+        - genomeStage
+        - hasLinkedRepo
+        - hasPreviewUrl
+
+    ProjectReadiness:
+      type: object
+      description: >
+        Canonical readiness signal for a project. Every UI surface reads this
+        instead of computing its own score. overallScore and overallLabel are
+        the single source of truth for any "%  complete" or "% ready" display.
+      properties:
+        overallScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Weighted composite of all applicable dimensions.
+        overallLabel:
+          type: string
+          enum: [Getting started, Building, Taking shape, Preview ready, Shipping]
+          description: Human-readable label matching the overallScore bracket.
+        projectKind:
+          type: string
+          enum: [app, strategy, general]
+          description: Detected project kind — drives dimension weights.
+        dimensions:
+          type: object
+          description: Per-dimension breakdown. Only applicable dimensions are included.
+          properties:
+            build:
+              $ref: "#/components/schemas/ReadinessDimension"
+            strategy:
+              $ref: "#/components/schemas/ReadinessDimension"
+            activity:
+              $ref: "#/components/schemas/ReadinessDimension"
+            delivery:
+              $ref: "#/components/schemas/ReadinessDimension"
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Human-readable warnings about signal quality (e.g. build predates tracking).
+        sourceBreakdown:
+          $ref: "#/components/schemas/ReadinessSourceBreakdown"
+      required:
+        - overallScore
+        - overallLabel
+        - projectKind
+        - dimensions
+        - warnings
+        - sourceBreakdown
 
     PortfolioResume:
       type: object
