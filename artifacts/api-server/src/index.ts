@@ -58,6 +58,7 @@ async function pushSchema(): Promise<void> {
       "drizzle-kit",
       "push",
       "--config", "../../lib/db/drizzle.config.ts",
+      "--force",
     ], {
       stdio: "pipe",
       env: { ...process.env, DATABASE_URL: databaseUrl },
