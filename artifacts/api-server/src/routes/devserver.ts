@@ -37,6 +37,67 @@ function parseErrors(output: string): string[] {
 }
 
 /**
+ * Run `npm run build` directly inside an already-populated workspace directory.
+ * No cloning or installing — the workspace already has source files and
+ * node_modules from the initial scaffold.  Installs only if node_modules is
+ * absent (first run after a fresh scaffold).
+ * Safe to call from the chat route — non-mutating except for a possible install.
+ */
+export async function runWorkspaceBuildCheck(wsDir: string): Promise<BuildCheckResult> {
+  const t0 = Date.now();
+  const logs: string[] = [];
+
+  function capture(cmd: string, args: string[], cwd: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const out: string[] = [];
+      const proc = spawn(cmd, args, {
+        cwd,
+        shell: true,
+        env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1", CI: "true" },
+      });
+      proc.stdout?.on("data", (d: Buffer) => { const s = d.toString(); out.push(s); logs.push(s); });
+      proc.stderr?.on("data", (d: Buffer) => { const s = d.toString(); out.push(s); logs.push(s); });
+      proc.on("exit", (code) => {
+        const combined = out.join("");
+        if (code === 0) resolve(combined);
+        else reject(Object.assign(new Error(`${cmd} exited ${code}`), { output: combined }));
+      });
+      proc.on("error", reject);
+    });
+  }
+
+  try {
+    if (!existsSync(wsDir)) {
+      return { clean: false, errors: ["Workspace directory not found"], duration: Date.now() - t0 };
+    }
+    const pkgPath = path.join(wsDir, "package.json");
+    if (!existsSync(pkgPath)) {
+      return { clean: false, errors: ["No package.json in workspace"], duration: Date.now() - t0 };
+    }
+
+    // Install deps if missing (first run)
+    if (!existsSync(path.join(wsDir, "node_modules"))) {
+      const mgr = detectPackageManager(wsDir);
+      const installArgs = mgr === "pnpm"
+        ? ["install", "--no-frozen-lockfile", "--ignore-workspace"]
+        : ["install", "--legacy-peer-deps"];
+      await capture(mgr, installArgs, wsDir).catch(() => {});
+    }
+
+    await capture("npm", ["run", "build"], wsDir);
+    return { clean: true, errors: [], duration: Date.now() - t0 };
+  } catch (err: unknown) {
+    const output = (err as { output?: string }).output ?? logs.join("");
+    const errors = parseErrors(output);
+    return {
+      clean: false,
+      errors: errors.length ? errors : ["Build failed — no parseable errors captured"],
+      duration: Date.now() - t0,
+    };
+  }
+}
+
+/**
  * Clone (or fast-update) a repo, install deps once, run `npm run build`,
  * and return whether it compiled cleanly.
  * Safe to call from the chat route — uses its own work dir, no shared state.

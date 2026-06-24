@@ -20,7 +20,7 @@ import {
 import { prepareProjectRepo } from "../lib/terminalSandbox";
 import { ATLAS_PLATFORM_KNOWLEDGE } from "../lib/atlasKnowledge";
 import { ATLAS_IDENTITY } from "../lib/atlasIdentity";
-import { runBuildCheck } from "./devserver";
+import { runBuildCheck, runWorkspaceBuildCheck } from "./devserver";
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
@@ -2712,7 +2712,7 @@ You are now in BUILD mode. This changes how you respond:
 • Multiple files changed? Emit multiple FILE_EDIT blocks back-to-back.
 • GitHub push is enabled — the user will push your FILE_EDIT output directly to their repo.
 • Do NOT stop short with explanations. If you can write the code, write it.
-• When you receive [LOCAL_APPLY_SUCCESS] — the file(s) were written to the local workspace (no GitHub repo). Respond concisely: confirm what was created/updated, then offer the next logical step. Do NOT mention commits, repos, or build verification — none of those apply here.
+• When you receive [LOCAL_APPLY_SUCCESS] — the file(s) were written to the local workspace (no GitHub repo). A build check runs automatically and the result appears in the same message as [BUILD_VERIFY]. Act on it exactly as you would for [FILE_COMMITTED]: fix errors immediately with FILE_EDIT blocks, stop at max_attempts_reached, acknowledge clean builds briefly. Do NOT mention GitHub, commits, or repos.
 • When you receive [FILE_COMMITTED] — the push succeeded. A build check runs automatically and the result appears in the same message as [BUILD_VERIFY]. Act on it immediately:
   - [BUILD_VERIFY: clean] — build compiled. If this is the first push with no prior errors say "Pushed. Build verified ✓" and move to the next step. If you resolved errors in prior attempts say exactly: "Feature implemented. Encountered N compilation error(s) during build, resolved automatically." (replace N with the real count from the build-verify messages).
   - [BUILD_VERIFY: errors found] — build failed. Emit FILE_EDIT blocks fixing ALL listed errors right away. No preamble, no explanation — just fix and emit. The next push will re-verify automatically.
@@ -2942,6 +2942,44 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
           buildVerifyAppend =
             "\n\n[BUILD_VERIFY: check_failed]\nThe build check could not run. Acknowledge the push and continue.";
         }
+      }
+    }
+  }
+
+  // ── Build-verify intercept for local workspace projects ──────────────────
+  // When [LOCAL_APPLY_SUCCESS] arrives and there's a workspace directory for
+  // this project, run npm run build in-place and append [BUILD_VERIFY] so
+  // Atlas can auto-fix errors exactly like it does for StackBlitz repos.
+  if (message.includes("[LOCAL_APPLY_SUCCESS]") && projectId && !buildVerifyAppend) {
+    const wsDir = projectWorkspaceDir(projectId);
+    const priorAttempts = (history as Array<{ role: string; content: string }>).filter(
+      (m) => m.role === "user" && typeof m.content === "string" && m.content.includes("[LOCAL_APPLY_SUCCESS]"),
+    ).length;
+
+    if (priorAttempts >= 3) {
+      buildVerifyAppend =
+        "\n\n[BUILD_VERIFY: max_attempts_reached]\nThe build has failed 3 consecutive times. Stop auto-fixing. Show the user the last error and ask for their direction.";
+    } else {
+      try {
+        const { existsSync } = await import("node:fs");
+        const pkgExists = existsSync(nodePath.join(wsDir, "package.json"));
+        if (pkgExists) {
+          writeStep(res, { verb: "Checking", target: "build", phase: "execute" });
+          const result = await runWorkspaceBuildCheck(wsDir);
+          if (result.clean) {
+            buildVerifyAppend =
+              `\n\n[BUILD_VERIFY: clean]\nBuild passed in ${Math.round(result.duration / 1000)}s. The app compiles without errors.` +
+              (priorAttempts > 0 ? ` You auto-resolved ${priorAttempts} error(s) across prior attempts.` : "");
+          } else {
+            const errorList = result.errors.join("\n");
+            buildVerifyAppend =
+              `\n\n[BUILD_VERIFY: errors found]\nBuild failed (attempt ${priorAttempts + 1}/3). Fix ALL errors using FILE_EDIT blocks. Do not explain — just emit the fixes. The files will be re-applied and re-verified.\n\nErrors:\n${errorList}`;
+          }
+        }
+      } catch (bvErr) {
+        logger.warn({ err: bvErr, projectId }, "workspace build-check failed — skipping verify");
+        buildVerifyAppend =
+          "\n\n[BUILD_VERIFY: check_failed]\nThe build check could not run. Acknowledge the write and continue.";
       }
     }
   }
