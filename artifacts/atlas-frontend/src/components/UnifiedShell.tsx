@@ -13,6 +13,7 @@ import { updateProject, useUpdateProject, getGetProjectQueryKey, Session, Projec
 import { useLocation } from "wouter";
 import { useAuth, isSuperAdmin } from "@/hooks/useAuth";
 import { useProjectState } from "@/hooks/useProjectState";
+import { useProjectIntelligence } from "@/hooks/useProjectIntelligence";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIsTinyScreen } from "@/hooks/useBreakpoints";
 import { toast } from "sonner";
@@ -1231,6 +1232,7 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   }, [open]);
 
   const { data: chipReadiness } = useGetProjectReadiness(projectId ?? 0);
+  const { data: intelligence } = useProjectIntelligence(projectId);
 
   if (projectId == null) return null;
 
@@ -1271,7 +1273,12 @@ function ShellCompletionChip({ projectId }: { projectId: number | null }) {
   });
   const archScore = archTotal === 0 ? 0 : Math.round((archResolved / archTotal) * 100);
   const decisionsScore = decTotal === 0 ? 0 : Math.round((decResolved / decTotal) * 100);
-  const blendedScore = proj?.latestSnapshotScore ?? (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
+  // Intelligence endpoint is authoritative for blended score — falls back to snapshot
+  // then client-computed blend if the endpoint hasn't loaded yet.
+  const blendedScore =
+    intelligence?.readiness.overall ??
+    proj?.latestSnapshotScore ??
+    (computeBlendedScore(archScore, decisionsScore) || computeScoreFromNodeState(proj?.nodeState ?? null));
 
   const repoLinked = Boolean(proj?.linkedRepo);
   const previewLinked = Boolean(proj?.previewUrl);

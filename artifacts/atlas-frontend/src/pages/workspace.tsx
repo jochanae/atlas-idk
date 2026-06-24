@@ -68,6 +68,7 @@ import { loadProfile } from "@/lib/userProfile";
 import type { Plan, PlanExecution } from "../lib/plan";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjectResume } from "@/hooks/useProjectResume";
+import { useProjectIntelligence } from "@/hooks/useProjectIntelligence";
 import {
   ReadinessRing,
   ReadinessTrend,
@@ -6152,7 +6153,10 @@ export default function Workspace() {
     setReadinessMode(m);
     localStorage.setItem(READINESS_MODE_KEY, m);
   };
-  const blendedReadiness = computeBlendedScore(mapReadiness, healthPct);
+  // Intelligence endpoint is authoritative for blended readiness — falls back to
+  // client-computed 60/40 blend if the endpoint hasn't resolved yet.
+  const { data: projectIntelligence } = useProjectIntelligence(Number.isFinite(id) ? id as number : null);
+  const blendedReadiness = projectIntelligence?.readiness.overall ?? computeBlendedScore(mapReadiness, healthPct);
   const displayedReadinessScore =
     readinessMode === "arch" ? mapReadiness :
     readinessMode === "decisions" ? healthPct :
