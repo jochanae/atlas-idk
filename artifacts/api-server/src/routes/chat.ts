@@ -251,7 +251,9 @@ function cleanPollutedUserStackFacts(store: MemoryStore): { store: MemoryStore; 
 }
 
 function parseExtractorFacts(raw: string): Array<{ tier: 1 | 2 | 3 | 4 | 5; text: string }> {
-  const parsed = JSON.parse(raw.trim()) as unknown;
+  // Strip markdown code fences the model sometimes wraps around JSON output.
+  const stripped = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
+  const parsed = JSON.parse(stripped) as unknown;
   if (!Array.isArray(parsed)) return [];
 
   return parsed.flatMap((item) => {

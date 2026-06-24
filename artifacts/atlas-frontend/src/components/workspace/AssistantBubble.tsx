@@ -183,55 +183,63 @@ function InlineDiffCard({
 
   // #27 — import validation: warn if proposed files import paths not in this write set
   const missingImports = useMemo(() => {
-    if (fileEdits.length === 0) return [];
-    const proposedPaths = new Set(fileEdits.map(e => e.path));
-    const missing: Array<{ from: string; importPath: string; resolved: string }> = [];
-    const seen = new Set<string>();
-    for (const edit of fileEdits) {
-      const importRegex = /from\s+['"](\.[^'"]+)['"]/g;
-      let match: RegExpExecArray | null;
-      while ((match = importRegex.exec(edit.content)) !== null) {
-        const rawImport = match[1];
-        const fileDir = edit.path.includes('/') ? edit.path.split('/').slice(0, -1).join('/') : '';
-        const joined = fileDir ? fileDir + '/' + rawImport : rawImport;
-        const parts = joined.split('/');
-        const normalized: string[] = [];
-        for (const p of parts) {
-          if (p === '..') normalized.pop();
-          else if (p !== '.') normalized.push(p);
-        }
-        const resolvedBase = normalized.join('/');
-        const key = `${edit.path}→${resolvedBase}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        // Check if any proposed file matches (with/without extension)
-        const inProposal = [...proposedPaths].some(p => {
-          const pBase = p.replace(/\.[^./]+$/, '');
-          return pBase === resolvedBase || p === resolvedBase || pBase === resolvedBase + '/index';
-        });
-        if (!inProposal) {
-          missing.push({ from: edit.path.split('/').pop() ?? edit.path, importPath: rawImport, resolved: resolvedBase });
+    try {
+      if (fileEdits.length === 0) return [];
+      const proposedPaths = new Set(fileEdits.map(e => e.path));
+      const missing: Array<{ from: string; importPath: string; resolved: string }> = [];
+      const seen = new Set<string>();
+      for (const edit of fileEdits) {
+        if (!edit.path || !edit.content) continue;
+        const importRegex = /from\s+['"](\.[^'"]+)['"]/g;
+        let match: RegExpExecArray | null;
+        while ((match = importRegex.exec(edit.content)) !== null) {
+          const rawImport = match[1];
+          const fileDir = edit.path.includes('/') ? edit.path.split('/').slice(0, -1).join('/') : '';
+          const joined = fileDir ? fileDir + '/' + rawImport : rawImport;
+          const parts = joined.split('/');
+          const normalized: string[] = [];
+          for (const p of parts) {
+            if (p === '..') normalized.pop();
+            else if (p !== '.') normalized.push(p);
+          }
+          const resolvedBase = normalized.join('/');
+          const key = `${edit.path}→${resolvedBase}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const inProposal = [...proposedPaths].some(p => {
+            const pBase = p.replace(/\.[^./]+$/, '');
+            return pBase === resolvedBase || p === resolvedBase || pBase === resolvedBase + '/index';
+          });
+          if (!inProposal) {
+            missing.push({ from: edit.path.split('/').pop() ?? edit.path, importPath: rawImport, resolved: resolvedBase });
+          }
         }
       }
+      return missing;
+    } catch {
+      return [];
     }
-    return missing;
   }, [fileEdits]);
 
   const previewLines = useMemo<InlinePreviewLine[]>(() => {
-    if (fileEdits.length > 0) {
-      return fileEdits.flatMap((edit) => {
-        if (!edit.content) return [];
-        const original = originals[edit.path];
-        const lines = original !== undefined && original !== null
-          ? computeLineDiff(original, edit.content).filter((line) => line.type !== "context")
-          : edit.content.split("\n").map((line) => ({ type: "added" as const, line }));
-        return lines.map((line) => ({ type: line.type as "added" | "removed", line: line.line }));
-      });
+    try {
+      if (fileEdits.length > 0) {
+        return fileEdits.flatMap((edit) => {
+          if (!edit.content) return [];
+          const original = originals[edit.path];
+          const lines = original !== undefined && original !== null
+            ? computeLineDiff(original, edit.content).filter((line) => line.type !== "context")
+            : edit.content.split("\n").map((line) => ({ type: "added" as const, line }));
+          return lines.map((line) => ({ type: line.type as "added" | "removed", line: line.line }));
+        });
+      }
+      return linePatches.flatMap((patch) => [
+        ...(patch.find ?? "").split("\n").map((line) => ({ type: "removed" as const, line })),
+        ...(patch.replace ?? "").split("\n").map((line) => ({ type: "added" as const, line })),
+      ]);
+    } catch {
+      return [];
     }
-    return linePatches.flatMap((patch) => [
-      ...(patch.find ?? "").split("\n").map((line) => ({ type: "removed" as const, line })),
-      ...(patch.replace ?? "").split("\n").map((line) => ({ type: "added" as const, line })),
-    ]);
   }, [fileEdits, linePatches, originals]);
 
   const targetPaths = fileEdits.length > 0
