@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { spawn, type ChildProcess } from "child_process";
 import http from "http";
-import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from "fs";
+import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, unlinkSync, readdirSync } from "fs";
 import path from "path";
 import { logger } from "../lib/logger";
 import { projectWorkspaceDir } from "../lib/projectWorkspace";
@@ -134,6 +134,45 @@ interface WsDevState {
 }
 
 const wsStates = new Map<number, WsDevState>();
+
+// Persist port so API server restarts don't lose track of running Vite servers.
+// Files live at /tmp/atlas-ws-{projectId}.json  →  { port, pid? }
+const WS_PERSIST_DIR = "/tmp";
+function wsPersistPath(projectId: number) { return path.join(WS_PERSIST_DIR, `atlas-ws-${projectId}.json`); }
+
+function wsSaveState(projectId: number, port: number, pid?: number) {
+  try { writeFileSync(wsPersistPath(projectId), JSON.stringify({ port, pid })); } catch {}
+}
+function wsDeleteState(projectId: number) {
+  try { unlinkSync(wsPersistPath(projectId)); } catch {}
+}
+
+// On module load: probe any persisted ports and re-adopt still-running servers.
+// This runs once when the API server starts so a rebuild doesn't lose the "Running" badge.
+(async () => {
+  const files = readdirSync(WS_PERSIST_DIR).filter(f => /^atlas-ws-\d+\.json$/.test(f));
+  for (const f of files) {
+    try {
+      const projectId = Number(f.replace("atlas-ws-", "").replace(".json", ""));
+      const { port, pid } = JSON.parse(readFileSync(path.join(WS_PERSIST_DIR, f), "utf8")) as { port: number; pid?: number };
+      // Quick TCP probe — if something is listening on that port, re-adopt it.
+      const alive = await new Promise<boolean>((resolve) => {
+        const req = http.request({ hostname: "localhost", port, path: "/", method: "HEAD", timeout: 800 }, () => { req.destroy(); resolve(true); });
+        req.on("error", () => resolve(false));
+        req.on("timeout", () => { req.destroy(); resolve(false); });
+        req.end();
+      });
+      if (alive) {
+        const st = getWsState(projectId);
+        st.port = port; st.status = "running";
+        st.logs = [`[re-adopted] Dev server already running on port ${port}${pid ? ` (pid ${pid})` : ""}`];
+        logger.info({ projectId, port }, "Re-adopted workspace dev server after API restart");
+      } else {
+        wsDeleteState(projectId);
+      }
+    } catch {}
+  }
+})();
 
 function getWsState(projectId: number): WsDevState {
   if (!wsStates.has(projectId)) {
@@ -688,6 +727,7 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
         const found = await pollForPort([port, 5173, 3000, 4000].filter(p => p !== OWN_PORT));
         if (found && st.status === "starting") {
           st.port = found; st.status = "running";
+          wsSaveState(projectId, found, proc.pid);
           addWsLog(st, `✓ Dev server on port ${found} (probe)`);
           logger.info({ port: found, projectId }, "Workspace dev server found via probe");
         } else if (st.status === "starting") {
@@ -696,6 +736,7 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
             const found2 = await pollForPort([port, 5173, 3000].filter(p => p !== OWN_PORT));
             if (found2) {
               st.port = found2; st.status = "running";
+              wsSaveState(projectId, found2, proc.pid);
               addWsLog(st, `✓ Dev server on port ${found2}`);
             } else {
               st.status = "error";
@@ -714,6 +755,7 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
           if (detected) {
             clearTimeout(portTimer);
             st.port = detected; st.status = "running";
+            wsSaveState(projectId, detected, proc.pid);
             addWsLog(st, `✓ Running on port ${detected}`);
             logger.info({ port: detected, projectId }, "Workspace dev server running");
           }
@@ -724,6 +766,7 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
       proc.stderr?.on("data", onData);
       proc.on("exit", (code) => {
         clearTimeout(portTimer);
+        wsDeleteState(projectId);
         if (st.status !== "idle") {
           if (code !== 0) {
             st.status = "error";
@@ -757,6 +800,7 @@ router.post("/devserver/workspace/:projectId/stop", (req, res): void => {
   const st = wsStates.get(projectId);
   if (st?.proc) { try { st.proc.kill("SIGTERM"); } catch {} st.proc = null; }
   if (st) { st.status = "idle"; st.port = null; st.logs = []; st.errorMsg = null; }
+  wsDeleteState(projectId);
   res.json({ status: "idle" });
 });
 
