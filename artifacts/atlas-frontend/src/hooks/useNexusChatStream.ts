@@ -104,6 +104,7 @@ export interface NexusMessage {
   visualImageBase64?: string | null;
   visualCaption?: string | null;
   visualLoading?: boolean;
+  navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
 }
 
 export interface NexusHandoffSignal {
@@ -470,21 +471,21 @@ export function useNexusChatStream(
               activeConversationIdRef.current = doneConversationId;
             }
 
-            const { content: navCleanedText, route } = stripNavigateTo(fullText);
+            const { content: navCleanedText, route: routeFromText } = stripNavigateTo(fullText);
             let displayText = navCleanedText;
-            if (route) {
-              const projectMatch = route.match(/^\/project\/(\d+)$/);
-              if (projectMatch) {
-                const projectId = parseInt(projectMatch[1], 10);
-                fetch(`/api/projects/${projectId}/activate`, {
-                  method: "POST",
-                  credentials: "include",
-                })
-                  .catch(() => {})
-                  .finally(() => { window.location.href = route; });
-              } else {
-                setTimeout(() => { window.location.href = route; }, 800);
-              }
+            // Prefer structured navigateTo from done event; fall back to text extraction (backward compat)
+            const navFromMeta = (meta as any).navigateTo as { route: string; projectId?: number; projectName?: string | null } | null | undefined;
+            const navigateTo: { route: string; projectId?: number; projectName?: string | null } | null = navFromMeta
+              ?? (routeFromText
+                ? (() => {
+                    const m = routeFromText.match(/^\/project\/(\d+)$/);
+                    return { route: routeFromText, projectId: m ? parseInt(m[1], 10) : undefined, projectName: null };
+                  })()
+                : null);
+            // Pre-activate the project so the sidebar chip lights up, but do NOT navigate.
+            // The user decides when to navigate via the suggestion card rendered on the message.
+            if (navigateTo?.projectId) {
+              fetch(`/api/projects/${navigateTo.projectId}/activate`, { method: "POST", credentials: "include" }).catch(() => {});
             }
 
             // Read shapingPayload from meta — backend parses and 
@@ -613,6 +614,7 @@ export function useNexusChatStream(
                 ? {
                     ...m,
                     content: displayText,
+                    navigateTo: navigateTo,
                     imageGen: ((meta as any).imageGen ?? null) as NexusMessage["imageGen"],
                     streaming: false,
                     handoffSignal: handoff ?? null,

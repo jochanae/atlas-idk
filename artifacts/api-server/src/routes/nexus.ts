@@ -2292,6 +2292,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
           memory: buildInitialProjectMemory(handoffSignal.reason ?? autoName),
         });
         pendingNavProjectId = autoProject.id;
+        pendingNavProjectName = autoProject.name;
         writeStep({ verb: "Created", target: autoProject.name, detail: `Project ${autoProject.id}` });
       } catch (autoErr) {
         logger.warn({ err: String(autoErr) }, "Auto project creation from handoff signal failed");
@@ -2340,20 +2341,11 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
     // Background genome extraction — non-blocking, rate-limited
     void maybeExtractGenome(focusProjectId ?? null);
 
-    // If a project was just created, inject NAVIGATE_TO so the frontend auto-navigates
-    if (pendingNavProjectId !== null) {
-      const navToken = `\nNAVIGATE_TO:{"route":"/project/${pendingNavProjectId}"}`;
-      if (!visibleContent.includes(`NAVIGATE_TO:{"route":"/project/${pendingNavProjectId}"}`)) {
-        visibleContent += navToken;
-        if (!res.writableEnded && !res.destroyed) {
-          res.write(`event: token\ndata: ${JSON.stringify(navToken)}\n\n`);
-        }
-      }
-    }
-
     await emitConversationTitle(visibleContent);
 
-    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(handoffSignal ? { handoffSignal } : {}), ...(nexusImageGenResult ? { imageGen: nexusImageGenResult } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
+    // Navigation intent is sent as structured data in the done event — never as a text token.
+    // The frontend renders a suggestion card; the user decides when to navigate.
+    res.write(`event: done\ndata: ${JSON.stringify({ content: visibleContent, modelUsed, surface, memoryUpdated, detectedMode, focusSuggestion, conversationId: effectiveConversationId, convState, ...(pendingNavProjectId !== null ? { navigateTo: { route: `/project/${pendingNavProjectId}`, projectId: pendingNavProjectId, projectName: pendingNavProjectName } } : {}), ...(handoffSignal ? { handoffSignal } : {}), ...(nexusImageGenResult ? { imageGen: nexusImageGenResult } : {}), ...(projectReadyToken ? { projectReady: projectReadyToken } : {}), ...runMetadata })}\n\n`);
     res.end();
   };
 
@@ -2514,6 +2506,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
 
   let fullText = "";
   let pendingNavProjectId: number | null = null;
+  let pendingNavProjectName: string | null = null;
 
   const appendClaudeUsage = (finalMessage: Anthropic.Message, startedAt: number) => {
     const inputTokens = nullableNumber((finalMessage as any)?.usage?.input_tokens);
@@ -2614,6 +2607,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       };
       writeStep({ verb: "Created", target: project.name, detail: `Project ${project.id}` });
       pendingNavProjectId = project.id;
+      pendingNavProjectName = project.name;
 
       // Attempt GitHub repo creation — graceful degradation if no token or API error
       let githubRepo: string | null = null;
@@ -2649,7 +2643,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
         project: projectCreated,
         githubRepo,
         githubHtmlUrl,
-        instruction: `Project "${project.name}" created with id ${project.id}.${repoNote} End your response with exactly: NAVIGATE_TO:{"route":"/project/${project.id}"}`,
+        instruction: `Project "${project.name}" created with id ${project.id}.${repoNote} Confirm the project was created. Do NOT include NAVIGATE_TO in your response — navigation is handled automatically via the done event.`,
       };
     } catch (error) {
       const message = error instanceof ProjectLimitReachedError
@@ -2761,7 +2755,8 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
             } as unknown as Anthropic.ToolUseBlock;
             const toolResult = await runCreateProjectTool(fakeToolUse);
             if (toolResult.ok) {
-              res.write(`event: token\ndata: ${JSON.stringify(`\n\nNAVIGATE_TO:{"route":"/project/${toolResult.project.id}"}`)}\n\n`);
+              pendingNavProjectId = toolResult.project.id;
+              pendingNavProjectName = toolResult.project.name;
             }
             await finishStream(fullText);
             return;

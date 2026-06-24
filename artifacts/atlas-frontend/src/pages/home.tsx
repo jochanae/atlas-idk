@@ -2051,7 +2051,6 @@ export default function Home() {
   const { setDepth, activeProjectId, setActiveProjectId, setActiveConversationTitle, setActiveConversationId: setShellConversationId } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const handledNavigateToRef = useRef<Set<string>>(new Set());
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
@@ -2067,20 +2066,9 @@ export default function Home() {
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
   const globalInsightSeedPendingRef = useRef(false);
 
-  useEffect(() => {
-    const messages = nexusChat.messages as HomeMessage[];
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== "assistant") return;
-
-    const parsed = parseNavigateTo(lastMessage.content);
-    if (!parsed) return;
-
-    const key = lastMessage.id ?? `${messages.length - 1}:${lastMessage.createdAt ?? ""}:${parsed.projectId}`;
-    if (handledNavigateToRef.current.has(key)) return;
-
-    handledNavigateToRef.current.add(key);
-    setLocation(`/project/${parsed.projectId}`);
-  }, [nexusChat.messages, setLocation]);
+  // NAVIGATE_TO auto-navigation removed — navigation is now user-initiated via the
+  // suggestion card rendered on the message. The done event carries navigateTo as
+  // structured data; no text token is injected into message content.
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;

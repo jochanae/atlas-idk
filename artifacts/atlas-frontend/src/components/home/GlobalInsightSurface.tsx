@@ -37,6 +37,7 @@ export type GlobalInsightMessage = {
   imageUrl?: string;
   pendingSketch?: boolean;
   attachments?: Array<{ base64: string; mediaType: string; name?: string }>;
+  navigateTo?: { route: string; projectId?: number; projectName?: string | null } | null;
 };
 
 export type GlobalInsightLiveStep = {
@@ -243,6 +244,7 @@ export function GlobalInsightSurface({
   const isParchment = useThemeMode() === "parchment";
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [dismissedNavIdx, setDismissedNavIdx] = useState<Set<number>>(new Set());
 
   // Manage object URLs for image previews
   useEffect(() => { ensureComposerAuraCSS(); }, []);
@@ -633,6 +635,47 @@ export function GlobalInsightSurface({
                       } catch {}
                     }}
                   />
+                )}
+                {msg.navigateTo && !dismissedNavIdx.has(i) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => setLocation(msg.navigateTo!.route)}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid var(--atlas-gold)",
+                        borderRadius: 6,
+                        padding: "4px 12px",
+                        cursor: "pointer",
+                        color: "var(--atlas-gold)",
+                        fontSize: 12,
+                        fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.08em",
+                        fontWeight: 500,
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      Open {msg.navigateTo.projectName ?? "workspace"} →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDismissedNavIdx(prev => new Set([...prev, i]))}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        padding: "4px 6px",
+                        cursor: "pointer",
+                        color: "var(--atlas-muted)",
+                        fontSize: 12,
+                        fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.06em",
+                        opacity: 0.55,
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      stay here
+                    </button>
+                  </div>
                 )}
                 {!msg.streaming && displayContent.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
