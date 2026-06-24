@@ -717,6 +717,29 @@ export function ChatComposer(props: ChatComposerProps) {
 
             </div>
 
+            {/* Parking lot badge */}
+            <button
+              type="button"
+              onClick={() => setShowParkingDrawer(true)}
+              title={parkedCount > 0 ? `Parking lot — ${parkedCount} parked` : "Parking lot"}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "5px 9px", borderRadius: 999,
+                background: parkedCount > 0 ? "rgba(201,162,76,0.08)" : "rgba(255,255,255,0.025)",
+                border: `1px solid ${parkedCount > 0 ? "rgba(201,162,76,0.28)" : "var(--atlas-border)"}`,
+                color: parkedCount > 0 ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                cursor: "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 9.5, letterSpacing: "0.07em",
+                whiteSpace: "nowrap" as const, flexShrink: 0,
+                transition: "all 160ms ease",
+                opacity: parkedCount > 0 ? 1 : 0.45,
+              }}
+            >
+              <span style={{ opacity: 0.8 }}>🅿</span>
+              <span>{parkedCount}</span>
+            </button>
+
 
 
             {/* Model chip — only renders when the setting is enabled */}

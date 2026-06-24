@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Entry, createEntry, useCreateEntry, useGetProject, getGetProjectQueryKey, Project, getListEntriesQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -140,6 +140,39 @@ export function LedgerPanel({
   const queryClient = useQueryClient();
   const { data: ledgerProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
 
+  const [ledgerTab, setLedgerTab] = useState<"activity" | "snapshots">("activity");
+
+  // Snapshots (vault saves for this project)
+  interface VaultSave { id: number; projectId: number | null; projectName: string; title: string; content: string; entryCount: number; tags: string[] | null; createdAt: string; }
+  const [snapshots, setSnapshots] = useState<VaultSave[]>([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [snapshotsCopiedId, setSnapshotsCopiedId] = useState<number | null>(null);
+  const [snapshotsDeletingId, setSnapshotsDeletingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (ledgerTab !== "snapshots") return;
+    setSnapshotsLoading(true);
+    fetch("/api/vault", { credentials: "include" })
+      .then(r => r.ok ? r.json() as Promise<VaultSave[]> : [])
+      .then(data => setSnapshots((data as VaultSave[]).filter(s => s.projectId === projectId)))
+      .catch(() => setSnapshots([]))
+      .finally(() => setSnapshotsLoading(false));
+  }, [ledgerTab, projectId]);
+
+  const handleSnapshotCopy = async (snap: VaultSave) => {
+    try { await navigator.clipboard.writeText(snap.content); } catch {}
+    setSnapshotsCopiedId(snap.id);
+    setTimeout(() => setSnapshotsCopiedId(null), 2000);
+  };
+
+  const handleSnapshotDelete = async (id: number) => {
+    setSnapshotsDeletingId(id);
+    try {
+      const r = await fetch(`/api/vault/${id}`, { method: "DELETE", credentials: "include" });
+      if (r.ok) setSnapshots(prev => prev.filter(s => s.id !== id));
+    } finally { setSnapshotsDeletingId(null); }
+  };
+
   const [vaultSaving, setVaultSaving] = useState(false);
   const [vaultSaved, setVaultSaved] = useState(false);
 
@@ -191,6 +224,103 @@ export function LedgerPanel({
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Activity | Snapshots tab bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+        {(["activity", "snapshots"] as const).map((tab) => {
+          const active = ledgerTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setLedgerTab(tab)}
+              style={{
+                padding: "4px 10px", borderRadius: 999,
+                border: `1px solid ${active ? "var(--atlas-gold)" : "var(--atlas-border)"}`,
+                background: active ? "rgba(var(--atlas-gold-rgb),0.10)" : "transparent",
+                color: active ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                cursor: "pointer", fontFamily: "var(--app-font-mono)",
+                fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase" as const,
+              }}
+            >
+              {tab === "activity" ? "Activity" : "Snapshots"}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── SNAPSHOTS TAB ── */}
+      {ledgerTab === "snapshots" && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--atlas-border)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={handleSaveToVault}
+              disabled={vaultSaving || allCommitted.length === 0}
+              title={allCommitted.length === 0 ? "No committed decisions to snapshot" : "Save a snapshot of this ledger"}
+              style={{
+                padding: "5px 11px", borderRadius: 6,
+                background: vaultSaved ? "rgba(201,162,76,0.1)" : "transparent",
+                border: `1px solid ${vaultSaved ? "rgba(201,162,76,0.4)" : "rgba(201,162,76,0.18)"}`,
+                color: vaultSaved ? "var(--atlas-gold)" : "var(--atlas-muted)", fontSize: 10,
+                fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" as const,
+                cursor: vaultSaving || allCommitted.length === 0 ? "default" : "pointer",
+                opacity: allCommitted.length === 0 ? 0.35 : vaultSaved ? 1 : 0.7,
+                transition: "all 160ms ease",
+              }}
+            >
+              {vaultSaved ? "◆ Saved" : vaultSaving ? "Saving…" : "◆ Save Snapshot"}
+            </button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }} className="scrollbar-none">
+            {snapshotsLoading ? (
+              <div style={{ padding: "24px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, opacity: 0.4 }}>Loading…</div>
+            ) : snapshots.length === 0 ? (
+              <div style={{ padding: "34px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, opacity: 0.4, lineHeight: 1.7 }}>
+                No snapshots yet.{allCommitted.length > 0 ? " Save one with the button above." : ""}
+              </div>
+            ) : (
+              snapshots.map((snap) => (
+                <div key={snap.id} style={{ marginBottom: 8, padding: "10px 12px", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "var(--atlas-surface)" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10.5, color: "var(--atlas-fg)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{snap.title}</div>
+                      <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 9, color: "var(--atlas-muted)", opacity: 0.55 }}>
+                        {new Date(snap.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {snap.entryCount} {snap.entryCount === 1 ? "decision" : "decisions"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => void handleSnapshotCopy(snap)}
+                        style={{ padding: "3px 8px", borderRadius: 4, border: "1px solid var(--atlas-border)", background: "transparent", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 9, cursor: "pointer", transition: "color 120ms ease" }}
+                      >
+                        {snapshotsCopiedId === snap.id ? "✓" : "Copy"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={snapshotsDeletingId === snap.id}
+                        onClick={() => void handleSnapshotDelete(snap.id)}
+                        style={{ padding: "3px 8px", borderRadius: 4, border: "1px solid transparent", background: "transparent", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", fontSize: 9, cursor: snapshotsDeletingId === snap.id ? "default" : "pointer", opacity: snapshotsDeletingId === snap.id ? 0.4 : 0.5 }}
+                      >
+                        {snapshotsDeletingId === snap.id ? "…" : "✕"}
+                      </button>
+                    </div>
+                  </div>
+                  {snap.tags && snap.tags.length > 0 && (
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const, marginTop: 4 }}>
+                      {snap.tags.map((tag) => (
+                        <span key={tag} style={{ fontFamily: "var(--app-font-mono)", fontSize: 8.5, letterSpacing: "0.06em", color: "var(--atlas-gold)", opacity: 0.7 }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ACTIVITY TAB ── */}
+      {ledgerTab === "activity" && <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Add entry inline */}
       {showAdd && (
         <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
@@ -361,6 +491,7 @@ export function LedgerPanel({
         </button>
       </div>
       </div>
+      </div>}
     </div>
   );
 }
