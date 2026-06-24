@@ -220,6 +220,7 @@ function InlineDiffCard({
   const previewLines = useMemo<InlinePreviewLine[]>(() => {
     if (fileEdits.length > 0) {
       return fileEdits.flatMap((edit) => {
+        if (!edit.content) return [];
         const original = originals[edit.path];
         const lines = original !== undefined && original !== null
           ? computeLineDiff(original, edit.content).filter((line) => line.type !== "context")
@@ -228,8 +229,8 @@ function InlineDiffCard({
       });
     }
     return linePatches.flatMap((patch) => [
-      ...patch.find.split("\n").map((line) => ({ type: "removed" as const, line })),
-      ...patch.replace.split("\n").map((line) => ({ type: "added" as const, line })),
+      ...(patch.find ?? "").split("\n").map((line) => ({ type: "removed" as const, line })),
+      ...(patch.replace ?? "").split("\n").map((line) => ({ type: "added" as const, line })),
     ]);
   }, [fileEdits, linePatches, originals]);
 
