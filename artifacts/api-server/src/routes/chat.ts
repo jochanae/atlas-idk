@@ -2652,6 +2652,18 @@ What "complete initial scaffold" means:
   • index.html with <div id="root"> and a <script type="module" src="/src/main.jsx"> tag.
   Never omit config files assuming they already exist — always emit them as FILE_EDIT blocks.
 
+REACT ROUTER RULE — always use basename from import.meta.env.BASE_URL:
+  The app runs behind a proxy that mounts it at a subpath. Without a basename, React Router
+  reads the full proxy path as the route and matches nothing — the page renders blank.
+  Every app that uses BrowserRouter MUST include this pattern in the root component:
+
+    const routerBase = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
+    // ...
+    <BrowserRouter basename={routerBase}>
+
+  import.meta.env.BASE_URL is automatically set by Vite to the correct proxy subpath.
+  This is non-negotiable — omitting it causes a blank page in the Local Dev preview.
+
 FILE FORMAT RULES — these are absolute in a build handoff:
 - Use FILE_EDIT blocks for ALL code. Every file must be a FILE_EDIT block.
 - ARTIFACT blocks are for standalone HTML previews and exportable documents only. They do NOT create project files. NEVER use ARTIFACT in a build handoff — the files will not land in the workspace.
