@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { spawn, type ChildProcess } from "child_process";
 import http from "http";
-import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, unlinkSync, readdirSync } from "fs";
+import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync, unlinkSync, readdirSync, createReadStream, statSync } from "fs";
 import path from "path";
 import { logger } from "../lib/logger";
 import { projectWorkspaceDir } from "../lib/projectWorkspace";

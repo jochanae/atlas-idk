@@ -5,6 +5,9 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import shellRouter from "./routes/shell";
 import { logger } from "./lib/logger";
+import { createReadStream, statSync, readFileSync } from "fs";
+import path from "path";
+import { projectWorkspaceDir } from "./lib/projectWorkspace";
 import { WebhookHandlers } from "./webhookHandlers";
 
 const app: Express = express();
@@ -101,6 +104,44 @@ app.use((req, _res, next) => {
   next();
 });
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+
+// ── Public static preview (no auth) ──────────────────────────────────────
+// Serves a pre-built workspace dist/ so anyone can confirm the app renders.
+// Build first: cd .project-workspaces/<id> && npm run build
+const PREVIEW_MIME: Record<string, string> = {
+  ".html": "text/html", ".css": "text/css", ".js": "application/javascript",
+  ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+  ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf",
+};
+app.use("/api/preview/workspace/:projectId", (req, res) => {
+  const projectId = Number(req.params["projectId"]);
+  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+  const distDir = path.join(projectWorkspaceDir(projectId), "dist");
+  const base = `/api/preview/workspace/${projectId}`;
+
+  let filePath = (!req.path || req.path === "/") ? "/index.html" : req.path;
+  if (!path.extname(filePath)) filePath = "/index.html";
+  const fullPath = path.join(distDir, filePath);
+  if (!fullPath.startsWith(distDir)) { res.status(403).end(); return; }
+
+  const serveIndex = () => {
+    const idx = path.join(distDir, "index.html");
+    let html: string;
+    try { html = readFileSync(idx, "utf8"); } catch { res.status(404).send("No build found — run npm run build in the project workspace first."); return; }
+    // Rewrite absolute asset paths so they resolve under the preview base
+    html = html.replace(/(src|href)="\/(assets\/[^"]+)"/g, `$1="${base}/$2"`);
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  };
+
+  if (filePath === "/index.html") { serveIndex(); return; }
+
+  try { statSync(fullPath); } catch { serveIndex(); return; }
+  const mime = PREVIEW_MIME[path.extname(fullPath).toLowerCase()] ?? "application/octet-stream";
+  res.setHeader("Content-Type", mime);
+  createReadStream(fullPath).pipe(res);
+});
 
 app.use("/api/shell", shellRouter);
 app.use("/api", router);
