@@ -561,9 +561,30 @@ function rewriteCss(css: string, base = PROXY_BASE): string {
   return css.replace(/url\((['"]?)\/(?!\/)/g, `url($1${base}/`);
 }
 
-// Generic proxy handler — forwards req to targetPort, rewrites HTML/CSS paths
+// Rewrite root-relative ESM import/export paths so they route through the proxy.
+// Only touches `from "/..."`, `import "/..."`, and dynamic `import("/...")`.
+// Does NOT touch string literals, comments, or other code.
+function rewriteJs(js: string, base: string): string {
+  let out = js;
+  // Static imports/exports: from "/path" and import "/path"
+  out = out.replace(/((?:from|import)\s+["'])\/(?!\/)/g, `$1${base}/`);
+  // Dynamic imports: import("/path") and import('/path')
+  out = out.replace(/\bimport\((["'])\/(?!\/)/g, `import($1${base}/`);
+  return out;
+}
+
+// Generic proxy handler — forwards req to targetPort, rewrites HTML/CSS/JS paths
 function proxyToPort(targetPort: number, proxyBase: string, req: import("express").Request, res: import("express").Response): void {
   const targetPath = req.url || "/";
+
+  // Stub out /@vite/client — HMR WebSocket cannot work through the proxy.
+  // Returning an empty module silences the "WebSocket URL undefined" error entirely.
+  if (targetPath === "/@vite/client" || targetPath.startsWith("/@vite/client?")) {
+    res.setHeader("Content-Type", "application/javascript");
+    res.end("// @vite/client stubbed — HMR disabled in proxy mode");
+    return;
+  }
+
   const options: http.RequestOptions = {
     hostname: "localhost",
     port: targetPort,
@@ -576,7 +597,8 @@ function proxyToPort(targetPort: number, proxyBase: string, req: import("express
     const contentType = (proxyRes.headers["content-type"] ?? "").toLowerCase();
     const isHtml = contentType.includes("text/html");
     const isCss = contentType.includes("text/css");
-    const needsRewrite = isHtml || isCss;
+    const isJs = contentType.includes("javascript") || contentType.includes("ecmascript");
+    const needsRewrite = isHtml || isCss || isJs;
 
     const headers: Record<string, string | string[] | undefined> = {};
     for (const [k, v] of Object.entries(proxyRes.headers)) {
@@ -601,7 +623,10 @@ function proxyToPort(targetPort: number, proxyBase: string, req: import("express
       proxyRes.on("data", (chunk: Buffer) => chunks.push(chunk));
       proxyRes.on("end", () => {
         const raw = Buffer.concat(chunks).toString("utf8");
-        const rewritten = isHtml ? rewriteHtml(raw, proxyBase) : rewriteCss(raw, proxyBase);
+        let rewritten: string;
+        if (isHtml) rewritten = rewriteHtml(raw, proxyBase);
+        else if (isCss) rewritten = rewriteCss(raw, proxyBase);
+        else rewritten = rewriteJs(raw, proxyBase);
         res.writeHead(proxyRes.statusCode ?? 200, headers);
         res.end(rewritten, "utf8");
       });
