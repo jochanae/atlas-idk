@@ -37,9 +37,9 @@ function isLedgerContent(content: string): boolean {
   return content.startsWith("[FILE_COMMITTED]") || content.startsWith("[LOCAL_APPLY_SUCCESS]");
 }
 
-function AutoVerifyMessage({ content }: { content: string }) {
+function AutoVerifyMessage({ content, executionTimeMs }: { content: string; executionTimeMs?: number | null }) {
   if (isLedgerContent(content)) {
-    return <LedgerSurface content={content} />;
+    return <LedgerSurface content={content} executionTimeMs={executionTimeMs} />;
   }
   return (
     <div
@@ -410,7 +410,10 @@ export function ChatStream(props: ChatStreamProps) {
           {msg.role === "user" ? (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
               {isAutoVerifyMessage(msg) ? (
-                <AutoVerifyMessage content={msg.content} />
+                <AutoVerifyMessage
+                  content={msg.content}
+                  executionTimeMs={i > 0 && messages[i - 1]?.role === "assistant" ? messages[i - 1].executionTimeMs : null}
+                />
               ) : (
                 <UserBubble
                   content={msg.content}
@@ -425,19 +428,6 @@ export function ChatStream(props: ChatStreamProps) {
             </div>
           ) : (
             <div data-atlas-msg-idx={i} data-msg-idx={i}>
-              {activityStream.active && i === messages.length - 1 && (
-                liveGeneration.shouldShow ? (
-                  <LiveGenerationCard
-                    mode={liveGeneration.mode as never}
-                    steps={liveGeneration.steps as never}
-                    isComplete={false}
-                  />
-                ) : isExecutionStream(activityStream.content) ? (
-                  <ExecutionJournal content={activityStream.content} isStreaming={true} />
-                ) : (
-                  <AtlasActivityBar content={activityStream.content} lens={wsLens} />
-                )
-              )}
               <AssistantBubble
                 message={msg}
                 isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
@@ -483,7 +473,20 @@ export function ChatStream(props: ChatStreamProps) {
                   />
                 </div>
               )}
-              {/* Sketch offer now lives as an icon in AssistantBubble's action bar. */}
+              {/* Execution Journal — shows underneath Atlas's prose during active multi-step streams */}
+              {activityStream.active && i === messages.length - 1 && (
+                liveGeneration.shouldShow ? (
+                  <LiveGenerationCard
+                    mode={liveGeneration.mode as never}
+                    steps={liveGeneration.steps as never}
+                    isComplete={false}
+                  />
+                ) : isExecutionStream(activityStream.content) ? (
+                  <ExecutionJournal content={activityStream.content} isStreaming={true} />
+                ) : (
+                  <AtlasActivityBar content={activityStream.content} lens={wsLens} />
+                )
+              )}
             </div>
           )}
         </Fragment>

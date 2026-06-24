@@ -1778,7 +1778,9 @@ export function AssistantBubble({
           </div>
         )}
 
-        {cleanedContent.trim() && !message.streaming && !commitPayload && (
+        {cleanedContent.trim() && !message.streaming && !commitPayload
+          && !message.autoPushed
+          && !(message.fileEdits && message.fileEdits.length > 0) && (
           <div style={{ marginTop: 6 }}>
             <ThoughtForBadge
               metrics={{

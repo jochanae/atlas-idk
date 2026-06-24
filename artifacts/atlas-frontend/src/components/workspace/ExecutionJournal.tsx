@@ -560,8 +560,18 @@ function parseLedgerContent(raw: string): {
   return { label, badge, files };
 }
 
-export function LedgerSurface({ content }: { content: string }) {
+function formatLedgerDuration(ms?: number | null): string | null {
+  if (!ms || ms < 1000) return null;
+  const s = ms / 1000;
+  if (s < 60) return `${s < 10 ? s.toFixed(1) : Math.round(s)}s`;
+  const m = Math.floor(s / 60);
+  const rest = Math.round(s - m * 60);
+  return `${m}m ${rest}s`;
+}
+
+export function LedgerSurface({ content, executionTimeMs }: { content: string; executionTimeMs?: number | null }) {
   const { label, badge, files } = parseLedgerContent(content);
+  const duration = formatLedgerDuration(executionTimeMs);
 
   return (
     <div
@@ -629,6 +639,19 @@ export function LedgerSurface({ content }: { content: string }) {
               }}
             >
               · {badge}
+            </span>
+          )}
+          {duration && (
+            <span
+              style={{
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 9,
+                color: "rgba(255,255,255,0.18)",
+                lineHeight: 1,
+                marginLeft: badge ? 0 : undefined,
+              }}
+            >
+              · {duration}
             </span>
           )}
         </div>
