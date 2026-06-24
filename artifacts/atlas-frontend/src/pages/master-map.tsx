@@ -143,6 +143,7 @@ type PeekState = {
   nodeIdx: number;
   name: string;
   score: number;
+  overallLabel?: string;
   entries: PeekEntry[];
   loading: boolean;
 };
@@ -254,6 +255,7 @@ export default function MasterMap() {
   const labelEls = useRef<(HTMLDivElement | null)[]>([]);
   const peekElRef = useRef<HTMLDivElement | null>(null);
   const peekRef = useRef<PeekState | null>(null);
+  const readinessCacheRef = useRef<Map<number, { score: number; label: string }>>(new Map());
   const tensionTooltipElRef = useRef<HTMLDivElement | null>(null);
 
   const panRef = useRef({ x: 0, y: 0 });
@@ -832,19 +834,34 @@ export default function MasterMap() {
     const openPeek = async (idx: number) => {
       const proj = projectsRef.current[idx];
       if (!proj) return;
+      const cached = readinessCacheRef.current.get(proj.id);
       setPeek({
         projectId: proj.id,
         nodeIdx: idx,
         name: proj.name,
-        score: Math.round(proj.latestSnapshotScore ?? 0),
+        score: cached?.score ?? Math.round(proj.latestSnapshotScore ?? 0),
+        overallLabel: cached?.label,
         entries: [],
         loading: true,
       });
       try {
-        const r = await fetch(`${BASE_URL}/api/projects/${proj.id}/entries?status=committed`, { credentials: "include" });
-        const list = r.ok ? (await r.json()) as Array<{ id: number; title: string }> : [];
+        const [entriesRes, readinessRes] = await Promise.allSettled([
+          fetch(`${BASE_URL}/api/projects/${proj.id}/entries?status=committed`, { credentials: "include" }),
+          fetch(`${BASE_URL}/api/projects/${proj.id}/readiness`, { credentials: "include" }),
+        ]);
+        const list = entriesRes.status === "fulfilled" && entriesRes.value.ok
+          ? (await entriesRes.value.json()) as Array<{ id: number; title: string }>
+          : [];
         const top3 = list.slice(0, 3).map(e => ({ id: e.id, title: e.title }));
-        setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, loading: false } : prev);
+        if (readinessRes.status === "fulfilled" && readinessRes.value.ok) {
+          const rd = await readinessRes.value.json() as { overallScore: number; overallLabel: string };
+          readinessCacheRef.current.set(proj.id, { score: rd.overallScore, label: rd.overallLabel });
+          setPeek(prev => prev && prev.projectId === proj.id
+            ? { ...prev, score: rd.overallScore, overallLabel: rd.overallLabel, entries: top3, loading: false }
+            : prev);
+        } else {
+          setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, loading: false } : prev);
+        }
       } catch {
         setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, loading: false } : prev);
       }
@@ -1534,7 +1551,8 @@ export default function MasterMap() {
               </div>
               {(() => {
                 const proj = projects.find(p => p.id === context.projectId);
-                const score = proj?.latestSnapshotScore;
+                const cachedReadiness = proj ? readinessCacheRef.current.get(proj.id) : undefined;
+                const score = cachedReadiness?.score ?? proj?.latestSnapshotScore;
                 const updated = proj?.updatedAt ? new Date(proj.updatedAt) : null;
                 const daysAgo = updated ? Math.floor((Date.now() - updated.getTime()) / 86400000) : null;
                 const lastActive = daysAgo === 0 ? "Active today" : daysAgo === 1 ? "Yesterday" : daysAgo != null ? `${daysAgo}d ago` : null;
@@ -1730,7 +1748,7 @@ export default function MasterMap() {
             {peek.name}
           </div>
           <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: palette.mutedText, letterSpacing: "0.1em", marginTop: 2, textTransform: "uppercase" }}>
-            Readiness · {peek.score}%
+            {peek.overallLabel ? `${peek.overallLabel} · ${peek.score}%` : `Readiness · ${peek.score}%`}
           </div>
           <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
             {peek.loading ? (
