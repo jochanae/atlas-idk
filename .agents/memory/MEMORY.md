@@ -11,4 +11,5 @@
 - [Axiom Ownership Charter](axiom-ownership-charter.md) — frozen architecture map; every surface has one owner; execution sequence defined; full doc at .local/axiom-ownership-charter.md
 - [Surface Manifest](surface-manifest.md) — product bible; four-question contract per surface; Homepage/Global Insights/Workspace/Master Map/Axiom Flow all audited; full doc at .local/surface-manifest.md
 - [Atlas Constitution](atlas-constitution.md) — soul document; Atlas DNA, borrowing framework, three buckets, quality charter, what not to do; full doc at .local/atlas-constitution.md
+- [Data Spine Audit](data-spine-audit.md) — traced every %, node, and shaping pipeline; Master Map (entries table) ≠ Axiom Flow (node_state JSONB); 5 different health % formulas; NAVIGATE_TO root cause found in nexus.ts; full doc at .local/data-spine-audit.md
 - [_workspace api-client-react sync pattern](workspace-api-client-sync.md) — codegen writes to lib/; frontend tsconfig resolves @workspace/api-client-react to _workspace/ first; append new types/hooks to both
