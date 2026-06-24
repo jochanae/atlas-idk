@@ -134,6 +134,7 @@ function InlineDiffCard({
   const [inlineApplying, setInlineApplying] = useState(false);
   const [inlineApplied, setInlineApplied] = useState<string[] | null>(null);
   const [inlineApplyError, setInlineApplyError] = useState<string | null>(null);
+  const [importWarnDismissed, setImportWarnDismissed] = useState(false);
   const pushSucceededRef = useRef(false);
 
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
@@ -179,6 +180,42 @@ function InlineDiffCard({
     }
     return groups;
   }, [linePatches]);
+
+  // #27 — import validation: warn if proposed files import paths not in this write set
+  const missingImports = useMemo(() => {
+    if (fileEdits.length === 0) return [];
+    const proposedPaths = new Set(fileEdits.map(e => e.path));
+    const missing: Array<{ from: string; importPath: string; resolved: string }> = [];
+    const seen = new Set<string>();
+    for (const edit of fileEdits) {
+      const importRegex = /from\s+['"](\.[^'"]+)['"]/g;
+      let match: RegExpExecArray | null;
+      while ((match = importRegex.exec(edit.content)) !== null) {
+        const rawImport = match[1];
+        const fileDir = edit.path.includes('/') ? edit.path.split('/').slice(0, -1).join('/') : '';
+        const joined = fileDir ? fileDir + '/' + rawImport : rawImport;
+        const parts = joined.split('/');
+        const normalized: string[] = [];
+        for (const p of parts) {
+          if (p === '..') normalized.pop();
+          else if (p !== '.') normalized.push(p);
+        }
+        const resolvedBase = normalized.join('/');
+        const key = `${edit.path}→${resolvedBase}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // Check if any proposed file matches (with/without extension)
+        const inProposal = [...proposedPaths].some(p => {
+          const pBase = p.replace(/\.[^./]+$/, '');
+          return pBase === resolvedBase || p === resolvedBase || pBase === resolvedBase + '/index';
+        });
+        if (!inProposal) {
+          missing.push({ from: edit.path.split('/').pop() ?? edit.path, importPath: rawImport, resolved: resolvedBase });
+        }
+      }
+    }
+    return missing;
+  }, [fileEdits]);
 
   const previewLines = useMemo<InlinePreviewLine[]>(() => {
     if (fileEdits.length > 0) {
@@ -294,6 +331,24 @@ function InlineDiffCard({
 
   return (
     <>
+      {missingImports.length > 0 && !importWarnDismissed && (
+        <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)", fontFamily: "var(--app-font-mono)", fontSize: 10, lineHeight: 1.55 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ color: "var(--atlas-gold)", flexShrink: 0, marginTop: 1 }}>⚠</span>
+            <div style={{ flex: 1, color: "var(--atlas-muted)" }}>
+              <span style={{ color: "var(--atlas-fg)" }}>{missingImports.length} import{missingImports.length > 1 ? "s" : ""} may not resolve</span>
+              {" — not included in this write set: "}
+              {missingImports.slice(0, 3).map((m, i) => (
+                <span key={i} style={{ color: "var(--atlas-gold)", opacity: 0.85 }}>
+                  {m.importPath}{i < Math.min(missingImports.length, 3) - 1 ? ", " : ""}
+                </span>
+              ))}
+              {missingImports.length > 3 && <span style={{ opacity: 0.5 }}> +{missingImports.length - 3} more</span>}
+            </div>
+            <button type="button" onClick={() => setImportWarnDismissed(true)} style={{ flexShrink: 0, background: "none", border: "none", color: "var(--atlas-muted)", cursor: "pointer", padding: "0 2px", opacity: 0.55, fontSize: 12, lineHeight: 1 }}>✕</button>
+          </div>
+        </div>
+      )}
       <div
         style={{
           marginTop: 12,
@@ -354,6 +409,38 @@ function InlineDiffCard({
               maxHeight={open ? 420 : 180}
               badge={originals[fileEdits[0].path] == null ? "New file" : undefined}
             />
+          ) : fileEdits.length > 1 ? (
+            <div>
+              {fileEdits.map((edit, fi) => {
+                const hasOriginal = originals[edit.path] !== undefined;
+                const addedLines = edit.content.split("\n");
+                const displayLines = open ? addedLines : addedLines.slice(0, 4);
+                return (
+                  <div key={edit.path} style={{ borderTop: fi === 0 ? "none" : "1px solid var(--atlas-border)" }}>
+                    <div style={{ padding: "4px 12px", display: "flex", alignItems: "center", gap: 6, background: "color-mix(in oklab, var(--atlas-fg) 3%, transparent)" }}>
+                      <span style={{ flex: 1, fontFamily: "var(--app-font-mono)", fontSize: 9.5, color: "var(--atlas-muted)", opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{edit.path}</span>
+                      {originals[edit.path] == null && hasOriginal && <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 8.5, color: "var(--atlas-phosphor)", opacity: 0.8, letterSpacing: "0.06em" }}>NEW</span>}
+                    </div>
+                    {hasOriginal ? (
+                      <DiffViewer
+                        before={originals[edit.path] ?? ""}
+                        after={edit.content}
+                        viewMode={viewMode === "split" ? "split" : "inline"}
+                        maxHeight={open ? 300 : 80}
+                        badge={originals[edit.path] == null ? "New file" : undefined}
+                      />
+                    ) : (
+                      displayLines.map((line, idx) => (
+                        <div key={idx} style={{ display: "flex", alignItems: "flex-start", background: "color-mix(in oklab, var(--atlas-phosphor) 7%, transparent)", borderLeft: "2px solid var(--atlas-phosphor)" }}>
+                          <span style={{ width: 18, flexShrink: 0, textAlign: "center", color: "var(--atlas-phosphor)", userSelect: "none" as const }}>+</span>
+                          <span style={{ flex: 1, padding: "1px 8px 1px 0", color: "var(--atlas-muted)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{line || " "}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : viewMode === "unified" ? visibleLines.map((line, idx) => {
             const added = line.type === "added";
             return (

@@ -380,6 +380,57 @@ function RepoControlBar({
   );
 }
 
+function PullToWorkspaceButton({ projectId, path, content }: { projectId: number; path: string; content: string }) {
+  const [status, setStatus] = useState<"idle" | "pulling" | "done" | "error">("idle");
+  const [err, setErr] = useState<string | null>(null);
+
+  const handlePull = async () => {
+    setStatus("pulling");
+    setErr(null);
+    try {
+      const r = await fetch("/api/github/apply-local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ projectId, files: [{ path, content }] }),
+      });
+      if (!r.ok) { const d = await r.json() as { error?: string }; throw new Error(d.error ?? "Pull failed"); }
+      setStatus("done");
+      setTimeout(() => setStatus("idle"), 2200);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Pull failed");
+      setStatus("error");
+      setTimeout(() => { setStatus("idle"); setErr(null); }, 3500);
+    }
+  };
+
+  const label = status === "pulling" ? "Pulling…" : status === "done" ? "✓ Pulled" : status === "error" ? (err ?? "Error") : "↓ Pull";
+  const isActive = status === "done";
+  const isError = status === "error";
+
+  return (
+    <button
+      type="button"
+      disabled={status === "pulling" || status === "done"}
+      onClick={() => void handlePull()}
+      title="Copy this file into the local workspace"
+      style={{
+        padding: "2px 8px", borderRadius: 4, fontSize: 8.5,
+        fontFamily: "var(--app-font-mono)", letterSpacing: "0.07em",
+        background: isActive ? "rgba(52,211,153,0.08)" : isError ? "rgba(239,68,68,0.08)" : "transparent",
+        border: `0.5px solid ${isActive ? "rgba(52,211,153,0.25)" : isError ? "rgba(239,68,68,0.3)" : "var(--atlas-border)"}`,
+        color: isActive ? "#34d399" : isError ? "rgba(252,165,165,0.85)" : "var(--atlas-muted)",
+        cursor: status === "pulling" || status === "done" ? "default" : "pointer",
+        opacity: status === "pulling" ? 0.65 : 1,
+        transition: "all 160ms ease",
+        whiteSpace: "nowrap" as const,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function FilesPanel({
   projectId,
   onFileContext,
@@ -461,7 +512,13 @@ export function FilesPanel({
   const [fileError, setFileError] = useState<string | null>(null);
   const isConnected = !!filesProject?.linkedRepo || !!zipLoaded || !!dbUrl;
   const [view, setView] = useState<"tree" | "file">("tree");
-  const [filesSubTab, setFilesSubTab] = useState<"files" | "history">("files");
+  const [filesSubTab, setFilesSubTabState] = useState<"files" | "history" | "github">(() => {
+    try { return (localStorage.getItem(`atlas-files-subtab-${projectId}`) as "files" | "history" | "github") || "files"; } catch { return "files"; }
+  });
+  const setFilesSubTab = (tab: "files" | "history" | "github") => {
+    try { localStorage.setItem(`atlas-files-subtab-${projectId}`, tab); } catch {}
+    setFilesSubTabState(tab);
+  };
   const [commits, setCommits] = useState<GhCommitSummary[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [commitsError, setCommitsError] = useState<string | null>(null);
@@ -577,7 +634,8 @@ export function FilesPanel({
     setSelectedPath(null);
     setFileContent(null);
     setView("tree");
-    setFilesSubTab("files");
+    const restoredTab = (() => { try { return (localStorage.getItem(`atlas-files-subtab-${projectId}`) as "files" | "history" | "github") || "files"; } catch { return "files" as const; } })();
+    setFilesSubTabState(restoredTab);
     setCommits([]);
     setCommitsError(null);
     setCommitsReason(null);
@@ -926,9 +984,9 @@ export function FilesPanel({
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-      {selectedRepo && (
+      {canBrowseGitHub && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-          {(["files", "history"] as const).map((tab) => {
+          {(["files", "history", "github"] as const).map((tab) => {
             const active = filesSubTab === tab;
             return (
               <button
@@ -948,7 +1006,7 @@ export function FilesPanel({
                   textTransform: "uppercase",
                 }}
               >
-                {tab === "files" ? "Files" : "Commits"}
+                {tab === "files" ? "Files" : tab === "history" ? "Commits" : "GitHub"}
               </button>
             );
           })}
@@ -1003,6 +1061,51 @@ export function FilesPanel({
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {commits.map((commit, i) => <CommitHistoryCard key={commit.sha} commit={commit} projectId={projectId} canRevert={i !== commits.length - 1} />)}
             </div>
+          )}
+        </div>
+      )}
+
+      {filesSubTab === "github" && (
+        <div style={{ flex: 1, overflowY: "auto", padding: "10px 10px 14px" }} className="scrollbar-none">
+          {!selectedRepo ? (
+            <div>
+              <div style={{ padding: "0 2px 10px", fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.65 }}>
+                Link a repository to this project:
+              </div>
+              {reposLoading && (
+                <div style={{ padding: "20px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, opacity: 0.45 }}>Loading…</div>
+              )}
+              {reposError && (
+                <div style={{ padding: "10px 12px", borderRadius: 5, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 10, color: "rgba(252,165,165,0.85)", fontFamily: "var(--app-font-mono)" }}>{reposError}</div>
+              )}
+              {!reposLoading && repos.length === 0 && !reposError && (
+                <div style={{ padding: "24px 12px", textAlign: "center", color: "var(--atlas-muted)", fontSize: 11, opacity: 0.5 }}>No repositories found</div>
+              )}
+              {repos.map((repo) => (
+                <button
+                  key={repo.fullName}
+                  type="button"
+                  onClick={() => void pickRepo(repo)}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, border: "1px solid var(--atlas-border)", background: "transparent", color: "var(--atlas-fg)", cursor: "pointer", marginBottom: 4, textAlign: "left" as const, fontFamily: "var(--app-font-mono)", fontSize: 11 }}
+                >
+                  {repo.fullName}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <RepoControlBar
+              repoFullName={selectedRepo.fullName}
+              scanStatus={scanStatus}
+              importStatus={importStatus}
+              importResult={importResult}
+              permissionStatus={githubPermissionStatus}
+              statusLabel={githubStatusLabel}
+              onRunImport={runFullImport}
+              onHydrate={() => { if (selectedRepo && token) runAutoScan(selectedRepo, token); }}
+              onUnlink={unlinkRepo}
+              onConnectGitHub={() => { void connect(tokenInput || ""); }}
+              isUnlinking={isUnlinking}
+            />
           )}
         </div>
       )}
@@ -1199,15 +1302,22 @@ export function FilesPanel({
                 <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, letterSpacing: "0.04em" }}>
                   {Math.round(fileContent.size / 1024 * 10) / 10} KB
                 </span>
-                <div style={{
-                  marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
-                  padding: "2px 7px", borderRadius: 4,
-                  background: "rgba(52,211,153,0.08)", border: "0.5px solid rgba(52,211,153,0.2)",
-                }}>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 6px rgba(52,211,153,0.6)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#34d399" }}>
-                    In context
-                  </span>
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+                  <PullToWorkspaceButton
+                    projectId={projectId}
+                    path={selectedPath ?? ""}
+                    content={fileContent.content}
+                  />
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 4,
+                    padding: "2px 7px", borderRadius: 4,
+                    background: "rgba(52,211,153,0.08)", border: "0.5px solid rgba(52,211,153,0.2)",
+                  }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 6px rgba(52,211,153,0.6)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#34d399" }}>
+                      In context
+                    </span>
+                  </div>
                 </div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }} className="scrollbar-none">

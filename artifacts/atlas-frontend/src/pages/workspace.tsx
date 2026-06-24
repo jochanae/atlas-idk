@@ -4777,7 +4777,12 @@ export default function Workspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // autoNameKey moved above (consumed by useChatStream).
-  const [trustMode, setTrustMode] = useState<"review" | "auto">("review");
+  const [trustMode, setTrustMode] = useState<"review" | "auto">(() => {
+    try { return (localStorage.getItem("atlas-trust-mode") as "review" | "auto") || "review"; } catch { return "review"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("atlas-trust-mode", trustMode); } catch {}
+  }, [trustMode]);
   const [autoRunCmd] = useState<string>("");
   const [previewRefreshTrigger, setPreviewRefreshTrigger] = useState(0);
   const [rebuildTrigger, setRebuildTrigger] = useState(0);
@@ -7700,6 +7705,8 @@ export default function Workspace() {
               showModelPicker,
               wsModel,
               onOpenModelSheet: () => setShowWsModelSheet(true),
+              trustMode,
+              onToggleTrustMode: () => setTrustMode((m) => m === "auto" ? "review" : "auto"),
               onOpenSessionsHistory: () => setSessionsSheetOpen(true),
               onSketch: (prompt) => {
                 if (!sessionId) { toast("Open or start a session first"); return; }

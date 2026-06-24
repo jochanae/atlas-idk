@@ -188,6 +188,9 @@ export interface ChatComposerProps {
   wsModel?: string;
   onOpenModelSheet?: () => void;
 
+  trustMode?: "review" | "auto";
+  onToggleTrustMode?: () => void;
+
   // Universal "..." menu action routing
   onComposerMenuAction?: (action: ComposerMenuAction) => void;
 
@@ -267,6 +270,8 @@ export function ChatComposer(props: ChatComposerProps) {
     showModelPicker,
     wsModel,
     onOpenModelSheet,
+    trustMode,
+    onToggleTrustMode,
     onComposerMenuAction,
     onOpenSessionsHistory,
     defaultComposerMode,
@@ -749,6 +754,37 @@ export function ChatComposer(props: ChatComposerProps) {
               </button>
             )}
 
+
+            {/* Trust mode toggle */}
+            {onToggleTrustMode && (
+              <button
+                type="button"
+                onClick={onToggleTrustMode}
+                title={trustMode === "auto" ? "Trust mode ON — Atlas applies writes automatically. Click to require review." : "Review mode — confirm before applying writes. Click to enable auto-apply."}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "5px 9px", borderRadius: 999,
+                  background: trustMode === "auto" ? "rgba(52,211,153,0.08)" : "rgba(255,255,255,0.03)",
+                  backdropFilter: "blur(10px) saturate(140%)",
+                  border: `1px solid ${trustMode === "auto" ? "rgba(52,211,153,0.25)" : "var(--atlas-border)"}`,
+                  color: trustMode === "auto" ? "#34d399" : "var(--atlas-muted)",
+                  cursor: "pointer",
+                  fontFamily: "var(--app-font-mono)",
+                  fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase" as const,
+                  whiteSpace: "nowrap" as const, flexShrink: 0,
+                  transition: "all 160ms ease",
+                }}
+              >
+                <span style={{
+                  width: 5, height: 5, borderRadius: "50%",
+                  background: trustMode === "auto" ? "#34d399" : "var(--atlas-muted)",
+                  boxShadow: trustMode === "auto" ? "0 0 6px rgba(52,211,153,0.5)" : "none",
+                  flexShrink: 0,
+                  transition: "all 160ms ease",
+                }} />
+                {trustMode === "auto" ? "Trust" : "Review"}
+              </button>
+            )}
 
             {/* Right: plan mode + voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
