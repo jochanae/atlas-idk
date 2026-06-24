@@ -204,6 +204,9 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const [wsDsErrorMsg, setWsDsErrorMsg] = useState<string | null>(null);
   const [wsDsStarting, setWsDsStarting] = useState(false);
   const wsDsLogsEndRef = useRef<HTMLDivElement>(null);
+  // Browser console errors captured from the proxied iframe via postMessage
+  const [browserErrors, setBrowserErrors] = useState<string[]>([]);
+  const [showLogsWhileRunning, setShowLogsWhileRunning] = useState(false);
 
   // Poll workspace devserver status whenever a sessionId is present
   // Track whether we've already auto-switched to local so the user can freely
@@ -245,6 +248,21 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   useEffect(() => {
     wsDsLogsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [wsDsLogs]);
+
+  // Capture browser JS errors from the proxied iframe via postMessage
+  useEffect(() => {
+    const handler = (ev: MessageEvent) => {
+      if (ev.data && typeof ev.data === "object" && ev.data.__atlasConsole === "error") {
+        const msg = String(ev.data.msg ?? "").trim();
+        if (msg) setBrowserErrors(prev => [...prev.slice(-49), `[browser] ${msg}`]);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // Clear browser errors when the iframe reloads (port changes)
+  useEffect(() => { setBrowserErrors([]); }, [wsDsPort]);
 
   const WS_DS_LABELS: Record<WsDsStatus, string> = {
     idle: "Idle", installing: "Installing…", starting: "Starting…", running: "Running", error: "Error",
@@ -1074,14 +1092,41 @@ ${t}
                 </div>
               )}
 
-              {/* Live iframe when running — takes priority */}
+              {/* Live iframe when running — split with optional console panel */}
               {wsDsStatus === "running" && wsDsPort && (
-                <iframe
-                  key={`ws-${projectId}-${wsDsPort}`}
-                  src={`/api/devserver/workspace/${projectId}/proxy/`}
-                  title="Local Dev Preview"
-                  style={{ flex: 1, border: "none", width: "100%", display: "block", background: "var(--atlas-bg)" }}
-                />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                  <iframe
+                    key={`ws-${projectId}-${wsDsPort}`}
+                    src={`/api/devserver/workspace/${projectId}/proxy/`}
+                    title="Local Dev Preview"
+                    style={{ flex: 1, border: "none", width: "100%", display: "block", background: "var(--atlas-bg)" }}
+                  />
+                  {/* Console toggle bar */}
+                  <div
+                    onClick={() => setShowLogsWhileRunning(v => !v)}
+                    style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", borderTop: "1px solid var(--atlas-border)", cursor: "pointer", background: browserErrors.length > 0 ? "rgba(248,113,113,0.06)" : "var(--atlas-surface)", userSelect: "none" }}
+                  >
+                    <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: browserErrors.length > 0 ? "rgba(248,113,113,0.8)" : "var(--atlas-muted)", opacity: 0.7 }}>
+                      CONSOLE {browserErrors.length > 0 ? `· ${browserErrors.length} error${browserErrors.length > 1 ? "s" : ""}` : "· no errors"} {showLogsWhileRunning ? "▾" : "▸"}
+                    </span>
+                  </div>
+                  {/* Collapsible log + browser error panel */}
+                  {showLogsWhileRunning && (
+                    <div style={{ flexShrink: 0, height: 140, overflow: "auto", padding: "6px 10px", background: "rgba(0,0,0,0.28)", borderTop: "1px solid var(--atlas-border)" }}>
+                      {[...wsDsLogs, ...browserErrors].map((line, i) => {
+                        const isBrowserErr = line.startsWith("[browser]");
+                        const isError = isBrowserErr || /\b(error|fail|403|SyntaxError|TypeError|ReferenceError)\b/i.test(line);
+                        const isWarn = !isError && /\bwarn(ing)?\b/i.test(line);
+                        return (
+                          <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word", color: isError ? "rgba(248,113,113,0.9)" : isWarn ? "rgba(251,191,36,0.85)" : "var(--atlas-muted)", opacity: isError || isWarn ? 1 : 0.65 }}>
+                            {line}
+                          </div>
+                        );
+                      })}
+                      <div ref={wsDsLogsEndRef} />
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* While booting: show Atlas Generated preview as placeholder + logs below */}
@@ -1108,11 +1153,16 @@ ${t}
                         {wsDsStatus === "idle" ? "Press Run Project to start the dev server." : "Waiting for output…"}
                       </div>
                     ) : (
-                      wsDsLogs.map((line, i) => (
-                        <div key={i} style={{ fontSize: 9.5, ...sMono, color: "var(--atlas-muted)", lineHeight: 1.6, opacity: 0.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                          {line}
-                        </div>
-                      ))
+                      wsDsLogs.map((line, i) => {
+                        const isError = /\b(error|fail|403|SyntaxError|TypeError|ReferenceError|ERR_|ENOENT|ELIFECYCLE)\b/i.test(line);
+                        const isWarn = !isError && /\bwarn(ing)?\b/i.test(line);
+                        const isGood = !isError && !isWarn && /^[✓⚡►]|ready|compiled|started|running/i.test(line.trim());
+                        return (
+                          <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word", color: isError ? "rgba(248,113,113,0.9)" : isWarn ? "rgba(251,191,36,0.85)" : isGood ? "rgba(52,211,153,0.8)" : "var(--atlas-muted)", opacity: isError || isWarn || isGood ? 1 : 0.7 }}>
+                            {line}
+                          </div>
+                        );
+                      })
                     )}
                     <div ref={wsDsLogsEndRef} />
                   </div>

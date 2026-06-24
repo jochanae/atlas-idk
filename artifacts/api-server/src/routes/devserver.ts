@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { spawn, type ChildProcess } from "child_process";
 import http from "http";
-import { mkdirSync, existsSync, readFileSync, rmSync } from "fs";
+import { mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from "fs";
 import path from "path";
 import { logger } from "../lib/logger";
 import { projectWorkspaceDir } from "../lib/projectWorkspace";
@@ -494,9 +494,21 @@ router.post("/devserver/stop", (_req, res): void => {
 
 const PROXY_BASE = "/api/devserver/proxy";
 
+// Injected into every proxied page — captures JS errors and posts them to the
+// parent frame so the Local Dev panel can surface them without browser DevTools.
+const ERROR_CAPTURE_SCRIPT = `<script>(function(){` +
+  `var _ce=console.error.bind(console);` +
+  `console.error=function(){_ce.apply(console,arguments);` +
+  `try{window.parent.postMessage({__atlasConsole:'error',msg:Array.from(arguments).map(String).join(' ')},'*')}catch(e){}};` +
+  `window.onerror=function(msg,src,line){` +
+  `try{window.parent.postMessage({__atlasConsole:'error',msg:msg+' ('+src+':'+line+')'},'*')}catch(e){}};` +
+  `window.onunhandledrejection=function(e){` +
+  `try{window.parent.postMessage({__atlasConsole:'error',msg:'Unhandled: '+String(e.reason)},'*')}catch(e){}};` +
+  `})()</script>`;
+
 // Rewrite absolute-path asset references so they route through this proxy
 function rewriteHtml(html: string, base = PROXY_BASE): string {
-  let out = html.replace(/(<head[^>]*>)/i, `$1<base href="${base}/">`);
+  let out = html.replace(/(<head[^>]*>)/i, `$1<base href="${base}/">${ERROR_CAPTURE_SCRIPT}`);
   out = out.replace(/((?:src|href|action|srcset)=["'])\/(?!\/)/g, `$1${base}/`);
   out = out.replace(/url\((['"]?)\/(?!\/)/g, `url($1${base}/`);
   return out;
@@ -602,16 +614,49 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
           : mgr === "yarn"
             ? ["install", "--frozen-lockfile=false"]
             : ["install", "--legacy-peer-deps"];
-        await new Promise<void>((resolve, reject) => {
+
+        // Run install, capturing all output so we can detect 403-blocked packages
+        const runInstall = () => new Promise<{ ok: boolean; output: string }>((resolve) => {
+          const chunks: string[] = [];
           const proc = spawn(mgr, installArgs, {
             cwd: wsDir, shell: true,
             env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
           });
-          proc.stdout?.on("data", (d: Buffer) => addWsLog(st, d.toString()));
-          proc.stderr?.on("data", (d: Buffer) => addWsLog(st, d.toString()));
-          proc.on("exit", (code) => { if (code === 0) resolve(); else reject(new Error(`install exited ${code}`)); });
-          proc.on("error", reject);
+          const onData = (d: Buffer) => { const s = d.toString(); chunks.push(s); addWsLog(st, s); };
+          proc.stdout?.on("data", onData);
+          proc.stderr?.on("data", onData);
+          proc.on("exit", (code) => resolve({ ok: code === 0, output: chunks.join("") }));
+          proc.on("error", (e) => resolve({ ok: false, output: e.message }));
         });
+
+        let result = await runInstall();
+
+        // If install failed with 403 (Replit security policy blocks some packages like vitest),
+        // strip the blocked packages from package.json and retry once.
+        if (!result.ok && result.output.includes("E403")) {
+          const blocked = new Set<string>();
+          for (const m of result.output.matchAll(/403.*?\/([^/\s]+)\/-\//g)) blocked.add(m[1]);
+          if (blocked.size > 0) {
+            const pkgPath = path.join(wsDir, "package.json");
+            const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+              dependencies?: Record<string, string>;
+              devDependencies?: Record<string, string>;
+            };
+            const stripped: string[] = [];
+            for (const name of blocked) {
+              if (pkg.dependencies?.[name]) { delete pkg.dependencies[name]; stripped.push(name); }
+              if (pkg.devDependencies?.[name]) { delete pkg.devDependencies[name]; stripped.push(name); }
+            }
+            if (stripped.length > 0) {
+              addWsLog(st, `⚠ Blocked by Replit security policy: ${stripped.join(", ")} — removing and retrying…`);
+              writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+              result = await runInstall();
+              if (result.ok) addWsLog(st, `✓ Installed (${stripped.join(", ")} skipped — not available in this environment)`);
+            }
+          }
+        }
+
+        if (!result.ok) throw new Error(`Dependency install failed: ${mgr} exited with code 1. If the app needs env vars (DATABASE_URL, API keys), add them in the LOCAL tab env section and relaunch.\nLast output: ${result.output.slice(-800)}`);
       }
 
       st.status = "starting";
