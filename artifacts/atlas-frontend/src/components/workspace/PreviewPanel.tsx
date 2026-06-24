@@ -206,8 +206,12 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   const wsDsLogsEndRef = useRef<HTMLDivElement>(null);
 
   // Poll workspace devserver status whenever a sessionId is present
+  // Track whether we've already auto-switched to local so the user can freely
+  // switch tabs after the server is up without being yanked back on each poll.
+  const hasAutoSwitchedToLocal = useRef(false);
   useEffect(() => {
     if (!sessionId) return;
+    hasAutoSwitchedToLocal.current = false;
     let cancelled = false;
     const poll = async () => {
       try {
@@ -219,8 +223,17 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
         setWsDsPort(d.port);
         setWsDsLogs(d.logs);
         setWsDsErrorMsg(d.errorMsg);
-        // Auto-switch to local tab when workspace dev server comes up
-        if (d.status === "running") setPreviewMode("local");
+        // Auto-switch to LOCAL DEV only once when the server first becomes running.
+        // After that the user can freely switch tabs — do not yank them back on
+        // every subsequent poll.
+        if (d.status === "running" && !hasAutoSwitchedToLocal.current) {
+          hasAutoSwitchedToLocal.current = true;
+          setPreviewMode("local");
+        }
+        // Reset the flag when the server stops so the next start auto-switches again.
+        if (d.status !== "running") {
+          hasAutoSwitchedToLocal.current = false;
+        }
       } catch {}
     };
     poll();

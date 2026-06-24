@@ -2644,7 +2644,13 @@ What "complete initial scaffold" means:
 - All the screens/pages/routes the user named
 - Working navigation between them
 - Realistic placeholder content (not lorem ipsum — actual labels, buttons, structure that reflects the domain)
-- Any config files needed to run it (package.json, tsconfig, etc. if this is a new project)
+- ALL config files needed to run it. For a Vite+React project this is non-negotiable:
+  • package.json (with @vitejs/plugin-react in devDependencies)
+  • vite.config.js — REQUIRED. Must include the react() plugin and server: { host: '0.0.0.0', allowedHosts: true }. Without this file Vite will not transform JSX and the app will show a blank white page.
+  • postcss.config.js — REQUIRED if Tailwind CSS is used (tailwindcss + autoprefixer plugins).
+  • tailwind.config.js — REQUIRED if Tailwind CSS is used.
+  • index.html with <div id="root"> and a <script type="module" src="/src/main.jsx"> tag.
+  Never omit config files assuming they already exist — always emit them as FILE_EDIT blocks.
 
 FILE FORMAT RULES — these are absolute in a build handoff:
 - Use FILE_EDIT blocks for ALL code. Every file must be a FILE_EDIT block.
