@@ -13,10 +13,12 @@ import Login from "./pages/login";
 import Workspace from "./pages/workspace";
 import Projects from "./pages/projects";
 import Ledger from "./pages/ledger";
+import ParkingLot from "./pages/parking-lot";
 import EntryDetail from "./pages/entry-detail";
 import Workshop from "./pages/workshop";
 import CodePage from "./pages/code";
 import ConnectorsPage from "./pages/connectors";
+import Vault from "./pages/vault";
 import MasterMap from "./pages/master-map";
 
 import Terms from "./pages/terms";
@@ -206,7 +208,7 @@ function Router() {
           <Route path="/projects" component={Projects} />
           <Route path="/ledger" component={Ledger} />
           <Route path="/ledger/:projectId" component={Ledger} />
-          <Route path="/parking" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
+          <Route path="/parking" component={ParkingLot} />
           <Route path="/guard-report" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/compass" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/entry/:id" component={EntryDetail} />
@@ -219,7 +221,7 @@ function Router() {
           <Route path="/privacy" component={Privacy} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/help" component={Help} />
-          <Route path="/vault" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
+          <Route path="/vault" component={Vault} />
           <Route path="/secrets" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
           <Route path="/admin" component={Admin} />
           <Route path="/dashboard" component={() => { const [,nav] = useLocation(); useEffect(() => nav("/home", { replace: true }), []); return null; }} />
