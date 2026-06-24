@@ -2652,17 +2652,21 @@ What "complete initial scaffold" means:
   • index.html with <div id="root"> and a <script type="module" src="/src/main.jsx"> tag.
   Never omit config files assuming they already exist — always emit them as FILE_EDIT blocks.
 
-REACT ROUTER RULE — always use basename from import.meta.env.BASE_URL:
-  The app runs behind a proxy that mounts it at a subpath. Without a basename, React Router
-  reads the full proxy path as the route and matches nothing — the page renders blank.
-  Every app that uses BrowserRouter MUST include this pattern in the root component:
+REACT ROUTER RULE — always use HashRouter, never BrowserRouter:
+  The app runs behind a reverse proxy at a dynamic subpath. BrowserRouter reads
+  window.location.pathname (which includes the full proxy prefix) and finds no
+  matching routes — the page renders blank.
+  HashRouter ignores the URL path entirely and only reads the hash fragment
+  (e.g. /#/dashboard), so it works correctly at any proxy path depth.
+  Every generated app with routing MUST use HashRouter:
 
-    const routerBase = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
+    import { HashRouter, Routes, Route } from 'react-router-dom'
     // ...
-    <BrowserRouter basename={routerBase}>
+    <HashRouter>
+      <Routes>...</Routes>
+    </HashRouter>
 
-  import.meta.env.BASE_URL is automatically set by Vite to the correct proxy subpath.
-  This is non-negotiable — omitting it causes a blank page in the Local Dev preview.
+  Never use BrowserRouter in generated workspace apps — it will always show a blank page.
 
 FILE FORMAT RULES — these are absolute in a build handoff:
 - Use FILE_EDIT blocks for ALL code. Every file must be a FILE_EDIT block.

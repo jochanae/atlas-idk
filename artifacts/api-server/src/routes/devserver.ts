@@ -281,12 +281,10 @@ function detectDevCommand(repoDir: string, viteBase?: string): { cmd: string; ar
 
     if (scripts["dev"]) {
       if (isVite && !isNext) {
-        // Pass --host so Vite accepts proxied requests, and --base so Vite
-        // prefixes ALL generated asset/import paths with the proxy subpath.
-        // Without --base, Vite emits root-relative imports like /src/App.tsx
-        // inside JS modules — those bypass the proxy and cause a blank page.
-        const baseArgs = viteBase ? ["--base", viteBase] : [];
-        return { cmd: useMgr, args: ["run", "dev", "--", "--host", "0.0.0.0", ...baseArgs], useMgr };
+        // Pass --host so Vite accepts proxied requests.
+        // Note: we intentionally do NOT pass --base here. Apps use HashRouter
+        // which ignores the URL path, so no base path configuration is needed.
+        return { cmd: useMgr, args: ["run", "dev", "--", "--host", "0.0.0.0"], useMgr };
       }
       return { cmd: useMgr, args: ["run", "dev"], useMgr };
     }
