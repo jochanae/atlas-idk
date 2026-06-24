@@ -404,7 +404,20 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
-      {messages.map((msg, i) => (
+      {messages.map((msg, i) => {
+        // When a LOCAL_APPLY_SUCCESS follows an assistant message, we render
+        // the LedgerSurface *after* that assistant bubble (sentence first, then
+        // the APPLIED block).  Skip it here so it isn't double-rendered.
+        const nextMsg = messages[i + 1];
+        const prevMsg = messages[i - 1];
+        const isLedgerMsg = msg.role === "user" && isLedgerContent(msg.content);
+        const prevWasAssistant = prevMsg?.role === "assistant";
+        if (isLedgerMsg && prevWasAssistant) {
+          return null;
+        }
+        const nextIsLedger = nextMsg?.role === "user" && isLedgerContent(nextMsg.content);
+
+        return (
         <Fragment key={i}>
           {isHomeHandoff && i === 0 && <HomeHandoffDivider projectName={project?.name} />}
           {msg.role === "user" ? (
@@ -489,8 +502,16 @@ export function ChatStream(props: ChatStreamProps) {
               )}
             </div>
           )}
+          {/* LedgerSurface hoisted above: show AFTER the assistant sentence */}
+          {msg.role === "assistant" && nextIsLedger && nextMsg && (
+            <AutoVerifyMessage
+              content={nextMsg.content}
+              executionTimeMs={nextMsg.executionTimeMs}
+            />
+          )}
         </Fragment>
-      ))}
+        );
+      })}
 
       {commitCarryover && messages.length > 0 && (
         <>
