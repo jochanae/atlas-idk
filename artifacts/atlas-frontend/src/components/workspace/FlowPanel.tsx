@@ -376,9 +376,12 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               else if (line.startsWith("data: ")) evtData = line.slice(6);
             }
             if (!evtData) continue;
-            if (evtName === "done") {
-              try { finalPayload = JSON.parse(evtData); } catch {}
-            }
+            try {
+              const parsed = JSON.parse(evtData);
+              if (evtName === "done" || parsed?.type === "done") {
+                finalPayload = parsed;
+              }
+            } catch {}
           }
         }
         return finalPayload;

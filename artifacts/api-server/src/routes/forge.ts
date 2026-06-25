@@ -105,6 +105,16 @@ function getPivotQuestion(type: NodeType, meta?: NodeMeta): string {
 }
 
 
+router.post("/forge/intake", async (req, res) => {
+  const { projectId, answers, skipped } = req.body as {
+    projectId?: number;
+    answers?: Record<string, string>;
+    skipped?: boolean;
+  };
+  req.log.info({ projectId, skipped }, "Forge intake answers received");
+  res.json({ ok: true, projectId, skipped: !!skipped });
+});
+
 router.post("/forge", async (req, res) => {
   const parsed = ForgeRequestSchema.safeParse(req.body);
   if (!parsed.success) {
