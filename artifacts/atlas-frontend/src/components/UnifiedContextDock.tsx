@@ -573,109 +573,103 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           {/* Scrim */}
           <div
             onClick={() => setShowAtlasHub(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+            style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)" }}
           />
           {/* Sheet */}
           <div style={{
             position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 2001,
-            background: "var(--atlas-surface)",
-            borderTop: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
-            borderRadius: "18px 18px 0 0",
-            padding: "0 0 max(env(safe-area-inset-bottom), 24px)",
-            boxShadow: "0 -16px 60px rgba(0,0,0,0.5)",
+            background: "var(--atlas-bg)",
+            borderTop: "1px solid color-mix(in oklab, var(--atlas-gold) 18%, transparent)",
+            borderRadius: "20px 20px 0 0",
+            padding: "10px 16px max(env(safe-area-inset-bottom), 28px)",
+            boxShadow: "0 -24px 80px rgba(0,0,0,0.6)",
           }}>
             {/* Handle */}
-            <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)" }} />
+            <div style={{ display: "flex", justifyContent: "center", paddingBottom: 16 }}>
+              <div style={{ width: 32, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.12)" }} />
             </div>
 
-            {/* Header */}
-            <div style={{ padding: "6px 20px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <AxiomCenterSVG size={32} />
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.08em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
-                  Atlas Hub
-                </div>
-                <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>
-                  Where would you like to go?
-                </div>
-              </div>
-            </div>
-
-            {/* Hub items */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
-              {[
+            {/* 2×3 command grid */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 10,
+            }}>
+              {([
                 {
-                  label: "Continue last conversation",
-                  sub: "Resume where you left off",
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
+                  label: "Resume",
+                  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
                   action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("atlas:focus-composer")); onAtlasCore(); },
+                  accent: true,
                 },
                 {
                   label: "Parking Lot",
-                  sub: "Review your parked thoughts",
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V7h5a3 3 0 010 6H9" /></svg>,
+                  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V7h5a3 3 0 010 6H9" /></svg>,
                   action: () => { setShowAtlasHub(false); setLocation("/parking-lot"); },
                 },
                 {
-                  label: "Global Search",
-                  sub: "Find anything across your workspace",
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" /></svg>,
+                  label: "Search",
+                  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" /></svg>,
                   action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:open-search")); },
                 },
                 {
-                  label: "Recent Projects",
-                  sub: "Jump to a project",
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="9" y1="5" x2="9" y2="19"/></svg>,
+                  label: "Projects",
+                  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="9" y1="5" x2="9" y2="19"/></svg>,
                   action: () => { setShowAtlasHub(false); setLocation("/projects"); },
                 },
                 {
                   label: "New Project",
-                  sub: "Start something new",
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
+                  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>,
                   action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:new-project")); },
                 },
                 {
                   label: "Brain Dump",
-                  sub: "Park a thought, idea, or blocker",
-                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9.663 17h4.673M12 3a6 6 0 00-3.6 10.8C9.36 14.7 9.75 16 10.5 16h3c.75 0 1.14-1.3 2.1-2.2A6 6 0 0012 3z"/></svg>,
+                  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>,
                   action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:brain-dump")); },
                 },
-              ].map((item) => (
+              ] as { label: string; icon: ReactNode; action: () => void; accent?: boolean }[]).map((item) => (
                 <button
                   key={item.label}
                   type="button"
                   onClick={item.action}
                   style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    width: "100%", padding: "11px 12px", borderRadius: 10,
-                    background: "transparent", border: "none",
-                    cursor: "pointer", textAlign: "left",
-                    transition: "background 120ms ease",
+                    display: "flex", flexDirection: "column", alignItems: "flex-start",
+                    gap: 12, padding: "16px 16px 14px",
+                    borderRadius: 14,
+                    background: item.accent
+                      ? "color-mix(in oklab, var(--atlas-gold) 10%, var(--atlas-surface))"
+                      : "var(--atlas-surface)",
+                    border: item.accent
+                      ? "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)"
+                      : "1px solid color-mix(in oklab, var(--atlas-border) 60%, transparent)",
+                    cursor: "pointer",
+                    transition: "background 120ms ease, border-color 120ms ease",
                     WebkitTapHighlightColor: "transparent",
+                    color: item.accent ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                    minHeight: 88,
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = item.accent
+                      ? "color-mix(in oklab, var(--atlas-gold) 16%, var(--atlas-surface))"
+                      : "color-mix(in oklab, var(--atlas-surface-alt) 80%, transparent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = item.accent
+                      ? "color-mix(in oklab, var(--atlas-gold) 10%, var(--atlas-surface))"
+                      : "var(--atlas-surface)";
+                  }}
                 >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                    background: "rgba(201,162,76,0.07)",
-                    border: "1px solid rgba(201,162,76,0.14)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "var(--atlas-gold)",
+                  {item.icon}
+                  <span style={{
+                    fontSize: 12,
+                    fontFamily: "var(--app-font-mono)",
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    color: item.accent ? "var(--atlas-gold)" : "var(--atlas-fg)",
+                    lineHeight: 1.2,
                   }}>
-                    {item.icon}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13.5, color: "var(--atlas-fg)", fontWeight: 550, fontFamily: "var(--app-font-sans)", lineHeight: 1.3 }}>
-                      {item.label}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", marginTop: 1 }}>
-                      {item.sub}
-                    </div>
-                  </div>
+                    {item.label}
+                  </span>
                 </button>
               ))}
             </div>
