@@ -677,6 +677,7 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
               onHandoverOpenChange={onHandoverOpenChange}
               isMobile={isMobile}
               projectName={activeProjectName}
+              lens={lensView}
             />
           )}
           {lensView === "builder" && (

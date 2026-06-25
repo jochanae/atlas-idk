@@ -596,6 +596,7 @@ interface AxiomFlowProps {
   // width range showing both the desktop tab-bar trigger and the footer pill.
   isMobile?: boolean;
   projectName?: string;
+  lens?: "designer" | "builder" | "storyteller";
 }
 
 export function AxiomFlow({
@@ -618,6 +619,7 @@ export function AxiomFlow({
   onHandoverOpenChange,
   isMobile: isMobileProp,
   projectName,
+  lens = "designer",
 }: AxiomFlowProps) {
   const storageKey = `${BASE_STORAGE_KEY}${projectId ? `-${projectId}` : ""}`;
   // Prefer the workspace-provided breakpoint; fall back to a local snapshot
@@ -1793,6 +1795,7 @@ export function AxiomFlow({
               goalX={goalX}
               goalY={goalY}
               palette={palette}
+              lens={lens}
             />
           );
         })}
@@ -1959,7 +1962,7 @@ interface NodeVisual {
   labelWeight: number;
 }
 
-function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
+function getNodeVisual(node: ArchNode, palette: FlowPalette, lens: "designer" | "builder" | "storyteller" = "designer"): NodeVisual {
   const G = palette.goldRgb;
   const E = palette.emberRgb;
   const D = palette.decisionRgb;
@@ -2019,8 +2022,8 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
   }
 
   if (node.type === "blocker") {
-    // Spec: blockers stay ember-static regardless of answer state — they
-    // represent an open risk, not a checklist item.
+    // Designer lens: open blockers get a stronger red glow to draw attention.
+    // Blockers stay static (no pulse) — they represent persistent open risks.
     return {
       size: 56,
       borderRadius: 4,
@@ -2030,7 +2033,9 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       bgColor: `rgba(${E},0.07)`,
       textColor: emberLabel,
       textDecoration: "none",
-      shadow: `0 0 10px rgba(${E},0.20)`,
+      shadow: lens === "designer"
+        ? `0 0 14px rgba(${E},0.38), 0 0 6px rgba(${E},0.20)`
+        : `0 0 10px rgba(${E},0.20)`,
       opacity: 1,
       pulse: false,
       labelSize: 8.5,
@@ -2039,6 +2044,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
   }
 
   if (node.type === "wont") {
+    // Designer lens: WONT nodes fade further to reinforce the priority hierarchy.
     return {
       size: 56,
       borderRadius: 14,
@@ -2049,7 +2055,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       textColor: `rgba(${E},0.62)`,
       textDecoration: "line-through",
       shadow: "none",
-      opacity: 0.58,
+      opacity: lens === "designer" ? 0.35 : 0.58,
       pulse: false,
       labelSize: 8.5,
       labelWeight: 500,
@@ -2108,9 +2114,9 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
         labelWeight: 500,
       };
     }
-    // must (default)
+    // must (default) — Designer lens: larger size + stronger glow to assert hierarchy
     return {
-      size: 56,
+      size: lens === "designer" ? 64 : 56,
       borderRadius: 14,
       borderWidth: 2,
       borderStyle: "solid",
@@ -2118,7 +2124,9 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       bgColor: resolved ? `rgba(${G},0.16)` : `rgba(${G},0.06)`,
       textColor: resolved ? goldText : fgSoft,
       textDecoration: "none",
-      shadow: resolved ? `0 0 14px rgba(${G},0.28)` : "none",
+      shadow: resolved
+        ? lens === "designer" ? `0 0 20px rgba(${G},0.38), 0 0 8px rgba(${G},0.22)` : `0 0 14px rgba(${G},0.28)`
+        : lens === "designer" ? `0 0 12px rgba(${G},0.18)` : "none",
       opacity: 1,
       pulse: !resolved,
       labelSize: 8.5,
@@ -2127,6 +2135,7 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
   }
 
   if (node.type === "decision") {
+    // Designer lens: open decisions get a stronger orange glow — unresolved decisions are blockers to progress
     return {
       size: 56,
       borderRadius: 14,
@@ -2136,7 +2145,9 @@ function getNodeVisual(node: ArchNode, palette: FlowPalette): NodeVisual {
       bgColor: resolved ? `rgba(${D},0.10)` : `rgba(${D},0.06)`,
       textColor: resolved ? palette.decisionTextResolved : palette.decisionText,
       textDecoration: "none",
-      shadow: resolved ? "none" : `0 0 10px rgba(${D},0.18)`,
+      shadow: resolved
+        ? "none"
+        : lens === "designer" ? `0 0 16px rgba(${D},0.32), 0 0 6px rgba(${D},0.18)` : `0 0 10px rgba(${D},0.18)`,
       opacity: 1,
       pulse: !resolved,
       labelSize: 8.5,
@@ -2213,6 +2224,7 @@ function FlowNodeComponent({
   goalX = 300,
   goalY = 250,
   palette,
+  lens = "designer",
 }: {
   node: ArchNode;
   onFocus: (id: string, e: React.MouseEvent | React.TouchEvent) => void;
@@ -2221,8 +2233,9 @@ function FlowNodeComponent({
   goalX?: number;
   goalY?: number;
   palette: FlowPalette;
+  lens?: "designer" | "builder" | "storyteller";
 }) {
-  const v = getNodeVisual(node, palette);
+  const v = getNodeVisual(node, palette, lens);
   const icon = getNodeIcon(node);
   const defined = isNodeDefined(node);
   const moscow = getMoscow(node);
