@@ -147,6 +147,7 @@ type PeekState = {
   entries: PeekEntry[];
   loading: boolean;
   hasFlow?: boolean;
+  flowStats?: { resolved: number; total: number };
 };
 type Tension = {
   projectA: { id: number; name: string };
@@ -855,17 +856,29 @@ export default function MasterMap() {
           ? (await entriesRes.value.json()) as Array<{ id: number; title: string }>
           : [];
         const top3 = list.slice(0, 3).map(e => ({ id: e.id, title: e.title }));
-        const hasFlow = flowRes.status === "fulfilled" && flowRes.value.ok
-          ? await flowRes.value.json().then((d: { nodes?: unknown[] }) => Array.isArray(d?.nodes) && d.nodes.length > 0).catch(() => false)
-          : false;
+        type FlowNode = { strategicAnswer?: string };
+        type FlowData = { nodes?: FlowNode[] };
+        let hasFlow = false;
+        let flowStats: { resolved: number; total: number } | undefined;
+        if (flowRes.status === "fulfilled" && flowRes.value.ok) {
+          try {
+            const fd = await flowRes.value.json() as FlowData;
+            if (Array.isArray(fd?.nodes) && fd.nodes.length > 0) {
+              hasFlow = true;
+              const total = fd.nodes.length;
+              const resolved = fd.nodes.filter(n => typeof n.strategicAnswer === "string" && n.strategicAnswer.trim().length > 0).length;
+              flowStats = { resolved, total };
+            }
+          } catch {}
+        }
         if (readinessRes.status === "fulfilled" && readinessRes.value.ok) {
           const rd = await readinessRes.value.json() as { overallScore: number; overallLabel: string };
           readinessCacheRef.current.set(proj.id, { score: rd.overallScore, label: rd.overallLabel });
           setPeek(prev => prev && prev.projectId === proj.id
-            ? { ...prev, score: rd.overallScore, overallLabel: rd.overallLabel, entries: top3, hasFlow, loading: false }
+            ? { ...prev, score: rd.overallScore, overallLabel: rd.overallLabel, entries: top3, hasFlow, flowStats, loading: false }
             : prev);
         } else {
-          setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, hasFlow, loading: false } : prev);
+          setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, entries: top3, hasFlow, flowStats, loading: false } : prev);
         }
       } catch {
         setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, loading: false } : prev);
@@ -1566,6 +1579,7 @@ export default function MasterMap() {
                 const tension = stats?.tension ?? 0;
                 const entryCount = proj?.entryCount ?? 0;
                 const projectId = context.projectId;
+                const flowStats = peek?.projectId === projectId ? peek?.flowStats : undefined;
                 return (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                     {(score != null || lastActive) && (
@@ -1605,6 +1619,40 @@ export default function MasterMap() {
                       <span style={{ opacity: 0.4 }}>·</span>
                       <span><strong style={{ color: palette.goldTextStrong, fontWeight: 600 }}>{entryCount}</strong> entries</span>
                     </div>
+
+                    {/* Flow node summary — reads directly from persisted project_flow_canvas */}
+                    {flowStats && (
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        fontSize: 9.5, fontFamily: "var(--app-font-mono)",
+                        letterSpacing: "0.1em", textTransform: "uppercase",
+                        color: palette.mutedText,
+                        padding: "4px 10px",
+                        borderRadius: 5,
+                        background: "rgba(201,162,76,0.06)",
+                        border: "1px solid rgba(201,162,76,0.14)",
+                      }}>
+                        {/* Mini progress bar */}
+                        <div style={{
+                          width: 36, height: 3, borderRadius: 2,
+                          background: "rgba(201,162,76,0.14)",
+                          overflow: "hidden",
+                          flexShrink: 0,
+                        }}>
+                          <div style={{
+                            width: `${flowStats.total > 0 ? Math.round((flowStats.resolved / flowStats.total) * 100) : 0}%`,
+                            height: "100%",
+                            background: "rgba(201,162,76,0.75)",
+                            transition: "width 400ms ease",
+                          }} />
+                        </div>
+                        <span>
+                          <strong style={{ color: palette.goldTextStrong, fontWeight: 600 }}>{flowStats.resolved}</strong>
+                          <span style={{ opacity: 0.5 }}>/</span>
+                          {flowStats.total} flow nodes answered
+                        </span>
+                      </div>
+                    )}
 
                     <div style={{
                       fontSize: 11, color: palette.mutedText,
