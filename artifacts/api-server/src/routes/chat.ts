@@ -2476,6 +2476,18 @@ router.post("/chat", async (req, res): Promise<void> => {
   const selfMapContext = selfMapRows[0] ? `Current codebase: ${selfMapRows[0].fileCount} files indexed. Architecture map available for reasoning.` : "";
   const DEFAULT_NAMES = new Set(["New Project", "New Idea", "My Project", ""]);
 
+  // Detect self-contained build requests — "build me X with mock data", "create a component", etc.
+  // These don't need project memory, ledger, parking lot, or portfolio — they just need to build.
+  // Stripping heavy context for these requests cuts ~30KB from the prompt and removes the
+  // strategic machinery that turns "write this component" into planning theater.
+  const SELF_CONTAINED_BUILD_RE = /\b(mock\s*data|mock\s*only|no\s*real\s*data|standalone|self[- ]?contained)\b/i;
+  const SELF_CONTAINED_VERB_RE = /^(build|create|write|generate|make|design|implement)\s+(a|an|the)\s+/i;
+  const PROJECT_REFERENCE_RE = /\b(my\s+app|my\s+project|my\s+codebase|my\s+repo|the\s+bug|the\s+error|fix\s+the|fix\s+my|update\s+my|my\s+component|my\s+page|my\s+screen)\b/i;
+  const isSelfContainedBuild = !isFoundationMode && !isBuildHandoff && (
+    SELF_CONTAINED_BUILD_RE.test(message) ||
+    (SELF_CONTAINED_VERB_RE.test(message.trim()) && !PROJECT_REFERENCE_RE.test(message))
+  );
+
   // Build layered system prompt — use project data already fetched in the first Promise.all
   let systemPrompt = isFoundationMode ? FOUNDATION_SYSTEM_PROMPT : DEV_SYSTEM_PROMPT;
   // ACTIVE PROJECT is injected FIRST — before platform knowledge — so the model knows
@@ -2509,7 +2521,9 @@ HARD RULE: Never answer from the context of a different project unless the user 
     const portfolioLabel = isFoundationMode
       ? "YOUR FULL PORTFOLIO (all projects — use this to answer cross-portfolio questions)"
       : "YOUR PORTFOLIO (other projects — BACKGROUND ONLY — do NOT answer from this context unless the user explicitly asks about multiple projects or their portfolio)";
-    systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### Background knowledge (do NOT surface unless cross-project question):\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
+    if (!isSelfContainedBuild) {
+      systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### Background knowledge (do NOT surface unless cross-project question):\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
+    }
   }
 
   // If user is asking a portfolio-wide question from inside a workspace, pull committed
@@ -2554,41 +2568,43 @@ HARD RULE: Never answer from the context of a different project unless the user 
       }
     } catch { /* non-fatal — portfolio context is additive */ }
   }
-  if (userProfile) {
-    systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
-  }
-  if (userMemoryText) {
-    systemPrompt += `\n\n--- ABOUT THIS FOUNDER (durable facts about the person you work with — use naturally, never recite) ---\n${userMemoryText}\n--- END ABOUT THIS FOUNDER ---`;
-  }
-  if (memoryText) {
-    systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;
-  }
+  if (!isSelfContainedBuild) {
+    if (userProfile) {
+      systemPrompt += `\n\n--- WHO YOU'RE WORKING WITH ---\n${userProfile}`;
+    }
+    if (userMemoryText) {
+      systemPrompt += `\n\n--- ABOUT THIS FOUNDER (durable facts about the person you work with — use naturally, never recite) ---\n${userMemoryText}\n--- END ABOUT THIS FOUNDER ---`;
+    }
+    if (memoryText) {
+      systemPrompt += `\n\n--- PROJECT MEMORY (what you already know — use this) ---\n${memoryText}\n--- END PROJECT MEMORY ---`;
+    }
 
-  // Inject committed decisions from the Decision Ledger (fetched in the parallel batch above)
-  if (committedRows.length > 0) {
-    const ledgerText = committedRows
-      .map(e => `• ${e.title}${e.summary ? ` — ${e.summary}` : ""}`)
-      .join("\n");
-    systemPrompt += `\n\n--- COMMITTED DECISIONS (Decision Ledger — reference these naturally, never cite entry numbers) ---\n${ledgerText}\n--- END COMMITTED DECISIONS ---`;
-  }
+    // Inject committed decisions from the Decision Ledger (fetched in the parallel batch above)
+    if (committedRows.length > 0) {
+      const ledgerText = committedRows
+        .map(e => `• ${e.title}${e.summary ? ` — ${e.summary}` : ""}`)
+        .join("\n");
+      systemPrompt += `\n\n--- COMMITTED DECISIONS (Decision Ledger — reference these naturally, never cite entry numbers) ---\n${ledgerText}\n--- END COMMITTED DECISIONS ---`;
+    }
 
-  if (parkedRows.length > 0) {
-    const parkedText = parkedRows.map(e => {
-      let line = `• ${e.title}`;
-      if (e.enrichmentJson) {
-        try {
-          const enrichment = JSON.parse(e.enrichmentJson) as { atlasCategory?: string; whyItMatters?: string };
-          if (enrichment.atlasCategory) line += ` [${enrichment.atlasCategory}]`;
-          if (enrichment.whyItMatters) line += ` — ${enrichment.whyItMatters}`;
-        } catch { /* ignore */ }
-      }
-      return line;
-    }).join("\n");
-    systemPrompt += `\n\n--- DEFERRED ITEMS (Parking Lot — user intentionally set these aside for later) ---\n${parkedText}\nIf any of these are directly relevant to what the user is working on right now, surface it naturally — e.g. "You parked [item] earlier — this might be a good moment to revisit it." Be specific and timely. Don't list them all at once. Don't force it if nothing is relevant.\n--- END DEFERRED ITEMS ---`;
-  }
+    if (parkedRows.length > 0) {
+      const parkedText = parkedRows.map(e => {
+        let line = `• ${e.title}`;
+        if (e.enrichmentJson) {
+          try {
+            const enrichment = JSON.parse(e.enrichmentJson) as { atlasCategory?: string; whyItMatters?: string };
+            if (enrichment.atlasCategory) line += ` [${enrichment.atlasCategory}]`;
+            if (enrichment.whyItMatters) line += ` — ${enrichment.whyItMatters}`;
+          } catch { /* ignore */ }
+        }
+        return line;
+      }).join("\n");
+      systemPrompt += `\n\n--- DEFERRED ITEMS (Parking Lot — user intentionally set these aside for later) ---\n${parkedText}\nIf any of these are directly relevant to what the user is working on right now, surface it naturally — e.g. "You parked [item] earlier — this might be a good moment to revisit it." Be specific and timely. Don't list them all at once. Don't force it if nothing is relevant.\n--- END DEFERRED ITEMS ---`;
+    }
 
-  if (projectMap) {
-    systemPrompt += `\n\n--- PROJECT MAP (auto-scanned structure — use this to answer "what do I have?" questions without needing files) ---\n${projectMap}\n--- END PROJECT MAP ---`;
+    if (projectMap) {
+      systemPrompt += `\n\n--- PROJECT MAP (auto-scanned structure — use this to answer "what do I have?" questions without needing files) ---\n${projectMap}\n--- END PROJECT MAP ---`;
+    }
   }
   if (repoTreeContext) {
     systemPrompt += `\n\n--- LINKED REPO STRUCTURE (auto-loaded — you can reference these paths in FILE_EDIT blocks) ---\n${repoTreeContext}\n--- END REPO STRUCTURE ---`;
@@ -2633,7 +2649,7 @@ HARD RULE: Never answer from the context of a different project unless the user 
     systemPrompt += `\n\n--- FILE SOURCE CONTEXT ---\n${fileSourceLines.join("\n")}\n--- END FILE SOURCE CONTEXT ---`;
   }
 
-  if (recentRepoActivityContext) {
+  if (!isSelfContainedBuild && recentRepoActivityContext) {
     systemPrompt += `\n\n${recentRepoActivityContext}\n\nWhen referencing recent commits in your response, interpret them narratively — group by area of impact, synthesize what's changing (e.g. "Three commits hit the auth flow this week, one fixed a session timeout, another added a retry"), don't enumerate SHA hashes. Speak like a collaborator who understands what the code changes actually mean.`;
   }
   // Build handoff — fires exactly once: when the session has a buildIntent and no messages have been exchanged yet.
@@ -2704,7 +2720,7 @@ If this is the first assistant message in this session (no prior assistant messa
   if (selfMapContext) {
     systemPrompt += `\n\n--- CURRENT CODEBASE MAP ---\n${selfMapContext}\n--- END CURRENT CODEBASE MAP ---`;
   }
-  if (forgeContext) {
+  if (!isSelfContainedBuild && forgeContext) {
     systemPrompt += `\n\n--- FORGE STRATEGIC MAP (agreed foundation — treat these as committed nodes; flag any contradictions) ---\n${forgeContext}\n--- END FORGE STRATEGIC MAP ---`;
   }
   if (combinedFileContext) {
