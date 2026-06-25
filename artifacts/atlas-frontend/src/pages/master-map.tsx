@@ -1624,7 +1624,13 @@ export default function MasterMap() {
                           e.stopPropagation();
                           if (!projectId) return;
                           try { sessionStorage.setItem("atlas-open-tab", "map"); } catch {}
-                          setLocation(`/project/${projectId}?view=flow`);
+                          // When no flow exists yet, pass autogenerate=1 so AxiomFlow
+                          // creates the initial map as soon as the empty state is detected.
+                          if (peek?.hasFlow === false) {
+                            setLocation(`/project/${projectId}?view=flow&autogenerate=1`);
+                          } else {
+                            setLocation(`/project/${projectId}?view=flow`);
+                          }
                         }}
                         style={{
                           padding: "6px 14px",

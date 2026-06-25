@@ -669,14 +669,17 @@ export function AxiomFlow({
                 setEdges(parsedEdges);
                 dbLoadedRef.current = true;
                 setFlowLoading(false);
-                // Write to DB immediately (no debounce) to complete the migration
+                // Write to DB immediately (no debounce) to complete the migration.
+                // Only mark as migrated AFTER a confirmed successful PUT — if it
+                // fails we leave the marker unset so the next mount retries.
                 fetch(`/api/projects/${projectId}/flow`, {
                   method: "PUT",
                   credentials: "include",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ nodes: parsed, edges: parsedEdges }),
-                }).catch(() => {});
-                try { localStorage.setItem(migKey, "1"); } catch {}
+                })
+                  .then(r => { if (r.ok) try { localStorage.setItem(migKey, "1"); } catch {} })
+                  .catch(() => {});
                 return;
               }
             }
@@ -954,6 +957,15 @@ export function AxiomFlow({
       body: JSON.stringify({ nodes: initial, edges: initialEdges }),
     }).catch(() => {});
   }, [projectId, projectName]);
+
+  // Auto-generate when routed here with ?autogenerate=1 (e.g. from Master Map "Generate Flow Map →" button)
+  useEffect(() => {
+    if (!flowEmpty || !projectId) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("autogenerate") === "1") generateFlowMap();
+    } catch {}
+  }, [flowEmpty, projectId, generateFlowMap]);
 
   useEffect(() => {
     onNodesChange?.(nodes);
