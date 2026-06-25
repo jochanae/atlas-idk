@@ -612,6 +612,9 @@ export function AxiomFlow({
   const [flowLoading, setFlowLoading] = useState(() => !!projectId);
   // flowEmpty: true after DB + localStorage both confirmed empty (no real data)
   const [flowEmpty, setFlowEmpty] = useState(false);
+  // Hydrate-from-conversations state
+  const [hydrateLoading, setHydrateLoading] = useState(false);
+  const [hydrateError, setHydrateError] = useState<string | null>(null);
 
   const mapSeenKey = projectId ? `atlas-map-seen-${projectId}` : "atlas-map-seen-standalone";
   const [summaryCollapsed, setSummaryCollapsed] = useState(() => {
@@ -966,6 +969,43 @@ export function AxiomFlow({
       if (params.get("autogenerate") === "1") generateFlowMap();
     } catch {}
   }, [flowEmpty, projectId, generateFlowMap]);
+
+  // Hydrate Flow — call the AI endpoint with this project's conversation history,
+  // receive tailored nodes + edges, apply radial layout, and persist to DB.
+  const hydrateFlow = useCallback(async () => {
+    if (!projectId || hydrateLoading) return;
+    setHydrateLoading(true);
+    setHydrateError(null);
+    try {
+      const r = await fetch(`/api/projects/${projectId}/flow/hydrate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await r.json() as { nodes?: ArchNode[]; edges?: ArchEdge[]; error?: string };
+      if (!r.ok) {
+        setHydrateError(data.error ?? "Hydration failed — try again");
+        return;
+      }
+      // Apply radial layout (x/y returned by AI are ignored)
+      const positioned = layoutRadial(data.nodes ?? []);
+      const hydratedEdges = data.edges ?? [];
+      setNodes(positioned);
+      setEdges(hydratedEdges);
+      setFlowEmpty(false);
+      setHydrateError(null);
+      // Persist to DB immediately (no debounce)
+      fetch(`/api/projects/${projectId}/flow`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nodes: positioned, edges: hydratedEdges }),
+      }).catch(() => {});
+    } catch {
+      setHydrateError("Network error — check your connection and try again");
+    } finally {
+      setHydrateLoading(false);
+    }
+  }, [projectId, hydrateLoading]);
 
   useEffect(() => {
     onNodesChange?.(nodes);
@@ -1372,32 +1412,87 @@ export function AxiomFlow({
             </div>
           </div>
 
+          {/* Error message from hydration attempt */}
+          {hydrateError && (
+            <div style={{
+              maxWidth: 300, padding: "8px 12px",
+              borderRadius: 7,
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.22)",
+              color: "rgba(239,68,68,0.85)",
+              fontFamily: "var(--app-font-sans)",
+              fontSize: 11.5, lineHeight: 1.5,
+              textAlign: "center",
+            }}>
+              {hydrateError}
+            </div>
+          )}
+
+          {/* Primary CTA: Hydrate from conversations (project-context only) */}
+          {projectId && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              disabled={hydrateLoading}
+              style={{
+                padding: "9px 22px",
+                borderRadius: 8,
+                background: `linear-gradient(180deg, rgba(${palette.goldRgb},0.90) 0%, rgba(${palette.goldRgb},0.72) 100%)`,
+                border: `1px solid rgba(${palette.goldRgb},0.55)`,
+                color: "#0C0A09",
+                cursor: hydrateLoading ? "wait" : "pointer",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10.5,
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                boxShadow: `0 0 20px rgba(${palette.goldRgb},0.25)`,
+                opacity: hydrateLoading ? 0.7 : 1,
+                transition: "opacity 120ms ease",
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              {hydrateLoading ? (
+                <>
+                  <div style={{
+                    width: 12, height: 12, borderRadius: "50%",
+                    border: "1.5px solid rgba(12,10,9,0.25)",
+                    borderTopColor: "rgba(12,10,9,0.8)",
+                    animation: "axiomFlowSpin 0.8s linear infinite",
+                    flexShrink: 0,
+                  }} />
+                  Hydrating…
+                </>
+              ) : "Hydrate from Conversations"}
+            </button>
+          )}
+
+          {/* Secondary: start from the generic template */}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); generateFlowMap(); }}
             onMouseDown={(e) => e.stopPropagation()}
+            disabled={hydrateLoading}
             style={{
-              padding: "9px 20px",
-              borderRadius: 8,
-              background: `linear-gradient(180deg, rgba(${palette.goldRgb},0.90) 0%, rgba(${palette.goldRgb},0.72) 100%)`,
-              border: `1px solid rgba(${palette.goldRgb},0.55)`,
-              color: "#0C0A09",
+              padding: "7px 16px",
+              borderRadius: 7,
+              background: "transparent",
+              border: `1px solid rgba(${palette.goldRgb},0.22)`,
+              color: palette.mutedText,
               cursor: "pointer",
               fontFamily: "var(--app-font-mono)",
-              fontSize: 10.5,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
-              boxShadow: `0 0 20px rgba(${palette.goldRgb},0.25)`,
-              transition: "opacity 120ms ease",
+              opacity: hydrateLoading ? 0.4 : 1,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
           >
-            Generate Flow Map
+            {projectId ? "Start with template instead" : "Generate Flow Map"}
           </button>
 
-          {onNodeFocus && (
+          {onNodeFocus && !hydrateLoading && (
             <button
               type="button"
               onClick={(e) => {
@@ -1406,17 +1501,18 @@ export function AxiomFlow({
               }}
               onMouseDown={(e) => e.stopPropagation()}
               style={{
-                padding: "7px 16px",
+                padding: "6px 14px",
                 borderRadius: 7,
                 background: "transparent",
-                border: `1px solid rgba(${palette.goldRgb},0.20)`,
+                border: "none",
                 color: palette.mutedText,
                 cursor: "pointer",
                 fontFamily: "var(--app-font-mono)",
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
+                fontSize: 9.5,
+                fontWeight: 500,
+                letterSpacing: "0.07em",
                 textTransform: "uppercase",
+                opacity: 0.6,
               }}
             >
               Ask Atlas to map it

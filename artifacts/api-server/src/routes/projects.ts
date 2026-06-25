@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
+import Anthropic from "@anthropic-ai/sdk";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import { bustResumeCache } from "./nexus";
 import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, projectGenomeTable, nexusMessagesTable } from "@workspace/db";
@@ -910,6 +911,151 @@ router.put("/projects/:id/flow", async (req, res): Promise<void> => {
       set: { nodes, edges, updatedAt: new Date() },
     });
   res.json({ ok: true });
+});
+
+// ── Flow hydration (AI-powered from conversation history) ─────────────────────
+
+router.post("/projects/:id/flow/hydrate", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ error: "AI not configured on this server" });
+    return;
+  }
+
+  const [[proj], [genome], messages] = await Promise.all([
+    db.select({ id: projectsTable.id, name: projectsTable.name })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
+    db.select()
+      .from(projectGenomeTable)
+      .where(eq(projectGenomeTable.projectId, id))
+      .limit(1),
+    db.select({ role: nexusMessagesTable.role, content: nexusMessagesTable.content })
+      .from(nexusMessagesTable)
+      .where(and(
+        eq(nexusMessagesTable.projectId, id),
+        sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'briefing'`,
+        sql`${nexusMessagesTable.messageType} IS DISTINCT FROM 'reflection'`,
+      ))
+      .orderBy(desc(nexusMessagesTable.createdAt))
+      .limit(60),
+  ]);
+
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
+
+  const realMessages = messages.filter(m => m.content && m.content.trim().length > 10);
+  if (realMessages.length < 3) {
+    res.status(422).json({
+      error: "Not enough conversation history to hydrate. Have a few conversations with Atlas about this project first.",
+    });
+    return;
+  }
+
+  // Most-recent last, capped for context window
+  const recent = [...realMessages].reverse().slice(-40);
+  const formattedConversation = recent
+    .map(m => `${m.role === "user" ? "You" : "Atlas"}: ${m.content.trim()}`)
+    .join("\n\n");
+
+  const contextParts: string[] = [];
+  if (genome?.purpose) contextParts.push(`Purpose: ${genome.purpose}`);
+  if (genome?.stage) contextParts.push(`Stage: ${genome.stage}`);
+  if (genome?.audience) contextParts.push(`Audience: ${genome.audience}`);
+  if (genome?.identity) contextParts.push(`Identity: ${genome.identity}`);
+  const constraints = (genome?.constraints as string[] | null) ?? [];
+  const openQuestions = (genome?.openQuestions as string[] | null) ?? [];
+  if (constraints.length > 0) contextParts.push(`Constraints: ${constraints.join("; ")}`);
+  if (openQuestions.length > 0) contextParts.push(`Open questions: ${openQuestions.join("; ")}`);
+  const projectContext = contextParts.length > 0 ? `\nProject context:\n${contextParts.join("\n")}` : "";
+
+  const prompt = `You are building a strategic flow map for a project named "${proj.name}".${projectContext}
+
+Here is the conversation history between the user and Atlas (their strategic thinking partner):
+
+${formattedConversation}
+
+Based on this conversation, generate a strategic flow map as a JSON object. Extract SPECIFIC goals, requirements, blockers, decisions, and priorities that were actually discussed — not generic placeholders.
+
+Return ONLY a valid JSON object (no explanation, no markdown fences) with this structure:
+{
+  "nodes": [
+    {
+      "id": "goal",
+      "label": "Short label (3-6 words, project-specific)",
+      "type": "goal",
+      "resolved": false,
+      "x": 0,
+      "y": 0,
+      "details": "One sentence framing what winning looks like",
+      "strategicAnswer": "Include only if clearly stated in the conversation"
+    }
+  ],
+  "edges": [
+    { "id": "e-goal-node1", "from": "goal", "to": "node1" }
+  ]
+}
+
+Node types: goal, requirement, blocker, priority, decision, sprint, wont
+Rules:
+- Include EXACTLY ONE node with type "goal" and id "goal"
+- Include 4-8 satellite nodes grounded in what was actually discussed
+- If a decision or answer was clearly stated in the conversation, set resolved: true and include strategicAnswer
+- Connect every satellite node to "goal" via an edge; add edges between related nodes too
+- x and y are ignored — layout is auto-computed
+- Labels must be specific to this project (e.g. "Stripe integration" not "Open decision")`;
+
+  const anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  let aiText: string;
+  try {
+    const response = await anthropicClient.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 2048,
+      messages: [{ role: "user", content: prompt }],
+    });
+    aiText = response.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+  } catch (err) {
+    req.log.error({ err }, "Flow hydrate: Anthropic call failed");
+    res.status(502).json({ error: "AI service unavailable — try again in a moment" });
+    return;
+  }
+
+  const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    req.log.error({ aiText }, "Flow hydrate: no JSON in AI response");
+    res.status(502).json({ error: "AI returned an unexpected response — try again" });
+    return;
+  }
+
+  let parsed: { nodes?: unknown[]; edges?: unknown[] };
+  try {
+    parsed = JSON.parse(jsonMatch[0]) as { nodes?: unknown[]; edges?: unknown[] };
+  } catch {
+    req.log.error({ aiText }, "Flow hydrate: JSON parse failed");
+    res.status(502).json({ error: "AI returned malformed JSON — try again" });
+    return;
+  }
+
+  if (!Array.isArray(parsed.nodes) || parsed.nodes.length === 0) {
+    res.status(502).json({ error: "AI did not return valid nodes — try again" });
+    return;
+  }
+
+  const hasGoal = (parsed.nodes as Array<{ type?: unknown }>).some(n => n.type === "goal");
+  if (!hasGoal) {
+    res.status(502).json({ error: "AI flow map is missing a goal node — try again" });
+    return;
+  }
+
+  res.json({
+    nodes: parsed.nodes,
+    edges: Array.isArray(parsed.edges) ? parsed.edges : [],
+    source: "conversations",
+    messageCount: realMessages.length,
+  });
 });
 
 // ── Resume artifact ───────────────────────────────────────────────────────────
