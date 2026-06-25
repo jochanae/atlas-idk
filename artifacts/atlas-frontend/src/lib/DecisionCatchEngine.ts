@@ -22,6 +22,19 @@ const DECISION_TRIGGERS = [
 
 const BLOCKER_TRIGGERS = ["block", "must", "critical"];
 
+const CODE_BLOCK_RE = /```[\s\S]{200,}?```/;
+
+function isCodeHeavy(message: string): boolean {
+  if (message.includes("FILE_EDIT_START")) return true;
+  if (message.includes("ARTIFACT:")) return true;
+  if (message.includes("LINE_PATCH_START")) return true;
+  const codeBlocks: string[] = message.match(/```[\s\S]*?```/g) ?? [];
+  const codeChars = codeBlocks.reduce((sum, b) => sum + b.length, 0);
+  if (codeChars > message.length * 0.35) return true;
+  if (CODE_BLOCK_RE.test(message)) return true;
+  return false;
+}
+
 function sentenceSplit(message: string): string[] {
   return message
     .replace(/\s+/g, " ")
@@ -39,6 +52,8 @@ function truncate(text: string, max: number): string {
 export function detectDecisionMoment(message: string): CommitCardPayload | null {
   const clean = message.trim();
   if (clean.length <= 150) return null;
+
+  if (isCodeHeavy(clean)) return null;
 
   const lower = clean.toLowerCase();
   if (!DECISION_TRIGGERS.some((trigger) => lower.includes(trigger))) return null;
