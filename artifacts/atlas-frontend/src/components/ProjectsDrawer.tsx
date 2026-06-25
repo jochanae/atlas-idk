@@ -137,7 +137,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           `}</style>
           <button
             type="button"
-            onClick={() => { navigate("/"); window.dispatchEvent(new CustomEvent("axiom:new-conversation", { detail: { context: "global-insights" } })); }}
+            onClick={() => { navigate("/"); window.dispatchEvent(new CustomEvent("axiom:home-reset")); }}
             style={{
               display: "flex", alignItems: "center", gap: 10,
               width: "100%", padding: "10px 12px", marginBottom: 10,
@@ -165,7 +165,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                <circle cx="12" cy="12" r="10" />
+                <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
               </svg>
             </div>
 
@@ -173,16 +174,12 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
                 fontSize: 11, fontFamily: "var(--app-font-mono)", fontWeight: 700,
-                letterSpacing: "0.18em", color: "var(--atlas-gold)", textTransform: "uppercase",
-                display: "inline-flex",
+                letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase",
               }}>
-                {"ATLAS".split("").map((ch, i) => (
-                  <span key={i} style={{
-                    display: "inline-block",
-                    animation: "nx-letter-in 0.4s cubic-bezier(0.22,1,0.36,1) both",
-                    animationDelay: `${i * 0.06}s`,
-                  }}>{ch}</span>
-                ))}
+                Global Insights
+              </div>
+              <div style={{ fontSize: 9.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", marginTop: 1, opacity: 0.6 }}>
+                New conversation
               </div>
             </div>
 

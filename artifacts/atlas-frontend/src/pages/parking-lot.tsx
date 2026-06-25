@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useEntryReferrer } from "@/hooks/useEntryReferrer";
 import type React from "react";
 import { useLocation } from "wouter";
@@ -452,8 +453,18 @@ function ParkingLotRow({
   onNoteBlur: () => void;
 }) {
   const [showPromoteMenu, setShowPromoteMenu] = useState(false);
+  const [menuRect, setMenuRect] = useState<{ bottom: number; right: number } | null>(null);
+  const promoteAnchorRef = useRef<HTMLDivElement>(null);
   const entryTypeBadge = (entry.mode ?? "NOTE").toUpperCase();
   const summary = entry.summary || entry.title;
+
+  const openPromoteMenu = useCallback(() => {
+    if (promoteAnchorRef.current) {
+      const r = promoteAnchorRef.current.getBoundingClientRect();
+      setMenuRect({ bottom: window.innerHeight - r.top + 6, right: window.innerWidth - r.right });
+    }
+    setShowPromoteMenu(true);
+  }, []);
 
   return (
     <article
@@ -465,7 +476,7 @@ function ParkingLotRow({
         cursor: "pointer",
       }}
     >
-      <div style={{ borderRadius: 7.5, background: "var(--atlas-surface)", overflow: "hidden" }}>
+      <div style={{ borderRadius: 7.5, background: "var(--atlas-surface)" }}>
         <div style={{ padding: "13px 14px 10px", display: "flex", alignItems: "flex-start", gap: 10 }}>
           <span
             style={{
@@ -524,32 +535,37 @@ function ParkingLotRow({
 
         <footer onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 7, padding: "8px 14px", flexWrap: "wrap" }}>
           <ParkingLotButton disabled={busy} onClick={onResume}>Resume</ParkingLotButton>
+          <ParkingLotButton disabled={busy} onClick={onResume}>Clarify</ParkingLotButton>
 
-          {/* Promote… with sub-menu */}
-          <div style={{ position: "relative" }}>
-            <ParkingLotButton
-              disabled={busy}
-              tone="gold"
-              onClick={() => setShowPromoteMenu(v => !v)}
-            >
+          {/* Promote… — portal-based to escape overflow:hidden */}
+          <div ref={promoteAnchorRef}>
+            <ParkingLotButton disabled={busy} tone="gold" onClick={() => showPromoteMenu ? setShowPromoteMenu(false) : openPromoteMenu()}>
               Promote…
             </ParkingLotButton>
-            {showPromoteMenu && (
+          </div>
+          {showPromoteMenu && menuRect && typeof document !== "undefined" && createPortal(
+            <>
+              <div
+                onClick={() => setShowPromoteMenu(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+              />
               <div style={{
-                position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-                background: "var(--atlas-surface-alt)",
-                border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)",
-                borderRadius: 8, padding: 4, zIndex: 50,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
-                minWidth: 140,
+                position: "fixed",
+                bottom: menuRect.bottom,
+                right: menuRect.right,
+                background: "var(--atlas-bg)",
+                border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                borderRadius: 8, padding: 4, zIndex: 9999,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                minWidth: 150,
               }}>
                 {PROMOTE_TYPES.map(pt => (
                   <button
                     key={pt.value}
-                    onClick={() => { setShowPromoteMenu(false); onPromote(); }}
+                    onClick={(e) => { e.stopPropagation(); setShowPromoteMenu(false); onPromote(); }}
                     style={{
                       display: "block", width: "100%", textAlign: "left",
-                      padding: "7px 12px", background: "transparent", border: "none",
+                      padding: "8px 14px", background: "transparent", border: "none",
                       color: "var(--atlas-fg)", fontSize: 9.5,
                       fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
                       cursor: "pointer", borderRadius: 5, textTransform: "uppercase",
@@ -561,8 +577,9 @@ function ParkingLotRow({
                   </button>
                 ))}
               </div>
-            )}
-          </div>
+            </>,
+            document.body
+          )}
 
           <ParkingLotButton disabled={busy} onClick={onDelete} tone="danger">Delete</ParkingLotButton>
         </footer>

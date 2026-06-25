@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useListProjects } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useDockVisibility, dockVisibility } from "@/hooks/useDockVisibility";
@@ -171,6 +172,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const { data: projectsRaw } = useListProjects();
   const projects = Array.isArray(projectsRaw) ? projectsRaw : [];
   const dockVisible = useDockVisibility();
+  const [showAtlasHub, setShowAtlasHub] = useState(false);
 
   // Track last visited project so short-hold can return to it.
   useEffect(() => {
@@ -257,8 +259,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     const duration = Date.now() - pressStartTime.current;
     if (duration >= 900) {
       try { (navigator as any).vibrate?.([35]); } catch {}
-      const detail = props.currentProjectName ? { projectName: props.currentProjectName } : {};
-      window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail }));
+      setShowAtlasHub(true);
       return true;
     }
     if (duration >= 350) {
@@ -311,7 +312,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     ];
     right = [
       { id: "decisions", label: "Decisions", icon: ICONS.decisions, onClick: props.onDecisions },
-      { id: "specify", label: "Specify", icon: ICONS.forge, onClick: props.onSpecify },
+      { id: "parking", label: "Parking", icon: ICONS.ledger, onClick: () => setLocation("/parking-lot") },
     ];
   } else {
     const at = props.activeOperationalTab;
@@ -500,8 +501,8 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         {/* Center — Atlas Core anchor */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button
-            title="Atlas Core — tap to focus chat, hold 900ms to Specify a change"
-            aria-label="Atlas Core. Tap to focus chat. Hold 900ms or press Shift+Enter to open Specify."
+            title="Atlas Core — tap to focus chat, hold 900ms to open Atlas Hub"
+            aria-label="Atlas Core. Tap to focus chat. Hold 900ms or right-click to open Atlas Hub."
             className="udock-center"
             onClick={handleAtlasClick}
             onTouchStart={(e) => {
@@ -517,16 +518,14 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
             onContextMenu={(e) => {
               e.preventDefault();
               cancelLongPress();
-              const detail = props.currentProjectName ? { projectName: props.currentProjectName } : {};
-              window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail }));
+              setShowAtlasHub(true);
             }}
             onKeyDown={(e) => {
               if (e.repeat) return;
               if (e.key === "Enter" && e.shiftKey) {
                 e.preventDefault();
                 cancelLongPress();
-                const detail = props.currentProjectName ? { projectName: props.currentProjectName } : {};
-                window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail }));
+                setShowAtlasHub(true);
               } else if (e.key === " " || e.key === "Spacebar") {
                 e.preventDefault();
                 startLongPress();
@@ -567,6 +566,123 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
 
         {right.map(renderSlot)}
       </div>
+
+      {/* Atlas Hub — bottom sheet portal */}
+      {showAtlasHub && typeof document !== "undefined" && createPortal(
+        <>
+          {/* Scrim */}
+          <div
+            onClick={() => setShowAtlasHub(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+          />
+          {/* Sheet */}
+          <div style={{
+            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 2001,
+            background: "var(--atlas-surface)",
+            borderTop: "1px solid color-mix(in oklab, var(--atlas-gold) 20%, transparent)",
+            borderRadius: "18px 18px 0 0",
+            padding: "0 0 max(env(safe-area-inset-bottom), 24px)",
+            boxShadow: "0 -16px 60px rgba(0,0,0,0.5)",
+          }}>
+            {/* Handle */}
+            <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)" }} />
+            </div>
+
+            {/* Header */}
+            <div style={{ padding: "6px 20px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AxiomCenterSVG size={32} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontFamily: "var(--app-font-mono)", fontWeight: 700, letterSpacing: "0.08em", color: "var(--atlas-gold)", textTransform: "uppercase" }}>
+                  Atlas Hub
+                </div>
+                <div style={{ fontSize: 10, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)" }}>
+                  Where would you like to go?
+                </div>
+              </div>
+            </div>
+
+            {/* Hub items */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
+              {[
+                {
+                  label: "Continue last conversation",
+                  sub: "Resume where you left off",
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
+                  action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("atlas:focus-composer")); onAtlasCore(); },
+                },
+                {
+                  label: "Parking Lot",
+                  sub: "Review your parked thoughts",
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V7h5a3 3 0 010 6H9" /></svg>,
+                  action: () => { setShowAtlasHub(false); setLocation("/parking-lot"); },
+                },
+                {
+                  label: "Global Search",
+                  sub: "Find anything across your workspace",
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" /></svg>,
+                  action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:open-search")); },
+                },
+                {
+                  label: "Recent Projects",
+                  sub: "Jump to a project",
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="9" y1="5" x2="9" y2="19"/></svg>,
+                  action: () => { setShowAtlasHub(false); setLocation("/projects"); },
+                },
+                {
+                  label: "New Project",
+                  sub: "Start something new",
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
+                  action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:new-project")); },
+                },
+                {
+                  label: "Brain Dump",
+                  sub: "Park a thought, idea, or blocker",
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9.663 17h4.673M12 3a6 6 0 00-3.6 10.8C9.36 14.7 9.75 16 10.5 16h3c.75 0 1.14-1.3 2.1-2.2A6 6 0 0012 3z"/></svg>,
+                  action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:brain-dump")); },
+                },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.action}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    width: "100%", padding: "11px 12px", borderRadius: 10,
+                    background: "transparent", border: "none",
+                    cursor: "pointer", textAlign: "left",
+                    transition: "background 120ms ease",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                    background: "rgba(201,162,76,0.07)",
+                    border: "1px solid rgba(201,162,76,0.14)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--atlas-gold)",
+                  }}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13.5, color: "var(--atlas-fg)", fontWeight: 550, fontFamily: "var(--app-font-sans)", lineHeight: 1.3 }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", marginTop: 1 }}>
+                      {item.sub}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
 
     </div>
   );
