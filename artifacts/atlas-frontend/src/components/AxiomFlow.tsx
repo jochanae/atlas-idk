@@ -2318,17 +2318,27 @@ function FlowNodeComponent({
       >
         {node.label}
       </span>
-      {defined && (
+      {defined && node.type !== "goal" && (
         <span style={{
-          fontSize: 7.5,
-          fontWeight: 700,
-          letterSpacing: "0.18em",
-          color: `rgba(${palette.goldRgb},0.78)`,
-          fontFamily: "var(--app-font-mono)",
-          textTransform: "uppercase",
-          marginTop: -2,
+          position: "absolute",
+          top: -4,
+          right: -4,
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: `rgba(${palette.goldRgb},0.90)`,
+          border: `1.5px solid ${palette.rootBg}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 7,
+          color: palette.rootBg,
+          fontWeight: 900,
+          lineHeight: 1,
+          zIndex: 2,
+          boxShadow: `0 0 6px rgba(${palette.goldRgb},0.45)`,
         }}>
-          DEFINED
+          ✓
         </span>
       )}
     </button>
