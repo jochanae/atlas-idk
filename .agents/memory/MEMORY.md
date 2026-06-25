@@ -13,3 +13,4 @@
 - [Atlas Constitution](atlas-constitution.md) — soul document; Atlas DNA, borrowing framework, three buckets, quality charter, what not to do; full doc at .local/atlas-constitution.md
 - [Data Spine Audit](data-spine-audit.md) — traced every %, node, and shaping pipeline; Master Map (entries table) ≠ Axiom Flow (node_state JSONB); 5 different health % formulas; NAVIGATE_TO root cause found in nexus.ts; full doc at .local/data-spine-audit.md
 - [_workspace api-client-react sync pattern](workspace-api-client-sync.md) — codegen writes to lib/; frontend tsconfig resolves @workspace/api-client-react to _workspace/ first; append new types/hooks to both
+- [Axiom Flow Vision](axiom-flow-vision.md) — foundational philosophy; graph = Atlas's memory, not user-built canvas; measure every Flow task against this; full doc at .local/axiom-flow-vision.md
