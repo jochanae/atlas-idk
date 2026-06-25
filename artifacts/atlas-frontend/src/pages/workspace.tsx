@@ -7771,6 +7771,11 @@ export default function Workspace() {
                   else { setDesktopForceTab("blueprints" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
                   return;
                 }
+                if (action === "more:write") {
+                  if (isMobile) { setMobileTab("write"); setRightOpen(true); }
+                  else { setDesktopForceTab("write" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }
+                  return;
+                }
                 if (action === "more:artifacts") {
                   if (isMobile) { setMobileTab("artifacts"); setRightOpen(true); }
                   else { setDesktopForceTab("artifacts" as never); setTimeout(() => setDesktopForceTab(undefined), 120); }

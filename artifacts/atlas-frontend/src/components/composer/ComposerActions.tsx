@@ -39,6 +39,7 @@ export type ComposerMenuAction =
   | "more:artifacts"
   | "more:console"
   | "more:changes"
+  | "more:write"
   | "park";
 
 export interface ComposerActionsProps {
@@ -86,6 +87,7 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
 ];
 
 const MORE_ITEMS: { id: ComposerMenuAction; label: string; workspaceOnly?: boolean }[] = [
+  { id: "more:write", label: "Write", workspaceOnly: true },
   { id: "more:memory", label: "Memory" },
   { id: "more:blueprints", label: "Blueprints", workspaceOnly: true },
   { id: "more:changes", label: "Changes", workspaceOnly: true },
