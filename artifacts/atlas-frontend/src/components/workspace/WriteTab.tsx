@@ -13,33 +13,48 @@ interface Revision {
   id: string;
   wordCount: number;
   timestamp: number;
+  profile: ReviewProfile;
   sections: EditorialSection[];
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+type ReviewProfile = "editorial" | "strategy";
 
-const SECTION_DEFS = [
-  { key: "VOICE FINGERPRINT",  label: "Voice Fingerprint",  color: "#C9A24C",               accentColor: "rgba(201,162,76,0.08)"  },
-  { key: "ARCHITECTURE REVIEW",label: "Architecture Review",color: "#6B9FD4",               accentColor: "rgba(107,159,212,0.08)" },
-  { key: "THE TRIMMER",        label: "The Trimmer",        color: "#D4A26B",               accentColor: "rgba(212,162,107,0.08)" },
-  { key: "COGNITIVE LOAD",     label: "Cognitive Load",     color: "#C47070",               accentColor: "rgba(196,112,112,0.08)" },
+// ── Section definitions per profile ───────────────────────────────────────────
+
+const EDITORIAL_SECTION_DEFS = [
+  { key: "VOICE FINGERPRINT",  label: "Voice Fingerprint",  color: "#C9A24C", accentColor: "rgba(201,162,76,0.08)"  },
+  { key: "ARCHITECTURE REVIEW",label: "Architecture Review",color: "#6B9FD4", accentColor: "rgba(107,159,212,0.08)" },
+  { key: "THE TRIMMER",        label: "The Trimmer",        color: "#D4A26B", accentColor: "rgba(212,162,107,0.08)" },
+  { key: "COGNITIVE LOAD",     label: "Cognitive Load",     color: "#C47070", accentColor: "rgba(196,112,112,0.08)" },
 ] as const;
 
-const allKeys = SECTION_DEFS.map(d => d.key).join("|");
-const sectionPattern = new RegExp(
-  `##\\s*[✦•*]*\\s*(${allKeys})\\s*\\n([\\s\\S]*?)(?=##\\s*[✦•*]*\\s*(?:${allKeys})|$)`,
-  "gi",
-);
+const STRATEGY_SECTION_DEFS = [
+  { key: "STRATEGIC COHERENCE",    label: "Strategic Coherence",    color: "#C9A24C", accentColor: "rgba(201,162,76,0.08)"  },
+  { key: "TEMPORAL CONTRADICTIONS",label: "Temporal Contradictions",color: "#C47070", accentColor: "rgba(196,112,112,0.08)" },
+  { key: "MISSING ASSUMPTIONS",    label: "Missing Assumptions",    color: "#D4A26B", accentColor: "rgba(212,162,107,0.08)" },
+  { key: "RISKS & OPPORTUNITIES",  label: "Risks & Opportunities",  color: "#6B9FD4", accentColor: "rgba(107,159,212,0.08)" },
+] as const;
+
+type SectionDef = { key: string; label: string; color: string; accentColor: string };
+
+function buildSectionPattern(defs: readonly SectionDef[]): RegExp {
+  const allKeys = defs.map(d => d.key).join("|");
+  return new RegExp(
+    `##\\s*[✦•*]*\\s*(${allKeys})\\s*\\n([\\s\\S]*?)(?=##\\s*[✦•*]*\\s*(?:${allKeys})|$)`,
+    "gi",
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseEditorialSections(text: string): EditorialSection[] {
+function parseSections(text: string, defs: readonly SectionDef[]): EditorialSection[] {
+  const pattern = buildSectionPattern(defs);
   const sections: EditorialSection[] = [];
-  sectionPattern.lastIndex = 0;
+  pattern.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = sectionPattern.exec(text)) !== null) {
-    const rawKey = match[1].toUpperCase().trim() as typeof SECTION_DEFS[number]["key"];
-    const def = SECTION_DEFS.find(d => d.key === rawKey);
+  while ((match = pattern.exec(text)) !== null) {
+    const rawKey = match[1].toUpperCase().trim();
+    const def = defs.find(d => d.key === rawKey);
     if (def) {
       sections.push({ title: def.label, content: match[2].trim(), color: def.color, accentColor: def.accentColor });
     }
@@ -78,23 +93,88 @@ function renderContent(content: string, accentColor: string): ReactNode {
           </span>
         </div>,
       );
-    } else if (/^[""\u201c]/.test(line)) {
+      i++;
+      continue;
+    }
+
+    if ((line.startsWith('"') && line.endsWith('"')) || (line.startsWith('"') && line.endsWith('"'))) {
       nodes.push(
-        <div key={i} style={{ margin: "4px 0 2px", padding: "5px 10px", background: "rgba(255,255,255,0.025)", borderRadius: 5, borderLeft: "1.5px solid rgba(255,255,255,0.07)" }}>
-          <span style={{ fontSize: 12, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.6, fontStyle: "italic", fontFamily: "var(--app-font-sans, ui-sans-serif)" }}>{line}</span>
+        <div key={i} style={{ margin: "6px 0 2px", padding: "6px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 4 }}>
+          <span style={{ fontSize: 12, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.55, fontStyle: "italic", fontFamily: "var(--app-font-sans, ui-sans-serif)" }}>
+            {line}
+          </span>
         </div>,
       );
-    } else {
-      nodes.push(
-        <p key={i} style={{ margin: "0 0 4px", fontSize: 12, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.72, fontFamily: "var(--app-font-sans, ui-sans-serif)" }}>{line}</p>,
-      );
+      i++;
+      continue;
     }
+
+    if (line.startsWith("⚠") || line.startsWith("✦")) {
+      const isWarning = line.startsWith("⚠");
+      nodes.push(
+        <div key={i} style={{ margin: "5px 0", display: "flex", gap: 6, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 11, flexShrink: 0, marginTop: 1, color: isWarning ? "#C47070" : accentColor }}>{isWarning ? "⚠" : "✦"}</span>
+          <span style={{ fontSize: 12, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.75, fontFamily: "var(--app-font-sans, ui-sans-serif)" }}>
+            {line.replace(/^[⚠✦]\s*/, "")}
+          </span>
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    if (line.startsWith("- ") || line.startsWith("• ")) {
+      nodes.push(
+        <div key={i} style={{ margin: "3px 0", paddingLeft: 12, display: "flex", gap: 6 }}>
+          <span style={{ fontSize: 10, color: accentColor, opacity: 0.6, flexShrink: 0, marginTop: 3 }}>·</span>
+          <span style={{ fontSize: 12, lineHeight: 1.65, color: "var(--atlas-fg)", opacity: 0.72, fontFamily: "var(--app-font-sans, ui-sans-serif)" }}>
+            {line.replace(/^[-•]\s*/, "")}
+          </span>
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    nodes.push(
+      <p key={i} style={{ fontSize: 12, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: 0.7, margin: "4px 0", fontFamily: "var(--app-font-sans, ui-sans-serif)" }}>
+        {line}
+      </p>,
+    );
     i++;
   }
   return <>{nodes}</>;
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Profile config ─────────────────────────────────────────────────────────────
+
+const PROFILE_CONFIG: Record<ReviewProfile, {
+  label: string;
+  buttonText: string;
+  panelLabel: string;
+  placeholder: string;
+  defs: readonly SectionDef[];
+  emptyHint: string;
+}> = {
+  editorial: {
+    label: "Editorial",
+    buttonText: "Ask Atlas to Review",
+    panelLabel: "Atlas Editorial",
+    placeholder: "Paste or write your text here.\n\nAtlas will analyze it across four dimensions:\nvoice consistency, structural integrity,\nunnecessary bloat, and cognitive load.",
+    defs: EDITORIAL_SECTION_DEFS,
+    emptyHint: "Paste your text and ask Atlas to review it. Every suggestion will quote the exact passage.",
+  },
+  strategy: {
+    label: "Strategy",
+    buttonText: "Request Strategic Analysis",
+    panelLabel: "Atlas Strategy",
+    placeholder: "Paste a document, brief, pitch, or plan.\n\nAtlas will cross-reference it against your project genome and decision ledger — flagging contradictions, missing assumptions, and strategic risks.",
+    defs: STRATEGY_SECTION_DEFS,
+    emptyHint: "Atlas will audit your text against your project's history — decisions, genome, and direction. Every finding quotes the exact passage.",
+  },
+};
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 interface WriteTabProps {
   projectId: number;
@@ -105,17 +185,15 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
   const draftKey   = `atlas-write-draft-${projectId}`;
   const historyKey = `atlas-write-history-${projectId}`;
 
-  // Draft — sessionStorage for cross-tab-switch persistence
   const [draft, setDraft] = useState<string>(() => sessionStorage.getItem(draftKey) ?? "");
+  const [profile, setProfile] = useState<ReviewProfile>("editorial");
 
-  // Editorial state
   const [sections, setSections]           = useState<EditorialSection[]>([]);
   const [streamBuffer, setStreamBuffer]   = useState("");
   const [isAnalyzing, setIsAnalyzing]     = useState(false);
   const [openSections, setOpenSections]   = useState<Set<string>>(new Set());
   const [error, setError]                 = useState<string | null>(null);
 
-  // Revision history — sessionStorage
   const [revisions, setRevisions] = useState<Revision[]>(() => {
     try {
       const raw = sessionStorage.getItem(historyKey);
@@ -123,14 +201,11 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
     } catch { return []; }
   });
 
-  // Container-width-driven layout (handles foldable / landscape mobile)
   const containerRef = useRef<HTMLDivElement>(null);
   const [narrowLayout, setNarrowLayout] = useState(isMobile);
-
   const feedbackRef = useRef<HTMLDivElement>(null);
   const abortRef    = useRef<AbortController | null>(null);
 
-  // ResizeObserver: switch to stacked layout below 600px container width
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -141,6 +216,17 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Reset sections when switching profiles so stale results don't show
+  const handleProfileSwitch = useCallback((next: ReviewProfile) => {
+    if (next === profile) return;
+    abortRef.current?.abort();
+    setProfile(next);
+    setSections([]);
+    setStreamBuffer("");
+    setError(null);
+    setOpenSections(new Set());
+  }, [profile]);
 
   const handleDraftChange = useCallback((val: string) => {
     setDraft(val);
@@ -165,11 +251,13 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
       setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     }
 
+    const activeDefs = PROFILE_CONFIG[profile].defs;
+
     try {
-      const res = await fetch(`/api/projects/${projectId}/editorial`, {
+      const res = await fetch(`/api/projects/${projectId}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, profile }),
         signal: ctrl.signal,
         credentials: "include",
       });
@@ -200,7 +288,7 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
               setStreamBuffer(accumulated);
             } else if (event.type === "done") {
               const final = event.content ?? accumulated;
-              const parsed = parseEditorialSections(final);
+              const parsed = parseSections(final, activeDefs);
               setSections(parsed);
               setStreamBuffer("");
               setOpenSections(new Set(parsed.map(s => s.title)));
@@ -209,6 +297,7 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
                 id: crypto.randomUUID(),
                 wordCount: countWords(text),
                 timestamp: Date.now(),
+                profile,
                 sections: parsed,
               };
               setRevisions(prev => {
@@ -227,12 +316,13 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [draft, isAnalyzing, narrowLayout, projectId, historyKey]);
+  }, [draft, isAnalyzing, narrowLayout, profile, projectId, historyKey]);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const wordCount   = countWords(draft);
   const hasFeedback = sections.length > 0 || !!streamBuffer;
+  const cfg         = PROFILE_CONFIG[profile];
 
   // ── Styles ──────────────────────────────────────────────────────────────────
 
@@ -271,10 +361,38 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
       ref={containerRef}
       style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden", background: "var(--atlas-surface)" }}
     >
+      {/* Profile switcher bar */}
+      <div style={{ padding: "6px 14px", display: "flex", alignItems: "center", gap: 6, borderBottom: "1px solid rgba(201,162,76,0.06)", flexShrink: 0, background: "rgba(0,0,0,0.06)" }}>
+        <span style={{ fontSize: 8.5, letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35, marginRight: 4 }}>Review as</span>
+        {(["editorial", "strategy"] as ReviewProfile[]).map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => handleProfileSwitch(p)}
+            style={{
+              padding: "3px 11px",
+              fontSize: 9.5,
+              letterSpacing: "0.09em",
+              textTransform: "uppercase",
+              fontFamily: "var(--app-font-mono)",
+              fontWeight: profile === p ? 600 : 400,
+              background: profile === p ? "rgba(201,162,76,0.10)" : "transparent",
+              border: `1px solid ${profile === p ? "rgba(201,162,76,0.28)" : "rgba(201,162,76,0.08)"}`,
+              borderRadius: 5,
+              color: profile === p ? "#C9A24C" : "var(--atlas-muted)",
+              opacity: profile === p ? 1 : 0.45,
+              cursor: "pointer",
+              transition: "all 150ms ease",
+            }}
+          >
+            {PROFILE_CONFIG[p].label}
+          </button>
+        ))}
+      </div>
+
       <div style={splitStyle}>
         {/* ── Left / Top: Writing Canvas ──────────────────────────────────── */}
         <div style={canvasPaneStyle}>
-          {/* Header */}
           <div style={{ padding: "9px 16px 7px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(201,162,76,0.06)", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.45 }}>
@@ -287,11 +405,10 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
             )}
           </div>
 
-          {/* Textarea */}
           <textarea
             value={draft}
             onChange={e => handleDraftChange(e.target.value)}
-            placeholder={"Paste or write your text here.\n\nAtlas will analyze it across four dimensions:\nvoice consistency, structural integrity,\nunnecessary bloat, and cognitive load."}
+            placeholder={cfg.placeholder}
             spellCheck={false}
             style={{
               flex: 1,
@@ -310,7 +427,6 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
             }}
           />
 
-          {/* Footer */}
           <div style={{ padding: "7px 14px", borderTop: "1px solid rgba(201,162,76,0.06)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0, background: "rgba(0,0,0,0.08)" }}>
             {draft && (
               <button
@@ -351,24 +467,22 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
                   <span style={{ display: "inline-block", width: 9, height: 9, border: "1.5px solid rgba(201,162,76,0.3)", borderTopColor: "#C9A24C", borderRadius: "50%", animation: "atlas-write-spin 0.75s linear infinite", flexShrink: 0 }} />
                   Analyzing
                 </>
-              ) : "Ask Atlas to Review"}
+              ) : cfg.buttonText}
             </button>
           </div>
         </div>
 
-        {/* ── Right / Bottom: Atlas Editorial Panel ───────────────────────── */}
+        {/* ── Right / Bottom: Atlas Review Panel ──────────────────────────── */}
         <div ref={feedbackRef} style={feedbackPaneStyle}>
-          {/* Header */}
           <div style={{ padding: "9px 16px 7px", display: "flex", alignItems: "center", gap: 7, borderBottom: "1px solid rgba(201,162,76,0.06)", flexShrink: 0, background: "rgba(0,0,0,0.04)" }}>
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
               <path d="M8 1.5L14.5 5.5v5L8 14.5 1.5 10.5v-5z" stroke="#C9A24C" strokeWidth="1.2" strokeLinejoin="round" />
               <circle cx="8" cy="8" r="1.8" fill="#C9A24C" opacity="0.55" />
             </svg>
-            <span style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: "var(--app-font-mono)", color: "#C9A24C", opacity: 0.65 }}>Atlas Editorial</span>
+            <span style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: "var(--app-font-mono)", color: "#C9A24C", opacity: 0.65 }}>{cfg.panelLabel}</span>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-            {/* Empty state */}
             {!hasFeedback && !isAnalyzing && !error && (
               <div style={{ padding: "40px 24px", textAlign: "center" }}>
                 <div style={{ width: 32, height: 32, margin: "0 auto 14px", borderRadius: "50%", background: "rgba(201,162,76,0.06)", border: "1px solid rgba(201,162,76,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -378,28 +492,25 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
                   </svg>
                 </div>
                 <p style={{ fontSize: 11, lineHeight: 1.6, color: "var(--atlas-muted)", opacity: 0.38, fontFamily: "var(--app-font-mono)", letterSpacing: "0.03em", maxWidth: 200, margin: "0 auto" }}>
-                  Paste your text and ask Atlas to review it. Every suggestion will quote the exact passage.
+                  {cfg.emptyHint}
                 </p>
               </div>
             )}
 
-            {/* Error state */}
             {error && (
               <div style={{ margin: "16px", padding: "12px 14px", background: "rgba(196,112,112,0.06)", border: "1px solid rgba(196,112,112,0.18)", borderRadius: 8 }}>
                 <p style={{ fontSize: 11.5, color: "#C47070", fontFamily: "var(--app-font-mono)", margin: 0 }}>{error}</p>
               </div>
             )}
 
-            {/* Streaming text */}
             {isAnalyzing && !sections.length && (
               <div style={{ padding: "12px 16px" }}>
                 <p style={{ fontSize: 12, lineHeight: 1.7, color: "var(--atlas-fg)", opacity: streamBuffer ? 0.65 : 0.3, whiteSpace: "pre-wrap", fontFamily: "var(--app-font-sans)", margin: 0 }}>
-                  {streamBuffer || "Reading your text…"}
+                  {streamBuffer || (profile === "strategy" ? "Consulting the decision ledger…" : "Reading your text…")}
                 </p>
               </div>
             )}
 
-            {/* Completed sections */}
             {sections.map((section, idx) => {
               const isOpen = openSections.has(section.title);
               return (
@@ -469,13 +580,14 @@ export function WriteTab({ projectId, isMobile = false }: WriteTabProps) {
                 transition: "opacity 120ms ease",
               }}
             >
-              {i === 0 ? `Draft v${revisions.length} · current` : `v${revisions.length - i} · ${formatRelativeTime(rev.timestamp)}`}
+              {i === 0
+                ? `${rev.profile === "strategy" ? "Strat" : "Ed"} v${revisions.length} · current`
+                : `${rev.profile === "strategy" ? "S" : "E"}${revisions.length - i} · ${formatRelativeTime(rev.timestamp)}`}
             </button>
           ))}
         </div>
       )}
 
-      {/* Spin keyframe */}
       <style>{`@keyframes atlas-write-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

@@ -1405,4 +1405,255 @@ ${projectContext}`;
   }
 });
 
+// ── Atlas Review Engine ────────────────────────────────────────────────────────
+// Unified context-hydrated judgment endpoint.
+// Each profile declares what it needs and how to build its system prompt.
+// The /editorial route above is kept as a backward-compat alias.
+
+type ReviewContextKey = "genome" | "decisions";
+
+interface ReviewContext {
+  projectName: string;
+  genome?: {
+    purpose?: string | null;
+    audience?: string | null;
+    stage?: string | null;
+    identity?: string | null;
+    wedge?: string | null;
+    differentiator?: string | null;
+  } | null;
+  decisions?: Array<{
+    title: string;
+    summary?: string | null;
+    contextWhat?: string | null;
+    contextWhy?: string | null;
+    createdAt: Date;
+  }>;
+}
+
+interface ReviewProfileConfig {
+  requiredContext: ReviewContextKey[];
+  maxTokens: number;
+  buildSystemPrompt: (ctx: ReviewContext) => string;
+}
+
+function buildGenomeBlock(ctx: ReviewContext): string {
+  const g = ctx.genome;
+  if (!g) return "";
+  const lines: string[] = [];
+  if (g.purpose)        lines.push(`Purpose: ${g.purpose}`);
+  if (g.audience)       lines.push(`Audience: ${g.audience}`);
+  if (g.stage)          lines.push(`Stage: ${g.stage}`);
+  if (g.identity)       lines.push(`Identity: ${g.identity}`);
+  if (g.wedge)          lines.push(`Wedge: ${g.wedge}`);
+  if (g.differentiator) lines.push(`Edge: ${g.differentiator}`);
+  return lines.length ? `\nProject Genome — "${ctx.projectName}":\n${lines.join("\n")}` : `\nProject: "${ctx.projectName}"`;
+}
+
+const REVIEW_PROFILES: Record<string, ReviewProfileConfig> = {
+  editorial: {
+    requiredContext: ["genome"],
+    maxTokens: 2000,
+    buildSystemPrompt: (ctx) => {
+      return `You are Atlas — a world-class developmental editor and writing partner. Your job is to give the writer honest, specific, actionable editorial feedback that protects their voice while ruthlessly optimizing for clarity, structure, and impact.
+
+Analyze the submitted text and return a structured report with exactly these four sections. Use these headers verbatim:
+
+## ✦ VOICE FINGERPRINT
+
+## ✦ ARCHITECTURE REVIEW
+
+## ✦ THE TRIMMER
+
+## ✦ COGNITIVE LOAD
+
+Section instructions:
+
+VOICE FINGERPRINT: Characterize this writer's specific style — sentence length patterns, vocabulary register (formal/casual/technical), pacing, any distinctive phrases or tics. Then flag passages where the voice becomes inconsistent or slips into a different register. Format flagged items as:
+"quoted passage"
+→ what's happening and why it disrupts the voice
+
+ARCHITECTURE REVIEW: Map the structural skeleton of the piece. Identify the core argument or narrative purpose, how the sections are organized, and the quality of transitions. Flag: abandoned threads, conclusions that introduce new arguments, unsupported claims, or structural dead-ends. Format:
+"quoted passage"
+→ the structural problem and what to do
+
+THE TRIMMER: List the specific phrases, sentences, or clauses to cut or compress. Target ruthlessly: passive voice constructions, filler words (actually, basically, just, very, really, quite, sort of), nominalization bloat (e.g. "make a decision" → "decide"), ideas that repeat without adding, and hedging that weakens the point. Format:
+"quoted passage"
+→ cut/compress instruction with one-line rationale
+
+COGNITIVE LOAD: Identify where a reader will disengage, skim, or get lost. This includes: dense paragraphs with too many ideas, unexplained jargon, abrupt context shifts, and sentences that require re-reading. Format:
+"quoted passage"
+→ specific fix (break into bullets / add analogy / define term / shorten / restructure)
+
+Rules:
+- Every observation MUST quote the exact passage it refers to, verbatim, in quotation marks
+- Never give generic advice — all feedback must be specific to this document
+- Adapt your register to the writer's voice — suggest edits in their style, not yours
+- If a section genuinely has no significant issues, write "No issues found." and move on — don't invent problems
+- Focus on the 2–4 most important observations per section, not an exhaustive list
+- Be direct and honest. The writer hired a great editor, not a cheerleader
+${buildGenomeBlock(ctx)}`;
+    },
+  },
+
+  strategy: {
+    requiredContext: ["genome", "decisions"],
+    maxTokens: 2500,
+    buildSystemPrompt: (ctx) => {
+      const genomeBlock = buildGenomeBlock(ctx);
+
+      const decisionBlock = ctx.decisions && ctx.decisions.length > 0
+        ? `\nDecision Ledger (${ctx.decisions.length} most recent decisions):\n${ctx.decisions.map((d, i) => {
+            const date = new Date(d.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            const parts = [`${i + 1}. [${date}] ${d.title}`];
+            if (d.contextWhat) parts.push(`   What: ${d.contextWhat}`);
+            if (d.contextWhy)  parts.push(`   Why: ${d.contextWhy}`);
+            if (d.summary)     parts.push(`   Note: ${d.summary}`);
+            return parts.join("\n");
+          }).join("\n\n")}`
+        : "\nDecision Ledger: No recorded decisions yet.";
+
+      return `You are Atlas — acting as a strategic partner with full memory of this project's history. Your job is to evaluate whether this document is coherent with the project's established identity, past decisions, and strategic direction. You are not editing prose — you are auditing strategic integrity.
+
+Analyze the submitted text and return a report with exactly these four sections. Use these headers verbatim:
+
+## ✦ STRATEGIC COHERENCE
+
+## ✦ TEMPORAL CONTRADICTIONS
+
+## ✦ MISSING ASSUMPTIONS
+
+## ✦ RISKS & OPPORTUNITIES
+
+Section instructions:
+
+STRATEGIC COHERENCE: Evaluate whether the text aligns with the project's genome — its stated purpose, audience, identity, and differentiator. Flag passages that drift from or contradict the established positioning. Format:
+"quoted passage"
+→ how this conflicts with [specific genome field] and what to do
+
+TEMPORAL CONTRADICTIONS: Cross-reference the text against the Decision Ledger. If any passage conflicts with, undermines, or ignores a recorded decision, call it out explicitly — name the decision and its date. Format:
+"quoted passage"
+→ conflicts with the [Date] decision to [decision title]. Reconcile or update the ledger.
+
+MISSING ASSUMPTIONS: Identify claims, assertions, or directions in the text that rest on unstated assumptions or that lack grounding in the project's established context. These are strategic fragility points. Format:
+"quoted passage"
+→ unstated assumption: [what this requires to be true that hasn't been established]
+
+RISKS & OPPORTUNITIES: Flag strategic risks introduced by the text's direction, and identify any positioning opportunities the text hints at but doesn't fully develop. Format each as either:
+⚠ Risk: [quoted passage] → [what could go wrong]
+✦ Opportunity: [quoted passage] → [what could be developed]
+
+Rules:
+- Every finding MUST quote the exact passage it refers to
+- When citing a decision, always include its date from the ledger
+- If a section has no significant issues, write "No issues found." — never invent problems
+- Focus on the 2–4 most important findings per section
+- Your role is strategic, not linguistic. Do not comment on grammar, style, or prose unless it directly affects strategic clarity
+${genomeBlock}${decisionBlock}`;
+    },
+  },
+};
+
+router.post("/:id/review", async (req, res) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { text, profile = "editorial" } = req.body as { text?: string; profile?: string };
+  if (!text || text.trim().length < 10) {
+    res.status(400).json({ error: "Text must be at least 10 characters" });
+    return;
+  }
+
+  const profileConfig = REVIEW_PROFILES[profile];
+  if (!profileConfig) {
+    res.status(400).json({ error: `Unknown review profile: "${profile}". Valid profiles: ${Object.keys(REVIEW_PROFILES).join(", ")}` });
+    return;
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ error: "AI not configured on this server" });
+    return;
+  }
+
+  const [[proj]] = await Promise.all([
+    db.select({ id: projectsTable.id, name: projectsTable.name })
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
+  ]);
+
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
+
+  // ── Context hydration ────────────────────────────────────────────────────────
+  const ctx: ReviewContext = { projectName: proj.name };
+
+  await Promise.all(profileConfig.requiredContext.map(async (key) => {
+    if (key === "genome") {
+      const [genome] = await db.select({
+        purpose: projectGenomeTable.purpose,
+        audience: projectGenomeTable.audience,
+        stage: projectGenomeTable.stage,
+        identity: projectGenomeTable.identity,
+        wedge: projectGenomeTable.wedge,
+        differentiator: projectGenomeTable.differentiator,
+      })
+        .from(projectGenomeTable)
+        .where(eq(projectGenomeTable.projectId, id))
+        .limit(1);
+      ctx.genome = genome ?? null;
+    }
+
+    if (key === "decisions") {
+      ctx.decisions = await db.select({
+        title: entriesTable.title,
+        summary: entriesTable.summary,
+        contextWhat: entriesTable.contextWhat,
+        contextWhy: entriesTable.contextWhy,
+        createdAt: entriesTable.createdAt,
+      })
+        .from(entriesTable)
+        .where(and(eq(entriesTable.projectId, id), eq(entriesTable.type, "Decision")))
+        .orderBy(desc(entriesTable.createdAt))
+        .limit(30);
+    }
+  }));
+
+  const systemPrompt = profileConfig.buildSystemPrompt(ctx);
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const writeSSE = (event: object) => {
+    try { res.write(`data: ${JSON.stringify(event)}\n\n`); } catch {}
+  };
+
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const stream = await anthropic.messages.stream({
+      model: "claude-opus-4-5",
+      max_tokens: profileConfig.maxTokens,
+      system: systemPrompt,
+      messages: [{ role: "user", content: `Please analyze this text:\n\n${text.trim()}` }],
+    });
+
+    let accumulated = "";
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+        accumulated += event.delta.text;
+        writeSSE({ type: "token", token: event.delta.text });
+      }
+    }
+
+    writeSSE({ type: "done", content: accumulated });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Review failed";
+    writeSSE({ type: "error", error: msg });
+  } finally {
+    res.end();
+  }
+});
+
 export default router;
