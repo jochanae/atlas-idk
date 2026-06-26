@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
-import { db, projectFlowCanvasTable, projectsTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { db, projectFlowCanvasTable, projectsTable, nexusMessagesTable } from "@workspace/db";
 import { NODE_GENERATION_SYSTEM_PROMPT } from "../lib/nodeContract";
 
 const router: IRouter = Router();
@@ -238,6 +238,101 @@ router.post("/forge", async (req, res) => {
   } catch (err: unknown) {
     req.log.error({ err }, "Forge error");
     res.status(500).json({ error: "Forge failed to process transcript" });
+  }
+});
+
+// ── Expand a single node into sub-nodes (lens-aware, conversation-aware) ──────
+const ExpandNodeSchema = z.object({
+  nodeId: z.string(),
+  nodeLabel: z.string(),
+  nodeType: z.string(),
+  projectId: z.number().optional(),
+  lens: z.enum(["designer", "builder", "storyteller"]).default("designer"),
+});
+
+router.post("/expand-node", async (req, res) => {
+  const parsed = ExpandNodeSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid request" }); return; }
+
+  const { nodeId, nodeLabel, nodeType, projectId, lens } = parsed.data;
+
+  // Fetch recent project conversation for grounding
+  let transcriptContext = "";
+  if (projectId) {
+    try {
+      const msgs = await db
+        .select({ role: nexusMessagesTable.role, content: nexusMessagesTable.content })
+        .from(nexusMessagesTable)
+        .where(eq(nexusMessagesTable.projectId, projectId))
+        .orderBy(desc(nexusMessagesTable.createdAt))
+        .limit(30);
+      if (msgs.length > 0) {
+        const lines = msgs.reverse().map(m =>
+          `${m.role === "user" ? "User" : "Atlas"}: ${m.content.slice(0, 400)}`
+        );
+        transcriptContext = lines.join("\n");
+      }
+    } catch { /* non-fatal — continue without transcript */ }
+  }
+
+  const lensInstructions: Record<string, string> = {
+    designer: "Focus on user experience, journeys, personas, pain points, accessibility, interface moments, and what the user actually encounters.",
+    builder: "Focus on technical components, APIs, data models, system boundaries, integrations, infrastructure, and what needs to be built.",
+    storyteller: "Focus on origin story, vision, the why behind this, user narrative, product DNA, the problem in human terms, and what makes this matter.",
+  };
+
+  const systemPrompt = `You are expanding a specific node in a project's Axiom Flow map into sub-nodes.
+
+Node being expanded: "${nodeLabel}" (type: ${nodeType})
+Lens: ${lens.toUpperCase()}
+${lensInstructions[lens] ?? ""}
+
+Generate 4–7 sub-nodes that break this node down one level deeper. Requirements:
+- Be specific to this project's context (not generic)
+- Each sub-node is concrete and represents a real concern or component
+- Use these node types: requirement, blocker, decision, priority, sprint, goal
+${transcriptContext ? `\nProject conversation context:\n${transcriptContext.slice(0, 3000)}` : ""}
+
+Respond with ONLY a JSON array. Each element:
+{"id":"short-slug","label":"Concise label (4–6 words)","type":"requirement|blocker|decision|priority|sprint","resolved":false,"meta":"must|should|could","details":"one sentence of context","x":0,"y":0}`;
+
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-opus-4-5",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: systemPrompt }],
+    });
+
+    const rawText = message.content
+      .filter(b => b.type === "text")
+      .map(b => (b as { type: "text"; text: string }).text)
+      .join("");
+
+    const arrMatch = rawText.match(/\[[\s\S]*\]/);
+    if (!arrMatch) throw new Error("No JSON array in response");
+
+    const rawNodes = JSON.parse(arrMatch[0]) as unknown[];
+    const nodes = rawNodes
+      .filter(n => n !== null && typeof n === "object" && typeof (n as { label?: unknown }).label === "string")
+      .slice(0, 8)
+      .map((n, i) => {
+        const rec = n as Record<string, unknown>;
+        return {
+          id: `${nodeId}-s${i}-${String(rec.id ?? i).slice(0, 16).replace(/[^a-z0-9-]/gi, "")}`,
+          label: String(rec.label).slice(0, 60),
+          type: VALID_TYPES.includes(rec.type as NodeType) ? (rec.type as NodeType) : "requirement" as NodeType,
+          resolved: false,
+          meta: VALID_META.includes(rec.meta as NodeMeta) ? (rec.meta as NodeMeta) : "should" as NodeMeta,
+          details: typeof rec.details === "string" ? rec.details : undefined,
+          x: 0,
+          y: 0,
+        };
+      });
+
+    res.json({ nodes });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Forge expand-node error");
+    res.status(500).json({ error: "Failed to expand node" });
   }
 });
 

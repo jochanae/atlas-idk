@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { Session } from "@workspace/api-client-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { haptics } from "@/lib/haptics";
 import { sounds } from "@/lib/sounds";
@@ -872,6 +872,11 @@ export function AxiomFlow({
   const [editingDetailsNodeId, setEditingDetailsNodeId] = useState<string | null>(null);
   const [detailsDraft, setDetailsDraft] = useState("");
 
+  // Drill-down state — Level 2 zoom into a specific node
+  const [drillNode, setDrillNode] = useState<ArchNode | null>(null);
+  const [subNodeCache, setSubNodeCache] = useState<Record<string, ArchNode[]>>({});
+  const [drillLoading, setDrillLoading] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({
@@ -1209,6 +1214,43 @@ export function AxiomFlow({
   // repeated taps of the same unanswered node.
   const lastMirroredRef = useRef<string | null>(null);
 
+  // Drill down into a node: fetch sub-nodes from the server, cache by nodeId+lens,
+  // then swap the display to center this node with its children radially.
+  const drillIntoNode = useCallback(async (node: ArchNode) => {
+    const cacheKey = `${node.id}:${lens}`;
+    if (subNodeCache[cacheKey]) {
+      setDrillNode(node);
+      setActiveCardNodeId(null);
+      setTimeout(() => fitMap(), 60);
+      return;
+    }
+    setDrillLoading(true);
+    setDrillNode(node);
+    setActiveCardNodeId(null);
+    try {
+      const res = await fetch("/api/forge/expand-node", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.type,
+          projectId,
+          lens,
+        }),
+      });
+      if (!res.ok) throw new Error("expand failed");
+      const data = await res.json() as { nodes: ArchNode[] };
+      setSubNodeCache(prev => ({ ...prev, [cacheKey]: data.nodes }));
+    } catch {
+      setDrillNode(null);
+    } finally {
+      setDrillLoading(false);
+      setTimeout(() => fitMap(), 60);
+    }
+  }, [lens, projectId, subNodeCache, fitMap]);
+
   const handleNodeTap = useCallback((nodeId: string, e: React.MouseEvent | React.TouchEvent) => {
     dragState.current.lastNodeTapTime = Date.now();
     dragState.current.dragging = false;
@@ -1216,31 +1258,40 @@ export function AxiomFlow({
       e.stopPropagation();
       haptics.tap();
       sounds.tap();
+
+      // Level 1: tap a non-goal node → drill into it instead of opening a card.
+      // Level 2 (drillNode set): behave as normal card.
+      const sourceNodes = drillNode ? subNodeCache[`${drillNode.id}:${lens}`] ?? [] : nodes;
+      const node = [...nodes, ...Object.values(subNodeCache).flat()].find(n => n.id === nodeId);
+      if (!drillNode && node && node.type !== "goal") {
+        void drillIntoNode(node);
+        return;
+      }
+
       if (activeCardNodeId === nodeId) {
         setActiveCardNodeId(null);
       } else {
         setActiveCardNodeId(nodeId);
-        const node = nodes.find(n => n.id === nodeId);
-        if (node) {
-          const question = getPivotQuestion(node);
+        const tapNode = sourceNodes.find(n => n.id === nodeId) ?? node;
+        if (tapNode) {
+          const question = getPivotQuestion(tapNode);
           if (onNodeFocus) onNodeFocus(question);
-          // Goal re-anchor: tapping the goal recenters the viewport on the
-          // goal's world coordinates while preserving zoom.
-          if (node.type === "goal") {
-            requestAnimationFrame(() => centerOnPoint(node.x, node.y));
+          // Goal re-anchor: tapping the goal recenters the viewport.
+          if (tapNode.type === "goal") {
+            requestAnimationFrame(() => centerOnPoint(tapNode.x, tapNode.y));
           }
           // Chat mirror — only for unanswered nodes, debounced per-node.
-          if (!isNodeDefined(node) && onUnansweredQuestionOpen && lastMirroredRef.current !== nodeId) {
+          if (!isNodeDefined(tapNode) && onUnansweredQuestionOpen && lastMirroredRef.current !== nodeId) {
             lastMirroredRef.current = nodeId;
             onUnansweredQuestionOpen({
-              node,
-              mirror: `🜸 ${node.label} — ${question}`,
+              node: tapNode,
+              mirror: `🜸 ${tapNode.label} — ${question}`,
             });
           }
         }
       }
     }
-  }, [activeCardNodeId, nodes, onNodeFocus, onUnansweredQuestionOpen, centerOnPoint]);
+  }, [activeCardNodeId, nodes, drillNode, subNodeCache, lens, drillIntoNode, onNodeFocus, onUnansweredQuestionOpen, centerOnPoint]);
 
   const handleLockInAnswer = useCallback((nodeId: string, answer: string) => {
     const trimmed = answer.trim();
@@ -1331,7 +1382,26 @@ export function AxiomFlow({
 
   const strokeWidth = Math.max(1, Math.min(2, 1.5 / zoom));
 
-  const activeCardNode = activeCardNodeId ? nodes.find(n => n.id === activeCardNodeId) : null;
+  // When drilled in, swap out the canvas contents: re-cast the drillNode as the
+  // goal (so layoutRadial centers it) and show its sub-nodes in the ring.
+  const displayNodes = useMemo<ArchNode[]>(() => {
+    if (!drillNode) return nodes;
+    const cacheKey = `${drillNode.id}:${lens}`;
+    const cached = subNodeCache[cacheKey];
+    if (!cached || cached.length === 0) return nodes;
+    const goalVersion: ArchNode = { ...drillNode, type: "goal" as ArchNode["type"], x: RADIAL_CENTER_X, y: RADIAL_CENTER_Y };
+    return layoutRadial([goalVersion, ...cached]);
+  }, [drillNode, subNodeCache, nodes, lens]);
+
+  const displayEdges = useMemo<ArchEdge[]>(() => {
+    if (!drillNode) return edges;
+    const cacheKey = `${drillNode.id}:${lens}`;
+    const cached = subNodeCache[cacheKey];
+    if (!cached || cached.length === 0) return edges;
+    return cached.map(n => ({ id: `e-drill-${drillNode.id}-${n.id}`, from: drillNode.id, to: n.id }));
+  }, [drillNode, subNodeCache, edges, lens]);
+
+  const activeCardNode = activeCardNodeId ? displayNodes.find(n => n.id === activeCardNodeId) : null;
   const activeCardMoscow = activeCardNode ? getMoscow(activeCardNode) : undefined;
   let cardLeft = 0;
   let cardTop = 0;
@@ -1385,6 +1455,34 @@ export function AxiomFlow({
             animation: "axiomFlowSpin 0.8s linear infinite",
           }} />
           <style>{`@keyframes axiomFlowSpin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {/* Drill-down loading overlay — shown while Atlas generates sub-nodes */}
+      {drillLoading && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 28,
+          background: "rgba(8,6,10,0.70)",
+          backdropFilter: "blur(3px)",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          gap: 12, pointerEvents: "all",
+        }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: "50%",
+            border: `2px solid rgba(${palette.goldRgb},0.15)`,
+            borderTopColor: `rgba(${palette.goldRgb},0.72)`,
+            animation: "axiomFlowSpin 0.8s linear infinite",
+            flexShrink: 0,
+          }} />
+          <span style={{
+            fontFamily: "var(--app-font-mono)",
+            fontSize: 9.5, letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: `rgba(${palette.goldRgb},0.55)`,
+          }}>
+            Zooming in…
+          </span>
         </div>
       )}
 
@@ -1602,54 +1700,82 @@ export function AxiomFlow({
 
       {/* Header label */}
       <div className="absolute left-4 top-4 z-10 flex items-center gap-2">
-        {onBackToChat && (
+        {/* Drill breadcrumb — replaces back-to-chat button when drilled in */}
+        {drillNode ? (
           <button
-            onClick={(e) => { e.stopPropagation(); onBackToChat(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setDrillNode(null);
+              setActiveCardNodeId(null);
+              setTimeout(() => fitMap(), 60);
+            }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
             style={{
-              width: 20,
-              height: 20,
-              minWidth: 20,
-              minHeight: 20,
-              padding: 0,
-              background: "transparent",
-              border: "none",
-              color: "var(--atlas-gold)",
-              opacity: 0.7,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              display: "flex", alignItems: "center", gap: 5,
+              background: `rgba(${palette.goldRgb},0.08)`,
+              border: `1px solid rgba(${palette.goldRgb},0.22)`,
+              borderRadius: 6, padding: "3px 8px 3px 5px",
+              color: palette.goldText, cursor: "pointer",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9.5, letterSpacing: "0.06em",
+              textTransform: "uppercase",
             }}
-            aria-label="Back to chat"
+            aria-label="Back to flow"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
+            <span style={{ opacity: 0.6 }}>{projectLabel || "Flow"}</span>
+            <span style={{ opacity: 0.3, margin: "0 1px" }}>›</span>
+            <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {drillNode.label}
+            </span>
           </button>
+        ) : (
+          <>
+            {onBackToChat && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onBackToChat(); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                style={{
+                  width: 20, height: 20, minWidth: 20, minHeight: 20,
+                  padding: 0, background: "transparent", border: "none",
+                  color: "var(--atlas-gold)", opacity: 0.7,
+                  cursor: "pointer", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                }}
+                aria-label="Back to chat"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 12H5M12 5l-7 7 7 7" />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); haptics.tap(); setLocation("/map"); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              title="Open Master Map"
+              aria-label="Open Master Map"
+              style={{
+                width: 22, height: 22, padding: 0,
+                background: "transparent", border: "none",
+                color: "var(--atlas-gold)", opacity: 0.7,
+                cursor: "pointer", display: "flex",
+                alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="2" width="6" height="6" rx="1" />
+                <rect x="16" y="16" width="6" height="6" rx="1" />
+                <rect x="2" y="16" width="6" height="6" rx="1" />
+                <path d="M12 8v4M12 12H5v4M12 12h7v4" />
+              </svg>
+            </button>
+          </>
         )}
-        <button
-          onClick={(e) => { e.stopPropagation(); haptics.tap(); setLocation("/map"); }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          title="Open Master Map"
-          aria-label="Open Master Map"
-          style={{
-            width: 22, height: 22, padding: 0,
-            background: "transparent", border: "none",
-            color: "var(--atlas-gold)", opacity: 0.7,
-            cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="9" y="2" width="6" height="6" rx="1" />
-            <rect x="16" y="16" width="6" height="6" rx="1" />
-            <rect x="2" y="16" width="6" height="6" rx="1" />
-            <path d="M12 8v4M12 12H5v4M12 12h7v4" />
-          </svg>
-        </button>
       </div>
 
 
@@ -1769,9 +1895,9 @@ export function AxiomFlow({
               </feMerge>
             </filter>
           </defs>
-          {edges.map(edge => {
-            const fromNode = nodes.find(n => n.id === edge.from);
-            const toNode = nodes.find(n => n.id === edge.to);
+          {displayEdges.map(edge => {
+            const fromNode = displayNodes.find(n => n.id === edge.from);
+            const toNode = displayNodes.find(n => n.id === edge.to);
             if (!fromNode || !toNode) return null;
             const bothResolved = isNodeDefined(fromNode) && isNodeDefined(toNode);
             return (
@@ -1790,8 +1916,8 @@ export function AxiomFlow({
         </svg>
 
         {/* Nodes */}
-        {nodes.map(node => {
-          const goalNode = nodes.find(n => n.type === "goal") || nodes[0];
+        {displayNodes.map(node => {
+          const goalNode = displayNodes.find(n => n.type === "goal") || displayNodes[0];
           const goalX = goalNode ? goalNode.x : 300;
           const goalY = goalNode ? goalNode.y : 250;
           return (
