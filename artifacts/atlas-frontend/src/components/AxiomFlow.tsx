@@ -1260,7 +1260,7 @@ export function AxiomFlow({
     setDrillNode(node);
     setActiveCardNodeId(null);
     try {
-      const res = await fetch("/api/forge/expand-node", {
+      const res = await fetch("/api/expand-node", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
