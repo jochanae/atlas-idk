@@ -4350,7 +4350,7 @@ export default function Workspace() {
           // Build-handoff path: auto-send through /api/chat so BUILD_HANDOFF fires
           // and Atlas starts writing FILE_EDIT blocks without user typing anything.
           setOpeningMessage({ message: data.buildIntent, projectId: String(id) });
-        } else if (data?.message) {
+        } else if (data?.message && !forgeRanRef.current) {
           setAtlasGreeting(data.message);
         }
       })
@@ -4372,6 +4372,7 @@ export default function Workspace() {
     initialSent.current = false;
     importPrimed.current = false;
     homeHandoffPrimed.current = false;
+    forgeRanRef.current = false;
     setAutoNameKey(0);
   }, [id]);
 
