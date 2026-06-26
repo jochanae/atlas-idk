@@ -1092,6 +1092,7 @@ export function AssistantBubble({
   const [parkDone, setParkDone] = useState(false);
   const [dismissedChipLabels, setDismissedChipLabels] = useState<Set<string>>(new Set());
   const [intakeDone, setIntakeDone] = useState(false);
+  const [showForgeSheet, setShowForgeSheet] = useState(false);
   const [commitDone, setCommitDone] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [showPlanPushModal, setShowPlanPushModal] = useState(false);
@@ -2240,17 +2241,12 @@ export function AssistantBubble({
                   disabled={parkDone}
                   onClick={() => { setMenuOpen(false); if (!parkDone) { onPark(message.content, message.id); setParkDone(true); } }}
                 />
-                {onForgeIntake && (
+                {(onForgeIntake || onExtractToForge) && (
                   <MenuItem
                     icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 11h10M4 8l3-5 3 5" /></svg>}
-                    label={intakeDone ? "Sent to Forge" : "Intake to Forge"}
+                    label="Forge…"
                     accent
-                    disabled={intakeDone}
-                    onClick={async () => {
-                      setMenuOpen(false);
-                      if (intakeDone) return;
-                      try { await onForgeIntake(message.content); setIntakeDone(true); } catch { /* surfaced by parent */ }
-                    }}
+                    onClick={() => { setMenuOpen(false); setShowForgeSheet(true); }}
                   />
                 )}
                 <MenuItem
@@ -2265,14 +2261,6 @@ export function AssistantBubble({
                     onClick={() => { setMenuOpen(false); onPreviewCode(previewableCode); }}
                   />
                 )}
-                {onExtractToForge && (
-                  <MenuItem
-                    icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1v8M4 6l3 3 3-3" /><path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" /></svg>}
-                    label="Extract to Forge"
-                    accent
-                    onClick={() => { setMenuOpen(false); onExtractToForge(message.content); }}
-                  />
-                )}
                 <MenuItem
                   icon={<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="5.5" /><path d="M7 4.5v3l2 1.5" /></svg>}
                   label="View session history"
@@ -2285,6 +2273,56 @@ export function AssistantBubble({
         </div>
         )}
       </div>
+
+      {showForgeSheet && createPortal(
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}
+          onClick={() => setShowForgeSheet(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Forge this response"
+            style={{ position: "relative", zIndex: 10000, width: "100%", maxWidth: 360, background: "color-mix(in oklab, var(--atlas-surface) 94%, transparent)", backdropFilter: "blur(28px) saturate(150%)", border: "1px solid color-mix(in oklab, var(--atlas-gold) 22%, transparent)", borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.65), inset 0 1px 0 color-mix(in oklab, var(--atlas-gold) 12%, transparent)", overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p style={{ margin: 0, padding: "14px 16px 10px", fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(var(--atlas-muted-rgb),0.5)", borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 8%, transparent)" }}>
+              Forge this response
+            </p>
+            {onForgeIntake && (
+              <button
+                type="button"
+                disabled={intakeDone}
+                onClick={async () => {
+                  if (intakeDone) return;
+                  setShowForgeSheet(false);
+                  try { await onForgeIntake(message.content); setIntakeDone(true); } catch { /* surfaced by parent */ }
+                }}
+                style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 16px", background: "transparent", border: "none", borderBottom: "1px solid color-mix(in oklab, var(--atlas-gold) 8%, transparent)", cursor: intakeDone ? "default" : "pointer", opacity: intakeDone ? 0.45 : 1, textAlign: "left", WebkitTapHighlightColor: "transparent" }}
+                onPointerDown={(e) => { if (!intakeDone) e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
+                onPointerUp={(e) => { e.currentTarget.style.background = "transparent"; }}
+                onPointerLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ fontSize: 15, color: "var(--atlas-gold)", fontFamily: "var(--app-font-sans)" }}>{intakeDone ? "✓ Sent to Forge" : "⚡ Quick Forge"}</span>
+                <span style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.55)", fontFamily: "var(--app-font-sans)" }}>Immediately map this response into the project.</span>
+              </button>
+            )}
+            {onExtractToForge && (
+              <button
+                type="button"
+                onClick={() => { setShowForgeSheet(false); onExtractToForge(message.content); }}
+                style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, padding: "13px 16px 15px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}
+                onPointerDown={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.06)"; }}
+                onPointerUp={(e) => { e.currentTarget.style.background = "transparent"; }}
+                onPointerLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ fontSize: 15, color: "var(--atlas-fg)", fontFamily: "var(--app-font-sans)" }}>✏️ Review First</span>
+                <span style={{ fontSize: 12, color: "rgba(var(--atlas-muted-rgb),0.55)", fontFamily: "var(--app-font-sans)" }}>Open the Forge editor to review and edit before mapping.</span>
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {showPushModal && activeEdits.length > 0 && (
         <GitHubPushModal

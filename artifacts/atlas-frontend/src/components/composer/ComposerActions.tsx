@@ -77,7 +77,7 @@ type PrimaryItem = {
 };
 
 const PRIMARY_ITEMS: PrimaryItem[] = [
-  { id: "forge-intake", label: "Forge intake", icon: <Flame size={18} strokeWidth={1.6} />, projectOnly: true },
+  { id: "forge-intake", label: "Add to Forge", icon: <Flame size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "files", label: "Files", icon: <FolderClosed size={18} strokeWidth={1.6} />, projectOnly: true },
   { id: "mcp", label: "MCP", icon: <Layers size={18} strokeWidth={1.6} /> },
   { id: "connectors", label: "Connectors", icon: <Plug size={18} strokeWidth={1.6} /> },
