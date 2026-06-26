@@ -23,6 +23,7 @@ import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
 
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
+import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { CommitPill } from "./CommitPill";
 import { setFeeder } from "@/lib/feederStore";
 
@@ -271,6 +272,13 @@ export function GlobalInsightSurface({
     // Force-jump only when message count increments (new turn), not on every streaming tick.
     forceDeps: [messages.length],
   });
+
+  // Follow scroll during streaming — fires on every token so the view tracks
+  // the growing bubble instead of jumping when streaming ends.
+  useEffect(() => {
+    if (!isStreaming) return;
+    followScrollIfNearBottom(scrollRef.current, 160);
+  }, [messages, isStreaming]);
 
 
   const hasInput = input.length > 0;
