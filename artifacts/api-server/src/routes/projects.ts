@@ -913,6 +913,25 @@ router.put("/projects/:id/flow", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// ── Drill cache: persisted sub-node expansions keyed by nodeId:lens ──────────
+
+router.get("/projects/:id/flow/drill-cache", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
+  const userId = (req as any).authUser?.id as number | undefined;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const [proj] = await db
+    .select({ id: projectsTable.id })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)));
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
+  const [canvas] = await db
+    .select({ drillCache: projectFlowCanvasTable.drillCache })
+    .from(projectFlowCanvasTable)
+    .where(eq(projectFlowCanvasTable.projectId, id));
+  res.json(canvas?.drillCache ?? {});
+});
+
 // ── Flow hydration (AI-powered from conversation history) ─────────────────────
 
 router.post("/projects/:id/flow/hydrate", async (req, res): Promise<void> => {

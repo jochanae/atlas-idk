@@ -737,6 +737,20 @@ export function AxiomFlow({
       });
   }, [projectId, storageKey]);
 
+  // Load persisted drill cache from the server on mount so previously-expanded
+  // sub-nodes are available instantly (no re-generation needed on refresh).
+  useEffect(() => {
+    if (!projectId) return;
+    fetch(`/api/projects/${projectId}/flow/drill-cache`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: Record<string, ArchNode[]> | null) => {
+        if (data && typeof data === "object" && Object.keys(data).length > 0) {
+          setSubNodeCache(prev => ({ ...data, ...prev }));
+        }
+      })
+      .catch(() => {});
+  }, [projectId]);
+
   const dbSyncedRef = useRef(false);
   useEffect(() => {
     if (dbSyncedRef.current || !initialNodeState) return;

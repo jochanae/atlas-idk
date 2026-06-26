@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db, projectFlowCanvasTable, projectsTable, nexusMessagesTable } from "@workspace/db";
 import { NODE_GENERATION_SYSTEM_PROMPT } from "../lib/nodeContract";
 
@@ -328,6 +328,19 @@ Respond with ONLY a JSON array. Each element:
           y: 0,
         };
       });
+
+    // Persist to drillCache — fire-and-forget, non-fatal if canvas row doesn't exist yet
+    if (projectId) {
+      const cacheKey = `${nodeId}:${lens}`;
+      try {
+        await db
+          .update(projectFlowCanvasTable)
+          .set({
+            drillCache: sql`COALESCE(drill_cache, '{}'::jsonb) || ${JSON.stringify({ [cacheKey]: nodes })}::jsonb`,
+          })
+          .where(eq(projectFlowCanvasTable.projectId, projectId));
+      } catch { /* non-fatal — canvas row may not exist yet */ }
+    }
 
     res.json({ nodes });
   } catch (err: unknown) {

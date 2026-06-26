@@ -8,6 +8,7 @@ export const projectFlowCanvasTable = pgTable("project_flow_canvas", {
     .references(() => projectsTable.id, { onDelete: "cascade" }),
   nodes: jsonb("nodes").notNull().default([]),
   edges: jsonb("edges").notNull().default([]),
+  drillCache: jsonb("drill_cache").$type<Record<string, unknown[]>>().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
