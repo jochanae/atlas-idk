@@ -760,7 +760,7 @@ export function ChatComposer(props: ChatComposerProps) {
               <button
                 type="button"
                 onClick={onToggleTrustMode}
-                title={trustMode === "auto" ? "Trust mode ON — Atlas applies writes automatically. Click to require review." : "Review mode — confirm before applying writes. Click to enable auto-apply."}
+                title={trustMode === "auto" ? "Auto Apply — Atlas applies file changes immediately. Click to require review." : "Review Writes — Atlas asks before applying file changes. Click to auto-apply."}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
                   padding: "5px 9px", borderRadius: 999,
@@ -782,7 +782,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   flexShrink: 0,
                   transition: "all 160ms ease",
                 }} />
-                {trustMode === "auto" ? "Trust" : "Review"}
+                {trustMode === "auto" ? "Auto Apply" : "Review Writes"}
               </button>
             )}
 

@@ -3986,6 +3986,7 @@ export default function Workspace() {
   const [planExecutions, setPlanExecutions] = useState<Map<number, PlanExecution>>(() => new Map());
   const [atlasGreeting, setAtlasGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(false);
+  const forgeRanRef = useRef(false);
 
   // Session bootstrap deps for useChatStream — moved up from below so the hook
   // can own sessionId/ensureSessionId. project/projectLoading/hasForgeNodes etc.
@@ -4337,7 +4338,7 @@ export default function Workspace() {
   }, [historyMsgCountRef, id, priorLoaded, setMessages]);
 
   useEffect(() => {
-    if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief)) return;
+    if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current) return;
     setGreetingLoading(true);
     fetch(`/api/projects/${id}/greeting`, {
       credentials: "include",
@@ -6408,10 +6409,17 @@ export default function Workspace() {
   const BUILD_INTENT_RE = /\b(build|generate|create|scaffold|prototype|make|render|design)\b/i;
 
   const handleForgeIntake = useCallback(async (content: string) => {
+    const toastId = toast.loading("⚒ Forging into project…");
     try {
       const result = await submitForgeIntake({ transcript: content, projectId: id });
       applyForgeNodes(result.nodes);
-      toast(`Forge intake · ${result.nodes.length} node${result.nodes.length === 1 ? "" : "s"} mapped`);
+      const n = result.nodes.length;
+      const projectName = project?.name ?? "project";
+      toast.success(`✓ ${n} insight${n === 1 ? "" : "s"} added to ${projectName}`, { id: toastId });
+
+      // Suppress the generic greeting and inject a short forge acknowledgement.
+      forgeRanRef.current = true;
+      setAtlasGreeting(`Forge updated — I mapped ${n} new concept${n === 1 ? "" : "s"} into ${projectName}.`);
 
       // Decision-led builder: once the intent is committed (Forge nodes mapped),
       // a detected BUILD verb hands off to the codegen pipeline.
@@ -6419,10 +6427,10 @@ export default function Workspace() {
         void codegen.run(content, result.summary);
       }
     } catch (e) {
-      toast("Forge intake failed — try a more specific description.");
+      toast.error("Forge intake failed — try a more specific description.", { id: toastId });
       throw e;
     }
-  }, [id, applyForgeNodes, codegen]);
+  }, [id, project, applyForgeNodes, codegen, setAtlasGreeting]);
 
   // Open the ForgeIntakeSheet from anywhere (LifecycleGlyph long-press, etc).
   useEffect(() => {
