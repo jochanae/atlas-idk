@@ -343,6 +343,27 @@ router.get("/sessions/:sessionId/messages", async (req, res): Promise<void> => {
   res.json(messages.map(serializeMessage));
 });
 
+// POST /sessions/:id/messages — persist a synthetic assistant trace message (Forge, Flow hydration, etc.)
+// This is a lightweight path for system-initiated actions that must leave a conversation record.
+router.post("/sessions/:id/messages", async (req, res): Promise<void> => {
+  const params = GetSessionParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const userId = (req as any).authUser.id as number;
+  if (!(await sessionBelongsToUser(params.data.id, userId))) {
+    res.status(404).json({ error: "Session not found" }); return;
+  }
+  const body = z.object({
+    role: z.enum(["assistant", "system"]),
+    content: z.string().min(1).max(2000),
+  }).safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const [saved] = await db
+    .insert(chatMessagesTable)
+    .values({ sessionId: params.data.id, role: body.data.role, content: body.data.content })
+    .returning();
+  res.json(serializeMessage(saved));
+});
+
 // GET /sessions/:sessionId/image-versions — list all persisted image versions for a session
 router.get("/sessions/:sessionId/image-versions", async (req, res): Promise<void> => {
   const params = ListMessagesParams.safeParse(req.params);

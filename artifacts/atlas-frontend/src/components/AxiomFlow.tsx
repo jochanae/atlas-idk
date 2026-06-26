@@ -606,6 +606,8 @@ interface AxiomFlowProps {
   isMobile?: boolean;
   projectName?: string;
   lens?: "designer" | "builder" | "storyteller";
+  /** Called once after hydrateFlow successfully maps nodes — use to write a trace to the conversation. */
+  onHydrated?: (nodeCount: number) => void;
 }
 
 export function AxiomFlow({
@@ -630,6 +632,7 @@ export function AxiomFlow({
   isMobile: isMobileProp,
   projectName,
   lens = "designer",
+  onHydrated,
 }: AxiomFlowProps) {
   const storageKey = `${BASE_STORAGE_KEY}${projectId ? `-${projectId}` : ""}`;
   // Prefer the workspace-provided breakpoint; fall back to a local snapshot
@@ -1040,6 +1043,7 @@ export function AxiomFlow({
       setEdges(hydratedEdges);
       setFlowEmpty(false);
       setHydrateError(null);
+      onHydrated?.(positioned.length);
       // Persist to DB immediately (no debounce)
       fetch(`/api/projects/${projectId}/flow`, {
         method: "PUT",
@@ -1052,7 +1056,7 @@ export function AxiomFlow({
     } finally {
       setHydrateLoading(false);
     }
-  }, [projectId, hydrateLoading]);
+  }, [projectId, hydrateLoading, onHydrated]);
 
   // Auto-hydrate from data spine when canvas is a generic shell.
   // Contract:

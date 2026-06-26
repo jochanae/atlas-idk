@@ -1689,6 +1689,7 @@ function RightPanel({
   externalForgeNodes,
   onForgeNodesConsumed,
   onForgeCompleted,
+  onHydrated,
   onContinueSession,
   onNavLedger,
   onNavPreview,
@@ -1752,6 +1753,7 @@ function RightPanel({
   externalForgeNodes?: ArchNode[];
   onForgeNodesConsumed?: () => void;
   onForgeCompleted?: () => void;
+  onHydrated?: (nodeCount: number) => void;
   onContinueSession?: (sessionId: number | string) => void;
   onNavLedger?: () => void;
   onNavPreview?: () => void;
@@ -2246,7 +2248,7 @@ function RightPanel({
         />
       )}
       {tab === "memory" && <MemoryTab projectId={projectId} />}
-      {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
+      {tab === "map" && <FlowPanel projectId={projectId} onHomeNav={onHomeNav} onSendIntent={onSendIntent} onFillIntent={onFillIntent} onBackToChat={onBackToChat} onNavLedger={onNavLedger ?? (() => setTab("ledger"))} onNavPreview={onNavPreview ?? (() => setTab("preview"))} onMapReadinessChange={onMapReadinessChange} displayedReadinessScore={displayedReadinessScore} onSystemNodeMessage={onSystemNodeMessage} onHandover={onHandover} handoverPending={handoverPending} lastHandoverHash={lastHandoverHash} resolvedNodeIds={resolvedNodeIds} onResolvedConsumed={onResolvedConsumed} onSnapshotChange={onSnapshotChange} onHydrated={onHydrated} handoverOpen={handoverOpen} onHandoverOpenChange={onHandoverOpenChange} isMobile={isMobile} onOpenForge={onOpenForge} externalForgeNodes={externalForgeNodes} onForgeNodesConsumed={onForgeNodesConsumed} onForgeCompleted={onForgeCompleted} entryCount={entries?.length} />}
       {tab === "terminal" && <TerminalPanel pendingCommand={pendingTerminalCommand} onCommandConsumed={onTerminalCommandConsumed} onCommandComplete={onCommandComplete} scenarioLens={wsLens === "scenario"} projectId={projectId} />}
       {tab === "write" && <WriteTab projectId={projectId} isMobile={isMobile} />}
     </div>
@@ -3987,6 +3989,7 @@ export default function Workspace() {
   const [atlasGreeting, setAtlasGreeting] = useState<string | null>(null);
   const [greetingLoading, setGreetingLoading] = useState(false);
   const forgeRanRef = useRef(false);
+  const flowHydratedRef = useRef(false);
 
   // Session bootstrap deps for useChatStream — moved up from below so the hook
   // can own sessionId/ensureSessionId. project/projectLoading/hasForgeNodes etc.
@@ -4338,7 +4341,7 @@ export default function Workspace() {
   }, [historyMsgCountRef, id, priorLoaded, setMessages]);
 
   useEffect(() => {
-    if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current) return;
+    if (messages.length > 0 || greetingLoading || atlasGreeting || (isHomeHandoff && resumeBrief) || forgeRanRef.current || sessionsLoading) return;
     setGreetingLoading(true);
     fetch(`/api/projects/${id}/greeting`, {
       credentials: "include",
@@ -4356,7 +4359,7 @@ export default function Workspace() {
       })
       .catch(() => {})
       .finally(() => setGreetingLoading(false));
-  }, [id, messages.length]);
+  }, [id, messages.length, sessionsLoading]);
 
   // Reset workspace-owned chat state when the project changes.
   // (messages / sessionId / priorLoaded / historyMsgCountRef portion lives in useChatStream)
@@ -4373,6 +4376,7 @@ export default function Workspace() {
     importPrimed.current = false;
     homeHandoffPrimed.current = false;
     forgeRanRef.current = false;
+    flowHydratedRef.current = false;
     setAutoNameKey(0);
   }, [id]);
 
@@ -6418,9 +6422,21 @@ export default function Workspace() {
       const projectName = project?.name ?? "project";
       toast.success(`✓ ${n} insight${n === 1 ? "" : "s"} added to ${projectName}`, { id: toastId });
 
-      // Suppress the generic greeting and inject a short forge acknowledgement.
+      // Suppress the generic greeting and persist a trace message to the thread.
       forgeRanRef.current = true;
-      setAtlasGreeting(`Forge updated — I mapped ${n} new concept${n === 1 ? "" : "s"} into ${projectName}.`);
+      const traceContent = `Forge updated — I mapped ${n} new concept${n === 1 ? "" : "s"} into ${projectName}.`;
+      if (sessionId) {
+        void fetch(`/api/sessions/${sessionId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role: "assistant", content: traceContent }),
+        }).then(async (r) => {
+          if (!r.ok) return;
+          const saved = await r.json() as { id: number };
+          setMessages((prev) => [...prev, { id: saved.id, role: "assistant" as const, content: traceContent }]);
+        }).catch(() => {});
+      }
 
       // Decision-led builder: once the intent is committed (Forge nodes mapped),
       // a detected BUILD verb hands off to the codegen pipeline.
@@ -6431,7 +6447,7 @@ export default function Workspace() {
       toast.error("Forge intake failed — try a more specific description.", { id: toastId });
       throw e;
     }
-  }, [id, project, applyForgeNodes, codegen, setAtlasGreeting]);
+  }, [id, project, applyForgeNodes, codegen, sessionId, setMessages]);
 
   // Open the ForgeIntakeSheet from anywhere (LifecycleGlyph long-press, etc).
   useEffect(() => {
@@ -6634,6 +6650,23 @@ export default function Workspace() {
     setCurrentSnapshot(null);
     setHandoverOpen(false);
   }, [id]);
+
+  // Persist a trace message when Flow Hydration generates nodes for the first time.
+  // Called via onHydrated prop on FlowPanel → AxiomFlow.
+  const handleFlowHydrated = useCallback((nodeCount: number) => {
+    if (!sessionId) return;
+    const msg = `Flow generated — ${nodeCount} node${nodeCount === 1 ? "" : "s"} mapped from the conversation.`;
+    void fetch(`/api/sessions/${sessionId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ role: "assistant", content: msg }),
+    }).then(async (r) => {
+      if (!r.ok) return;
+      const saved = await r.json() as { id: number };
+      setMessages((prev) => [...prev, { id: saved.id, role: "assistant" as const, content: msg }]);
+    }).catch(() => {});
+  }, [sessionId, setMessages]);
 
   const handleHandover = useCallback(({ snapshot, title }: { snapshot: HandoverSnapshot; title: string }) => {
     if (!id || handoverPending) return;
@@ -7396,6 +7429,7 @@ export default function Workspace() {
             onResolvedConsumed={() => setPendingResolvedNodeIds([])}
             currentSnapshot={currentSnapshot}
             onSnapshotChange={setCurrentSnapshot}
+            onHydrated={handleFlowHydrated}
             handoverOpen={handoverOpen}
             onHandoverOpenChange={setHandoverOpen}
             sandboxCode={sandboxCode}
@@ -8032,6 +8066,7 @@ export default function Workspace() {
                 onResolvedConsumed={() => setPendingResolvedNodeIds([])}
                 currentSnapshot={currentSnapshot}
                 onSnapshotChange={setCurrentSnapshot}
+                onHydrated={handleFlowHydrated}
                 handoverOpen={handoverOpen}
                 onHandoverOpenChange={setHandoverOpen}
                 sandboxCode={sandboxCode}
