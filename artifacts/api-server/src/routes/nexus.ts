@@ -4,7 +4,8 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, projectGenomeTable, readinessSnapshotsTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable } from "@workspace/db";
+import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
 import { vectorSearch, buildRagBlock } from "../lib/embeddings";
@@ -1838,12 +1839,8 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         ? projectTensions.map((tension) => `${tension.projectA.name} ↔ ${tension.projectB.name}: "${tension.entryA.title}" conflicts with "${tension.entryB.title}"`).join("\n")
         : "None detected.";
 
-      // Atlas State — fetch genome to determine conversational posture
-      const [focusGenomeRow] = await db
-        .select()
-        .from(projectGenomeTable)
-        .where(eq(projectGenomeTable.projectId, focusProjectId))
-        .limit(1);
+      // Atlas State — fetch DNA to determine conversational posture
+      const focusGenomeRow = await getProjectDNA(focusProjectId);
 
       const atlasStateLabel: string = (() => {
         if (!focusGenomeRow) return "Discovering";
@@ -2575,7 +2572,7 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
       const effectiveBuildIntent = parsedInput.buildIntent ?? null;
       await Promise.all([
         db.update(projectsTable).set({ status: "committed" }).where(eq(projectsTable.id, project.id)),
-        db.insert(projectGenomeTable).values({ projectId: project.id }),
+        getOrCreateProjectDNA(project.id),
         ensureProjectWorkspaceDir(project.id),
       ]);
       const [newSession] = await db
@@ -3073,19 +3070,8 @@ router.get("/nexus/manifest/:projectId", async (req, res): Promise<void> => {
       return;
     }
 
-    // 2. Fetch genome (upsert default row if missing)
-    let [genome] = await db
-      .select()
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, projectId))
-      .limit(1);
-
-    if (!genome) {
-      [genome] = await db
-        .insert(projectGenomeTable)
-        .values({ projectId })
-        .returning();
-    }
+    // 2. Fetch DNA from Application Model (canonical source of truth)
+    const genome = await getOrCreateProjectDNA(projectId);
 
     // 3. Map genome fields → 4 anchors with completeness gradient
     const coreIntentValue = genome.purpose;
@@ -3189,18 +3175,7 @@ router.get("/nexus/resume", async (req, res): Promise<void> => {
         .where(and(inArray(entriesTable.projectId, projectIds), eq(entriesTable.status, "committed")))
         .orderBy(desc(entriesTable.createdAt))
         .limit(15),
-      db
-        .select({
-          projectId: projectGenomeTable.projectId,
-          purpose: projectGenomeTable.purpose,
-          audience: projectGenomeTable.audience,
-          wedge: projectGenomeTable.wedge,
-          differentiator: projectGenomeTable.differentiator,
-          stage: projectGenomeTable.stage,
-          openQuestions: projectGenomeTable.openQuestions,
-        })
-        .from(projectGenomeTable)
-        .where(inArray(projectGenomeTable.projectId, projectIds)),
+      getMultipleProjectDNA(projectIds),
       db
         .select({ projectId: sessionsTable.projectId, title: sessionsTable.title, createdAt: sessionsTable.createdAt })
         .from(sessionsTable)
@@ -3217,7 +3192,7 @@ router.get("/nexus/resume", async (req, res): Promise<void> => {
 
     // 3. Build context string for Claude
     const projectNameById = new Map(projects.map(p => [p.id, p.name]));
-    const genomeByProjectId = new Map(genomes.map(g => [g.projectId, g]));
+    const genomeByProjectId = genomes; // Map<number, ProjectDNA> from getMultipleProjectDNA
 
     const projectContext = projects.map(p => {
       const genome = genomeByProjectId.get(p.id);

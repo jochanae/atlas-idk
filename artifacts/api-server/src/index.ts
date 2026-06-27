@@ -1,5 +1,5 @@
 import app from "./app";
-import { db } from "@workspace/db";
+import { db, pool } from "@workspace/db";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { logger } from "./lib/logger";
 import { spawn } from "node:child_process";
@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { startScheduledChecksWorker } from "./lib/scheduledChecksWorker";
 import { seedMissingGenomes, backfillEmptyGenomes, seedMissingSessionsForCommitted } from "./lib/genomeExtract";
 import { seedMissingApplicationModels } from "./routes/applicationModel";
+import { migrateGenomeToApplicationModel } from "./lib/projectDNA";
 
 const rawPort = process.env["PORT"];
 
@@ -200,6 +201,12 @@ async function main() {
 
   seedMissingApplicationModels().catch((err) => {
     logger.warn({ err }, "application model seed on startup failed — non-fatal");
+  });
+
+  // One-time migration: copy any remaining genome data into Application Model rows.
+  // Safe to run on every boot (no-ops if already migrated). Non-blocking.
+  migrateGenomeToApplicationModel().catch((err) => {
+    logger.warn({ err }, "genome→AM migration on startup failed — non-fatal");
   });
 
   app.listen(port, () => {

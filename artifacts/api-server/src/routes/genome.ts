@@ -1,10 +1,17 @@
 import { Router, type IRouter } from "express";
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
-import { db, projectGenomeTable, projectsTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable, applicationModelsTable } from "@workspace/db";
-import { eq, and, desc, sql, count, ne, inArray, isNull } from "drizzle-orm";
+import { db, projectsTable, entriesTable, nexusMessagesTable, sessionsTable } from "@workspace/db";
+import { eq, and, desc, sql, count, ne } from "drizzle-orm";
 import { runGenomeExtraction, isOnCooldown } from "../lib/genomeExtract";
 import { GENOME_STAGES, OBJECT_TYPES } from "@workspace/db";
 import type { GenomeStage } from "@workspace/db";
+import {
+  type ProjectDNA,
+  getProjectDNA,
+  getOrCreateProjectDNA,
+  getMultipleProjectDNA,
+  updateProjectDNA,
+} from "../lib/projectDNA";
 
 const router: IRouter = Router();
 
@@ -25,11 +32,6 @@ async function assertProjectOwner(projectId: number, userId: number): Promise<bo
 function validStage(s: unknown): GenomeStage {
   if (typeof s === "string" && GENOME_STAGES.includes(s as GenomeStage)) return s as GenomeStage;
   return "Think";
-}
-
-function clampConfidence(n: unknown): number {
-  if (typeof n !== "number" || !Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
 }
 
 type MomentumLevel = "Low" | "Medium" | "High";
@@ -65,7 +67,6 @@ function computeAtlasState(
     if (blockerCount > 0 || constraintCount > 1 || openQuestionCount > 2) return "Pressure Testing";
     return "Structuring";
   }
-  // Think stage — differentiate Discovering vs Pressure Testing
   if (blockerCount > 0 || constraintCount > 0 || openQuestionCount > 2 || recentMsgCount > 8 || objectCount > 3) {
     return "Pressure Testing";
   }
@@ -88,35 +89,7 @@ function nextActionForStage(stage: string, openQuestions: string[], constraints:
   }
 }
 
-/** Compute an additive clarity boost from Application Model richness (0–20 points). */
-async function computeModelRichnessBoost(projectId: number): Promise<{ boost: number; source: string }> {
-  try {
-    const rows = await db
-      .select({ identity: applicationModelsTable.identity, intent: applicationModelsTable.intent, pages: applicationModelsTable.pages })
-      .from(applicationModelsTable)
-      .where(eq(applicationModelsTable.projectId, projectId))
-      .limit(1);
-    if (rows.length === 0) return { boost: 0, source: "no model" };
-    const { identity, intent, pages } = rows[0];
-    let boost = 0;
-    const parts: string[] = [];
-    const id = (identity as Record<string, unknown>) ?? {};
-    const it = (intent as Record<string, unknown>) ?? {};
-    const pg = (pages as unknown[]) ?? [];
-    if (id.name) { boost += 3; parts.push("named"); }
-    if (id.purpose) { boost += 5; parts.push("purpose"); }
-    if (id.audience) { boost += 4; parts.push("audience"); }
-    if (it.summary) { boost += 4; parts.push("intent"); }
-    if (Array.isArray(it.coreProblems) && (it.coreProblems as unknown[]).length > 0) { boost += 2; parts.push("problems"); }
-    if (Array.isArray(it.keyOutcomes) && (it.keyOutcomes as unknown[]).length > 0) { boost += 2; parts.push("outcomes"); }
-    if (pg.length > 0) { boost += Math.min(2, pg.length); parts.push(`${pg.length} pages`); }
-    return { boost: Math.min(20, boost), source: parts.length > 0 ? parts.join(", ") : "sparse model" };
-  } catch {
-    return { boost: 0, source: "model unavailable" };
-  }
-}
-
-async function computeProjectHealth(projectId: number, genome: typeof projectGenomeTable.$inferSelect) {
+async function computeProjectHealth(projectId: number, dna: ProjectDNA) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [msgRow, blockerCountRow, objectCountRow, sessionCountRow, committedRow, parkedRow] = await Promise.all([
@@ -148,31 +121,20 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
     )).then(r => r[0]),
   ]);
 
-  // top blocker title for risk display
-  const [topBlocker] = await db
-    .select({ title: entriesTable.title })
-    .from(entriesTable)
-    .where(and(
-      eq(entriesTable.projectId, projectId),
-      eq(entriesTable.type, "Blocker"),
-      ne(entriesTable.status, "archived"),
-    ))
-    .orderBy(desc(entriesTable.createdAt))
-    .limit(1);
-
   const recentMsgCount = Number(msgRow?.n ?? 0);
   const blockerCount = Number(blockerCountRow?.n ?? 0);
   const objectCount = Number(objectCountRow?.n ?? 0);
   const totalSessions = Number(sessionCountRow?.n ?? 0);
   const committedDecisions = Number(committedRow?.n ?? 0);
   const parkedItems = Number(parkedRow?.n ?? 0);
-  const constraints = genome.constraints ?? [];
-  const openQuestions = genome.openQuestions ?? [];
-  const risk = topBlocker?.title ?? constraints[0] ?? null;
 
+  const constraints = dna.constraints ?? [];
+  const openQuestions = dna.openQuestions ?? [];
+
+  const momentum = momentumFromCount(recentMsgCount);
   const atlasState = computeAtlasState(
-    genome.stage,
-    genome.confidenceScore,
+    dna.stage,
+    dna.confidenceScore,
     openQuestions.length,
     constraints.length,
     blockerCount,
@@ -180,85 +142,55 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
     objectCount,
   );
 
-  const { boost: modelBoost, source: modelSource } = await computeModelRichnessBoost(projectId);
-  const clarityScore = Math.min(100, genome.confidenceScore + modelBoost);
+  const clarityScore = Math.min(100, dna.confidenceScore);
+  const confidence = confidenceLevelFromScore(clarityScore);
+
+  const topBlocker = blockerCount > 0
+    ? (await db.select({ title: entriesTable.title })
+        .from(entriesTable)
+        .where(and(eq(entriesTable.projectId, projectId), eq(entriesTable.type, "Blocker"), ne(entriesTable.status, "archived")))
+        .orderBy(desc(entriesTable.createdAt))
+        .limit(1))[0]?.title ?? null
+    : null;
 
   return {
-    clarity: clarityScore,
-    momentum: momentumFromCount(recentMsgCount),
-    confidence: confidenceLevelFromScore(clarityScore),
-    risk,
-    nextAction: nextActionForStage(genome.stage, openQuestions, constraints),
+    momentum,
     atlasState,
-    // Explainability: raw signals that drove each conclusion above.
-    // Never stored — generated fresh on every GET /genome call.
-    evidence: {
-      scope: "project" as const,
-      signals: {
-        conversationsLast7Days: recentMsgCount,
-        totalSessions,
-        committedDecisions,
-        parkedItems,
-        openBlockers: blockerCount,
-        openConstraints: constraints.length,
-        openQuestions: openQuestions.length,
-        confidenceScore: genome.confidenceScore,
-        modelRichnessBoost: modelBoost,
-      },
-      derivations: {
-        momentum: recentMsgCount >= 16
-          ? `${recentMsgCount} conversations this week → High`
-          : recentMsgCount >= 6
-            ? `${recentMsgCount} conversations this week → Medium`
-            : `${recentMsgCount} conversations this week → Low`,
-        clarity: modelBoost > 0
-          ? `${genome.confidenceScore}% confidence + ${modelBoost} model richness (${modelSource}) = ${clarityScore}%`
-          : `${genome.confidenceScore}% confidence score`,
-        state: `${genome.stage} stage${blockerCount > 0 ? ` · ${blockerCount} blocker${blockerCount !== 1 ? "s" : ""}` : ""} → ${atlasState}`,
-      },
-    },
+    clarity: clarityScore,
+    clarityDetail: `${dna.confidenceScore}% confidence score`,
+    confidence,
+    state: `${dna.stage} stage${blockerCount > 0 ? ` · ${blockerCount} blocker${blockerCount !== 1 ? "s" : ""}` : ""} → ${atlasState}`,
+    blockerCount,
+    objectCount,
+    totalSessions,
+    committedDecisions,
+    parkedItems,
+    openQuestions,
+    nextAction: nextActionForStage(dna.stage, openQuestions, constraints),
+    risk: topBlocker,
   };
 }
 
-async function serializeGenome(projectId: number, row: typeof projectGenomeTable.$inferSelect) {
-  const health = await computeProjectHealth(projectId, row);
+function serializeGenomeFromDNA(projectId: number, dna: ProjectDNA, health: Awaited<ReturnType<typeof computeProjectHealth>>) {
   return {
-    id: row.id,
-    projectId: row.projectId,
-    purpose: row.purpose,
-    coreEmotion: row.coreEmotion,
-    audience: row.audience,
-    identity: row.identity,
-    format: row.format,
-    wedge: row.wedge,
-    differentiator: row.differentiator,
-    constraints: row.constraints ?? [],
-    openQuestions: row.openQuestions ?? [],
-    stage: row.stage,
-    confidenceScore: row.confidenceScore,
-    lastEvolvedAt: row.lastEvolvedAt?.toISOString() ?? null,
-    lastExtractedAt: row.lastExtractedAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    projectId,
+    purpose: dna.purpose,
+    coreEmotion: dna.coreEmotion,
+    audience: dna.audience,
+    identity: dna.identity,
+    format: dna.format,
+    wedge: dna.wedge,
+    differentiator: dna.differentiator,
+    constraints: dna.constraints,
+    openQuestions: dna.openQuestions,
+    stack: dna.stack,
+    protectedAreas: dna.protectedAreas,
+    stage: dna.stage,
+    confidenceScore: dna.confidenceScore,
+    lastEvolvedAt: dna.lastEvolvedAt?.toISOString() ?? null,
+    lastExtractedAt: dna.lastExtractedAt?.toISOString() ?? null,
     health,
   };
-}
-
-async function getOrCreateGenome(projectId: number) {
-  const [existing] = await db
-    .select()
-    .from(projectGenomeTable)
-    .where(eq(projectGenomeTable.projectId, projectId))
-    .limit(1);
-
-  if (existing) return existing;
-
-  const [created] = await db
-    .insert(projectGenomeTable)
-    .values({ projectId })
-    .returning();
-
-  return created;
 }
 
 // GET /api/projects/:id/genome
@@ -271,8 +203,9 @@ router.get("/projects/:id/genome", async (req, res): Promise<void> => {
     const owns = await assertProjectOwner(projectId, userId);
     if (!owns) { res.status(404).json({ error: "Project not found" }); return; }
 
-    const genome = await getOrCreateGenome(projectId);
-    res.json(await serializeGenome(projectId, genome));
+    const dna = await getOrCreateProjectDNA(projectId);
+    const health = await computeProjectHealth(projectId, dna);
+    res.json(serializeGenomeFromDNA(projectId, dna, health));
   } catch (err) {
     req.log?.error({ err }, "genome GET error");
     res.status(500).json({ error: "Failed to fetch genome" });
@@ -290,59 +223,48 @@ router.patch("/projects/:id/genome", async (req, res): Promise<void> => {
     if (!owns) { res.status(404).json({ error: "Project not found" }); return; }
 
     const body = req.body as Record<string, unknown>;
-    const update: Record<string, unknown> = {};
+    const patch: Parameters<typeof updateProjectDNA>[1] = {};
 
-    if ("purpose" in body) update.purpose = typeof body.purpose === "string" ? body.purpose : null;
-    if ("coreEmotion" in body) update.coreEmotion = typeof body.coreEmotion === "string" ? body.coreEmotion : null;
-    if ("audience" in body) update.audience = typeof body.audience === "string" ? body.audience : null;
-    if ("identity" in body) update.identity = typeof body.identity === "string" ? body.identity : null;
-    if ("format" in body) update.format = typeof body.format === "string" ? body.format : null;
-    if ("wedge" in body) update.wedge = typeof body.wedge === "string" ? body.wedge : null;
-    if ("differentiator" in body) update.differentiator = typeof body.differentiator === "string" ? body.differentiator : null;
-    if ("constraints" in body && Array.isArray(body.constraints)) update.constraints = body.constraints.filter((x: unknown) => typeof x === "string").slice(0, 5);
-    if ("openQuestions" in body && Array.isArray(body.openQuestions)) update.openQuestions = body.openQuestions.filter((x: unknown) => typeof x === "string").slice(0, 5);
-    if ("stack" in body && Array.isArray(body.stack)) update.stack = body.stack.filter((x: unknown) => typeof x === "string");
-    if ("protectedAreas" in body && Array.isArray(body.protectedAreas)) update.protectedAreas = body.protectedAreas.filter((x: unknown) => typeof x === "string");
-    if ("stage" in body) update.stage = validStage(body.stage);
-    // confidenceScore is extraction-computed — not user-editable
+    if ("purpose" in body)       patch.purpose = typeof body.purpose === "string" ? body.purpose : null;
+    if ("coreEmotion" in body)   patch.coreEmotion = typeof body.coreEmotion === "string" ? body.coreEmotion : null;
+    if ("audience" in body)      patch.audience = typeof body.audience === "string" ? body.audience : null;
+    if ("identity" in body)      patch.identity = typeof body.identity === "string" ? body.identity : null;
+    if ("format" in body)        patch.format = typeof body.format === "string" ? body.format : null;
+    if ("wedge" in body)         patch.wedge = typeof body.wedge === "string" ? body.wedge : null;
+    if ("differentiator" in body) patch.differentiator = typeof body.differentiator === "string" ? body.differentiator : null;
+    if ("constraints" in body && Array.isArray(body.constraints))
+      patch.constraints = body.constraints.filter((x: unknown) => typeof x === "string").slice(0, 5) as string[];
+    if ("openQuestions" in body && Array.isArray(body.openQuestions))
+      patch.openQuestions = body.openQuestions.filter((x: unknown) => typeof x === "string").slice(0, 5) as string[];
+    if ("stack" in body && Array.isArray(body.stack))
+      patch.stack = body.stack.filter((x: unknown) => typeof x === "string") as string[];
+    if ("protectedAreas" in body && Array.isArray(body.protectedAreas))
+      patch.protectedAreas = body.protectedAreas.filter((x: unknown) => typeof x === "string") as string[];
+    if ("stage" in body)         patch.stage = validStage(body.stage);
 
-    if (Object.keys(update).length === 0) {
-      const genome = await getOrCreateGenome(projectId);
-      res.json(await serializeGenome(projectId, genome));
+    if (Object.keys(patch).length === 0) {
+      const dna = await getOrCreateProjectDNA(projectId);
+      const health = await computeProjectHealth(projectId, dna);
+      res.json(serializeGenomeFromDNA(projectId, dna, health));
       return;
     }
 
-    const [existing] = await db
-      .select({
-        id: projectGenomeTable.id,
-        purpose: projectGenomeTable.purpose,
-        audience: projectGenomeTable.audience,
-        wedge: projectGenomeTable.wedge,
-        stack: projectGenomeTable.stack,
-        protectedAreas: projectGenomeTable.protectedAreas,
-        constraints: projectGenomeTable.constraints,
-      })
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, projectId))
-      .limit(1);
+    const prevDna = await getProjectDNA(projectId);
 
-    if (existing) {
-      await db.update(projectGenomeTable).set(update).where(eq(projectGenomeTable.projectId, projectId));
-    } else {
-      await db.insert(projectGenomeTable).values({ projectId, ...update });
-    }
+    await updateProjectDNA(projectId, patch);
 
-    // Event 2 — Refresh Atlas Memory when major fields change (fire-and-forget)
+    // Refresh Atlas Memory when major fields change (fire-and-forget)
     const majorFields = ["purpose", "audience", "wedge", "stack", "protectedAreas", "constraints"] as const;
-    const hasMajorChange = existing && majorFields.some(
-      f => f in update && JSON.stringify((update as Record<string, unknown>)[f]) !== JSON.stringify((existing as Record<string, unknown>)[f]),
+    const hasMajorChange = prevDna && majorFields.some(
+      f => f in patch && JSON.stringify((patch as unknown as Record<string, unknown>)[f]) !== JSON.stringify((prevDna as unknown as Record<string, unknown>)[f]),
     );
     if (hasMajorChange) {
       pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});
     }
 
-    const genome = await getOrCreateGenome(projectId);
-    res.json(await serializeGenome(projectId, genome));
+    const dna = await getOrCreateProjectDNA(projectId);
+    const health = await computeProjectHealth(projectId, dna);
+    res.json(serializeGenomeFromDNA(projectId, dna, health));
   } catch (err) {
     req.log?.error({ err }, "genome PATCH error");
     res.status(500).json({ error: "Failed to update genome" });
@@ -361,15 +283,17 @@ router.post("/projects/:id/genome/extract", async (req, res): Promise<void> => {
 
     const force = (req.body as Record<string, unknown>)?.force === true;
     if (!force && isOnCooldown(projectId)) {
-      const genome = await getOrCreateGenome(projectId);
-      res.json({ genome: await serializeGenome(projectId, genome), skipped: true, reason: "cooldown" });
+      const dna = await getOrCreateProjectDNA(projectId);
+      const health = await computeProjectHealth(projectId, dna);
+      res.json({ genome: serializeGenomeFromDNA(projectId, dna, health), skipped: true, reason: "cooldown" });
       return;
     }
 
     await runGenomeExtraction(projectId);
 
-    const genome = await getOrCreateGenome(projectId);
-    res.json({ genome: await serializeGenome(projectId, genome), skipped: false });
+    const dna = await getOrCreateProjectDNA(projectId);
+    const health = await computeProjectHealth(projectId, dna);
+    res.json({ genome: serializeGenomeFromDNA(projectId, dna, health), skipped: false });
   } catch (err) {
     req.log?.error({ err }, "genome extract error");
     res.status(500).json({ error: "Extraction failed" });
@@ -416,7 +340,7 @@ router.get("/projects/:id/objects", async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/projects/genome/backfill — run extraction for all user projects with empty genomes
+// POST /api/projects/genome/backfill — run extraction for all user projects never extracted
 router.post("/projects/genome/backfill", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).authUser.id as number;
@@ -428,25 +352,18 @@ router.post("/projects/genome/backfill", async (req, res): Promise<void> => {
 
     if (userProjects.length === 0) { res.json({ queued: 0, projects: [] }); return; }
 
-    const projectIds = userProjects.map(p => p.id);
-
-    const existingGenomes = await db
-      .select({ projectId: projectGenomeTable.projectId, lastExtractedAt: projectGenomeTable.lastExtractedAt })
-      .from(projectGenomeTable)
-      .where(inArray(projectGenomeTable.projectId, projectIds));
-
-    const extractedSet = new Set(
-      existingGenomes.filter(g => g.lastExtractedAt !== null).map(g => g.projectId),
-    );
-
-    const toBackfill = userProjects.filter(p => !extractedSet.has(p.id));
+    // Check AM buildState.lastExtractedAt to find projects never extracted
+    const dnaMap = await getMultipleProjectDNA(userProjects.map(p => p.id));
+    const toBackfill = userProjects.filter(p => {
+      const dna = dnaMap.get(p.id);
+      return !dna?.lastExtractedAt;
+    });
 
     if (toBackfill.length === 0) {
       res.json({ queued: 0, message: "All projects already have genome data.", projects: [] });
       return;
     }
 
-    // Run extractions serially to avoid hammering the AI API
     void (async () => {
       for (const p of toBackfill) {
         try {
@@ -482,17 +399,12 @@ router.get("/portfolio/health", async (req, res): Promise<void> => {
 
     if (projects.length === 0) { res.json([]); return; }
 
-    const genomes = await db
-      .select()
-      .from(projectGenomeTable)
-      .where(inArray(projectGenomeTable.projectId, projects.map(p => p.id)));
-
-    const genomeMap = new Map(genomes.map(g => [g.projectId, g]));
+    const dnaMap = await getMultipleProjectDNA(projects.map(p => p.id));
 
     const results = await Promise.all(projects.map(async (p) => {
-      const genome = genomeMap.get(p.id);
+      const dna = dnaMap.get(p.id);
       const updatedAt = p.updatedAt?.toISOString() ?? new Date().toISOString();
-      if (!genome) {
+      if (!dna) {
         return {
           projectId: p.id,
           projectName: p.name,
@@ -506,12 +418,12 @@ router.get("/portfolio/health", async (req, res): Promise<void> => {
           nextAction: "Start shaping your core idea — what problem are you solving?",
         };
       }
-      const health = await computeProjectHealth(p.id, genome);
+      const health = await computeProjectHealth(p.id, dna);
       return {
         projectId: p.id,
         projectName: p.name,
         updatedAt,
-        stage: genome.stage,
+        stage: dna.stage,
         atlasState: health.atlasState,
         momentum: health.momentum,
         clarity: health.clarity,

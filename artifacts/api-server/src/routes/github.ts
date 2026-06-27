@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
-import { atlasIncidentsTable, connectionsTable, db, entriesTable, projectGenomeTable, projectsTable } from "@workspace/db";
+import { atlasIncidentsTable, connectionsTable, db, entriesTable, projectsTable } from "@workspace/db";
+import { getProjectDNA } from "../lib/projectDNA";
 import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
 import { spawn } from "child_process";
 import { writeFile, mkdir, rm, unlink, rename } from "fs/promises";
@@ -1357,28 +1358,14 @@ router.post("/github/bootstrap-repo", async (req, res): Promise<void> => {
     .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)))
     .limit(1);
 
-  const [genome] = await db
-    .select({
-      purpose: projectGenomeTable.purpose,
-      audience: projectGenomeTable.audience,
-      wedge: projectGenomeTable.wedge,
-      stage: projectGenomeTable.stage,
-      stack: projectGenomeTable.stack,
-      protectedAreas: projectGenomeTable.protectedAreas,
-      constraints: projectGenomeTable.constraints,
-      openQuestions: projectGenomeTable.openQuestions,
-    })
-    .from(projectGenomeTable)
-    .where(eq(projectGenomeTable.projectId, projectId))
-    .limit(1);
-
-  // Fetch recent ledger entries to seed ATLAS.md context (most recent 15, newest first)
-  const recentEntries = await db
-    .select({ title: entriesTable.title, mode: entriesTable.mode })
-    .from(entriesTable)
-    .where(eq(entriesTable.projectId, projectId))
-    .orderBy(desc(entriesTable.createdAt))
-    .limit(15);
+  const [genome, recentEntries] = await Promise.all([
+    getProjectDNA(projectId),
+    db.select({ title: entriesTable.title, mode: entriesTable.mode })
+      .from(entriesTable)
+      .where(eq(entriesTable.projectId, projectId))
+      .orderBy(desc(entriesTable.createdAt))
+      .limit(15),
+  ]);
 
   // Caller can override; otherwise: idea projects → docs-only, everything else → code scaffold
   const isCodeProject = reqIsCodeProject ?? (project?.entityType !== "idea");

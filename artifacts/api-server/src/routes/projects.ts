@@ -3,7 +3,8 @@ import { randomUUID } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import { bustResumeCache } from "./nexus";
-import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, projectGenomeTable, nexusMessagesTable } from "@workspace/db";
+import { db, projectsTable, sessionsTable, entriesTable, readinessSnapshotsTable, blueprintsTable, projectFlowCanvasTable, artifactsTable, nexusMessagesTable, applicationModelsTable } from "@workspace/db";
+import { getProjectDNA, getOrCreateProjectDNA } from "../lib/projectDNA";
 import { encryptToken, decryptToken } from "../lib/tokenCrypto";
 import { createProjectForUser, ensureProjectSchema, ProjectLimitReachedError } from "../lib/projectCreation";
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
@@ -438,17 +439,17 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
   }
 
   if (project.status === "committed") {
-    const [genome] = await db
-      .select({ id: projectGenomeTable.id })
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, projectId))
-      .limit(1);
-    const [session] = await db
-      .select({ id: sessionsTable.id })
-      .from(sessionsTable)
-      .where(eq(sessionsTable.projectId, projectId))
-      .limit(1);
-    if (genome && session) {
+    const [[amRow], [session]] = await Promise.all([
+      db.select({ id: applicationModelsTable.id })
+        .from(applicationModelsTable)
+        .where(eq(applicationModelsTable.projectId, projectId))
+        .limit(1),
+      db.select({ id: sessionsTable.id })
+        .from(sessionsTable)
+        .where(eq(sessionsTable.projectId, projectId))
+        .limit(1),
+    ]);
+    if (amRow && session) {
       res.json(serializeProject(project, true));
       return;
     }
@@ -456,14 +457,14 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
   }
 
   try {
-    const [existingGenome] = await db
-      .select({ id: projectGenomeTable.id })
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, projectId))
+    const [existingAm] = await db
+      .select({ id: applicationModelsTable.id })
+      .from(applicationModelsTable)
+      .where(eq(applicationModelsTable.projectId, projectId))
       .limit(1);
 
-    if (!existingGenome) {
-      await db.insert(projectGenomeTable).values({ projectId });
+    if (!existingAm) {
+      await getOrCreateProjectDNA(projectId);
     }
 
     const [existingSession] = await db
@@ -559,8 +560,8 @@ router.post("/projects/create-and-activate", async (req, res): Promise<void> => 
 
     const projectId = project.id;
 
-    // 2. Seed genome
-    await db.insert(projectGenomeTable).values({ projectId });
+    // 2. Seed Application Model (canonical DNA store)
+    await getOrCreateProjectDNA(projectId);
 
     // 3. Seed session — carry the build intent so workspace Atlas knows what to build
     const buildIntentStr = typeof buildIntent === "string" && buildIntent.trim() ? buildIntent.trim() : null;
@@ -773,7 +774,7 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
   const userId = (req as any).authUser?.id as number | undefined;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const [[project], [genome]] = await Promise.all([
+  const [[project], genome] = await Promise.all([
     db
       .select({
         name: projectsTable.name,
@@ -783,18 +784,7 @@ router.get("/projects/:id/greeting", async (req, res): Promise<void> => {
       })
       .from(projectsTable)
       .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
-    db
-      .select({
-        purpose: projectGenomeTable.purpose,
-        audience: projectGenomeTable.audience,
-        wedge: projectGenomeTable.wedge,
-        differentiator: projectGenomeTable.differentiator,
-        openQuestions: projectGenomeTable.openQuestions,
-        confidenceScore: projectGenomeTable.confidenceScore,
-      })
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, id))
-      .limit(1),
+    getProjectDNA(id),
   ]);
 
   if (!project) { res.status(404).json({ error: "Project not found" }); return; }
@@ -945,14 +935,11 @@ router.post("/projects/:id/flow/hydrate", async (req, res): Promise<void> => {
     return;
   }
 
-  const [[proj], [genome], messages] = await Promise.all([
+  const [[proj], genome, messages] = await Promise.all([
     db.select({ id: projectsTable.id, name: projectsTable.name })
       .from(projectsTable)
       .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
-    db.select()
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, id))
-      .limit(1),
+    getProjectDNA(id),
     db.select({ role: nexusMessagesTable.role, content: nexusMessagesTable.content })
       .from(nexusMessagesTable)
       .where(and(
@@ -1105,19 +1092,15 @@ router.get("/projects/:id/resume", async (req, res): Promise<void> => {
   // Return existing artifact if present
   if (existing) { res.json({ artifact: existing }); return; }
 
-  // No resume artifact yet — auto-generate one from genome so the workspace
+  // No resume artifact yet — auto-generate one from DNA so the workspace
   // empty state (resumeBrief) is never null for a project with shaping data.
-  const [genome] = await db
-    .select()
-    .from(projectGenomeTable)
-    .where(eq(projectGenomeTable.projectId, id))
-    .limit(1);
+  const genome = await getProjectDNA(id);
 
   const hasShaping = genome && (genome.purpose || genome.wedge || genome.audience);
   if (!hasShaping) { res.json({ artifact: null }); return; }
 
-  const clarityScore: number = typeof genome.confidenceScore === "number" ? genome.confidenceScore : 0;
-  const openQuestions = Array.isArray(genome.openQuestions) ? genome.openQuestions as string[] : [];
+  const clarityScore: number = genome.confidenceScore ?? 0;
+  const openQuestions = genome.openQuestions ?? [];
 
   function suggestedBuildFromGenome(score: number, intent: boolean, audience: boolean): string {
     if (!intent) return "Start by defining your core intent";
@@ -1204,13 +1187,9 @@ router.post("/projects/:id/append-thread", async (req, res): Promise<void> => {
     }
   }
 
-  const [genomeRow] = await db
-    .select()
-    .from(projectGenomeTable)
-    .where(eq(projectGenomeTable.projectId, id))
-    .limit(1);
+  const genomeRow = await getProjectDNA(id);
 
-  const clarityScore: number = typeof genomeRow?.confidenceScore === "number" ? genomeRow.confidenceScore : 0;
+  const clarityScore: number = genomeRow?.confidenceScore ?? 0;
   const hasIntent = Boolean(genomeRow?.purpose);
   const hasAudience = Boolean(genomeRow?.audience);
 
@@ -1319,21 +1298,11 @@ router.post("/:id/editorial", async (req, res) => {
     return;
   }
 
-  const [[proj], [genome]] = await Promise.all([
+  const [[proj], genome] = await Promise.all([
     db.select({ id: projectsTable.id, name: projectsTable.name })
       .from(projectsTable)
       .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId))),
-    db.select({
-      purpose: projectGenomeTable.purpose,
-      audience: projectGenomeTable.audience,
-      stage: projectGenomeTable.stage,
-      identity: projectGenomeTable.identity,
-      wedge: projectGenomeTable.wedge,
-      differentiator: projectGenomeTable.differentiator,
-    })
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, id))
-      .limit(1),
+    getProjectDNA(id),
   ]);
 
   if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
@@ -1609,18 +1578,7 @@ router.post("/:id/review", async (req, res) => {
 
   await Promise.all(profileConfig.requiredContext.map(async (key) => {
     if (key === "genome") {
-      const [genome] = await db.select({
-        purpose: projectGenomeTable.purpose,
-        audience: projectGenomeTable.audience,
-        stage: projectGenomeTable.stage,
-        identity: projectGenomeTable.identity,
-        wedge: projectGenomeTable.wedge,
-        differentiator: projectGenomeTable.differentiator,
-      })
-        .from(projectGenomeTable)
-        .where(eq(projectGenomeTable.projectId, id))
-        .limit(1);
-      ctx.genome = genome ?? null;
+      ctx.genome = await getProjectDNA(id);
     }
 
     if (key === "decisions") {

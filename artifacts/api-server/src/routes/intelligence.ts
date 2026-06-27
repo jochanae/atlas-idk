@@ -17,13 +17,13 @@ import { eq, and, desc, ne, sql, count, inArray } from "drizzle-orm";
 import {
   db,
   projectsTable,
-  projectGenomeTable,
   entriesTable,
   nexusMessagesTable,
   projectFlowCanvasTable,
 } from "@workspace/db";
 import { computeProjectReadiness } from "./readiness";
 import type { AtlasState } from "./genome";
+import { getProjectDNA } from "../lib/projectDNA";
 
 const router: IRouter = Router();
 
@@ -99,7 +99,7 @@ export async function computeProjectIntelligence(projectId: number) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
-    [genome],
+    genome,
     [project],
     readiness,
     recentEntries,
@@ -107,10 +107,7 @@ export async function computeProjectIntelligence(projectId: number) {
     [objectCountRow],
     [flowCanvas],
   ] = await Promise.all([
-    db.select()
-      .from(projectGenomeTable)
-      .where(eq(projectGenomeTable.projectId, projectId))
-      .limit(1),
+    getProjectDNA(projectId),
 
     db.select({
       id: projectsTable.id,

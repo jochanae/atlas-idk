@@ -1,6 +1,7 @@
 import { eq, desc } from "drizzle-orm";
-import { db, projectsTable, projectGenomeTable, sessionsTable, entriesTable } from "@workspace/db";
+import { db, projectsTable, sessionsTable, entriesTable } from "@workspace/db";
 import { getGithubTokenForUser, generateAtlasMd, type ProjectMemory } from "./githubBootstrap";
+import { getProjectDNA } from "./projectDNA";
 
 const GH_API = "https://api.github.com";
 
@@ -25,8 +26,8 @@ function parseLinkedRepo(raw: string | null | undefined): string | null {
 }
 
 export async function synthesizeProjectMemory(projectId: number, projectName: string): Promise<ProjectMemory> {
-  const [genome, recentSessions, recentEntries] = await Promise.all([
-    db.select().from(projectGenomeTable).where(eq(projectGenomeTable.projectId, projectId)).limit(1),
+  const [dna, recentSessions, recentEntries] = await Promise.all([
+    getProjectDNA(projectId),
     db.select({ title: sessionsTable.title, status: sessionsTable.status })
       .from(sessionsTable)
       .where(eq(sessionsTable.projectId, projectId))
@@ -39,18 +40,17 @@ export async function synthesizeProjectMemory(projectId: number, projectName: st
       .limit(15),
   ]);
 
-  const g = genome[0];
   return {
     projectName,
     genome: {
-      purpose: g?.purpose,
-      audience: g?.audience,
-      wedge: g?.wedge,
-      stage: g?.stage ?? null,
-      stack: g?.stack ?? [],
-      protectedAreas: g?.protectedAreas ?? [],
-      constraints: g?.constraints ?? [],
-      openQuestions: g?.openQuestions ?? [],
+      purpose: dna?.purpose,
+      audience: dna?.audience,
+      wedge: dna?.wedge,
+      stage: dna?.stage ?? null,
+      stack: dna?.stack ?? [],
+      protectedAreas: dna?.protectedAreas ?? [],
+      constraints: dna?.constraints ?? [],
+      openQuestions: dna?.openQuestions ?? [],
     },
     recentSessions,
     recentEntries,

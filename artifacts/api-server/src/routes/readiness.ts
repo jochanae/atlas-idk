@@ -3,10 +3,10 @@ import { eq, and, sql, desc } from "drizzle-orm";
 import {
   db,
   projectsTable,
-  projectGenomeTable,
   entriesTable,
   readinessSnapshotsTable,
 } from "@workspace/db";
+import { getProjectDNA } from "../lib/projectDNA";
 
 const router: IRouter = Router();
 
@@ -85,11 +85,7 @@ export async function computeProjectReadiness(projectId: number): Promise<Projec
 
   if (!project) throw new Error(`Project ${projectId} not found`);
 
-  const [genome] = await db
-    .select()
-    .from(projectGenomeTable)
-    .where(eq(projectGenomeTable.projectId, projectId))
-    .limit(1);
+  const genome = await getProjectDNA(projectId);
 
   const [entryStats] = await db
     .select({

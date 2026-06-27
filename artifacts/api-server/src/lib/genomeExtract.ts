@@ -1,9 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { db, projectGenomeTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable, projectsTable } from "@workspace/db";
+import { db, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable, projectsTable } from "@workspace/db";
 import { eq, desc, count, and, sql, ne } from "drizzle-orm";
 import { logger } from "./logger";
 import { GENOME_STAGES, OBJECT_TYPES } from "@workspace/db";
 import type { GenomeStage, ObjectType } from "@workspace/db";
+import { updateProjectDNA, getOrCreateProjectDNA } from "./projectDNA";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -270,32 +271,24 @@ Rules:
 
   const now = new Date();
 
-  const genomeUpdate = {
+  const dnaUpdate: Parameters<typeof updateProjectDNA>[1] = {
     ...(typeof parsed.purpose === "string" ? { purpose: parsed.purpose || null } : {}),
     ...(typeof parsed.coreEmotion === "string" ? { coreEmotion: parsed.coreEmotion || null } : {}),
     ...(typeof parsed.audience === "string" ? { audience: parsed.audience || null } : {}),
     ...(typeof parsed.identity === "string" ? { identity: parsed.identity || null } : {}),
     ...(typeof parsed.wedge === "string" ? { wedge: parsed.wedge || null } : {}),
     ...(typeof parsed.differentiator === "string" ? { differentiator: parsed.differentiator || null } : {}),
-    ...(Array.isArray(parsed.constraints) ? { constraints: parsed.constraints.filter(Boolean).slice(0, 5) } : {}),
-    ...(Array.isArray(parsed.openQuestions) ? { openQuestions: parsed.openQuestions.filter(Boolean).slice(0, 5) } : {}),
+    ...(Array.isArray(parsed.constraints) ? { constraints: (parsed.constraints as unknown[]).filter(Boolean).slice(0, 5) as string[] } : {}),
+    ...(Array.isArray(parsed.openQuestions) ? { openQuestions: (parsed.openQuestions as unknown[]).filter(Boolean).slice(0, 5) as string[] } : {}),
     ...(parsed.stage ? { stage: validStage(parsed.stage) } : {}),
     confidenceScore: clampConfidence(parsed.confidenceScore),
     lastEvolvedAt: now,
     lastExtractedAt: now,
   };
 
-  const [existing] = await db
-    .select({ id: projectGenomeTable.id })
-    .from(projectGenomeTable)
-    .where(eq(projectGenomeTable.projectId, projectId))
-    .limit(1);
-
-  if (existing) {
-    await db.update(projectGenomeTable).set(genomeUpdate).where(eq(projectGenomeTable.projectId, projectId));
-  } else {
-    await db.insert(projectGenomeTable).values({ projectId, ...genomeUpdate });
-  }
+  // Ensure the Application Model row exists, then write DNA into it
+  await getOrCreateProjectDNA(projectId);
+  await updateProjectDNA(projectId, dnaUpdate);
 
   if (Array.isArray(parsed.objects) && parsed.objects.length > 0) {
     await upsertObjects(projectId, parsed.objects);
@@ -336,14 +329,15 @@ export async function maybeExtractGenome(projectId: number | null | undefined): 
   }
 }
 
-// Run extraction for all projects that have never been extracted (lastExtractedAt IS NULL).
+// Run extraction for all projects whose AM has never been extracted (lastExtractedAt is null).
 // Called once on server startup — non-blocking, runs serially to avoid hammering the AI API.
 export async function backfillEmptyGenomes(): Promise<void> {
   try {
+    const { applicationModelsTable } = await import("@workspace/db");
     const rows = await db
-      .select({ id: projectGenomeTable.projectId })
-      .from(projectGenomeTable)
-      .where(sql`${projectGenomeTable.lastExtractedAt} IS NULL`);
+      .select({ id: applicationModelsTable.projectId })
+      .from(applicationModelsTable)
+      .where(sql`(${applicationModelsTable.buildState}->>'lastExtractedAt') IS NULL`);
 
     if (rows.length === 0) return;
 
@@ -364,31 +358,10 @@ export async function backfillEmptyGenomes(): Promise<void> {
   }
 }
 
-// Seed default genome rows for all projects that don't have one yet.
-// Called once on server startup — non-blocking.
+// seedMissingGenomes is superseded by Application Model seeding (done in applicationModel.ts).
+// Kept as a no-op for call-site compatibility.
 export async function seedMissingGenomes(): Promise<void> {
-  try {
-    const projectIds = await db
-      .select({ id: projectsTable.id })
-      .from(projectsTable);
-
-    const existingGenomes = await db
-      .select({ projectId: projectGenomeTable.projectId })
-      .from(projectGenomeTable);
-
-    const existingSet = new Set(existingGenomes.map(g => g.projectId));
-    const missing = projectIds.filter(p => !existingSet.has(p.id));
-
-    if (missing.length === 0) return;
-
-    await db.insert(projectGenomeTable).values(
-      missing.map(p => ({ projectId: p.id })),
-    );
-
-    logger.info({ count: missing.length }, "genome seed: inserted default rows for projects without a genome");
-  } catch (err) {
-    logger.warn({ err }, "genome seed: failed — non-fatal");
-  }
+  // AM rows are seeded on project creation and at boot in applicationModel.ts.
 }
 
 export async function seedMissingSessionsForCommitted(): Promise<void> {

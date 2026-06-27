@@ -28,21 +28,47 @@ export const applicationModelHistoryTable = pgTable("application_model_history",
   changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ── Identity ─────────────────────────────────────────────────────────────────
+// Absorbs: project name, purpose, audience, category (pre-existing)
+// + genome: coreEmotion, identity (positioning phrase), format, surfaceStrategy,
+//           wedge, differentiator
 export const ApplicationModelIdentitySchema = z.object({
   name: z.string().optional(),
   purpose: z.string().optional(),
   audience: z.string().optional(),
   category: z.string().optional(),
+  coreEmotion: z.string().optional(),
+  positioning: z.string().optional(),  // was genome.identity — "ownable identity in one phrase"
+  format: z.string().optional(),
+  surfaceStrategy: z.string().optional(),
+  wedge: z.string().optional(),
+  differentiator: z.string().optional(),
 }).default({});
 
+// ── Intent ───────────────────────────────────────────────────────────────────
+// Absorbs: summary, coreProblems, keyOutcomes, constraints, approvedAt (pre-existing)
+// + genome: openQuestions, confidenceScore, stack, protectedAreas
 export const ApplicationModelIntentSchema = z.object({
   summary: z.string().optional(),
   coreProblems: z.array(z.string()).default([]),
   keyOutcomes: z.array(z.string()).default([]),
   constraints: z.array(z.string()).default([]),
+  openQuestions: z.array(z.string()).default([]),
+  confidenceScore: z.number().default(0),
+  stack: z.array(z.string()).default([]),
+  protectedAreas: z.array(z.string()).default([]),
   approvedAt: z.string().nullable().optional(),
-}).default(() => ({ coreProblems: [], keyOutcomes: [], constraints: [] }));
+}).default(() => ({
+  coreProblems: [],
+  keyOutcomes: [],
+  constraints: [],
+  openQuestions: [],
+  confidenceScore: 0,
+  stack: [],
+  protectedAreas: [],
+}));
 
+// ── Page / Component / Entity / Relationship / Logic ─────────────────────────
 export const ApplicationModelPageSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -90,13 +116,19 @@ export const ApplicationModelLogicSchema = z.object({
   actions: z.array(z.string()).default([]),
 });
 
+// ── BuildState ───────────────────────────────────────────────────────────────
+// Absorbs: generated, generatedAt, deployedAt, deployUrl, generatedFileCount (pre-existing)
+// + genome: stage, lastEvolvedAt, lastExtractedAt
 export const ApplicationModelBuildStateSchema = z.object({
   generated: z.boolean().default(false),
   generatedAt: z.string().nullable().optional(),
   deployedAt: z.string().nullable().optional(),
   deployUrl: z.string().nullable().optional(),
   generatedFileCount: z.number().default(0),
-}).default(() => ({ generated: false, generatedFileCount: 0 }));
+  stage: z.enum(["Think", "Shape", "Decide", "Workspace", "Strategize", "Build", "Operate", "Evolve"]).default("Think"),
+  lastEvolvedAt: z.string().nullable().optional(),
+  lastExtractedAt: z.string().nullable().optional(),
+}).default(() => ({ generated: false, generatedFileCount: 0, stage: "Think" as const }));
 
 export const ApplicationModelDataSchema = z.object({
   entities: z.array(ApplicationModelEntitySchema).default([]),
