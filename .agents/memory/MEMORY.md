@@ -16,4 +16,3 @@
 - [Axiom Flow Vision](axiom-flow-vision.md) — foundational philosophy; graph = Atlas's memory, not user-built canvas; measure every Flow task against this; full doc at .local/axiom-flow-vision.md
 - [Axiom Flow Lens Architecture](flow-lens-architecture.md) — three lenses are genuinely different perspectives, not layouts; Builder=engineering board, Storyteller=narrative chapters, Designer=AxiomFlow canvas
 - [Builder Lens Identity](builder-lens-identity.md) — Builder must stay clinical/schema-aesthetic; status-grouped flat lists erode its identity vs Storyteller
-- [Axiom Product Reset](axiom-product-reset.md) — builder is the product; three-phase roadmap; freeze new surfaces rule; "reduce thinking" test

@@ -13,24 +13,25 @@ import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/comp
 
 const LENS_PLACEHOLDERS: Record<WorkspaceLens, string[]> = {
   flow: [
-    "Describe what you want to build…",
-    "What should Atlas work on next…",
-    "What's the next thing to ship…",
+    "What are you turning over…",
+    "What's the constraint you haven't named…",
+    "What would have to be true for this to work…",
+    "Where did the last session leave things…",
   ],
   build: [
-    "Describe what you want to build…",
     "What needs to be built or fixed…",
     "What's the smallest next step…",
+    "Where does this slot into the system…",
   ],
   look: [
     "What visual change do you need…",
     "What feels off in the UI…",
-    "Describe the look you're after…",
+    "Describe the vibe you're chasing…",
   ],
   scenario: [
     "What if…",
     "What changes if this assumption flips…",
-    "Walk a scenario forward…",
+    "Walk a scenario forward — what breaks first…",
   ],
 };
 
@@ -289,13 +290,17 @@ export function ChatComposer(props: ChatComposerProps) {
   const isMultiAgent = !wsModel || wsModel === "multi";
 
   const [composerMode, setComposerMode] = useState<"plan" | "build">(defaultComposerMode ?? "plan");
+  const [planBannerVisible, setPlanBannerVisible] = useState(false);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
 
   const togglePlanMode = () => {
     setComposerMode(mode => {
+      const next = mode === "plan" ? "build" : "plan";
+      setPlanBannerVisible(true);
+      window.setTimeout(() => setPlanBannerVisible(false), 1500);
       try { (navigator as any).vibrate?.(10); } catch {}
-      return mode === "plan" ? "build" : "plan";
+      return next;
     });
   };
   const composerModeIsPlan = composerMode === "plan";
@@ -540,6 +545,36 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
+        {(() => {
+          const bannerActive = planBannerVisible || chatPending;
+          return (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+                marginBottom: bannerActive ? 6 : 0,
+                height: bannerActive ? "auto" : 0,
+                overflow: "hidden",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+                color: composerModeAccent,
+                opacity: bannerActive ? 0.85 : 0,
+                transition: "opacity 1.5s ease-out",
+                pointerEvents: "none",
+              }}
+            >
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: composerModeAccent,
+                boxShadow: `0 0 6px ${composerModeShadow}`,
+              }} />
+              {composerModeIsPlan
+                ? `Plan Mode · ${chatPending ? "Strategizing" : "Active"}`
+                : `Build Mode · ${chatPending ? "Executing" : "Ready"}`}
+            </div>
+          );
+        })()}
 
         {chatPending && (
           <style>{`
@@ -560,7 +595,26 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+              {!hasInput && (planBannerVisible || chatPending) ? (
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute", top: 0, left: 2,
+                    color: composerModeAccent, fontSize: 14, lineHeight: 1.6,
+                    opacity: (planBannerVisible || chatPending) ? 0.75 : 0,
+                    transition: "opacity 1.5s ease-out",
+                    pointerEvents: "none",
+                    fontFamily: "var(--app-font-sans)",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {composerModeIsPlan
+                    ? (chatPending ? "Strategizing…" : "Ready to strategize…")
+                    : (chatPending ? "Executing build…" : "Ready to build…")}
+                </div>
+              ) : (
+                <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
+              )}
 
               <textarea
                 ref={textareaRef}
@@ -738,50 +792,32 @@ export function ChatComposer(props: ChatComposerProps) {
                 onClick={togglePlanMode}
                 title="Plan mode"
                 aria-label={composerModeIsPlan ? "Switch to build mode" : "Switch to plan mode"}
-                aria-pressed={composerModeIsPlan}
+                aria-pressed
                 style={{
-                  minWidth: 44, minHeight: 44, padding: "7px 10px 7px 8px", borderRadius: 8,
+                  minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
                   background: composerModeIsPlan
                     ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
                     : "linear-gradient(135deg, hsla(217, 80%, 64%, 0.28), hsla(217, 80%, 64%, 0.14))",
                   border: `1px solid ${composerModeIsPlan ? "rgba(201,162,76,0.55)" : "hsla(217, 80%, 64%, 0.55)"}`,
-                  boxShadow: composerModeIsPlan
-                    ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)"
-                    : "0 0 14px -4px hsla(217, 80%, 64%, 0.55), inset 0 0 0 1px hsla(217, 80%, 64%, 0.15)",
+                  boxShadow: composerModeIsPlan ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "0 0 14px -4px hsla(217, 80%, 64%, 0.55), inset 0 0 0 1px hsla(217, 80%, 64%, 0.15)",
                   color: composerModeAccent,
-                  cursor: "pointer", display: "flex", alignItems: "center", gap: 6, justifyContent: "center",
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
                 }}
               >
-                {/* Checkbox */}
-                <span style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                  border: `1.5px solid ${composerModeIsPlan ? "rgba(201,162,76,0.9)" : "hsla(217, 80%, 64%, 0.9)"}`,
-                  background: composerModeIsPlan ? "rgba(201,162,76,0.85)" : "transparent",
-                  transition: "all var(--motion-fast) var(--ease-standard)",
-                }}>
-                  {composerModeIsPlan && (
-                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                      <polyline points="1.5,5 4,7.5 8.5,2" stroke="rgba(8,8,10,0.9)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </span>
-                {/* "Plan" label */}
-                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", lineHeight: 1, textTransform: "uppercase" }}>
-                  Plan
-                </span>
-                {/* Original checklist + gold dot icon */}
+                {/* Checklist + gold dot — Plan mode signifier */}
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2.5 6L4 7.5L6.5 5" stroke="currentColor" strokeWidth="1.5" />
                   <path d="M2.5 12L4 13.5L6.5 11" stroke="currentColor" strokeWidth="1.5" />
                   <line x1="9" y1="6.5" x2="14" y2="6.5" stroke="currentColor" strokeWidth="1.5" />
                   <line x1="9" y1="12.5" x2="13" y2="12.5" stroke="currentColor" strokeWidth="1.5" />
                   <circle
-                    cx="16" cy="4" r={2.4}
+                    cx="16"
+                    cy="4"
+                    r={2.4}
                     fill={composerModeAccent}
                     style={{
-                      filter: `drop-shadow(0 0 4px ${composerModeShadow})`,
+                      filter: `drop-shadow(0 0 4px ${composerModeIsPlan ? "rgba(201,162,76,0.75)" : "hsla(217, 80%, 64%, 0.75)"})`,
                       transition: "all var(--motion-fast) var(--ease-standard)",
                     }}
                   />
