@@ -107,7 +107,6 @@ function InlineDiffCard({
   linePatches,
   linkedRepo,
   projectId,
-  trustMode,
   autoApplied,
   onReviewDiff,
   onPushSuccess,
@@ -118,7 +117,6 @@ function InlineDiffCard({
   linePatches: LinePatch[];
   linkedRepo: LinkedRepo | null;
   projectId: number;
-  trustMode: "review" | "auto";
   autoApplied?: boolean;
   onReviewDiff: () => void;
   onPushSuccess: (records: PushRecord[]) => void;
@@ -327,7 +325,7 @@ function InlineDiffCard({
 
   const modalEdits = fileEdits.length > 0 ? fileEdits : patchedEdits;
 
-  if (trustMode === "auto" || autoApplied) {
+  if (autoApplied) {
     const names = fileEdits.map((e) => e.path?.split("/").pop() ?? e.path).filter(Boolean);
     const label = autoApplied
       ? `✓ Auto-applied — ${names.join(", ")}`
@@ -1058,7 +1056,6 @@ export function AssistantBubble({
   onPlanStateChange,
   onPlanExecutionChange,
   onExecuteHomePlan,
-  trustMode,
 }: {
   message: ChatMessage;
   isNew?: boolean;
@@ -1087,7 +1084,6 @@ export function AssistantBubble({
   onPlanStateChange?: (messageId: number, state: PlanState) => void;
   onPlanExecutionChange?: (messageId: number, execution: PlanExecution | null) => void;
   onExecuteHomePlan?: (plan: Plan) => void;
-  trustMode: "review" | "auto";
 }) {
   const [hov, setHov] = useState(false);
   const [parkDone, setParkDone] = useState(false);
@@ -1969,7 +1965,6 @@ export function AssistantBubble({
             linePatches={message.linePatches ?? []}
             linkedRepo={linkedRepo}
             projectId={projectId}
-            trustMode={trustMode}
             autoApplied={!!message.autoPushed}
             onReviewDiff={onReviewDiff}
             onPushSuccess={onPushSuccess}

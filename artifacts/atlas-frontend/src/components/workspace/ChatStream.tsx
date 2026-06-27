@@ -235,8 +235,6 @@ export interface ChatStreamProps {
   projectId: number;
   sessionId: number | null;
   linkedRepo: LinkedRepoLike;
-  trustMode: "review" | "auto";
-
   // assistant bubble — per-message handlers
   onPark: AssistantBubbleProp<"onPark">;
   onCommit: AssistantBubbleProp<"onCommit">;
@@ -285,7 +283,7 @@ export function ChatStream(props: ChatStreamProps) {
     isHomeHandoff, homeHandoffMeta, atlasGreeting, greetingLoading, resumeBrief, project,
     wsModel, wsLens, onSwitchToGemini,
     onEditUserMessage,
-    projectId, sessionId, linkedRepo, trustMode,
+    projectId, sessionId, linkedRepo,
     onPark, onCommit, onRegenerate, onSend,
     onPreviewCode, onRunCommand, onPrCreated, onExtractToForge, onForgeIntake, onReviewDiff,
     onOpenArtifact,
@@ -468,7 +466,6 @@ export function ChatStream(props: ChatStreamProps) {
                 onPlanStateChange={onPlanStateChange}
                 onPlanExecutionChange={onPlanExecutionChange}
                 onExecuteHomePlan={onExecuteHomePlan}
-                trustMode={trustMode}
                 onPushSuccess={onPushSuccess}
               />
               {Boolean(msg.terminalCmd || msg.terminalResult) && (
