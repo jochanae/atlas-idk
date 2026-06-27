@@ -718,11 +718,16 @@ export function useChatStream(
                     setLiveStep({ verb: step.verb, target: step.target, status: step.status });
                     onStepEvent?.(step);
                   }
+                } else if (evtName === "plan_start") {
+                  // Server is now running the Haiku extraction pass. Signal UI to show "Structuring plan…".
+                  setMessages((prev) =>
+                    prev.map((m) => m.id === placeholderId ? { ...m, awaitingPlan: true } : m)
+                  );
                 } else if (evtName === "plan") {
-                  // Structured plan artifact emitted out-of-band after prose stream.
+                  // Structured plan artifact — extraction complete. Clear awaiting flag.
                   const planPayload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").StructuredPlanArtifact;
                   setMessages((prev) =>
-                    prev.map((m) => m.id === placeholderId ? { ...m, planArtifact: planPayload } : m)
+                    prev.map((m) => m.id === placeholderId ? { ...m, planArtifact: planPayload, awaitingPlan: false } : m)
                   );
                 } else if (evtName === "error") {
                   // Server error event — clear activity, show message, stop stream.

@@ -216,6 +216,7 @@ export interface ChatMessage {
   intentType?: string | null;
   plan?: Plan;
   planArtifact?: StructuredPlanArtifact;
+  awaitingPlan?: boolean;
   planFromHome?: boolean;
   planMode?: boolean;
   alertPayload?: AlertPayload | null;
@@ -4251,6 +4252,8 @@ export default function Workspace() {
           if (!planEntry?.meta) return undefined;
           try { return JSON.parse(planEntry.meta) as StructuredPlanArtifact; } catch { return undefined; }
         })(),
+        // Infer planMode from persisted runArtifacts so restored messages behave correctly.
+        planMode: (m as unknown as { runArtifacts?: Array<{ type: string }> | null }).runArtifacts?.some((a) => a.type === "plan") ?? false,
       };
     },
     entries,

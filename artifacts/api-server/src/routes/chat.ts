@@ -3507,6 +3507,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   let structuredPlanArtifact: StructuredPlanArtifact | null = null;
   const isPlanMode = activeMode === "plan" || Boolean(body.planMode);
   if (isPlanMode && displayContent && displayContent.length > 40) {
+    // Signal to the client that plan JSON extraction is starting (Haiku pass ~1-2s).
+    res.write(`data: ${JSON.stringify({ type: "plan_start" })}\n\n`);
     try {
       const planExtrResp = await anthropic.messages.create({
         model: "claude-haiku-4-5",
@@ -3907,7 +3909,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   }
   // Emit structured plan SSE event now that fullText is finalised (before done).
   if (structuredPlanArtifact) {
-    res.write(`data: ${JSON.stringify({ type: "plan", ...structuredPlanArtifact })}\n\n`);
+    const { type: _planType, ...planRest } = structuredPlanArtifact;
+    res.write(`data: ${JSON.stringify({ type: "plan", ...planRest })}\n\n`);
   }
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);

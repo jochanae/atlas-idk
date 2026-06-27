@@ -1287,28 +1287,21 @@ export function AssistantBubble({
   };
 
   const handlePlanApprove = async () => {
-    if (!message.plan || planState === "executing") return;
-    const firstStepOrder = message.plan.steps[0]?.order ?? 1;
+    // Use the structured artifact plan if available (plan-mode), fall back to FILE_EDIT-parsed plan.
+    const plan = effectivePlan ?? message.plan;
+    if (!plan || planState === "executing") return;
+    const firstStepOrder = plan.steps[0]?.order ?? 1;
     setPlanStatus("executing");
     setPlanExecution({ currentStepOrder: firstStepOrder, completedStepOrders: [] });
-    onStreamActivityUpdate?.(`PLAN_STEP:${message.plan.steps[0]?.description ?? message.plan.title}`);
+    onStreamActivityUpdate?.(`PLAN_STEP:${plan.steps[0]?.description ?? plan.title}`);
 
     const codeEdits = userEdits.length > 0 ? userEdits : activeEdits;
     const hasCodeChanges = codeEdits.length > 0 || (message.linePatches?.length ?? 0) > 0;
 
-    if (message.planFromHome && !hasCodeChanges) {
-      onExecuteHomePlan?.(message.plan);
-      return;
-    }
-
+    // Plan-artifact messages (plan-mode) have no FILE_EDIT blocks — delegate to home plan executor
+    // which re-submits the plan as a build request and streams step-by-step progress.
     if (!hasCodeChanges) {
-      setPlanExecution({
-        completedStepOrders: message.plan.steps.map((step) => step.order),
-        changedFiles: 0,
-        statusMessage: "Done. 0 files changed.",
-      });
-      setPlanStatus("completed");
-      onStreamActivityComplete?.();
+      onExecuteHomePlan?.(plan);
       return;
     }
 
@@ -1317,7 +1310,7 @@ export function AssistantBubble({
       const modalEdits = [...codeEdits, ...patchEdits];
       if (modalEdits.length === 0) {
         setPlanExecution({
-          completedStepOrders: message.plan.steps.map((step) => step.order),
+          completedStepOrders: plan.steps.map((step) => step.order),
           changedFiles: 0,
           statusMessage: "Done. 0 files changed.",
         });
@@ -1325,10 +1318,10 @@ export function AssistantBubble({
         onStreamActivityComplete?.();
         return;
       }
-      const pushStep = message.plan.steps.find((step) => step.type === "push") ?? message.plan.steps[message.plan.steps.length - 1];
+      const pushStep = plan.steps.find((step) => step.type === "push") ?? plan.steps[plan.steps.length - 1];
       setPlanExecution({
         currentStepOrder: pushStep?.order,
-        completedStepOrders: message.plan.steps.filter((step) => step.order !== pushStep?.order).map((step) => step.order),
+        completedStepOrders: plan.steps.filter((step) => step.order !== pushStep?.order).map((step) => step.order),
       });
       onStreamActivityUpdate?.(`PLAN_STEP:${pushStep?.description ?? "Review and push changes"}`);
       setPlanPushEdits(modalEdits);
@@ -1763,7 +1756,7 @@ export function AssistantBubble({
           />
         ))}
 
-        {message.streaming && message.planMode && !message.artifact && (
+        {message.awaitingPlan && !message.planArtifact && (
           <div
             style={{
               marginTop: 8,
@@ -1773,9 +1766,22 @@ export function AssistantBubble({
               textTransform: "uppercase",
               color: "var(--atlas-muted)",
               opacity: 0.7,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Generating plan…
+            <span
+              style={{
+                display: "inline-block",
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                animation: "atlas-pulse 1.2s ease-in-out infinite",
+              }}
+            />
+            Structuring plan…
           </div>
         )}
 
