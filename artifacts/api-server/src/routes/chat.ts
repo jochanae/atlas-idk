@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
+import { extractAndUpdateApplicationModel } from "../lib/applicationModelExtraction";
 import { eq, sql, and, gte, desc, ne, isNotNull } from "drizzle-orm";
 import { decryptToken } from "../lib/tokenCrypto";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -4032,6 +4033,15 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   }
   if (projectId) {
     void maybeExtractGenome(projectId);
+  }
+  if (projectId && message && displayContent) {
+    void extractAndUpdateApplicationModel({
+      projectId,
+      userMessage: message,
+      assistantReply: displayContent,
+    }).catch((err) => {
+      logger.warn({ err, projectId }, "application model extraction failed — non-fatal");
+    });
   }
 });
 

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { pushAtlasMdToRepo } from "../lib/projectMemory";
-import { db, projectGenomeTable, projectsTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable } from "@workspace/db";
+import { db, projectGenomeTable, projectsTable, entriesTable, nexusMessagesTable, chatMessagesTable, sessionsTable, applicationModelsTable } from "@workspace/db";
 import { eq, and, desc, sql, count, ne, inArray, isNull } from "drizzle-orm";
 import { runGenomeExtraction, isOnCooldown } from "../lib/genomeExtract";
 import { GENOME_STAGES, OBJECT_TYPES } from "@workspace/db";
@@ -88,6 +88,34 @@ function nextActionForStage(stage: string, openQuestions: string[], constraints:
   }
 }
 
+/** Compute an additive clarity boost from Application Model richness (0–20 points). */
+async function computeModelRichnessBoost(projectId: number): Promise<{ boost: number; source: string }> {
+  try {
+    const rows = await db
+      .select({ identity: applicationModelsTable.identity, intent: applicationModelsTable.intent, pages: applicationModelsTable.pages })
+      .from(applicationModelsTable)
+      .where(eq(applicationModelsTable.projectId, projectId))
+      .limit(1);
+    if (rows.length === 0) return { boost: 0, source: "no model" };
+    const { identity, intent, pages } = rows[0];
+    let boost = 0;
+    const parts: string[] = [];
+    const id = (identity as Record<string, unknown>) ?? {};
+    const it = (intent as Record<string, unknown>) ?? {};
+    const pg = (pages as unknown[]) ?? [];
+    if (id.name) { boost += 3; parts.push("named"); }
+    if (id.purpose) { boost += 5; parts.push("purpose"); }
+    if (id.audience) { boost += 4; parts.push("audience"); }
+    if (it.summary) { boost += 4; parts.push("intent"); }
+    if (Array.isArray(it.coreProblems) && (it.coreProblems as unknown[]).length > 0) { boost += 2; parts.push("problems"); }
+    if (Array.isArray(it.keyOutcomes) && (it.keyOutcomes as unknown[]).length > 0) { boost += 2; parts.push("outcomes"); }
+    if (pg.length > 0) { boost += Math.min(2, pg.length); parts.push(`${pg.length} pages`); }
+    return { boost: Math.min(20, boost), source: parts.length > 0 ? parts.join(", ") : "sparse model" };
+  } catch {
+    return { boost: 0, source: "model unavailable" };
+  }
+}
+
 async function computeProjectHealth(projectId: number, genome: typeof projectGenomeTable.$inferSelect) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -152,10 +180,13 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
     objectCount,
   );
 
+  const { boost: modelBoost, source: modelSource } = await computeModelRichnessBoost(projectId);
+  const clarityScore = Math.min(100, genome.confidenceScore + modelBoost);
+
   return {
-    clarity: genome.confidenceScore,
+    clarity: clarityScore,
     momentum: momentumFromCount(recentMsgCount),
-    confidence: confidenceLevelFromScore(genome.confidenceScore),
+    confidence: confidenceLevelFromScore(clarityScore),
     risk,
     nextAction: nextActionForStage(genome.stage, openQuestions, constraints),
     atlasState,
@@ -172,6 +203,7 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
         openConstraints: constraints.length,
         openQuestions: openQuestions.length,
         confidenceScore: genome.confidenceScore,
+        modelRichnessBoost: modelBoost,
       },
       derivations: {
         momentum: recentMsgCount >= 16
@@ -179,7 +211,9 @@ async function computeProjectHealth(projectId: number, genome: typeof projectGen
           : recentMsgCount >= 6
             ? `${recentMsgCount} conversations this week → Medium`
             : `${recentMsgCount} conversations this week → Low`,
-        clarity: `${genome.confidenceScore}% confidence score`,
+        clarity: modelBoost > 0
+          ? `${genome.confidenceScore}% confidence + ${modelBoost} model richness (${modelSource}) = ${clarityScore}%`
+          : `${genome.confidenceScore}% confidence score`,
         state: `${genome.stage} stage${blockerCount > 0 ? ` · ${blockerCount} blocker${blockerCount !== 1 ? "s" : ""}` : ""} → ${atlasState}`,
       },
     },

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { eq, and, sql, desc, getTableColumns } from "drizzle-orm";
-import { db, entriesTable, projectsTable } from "@workspace/db";
+import { db, entriesTable, projectsTable, applicationModelHistoryTable, applicationModelsTable } from "@workspace/db";
 import { upsertEmbedding } from "../lib/embeddings";
 import {
   CreateEntryBody,
@@ -324,6 +324,28 @@ router.post("/projects/:projectId/entries", async (req, res): Promise<void> => {
     projectId: params.data.projectId,
     content: [entry.title, entry.summary, entry.details].filter(Boolean).join("\n"),
   }).catch(() => { /* silent */ });
+
+  // Fire-and-forget: bridge Decision entries to the Application Model history ledger
+  if (entry.type === "Decision" && entry.status === "committed") {
+    void (async () => {
+      try {
+        const [model] = await db
+          .select({ version: applicationModelsTable.version })
+          .from(applicationModelsTable)
+          .where(eq(applicationModelsTable.projectId, params.data.projectId))
+          .limit(1);
+        if (!model) return;
+        await db.insert(applicationModelHistoryTable).values({
+          projectId: params.data.projectId,
+          modelVersion: model.version,
+          fieldChanged: "intent",
+          previousValue: null,
+          newValue: { decision: entry.title, summary: entry.summary ?? null },
+          reason: `ledger-decision:${entry.id}`,
+        });
+      } catch { /* silent — never block the response */ }
+    })();
+  }
 
   // Fire-and-forget enrichment for parked entries
   if (entry.status === "parked") {
