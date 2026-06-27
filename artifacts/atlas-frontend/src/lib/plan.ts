@@ -12,6 +12,8 @@ export type StructuredPlanArtifact = {
   }>;
   estimatedChanges?: number;
   reversible?: boolean;
+  /** AM fields this plan proposes to change, e.g. ["pages", "data.entities", "buildState"] */
+  amFields?: string[];
 };
 
 export type PlanConfidence = "high" | "medium" | "low";

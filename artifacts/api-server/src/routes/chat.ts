@@ -3598,6 +3598,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     type: "plan"; title: string; confidence: "high" | "medium" | "low";
     steps: Array<{ label: string; stepType: string; moscow: string; file?: string }>;
     estimatedChanges?: number; reversible?: boolean;
+    /** AM fields this plan proposes to change */
+    amFields?: string[];
   };
   let structuredPlanArtifact: StructuredPlanArtifact | null = null;
   const isPlanMode = activeMode === "plan" || Boolean(body.planMode);
@@ -3607,10 +3609,10 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     try {
       const planExtrResp = await anthropic.messages.create({
         model: "claude-haiku-4-5",
-        max_tokens: 600,
+        max_tokens: 700,
         messages: [{
           role: "user",
-          content: `Extract a structured plan from this assistant response. Return ONLY a JSON object — no markdown fences, no explanation.\n\nJSON shape:\n{"title":"concise plan title","confidence":"high"|"medium"|"low","steps":[{"label":"short action phrase","stepType":"analysis"|"edit"|"push"|"read"|"other","moscow":"must"|"should"|"could"|"wont","file":"optional/path.ts"}],"estimatedChanges":0,"reversible":true}\n\nAssistant response:\n${displayContent.slice(0, 3000)}`,
+          content: `Extract a structured plan from this assistant response. Return ONLY a JSON object — no markdown fences, no explanation.\n\nJSON shape:\n{"title":"concise plan title","confidence":"high"|"medium"|"low","steps":[{"label":"short action phrase","stepType":"analysis"|"edit"|"push"|"read"|"other","moscow":"must"|"should"|"could"|"wont","file":"optional/path.ts"}],"estimatedChanges":0,"reversible":true,"amFields":["intent","pages","data","data.entities","components","logic","buildState","identity"]}\n\namFields must be an array of zero or more strings chosen from this vocabulary only: "identity", "intent", "intent.purpose", "pages", "components", "data", "data.entities", "logic", "buildState". Include only fields this plan proposes to change.\n\nAssistant response:\n${displayContent.slice(0, 3000)}`,
         }],
       });
       const rawPlan = planExtrResp.content[0]?.type === "text" ? planExtrResp.content[0].text.trim() : "";
@@ -3619,6 +3621,9 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
         if (parsed.title && Array.isArray(parsed.steps) && (parsed.steps as unknown[]).length >= 2) {
           const { type: _t, ...planRest } = parsed as Record<string, unknown>;
+          const validAmFields = ["identity", "intent", "intent.purpose", "pages", "components", "data", "data.entities", "logic", "buildState"];
+          const rawAmFields = Array.isArray(planRest.amFields) ? planRest.amFields as unknown[] : [];
+          const amFields = rawAmFields.filter((f): f is string => typeof f === "string" && validAmFields.includes(f));
           structuredPlanArtifact = {
             type: "plan",
             title: String(planRest.title ?? ""),
@@ -3626,7 +3631,11 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
             steps: (planRest.steps as StructuredPlanArtifact["steps"]) ?? [],
             ...(planRest.estimatedChanges != null ? { estimatedChanges: Number(planRest.estimatedChanges) } : {}),
             ...(planRest.reversible != null ? { reversible: Boolean(planRest.reversible) } : {}),
+            ...(amFields.length > 0 ? { amFields } : {}),
           };
+          // Emit the plan as a dedicated SSE event so the client renders it
+          // immediately — before the larger "done" payload arrives.
+          res.write(`data: ${JSON.stringify(structuredPlanArtifact)}\n\n`);
         }
       }
     } catch (planErr) {
