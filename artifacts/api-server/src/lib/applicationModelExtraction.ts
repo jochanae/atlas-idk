@@ -14,6 +14,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db, applicationModelsTable, applicationModelHistoryTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
+import { syncFlowCanvasFromModel } from "./flowMapSync";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -172,11 +173,15 @@ async function applyModelPatch(projectId: number, patch: ApplicationModelPatch):
     }
   }
 
-  // Merge pages (append new ones by id)
+  // Merge pages — dedup by id AND name (case-insensitive) to prevent duplicates
+  // when Haiku generates a different slug for a page that already exists.
   if (patch.pages?.length) {
-    const prev = (row.pages as Array<{ id: string }>) ?? [];
+    const prev = (row.pages as Array<{ id: string; name: string }>) ?? [];
     const existingIds = new Set(prev.map((p) => p.id));
-    const newPages = patch.pages.filter((p) => !existingIds.has(p.id));
+    const existingNames = new Set(prev.map((p) => p.name.toLowerCase()));
+    const newPages = patch.pages.filter(
+      (p) => p.id && p.name && !existingIds.has(p.id) && !existingNames.has(p.name.toLowerCase()),
+    );
     if (newPages.length > 0) {
       const merged = [...prev, ...newPages];
       updates.pages = merged;
@@ -184,11 +189,14 @@ async function applyModelPatch(projectId: number, patch: ApplicationModelPatch):
     }
   }
 
-  // Merge components (append new ones by id)
+  // Merge components — dedup by id AND name
   if (patch.components?.length) {
-    const prev = (row.components as Array<{ id: string }>) ?? [];
+    const prev = (row.components as Array<{ id: string; name: string }>) ?? [];
     const existingIds = new Set(prev.map((c) => c.id));
-    const newComponents = patch.components.filter((c) => !existingIds.has(c.id));
+    const existingNames = new Set(prev.map((c) => c.name.toLowerCase()));
+    const newComponents = patch.components.filter(
+      (c) => c.id && c.name && !existingIds.has(c.id) && !existingNames.has(c.name.toLowerCase()),
+    );
     if (newComponents.length > 0) {
       const merged = [...prev, ...newComponents];
       updates.components = merged;
@@ -196,9 +204,9 @@ async function applyModelPatch(projectId: number, patch: ApplicationModelPatch):
     }
   }
 
-  // Merge data (entities + relationships)
+  // Merge data (entities + relationships) — dedup by id AND name
   if (patch.data) {
-    const prevData = (row.data as { entities?: Array<{ id: string }>; relationships?: Array<{ id: string }> }) ?? {};
+    const prevData = (row.data as { entities?: Array<{ id: string; name: string }>; relationships?: Array<{ id: string }> }) ?? {};
     const prevEntities = prevData.entities ?? [];
     const prevRels = prevData.relationships ?? [];
     let changed = false;
@@ -207,7 +215,10 @@ async function applyModelPatch(projectId: number, patch: ApplicationModelPatch):
 
     if (patch.data.entities?.length) {
       const existingIds = new Set(prevEntities.map((e) => e.id));
-      const newEntities = patch.data.entities.filter((e) => !existingIds.has(e.id));
+      const existingNames = new Set(prevEntities.map((e) => e.name.toLowerCase()));
+      const newEntities = patch.data.entities.filter(
+        (e) => e.id && e.name && !existingIds.has(e.id) && !existingNames.has(e.name.toLowerCase()),
+      );
       if (newEntities.length > 0) { mergedEntities.push(...newEntities); changed = true; }
     }
     if (patch.data.relationships?.length) {
@@ -222,11 +233,14 @@ async function applyModelPatch(projectId: number, patch: ApplicationModelPatch):
     }
   }
 
-  // Merge logic
+  // Merge logic — dedup by id AND name
   if (patch.logic?.length) {
-    const prev = (row.logic as Array<{ id: string }>) ?? [];
+    const prev = (row.logic as Array<{ id: string; name: string }>) ?? [];
     const existingIds = new Set(prev.map((l) => l.id));
-    const newLogic = patch.logic.filter((l) => !existingIds.has(l.id));
+    const existingNames = new Set(prev.map((l) => l.name.toLowerCase()));
+    const newLogic = patch.logic.filter(
+      (l) => l.id && l.name && !existingIds.has(l.id) && !existingNames.has(l.name.toLowerCase()),
+    );
     if (newLogic.length > 0) {
       const merged = [...prev, ...newLogic];
       updates.logic = merged;
@@ -234,10 +248,22 @@ async function applyModelPatch(projectId: number, patch: ApplicationModelPatch):
     }
   }
 
-  if (historyRows.length === 0) return; // nothing changed
+  if (historyRows.length === 0) return; // nothing new
+
+  // Stamp lastExtractedAt in buildState (no history record — operational metadata only)
+  const prevBuildState = (row.buildState as Record<string, unknown>) ?? {};
+  updates.buildState = { ...prevBuildState, lastExtractedAt: new Date().toISOString() };
 
   await db.update(applicationModelsTable).set(updates as any).where(eq(applicationModelsTable.projectId, projectId));
   await db.insert(applicationModelHistoryTable).values(historyRows);
+
+  // Propagate to Flow Map canvas when pages or data entities changed.
+  // Fire-and-forget — safe because extractAndUpdateApplicationModel is already non-blocking.
+  if (updates.pages !== undefined || updates.data !== undefined) {
+    syncFlowCanvasFromModel(projectId).catch((err) =>
+      logger.warn({ err, projectId }, "flow sync after AM extraction failed — non-fatal"),
+    );
+  }
 }
 
 export async function extractAndUpdateApplicationModel({
