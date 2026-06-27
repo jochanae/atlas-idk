@@ -65,7 +65,7 @@ import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../lib/errorReporter";
 import { normalizeGitHubRepoInput, parseLinkedRepo, serializeLinkedRepo } from "../lib/githubRepo";
 import { loadProfile } from "@/lib/userProfile";
-import type { Plan, PlanExecution } from "../lib/plan";
+import type { Plan, PlanExecution, StructuredPlanArtifact } from "../lib/plan";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjectResume } from "@/hooks/useProjectResume";
 import { useProjectIntelligence } from "@/hooks/useProjectIntelligence";
@@ -215,6 +215,7 @@ export interface ChatMessage {
   deployQa?: DeployQa | null;
   intentType?: string | null;
   plan?: Plan;
+  planArtifact?: StructuredPlanArtifact;
   planFromHome?: boolean;
   planMode?: boolean;
   alertPayload?: AlertPayload | null;
@@ -4244,6 +4245,12 @@ export default function Workspace() {
         inputTokens: raw.inputTokens ?? raw.input_tokens ?? null,
         outputTokens: raw.outputTokens ?? raw.output_tokens ?? null,
         costUsd: raw.costUsd != null ? Number(raw.costUsd) : raw.cost_usd != null ? Number(raw.cost_usd) : null,
+        planArtifact: (() => {
+          const ra = (m as unknown as { runArtifacts?: Array<{ type: string; meta?: string }> | null }).runArtifacts;
+          const planEntry = ra?.find((a) => a.type === "plan");
+          if (!planEntry?.meta) return undefined;
+          try { return JSON.parse(planEntry.meta) as StructuredPlanArtifact; } catch { return undefined; }
+        })(),
       };
     },
     entries,
@@ -4412,8 +4419,7 @@ export default function Workspace() {
   // useSound / memoryChips / leftTab moved above (consumed by useChatStream).
   const [pushHistory, setPushHistory] = useState<PushRecord[]>([]);
   const [sessionPrUrl, setSessionPrUrl] = useState<string | null>(null);
-  const [latestPlanArtifact, setLatestPlanArtifact] = useState<{ type: string; title: string; content: string } | null>(null);
-  void latestPlanArtifact;
+  const [, setLatestPlanArtifact] = useState<{ type: string; title: string; content: string } | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   useEffect(() => {
     const mountedAt = Date.now();

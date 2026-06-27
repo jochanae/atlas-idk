@@ -1,5 +1,19 @@
 export type PlanStepType = "analysis" | "edit" | "push" | "read" | "other";
 
+export type StructuredPlanArtifact = {
+  type: "plan";
+  title: string;
+  confidence: PlanConfidence;
+  steps: Array<{
+    label: string;
+    stepType: PlanStepType;
+    moscow: Moscow;
+    file?: string;
+  }>;
+  estimatedChanges?: number;
+  reversible?: boolean;
+};
+
 export type PlanConfidence = "high" | "medium" | "low";
 export type Moscow = "must" | "should" | "could" | "wont";
 

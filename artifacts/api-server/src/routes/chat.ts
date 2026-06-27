@@ -1094,7 +1094,7 @@ type RunAction = {
 };
 
 type RunArtifact = {
-  type: "commit" | "file" | "url" | "pr";
+  type: "commit" | "file" | "url" | "pr" | "plan";
   label: string;
   href?: string;
   meta?: string;
@@ -2035,6 +2035,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     flowMode?: boolean;
     flowNodes?: Array<{ type: string; label: string; question?: string; strategicAnswer?: string }>;
     forgeContext?: string;
+    planMode?: boolean;
   };
 
   const isFlowMode = !!body.flowMode;
@@ -3497,6 +3498,45 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     linePatches: fileChangesAllowed ? linePatches : [],
   });
 
+  // ── Structured plan extraction — declare now, extract after displayContent is final ──
+  type StructuredPlanArtifact = {
+    type: "plan"; title: string; confidence: "high" | "medium" | "low";
+    steps: Array<{ label: string; stepType: string; moscow: string; file?: string }>;
+    estimatedChanges?: number; reversible?: boolean;
+  };
+  let structuredPlanArtifact: StructuredPlanArtifact | null = null;
+  const isPlanMode = activeMode === "plan" || Boolean(body.planMode);
+  if (isPlanMode && displayContent && displayContent.length > 40) {
+    try {
+      const planExtrResp = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 600,
+        messages: [{
+          role: "user",
+          content: `Extract a structured plan from this assistant response. Return ONLY a JSON object — no markdown fences, no explanation.\n\nJSON shape:\n{"title":"concise plan title","confidence":"high"|"medium"|"low","steps":[{"label":"short action phrase","stepType":"analysis"|"edit"|"push"|"read"|"other","moscow":"must"|"should"|"could"|"wont","file":"optional/path.ts"}],"estimatedChanges":0,"reversible":true}\n\nAssistant response:\n${displayContent.slice(0, 3000)}`,
+        }],
+      });
+      const rawPlan = planExtrResp.content[0]?.type === "text" ? planExtrResp.content[0].text.trim() : "";
+      const jsonMatch = rawPlan.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+        if (parsed.title && Array.isArray(parsed.steps) && (parsed.steps as unknown[]).length >= 2) {
+          const { type: _t, ...planRest } = parsed as Record<string, unknown>;
+          structuredPlanArtifact = {
+            type: "plan",
+            title: String(planRest.title ?? ""),
+            confidence: (planRest.confidence as "high" | "medium" | "low") ?? "medium",
+            steps: (planRest.steps as StructuredPlanArtifact["steps"]) ?? [],
+            ...(planRest.estimatedChanges != null ? { estimatedChanges: Number(planRest.estimatedChanges) } : {}),
+            ...(planRest.reversible != null ? { reversible: Boolean(planRest.reversible) } : {}),
+          };
+        }
+      }
+    } catch (planErr) {
+      logger.warn({ err: planErr }, "plan extraction failed — non-fatal");
+    }
+  }
+
   if (generatedAutoName) {
     await db.update(projectsTable).set({ name: generatedAutoName }).where(eq(projectsTable.id, projectId));
   }
@@ -3645,7 +3685,16 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     const imageMimeTypeVal = firstImage
       ? (firstImage.imageUrl.startsWith("data:image/jpeg") ? "image/jpeg" : "image/png")
       : null;
-    const runMetadata = runMetadataInsertValues(persistContent, fileChangesAllowed ? fileEdits : []);
+    const baseRunMetadata = runMetadataInsertValues(persistContent, fileChangesAllowed ? fileEdits : []);
+    const runMetadata = structuredPlanArtifact
+      ? {
+          ...baseRunMetadata,
+          runArtifacts: [
+            ...(baseRunMetadata.runArtifacts ?? []),
+            { type: "plan" as const, label: structuredPlanArtifact.title, meta: JSON.stringify(structuredPlanArtifact) },
+          ],
+        }
+      : baseRunMetadata;
     try {
       const [savedMsg] = await db
         .insert(chatMessagesTable)
@@ -3752,6 +3801,7 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     fileEdit: responseFileEdits.length > 0 ? responseFileEdits[0] : undefined,
     linePatches: responseLinePatches.length > 0 ? responseLinePatches : undefined,
     plan: responsePlan ?? undefined,
+    ...(structuredPlanArtifact ? { planArtifact: structuredPlanArtifact } : {}),
     resolvedNodes: resolvedNodes.length > 0 ? resolvedNodes : undefined,
     autoFetchedFiles: autoFetchedFiles.length > 0 ? autoFetchedFiles : undefined,
     ...(flowNodes.length > 0 ? { flowNodes } : {}),
@@ -3854,6 +3904,10 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
       lines.push(`**Screenshot — ${bv.url}**\n${bv.analysis}`);
     }
     if (lines.length > 0) fullText = fullText.trimEnd() + "\n\n" + lines.join("\n");
+  }
+  // Emit structured plan SSE event now that fullText is finalised (before done).
+  if (structuredPlanArtifact) {
+    res.write(`data: ${JSON.stringify({ type: "plan", ...structuredPlanArtifact })}\n\n`);
   }
   const inputTokenCount = assistantUsage.inputTokens;
   res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload, content: fullText, imageGen: imageGenResult, ...(autoApplied ? { autoApplied: true, autoAppliedPaths } : {}), developerLens: { routing: { activeModel: "claude-sonnet-4-6", provider: "anthropic", fallbackTriggered: false }, telemetry: { tokensPerSecond: 0, inputTokens: inputTokenCount ?? 0, executionStrategy: "standard" } } })}\n\n`);

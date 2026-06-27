@@ -26,7 +26,7 @@ import {
 
 import { detectDecisionMoment } from "@/lib/DecisionCatchEngine";
 import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
-import type { Plan, PlanExecution } from "../../lib/plan";
+import type { Plan, PlanExecution, StructuredPlanArtifact } from "../../lib/plan";
 import { haptic } from "@/lib/long-press-tip";
 
 
@@ -1105,6 +1105,25 @@ export function AssistantBubble({
   const [imageExpanded, setImageExpanded] = useState(false);
   const activeEdits = message.fileEdits ?? (message.fileEdit ? [message.fileEdit] : []);
   const planMessageId = message.id ?? 0;
+
+  // Derive a Plan from structured planArtifact (plan-mode responses) so PlanCard
+  // can render from typed data instead of regex-parsed text.
+  const planFromArtifact: Plan | null = message.planArtifact
+    ? {
+        title: message.planArtifact.title,
+        mode: "plan",
+        confidence: message.planArtifact.confidence,
+        steps: message.planArtifact.steps.map((s, i) => ({
+          order: i + 1,
+          description: s.label,
+          type: s.stepType,
+          moscow: s.moscow,
+          ...(s.file ? { file: s.file } : {}),
+        })),
+        estimatedChanges: message.planArtifact.estimatedChanges ?? 0,
+        reversible: message.planArtifact.reversible ?? false,
+      }
+    : null;
   const { data: planProject } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const planGithubToken = useGithubPushToken(planProject?.githubToken);
 
@@ -1223,12 +1242,12 @@ export function AssistantBubble({
   );
 
   const setPlanStatus = (state: PlanState) => {
-    if (!message.plan) return;
+    if (!message.plan && !planFromArtifact) return;
     onPlanStateChange?.(planMessageId, state);
   };
 
   const setPlanExecution = (execution: PlanExecution | null) => {
-    if (!message.plan) return;
+    if (!message.plan && !planFromArtifact) return;
     onPlanExecutionChange?.(planMessageId, execution);
   };
 
@@ -1755,7 +1774,22 @@ export function AssistantBubble({
           </div>
         )}
 
-        {!message.streaming && message.artifact && message.artifact.type === "plan" && (
+        {!message.streaming && planFromArtifact && planState !== "skipped" && (
+          <PlanCard
+            plan={planFromArtifact}
+            messageId={planMessageId}
+            projectId={projectId}
+            isExecuting={planState === "executing"}
+            isExpanded={planState === "reviewing"}
+            isCompleted={planState === "completed"}
+            execution={planExecution}
+            onReview={() => setPlanStatus(planState === "reviewing" ? "pending" : "reviewing")}
+            onSkip={() => setPlanStatus("skipped")}
+            onApprove={() => void handlePlanApprove()}
+          />
+        )}
+
+        {!message.streaming && message.artifact && message.artifact.type === "plan" && !planFromArtifact && (
           <div
             style={{
               marginTop: 10,

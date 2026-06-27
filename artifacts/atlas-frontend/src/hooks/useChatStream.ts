@@ -718,6 +718,12 @@ export function useChatStream(
                     setLiveStep({ verb: step.verb, target: step.target, status: step.status });
                     onStepEvent?.(step);
                   }
+                } else if (evtName === "plan") {
+                  // Structured plan artifact emitted out-of-band after prose stream.
+                  const planPayload = (typeEmbedded ?? JSON.parse(evtData)) as import("../lib/plan").StructuredPlanArtifact;
+                  setMessages((prev) =>
+                    prev.map((m) => m.id === placeholderId ? { ...m, planArtifact: planPayload } : m)
+                  );
                 } else if (evtName === "error") {
                   // Server error event — clear activity, show message, stop stream.
                   const payload = typeEmbedded ?? JSON.parse(evtData) as unknown;
