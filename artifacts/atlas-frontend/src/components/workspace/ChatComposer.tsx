@@ -289,7 +289,7 @@ export function ChatComposer(props: ChatComposerProps) {
   })();
   const isMultiAgent = !wsModel || wsModel === "multi";
 
-  const [composerMode, setComposerMode] = useState<"plan" | "build">(defaultComposerMode ?? "plan");
+  const [composerMode, setComposerMode] = useState<"plan" | "build">(defaultComposerMode ?? "build");
   const [planBannerVisible, setPlanBannerVisible] = useState(false);
   const filePreviewUrls = useRef<Map<File, string>>(new Map());
   // Intake mode lives in ForgeIntakeSheet now — composer no longer tracks it.
@@ -304,8 +304,8 @@ export function ChatComposer(props: ChatComposerProps) {
     });
   };
   const composerModeIsPlan = composerMode === "plan";
-  const composerModeAccent = composerModeIsPlan ? "var(--atlas-gold)" : "hsl(217, 80%, 64%)";
-  const composerModeShadow = composerModeIsPlan ? "rgba(201,162,76,0.7)" : "hsla(217, 80%, 64%, 0.7)";
+  const composerModeAccent = composerModeIsPlan ? "var(--atlas-gold)" : "var(--atlas-muted)";
+  const composerModeShadow = composerModeIsPlan ? "rgba(201,162,76,0.7)" : "transparent";
 
   
 
@@ -546,7 +546,7 @@ export function ChatComposer(props: ChatComposerProps) {
         )}
 
         {(() => {
-          const bannerActive = planBannerVisible || chatPending;
+          const bannerActive = composerModeIsPlan && (planBannerVisible || chatPending);
           return (
             <div
               role="status"
@@ -569,9 +569,7 @@ export function ChatComposer(props: ChatComposerProps) {
                 background: composerModeAccent,
                 boxShadow: `0 0 6px ${composerModeShadow}`,
               }} />
-              {composerModeIsPlan
-                ? `Plan Mode · ${chatPending ? "Strategizing" : "Active"}`
-                : `Build Mode · ${chatPending ? "Executing" : "Ready"}`}
+              {`Plan Mode · ${chatPending ? "Strategizing" : "Active"}`}
             </div>
           );
         })()}
@@ -595,7 +593,7 @@ export function ChatComposer(props: ChatComposerProps) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
             <div style={{ position: "relative", flex: 1 }}>
-              {!hasInput && (planBannerVisible || chatPending) ? (
+              {!hasInput && composerModeIsPlan && (planBannerVisible || chatPending) ? (
                 <div
                   aria-hidden
                   style={{
@@ -608,9 +606,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     fontStyle: "italic",
                   }}
                 >
-                  {composerModeIsPlan
-                    ? (chatPending ? "Strategizing…" : "Ready to strategize…")
-                    : (chatPending ? "Executing build…" : "Ready to build…")}
+                  {chatPending ? "Strategizing…" : "Ready to strategize…"}
                 </div>
               ) : (
                 <RotatingPlaceholder wsLens={wsLens} hasInput={hasInput} inputFocused={inputFocused} hasMessages={messages.length > 0} />
@@ -791,21 +787,21 @@ export function ChatComposer(props: ChatComposerProps) {
               <button
                 onClick={togglePlanMode}
                 title="Plan mode"
-                aria-label={composerModeIsPlan ? "Switch to build mode" : "Switch to plan mode"}
-                aria-pressed
+                aria-label={composerModeIsPlan ? "Exit plan mode" : "Switch to plan mode"}
+                aria-pressed={composerModeIsPlan}
                 style={{
                   minWidth: 44, minHeight: 44, padding: 7, borderRadius: 8,
                   background: composerModeIsPlan
                     ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
-                    : "linear-gradient(135deg, hsla(217, 80%, 64%, 0.28), hsla(217, 80%, 64%, 0.14))",
-                  border: `1px solid ${composerModeIsPlan ? "rgba(201,162,76,0.55)" : "hsla(217, 80%, 64%, 0.55)"}`,
-                  boxShadow: composerModeIsPlan ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "0 0 14px -4px hsla(217, 80%, 64%, 0.55), inset 0 0 0 1px hsla(217, 80%, 64%, 0.15)",
+                    : "transparent",
+                  border: `1px solid ${composerModeIsPlan ? "rgba(201,162,76,0.55)" : "rgba(255,255,255,0.10)"}`,
+                  boxShadow: composerModeIsPlan ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)" : "none",
                   color: composerModeAccent,
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all var(--motion-fast) var(--ease-standard)", flexShrink: 0,
                 }}
               >
-                {/* Checklist + gold dot — Plan mode signifier */}
+                {/* Checklist + dot — Plan mode signifier */}
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2.5 6L4 7.5L6.5 5" stroke="currentColor" strokeWidth="1.5" />
                   <path d="M2.5 12L4 13.5L6.5 11" stroke="currentColor" strokeWidth="1.5" />
@@ -817,7 +813,7 @@ export function ChatComposer(props: ChatComposerProps) {
                     r={2.4}
                     fill={composerModeAccent}
                     style={{
-                      filter: `drop-shadow(0 0 4px ${composerModeIsPlan ? "rgba(201,162,76,0.75)" : "hsla(217, 80%, 64%, 0.75)"})`,
+                      filter: composerModeIsPlan ? `drop-shadow(0 0 4px rgba(201,162,76,0.75))` : "none",
                       transition: "all var(--motion-fast) var(--ease-standard)",
                     }}
                   />

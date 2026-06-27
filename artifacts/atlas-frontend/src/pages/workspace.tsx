@@ -7738,7 +7738,7 @@ export default function Workspace() {
               messages,
               entries,
               linkedRepo,
-              defaultComposerMode: (!linkedRepo && !!id) ? "build" : "plan",
+              defaultComposerMode: "build",
               firstRunInput,
               setFirstRunInput,
               sessionId,
