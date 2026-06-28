@@ -704,7 +704,7 @@ ${t}
             key={m}
             onClick={() => setPreviewMode(m)}
             style={{
-              flexShrink: 0, flexGrow: 1, minWidth: 68, padding: "7px 10px",
+              flexShrink: 0, minWidth: 80, padding: "7px 14px",
               background: "transparent", border: "none",
               borderBottom: previewMode === m ? "2px solid var(--atlas-gold)" : "2px solid transparent",
               color: previewMode === m ? "var(--atlas-gold)" : "var(--atlas-muted)",
