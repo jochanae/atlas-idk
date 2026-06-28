@@ -4,6 +4,7 @@ import { eq, and, desc, inArray, isNotNull } from "drizzle-orm";
 import { ApplicationModelPatchSchema, ApplicationModelSchema, ApplicationModelHistorySchema } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { syncFlowCanvasFromModel } from "../lib/flowMapSync";
+import { logProjectArtifact } from "./projectArtifacts";
 
 export { syncFlowCanvasFromModel };
 
@@ -210,6 +211,21 @@ router.post("/projects/:id/model/approve", async (req, res): Promise<void> => {
     }]);
 
     const updated = await getOrCreateApplicationModel(projectId);
+
+    // Log to artifact gallery — fire and forget
+    void logProjectArtifact({
+      projectId,
+      type: "blueprint_snapshot",
+      version: newVersion,
+      title: `Blueprint v${newVersion}`,
+      metadata: { approvedAt: newIntent.approvedAt as string },
+      payload: {
+        identity: updated.identity,
+        intent: updated.intent,
+        pages: (updated.pages as unknown[]).slice(0, 20),
+      },
+    });
+
     res.json(serializeModel(updated));
   } catch (err) {
     req.log.error({ err }, "POST /projects/:id/model/approve failed");

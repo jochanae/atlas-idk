@@ -269,3 +269,19 @@ export const DesignPlanSchema = z.object({
 });
 
 export type DesignPlan = typeof designPlansTable.$inferSelect;
+
+// ── Project Artifacts ────────────────────────────────────────────────────────
+// Versioned log of everything Atlas has generated for a project:
+// design plans, blueprint snapshots, build outputs, and visual sketches.
+export const projectArtifactsTable = pgTable("project_artifacts", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // 'design_plan' | 'blueprint_snapshot' | 'build_output' | 'visual_sketch'
+  version: integer("version").notNull().default(1),
+  title: text("title").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ProjectArtifact = typeof projectArtifactsTable.$inferSelect;

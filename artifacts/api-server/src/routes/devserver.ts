@@ -7,6 +7,7 @@ import { logger } from "../lib/logger";
 import { projectWorkspaceDir } from "../lib/projectWorkspace";
 import { db, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logProjectArtifact } from "./projectArtifacts";
 
 // ── Build-check work dir (separate from live devserver) ───────────────────
 const BUILD_CHECK_DIR = "/tmp/atlas-build-check";
@@ -957,6 +958,16 @@ router.post("/devserver/workspace/:projectId/start", (req, res): void => {
       st.status = "running";
       wsSaveState(projectId, 1, undefined);
       addWsLog(st, `✓ Build complete — ${fileCount} source files · preview ready`);
+
+      // Log to artifact gallery — fire and forget
+      void logProjectArtifact({
+        projectId,
+        type: "build_output",
+        version: 1,
+        title: "Build Output",
+        metadata: { fileCount, builtAt: new Date().toISOString() },
+        payload: {},
+      });
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";

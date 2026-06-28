@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
@@ -49,6 +49,32 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
       setPreviewMode("generated");
     }
   }, [generatedPreviewUrl]);
+
+  // ── Artifact gallery ──────────────────────────────────────────────────────
+  type ProjectArtifact = {
+    id: number;
+    projectId: number;
+    type: string;
+    version: number;
+    title: string;
+    metadata: Record<string, unknown>;
+    payload: Record<string, unknown>;
+    createdAt: string;
+  };
+
+  const { data: artifactsData, isLoading: artifactsLoading, refetch: refetchArtifacts } = useQuery({
+    queryKey: ["project-artifacts", projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/artifacts`);
+      if (!res.ok) throw new Error("Failed to load artifacts");
+      return res.json() as Promise<{ artifacts: ProjectArtifact[] }>;
+    },
+    enabled: previewMode === "generated",
+    staleTime: 20_000,
+    refetchInterval: previewMode === "generated" ? 15_000 : false,
+  });
+
+  const artifacts = artifactsData?.artifacts ?? [];
 
   // Device switcher
   type DeviceSize = "phone" | "tablet" | "desktop";
@@ -667,7 +693,7 @@ ${t}
 
       {/* Mode toggle */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
-        {(["url", "sandbox", "stackblitz", "local"] as const).map((m) => (
+        {(["url", "sandbox", "stackblitz", "local", "generated"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setPreviewMode(m)}
@@ -682,9 +708,17 @@ ${t}
               position: "relative",
             }}
           >
-            {m === "url" ? "Live URL" : m === "sandbox" ? "Draft" : m === "stackblitz" ? "StackBlitz" : "Local Dev"}
+            {m === "url" ? "Live URL" : m === "sandbox" ? "Draft" : m === "stackblitz" ? "StackBlitz" : m === "local" ? "Local Dev" : "Artifacts"}
             {/* Dot indicator on Draft tab when it has content but isn't active */}
             {m === "sandbox" && sandboxRendered && previewMode !== "sandbox" && (
+              <span style={{
+                position: "absolute", top: 5, right: "calc(50% - 14px)",
+                width: 4, height: 4, borderRadius: "50%",
+                background: "rgba(201,162,76,0.7)", pointerEvents: "none",
+              }} />
+            )}
+            {/* Dot indicator on Artifacts tab when it has items but isn't active */}
+            {m === "generated" && artifacts.length > 0 && previewMode !== "generated" && (
               <span style={{
                 position: "absolute", top: 5, right: "calc(50% - 14px)",
                 width: 4, height: 4, borderRadius: "50%",
@@ -1032,31 +1066,131 @@ ${t}
         </div>
       )}
 
-      {previewMode === "generated" && generatedPreviewUrl && (
+      {previewMode === "generated" && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {/* Gallery header */}
           <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderBottom: "1px solid var(--atlas-border)", background: "var(--atlas-surface)" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.05em" }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--atlas-gold)", display: "inline-block", boxShadow: "0 0 6px rgba(201,162,76,0.5)" }} />
               Atlas Generated
             </span>
+            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>
+              {artifacts.length > 0 ? `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"}` : ""}
+            </span>
             <div style={{ flex: 1 }} />
             <button
-              onClick={() => setPreviewMode("url")}
-              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", color: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", borderRadius: 4, opacity: 0.55, transition: "opacity 140ms" }}
+              onClick={() => refetchArtifacts()}
+              title="Refresh"
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", color: "var(--atlas-muted)", fontSize: 10, fontFamily: "var(--app-font-mono)", borderRadius: 4, opacity: 0.45, transition: "opacity 140ms" }}
               onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "0.55")}
+              onMouseLeave={e => (e.currentTarget.style.opacity = "0.45")}
             >
-              Back to URL
+              ↻
             </button>
           </div>
-          <div style={{ flex: 1, position: "relative" }}>
-            <iframe
-              key={generatedPreviewUrl}
-              src={generatedPreviewUrl}
-              title="Atlas Preview"
-              sandbox="allow-scripts allow-same-origin"
-              style={{ border: "none", width: "100%", height: "100%", display: "block", background: "var(--atlas-bg)" }}
-            />
+
+          {/* Gallery body */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "10px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
+            {artifactsLoading && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, minHeight: 80 }}>
+                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35 }}>loading…</span>
+              </div>
+            )}
+
+            {!artifactsLoading && artifacts.length === 0 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, minHeight: 120, gap: 8, padding: "24px 16px" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" opacity={0.1}>
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke="var(--atlas-fg)" strokeWidth="1.5" />
+                  <path d="M8 12h8M12 8v8" stroke="var(--atlas-fg)" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <div style={{ fontSize: 10.5, color: "var(--atlas-muted)", opacity: 0.35, textAlign: "center", fontFamily: "var(--app-font-mono)", lineHeight: 1.7 }}>
+                  No artifacts yet.
+                  <br />
+                  Commit a design plan, approve a blueprint,
+                  <br />
+                  or run a build to see them here.
+                </div>
+              </div>
+            )}
+
+            {!artifactsLoading && artifacts.map((artifact) => {
+              const typeConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
+                design_plan: { label: "DESIGN", color: "var(--atlas-gold)", bg: "rgba(201,162,76,0.08)", border: "rgba(201,162,76,0.2)" },
+                blueprint_snapshot: { label: "BLUEPRINT", color: "rgba(96,165,250,0.9)", bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.18)" },
+                build_output: { label: "BUILD", color: "rgba(52,211,153,0.85)", bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.18)" },
+                visual_sketch: { label: "SKETCH", color: "rgba(167,139,250,0.85)", bg: "rgba(167,139,250,0.06)", border: "rgba(167,139,250,0.18)" },
+              };
+              const cfg = typeConfig[artifact.type] ?? { label: artifact.type.toUpperCase(), color: "var(--atlas-muted)", bg: "rgba(255,255,255,0.03)", border: "var(--atlas-border)" };
+
+              const ts = new Date(artifact.createdAt);
+              const relTime = (() => {
+                const diff = Date.now() - ts.getTime();
+                const mins = Math.floor(diff / 60000);
+                const hrs = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+                if (mins < 1) return "just now";
+                if (mins < 60) return `${mins}m ago`;
+                if (hrs < 24) return `${hrs}h ago`;
+                return `${days}d ago`;
+              })();
+
+              const isBuild = artifact.type === "build_output";
+              const fileCount = isBuild ? (artifact.metadata.fileCount as number | undefined) : undefined;
+
+              return (
+                <div
+                  key={artifact.id}
+                  style={{
+                    background: cfg.bg,
+                    border: `1px solid ${cfg.border}`,
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 5,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{
+                      fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                      color: cfg.color, background: "rgba(0,0,0,0.25)", borderRadius: 3,
+                      padding: "1px 5px", flexShrink: 0,
+                    }}>
+                      {cfg.label}
+                    </span>
+                    <span style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.85, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {artifact.title}
+                    </span>
+                    <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0 }}>
+                      {relTime}
+                    </span>
+                  </div>
+
+                  {(isBuild || artifact.type === "blueprint_snapshot") && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      {isBuild && typeof fileCount === "number" && (
+                        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5 }}>
+                          {fileCount} files
+                        </span>
+                      )}
+                      {isBuild && wsDsStatus === "running" && (
+                        <button
+                          onClick={() => setPreviewMode("local")}
+                          style={{
+                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                            color: "rgba(52,211,153,0.8)", background: "rgba(52,211,153,0.08)",
+                            border: "1px solid rgba(52,211,153,0.2)", borderRadius: 3,
+                            padding: "2px 7px", cursor: "pointer",
+                          }}
+                        >
+                          → Preview
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

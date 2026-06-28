@@ -4,6 +4,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { logger } from "../lib/logger";
 import Anthropic from "@anthropic-ai/sdk";
+import { logProjectArtifact } from "./projectArtifacts";
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -308,6 +309,17 @@ router.post("/projects/:id/design-plan/commit", async (req, res): Promise<void> 
       .returning();
 
     req.log.info({ projectId, planId: committed.id, version: committed.version }, "design plan committed");
+
+    // Log to artifact gallery — fire and forget
+    void logProjectArtifact({
+      projectId,
+      type: "design_plan",
+      version: committed.version,
+      title: `Design Plan v${committed.version}`,
+      metadata: { planId: committed.id, committedAt: committed.committedAt?.toISOString() ?? null },
+      payload: committed.body as Record<string, unknown>,
+    });
+
     res.json(serializePlan(committed));
   } catch (err) {
     req.log.error({ err }, "POST /projects/:id/design-plan/commit failed");

@@ -178,6 +178,28 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: visual_sketches column failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_artifacts (
+        id serial PRIMARY KEY,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        type text NOT NULL,
+        version integer NOT NULL DEFAULT 1,
+        title text NOT NULL,
+        metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+        payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_artifacts_project_id_idx
+        ON project_artifacts (project_id, created_at DESC)
+    `);
+    logger.info("ensureColumns: project_artifacts table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_artifacts table failed — server will start anyway");
+  }
 }
 
 async function main() {
