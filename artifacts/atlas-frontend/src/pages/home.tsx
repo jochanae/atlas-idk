@@ -3157,14 +3157,18 @@ export default function Home() {
       let name = (projectNameOverride || signal?.projectName || "").trim();
       const DEFAULT_PROJECT_NAMES = new Set(["New Project", "New Idea", "My Project", "Untitled", ""]);
       if (DEFAULT_PROJECT_NAMES.has(name)) {
-        const lastUserMsg = [...(nexusChat.messages as HomeMessage[])].reverse().find(m => m.role === "user");
-        if (lastUserMsg?.content) {
+        const conversationMessages = (nexusChat.messages as HomeMessage[])
+          .slice(-14)
+          .filter(m => m.role === "user" || m.role === "assistant")
+          .map(m => ({ role: m.role as string, content: typeof m.content === "string" ? m.content : "" }))
+          .filter(m => m.content.trim());
+        if (conversationMessages.length > 0) {
           try {
             const nameRes = await fetch("/api/nexus/name", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
-              body: JSON.stringify({ message: lastUserMsg.content }),
+              body: JSON.stringify({ messages: conversationMessages }),
             });
             if (nameRes.ok) {
               const nameData = await nameRes.json() as { name?: string };

@@ -3519,17 +3519,32 @@ router.post("/nexus/visualize", async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/nexus/name — generate a short project name from a message
+// POST /api/nexus/name — generate a short project name from a message or conversation transcript
+// Body: { message?: string } | { messages?: Array<{ role: string; content: string }> }
 router.post("/nexus/name", async (req, res): Promise<void> => {
-  const { message } = req.body as { message?: string };
-  if (!message?.trim()) { res.json({ name: "" }); return; }
+  const body = req.body as { message?: string; messages?: Array<{ role: string; content: string }> };
+
+  // Build context string — prefer full transcript over single message
+  let context = "";
+  if (Array.isArray(body.messages) && body.messages.length > 0) {
+    context = body.messages
+      .slice(-12)
+      .map((m) => `${m.role === "user" ? "User" : "Atlas"}: ${String(m.content ?? "").slice(0, 600)}`)
+      .join("\n\n")
+      .slice(0, 3000);
+  } else if (body.message?.trim()) {
+    context = body.message.slice(0, 800);
+  }
+
+  if (!context) { res.json({ name: "" }); return; }
+
   try {
     const resp = await anthropic.messages.create({
       model: "claude-haiku-4-5",
       max_tokens: 20,
       messages: [{
         role: "user",
-        content: `Based on this message, generate a project name.\nRules:\n- 3-5 words maximum\n- Title case\n- Descriptive of what's being built\n- No punctuation\n- No generic words like "Project" or "App" unless essential\n\nMessage: "${message.slice(0, 400)}"\n\nRespond with only the project name, nothing else.`,
+        content: `Read this conversation and generate a concise, memorable project name for what is being built.\n\nRules:\n- 2-5 words maximum\n- Title case\n- Evocative and specific — capture the idea, not the category\n- No punctuation\n- Avoid generic words like "Project", "App", "Platform" unless they are essential to the concept\n- Examples of good names: "Living Legacy Box", "Founder Decision Log", "Atlas Memory Layer"\n\nConversation:\n${context}\n\nRespond with only the project name, nothing else.`,
       }],
     });
     const raw = resp.content[0]?.type === "text" ? resp.content[0].text.trim() : "";

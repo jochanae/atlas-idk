@@ -237,6 +237,9 @@ function PillVisual({
               ? "Handoff failed \u2014 Retry"
               : "Enter Workspace \u2192";
 
+  const GENERIC_TITLES = new Set(["workspace", "New Project", "New Idea", "My Project", "Untitled", ""]);
+  const showTitle = status === "ready" && !overrideLabel && title && !GENERIC_TITLES.has(title.trim());
+
   const isShaping = status === "shaping";
   const isReady = status === "ready";
   const isPackaging = status === "packaging";
@@ -327,7 +330,23 @@ function PillVisual({
           </svg>
         )}
 
-        <span className="relative z-10">{label}</span>
+        <span className="relative z-10 flex flex-col items-center gap-0.5">
+          <span>{label}</span>
+          {showTitle && (
+            <span
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                opacity: 0.65,
+                textTransform: "none",
+                fontFamily: "var(--app-font-sans, sans-serif)",
+                fontWeight: 400,
+              }}
+            >
+              {title}
+            </span>
+          )}
+        </span>
       </button>
 
       {isError && errorMsg && (
