@@ -367,7 +367,44 @@ function CodeViewer({
   );
 }
 
-// ── Activity rail (right) ────────────────────────────────────────────────────
+// ── Activity feed helpers ────────────────────────────────────────────────────
+function formatEventTime(iso: string) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function eventVerb(status: string): string {
+  const s = (status ?? "").toLowerCase();
+  if (s === "new") return "Created";
+  if (s === "deleted") return "Deleted";
+  if (s === "unchanged") return "Reviewed";
+  return "Modified";
+}
+
+function eventVerbColor(status: string): string {
+  const s = (status ?? "").toLowerCase();
+  if (s === "new") return "#7CE3A0";
+  if (s === "deleted") return "#FF8A8A";
+  return "#E6C687";
+}
+
+// Group events by HH:MM bucket
+function groupByMinute(files: GeneratedFile[]): Array<{ minute: string; items: GeneratedFile[] }> {
+  const map = new Map<string, GeneratedFile[]>();
+  const sorted = [...files].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  for (const f of sorted) {
+    const key = formatEventTime(f.createdAt);
+    const bucket = map.get(key) ?? [];
+    bucket.push(f);
+    map.set(key, bucket);
+  }
+  return Array.from(map.entries()).map(([minute, items]) => ({ minute, items }));
+}
+
+// ── Activity Rail ─────────────────────────────────────────────────────────────
 function ActivityRail({
   run,
   files,
@@ -379,90 +416,104 @@ function ActivityRail({
   runs: GenerationRun[];
   onSelectRun: (id: string) => void;
 }) {
+  const groups = groupByMinute(files);
+
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", height: "100%" }}>
-      <div>
-        <div style={{ ...MONO, fontSize: 10, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase", marginBottom: 8 }}>
-          Active Run
-        </div>
-        <div style={{
-          padding: 12, borderRadius: 10,
-          background: "color-mix(in oklab, var(--atlas-gold) 6%, transparent)",
-          border: "1px solid color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-            <RunStatusBadge status={run.status} />
-            <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
-              {fileCountLabel(fileCountForRun(run))}
-            </span>
-          </div>
-          <div style={{ marginBottom: 6, fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)" }}>
-            {runTitle(run)}
-          </div>
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.55 }}>
-            {run.summary || "Build session"}
-          </p>
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", height: "100%" }}>
+
+      {/* Run header strip */}
+      <div style={{
+        padding: "10px 14px",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
+      }}>
+        <RunStatusBadge status={run.status} />
+        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--atlas-fg)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {runTitle(run)}
+        </span>
+        <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{formatDuration(run.durationMs)}</span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        <Stat label="Files" value={fileCountForRun(run).toString()} />
-        <Stat label="Lines" value={`+${run.linesAdded} / -${run.linesRemoved}`} tint="#7CE3A0" />
-        <Stat label="Duration" value={formatDuration(run.durationMs)} />
-      </div>
-
-      <div>
-        <div style={{ ...MONO, fontSize: 10, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase", marginBottom: 8 }}>
-          Summary
-        </div>
-        <p style={{ margin: 0, fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.55, opacity: 0.85 }}>
-          {run.summary || "Build session"}
-        </p>
-      </div>
-
-      <div>
-        <div style={{ ...MONO, fontSize: 10, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase", marginBottom: 8 }}>
-          Files in this run
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {files.length ? (
-            files.map((f) => (
-              <div key={f.id} style={{
-                display: "flex", alignItems: "center", gap: 8, padding: "6px 8px",
-                borderRadius: 6, background: "rgba(255,255,255,0.02)",
+      {/* Event log */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
+        {groups.length === 0 ? (
+          <EmptyHint label="No file events yet." />
+        ) : (
+          groups.map(({ minute, items }) => (
+            <div key={minute}>
+              {/* Minute timestamp marker */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 2px",
               }}>
-                <span style={{
-                  width: 5, height: 5, borderRadius: 99, background: statusColor(f.status),
-                  boxShadow: `0 0 6px ${statusColor(f.status)}`, flexShrink: 0,
-                }} />
-                <span style={{ ...MONO, fontSize: 11, color: "var(--atlas-fg)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {f.path}
-                </span>
-                <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{f.language}</span>
+                <span style={{ ...MONO, fontSize: 9.5, color: "var(--atlas-muted)", letterSpacing: "0.06em" }}>{minute}</span>
+                <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.04)" }} />
               </div>
-            ))
-          ) : (
-            <EmptyHint label="No files in this run yet." />
-          )}
-        </div>
+
+              {/* Events in this minute */}
+              {items.map((f) => {
+                const verb = eventVerb(f.status);
+                const verbColor = eventVerbColor(f.status);
+                const fileName = f.path.split("/").pop() ?? f.path;
+                const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
+                return (
+                  <div key={f.id} style={{
+                    display: "flex", alignItems: "baseline", gap: 7,
+                    padding: "4px 14px",
+                  }}>
+                    <span style={{ ...MONO, fontSize: 10, color: verbColor, minWidth: 52, flexShrink: 0 }}>{verb}</span>
+                    <span style={{ ...MONO, fontSize: 11, color: "var(--atlas-fg)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {fileName}
+                    </span>
+                    {dir && (
+                      <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 1 }}>
+                        {dir}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        )}
+
+        {/* Build outcome */}
+        {run.status !== "running" && (
+          <div style={{
+            margin: "10px 14px 0", padding: "8px 10px", borderRadius: 8,
+            background: run.status === "completed"
+              ? "rgba(124,227,160,0.06)"
+              : "rgba(255,138,138,0.06)",
+            border: `1px solid ${run.status === "completed" ? "rgba(124,227,160,0.18)" : "rgba(255,138,138,0.18)"}`,
+            display: "flex", alignItems: "center", gap: 7,
+          }}>
+            <span style={{ fontSize: 11, color: run.status === "completed" ? "#7CE3A0" : "#FF8A8A" }}>
+              {run.status === "completed" ? "✓" : "✗"}
+            </span>
+            <span style={{ ...MONO, fontSize: 10, color: run.status === "completed" ? "#7CE3A0" : "#FF8A8A" }}>
+              {run.status === "completed" ? "Build completed" : "Build failed"}
+            </span>
+            {run.commitSha && (
+              <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)", marginLeft: "auto" }}>
+                {run.commitSha.slice(0, 7)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
-      <div>
-        <div style={{ ...MONO, fontSize: 10, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase", marginBottom: 8 }}>
-          Run History
+      {/* Run switcher */}
+      {runs.length > 1 && (
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "8px 10px", flexShrink: 0 }}>
+          <div style={{ ...MONO, fontSize: 9, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase", marginBottom: 6 }}>
+            All Runs
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {runs.map((r) => (
+              <RunCard key={r.id} run={r} active={r.id === run.id} onSelect={() => onSelectRun(r.id)} compact />
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {runs.map((r) => (
-            <RunCard
-              key={r.id}
-              run={r}
-              active={r.id === run.id}
-              onSelect={() => onSelectRun(r.id)}
-              compact
-            />
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -524,43 +575,181 @@ function RunCard({
   );
 }
 
-function RunList({
-  runs,
-  activeRunId,
-  loading,
-  onSelectRun,
+// ── Tech stack detection ─────────────────────────────────────────────────────
+type StackEntry = { label: string; detail?: string };
+
+function detectStack(files: GeneratedFile[]): StackEntry[] {
+  const paths = files.map((f) => f.path);
+  const langs = files.map((f) => f.language.toLowerCase());
+  const has = (re: RegExp) => paths.some((p) => re.test(p));
+  const langCount = (l: string) => langs.filter((x) => x === l || x.startsWith(l)).length;
+
+  const entries: StackEntry[] = [];
+
+  const tsxCount = files.filter((f) => f.path.endsWith(".tsx") || f.path.endsWith(".jsx")).length;
+  const tsCount = files.filter((f) => f.path.endsWith(".ts") || f.path.endsWith(".tsx")).length;
+
+  if (tsxCount > 0) entries.push({ label: "React" });
+  if (has(/next\.config\./)) entries.push({ label: "Next.js" });
+  if (tsCount > 0) entries.push({ label: "TypeScript", detail: `${tsCount} files` });
+  if (has(/tailwind\.config\./)) entries.push({ label: "Tailwind CSS" });
+  if (has(/vite\.config\./)) entries.push({ label: "Vite" });
+  if (has(/drizzle\.config\.|drizzle\//)) entries.push({ label: "Drizzle ORM" });
+  if (has(/prisma\/schema|schema\.prisma/)) entries.push({ label: "Prisma" });
+  if (has(/supabase\//)) entries.push({ label: "Supabase" });
+  if (langCount("python") > 0) entries.push({ label: "Python" });
+  if (has(/\.sql$/) || has(/migration/)) entries.push({ label: "SQL" });
+
+  return entries;
+}
+
+// ── Pipeline step ────────────────────────────────────────────────────────────
+type StepStatus = "done" | "failed" | "running" | "pending";
+
+function PipelineStep({
+  label, detail, status, last,
+}: { label: string; detail?: string; status: StepStatus; last?: boolean }) {
+  const color = status === "done"
+    ? "#7CE3A0"
+    : status === "failed"
+      ? "#FF8A8A"
+      : status === "running"
+        ? "#E6C687"
+        : "rgba(255,255,255,0.2)";
+  const mark = status === "done" ? "✓" : status === "failed" ? "✗" : status === "running" ? "…" : "·";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "7px 10px",
+      borderBottom: last ? "none" : "1px solid rgba(255,255,255,0.03)",
+    }}>
+      <span style={{ ...MONO, fontSize: 11, fontWeight: 600, color, minWidth: 12, textAlign: "center" }}>{mark}</span>
+      <span style={{ fontSize: 12.5, color: status === "pending" ? "var(--atlas-muted)" : "var(--atlas-fg)", flex: 1 }}>{label}</span>
+      {detail && (
+        <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{detail}</span>
+      )}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      ...MONO, fontSize: 9, letterSpacing: "0.18em", color: "var(--atlas-muted)",
+      textTransform: "uppercase", padding: "10px 10px 4px",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ── Generation Pipeline ───────────────────────────────────────────────────────
+function GenerationPipeline({
+  run, files, runs, onSelectRun,
 }: {
+  run: GenerationRun;
+  files: GeneratedFile[];
   runs: GenerationRun[];
-  activeRunId: string | null;
-  loading: boolean;
   onSelectRun: (id: string) => void;
 }) {
+  const stack = detectStack(files);
+  const runIdx = runs.length - runs.findIndex((r) => r.id === run.id);
+  const isPending = run.status === "running";
+  const isFailed = run.status === "failed";
+  const isDone = run.status === "completed";
+
+  const builderStatus: StepStatus = isPending ? "running" : isFailed ? "failed" : "done";
+  const pushStatus: StepStatus = run.commitSha ? "done" : isDone ? "pending" : "pending";
+
   return (
-    <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-        <Activity size={14} style={{ color: "var(--atlas-gold)" }} />
-        <span style={{ ...MONO, fontSize: 10, letterSpacing: "0.16em", color: "var(--atlas-muted)", textTransform: "uppercase" }}>
-          Runs
-        </span>
-        <span style={{ flex: 1 }} />
-        <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{runs.length}</span>
+    <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* Run header */}
+      <div style={{
+        padding: "10px 12px", borderRadius: 10,
+        background: "color-mix(in oklab, var(--atlas-gold) 5%, transparent)",
+        border: "1px solid color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <RunStatusBadge status={run.status} />
+          <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>Generation #{runIdx}</span>
+          <span style={{ flex: 1 }} />
+          <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>
+            {formatDuration(run.durationMs)}
+          </span>
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--atlas-fg)", lineHeight: 1.4 }}>
+          {runTitle(run)}
+        </div>
       </div>
-      {runs.length ? (
-        <div style={{ display: "grid", gap: 10 }}>
-          {runs.map((run) => (
-            <RunCard
-              key={run.id}
-              run={run}
-              active={run.id === activeRunId}
-              onSelect={() => onSelectRun(run.id)}
-            />
+
+      {/* Stack section */}
+      {stack.length > 0 && (
+        <div style={{
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.05)",
+          background: "rgba(255,255,255,0.015)",
+          overflow: "hidden",
+        }}>
+          <SectionLabel>Stack</SectionLabel>
+          {stack.map((s, i) => (
+            <PipelineStep key={s.label} label={s.label} detail={s.detail} status="done" last={i === stack.length - 1} />
           ))}
         </div>
-      ) : (
-        <EmptyState
-          title={loading ? "Loading generation workspace…" : "Runs"}
-          hint={loading ? "Fetching runs from the backend." : "No runs returned yet."}
+      )}
+
+      {/* Build section */}
+      <div style={{
+        borderRadius: 10,
+        border: "1px solid rgba(255,255,255,0.05)",
+        background: "rgba(255,255,255,0.015)",
+        overflow: "hidden",
+      }}>
+        <SectionLabel>Build</SectionLabel>
+        <PipelineStep label="Builder" status={builderStatus} />
+        <PipelineStep
+          label="Files written"
+          detail={run.filesChanged > 0 ? `${run.filesChanged} file${run.filesChanged !== 1 ? "s" : ""}` : undefined}
+          status={isDone || isFailed ? "done" : "pending"}
         />
+        <PipelineStep
+          label="Build verified"
+          status={isFailed ? "failed" : isDone ? "done" : isPending ? "running" : "pending"}
+          last={!run.commitSha}
+        />
+        {run.commitSha && (
+          <PipelineStep
+            label="Pushed to GitHub"
+            detail={run.pushedToBranch ? run.pushedToBranch.split("/").pop() : undefined}
+            status={pushStatus}
+            last
+          />
+        )}
+      </div>
+
+      {/* Artifacts section */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <Stat label="Files" value={run.filesChanged.toString()} />
+        <Stat
+          label="Lines"
+          value={run.linesAdded > 0 ? `+${run.linesAdded}` : "0"}
+          tint="#7CE3A0"
+        />
+        <Stat label="Duration" value={formatDuration(run.durationMs)} />
+      </div>
+
+      {/* Run history */}
+      {runs.length > 1 && (
+        <div>
+          <div style={{ ...MONO, fontSize: 9, letterSpacing: "0.18em", color: "var(--atlas-muted)", textTransform: "uppercase", marginBottom: 8 }}>
+            History
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {runs.map((r) => (
+              <RunCard key={r.id} run={r} active={r.id === run.id} onSelect={() => onSelectRun(r.id)} compact />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -725,7 +914,12 @@ export default function CodePage() {
   // Loading / error / empty states
   const loading = projectQ.isLoading || runsQ.isLoading || (!!activeRun && filesQ.isLoading);
   const error = projectQ.error || runsQ.error || filesQ.error;
-  const isStreaming = false;
+
+  // Badge: derive from whether the active run is still in progress, or is older than latest
+  const isLiveBuild = activeRun?.status === "running";
+  const isHistory = activeRun != null && runs.length > 0 && activeRun.id !== runs[0]?.id;
+  const badgeLabel = isLiveBuild ? "LIVE BUILD" : isHistory ? "HISTORY" : "FOLLOWING LATEST";
+  const badgeGreen = isLiveBuild;
   const handleSelectRun = (id: string) => {
     setSelectedRunId(id);
     setSelectedFileId(null);
@@ -903,17 +1097,17 @@ export default function CodePage() {
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "5px 10px", borderRadius: 99,
-          background: isStreaming ? "rgba(124,227,160,0.08)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${isStreaming ? "rgba(124,227,160,0.25)" : "rgba(255,255,255,0.08)"}`,
-          color: isStreaming ? "#7CE3A0" : "var(--atlas-muted)",
+          background: badgeGreen ? "rgba(124,227,160,0.08)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${badgeGreen ? "rgba(124,227,160,0.25)" : "rgba(255,255,255,0.08)"}`,
+          color: badgeGreen ? "#7CE3A0" : "var(--atlas-muted)",
           fontSize: 11, ...MONO, letterSpacing: "0.06em",
         }}>
           <span style={{
             width: 6, height: 6, borderRadius: 99,
-            background: isStreaming ? "#7CE3A0" : "rgba(255,255,255,0.4)",
-            boxShadow: isStreaming ? "0 0 8px #7CE3A0" : "none",
+            background: badgeGreen ? "#7CE3A0" : "rgba(255,255,255,0.4)",
+            boxShadow: badgeGreen ? "0 0 8px #7CE3A0" : "none",
           }} />
-          {isStreaming ? "STREAMING" : "MIRRORING CHAT"}
+          {badgeLabel}
         </div>
 
         <ToolButton
@@ -923,7 +1117,7 @@ export default function CodePage() {
         />
         <ToolButton
           icon={<Wand2 size={13} />}
-          label={codegen.running ? "Generating…" : "Regenerate"}
+          label={codegen.running ? "Generating…" : "New Generation"}
           disabled={codegen.running || !activeRun}
           onClick={() => {
             if (!activeRun) return;
@@ -932,7 +1126,7 @@ export default function CodePage() {
         />
         <ToolButton
           icon={<Hammer size={13} />}
-          label="Forge Sync"
+          label="Update Project Map"
           onClick={handleOpenForgeSync}
         />
         <ToolButton
@@ -1081,7 +1275,7 @@ export default function CodePage() {
           ) : !loading && runs.length === 0 ? (
             <EmptyState
               title="No generation runs yet"
-              hint="This project hasn't been generated yet. Start a run from the Forge or send a build intent in chat."
+              hint="This project hasn't been generated yet. Start a generation from the Workspace or send a build intent in chat."
             />
           ) : selectedFile ? (
 
@@ -1091,14 +1285,14 @@ export default function CodePage() {
               isEdited={Object.prototype.hasOwnProperty.call(edits, selectedFile.id)}
               onChange={(next) => setEdits((current) => ({ ...current, [selectedFile.id]: next }))}
             />
-          ) : (
-            <RunList
+          ) : activeRun ? (
+            <GenerationPipeline
+              run={activeRun}
+              files={files}
               runs={runs}
-              activeRunId={activeRun?.id ?? null}
-              loading={loading}
               onSelectRun={handleSelectRun}
             />
-          )}
+          ) : null}
         </main>
         )}
 
