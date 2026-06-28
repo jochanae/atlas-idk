@@ -3675,17 +3675,28 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   let terminalCmd: ChatTerminalCommand | null = null;
   let terminalResult: ChatTerminalResult | null = null;
 
-  // FILE_READ intercept — Atlas requested specific files; fetch from GitHub first, then local workspace
+  // FILE_READ intercept — loop up to FILE_READ_MAX rounds so Atlas can request multiple
+  // batches of files before emitting FILE_EDIT blocks. Previously single-shot: if the
+  // model's follow-up response contained another FILE_READ_REQUEST, it was silently
+  // dropped and no files were ever written.
   {
-    const { paths: readPaths, cleanedContent: readCleanedContent } = extractFileReadRequest(rawContent);
-    if (readPaths.length > 0) {
-      const hasGithub = !!(repoData?.fullName && resolvedGithubToken);
-      const localWsDir = projectId ? projectWorkspaceDir(projectId) : null;
-      const localWsExists = localWsDir
-        ? await fsPromises.stat(localWsDir).then(() => true).catch(() => false)
-        : false;
+    const FILE_READ_MAX = 4;
+    const hasGithub = !!(repoData?.fullName && resolvedGithubToken);
+    const localWsDir = projectId ? projectWorkspaceDir(projectId) : null;
+    const localWsExists = localWsDir
+      ? await fsPromises.stat(localWsDir).then(() => true).catch(() => false)
+      : false;
 
-      type FetchedFile = { path: string; content: string; truncated: boolean; lineCount: number };
+    type FetchedFile = { path: string; content: string; truncated: boolean; lineCount: number };
+
+    // Grow the conversation across file-read rounds so context accumulates correctly.
+    const fileReadConversation: Array<{ role: "user" | "assistant"; content: string }> = [
+      ...dispatchMessages as Array<{ role: "user" | "assistant"; content: string }>,
+    ];
+
+    for (let readIter = 0; readIter < FILE_READ_MAX; readIter++) {
+      const { paths: readPaths, cleanedContent: readCleanedContent } = extractFileReadRequest(rawContent);
+      if (readPaths.length === 0) break; // No (more) file reads requested — exit loop
 
       const fetchedFiles = await Promise.all(
         readPaths.map(async (fp): Promise<FetchedFile | { path: string; error: string } | null> => {
@@ -3734,6 +3745,8 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
 
       validFiles.forEach((file) => addKnownPreviousContent(previousContentByPath, file));
 
+      if (validFiles.length === 0 && failedFiles.length === 0) break;
+
       const filesSummary = validFiles
         .map(f => `=== ${f.path}${f.truncated ? ` [first 600 of ${f.lineCount} lines]` : ""} ===\n${f.content}`)
         .join("\n\n");
@@ -3742,23 +3755,24 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
         .map(f => `[FILE_READ_UNAVAILABLE: ${f.path} — ${f.error}]`)
         .join("\n");
 
-      if (validFiles.length > 0 || failedFiles.length > 0) {
-        const userContent = [
-          validFiles.length > 0 ? `[FILES REQUESTED BY YOU]\n\n${filesSummary}\n\n[END FILES]` : null,
-          unavailableSummary || null,
-          "Proceed using the content above. For any unavailable files, tell the user clearly why they couldn't be read. Do not guess at their contents.",
-        ].filter(Boolean).join("\n\n");
+      const userContent = [
+        validFiles.length > 0 ? `[FILES REQUESTED BY YOU]\n\n${filesSummary}\n\n[END FILES]` : null,
+        unavailableSummary || null,
+        readIter < FILE_READ_MAX - 1
+          ? "Proceed using the content above. You may emit another FILE_READ_REQUEST if you need additional files, or emit FILE_EDIT blocks to apply your changes."
+          : "Proceed using the content above. This is the final file-read round — emit your FILE_EDIT blocks now.",
+      ].filter(Boolean).join("\n\n");
 
-        const followUpMessages: Array<{ role: "user" | "assistant"; content: string }> = [
-          ...dispatchMessages as Array<{ role: "user" | "assistant"; content: string }>,
-          { role: "assistant", content: readCleanedContent },
-          { role: "user", content: userContent },
-        ];
-        modelResult = await callModel(activeModel, systemPrompt, followUpMessages, undefined);
-        rawContent = modelResult.content;
-        assistantUsage = mergeUsage(assistantUsage, modelResult.usage);
-        modelUsed = modelResult.model;
-      }
+      // Append this round to the growing conversation
+      fileReadConversation.push(
+        { role: "assistant", content: readCleanedContent },
+        { role: "user", content: userContent }
+      );
+
+      modelResult = await callModel(activeModel, systemPrompt, fileReadConversation, undefined);
+      rawContent = modelResult.content;
+      assistantUsage = mergeUsage(assistantUsage, modelResult.usage);
+      modelUsed = modelResult.model;
     }
   }
 
