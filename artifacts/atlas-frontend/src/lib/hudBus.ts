@@ -17,7 +17,8 @@ export type HudEventType =
   | "NAVIGATED"
   | "EXTRACTED"
   | "TENSION"
-  | "PROJECT";
+  | "PROJECT"
+  | "BUILD_PHASE";
 
 export interface HudEvent {
   id: string;

@@ -9,6 +9,7 @@ import { useSound } from "@/hooks/useSound";
 import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
+import { useBuildLifecycle } from "@/hooks/useBuildLifecycle";
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 
 import { useChatLens } from "@/hooks/useChatLens";
@@ -4369,6 +4370,17 @@ export default function Workspace() {
         );
       });
   }, [pendingAutoApply, sessionId, doSend, messagesRef, id]);
+
+  // ── Build lifecycle HUD ────────────────────────────────────────────────────
+  // Pushes BUILD_PHASE events to the hudBus so the Listening HUD shows real
+  // progress (Writing Files, Verifying Build, etc.) instead of stalling on the
+  // last INTENT event for the entire build duration.
+  useBuildLifecycle({
+    chatPending,
+    activityStreamContent: activityStream.content,
+    pendingAutoApply,
+    messages,
+  });
 
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {

@@ -49,11 +49,21 @@ const HUD_EVENT_TYPES: HudEventType[] = [
   "EXTRACTED",
   "TENSION",
   "PROJECT",
+  "BUILD_PHASE",
 ];
 
 const AMBER = "rgb(201,162,76)";
 const VIOLET = "rgb(167,139,250)";
 const VIOLET_CORE = "rgb(139,92,246)";
+const BUILD_ACTIVE = "rgb(56,189,248)";
+const BUILD_READY = "rgb(74,222,128)";
+const BUILD_STALLED = "rgb(248,113,113)";
+
+function buildPhaseColor(payload: string): string {
+  if (/stalled/i.test(payload)) return BUILD_STALLED;
+  if (/ready|success/i.test(payload)) return BUILD_READY;
+  return BUILD_ACTIVE;
+}
 
 type PersistedShapingRecord = {
   id?: unknown;
@@ -136,6 +146,9 @@ const FONT_MONO = "var(--app-font-mono, 'Geist Mono', ui-monospace, monospace)";
 const FONT_SANS = "var(--app-font-sans, 'Geist', ui-sans-serif, system-ui)";
 
 function EventLine({ ev, dim }: { ev: HudEvent; dim?: boolean }) {
+  const isBuild = ev.type === "BUILD_PHASE";
+  const tagColor = isBuild ? buildPhaseColor(ev.payload) : AMBER;
+  const tagLabel = isBuild ? "BUILD" : ev.type;
   return (
     <div
       style={{
@@ -144,13 +157,16 @@ function EventLine({ ev, dim }: { ev: HudEvent; dim?: boolean }) {
         alignItems: "flex-start",
         justifyContent: "space-between",
         gap: 12,
-        borderTop: "1px solid rgba(255,255,255,0.03)",
+        borderTop: isBuild
+          ? `1px solid ${tagColor}22`
+          : "1px solid rgba(255,255,255,0.03)",
+        background: isBuild ? `${tagColor}08` : undefined,
         opacity: dim ? 0.55 : 1,
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 2, fontFamily: FONT_MONO, minWidth: 0 }}>
-        <span style={{ fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", color: AMBER, fontWeight: 700 }}>
-          [{ev.type}]
+        <span style={{ fontSize: 9, letterSpacing: "0.04em", textTransform: "uppercase", color: tagColor, fontWeight: 700 }}>
+          [{tagLabel}]
         </span>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.9)", lineHeight: 1.3, wordBreak: "break-word" }}>
           {ev.payload}
@@ -300,8 +316,11 @@ export function ListeningHUD({
           <PulseDot key={pulseKey} />
           {latest && (
             <span style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT_MONO, fontSize: 10, minWidth: 0 }}>
-              <span style={{ color: AMBER, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                [{latest.type}]
+              <span style={{
+                color: latest.type === "BUILD_PHASE" ? buildPhaseColor(latest.payload) : AMBER,
+                fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em",
+              }}>
+                [{latest.type === "BUILD_PHASE" ? "BUILD" : latest.type}]
               </span>
               <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 300 }}>→</span>
               <span style={{ color: "rgba(255,255,255,0.92)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
