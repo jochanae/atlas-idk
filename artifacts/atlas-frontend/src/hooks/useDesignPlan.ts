@@ -42,6 +42,7 @@ export function useDesignPlan(projectId: number | null) {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -89,9 +90,11 @@ export function useDesignPlan(projectId: number | null) {
   }, [projectId]);
 
   const patchBody = useCallback(async (body: Partial<DesignPlanBody>): Promise<DesignPlan | null> => {
-    if (!projectId || !plan) return null;
+    if (!projectId) return null;
+    setSaving(true);
+    setError(null);
     try {
-      const res = await fetch(`/api/projects/${projectId}/design-plan/${plan.id}`, {
+      const res = await fetch(`/api/projects/${projectId}/design-plan`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body }),
@@ -101,17 +104,19 @@ export function useDesignPlan(projectId: number | null) {
       setPlan(data);
       return data;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Patch failed");
+      setError(e instanceof Error ? e.message : "Save failed");
       return null;
+    } finally {
+      setSaving(false);
     }
-  }, [projectId, plan]);
+  }, [projectId]);
 
   const commit = useCallback(async (): Promise<DesignPlan | null> => {
-    if (!projectId || !plan) return null;
+    if (!projectId) return null;
     setCommitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/projects/${projectId}/design-plan/${plan.id}/commit`, { method: "POST" });
+      const res = await fetch(`/api/projects/${projectId}/design-plan/commit`, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: DesignPlan = await res.json();
       setPlan(data);
@@ -122,7 +127,7 @@ export function useDesignPlan(projectId: number | null) {
     } finally {
       setCommitting(false);
     }
-  }, [projectId, plan]);
+  }, [projectId]);
 
-  return { plan, loading, generating, committing, error, refetch: load, generate, patchBody, commit };
+  return { plan, loading, generating, committing, saving, error, refetch: load, generate, patchBody, commit };
 }

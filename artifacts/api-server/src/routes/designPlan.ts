@@ -1,11 +1,16 @@
 import { Router } from "express";
-import { db, applicationModelsTable, designPlansTable, projectsTable } from "@workspace/db";
+import { db, applicationModelsTable, designPlansTable, projectsTable, DesignPlanBodySchema } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { z } from "zod/v4";
 import { logger } from "../lib/logger";
 import Anthropic from "@anthropic-ai/sdk";
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const PatchBodySchema = z.object({
+  body: DesignPlanBodySchema,
+});
 
 function parseProjectId(raw: string): number | null {
   const n = parseInt(raw, 10);
@@ -31,6 +36,16 @@ function serializePlan(row: typeof designPlansTable.$inferSelect) {
     createdAt: row.createdAt.toISOString(),
     committedAt: row.committedAt ? row.committedAt.toISOString() : null,
   };
+}
+
+async function getLatestPlan(projectId: number) {
+  const rows = await db
+    .select()
+    .from(designPlansTable)
+    .where(eq(designPlansTable.projectId, projectId))
+    .orderBy(desc(designPlansTable.version))
+    .limit(1);
+  return rows.length > 0 ? rows[0] : null;
 }
 
 const DESIGN_PLAN_PROMPT = `You are generating a Design Plan for a software product. Read the Application Model below and produce a structured JSON design brief.
@@ -124,19 +139,8 @@ router.get("/projects/:id/design-plan", async (req, res): Promise<void> => {
     const owns = await assertProjectOwner(projectId, userId);
     if (!owns) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    const rows = await db
-      .select()
-      .from(designPlansTable)
-      .where(eq(designPlansTable.projectId, projectId))
-      .orderBy(desc(designPlansTable.version))
-      .limit(1);
-
-    if (rows.length === 0) {
-      res.json(null);
-      return;
-    }
-
-    res.json(serializePlan(rows[0]));
+    const plan = await getLatestPlan(projectId);
+    res.json(plan ? serializePlan(plan) : null);
   } catch (err) {
     req.log.error({ err }, "GET /projects/:id/design-plan failed");
     res.status(500).json({ error: "Internal server error" });
@@ -144,7 +148,7 @@ router.get("/projects/:id/design-plan", async (req, res): Promise<void> => {
 });
 
 // POST /api/projects/:id/design-plan/generate
-// Generates a new draft Design Plan from the current Application Model via AI.
+// Generates a new proposed Design Plan from the current Application Model via AI.
 router.post("/projects/:id/design-plan/generate", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).userId as number;
@@ -153,26 +157,13 @@ router.post("/projects/:id/design-plan/generate", async (req, res): Promise<void
     const owns = await assertProjectOwner(projectId, userId);
     if (!owns) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    // Determine next version number
-    const existing = await db
-      .select({ version: designPlansTable.version })
-      .from(designPlansTable)
-      .where(eq(designPlansTable.projectId, projectId))
-      .orderBy(desc(designPlansTable.version))
-      .limit(1);
-
-    const nextVersion = existing.length > 0 ? existing[0].version + 1 : 1;
-
+    const existing = await getLatestPlan(projectId);
+    const nextVersion = existing ? existing.version + 1 : 1;
     const body = await generateDesignPlanBody(projectId);
 
     const [plan] = await db
       .insert(designPlansTable)
-      .values({
-        projectId,
-        version: nextVersion,
-        status: "proposed",
-        body,
-      })
+      .values({ projectId, version: nextVersion, status: "proposed", body })
       .returning();
 
     req.log.info({ projectId, planId: plan.id, version: nextVersion }, "design plan generated");
@@ -183,83 +174,83 @@ router.post("/projects/:id/design-plan/generate", async (req, res): Promise<void
   }
 });
 
-// PATCH /api/projects/:id/design-plan/:planId
-// Updates the body of a draft or proposed Design Plan.
-router.patch("/projects/:id/design-plan/:planId", async (req, res): Promise<void> => {
+// PATCH /api/projects/:id/design-plan
+// Updates the body of the latest Design Plan.
+// If the latest plan is committed, this forks a new proposed version with the merged body.
+router.patch("/projects/:id/design-plan", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).userId as number;
     const projectId = parseProjectId(req.params.id);
-    const planId = parseInt(req.params.planId, 10);
-    if (!projectId || isNaN(planId)) { res.status(400).json({ error: "Invalid id" }); return; }
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
     const owns = await assertProjectOwner(projectId, userId);
     if (!owns) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    const existing = await db
-      .select()
-      .from(designPlansTable)
-      .where(and(eq(designPlansTable.id, planId), eq(designPlansTable.projectId, projectId)))
-      .limit(1);
-
-    if (existing.length === 0) { res.status(404).json({ error: "Plan not found" }); return; }
-    if (existing[0].status === "committed") {
-      res.status(409).json({ error: "Cannot edit a committed plan — generate a new one" });
+    const parsed = PatchBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid request body", details: parsed.error.issues });
       return;
     }
 
-    const { body } = req.body as { body?: Record<string, unknown> };
-    if (!body || typeof body !== "object") {
-      res.status(400).json({ error: "body is required" });
+    const latest = await getLatestPlan(projectId);
+    if (!latest) {
+      res.status(404).json({ error: "No design plan exists — generate one first" });
       return;
     }
 
-    const merged = { ...(existing[0].body as Record<string, unknown>), ...body };
+    const merged = { ...(latest.body as Record<string, unknown>), ...parsed.data.body };
 
-    const [updated] = await db
-      .update(designPlansTable)
-      .set({ body: merged })
-      .where(eq(designPlansTable.id, planId))
-      .returning();
-
-    res.json(serializePlan(updated));
+    if (latest.status === "committed") {
+      // Fork: create a new proposed version so the committed version is preserved
+      const [forked] = await db
+        .insert(designPlansTable)
+        .values({ projectId, version: latest.version + 1, status: "proposed", body: merged })
+        .returning();
+      req.log.info({ projectId, planId: forked.id, version: forked.version }, "design plan forked from committed");
+      res.json(serializePlan(forked));
+    } else {
+      const [updated] = await db
+        .update(designPlansTable)
+        .set({ body: merged })
+        .where(eq(designPlansTable.id, latest.id))
+        .returning();
+      res.json(serializePlan(updated));
+    }
   } catch (err) {
-    req.log.error({ err }, "PATCH /projects/:id/design-plan/:planId failed");
+    req.log.error({ err }, "PATCH /projects/:id/design-plan failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// POST /api/projects/:id/design-plan/:planId/commit
-// Commits a Design Plan — status becomes 'committed', committedAt is set.
-router.post("/projects/:id/design-plan/:planId/commit", async (req, res): Promise<void> => {
+// POST /api/projects/:id/design-plan/commit
+// Commits the latest Design Plan — status → committed, committedAt set.
+router.post("/projects/:id/design-plan/commit", async (req, res): Promise<void> => {
   try {
     const userId = (req as any).userId as number;
     const projectId = parseProjectId(req.params.id);
-    const planId = parseInt(req.params.planId, 10);
-    if (!projectId || isNaN(planId)) { res.status(400).json({ error: "Invalid id" }); return; }
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
     const owns = await assertProjectOwner(projectId, userId);
     if (!owns) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    const existing = await db
-      .select()
-      .from(designPlansTable)
-      .where(and(eq(designPlansTable.id, planId), eq(designPlansTable.projectId, projectId)))
-      .limit(1);
-
-    if (existing.length === 0) { res.status(404).json({ error: "Plan not found" }); return; }
-    if (existing[0].status === "committed") {
-      res.json(serializePlan(existing[0]));
+    const latest = await getLatestPlan(projectId);
+    if (!latest) {
+      res.status(404).json({ error: "No design plan exists — generate one first" });
+      return;
+    }
+    if (latest.status === "committed") {
+      res.json(serializePlan(latest));
       return;
     }
 
     const [committed] = await db
       .update(designPlansTable)
       .set({ status: "committed", committedAt: new Date() })
-      .where(eq(designPlansTable.id, planId))
+      .where(eq(designPlansTable.id, latest.id))
       .returning();
 
-    req.log.info({ projectId, planId, version: committed.version }, "design plan committed");
+    req.log.info({ projectId, planId: committed.id, version: committed.version }, "design plan committed");
     res.json(serializePlan(committed));
   } catch (err) {
-    req.log.error({ err }, "POST /projects/:id/design-plan/:planId/commit failed");
+    req.log.error({ err }, "POST /projects/:id/design-plan/commit failed");
     res.status(500).json({ error: "Internal server error" });
   }
 });
