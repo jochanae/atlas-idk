@@ -263,6 +263,7 @@ export default function MasterMap() {
   const panRef = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
   const warpFnRef = useRef<((destId: number) => void) | null>(null);
+  const openPeekRef = useRef<((idx: number) => void) | null>(null);
   const recenterFnRef = useRef<(() => void) | null>(null);
   const layerStackRef = useRef<LayerStack | null>(null);
   const layer2TooltipRef = useRef<{ rec: LayerNodeRecord } | null>(null);
@@ -887,6 +888,7 @@ export default function MasterMap() {
         setPeek(prev => prev && prev.projectId === proj.id ? { ...prev, loading: false } : prev);
       }
     };
+    openPeekRef.current = openPeek;
 
     const handleLayer23Click = (cx: number, cy: number): boolean => {
       // Layer 1 project taps are handled by the outer hitTest → dive to Layer 2.
@@ -1564,11 +1566,33 @@ export default function MasterMap() {
               pointerEvents: "auto",
             }}>
               <div style={{
-                fontSize: 15, fontWeight: 600, color: palette.goldTextStrong,
-                fontFamily: "var(--app-font-sans)", letterSpacing: "0.01em",
-                marginBottom: 8,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                gap: 7, marginBottom: 8,
               }}>
-                {context.projectName ?? "Project"}
+                <span style={{
+                  fontSize: 15, fontWeight: 600, color: palette.goldTextStrong,
+                  fontFamily: "var(--app-font-sans)", letterSpacing: "0.01em",
+                }}>
+                  {context.projectName ?? "Project"}
+                </span>
+                {peek && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openPeekRef.current?.(peek.nodeIdx); }}
+                    title="Refresh"
+                    style={{
+                      background: "transparent", border: "none", padding: 3, cursor: "pointer",
+                      color: palette.goldText, opacity: 0.6, lineHeight: 1,
+                      display: "flex", alignItems: "center", flexShrink: 0,
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                      <path d="M21 3v5h-5" />
+                      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                      <path d="M3 21v-5h5" />
+                    </svg>
+                  </button>
+                )}
               </div>
               {(() => {
                 const proj = projects.find(p => p.id === context.projectId);
