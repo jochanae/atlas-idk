@@ -3,6 +3,7 @@ import { db, projectDnaTable, projectsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { ProjectDnaPatchSchema } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { createAutoCheckpointOnce } from "./checkpoints";
 
 const router = Router();
 
@@ -116,6 +117,22 @@ router.patch("/projects/:id/dna", async (req, res): Promise<void> => {
     const updated = await getOrCreateDna(projectId);
     logger.info({ projectId, fields: Object.keys(updates) }, "DNA patched");
     res.json(serializeDna(updated));
+
+    // Auto-checkpoint: DNA Established — fire-and-forget, non-blocking.
+    // Trigger when creative_principles becomes non-empty for the first time.
+    const principles = (updated.creativePrinciples as unknown[]) ?? [];
+    if (principles.length > 0) {
+      createAutoCheckpointOnce({
+        projectId,
+        type: "understanding",
+        title: "Project DNA Established",
+        dnaSnapshot: {
+          creativePrinciples: updated.creativePrinciples,
+          experienceIntent: updated.experienceIntent,
+          status: updated.status,
+        },
+      }).catch(() => {});
+    }
   } catch (err) {
     req.log.error({ err }, "PATCH /projects/:id/dna failed");
     res.status(500).json({ error: "Internal server error" });

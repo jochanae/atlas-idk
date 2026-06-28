@@ -14,7 +14,7 @@
  * v1 is local-only (per spec). Cross-device sync is v2 (would add a
  * `snapshot_id` column on chat_messages + a snapshots table).
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type AtlasLens = "builder" | "strategic" | "minimal";
 
@@ -279,6 +279,119 @@ export function useLensRestoreListener(
     const fn = (e: Event) => handler((e as CustomEvent<RollbackDetail>).detail);
     window.addEventListener(LENS_RESTORE_EVENT, fn);
     return () => window.removeEventListener(LENS_RESTORE_EVENT, fn);
+  }, [handler]);
+}
+
+/* ── Checkpoint types & hook ─────────────────────────────────────────── */
+
+export type CheckpointType =
+  | "understanding"
+  | "build"
+  | "design"
+  | "release"
+  | "manual";
+
+export interface ProjectCheckpoint {
+  id: string;
+  project_id: number;
+  type: CheckpointType;
+  label: string;
+  title: string;
+  notes: string | null;
+  created_by: string;
+  dna_snapshot: Record<string, unknown>;
+  am_snapshot: Record<string, unknown>;
+  build_ref: string | null;
+  message_ref: number | null;
+  created_at: string;
+}
+
+const CHECKPOINT_EVENT = "atlas:checkpoint-created";
+
+export function useCheckpoints(projectId: number | null) {
+  const [checkpoints, setCheckpoints] = useState<ProjectCheckpoint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const prevCountRef = useRef(0);
+
+  const fetchCheckpoints = useCallback(async () => {
+    if (!projectId) {
+      setCheckpoints([]);
+      prevCountRef.current = 0;
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/checkpoints`);
+      if (res.ok) {
+        const data = (await res.json()) as ProjectCheckpoint[];
+        setCheckpoints(data);
+        // Dispatch ceremonial event when a new checkpoint appears
+        if (prevCountRef.current > 0 && data.length > prevCountRef.current) {
+          const newest = data[0];
+          if (newest) {
+            window.dispatchEvent(
+              new CustomEvent(CHECKPOINT_EVENT, { detail: { checkpoint: newest } }),
+            );
+          }
+        }
+        prevCountRef.current = data.length;
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchCheckpoints();
+    // Poll every 30 s to pick up server-side auto-checkpoints
+    const interval = setInterval(fetchCheckpoints, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchCheckpoints]);
+
+  const createManual = useCallback(
+    async (title: string, notes?: string): Promise<ProjectCheckpoint | null> => {
+      if (!projectId) return null;
+      try {
+        const res = await fetch(`/api/projects/${projectId}/checkpoints`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "manual", title, notes }),
+        });
+        if (!res.ok) return null;
+        const checkpoint = (await res.json()) as ProjectCheckpoint;
+        await fetchCheckpoints();
+        return checkpoint;
+      } catch {
+        return null;
+      }
+    },
+    [projectId, fetchCheckpoints],
+  );
+
+  return {
+    checkpoints,
+    isLoading,
+    refresh: fetchCheckpoints,
+    createManual,
+  };
+}
+
+/**
+ * Subscribe to the ceremonial checkpoint-created event.
+ * Components can listen to this to show a toast or banner.
+ */
+export function useCheckpointCreatedListener(
+  handler: (checkpoint: ProjectCheckpoint) => void,
+): void {
+  useEffect(() => {
+    const fn = (e: Event) => {
+      const detail = (e as CustomEvent<{ checkpoint: ProjectCheckpoint }>).detail;
+      if (detail?.checkpoint) handler(detail.checkpoint);
+    };
+    window.addEventListener(CHECKPOINT_EVENT, fn);
+    return () => window.removeEventListener(CHECKPOINT_EVENT, fn);
   }, [handler]);
 }
 

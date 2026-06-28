@@ -202,6 +202,32 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: project_dna table failed — server will start anyway");
   }
 
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS project_checkpoints (
+        id text PRIMARY KEY,
+        project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        type text NOT NULL,
+        label text NOT NULL DEFAULT '',
+        title text NOT NULL,
+        notes text,
+        created_by text NOT NULL DEFAULT 'system',
+        dna_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
+        am_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
+        build_ref text,
+        message_ref integer,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS project_checkpoints_project_id_idx
+        ON project_checkpoints (project_id, created_at DESC)
+    `);
+    logger.info("ensureColumns: project_checkpoints table verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: project_checkpoints table failed — server will start anyway");
+  }
+
   // Atomic migration: verify ALL source columns exist, copy data, then drop — in one transaction.
   // The DROP only executes if the INSERT succeeds; the transaction rolls back on any error so
   // the legacy columns are never lost without a confirmed successful copy.
