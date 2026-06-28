@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, applicationModelsTable, designPlansTable, projectsTable, DesignPlanBodySchema } from "@workspace/db";
+import { db, applicationModelsTable, designPlansTable, projectsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { logger } from "../lib/logger";
@@ -8,9 +8,69 @@ import Anthropic from "@anthropic-ai/sdk";
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const PatchBodySchema = z.object({
-  body: DesignPlanBodySchema,
+// PATCH-specific schema: all fields fully optional, no defaults injected.
+// This ensures omitted fields are treated as "no change", not "set to default".
+const PatchBodyFieldSchema = z.object({
+  navigationPattern: z.string().optional(),
+  responsiveIntent: z.object({
+    mobile: z.string().optional(),
+    tablet: z.string().optional(),
+    desktop: z.string().optional(),
+  }).optional(),
+  informationHierarchy: z.array(z.string()).optional(),
+  componentPatterns: z.string().optional(),
+  motionPhilosophy: z.string().optional(),
+  cardDensity: z.string().optional(),
+  typographyScale: z.string().optional(),
+  emptyStates: z.string().optional(),
+  interactionPatterns: z.object({
+    primaryAction: z.string().optional(),
+    secondaryAction: z.string().optional(),
+    editingStyle: z.string().optional(),
+    confirmationBehavior: z.string().optional(),
+    gestures: z.string().optional(),
+    scrollingBehavior: z.string().optional(),
+  }).optional(),
 });
+
+const PatchBodySchema = z.object({ body: PatchBodyFieldSchema });
+
+type PatchBodyFields = z.infer<typeof PatchBodyFieldSchema>;
+
+/** Deep merge for Design Plan body: shallow top-level, deep for nested objects. */
+function mergePlanBody(
+  existing: Record<string, unknown>,
+  patch: PatchBodyFields,
+): Record<string, unknown> {
+  const result = { ...existing };
+
+  // Scalar top-level fields: overwrite if provided
+  for (const key of [
+    "navigationPattern", "componentPatterns", "motionPhilosophy",
+    "cardDensity", "typographyScale", "emptyStates",
+  ] as const) {
+    if (patch[key] !== undefined) result[key] = patch[key];
+  }
+
+  // informationHierarchy: overwrite only if explicitly provided
+  if (patch.informationHierarchy !== undefined) {
+    result.informationHierarchy = patch.informationHierarchy;
+  }
+
+  // responsiveIntent: deep merge — preserve sibling keys not in patch
+  if (patch.responsiveIntent !== undefined) {
+    const prev = (existing.responsiveIntent as Record<string, unknown>) ?? {};
+    result.responsiveIntent = { ...prev, ...patch.responsiveIntent };
+  }
+
+  // interactionPatterns: deep merge — preserve sibling keys not in patch
+  if (patch.interactionPatterns !== undefined) {
+    const prev = (existing.interactionPatterns as Record<string, unknown>) ?? {};
+    result.interactionPatterns = { ...prev, ...patch.interactionPatterns };
+  }
+
+  return result;
+}
 
 function parseProjectId(raw: string): number | null {
   const n = parseInt(raw, 10);
@@ -197,7 +257,7 @@ router.patch("/projects/:id/design-plan", async (req, res): Promise<void> => {
       return;
     }
 
-    const merged = { ...(latest.body as Record<string, unknown>), ...parsed.data.body };
+    const merged = mergePlanBody(latest.body as Record<string, unknown>, parsed.data.body);
 
     if (latest.status === "committed") {
       // Fork: create a new proposed version so the committed version is preserved
