@@ -3255,7 +3255,10 @@ Rules:
   }
 
   // Workspace lens — new four-lens system (FLOW / BUILD / LOOK / SCENARIO)
-  const workspaceLens = buildMode ? "build" : (body.workspaceLens ?? "flow").toLowerCase();
+  // Self-contained build requests ("Create a dashboard", "Build me X") always force
+  // the build lens regardless of what the client sent — these are unambiguous build
+  // intent and must emit FILE_EDIT blocks, not a FLOW thinking response.
+  const workspaceLens = (buildMode || isSelfContainedBuild) ? "build" : (body.workspaceLens ?? "flow").toLowerCase();
   const workspaceLensInstructions: Record<string, string> = {
     flow: `\n\n--- LENS: FLOW ---
 You are in FLOW lens. This means:
