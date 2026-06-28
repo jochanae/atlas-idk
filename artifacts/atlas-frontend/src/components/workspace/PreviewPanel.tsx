@@ -693,13 +693,19 @@ ${t}
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Mode toggle */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--atlas-border)", flexShrink: 0 }}>
+      <div style={{ position: "relative", flexShrink: 0, borderBottom: "1px solid var(--atlas-border)" }}>
+        {/* left fade */}
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to right, var(--atlas-bg, #0e0d0b), transparent)" }} />
+        {/* right fade */}
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 20, pointerEvents: "none", zIndex: 1, background: "linear-gradient(to left, var(--atlas-bg, #0e0d0b), transparent)" }} />
+        <div style={{ display: "flex", overflowX: "auto", scrollbarWidth: "none" }}>
         {(["url", "sandbox", "stackblitz", "local", "generated"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setPreviewMode(m)}
             style={{
-              flex: 1, padding: "7px 0", background: "transparent", border: "none",
+              flexShrink: 0, flexGrow: 1, minWidth: 68, padding: "7px 10px",
+              background: "transparent", border: "none",
               borderBottom: previewMode === m ? "2px solid var(--atlas-gold)" : "2px solid transparent",
               color: previewMode === m ? "var(--atlas-gold)" : "var(--atlas-muted)",
               fontSize: 9, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
@@ -707,6 +713,7 @@ ${t}
               opacity: previewMode === m ? 1 : 0.45,
               transition: "all 140ms ease",
               position: "relative",
+              whiteSpace: "nowrap",
             }}
           >
             {m === "url" ? "Live URL" : m === "sandbox" ? "Draft" : m === "stackblitz" ? "StackBlitz" : m === "local" ? "Local Dev" : "Artifacts"}
@@ -728,7 +735,8 @@ ${t}
             )}
           </button>
         ))}
-      </div>
+        </div>{/* end scroll container */}
+      </div>{/* end mode toggle */}
 
       {/* Device switcher — Sandbox mode uses same popover dropdown as URL mode */}
       {previewMode === "sandbox" && (
