@@ -11,7 +11,11 @@ const router: IRouter = Router();
 // Optional ?type= filter to scope to a specific artifact type.
 router.get("/projects/:id/artifacts", async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as number;
+    const userId = (req as any).authUser?.id as number | undefined;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
     const projectId = Number(req.params.id);
     if (!projectId || isNaN(projectId)) {
       res.status(400).json({ error: "Invalid project id" });
