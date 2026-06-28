@@ -68,6 +68,25 @@ export interface AMBuildState {
   approvedAt?: string | null;
 }
 
+export interface AMExperienceIntent {
+  emotionalRegister?: string[];
+  interactionPosture?: string[];
+  visualLanguage?: string[];
+  designPrinciples?: string[];
+  confidence?: number;
+  lastConfirmed?: string | null;
+}
+
+export interface AMVisualSketch {
+  analyzedAt: string;
+  description: string;
+  signals: {
+    emotionalRegister?: string[];
+    visualLanguage?: string[];
+    designPrinciples?: string[];
+  };
+}
+
 export interface ApplicationModel {
   id: number;
   projectId: number;
@@ -79,9 +98,17 @@ export interface ApplicationModel {
   data: AMData;
   logic: AMLogic[];
   buildState: AMBuildState;
+  creativePrinciples: string[];
+  experienceIntent: AMExperienceIntent;
+  visualSketches: AMVisualSketch[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type ApplicationModelPatch = Partial<Pick<ApplicationModel,
+  | "identity" | "intent" | "pages" | "components" | "data" | "logic"
+  | "buildState" | "creativePrinciples" | "experienceIntent" | "visualSketches"
+>> & { reason?: string };
 
 export function useApplicationModel(projectId: number | null) {
   const [model, setModel] = useState<ApplicationModel | null>(null);
@@ -143,5 +170,23 @@ export function useApplicationModel(projectId: number | null) {
     }
   }, [projectId]);
 
-  return { model, loading, error, refetch: load, approve, unapprove };
+  const patch = useCallback(async (update: ApplicationModelPatch): Promise<ApplicationModel | null> => {
+    if (!projectId) return null;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/model`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: ApplicationModel = await res.json();
+      setModel(data);
+      return data;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Patch failed");
+      return null;
+    }
+  }, [projectId]);
+
+  return { model, loading, error, refetch: load, approve, unapprove, patch };
 }

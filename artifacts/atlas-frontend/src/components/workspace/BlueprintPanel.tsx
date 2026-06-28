@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { useApplicationModel } from "@/hooks/useApplicationModel";
-import type { AMPage, AMComponent, AMEntity, AMRelationship, AMLogic } from "@/hooks/useApplicationModel";
+import type { AMPage, AMComponent, AMEntity, AMRelationship, AMLogic, ApplicationModelPatch } from "@/hooks/useApplicationModel";
 import { useModelAlignment } from "@/hooks/useModelAlignment";
 import type { AlignmentResult, AlignmentItemResult } from "@/hooks/useModelAlignment";
+import { ExperienceIntentCard } from "./ExperienceIntentCard";
 
-type BPTab = "spec" | "components" | "data" | "logic";
+type BPTab = "spec" | "components" | "data" | "logic" | "soul";
 
 const MONO = "var(--app-font-mono)";
 const GOLD = "var(--atlas-gold, #C9A24C)";
@@ -438,7 +439,8 @@ interface BlueprintPanelProps {
 export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProps) {
   const [activeTab, setActiveTab] = useState<BPTab>("spec");
   const [approving, setApproving] = useState(false);
-  const { model, loading, approve, unapprove, refetch } = useApplicationModel(projectId);
+  const { model, loading, approve, unapprove, refetch, patch } = useApplicationModel(projectId);
+  const [patchSaving, setPatchSaving] = useState(false);
   const { alignment, refetch: refetchAlignment } = useModelAlignment(projectId);
 
   useEffect(() => {
@@ -459,11 +461,25 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
     setApproving(false);
   }, [unapprove]);
 
-  const tabs: { id: BPTab; label: string }[] = [
+  const hasSoul = !!(
+    model?.experienceIntent &&
+    ((model.experienceIntent.emotionalRegister?.length ?? 0) > 0 ||
+      (model.experienceIntent.visualLanguage?.length ?? 0) > 0 ||
+      (model.creativePrinciples?.length ?? 0) > 0)
+  );
+
+  const handlePatch = useCallback(async (update: ApplicationModelPatch) => {
+    setPatchSaving(true);
+    await patch(update);
+    setPatchSaving(false);
+  }, [patch]);
+
+  const tabs: { id: BPTab; label: string; dot?: boolean }[] = [
     { id: "spec", label: "Spec" },
     { id: "components", label: "Components" },
     { id: "data", label: "Data Model" },
     { id: "logic", label: "Logic" },
+    { id: "soul", label: "Soul", dot: hasSoul },
   ];
 
   const approvedAt = model?.intent?.approvedAt;
@@ -534,7 +550,21 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
               marginBottom: -1,
             }}
           >
-            {t.label}
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {t.label}
+              {t.dot && (
+                <span style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: "50%",
+                  background: GOLD,
+                  opacity: activeTab === t.id ? 1 : 0.5,
+                  display: "inline-block",
+                  flexShrink: 0,
+                  marginTop: -6,
+                }} />
+              )}
+            </span>
           </button>
         ))}
       </div>
@@ -550,6 +580,15 @@ export function BlueprintPanel({ projectId, refreshTrigger }: BlueprintPanelProp
         {!loading && activeTab === "components" && <ComponentsTab model={model} />}
         {!loading && activeTab === "data" && <DataTab model={model} />}
         {!loading && activeTab === "logic" && <LogicTab model={model} />}
+        {!loading && activeTab === "soul" && (
+          <ExperienceIntentCard
+            experienceIntent={model?.experienceIntent ?? {}}
+            creativePrinciples={model?.creativePrinciples ?? []}
+            visualSketches={model?.visualSketches ?? []}
+            onSave={handlePatch}
+            saving={patchSaving}
+          />
+        )}
       </div>
 
       {/* Footer: version + last extracted */}
