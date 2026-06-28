@@ -1115,19 +1115,24 @@ ${t}
             )}
 
             {!artifactsLoading && (() => {
-              type TypeCfg = { label: string; sectionLabel: string; color: string; bg: string; border: string };
-              const TYPE_ORDER: string[] = ["design_plan", "blueprint_snapshot", "build_output", "visual_sketch"];
+              // Gallery renders in global reverse-chronological order (API returns DESC by created_at).
+              // Type badge on every card; LATEST badge for the newest artifact of each type.
+
+              type TypeCfg = { label: string; color: string; bg: string; border: string };
               const TYPE_CONFIG: Record<string, TypeCfg> = {
-                design_plan:        { label: "DESIGN",    sectionLabel: "Design Plans",       color: "var(--atlas-gold)",        bg: "rgba(201,162,76,0.08)",  border: "rgba(201,162,76,0.2)"  },
-                blueprint_snapshot: { label: "BLUEPRINT", sectionLabel: "Blueprint Snapshots", color: "rgba(96,165,250,0.9)",     bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.18)" },
-                build_output:       { label: "BUILD",     sectionLabel: "Build Outputs",       color: "rgba(52,211,153,0.85)",    bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.18)" },
-                visual_sketch:      { label: "SKETCH",    sectionLabel: "Visual Sketches",     color: "rgba(167,139,250,0.85)",   bg: "rgba(167,139,250,0.06)",border: "rgba(167,139,250,0.18)"},
+                design_plan:        { label: "DESIGN",    color: "var(--atlas-gold)",        bg: "rgba(201,162,76,0.08)",  border: "rgba(201,162,76,0.2)"  },
+                blueprint_snapshot: { label: "BLUEPRINT", color: "rgba(96,165,250,0.9)",     bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.18)" },
+                build_output:       { label: "BUILD",     color: "rgba(52,211,153,0.85)",    bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.18)" },
+                visual_sketch:      { label: "SKETCH",    color: "rgba(167,139,250,0.85)",   bg: "rgba(167,139,250,0.06)",border: "rgba(167,139,250,0.18)"},
+                landing_draft:      { label: "LANDING",   color: "rgba(251,146,60,0.85)",    bg: "rgba(251,146,60,0.06)", border: "rgba(251,146,60,0.18)" },
+                export_package:     { label: "EXPORT",    color: "rgba(34,211,238,0.85)",    bg: "rgba(34,211,238,0.06)", border: "rgba(34,211,238,0.18)" },
               };
 
-              const grouped = TYPE_ORDER.reduce<Record<string, typeof artifacts>>((acc, t) => {
-                acc[t] = artifacts.filter(a => a.type === t);
-                return acc;
-              }, {});
+              // Latest id per type (first occurrence in DESC list = highest version)
+              const latestIdByType: Record<string, number> = {};
+              for (const a of artifacts) {
+                if (!(a.type in latestIdByType)) latestIdByType[a.type] = a.id;
+              }
 
               const relTime = (iso: string) => {
                 const diff = Date.now() - new Date(iso).getTime();
@@ -1140,253 +1145,254 @@ ${t}
                 return `${days}d ago`;
               };
 
-              return TYPE_ORDER.filter(t => grouped[t].length > 0).map(type => {
-                const cfg = TYPE_CONFIG[type];
-                const group = grouped[type];
+              return artifacts.map(artifact => {
+                const cfg = TYPE_CONFIG[artifact.type] ?? {
+                  label: artifact.type.toUpperCase().slice(0, 8),
+                  color: "var(--atlas-muted)", bg: "rgba(255,255,255,0.03)", border: "var(--atlas-border)",
+                };
+                const isExpanded = expandedArtifactId === artifact.id;
+                const isLatest = latestIdByType[artifact.type] === artifact.id;
+                const isBuild = artifact.type === "build_output";
+                const isBlueprint = artifact.type === "blueprint_snapshot";
+                const isDesignPlan = artifact.type === "design_plan";
+                const isSketch = artifact.type === "visual_sketch";
+
+                const dp = artifact.payload as Record<string, unknown>;
+                const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
+                const bpIntent   = (artifact.payload.intent   as Record<string, unknown>) ?? {};
+                const bpPages    = (artifact.payload.pages    as Array<{ name?: string; purpose?: string }>) ?? [];
+                const bpComps    = (artifact.payload.components as Array<{ name?: string }>) ?? [];
+                const bpData     = (artifact.payload.data     as Record<string, unknown>) ?? {};
+                const bpLogic    = (artifact.payload.logic    as unknown[]) ?? [];
+                const bpCP       = (artifact.payload.creativePrinciples as string[]) ?? [];
+                const bpEI       = (artifact.payload.experienceIntent   as Record<string, unknown>) ?? {};
+                const fileCount  = isBuild ? (artifact.metadata.fileCount as number | undefined) : undefined;
+                const buildAvailable = isBuild && wsDsStatus === "running";
+
                 return (
-                  <div key={type} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {/* Section header */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingBottom: 2 }}>
-                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em", color: cfg.color, opacity: 0.7, textTransform: "uppercase" }}>
-                        {cfg.sectionLabel}
-                      </span>
-                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.3 }}>
-                        {group.length}
-                      </span>
-                      <div style={{ flex: 1, height: 1, background: cfg.border, opacity: 0.5 }} />
-                    </div>
+                  <div key={artifact.id} style={{ display: "flex", flexDirection: "column" }}>
+                    {/* Card header — click to expand */}
+                    <div
+                      onClick={() => setExpandedArtifactId(isExpanded ? null : artifact.id)}
+                      style={{
+                        background: cfg.bg,
+                        border: `1px solid ${cfg.border}`,
+                        borderRadius: isExpanded ? "6px 6px 0 0" : 6,
+                        padding: "7px 10px",
+                        display: "flex", flexDirection: "column", gap: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {/* Type badge */}
+                        <span style={{
+                          fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                          color: cfg.color, background: "rgba(0,0,0,0.25)", borderRadius: 3,
+                          padding: "1px 5px", flexShrink: 0,
+                        }}>
+                          {cfg.label}
+                        </span>
+                        {/* Version */}
+                        <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0 }}>
+                          v{artifact.version}
+                        </span>
+                        {/* Latest marker */}
+                        {isLatest && (
+                          <span style={{ fontSize: 7, fontFamily: "var(--app-font-mono)", color: cfg.color, opacity: 0.6, background: "rgba(0,0,0,0.2)", borderRadius: 2, padding: "0 4px", flexShrink: 0 }}>
+                            LATEST
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.85, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {artifact.title}
+                        </span>
+                        <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35, flexShrink: 0 }}>
+                          {relTime(artifact.createdAt)}
+                        </span>
+                        <span style={{ fontSize: 7.5, color: "var(--atlas-muted)", opacity: 0.25, flexShrink: 0, marginLeft: 2 }}>
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </div>
 
-                    {/* Cards in this group — newest first */}
-                    {group.map(artifact => {
-                      const isExpanded = expandedArtifactId === artifact.id;
-                      const isBuild = artifact.type === "build_output";
-                      const isBlueprint = artifact.type === "blueprint_snapshot";
-                      const isDesignPlan = artifact.type === "design_plan";
-                      const isSketch = artifact.type === "visual_sketch";
-                      const isLatest = artifact.id === group[0].id;
-
-                      const dp = artifact.payload as Record<string, unknown>;
-                      const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
-                      const bpIntent   = (artifact.payload.intent   as Record<string, unknown>) ?? {};
-                      const bpPages    = (artifact.payload.pages    as Array<{ name?: string; purpose?: string }>) ?? [];
-                      const bpComps    = (artifact.payload.components as Array<{ name?: string }>) ?? [];
-                      const bpData     = (artifact.payload.data     as Record<string, unknown>) ?? {};
-                      const bpLogic    = (artifact.payload.logic    as unknown[]) ?? [];
-                      const bpCP       = (artifact.payload.creativePrinciples as string[]) ?? [];
-                      const bpEI       = (artifact.payload.experienceIntent   as Record<string, unknown>) ?? {};
-                      const fileCount  = isBuild ? (artifact.metadata.fileCount as number | undefined) : undefined;
-                      const buildAvailable = isBuild && wsDsStatus === "running";
-
-                      return (
-                        <div key={artifact.id} style={{ display: "flex", flexDirection: "column" }}>
-                          {/* Card header */}
-                          <div
-                            onClick={() => setExpandedArtifactId(isExpanded ? null : artifact.id)}
-                            style={{
-                              background: cfg.bg,
-                              border: `1px solid ${cfg.border}`,
-                              borderRadius: isExpanded ? "6px 6px 0 0" : 6,
-                              padding: "7px 10px",
-                              display: "flex", flexDirection: "column", gap: 4,
-                              cursor: "pointer",
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0 }}>
-                                v{artifact.version}
-                              </span>
-                              {isLatest && (
-                                <span style={{ fontSize: 7, fontFamily: "var(--app-font-mono)", color: cfg.color, opacity: 0.65, background: "rgba(0,0,0,0.2)", borderRadius: 2, padding: "0 4px", flexShrink: 0 }}>
-                                  LATEST
-                                </span>
-                              )}
-                              <span style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.85, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {artifact.title}
-                              </span>
-                              <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35, flexShrink: 0 }}>
-                                {relTime(artifact.createdAt)}
-                              </span>
-                              <span style={{ fontSize: 7.5, color: "var(--atlas-muted)", opacity: 0.25, flexShrink: 0, marginLeft: 2 }}>
-                                {isExpanded ? "▲" : "▼"}
-                              </span>
-                            </div>
-
-                            {/* Build preview action row */}
-                            {isBuild && (
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
-                                {typeof fileCount === "number" && (
-                                  <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>
-                                    {fileCount} source files
-                                  </span>
-                                )}
-                                {buildAvailable ? (
-                                  <button
-                                    onClick={() => setPreviewMode("local")}
-                                    style={{
-                                      fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
-                                      color: "rgba(52,211,153,0.8)", background: "rgba(52,211,153,0.08)",
-                                      border: "1px solid rgba(52,211,153,0.2)", borderRadius: 3,
-                                      padding: "2px 7px", cursor: "pointer",
-                                    }}
-                                  >
-                                    → Open Live Preview
-                                  </button>
-                                ) : (
-                                  <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.28 }}>
-                                    preview unavailable — start Local Dev
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Expanded full read-only payload panel */}
-                          {isExpanded && (
-                            <div style={{
-                              background: "rgba(0,0,0,0.18)", border: `1px solid ${cfg.border}`, borderTop: "none",
-                              borderRadius: "0 0 6px 6px", padding: "10px 12px",
-                              display: "flex", flexDirection: "column", gap: 8,
-                            }}>
-
-                              {/* ── Design Plan: full committed body ── */}
-                              {isDesignPlan && (
-                                <>
-                                  {dp.navigationPattern   && <DetailRow label="Navigation"     value={String(dp.navigationPattern)} />}
-                                  {dp.componentPatterns   && <DetailRow label="Components"     value={String(dp.componentPatterns)} />}
-                                  {dp.motionPhilosophy    && <DetailRow label="Motion"         value={String(dp.motionPhilosophy)} />}
-                                  {dp.typographyScale     && <DetailRow label="Typography"     value={String(dp.typographyScale)} />}
-                                  {dp.colorStrategy       && <DetailRow label="Color"          value={String(dp.colorStrategy)} />}
-                                  {dp.cardDensity         && <DetailRow label="Card density"   value={String(dp.cardDensity)} />}
-                                  {dp.layoutArchetype     && <DetailRow label="Layout"         value={String(dp.layoutArchetype)} />}
-                                  {dp.dataDisplayStyle    && <DetailRow label="Data display"   value={String(dp.dataDisplayStyle)} />}
-                                  {(dp.responsiveIntent as Record<string, unknown>)?.mobile && (
-                                    <DetailRow label="Mobile intent" value={String((dp.responsiveIntent as Record<string, unknown>).mobile)} />
-                                  )}
-                                  {(dp.interactionPatterns as Record<string, unknown>)?.primaryAction && (
-                                    <DetailRow label="Primary action" value={String((dp.interactionPatterns as Record<string, unknown>).primaryAction)} />
-                                  )}
-                                  {(dp.interactionPatterns as Record<string, unknown>)?.feedbackStyle && (
-                                    <DetailRow label="Feedback style" value={String((dp.interactionPatterns as Record<string, unknown>).feedbackStyle)} />
-                                  )}
-                                  {Array.isArray(dp.informationHierarchy) && dp.informationHierarchy.length > 0 && (
-                                    <div>
-                                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>INFO HIERARCHY</span>
-                                      {(dp.informationHierarchy as string[]).map((h, i) => (
-                                        <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {h}</div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {Array.isArray(dp.keyComponents) && dp.keyComponents.length > 0 && (
-                                    <div>
-                                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>KEY COMPONENTS</span>
-                                      {(dp.keyComponents as string[]).map((c, i) => (
-                                        <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {c}</div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {dp.accessibilityNotes && <DetailRow label="Accessibility" value={String(dp.accessibilityNotes)} />}
-                                </>
-                              )}
-
-                              {/* ── Blueprint Snapshot: full AM at approval ── */}
-                              {isBlueprint && (
-                                <>
-                                  {bpIdentity.name        && <DetailRow label="Project"      value={String(bpIdentity.name)} />}
-                                  {bpIdentity.tagline     && <DetailRow label="Tagline"      value={String(bpIdentity.tagline)} />}
-                                  {(bpIntent.summary as string | undefined) && <DetailRow label="Intent"  value={String(bpIntent.summary)} />}
-                                  {(bpIntent.primaryGoal as string | undefined) && <DetailRow label="Goal" value={String(bpIntent.primaryGoal)} />}
-                                  {(bpIntent.targetUser as string | undefined) && <DetailRow label="User"  value={String(bpIntent.targetUser)} />}
-                                  {bpPages.length > 0 && (
-                                    <div>
-                                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>PAGES ({bpPages.length})</span>
-                                      {bpPages.map((p, i) => (
-                                        <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>
-                                          · {p.name ?? "Untitled"}{p.purpose ? ` — ${p.purpose}` : ""}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {bpComps.length > 0 && (
-                                    <div>
-                                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>COMPONENTS ({bpComps.length})</span>
-                                      {bpComps.slice(0, 8).map((c, i) => (
-                                        <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {c.name ?? "Unnamed"}</div>
-                                      ))}
-                                      {bpComps.length > 8 && <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.3, paddingLeft: 8 }}>+{bpComps.length - 8} more</div>}
-                                    </div>
-                                  )}
-                                  {Array.isArray((bpData as Record<string, unknown>).entities) && ((bpData as Record<string, unknown>).entities as unknown[]).length > 0 && (
-                                    <DetailRow label="Data entities" value={`${((bpData as Record<string, unknown>).entities as unknown[]).length} defined`} />
-                                  )}
-                                  {bpLogic.length > 0 && <DetailRow label="Logic rules" value={`${bpLogic.length} rules`} />}
-                                  {bpCP.length > 0 && (
-                                    <div>
-                                      <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>CREATIVE PRINCIPLES</span>
-                                      {bpCP.map((p, i) => (
-                                        <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {p}</div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {(bpEI.tone as string | undefined) && <DetailRow label="Tone"           value={String(bpEI.tone)} />}
-                                  {(bpEI.energyLevel as string | undefined) && <DetailRow label="Energy"    value={String(bpEI.energyLevel)} />}
-                                  {(bpEI.interaction as string | undefined) && <DetailRow label="Interaction" value={String(bpEI.interaction)} />}
-                                  {artifact.payload.snapshotAt && (
-                                    <DetailRow label="Captured at" value={new Date(String(artifact.payload.snapshotAt)).toLocaleString()} />
-                                  )}
-                                </>
-                              )}
-
-                              {/* ── Build Output: snapshot record ── */}
-                              {isBuild && (
-                                <>
-                                  {typeof fileCount === "number" && <DetailRow label="Source files" value={String(fileCount)} />}
-                                  {artifact.metadata.builtAt && <DetailRow label="Built at" value={new Date(String(artifact.metadata.builtAt)).toLocaleString()} />}
-                                  <DetailRow
-                                    label="Live preview"
-                                    value={buildAvailable
-                                      ? "Devserver is running — click Open Live Preview above"
-                                      : "Devserver is not running — start Local Dev to open this project"
-                                    }
-                                  />
-                                  <div style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.28, lineHeight: 1.6, marginTop: 2 }}>
-                                    Each build record links to the project's live devserver. Historical build snapshots require an external artifact store.
-                                  </div>
-                                </>
-                              )}
-
-                              {/* ── Visual Sketch: analyzed image signals ── */}
-                              {isSketch && (
-                                <>
-                                  {(artifact.payload.description as string | undefined) && (
-                                    <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.7, borderLeft: `2px solid ${cfg.border}`, paddingLeft: 8 }}>
-                                      {String(artifact.payload.description)}
-                                    </div>
-                                  )}
-                                  {((artifact.payload.signals as Record<string, string[]> | undefined)?.emotionalRegister?.length ?? 0) > 0 && (
-                                    <DetailRow label="Emotional register" value={(artifact.payload.signals as Record<string, string[]>).emotionalRegister.join(", ")} />
-                                  )}
-                                  {((artifact.payload.signals as Record<string, string[]> | undefined)?.visualLanguage?.length ?? 0) > 0 && (
-                                    <DetailRow label="Visual language" value={(artifact.payload.signals as Record<string, string[]>).visualLanguage.join(", ")} />
-                                  )}
-                                  {((artifact.payload.signals as Record<string, string[]> | undefined)?.colorMood?.length ?? 0) > 0 && (
-                                    <DetailRow label="Color mood" value={(artifact.payload.signals as Record<string, string[]>).colorMood.join(", ")} />
-                                  )}
-                                  {((artifact.payload.signals as Record<string, string[]> | undefined)?.layoutApproach?.length ?? 0) > 0 && (
-                                    <DetailRow label="Layout" value={(artifact.payload.signals as Record<string, string[]>).layoutApproach.join(", ")} />
-                                  )}
-                                  {((artifact.payload.signals as Record<string, string[]> | undefined)?.typographyStyle?.length ?? 0) > 0 && (
-                                    <DetailRow label="Typography" value={(artifact.payload.signals as Record<string, string[]>).typographyStyle.join(", ")} />
-                                  )}
-                                  {artifact.metadata.analyzedAt && (
-                                    <DetailRow label="Analyzed at" value={new Date(String(artifact.metadata.analyzedAt)).toLocaleString()} />
-                                  )}
-                                </>
-                              )}
-                            </div>
+                      {/* Build preview action row */}
+                      {isBuild && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
+                          {typeof fileCount === "number" && (
+                            <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45 }}>
+                              {fileCount} source files
+                            </span>
+                          )}
+                          {buildAvailable ? (
+                            <button
+                              onClick={() => setPreviewMode("local")}
+                              style={{
+                                fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                                color: "rgba(52,211,153,0.8)", background: "rgba(52,211,153,0.08)",
+                                border: "1px solid rgba(52,211,153,0.2)", borderRadius: 3,
+                                padding: "2px 7px", cursor: "pointer",
+                              }}
+                            >
+                              → Open Live Preview
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.28 }}>
+                              preview unavailable — start Local Dev
+                            </span>
                           )}
                         </div>
-                      );
-                    })}
+                      )}
+                    </div>
+
+                    {/* Expanded full read-only payload panel */}
+                    {isExpanded && (
+                      <div style={{
+                        background: "rgba(0,0,0,0.18)", border: `1px solid ${cfg.border}`, borderTop: "none",
+                        borderRadius: "0 0 6px 6px", padding: "10px 12px",
+                        display: "flex", flexDirection: "column", gap: 8,
+                      }}>
+
+                        {/* ── Design Plan: full committed body ── */}
+                        {isDesignPlan && (
+                          <>
+                            {dp.navigationPattern   && <DetailRow label="Navigation"     value={String(dp.navigationPattern)} />}
+                            {dp.componentPatterns   && <DetailRow label="Components"     value={String(dp.componentPatterns)} />}
+                            {dp.motionPhilosophy    && <DetailRow label="Motion"         value={String(dp.motionPhilosophy)} />}
+                            {dp.typographyScale     && <DetailRow label="Typography"     value={String(dp.typographyScale)} />}
+                            {dp.colorStrategy       && <DetailRow label="Color"          value={String(dp.colorStrategy)} />}
+                            {dp.cardDensity         && <DetailRow label="Card density"   value={String(dp.cardDensity)} />}
+                            {dp.layoutArchetype     && <DetailRow label="Layout"         value={String(dp.layoutArchetype)} />}
+                            {dp.dataDisplayStyle    && <DetailRow label="Data display"   value={String(dp.dataDisplayStyle)} />}
+                            {(dp.responsiveIntent as Record<string, unknown>)?.mobile && (
+                              <DetailRow label="Mobile intent" value={String((dp.responsiveIntent as Record<string, unknown>).mobile)} />
+                            )}
+                            {(dp.interactionPatterns as Record<string, unknown>)?.primaryAction && (
+                              <DetailRow label="Primary action" value={String((dp.interactionPatterns as Record<string, unknown>).primaryAction)} />
+                            )}
+                            {(dp.interactionPatterns as Record<string, unknown>)?.feedbackStyle && (
+                              <DetailRow label="Feedback style" value={String((dp.interactionPatterns as Record<string, unknown>).feedbackStyle)} />
+                            )}
+                            {Array.isArray(dp.informationHierarchy) && dp.informationHierarchy.length > 0 && (
+                              <div>
+                                <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>INFO HIERARCHY</span>
+                                {(dp.informationHierarchy as string[]).map((h, i) => (
+                                  <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {h}</div>
+                                ))}
+                              </div>
+                            )}
+                            {Array.isArray(dp.keyComponents) && dp.keyComponents.length > 0 && (
+                              <div>
+                                <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>KEY COMPONENTS</span>
+                                {(dp.keyComponents as string[]).map((c, i) => (
+                                  <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {c}</div>
+                                ))}
+                              </div>
+                            )}
+                            {dp.accessibilityNotes && <DetailRow label="Accessibility" value={String(dp.accessibilityNotes)} />}
+                          </>
+                        )}
+
+                        {/* ── Blueprint Snapshot: full AM at approval ── */}
+                        {isBlueprint && (
+                          <>
+                            {bpIdentity.name        && <DetailRow label="Project"      value={String(bpIdentity.name)} />}
+                            {bpIdentity.tagline     && <DetailRow label="Tagline"      value={String(bpIdentity.tagline)} />}
+                            {(bpIntent.summary as string | undefined) && <DetailRow label="Intent"  value={String(bpIntent.summary)} />}
+                            {(bpIntent.primaryGoal as string | undefined) && <DetailRow label="Goal" value={String(bpIntent.primaryGoal)} />}
+                            {(bpIntent.targetUser as string | undefined) && <DetailRow label="User"  value={String(bpIntent.targetUser)} />}
+                            {bpPages.length > 0 && (
+                              <div>
+                                <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>PAGES ({bpPages.length})</span>
+                                {bpPages.map((p, i) => (
+                                  <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>
+                                    · {p.name ?? "Untitled"}{p.purpose ? ` — ${p.purpose}` : ""}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {bpComps.length > 0 && (
+                              <div>
+                                <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>COMPONENTS ({bpComps.length})</span>
+                                {bpComps.slice(0, 8).map((c, i) => (
+                                  <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {c.name ?? "Unnamed"}</div>
+                                ))}
+                                {bpComps.length > 8 && <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.3, paddingLeft: 8 }}>+{bpComps.length - 8} more</div>}
+                              </div>
+                            )}
+                            {Array.isArray((bpData as Record<string, unknown>).entities) && ((bpData as Record<string, unknown>).entities as unknown[]).length > 0 && (
+                              <DetailRow label="Data entities" value={`${((bpData as Record<string, unknown>).entities as unknown[]).length} defined`} />
+                            )}
+                            {bpLogic.length > 0 && <DetailRow label="Logic rules" value={`${bpLogic.length} rules`} />}
+                            {bpCP.length > 0 && (
+                              <div>
+                                <span style={{ fontSize: 8, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, display: "block", marginBottom: 4, letterSpacing: "0.08em" }}>CREATIVE PRINCIPLES</span>
+                                {bpCP.map((p, i) => (
+                                  <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, paddingLeft: 8, lineHeight: 1.8 }}>· {p}</div>
+                                ))}
+                              </div>
+                            )}
+                            {(bpEI.tone as string | undefined) && <DetailRow label="Tone" value={String(bpEI.tone)} />}
+                            {(bpEI.energyLevel as string | undefined) && <DetailRow label="Energy" value={String(bpEI.energyLevel)} />}
+                            {(bpEI.interaction as string | undefined) && <DetailRow label="Interaction" value={String(bpEI.interaction)} />}
+                            {artifact.payload.snapshotAt && (
+                              <DetailRow label="Captured at" value={new Date(String(artifact.payload.snapshotAt)).toLocaleString()} />
+                            )}
+                          </>
+                        )}
+
+                        {/* ── Build Output ── */}
+                        {isBuild && (
+                          <>
+                            {typeof fileCount === "number" && <DetailRow label="Source files" value={String(fileCount)} />}
+                            {artifact.metadata.builtAt && <DetailRow label="Built at" value={new Date(String(artifact.metadata.builtAt)).toLocaleString()} />}
+                            <DetailRow
+                              label="Live preview"
+                              value={buildAvailable
+                                ? "Devserver is running — click Open Live Preview above"
+                                : "Devserver is not running — start Local Dev to open this project"
+                              }
+                            />
+                            <div style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.28, lineHeight: 1.6, marginTop: 2 }}>
+                              Build records link to the project's live devserver. Historical per-build snapshots require an external artifact store.
+                            </div>
+                          </>
+                        )}
+
+                        {/* ── Visual Sketch ── */}
+                        {isSketch && (
+                          <>
+                            {(artifact.payload.description as string | undefined) && (
+                              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.65, lineHeight: 1.7, borderLeft: `2px solid ${cfg.border}`, paddingLeft: 8 }}>
+                                {String(artifact.payload.description)}
+                              </div>
+                            )}
+                            {((artifact.payload.signals as Record<string, string[]> | undefined)?.emotionalRegister?.length ?? 0) > 0 && (
+                              <DetailRow label="Emotional register" value={(artifact.payload.signals as Record<string, string[]>).emotionalRegister.join(", ")} />
+                            )}
+                            {((artifact.payload.signals as Record<string, string[]> | undefined)?.visualLanguage?.length ?? 0) > 0 && (
+                              <DetailRow label="Visual language" value={(artifact.payload.signals as Record<string, string[]>).visualLanguage.join(", ")} />
+                            )}
+                            {((artifact.payload.signals as Record<string, string[]> | undefined)?.colorMood?.length ?? 0) > 0 && (
+                              <DetailRow label="Color mood" value={(artifact.payload.signals as Record<string, string[]>).colorMood.join(", ")} />
+                            )}
+                            {((artifact.payload.signals as Record<string, string[]> | undefined)?.layoutApproach?.length ?? 0) > 0 && (
+                              <DetailRow label="Layout" value={(artifact.payload.signals as Record<string, string[]>).layoutApproach.join(", ")} />
+                            )}
+                            {((artifact.payload.signals as Record<string, string[]> | undefined)?.typographyStyle?.length ?? 0) > 0 && (
+                              <DetailRow label="Typography" value={(artifact.payload.signals as Record<string, string[]>).typographyStyle.join(", ")} />
+                            )}
+                            {artifact.metadata.analyzedAt && (
+                              <DetailRow label="Analyzed at" value={new Date(String(artifact.metadata.analyzedAt)).toLocaleString()} />
+                            )}
+                          </>
+                        )}
+
+                        {/* ── Generic payload for landing_draft / export_package / unknown ── */}
+                        {!isDesignPlan && !isBlueprint && !isBuild && !isSketch && (
+                          <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.55, lineHeight: 1.6, whiteSpace: "pre-wrap", maxHeight: 200, overflow: "auto" }}>
+                            {JSON.stringify(artifact.payload, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               });

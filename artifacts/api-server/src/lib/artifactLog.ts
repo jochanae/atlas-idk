@@ -7,6 +7,8 @@ export const ARTIFACT_TYPES = [
   "blueprint_snapshot",
   "build_output",
   "visual_sketch",
+  "landing_draft",
+  "export_package",
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
@@ -32,31 +34,43 @@ export async function logProjectArtifact({
     logger.warn({ projectId, type }, "logProjectArtifact: unknown type — skipping");
     return;
   }
-  try {
-    await db.transaction(async (tx) => {
-      let resolvedVersion = version;
-      if (resolvedVersion === undefined) {
-        const [row] = await tx
-          .select({ maxV: sql<number>`COALESCE(MAX(${projectArtifactsTable.version}), 0)` })
-          .from(projectArtifactsTable)
-          .where(
-            and(
-              eq(projectArtifactsTable.projectId, projectId),
-              eq(projectArtifactsTable.type, type),
-            ),
-          );
-        resolvedVersion = (Number(row?.maxV ?? 0)) + 1;
-      }
-      await tx.insert(projectArtifactsTable).values({
-        projectId,
-        type,
-        version: resolvedVersion,
-        title,
-        metadata,
-        payload,
+  // Retry up to 3 times on unique constraint violation (concurrent inserts racing on same version)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await db.transaction(async (tx) => {
+        let resolvedVersion = version;
+        if (resolvedVersion === undefined) {
+          const [row] = await tx
+            .select({ maxV: sql<number>`COALESCE(MAX(${projectArtifactsTable.version}), 0)` })
+            .from(projectArtifactsTable)
+            .where(
+              and(
+                eq(projectArtifactsTable.projectId, projectId),
+                eq(projectArtifactsTable.type, type),
+              ),
+            );
+          resolvedVersion = (Number(row?.maxV ?? 0)) + 1;
+        }
+        await tx.insert(projectArtifactsTable).values({
+          projectId,
+          type,
+          version: resolvedVersion,
+          title,
+          metadata,
+          payload,
+        });
       });
-    });
-  } catch (err) {
-    logger.warn({ err, projectId, type }, "logProjectArtifact: failed to insert — non-fatal");
+      return; // success
+    } catch (err: unknown) {
+      const isUniqueViolation =
+        err instanceof Error && err.message.includes("project_artifacts_version_uniq");
+      if (isUniqueViolation && attempt < 3) {
+        version = undefined; // recompute from MAX on next attempt
+        logger.warn({ projectId, type, attempt }, "logProjectArtifact: version conflict — retrying");
+        continue;
+      }
+      logger.warn({ err, projectId, type, attempt }, "logProjectArtifact: failed to insert — non-fatal");
+      return;
+    }
   }
 }
