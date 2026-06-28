@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
-import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable } from "@workspace/db";
+import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessionsTable, projectsTable, secretsTable, entriesTable, connectionsTable, usersTable, generationRuns, generatedFiles, imageVersionsTable, applicationModelsTable, designPlansTable } from "@workspace/db";
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
@@ -2660,18 +2660,34 @@ router.post("/chat", async (req, res): Promise<void> => {
     (SELF_CONTAINED_VERB_RE.test(message.trim()) && !PROJECT_REFERENCE_RE.test(message))
   );
 
-  // Fetch Project DNA (Creative Principles + Experience Intent) for Builder context.
+  // Fetch Project DNA (Creative Principles + Experience Intent + Visual Memory) and
+  // the committed Design Plan for Builder context.
   // Non-blocking additive enrichment — never delays the response if it fails.
-  let projectDNARow: { creativePrinciples: unknown; experienceIntent: unknown } | null = null;
+  let projectDNARow: { creativePrinciples: unknown; experienceIntent: unknown; visualSketches: unknown } | null = null;
+  let committedDesignPlan: { body: unknown; version: number; committedAt: Date | null } | null = null;
   if (projectId && !isFoundationMode) {
     try {
       const [amRow] = await db
-        .select({ creativePrinciples: applicationModelsTable.creativePrinciples, experienceIntent: applicationModelsTable.experienceIntent })
+        .select({
+          creativePrinciples: applicationModelsTable.creativePrinciples,
+          experienceIntent: applicationModelsTable.experienceIntent,
+          visualSketches: applicationModelsTable.visualSketches,
+        })
         .from(applicationModelsTable)
         .where(eq(applicationModelsTable.projectId, projectId))
         .limit(1);
       projectDNARow = amRow ?? null;
     } catch { /* non-fatal — DNA enrichment is additive only */ }
+
+    try {
+      const [dpRow] = await db
+        .select({ body: designPlansTable.body, version: designPlansTable.version, committedAt: designPlansTable.committedAt })
+        .from(designPlansTable)
+        .where(and(eq(designPlansTable.projectId, projectId), eq(designPlansTable.status, "committed")))
+        .orderBy(desc(designPlansTable.version))
+        .limit(1);
+      committedDesignPlan = dpRow ?? null;
+    } catch { /* non-fatal — design plan enrichment is additive only */ }
   }
 
   // Build layered system prompt — use project data already fetched in the first Promise.all
@@ -2692,7 +2708,7 @@ This is your locked context for this entire conversation. Every question, every 
 HARD RULE: Never answer from the context of a different project unless the user explicitly names it by asking a cross-project question ("how does this compare to IntoIQ?" / "across all my projects…"). A general question like "what can we do here?" is always about the active project.${projectAlreadyNamedInstruction}
 --- END ACTIVE PROJECT ---`;
   }
-  // Project DNA: Creative Principles + Experience Intent
+  // Project DNA: Creative Principles + Experience Intent + Visual Memory sketches
   // Extracted from conversation after each turn and persisted to the Application Model.
   // Injected here so every response is shaped by the product's accumulated soul.
   if (!isFoundationMode && projectDNARow) {
@@ -2702,7 +2718,8 @@ HARD RULE: Never answer from the context of a different project unless the user 
     const interactionPosture = (ei.interactionPosture as string[]) ?? [];
     const visualLanguage = (ei.visualLanguage as string[]) ?? [];
     const designPrinciples = (ei.designPrinciples as string[]) ?? [];
-    const hasAny = principles.length > 0 || emotionalRegister.length > 0 || interactionPosture.length > 0 || visualLanguage.length > 0 || designPrinciples.length > 0;
+    const sketches = (projectDNARow.visualSketches as Array<{ description?: string; signals?: { emotionalRegister?: string[]; visualLanguage?: string[]; designPrinciples?: string[] } }>) ?? [];
+    const hasAny = principles.length > 0 || emotionalRegister.length > 0 || interactionPosture.length > 0 || visualLanguage.length > 0 || designPrinciples.length > 0 || sketches.length > 0;
     if (hasAny) {
       let dnaBlock = `\n\n--- PROJECT DNA ---`;
       if (principles.length > 0) {
@@ -2716,10 +2733,84 @@ HARD RULE: Never answer from the context of a different project unless the user 
         if (visualLanguage.length) dnaBlock += `\n• Visual language: ${visualLanguage.join(", ")}`;
         if (designPrinciples.length) dnaBlock += `\n• Design principles: ${designPrinciples.map((p) => `"${p}"`).join(" | ")}`;
       }
+      if (sketches.length > 0) {
+        dnaBlock += `\n\nVISUAL MEMORY — design signals extracted from attachments the founder shared:`;
+        for (const sketch of sketches.slice(-5)) {
+          if (sketch.description) dnaBlock += `\n• ${sketch.description}`;
+          const sigs = sketch.signals ?? {};
+          const sigParts: string[] = [];
+          if (sigs.emotionalRegister?.length) sigParts.push(`feel: ${sigs.emotionalRegister.join(", ")}`);
+          if (sigs.visualLanguage?.length) sigParts.push(`visual: ${sigs.visualLanguage.join(", ")}`);
+          if (sigs.designPrinciples?.length) sigParts.push(`principles: ${sigs.designPrinciples.join(", ")}`);
+          if (sigParts.length) dnaBlock += ` (${sigParts.join(" | ")})`;
+        }
+      }
       dnaBlock += `\n--- END PROJECT DNA ---`;
       systemPrompt += dnaBlock;
     }
   }
+
+  // Committed Design Plan: CONSTRAINTS + DESIGN INTENT
+  // Only injected when a Design Plan has been committed — represents locked decisions
+  // the founder approved. Builder must execute these, not invent alternatives.
+  if (!isFoundationMode && committedDesignPlan) {
+    const dp = (committedDesignPlan.body as Record<string, unknown>) ?? {};
+    const nav = dp.navigationPattern as string | undefined;
+    const responsive = dp.responsiveIntent as { mobile?: string; tablet?: string; desktop?: string } | undefined;
+    const hierarchy = (dp.informationHierarchy as string[]) ?? [];
+    const components = dp.componentPatterns as string | undefined;
+    const motion = dp.motionPhilosophy as string | undefined;
+    const density = dp.cardDensity as string | undefined;
+    const typography = dp.typographyScale as string | undefined;
+    const emptyStates = dp.emptyStates as string | undefined;
+    const interactions = dp.interactionPatterns as {
+      primaryAction?: string; secondaryAction?: string; editingStyle?: string;
+      confirmationBehavior?: string; gestures?: string; scrollingBehavior?: string;
+    } | undefined;
+
+    const hasConstraints = nav || (responsive && (responsive.mobile || responsive.tablet || responsive.desktop)) || hierarchy.length > 0 || components || typography || density;
+    const hasIntent = motion || emptyStates || interactions;
+
+    if (hasConstraints || hasIntent) {
+      let dpBlock = `\n\n--- COMMITTED DESIGN PLAN (v${committedDesignPlan.version}) ---`;
+      dpBlock += `\nThese decisions are locked. Execute them exactly — do not invent alternatives, ask for confirmation, or deviate unless the user explicitly overrides one.`;
+
+      if (hasConstraints) {
+        dpBlock += `\n\nCONSTRAINTS:`;
+        if (nav) dpBlock += `\n• Navigation pattern: ${nav}`;
+        if (responsive) {
+          if (responsive.mobile) dpBlock += `\n• Mobile: ${responsive.mobile}`;
+          if (responsive.tablet) dpBlock += `\n• Tablet: ${responsive.tablet}`;
+          if (responsive.desktop) dpBlock += `\n• Desktop: ${responsive.desktop}`;
+        }
+        if (hierarchy.length > 0) dpBlock += `\n• Information hierarchy: ${hierarchy.join(" → ")}`;
+        if (components) dpBlock += `\n• Component patterns: ${components}`;
+        if (typography) dpBlock += `\n• Typography scale: ${typography}`;
+        if (density) dpBlock += `\n• Card density: ${density}`;
+      }
+
+      if (hasIntent) {
+        dpBlock += `\n\nDESIGN INTENT:`;
+        if (motion) dpBlock += `\n• Motion philosophy: ${motion}`;
+        if (emptyStates) dpBlock += `\n• Empty states: ${emptyStates}`;
+        if (interactions) {
+          if (interactions.primaryAction) dpBlock += `\n• Primary action: ${interactions.primaryAction}`;
+          if (interactions.secondaryAction) dpBlock += `\n• Secondary action: ${interactions.secondaryAction}`;
+          if (interactions.editingStyle) dpBlock += `\n• Editing style: ${interactions.editingStyle}`;
+          if (interactions.confirmationBehavior) dpBlock += `\n• Confirmations: ${interactions.confirmationBehavior}`;
+          if (interactions.gestures) dpBlock += `\n• Gestures: ${interactions.gestures}`;
+          if (interactions.scrollingBehavior) dpBlock += `\n• Scrolling: ${interactions.scrollingBehavior}`;
+        }
+      }
+
+      dpBlock += `\n--- END COMMITTED DESIGN PLAN ---`;
+      systemPrompt += dpBlock;
+    }
+  } else if (!isFoundationMode && projectId && !committedDesignPlan) {
+    // No committed Design Plan — note that design decisions are unconstrained
+    systemPrompt += `\n\n[No committed Design Plan for this project — design decisions are unconstrained. Apply the Project DNA and your best judgment.]`;
+  }
+
   systemPrompt += ATLAS_PLATFORM_KNOWLEDGE;
   if (userId && portfolioRows.length > 0) {
     const portfolioSummary = portfolioRows.map((p) => {
