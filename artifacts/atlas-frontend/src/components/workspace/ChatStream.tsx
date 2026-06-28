@@ -1,8 +1,8 @@
-import { Fragment, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, useMemo, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { UserBubble } from "@/components/workspace/UserBubble";
 import { AtlasActivityBar } from "@/components/workspace/AtlasActivityBar";
-import { AssistantBubble } from "@/components/workspace/AssistantBubble";
+import { AssistantBubble, type BuildGroupInfo } from "@/components/workspace/AssistantBubble";
 import InlineSketchOffer from "@/components/chat/InlineSketchOffer";
 import { InlineTerminalBlock } from "@/components/InlineTerminalBlock";
 import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
@@ -299,6 +299,67 @@ export function ChatStream(props: ChatStreamProps) {
     onBuildAnyway,
   } = props;
 
+  // Detect multi-round build chains so CommitPills can be deduplicated.
+  // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
+  // Intermediate rounds get suppressed; the final round shows a summary pill.
+  const { buildGroupMap, suppressedLedgerSet } = useMemo(() => {
+    const bgMap = new Map<number, BuildGroupInfo>();
+    const supLedger = new Set<number>();
+
+    const isLocalApply = (m: ChatMessage) =>
+      m.role === "user" &&
+      (m.displayAs === "autoVerify" || m.content.startsWith("[LOCAL_APPLY_SUCCESS]"));
+
+    let i = 0;
+    while (i < messages.length) {
+      const msg = messages[i];
+      if (msg.role === "assistant" && msg.autoPushed) {
+        const chainIdxs: number[] = [i];
+        const chainLedgerIdxs: number[] = [];
+        const allPaths: string[] = [...((msg.fileEdits ?? []).map((e) => e.path ?? ""))];
+        let j = i + 1;
+
+        while (j < messages.length) {
+          if (isLocalApply(messages[j])) {
+            const ledgerIdx = j;
+            j++;
+            if (j < messages.length && messages[j].role === "assistant" && messages[j].autoPushed) {
+              chainIdxs.push(j);
+              chainLedgerIdxs.push(ledgerIdx);
+              allPaths.push(...((messages[j].fileEdits ?? []).map((e) => e.path ?? "")));
+              j++;
+              continue;
+            } else {
+              // Ledger message after the last autoPushed round — suppress it too
+              chainLedgerIdxs.push(ledgerIdx);
+            }
+          }
+          break;
+        }
+
+        const uniqueFiles = [...new Set(allPaths.filter(Boolean))];
+        const roundCount = chainIdxs.length;
+
+        // Only apply deduplication when there are 2+ rounds
+        if (roundCount > 1) {
+          for (const li of chainLedgerIdxs) supLedger.add(li);
+          for (let k = 0; k < chainIdxs.length; k++) {
+            bgMap.set(chainIdxs[k], k < chainIdxs.length - 1
+              ? { type: "intermediate", roundCount }
+              : { type: "final", roundCount, uniqueFiles }
+            );
+          }
+        }
+
+        i = j;
+      } else {
+        i++;
+      }
+    }
+
+    return { buildGroupMap: bgMap, suppressedLedgerSet: supLedger };
+  }, [messages]);
+
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
@@ -472,6 +533,7 @@ export function ChatStream(props: ChatStreamProps) {
                 onExecuteHomePlan={onExecuteHomePlan}
                 onPushSuccess={onPushSuccess}
                 onBuildAnyway={onBuildAnyway}
+                buildGroupInfo={buildGroupMap.get(i)}
               />
               {Boolean(msg.terminalCmd || msg.terminalResult) && (
                 <div style={{ maxWidth: "80%", marginTop: -18, marginBottom: 24 }}>
@@ -504,8 +566,10 @@ export function ChatStream(props: ChatStreamProps) {
               )}
             </div>
           )}
-          {/* LedgerSurface hoisted above: show AFTER the assistant sentence */}
-          {msg.role === "assistant" && nextIsLedger && nextMsg && (
+          {/* LedgerSurface hoisted above: show AFTER the assistant sentence.
+              Suppress it when it is an intermediate inter-round message in a
+              multi-round build chain (suppressedLedgerSet tracks those indices). */}
+          {msg.role === "assistant" && nextIsLedger && nextMsg && !suppressedLedgerSet.has(i + 1) && (
             <AutoVerifyMessage
               content={nextMsg.content}
               executionTimeMs={nextMsg.executionTimeMs}

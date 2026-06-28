@@ -102,6 +102,10 @@ function ProactiveAlertCard({
 
 type InlinePreviewLine = { type: "added" | "removed"; line: string };
 
+export type BuildGroupInfo =
+  | { type: "intermediate"; roundCount: number }
+  | { type: "final"; roundCount: number; uniqueFiles: string[] };
+
 function InlineDiffCard({
   fileEdits,
   linePatches,
@@ -110,6 +114,7 @@ function InlineDiffCard({
   linkedRepo,
   projectId,
   autoApplied,
+  buildGroupInfo,
   onReviewDiff,
   onPushSuccess,
   onEditDeclined,
@@ -122,6 +127,7 @@ function InlineDiffCard({
   linkedRepo: LinkedRepo | null;
   projectId: number;
   autoApplied?: boolean;
+  buildGroupInfo?: BuildGroupInfo | null;
   onReviewDiff: () => void;
   onPushSuccess: (records: PushRecord[]) => void;
   onEditDeclined?: () => void;
@@ -391,10 +397,20 @@ function InlineDiffCard({
   const modalEdits = fileEdits.length > 0 ? fileEdits : patchedEdits;
 
   if (autoApplied) {
-    const names = fileEdits.map((e) => e.path?.split("/").pop() ?? e.path).filter(Boolean);
-    const label = autoApplied
-      ? `✓ Auto-applied — ${names.join(", ")}`
-      : "Applied automatically";
+    // Intermediate round in a multi-round build — suppress CommitPill entirely
+    if (buildGroupInfo?.type === "intermediate") return null;
+
+    // Determine label: summary pill for multi-round, simple pill for single-round
+    let label: string;
+    if (buildGroupInfo?.type === "final" && buildGroupInfo.roundCount > 1) {
+      const count = buildGroupInfo.uniqueFiles.length;
+      const rounds = buildGroupInfo.roundCount;
+      label = `✓ Applied · ${count} file${count !== 1 ? "s" : ""} · ${rounds} fix round${rounds !== 1 ? "s" : ""}`;
+    } else {
+      const names = fileEdits.map((e) => e.path?.split("/").pop() ?? e.path).filter(Boolean);
+      label = `✓ Auto-applied — ${names.join(", ")}`;
+    }
+
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12 }}>
         <div style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, color: "var(--atlas-muted)", opacity: 0.55 }}>
@@ -1321,6 +1337,7 @@ export function AssistantBubble({
   onPlanExecutionChange,
   onExecuteHomePlan,
   onBuildAnyway,
+  buildGroupInfo,
 }: {
   message: ChatMessage;
   isNew?: boolean;
@@ -1350,6 +1367,7 @@ export function AssistantBubble({
   onPlanExecutionChange?: (messageId: number, execution: PlanExecution | null) => void;
   onExecuteHomePlan?: (plan: Plan) => void;
   onBuildAnyway?: (message: string) => void;
+  buildGroupInfo?: BuildGroupInfo | null;
 }) {
   const [hov, setHov] = useState(false);
   const [parkDone, setParkDone] = useState(false);
@@ -2252,6 +2270,7 @@ export function AssistantBubble({
             linkedRepo={linkedRepo}
             projectId={projectId}
             autoApplied={!!message.autoPushed}
+            buildGroupInfo={buildGroupInfo}
             onReviewDiff={onReviewDiff}
             onPushSuccess={onPushSuccess}
             onEditDeclined={onEditDeclined}
