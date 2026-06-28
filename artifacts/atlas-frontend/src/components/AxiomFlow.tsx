@@ -2109,21 +2109,48 @@ export function AxiomFlow({
         </div>
       )}
 
-      {/* Hint — compact (?) icon, pinned to bottom-left, always visible */}
-      <div
-        title="Tap node · Pinch to zoom · Double-tap to fit"
-        style={{
-          position: "absolute", bottom: 10, left: 14,
-          width: 18, height: 18, borderRadius: "50%",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 10, fontFamily: "var(--app-font-mono)",
-          color: theme === "parchment" ? "rgba(146,64,14,0.55)" : "rgba(201,162,76,0.55)",
-          border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
-          background: theme === "parchment" ? "rgba(255,252,245,0.55)" : "rgba(10,10,12,0.45)",
-          cursor: "help", zIndex: 6, userSelect: "none", flexShrink: 0,
-        }}
-      >
-        ?
+      {/* Bottom-left controls: Center button + hint icon */}
+      <div style={{
+        position: "absolute", bottom: 10, left: 14,
+        display: "flex", alignItems: "center", gap: 6, zIndex: 6,
+      }}>
+        {/* Center map button — always visible so users can recover off-screen nodes */}
+        {!flowLoading && !flowEmpty && nodes.length > 0 && (
+          <button
+            type="button"
+            title="Center map (double-tap also works)"
+            onClick={(e) => { e.stopPropagation(); resetView(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              padding: "3px 10px",
+              borderRadius: 6,
+              border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
+              background: theme === "parchment" ? "rgba(255,252,245,0.70)" : "rgba(10,10,12,0.55)",
+              color: theme === "parchment" ? "rgba(146,64,14,0.72)" : "rgba(201,162,76,0.72)",
+              fontFamily: "var(--app-font-mono)",
+              fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase",
+              cursor: "pointer", userSelect: "none",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            ⊙ Center
+          </button>
+        )}
+        {/* Hint icon */}
+        <div
+          title="Tap node · Pinch to zoom · Double-tap to fit"
+          style={{
+            width: 18, height: 18, borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, fontFamily: "var(--app-font-mono)",
+            color: theme === "parchment" ? "rgba(146,64,14,0.55)" : "rgba(201,162,76,0.55)",
+            border: `1px solid ${theme === "parchment" ? "rgba(146,64,14,0.22)" : "rgba(201,162,76,0.22)"}`,
+            background: theme === "parchment" ? "rgba(255,252,245,0.55)" : "rgba(10,10,12,0.45)",
+            cursor: "help", userSelect: "none", flexShrink: 0,
+          }}
+        >
+          ?
+        </div>
       </div>
     </div>
   );

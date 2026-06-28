@@ -1669,14 +1669,13 @@ export default function MasterMap() {
 
                     {/* Quick actions */}
                     <div style={{ display: "flex", gap: 8, marginTop: 2, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+                      {/* Primary: Flow Map */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!projectId) return;
                           try { sessionStorage.setItem("atlas-open-tab", "map"); } catch {}
-                          // When no flow exists yet, pass autogenerate=1 so AxiomFlow
-                          // creates the initial map as soon as the empty state is detected.
                           if (peek?.hasFlow === false) {
                             setLocation(`/project/${projectId}?view=flow&autogenerate=1`);
                           } else {
@@ -1697,35 +1696,62 @@ export default function MasterMap() {
                           pointerEvents: "auto",
                         }}
                       >
-                        {peek?.hasFlow === false ? "Generate Flow Map →" : "Open flow map →"}
+                        {peek?.hasFlow === false ? "Generate Flow Map →" : "Flow Map →"}
                       </button>
+
+                      {/* Open Workspace */}
                       {projectId && (
                         <button
                           type="button"
                           title="Open workspace"
-                          aria-label="Open workspace"
-                          onClick={() => { window.location.href = `/project/${projectId}`; }}
+                          onClick={(e) => { e.stopPropagation(); setLocation(`/project/${projectId}`); }}
                           style={{
-                            width: 30, height: 30,
-                            display: "inline-flex", alignItems: "center", justifyContent: "center",
+                            padding: "6px 14px",
                             background: "transparent",
                             border: `1px solid ${palette.panelBorder}`,
                             borderRadius: 6,
                             color: palette.goldText,
-                            fontSize: 13,
+                            fontSize: 10.5,
                             fontFamily: "var(--app-font-mono)",
+                            letterSpacing: "0.06em",
                             cursor: "pointer",
+                            textTransform: "uppercase",
                             pointerEvents: "auto",
-                            lineHeight: 1,
                           }}
                         >
-                          ↗
+                          Workspace →
                         </button>
                       )}
+
+                      {/* Generation Workspace */}
+                      {projectId && (
+                        <button
+                          type="button"
+                          title="Open Generation Workspace"
+                          onClick={(e) => { e.stopPropagation(); setLocation(`/code?projectId=${projectId}`); }}
+                          style={{
+                            padding: "6px 14px",
+                            background: "transparent",
+                            border: `1px solid ${palette.panelBorder}`,
+                            borderRadius: 6,
+                            color: palette.goldText,
+                            fontSize: 10.5,
+                            fontFamily: "var(--app-font-mono)",
+                            letterSpacing: "0.06em",
+                            cursor: "pointer",
+                            textTransform: "uppercase",
+                            pointerEvents: "auto",
+                          }}
+                        >
+                          /code →
+                        </button>
+                      )}
+
+                      {/* Ledger (only when there are committed decisions) */}
                       {committed > 0 && projectId && (
                         <button
                           type="button"
-                          onClick={() => { window.location.href = `/ledger/${projectId}`; }}
+                          onClick={(e) => { e.stopPropagation(); setLocation(`/ledger/${projectId}`); }}
                           style={{
                             padding: "6px 14px",
                             background: "transparent",

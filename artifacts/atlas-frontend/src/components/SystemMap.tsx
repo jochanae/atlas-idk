@@ -160,6 +160,7 @@ export function SystemMap({ projectId, onReadinessChange, onNodesChange, compact
   const edges = INITIAL_EDGES;
   const [zoom, setZoom] = useState(isMobile ? ZOOM_DEFAULT_MOBILE : ZOOM_DEFAULT_DESKTOP);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [layoutReady, setLayoutReady] = useState(false);
   const [activeCardNodeId, setActiveCardNodeId] = useState<string | null>(null);
   const [builder] = useState<BuilderType>(detectBuilder);
 
@@ -194,6 +195,7 @@ export function SystemMap({ projectId, onReadinessChange, onNodesChange, compact
   const fitMap = useCallback(() => {
     if (!containerRef.current || nodes.length === 0) return;
     const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
     const minX = Math.min(...nodes.map(n => n.x)) - 40;
     const maxX = Math.max(...nodes.map(n => n.x)) + 40;
     const minY = Math.min(...nodes.map(n => n.y)) - 30;
@@ -207,6 +209,7 @@ export function SystemMap({ projectId, onReadinessChange, onNodesChange, compact
     const centerY = (minY + maxY) / 2;
     setZoom(newZoom);
     setPan({ x: rect.width / 2 / newZoom - centerX, y: rect.height / 2 / newZoom - centerY });
+    setLayoutReady(true);
   }, [nodes]);
 
   useEffect(() => {
@@ -401,6 +404,8 @@ export function SystemMap({ projectId, onReadinessChange, onNodesChange, compact
           position: "absolute", top: 0, left: 0, width: "100%", height: "100%",
           transformOrigin: "0 0",
           transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+          opacity: layoutReady ? 1 : 0,
+          transition: layoutReady ? "opacity 180ms ease" : "none",
         }}
       >
         {/* Sprint ghost labels */}

@@ -1200,6 +1200,16 @@ export default function CodePage() {
   const loading = projectQ.isLoading || runsQ.isLoading || (!!activeRun && filesQ.isLoading);
   const error = projectQ.error || runsQ.error || filesQ.error;
 
+  // Manual refresh tracking — shows "Refreshing…" on the button and toasts on completion
+  const [refreshPending, setRefreshPending] = useState(false);
+  const isRefreshing = refreshPending && (runsQ.isFetching || filesQ.isFetching);
+  useEffect(() => {
+    if (refreshPending && !runsQ.isFetching && !filesQ.isFetching) {
+      setRefreshPending(false);
+      toast.success("Updated just now", { duration: 2000 });
+    }
+  }, [refreshPending, runsQ.isFetching, filesQ.isFetching]);
+
   // Badge: derive from whether the active run is still in progress, or is older than latest
   const isLiveBuild = activeRun?.status === "running";
   const isHistory = activeRun != null && runs.length > 0 && activeRun.id !== runs[0]?.id;
@@ -1251,11 +1261,11 @@ export default function CodePage() {
       return;
     }
     if (!linkedRepo) {
-      toast.error("No linked GitHub repository found for this project.");
+      toast.error("No GitHub repo linked — connect one in Project Settings to push this build.", { duration: 5000 });
       return;
     }
     if (!githubPushToken) {
-      toast.error("GitHub token not found. Add it in the Connections tab.");
+      toast.error("GitHub token not found — connect GitHub in the Connections tab first.", { duration: 5000 });
       return;
     }
 
@@ -1396,9 +1406,10 @@ export default function CodePage() {
         </div>
 
         <ToolButton
-          icon={<RefreshCw size={13} />}
-          label="Refresh"
-          onClick={() => { runsQ.refetch(); filesQ.refetch(); }}
+          icon={<RefreshCw size={13} style={isRefreshing ? { animation: "spin 0.8s linear infinite" } : undefined} />}
+          label={isRefreshing ? "Refreshing…" : "Refresh"}
+          disabled={isRefreshing}
+          onClick={() => { setRefreshPending(true); runsQ.refetch(); filesQ.refetch(); }}
         />
         <ToolButton
           icon={<Wand2 size={13} />}
@@ -1505,7 +1516,7 @@ export default function CodePage() {
             <span style={{ flex: 1 }} />
             <span style={{ ...MONO, fontSize: 10, color: "var(--atlas-muted)" }}>{files.length}</span>
           </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div style={{ flex: 1, overflow: "auto", paddingBottom: "env(safe-area-inset-bottom, 12px)" }}>
             <BuildChanges
               files={files}
               selectedFileId={selectedFileId}
