@@ -217,6 +217,11 @@ export function useNexusChatStream(
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stepSeqRef = useRef(0);
   const projectReadyNotifiedStreamRef = useRef<string | null>(null);
+  // Synchronous in-flight guard — prevents a second rapid submit from reaching
+  // useAtlasStream.stream(), which aborts the previous request on every call.
+  // React state (isPending) is not enough here because state updates are batched
+  // and two submits can both see isPending===false before the first render fires.
+  const sendInFlightRef = useRef(false);
 
   const resetStreamState = useCallback(() => {
     if (timeoutRef.current) {
@@ -229,6 +234,7 @@ export function useNexusChatStream(
     setIsPending(false);
     setLiveStep(null);
     setLiveSteps([]);
+    sendInFlightRef.current = false;
   }, []);
 
   const abort = useCallback(() => {
@@ -263,7 +269,7 @@ export function useNexusChatStream(
         : (imageBase64
             ? [{ base64: imageBase64, mediaType: imageMimeType || "image/png" }]
             : []);
-    if ((!text.trim() && imgAttachments.length === 0) || isPending) return;
+    if (sendInFlightRef.current || (!text.trim() && imgAttachments.length === 0) || isPending) return;
     const firstImg = imgAttachments[0];
 
     // Backend requires a non-empty `message` field even when only images are attached.
@@ -280,6 +286,7 @@ export function useNexusChatStream(
     const history = messagesRef.current.map((m) => ({ role: m.role, content: m.content }));
     const userProfile = profileToString(loadProfile());
 
+    sendInFlightRef.current = true;
     setIsPending(true);
     setIsStreaming(true);
     const streamingId = Date.now().toString();

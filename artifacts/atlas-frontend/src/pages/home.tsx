@@ -1759,6 +1759,9 @@ export default function Home() {
   const conversationThreadRequestRef = useRef<{ conversationId: string; requestId: number } | null>(null);
   const prunedAbandonedProjectIdsRef = useRef<Set<number>>(new Set());
   const thinkOutLoudInlineRef = useRef(false);
+  // Synchronous guard — prevents double-submit races where two rapid taps both
+  // see isSending===false before the first React state update fires.
+  const submitInFlightRef = useRef(false);
   useEffect(() => {
     const handler = () => setIsTinyScreen(window.innerWidth < 390);
     window.addEventListener("resize", handler);
@@ -2829,7 +2832,8 @@ export default function Home() {
     const text = liveText.trim();
     const files = messageOverride ? [] : attachedFiles;
     const hasImages = files.some((f) => f.type.startsWith("image/"));
-    if ((!text && !hasImages) || isSending) return;
+    if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
+    submitInFlightRef.current = true;
     const shouldStayOnHome = true;
     if (!globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
@@ -2902,6 +2906,7 @@ export default function Home() {
       setIsAtlasStreaming(false);
       setIsSending(false);
       document.body.dataset.voiceActive = "false";
+      submitInFlightRef.current = false;
     };
 
     if (shouldStayOnHome) {
@@ -2927,6 +2932,7 @@ export default function Home() {
         setIsAtlasStreaming(false);
         setIsSending(false);
         document.body.dataset.voiceActive = "false";
+        submitInFlightRef.current = false;
       }
       return;
     }
