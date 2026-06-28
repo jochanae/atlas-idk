@@ -2660,11 +2660,19 @@ router.post("/chat", async (req, res): Promise<void> => {
     (SELF_CONTAINED_VERB_RE.test(message.trim()) && !PROJECT_REFERENCE_RE.test(message))
   );
 
-  // Fetch Project DNA (Creative Principles + Experience Intent + Visual Memory) and
-  // the committed Design Plan for Builder context.
+  // Fetch Project DNA (Creative Principles + Experience Intent + Visual Memory) plus
+  // AM identity/intent/buildState for continuity context, and the latest Design Plan.
   // Non-blocking additive enrichment — never delays the response if it fails.
-  let projectDNARow: { creativePrinciples: unknown; experienceIntent: unknown; visualSketches: unknown } | null = null;
+  let projectDNARow: {
+    creativePrinciples: unknown;
+    experienceIntent: unknown;
+    visualSketches: unknown;
+    identity: unknown;
+    intent: unknown;
+    buildState: unknown;
+  } | null = null;
   let committedDesignPlan: { body: unknown; version: number; committedAt: Date | null } | null = null;
+  let latestDesignPlanStatus: string | null = null;
   if (projectId && !isFoundationMode) {
     try {
       const [amRow] = await db
@@ -2672,6 +2680,9 @@ router.post("/chat", async (req, res): Promise<void> => {
           creativePrinciples: applicationModelsTable.creativePrinciples,
           experienceIntent: applicationModelsTable.experienceIntent,
           visualSketches: applicationModelsTable.visualSketches,
+          identity: applicationModelsTable.identity,
+          intent: applicationModelsTable.intent,
+          buildState: applicationModelsTable.buildState,
         })
         .from(applicationModelsTable)
         .where(eq(applicationModelsTable.projectId, projectId))
@@ -2681,12 +2692,17 @@ router.post("/chat", async (req, res): Promise<void> => {
 
     try {
       const [dpRow] = await db
-        .select({ body: designPlansTable.body, version: designPlansTable.version, committedAt: designPlansTable.committedAt })
+        .select({ body: designPlansTable.body, version: designPlansTable.version, status: designPlansTable.status, committedAt: designPlansTable.committedAt })
         .from(designPlansTable)
-        .where(and(eq(designPlansTable.projectId, projectId), eq(designPlansTable.status, "committed")))
+        .where(eq(designPlansTable.projectId, projectId))
         .orderBy(desc(designPlansTable.version))
         .limit(1);
-      committedDesignPlan = dpRow ?? null;
+      if (dpRow) {
+        latestDesignPlanStatus = dpRow.status;
+        if (dpRow.status === "committed") {
+          committedDesignPlan = { body: dpRow.body, version: dpRow.version, committedAt: dpRow.committedAt };
+        }
+      }
     } catch { /* non-fatal — design plan enrichment is additive only */ }
   }
 
@@ -2708,6 +2724,55 @@ This is your locked context for this entire conversation. Every question, every 
 HARD RULE: Never answer from the context of a different project unless the user explicitly names it by asking a cross-project question ("how does this compare to IntoIQ?" / "across all my projects…"). A general question like "what can we do here?" is always about the active project.${projectAlreadyNamedInstruction}
 --- END ACTIVE PROJECT ---`;
   }
+  // Project Continuity — mandatory context block for active projects with existing AM data.
+  // Orients Atlas to the current state of the project so it never greets generically.
+  if (!isFoundationMode && project && projectDNARow) {
+    const amIdentity = (projectDNARow.identity as Record<string, unknown>) ?? {};
+    const amIntent = (projectDNARow.intent as Record<string, unknown>) ?? {};
+    const amBuildState = (projectDNARow.buildState as Record<string, unknown>) ?? {};
+
+    const amPurpose = (amIdentity.purpose as string) || null;
+    const amAudience = (amIdentity.audience as string) || null;
+    const amStage = (amBuildState.stage as string) || null;
+    const amLastExtracted = (amBuildState.lastExtractedAt as string) || null;
+    const amIntentSummary = (amIntent.summary as string) || null;
+
+    const designPlanLabel = committedDesignPlan ? "committed" :
+      latestDesignPlanStatus === "proposed" ? "proposed (not yet committed)" :
+      latestDesignPlanStatus === "draft" ? "draft (in progress)" : "none";
+
+    // Only inject when there's meaningful AM data — not for brand-new empty projects.
+    // amStage defaults to "Think" for every new project so it cannot be the sole gate.
+    // amLastExtracted is a good proxy: it timestamps when extraction last ran with real data.
+    const hasMeaningfulAMData = !!(amPurpose || amAudience || amIntentSummary || amLastExtracted);
+    if (hasMeaningfulAMData) {
+      const now = new Date();
+      let lastSeenLabel = "never";
+      if (amLastExtracted) {
+        const elapsedMs = now.getTime() - new Date(amLastExtracted).getTime();
+        const hours = Math.floor(elapsedMs / (1000 * 60 * 60));
+        if (hours < 1) lastSeenLabel = "less than an hour ago";
+        else if (hours < 24) lastSeenLabel = `${hours} hour${hours === 1 ? "" : "s"} ago`;
+        else {
+          const days = Math.floor(hours / 24);
+          lastSeenLabel = `${days} day${days === 1 ? "" : "s"} ago`;
+        }
+      }
+
+      let continuityBlock = `\n\n--- PROJECT CONTEXT ---`;
+      continuityBlock += `\nWhat you already know about ${project.name}:`;
+      if (amPurpose) continuityBlock += `\n• What it does: ${amPurpose}`;
+      if (amAudience) continuityBlock += `\n• Who it's for: ${amAudience}`;
+      if (amIntentSummary) continuityBlock += `\n• Core intent: ${amIntentSummary}`;
+      if (amStage) continuityBlock += `\n• Current stage: ${amStage}`;
+      continuityBlock += `\n• Design Plan: ${designPlanLabel}`;
+      continuityBlock += `\n• Last context update: ${lastSeenLabel}`;
+      continuityBlock += `\n\nRESPONSE CALIBRATION: This project has real context. Never open with "What are we building today?", "How can I help?", or any generic greeting that pretends you don't know this project. You have been in the room for this — respond accordingly. Reference what you know. Lead with something useful, a sharp question, or a direct continuation of the work.`;
+      continuityBlock += `\n--- END PROJECT CONTEXT ---`;
+      systemPrompt += continuityBlock;
+    }
+  }
+
   // Project DNA: Creative Principles + Experience Intent + Visual Memory sketches
   // Extracted from conversation after each turn and persisted to the Application Model.
   // Injected here so every response is shaped by the product's accumulated soul.
@@ -3017,6 +3082,8 @@ Just build it.
   } else {
     systemPrompt += `\n\n--- SESSION CONTINUITY ---
 If this is the first assistant message in this session (no prior assistant messages exist in the session history), open naturally — like picking up a real conversation, not filing a status report. DO NOT use the format "Still here. [recap]. What's next:". Instead, read the memory and repo activity and respond the way a sharp collaborator would after being away: reference what actually matters, skip what doesn't, and lead with something useful or ask the right question. One to two sentences max. Never clinical. Never a checklist. Match the energy of someone who was already thinking about this project before the conversation started.
+
+PROHIBITED (when PROJECT CONTEXT block is present above): "What are we building today?", "How can I help you today?", "What would you like to work on?", "Hey! What are we working on?", or any variant that pretends this is a fresh start. If you know the project's purpose, audience, or current stage from PROJECT CONTEXT, reference it — don't ask for it again.
 --- END SESSION CONTINUITY ---`;
   }
   if (recentErrorContext) {
