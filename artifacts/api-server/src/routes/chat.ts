@@ -2735,13 +2735,15 @@ This is your locked context for this entire conversation. Every question, every 
 HARD RULE: Never answer from the context of a different project unless the user explicitly names it by asking a cross-project question ("how does this compare to IntoIQ?" / "across all my projects…"). A general question like "what can we do here?" is always about the active project.${projectAlreadyNamedInstruction}
 --- END ACTIVE PROJECT ---`;
   }
-  // Project Continuity — mandatory context block for active projects with existing AM data.
-  // Orients Atlas to the current state of the project so it never greets generically.
-  if (!isFoundationMode && project && projectDNARow) {
-    const amIdentity = (projectDNARow.identity as Record<string, unknown>) ?? {};
-    const amIntent = (projectDNARow.intent as Record<string, unknown>) ?? {};
-    const amBuildState = (projectDNARow.buildState as Record<string, unknown>) ?? {};
+  // PROJECT CONTEXT — mandatory for all active workspace requests.
+  // Always injected when inside a project, even for brand-new ones (minimal fallback).
+  // The RESPONSE CALIBRATION clause is only appended when meaningful state exists.
+  if (!isFoundationMode && project) {
+    const amIdentity = (projectDNARow?.identity as Record<string, unknown>) ?? {};
+    const amIntent = (projectDNARow?.intent as Record<string, unknown>) ?? {};
+    const amBuildState = (projectDNARow?.buildState as Record<string, unknown>) ?? {};
 
+    const amName = (amIdentity.name as string) || null;
     const amPurpose = (amIdentity.purpose as string) || null;
     const amAudience = (amIdentity.audience as string) || null;
     const amStage = (amBuildState.stage as string) || null;
@@ -2755,73 +2757,74 @@ HARD RULE: Never answer from the context of a different project unless the user 
       latestDesignPlanStatus === "proposed" ? "proposed (not yet committed)" :
       latestDesignPlanStatus === "draft" ? "draft (in progress)" : "none";
 
-    // Only inject when there's meaningful AM data — not for brand-new empty projects.
-    // amStage defaults to "Think" for every new project so it cannot be the sole gate.
-    // amLastExtracted timestamps when extraction last ran with real data — a reliable proxy.
-    const hasMeaningfulAMData = !!(amPurpose || amAudience || amIntentSummary || amLastExtracted);
-    if (hasMeaningfulAMData) {
-      const now = new Date();
+    const now = new Date();
 
-      // Last context update label
-      let lastSeenLabel = "never";
-      if (amLastExtracted) {
-        const elapsedMs = now.getTime() - new Date(amLastExtracted).getTime();
-        const hours = Math.floor(elapsedMs / (1000 * 60 * 60));
-        if (hours < 1) lastSeenLabel = "less than an hour ago";
-        else if (hours < 24) lastSeenLabel = `${hours} hour${hours === 1 ? "" : "s"} ago`;
-        else {
-          const days = Math.floor(hours / 24);
-          lastSeenLabel = `${days} day${days === 1 ? "" : "s"} ago`;
-        }
+    // Last context update label
+    let lastSeenLabel = "never";
+    if (amLastExtracted) {
+      const elapsedMs = now.getTime() - new Date(amLastExtracted).getTime();
+      const hours = Math.floor(elapsedMs / (1000 * 60 * 60));
+      if (hours < 1) lastSeenLabel = "less than an hour ago";
+      else if (hours < 24) lastSeenLabel = `${hours} hour${hours === 1 ? "" : "s"} ago`;
+      else {
+        const days = Math.floor(hours / 24);
+        lastSeenLabel = `${days} day${days === 1 ? "" : "s"} ago`;
       }
-
-      // Last build outcome label
-      let lastBuildLabel = "not yet built";
-      if (amGenerated && amGeneratedAt) {
-        const buildElapsed = now.getTime() - new Date(amGeneratedAt).getTime();
-        const buildHours = Math.floor(buildElapsed / (1000 * 60 * 60));
-        const fileNote = amGeneratedFileCount > 0 ? ` (${amGeneratedFileCount} file${amGeneratedFileCount === 1 ? "" : "s"})` : "";
-        if (buildHours < 1) lastBuildLabel = `built less than an hour ago${fileNote}`;
-        else if (buildHours < 24) lastBuildLabel = `built ${buildHours}h ago${fileNote}`;
-        else {
-          const buildDays = Math.floor(buildHours / 24);
-          lastBuildLabel = `built ${buildDays} day${buildDays === 1 ? "" : "s"} ago${fileNote}`;
-        }
-      } else if (amGenerated) {
-        const fileNote = amGeneratedFileCount > 0 ? ` (${amGeneratedFileCount} file${amGeneratedFileCount === 1 ? "" : "s"})` : "";
-        lastBuildLabel = `build exists${fileNote}`;
-      }
-
-      // Rule-based narrative — 1–2 sentences summarizing current project state
-      let narrative: string;
-      if (latestDesignPlanStatus === "committed" && amGenerated) {
-        narrative = "Design direction is locked and builds have been generated. The project is in active iteration.";
-      } else if (latestDesignPlanStatus === "committed") {
-        narrative = "Design direction is committed and ready to build. No build has been generated yet.";
-      } else if (latestDesignPlanStatus === "proposed") {
-        narrative = "A Design Plan has been proposed but not yet committed — still in the decision phase.";
-      } else if (latestDesignPlanStatus === "draft") {
-        narrative = "A Design Plan is in draft. Direction is being explored but not finalized.";
-      } else if (amPurpose) {
-        narrative = "Product identity is taking shape. No design direction has been set yet.";
-      } else {
-        narrative = "Early stage — context is being established through conversation.";
-      }
-
-      let continuityBlock = `\n\n--- PROJECT CONTEXT ---`;
-      continuityBlock += `\nWhat you already know about ${project.name}:`;
-      if (amPurpose) continuityBlock += `\n• What it does: ${amPurpose}`;
-      if (amAudience) continuityBlock += `\n• Who it's for: ${amAudience}`;
-      if (amIntentSummary) continuityBlock += `\n• Core intent: ${amIntentSummary}`;
-      if (amStage) continuityBlock += `\n• Current stage: ${amStage}`;
-      continuityBlock += `\n• Design Plan: ${designPlanLabel}`;
-      continuityBlock += `\n• Last build: ${lastBuildLabel}`;
-      continuityBlock += `\n• Last context update: ${lastSeenLabel}`;
-      continuityBlock += `\n• Status: ${narrative}`;
-      continuityBlock += `\n\nRESPONSE CALIBRATION: This project has real context. Never open with "What are we building today?", "How can I help?", "What would you like to work on?", or any generic greeting that pretends you don't know this project. You have been in the room for this — respond accordingly. Reference what you know. Lead with something useful, a sharp question, or a direct continuation of the work.`;
-      continuityBlock += `\n--- END PROJECT CONTEXT ---`;
-      systemPrompt += continuityBlock;
     }
+
+    // Last build outcome label
+    let lastBuildLabel = "not yet built";
+    if (amGenerated && amGeneratedAt) {
+      const buildElapsed = now.getTime() - new Date(amGeneratedAt).getTime();
+      const buildHours = Math.floor(buildElapsed / (1000 * 60 * 60));
+      const fileNote = amGeneratedFileCount > 0 ? ` (${amGeneratedFileCount} file${amGeneratedFileCount === 1 ? "" : "s"})` : "";
+      if (buildHours < 1) lastBuildLabel = `built less than an hour ago${fileNote}`;
+      else if (buildHours < 24) lastBuildLabel = `built ${buildHours}h ago${fileNote}`;
+      else {
+        const buildDays = Math.floor(buildHours / 24);
+        lastBuildLabel = `built ${buildDays} day${buildDays === 1 ? "" : "s"} ago${fileNote}`;
+      }
+    } else if (amGenerated) {
+      const fileNote = amGeneratedFileCount > 0 ? ` (${amGeneratedFileCount} file${amGeneratedFileCount === 1 ? "" : "s"})` : "";
+      lastBuildLabel = `build exists${fileNote}`;
+    }
+
+    // Rule-based narrative — 1–2 sentences on current state
+    let narrative: string;
+    if (latestDesignPlanStatus === "committed" && amGenerated) {
+      narrative = "Design direction is locked and builds have been generated. The project is in active iteration.";
+    } else if (latestDesignPlanStatus === "committed") {
+      narrative = "Design direction is committed and ready to build. No build has been generated yet.";
+    } else if (latestDesignPlanStatus === "proposed") {
+      narrative = "A Design Plan has been proposed but not yet committed — still in the decision phase.";
+    } else if (latestDesignPlanStatus === "draft") {
+      narrative = "A Design Plan is in draft. Direction is being explored but not finalized.";
+    } else if (amPurpose) {
+      narrative = "Product identity is taking shape. No design direction has been set yet.";
+    } else {
+      narrative = "Brand new project — no context has been established yet.";
+    }
+
+    let continuityBlock = `\n\n--- PROJECT CONTEXT ---`;
+    continuityBlock += `\nWhat you already know about ${project.name}:`;
+    if (amName) continuityBlock += `\n• AM identity name: ${amName}`;
+    continuityBlock += `\n• What it does: ${amPurpose ?? "not yet established"}`;
+    continuityBlock += `\n• Who it's for: ${amAudience ?? "not yet established"}`;
+    if (amIntentSummary) continuityBlock += `\n• Core intent: ${amIntentSummary}`;
+    if (amStage) continuityBlock += `\n• Current stage: ${amStage}`;
+    continuityBlock += `\n• Design Plan: ${designPlanLabel}`;
+    continuityBlock += `\n• Last build: ${lastBuildLabel}`;
+    continuityBlock += `\n• Last context update: ${lastSeenLabel}`;
+    continuityBlock += `\n• Status: ${narrative}`;
+
+    // RESPONSE CALIBRATION — only when the project has meaningful known state.
+    // amStage alone (defaults to "Think") is excluded as it is always set.
+    const hasKnownState = !!(amPurpose || amAudience || amIntentSummary || amLastExtracted || latestDesignPlanStatus || amGenerated);
+    if (hasKnownState) {
+      continuityBlock += `\n\nRESPONSE CALIBRATION: This project has real context. Never open with "What are we building today?", "How can I help?", "What would you like to work on?", or any generic greeting that pretends you don't know this project. You have been in the room for this — respond accordingly. Reference what you know. Lead with something useful, a sharp question, or a direct continuation of the work.`;
+    }
+    continuityBlock += `\n--- END PROJECT CONTEXT ---`;
+    systemPrompt += continuityBlock;
   }
 
   // Project DNA: Creative Principles + Experience Intent + Visual Memory sketches
