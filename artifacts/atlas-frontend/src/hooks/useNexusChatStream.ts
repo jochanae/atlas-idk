@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtlasStream } from "./useAtlasStream";
 import { loadProfile, profileToString } from "@/lib/userProfile";
 import { extractSketchSubject, SKETCH_PROMPT_MARKER_RE } from "@/lib/sketchStylePresets";
+import { pushHudEvent } from "@/lib/hudBus";
 
 const STREAM_TIMEOUT_MS = 90_000;
 const NAVIGATE_TO_RE = /\s*NAVIGATE_TO:\s*(\{[^\n]*"route"\s*:\s*"([^"]+)"[^\n]*\})\s*$/;
@@ -516,15 +517,30 @@ export function useNexusChatStream(
             if (navigateTo?.projectId) {
               fetch(`/api/projects/${navigateTo.projectId}/activate`, { method: "POST", credentials: "include" }).catch(() => {});
             }
+            if (navigateTo?.route) {
+              const navLabel = navigateTo.projectName
+                ? `${navigateTo.projectName} (${navigateTo.route})`
+                : navigateTo.route;
+              pushHudEvent("NAVIGATED", navLabel);
+            }
 
             // Read shapingPayload from meta — backend parses and 
             // sends it in the done event already cleaned
             const shapingFromMeta = meta.shapingPayload as NexusShapingPayload | null | undefined;
             if (shapingFromMeta?.title && shapingFromMeta?.tension && !shapingHeldRef.current) {
               setShapingPayload(shapingFromMeta);
+              pushHudEvent("TENSION", shapingFromMeta.tension);
             }
             // Always notify — handler reads convState on every response, not just projectReady ones
             notifyProjectReady(meta as NexusProjectReadyDoneData);
+
+            // Push convState as a HUD signal so the extraction feed reflects Atlas's mode.
+            const convState = (meta as any).convState as "THINK" | "SHAPE" | "COMMIT" | undefined;
+            if (convState === "SHAPE") {
+              pushHudEvent("TENSION", "Structuring scope — mapping constraints and gaps");
+            } else if (convState === "COMMIT") {
+              pushHudEvent("DECISION", "Build signal detected — ready to commit");
+            }
 
             // Parse VISUALIZE marker
             const visualMatch = fullText.match(
@@ -608,7 +624,15 @@ export function useNexusChatStream(
             // Parse MEMORY_CHIPS
             const chipMatch = displayText.match(/MEMORY_CHIPS:\s*(\[[\s\S]*?\])/);
             if (chipMatch) {
-              try { JSON.parse(chipMatch[1]); } catch { /* non-fatal */ }
+              try {
+                const chips = JSON.parse(chipMatch[1]) as unknown;
+                if (Array.isArray(chips)) {
+                  for (const chip of chips) {
+                    const text = typeof chip === "string" ? chip : typeof chip?.text === "string" ? chip.text : null;
+                    if (text) pushHudEvent("MEMORY", text.length > 80 ? text.slice(0, 77) + "…" : text);
+                  }
+                }
+              } catch { /* non-fatal */ }
               displayText = displayText.replace(/\nMEMORY_CHIPS:[\s\S]*$/g, "").trim();
             }
 
