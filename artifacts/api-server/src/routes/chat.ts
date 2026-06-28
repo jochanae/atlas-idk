@@ -3188,7 +3188,16 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
     { role: "user", content: userContent },
   ];
 
-  if (!isFlowMode && !isScenarioMode) {
+  // Telemetry events (workspace auto-apply, file commit confirmations) are
+  // one-way signals: they inform Atlas what happened but must never be stored
+  // as permanent conversation history. Persisting them would replay them on
+  // every future request, confusing the model and triggering runaway loops.
+  const isTelemetryEvent =
+    message.startsWith("[LOCAL_APPLY_SUCCESS]") ||
+    message.startsWith("[FILE_COMMITTED]") ||
+    message.startsWith("[BUILD_VERIFY]");
+
+  if (!isFlowMode && !isScenarioMode && !isTelemetryEvent) {
     try {
       await db.insert(chatMessagesTable).values({
         sessionId,

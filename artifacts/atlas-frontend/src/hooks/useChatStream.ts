@@ -307,7 +307,14 @@ export function useChatStream(
         ...(imgAttachments.length > 0 ? { attachments: imgAttachments } : {}),
         ...(firstImg ? { imageB64: firstImg.base64, imageMimeType: firstImg.mediaType } : {}),
       };
-      const history = currentMessages.map((m) => ({ role: m.role, content: m.content }));
+      // Telemetry messages (displayAs === "autoVerify") are internal workspace
+      // signals — file-apply confirmations, audit results, build status. They
+      // must never be fed back to the model as conversation history. Filtering
+      // them here prevents old telemetry rounds from accumulating in context
+      // and triggering further auto-apply loops.
+      const history = currentMessages
+        .filter((m) => m.displayAs !== "autoVerify")
+        .map((m) => ({ role: m.role, content: m.content }));
       const ledgerEntries = (entries || []).map((e) => ({ id: e.id, title: e.title, status: e.status }));
       const activeCtx = ctx !== undefined ? ctx : fileContext;
 

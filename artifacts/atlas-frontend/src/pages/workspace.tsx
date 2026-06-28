@@ -4178,6 +4178,9 @@ export default function Workspace() {
   }, [fallbackEntries, projectState.decisions, projectState.parked, projectState.state]);
   const [thinkingState, setThinkingState] = useState<{ status: "processing"|"streaming"|"completed"; currentStep: any; history: any[]; developerLens?: any } | null>(null);
   const [pendingAutoApply, setPendingAutoApply] = useState<string[] | null>(null);
+  // Tracks consecutive auto-apply rounds without a human message in between.
+  // Capped at 4 to prevent runaway loops if Atlas keeps emitting FILE_EDIT blocks.
+  const autoApplyCountRef = useRef<number>(0);
   const stepStartRef = useRef<number>(Date.now());
   const handleThinkingSendStart = useCallback(() => {
     stepStartRef.current = Date.now();
@@ -4199,6 +4202,10 @@ export default function Workspace() {
     setThinkingState(prev => prev ? { ...prev, status: "completed", developerLens: payload?.developerLens } : prev);
     if (payload?.autoApplied && Array.isArray(payload?.autoAppliedPaths) && payload.autoAppliedPaths.length > 0) {
       setPendingAutoApply(payload.autoAppliedPaths as string[]);
+    } else {
+      // Atlas responded to a human message (no auto-apply) — reset the
+      // consecutive loop counter so the next build handoff starts fresh.
+      autoApplyCountRef.current = 0;
     }
   }, []);
 
@@ -4305,6 +4312,17 @@ export default function Workspace() {
   // than a generic "check for missing files" prompt.
   useEffect(() => {
     if (!pendingAutoApply || !sessionId) return;
+
+    // Hard cap: no more than 4 consecutive auto-apply rounds without a human
+    // message in between. Each round Atlas emits FILE_EDIT blocks → frontend
+    // applies them → this effect fires. Without a cap, an audit that always
+    // passes (same files each time) loops indefinitely.
+    autoApplyCountRef.current += 1;
+    if (autoApplyCountRef.current > 4) {
+      setPendingAutoApply(null);
+      return;
+    }
+
     const count = pendingAutoApply.length;
     const fileList = pendingAutoApply.length > 0 ? `: ${pendingAutoApply.join(", ")}` : "";
     const sendAuditMessage = (auditLines: string) => {
