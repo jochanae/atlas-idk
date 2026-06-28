@@ -202,47 +202,56 @@ async function ensureColumns(): Promise<void> {
     logger.warn({ err }, "ensureColumns: project_dna table failed — server will start anyway");
   }
 
-  // Only migrate if the source columns still exist (idempotent — skipped silently on second+ boots)
+  // Atomic migration: verify ALL source columns exist, copy data, then drop — in one transaction.
+  // The DROP only executes if the INSERT succeeds; the transaction rolls back on any error so
+  // the legacy columns are never lost without a confirmed successful copy.
   try {
     const colCheck = await db.execute(sql`
       SELECT column_name FROM information_schema.columns
-      WHERE table_name = 'application_models' AND column_name = 'creative_principles'
+      WHERE table_name = 'application_models'
+        AND column_name IN ('creative_principles', 'experience_intent', 'visual_sketches')
     `);
-    if ((colCheck as { rows: unknown[] }).rows.length > 0) {
-      await db.execute(sql`
-        INSERT INTO project_dna (project_id, creative_principles, experience_intent, visual_sketches)
-        SELECT
-          am.project_id,
-          COALESCE(am.creative_principles, '[]'::jsonb),
-          COALESCE(am.experience_intent, '{}'::jsonb),
-          COALESCE(am.visual_sketches, '[]'::jsonb)
-        FROM application_models am
-        WHERE
-          am.creative_principles::text <> '[]'
-          OR am.experience_intent::text <> '{}'
-          OR am.visual_sketches::text <> '[]'
-        ON CONFLICT (project_id) DO NOTHING
-      `);
-      logger.info("ensureColumns: project_dna data migration applied");
+    const presentCols = new Set(
+      (colCheck as unknown as { rows: Array<{ column_name: string }> }).rows.map((r) => r.column_name),
+    );
+
+    if (presentCols.size === 0) {
+      logger.info("ensureColumns: project_dna migration skipped — legacy columns already absent");
+    } else if (presentCols.size < 3) {
+      // Partial column presence — abort rather than guess; leave columns intact for manual review.
+      logger.warn(
+        { presentCols: [...presentCols] },
+        "ensureColumns: partial legacy DNA columns detected — migration aborted to prevent data loss",
+      );
     } else {
-      logger.info("ensureColumns: project_dna data migration skipped — already complete");
+      // All 3 source columns confirmed present. Run copy + drop in one transaction:
+      // PostgreSQL DDL is transactional — DROP COLUMN rolls back if copy fails.
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`
+          INSERT INTO project_dna (project_id, creative_principles, experience_intent, visual_sketches)
+          SELECT
+            am.project_id,
+            COALESCE(am.creative_principles, '[]'::jsonb),
+            COALESCE(am.experience_intent, '{}'::jsonb),
+            COALESCE(am.visual_sketches, '[]'::jsonb)
+          FROM application_models am
+          WHERE
+            am.creative_principles::text <> '[]'
+            OR am.experience_intent::text <> '{}'
+            OR am.visual_sketches::text <> '[]'
+          ON CONFLICT (project_id) DO NOTHING
+        `);
+        await tx.execute(sql`
+          ALTER TABLE application_models
+            DROP COLUMN IF EXISTS creative_principles,
+            DROP COLUMN IF EXISTS experience_intent,
+            DROP COLUMN IF EXISTS visual_sketches
+        `);
+      });
+      logger.info("ensureColumns: project_dna migration + legacy column drop completed atomically");
     }
   } catch (err) {
-    logger.warn({ err }, "ensureColumns: project_dna data migration failed — non-fatal");
-  }
-
-  // Drop DNA columns from application_models — safe now that project_dna holds the data.
-  // Uses DROP COLUMN IF EXISTS so repeated boots are idempotent.
-  try {
-    await db.execute(sql`
-      ALTER TABLE application_models
-        DROP COLUMN IF EXISTS creative_principles,
-        DROP COLUMN IF EXISTS experience_intent,
-        DROP COLUMN IF EXISTS visual_sketches
-    `);
-    logger.info("ensureColumns: legacy DNA columns dropped from application_models");
-  } catch (err) {
-    logger.warn({ err }, "ensureColumns: legacy DNA column drop failed — non-fatal");
+    logger.error({ err }, "ensureColumns: project_dna migration failed — legacy columns preserved");
   }
 }
 
