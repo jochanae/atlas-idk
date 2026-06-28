@@ -546,6 +546,109 @@ router.get("/fs/:projectId/git/log", async (req: Request, res: Response): Promis
   }
 });
 
+// ---------------------------------------------------------------------------
+// auditWorkspaceIntegrity — deterministic import-resolution check.
+// Walks all .js/.jsx/.ts/.tsx files, extracts relative imports, verifies each
+// target exists on disk. Returns the list of unresolved imports so callers can
+// either block export or surface the list to Atlas for remediation.
+// ---------------------------------------------------------------------------
+const AUDIT_SCANNABLE = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"]);
+const AUDIT_RESOLVE_SUFFIXES = [
+  "", ".jsx", ".tsx", ".js", ".ts",
+  "/index.jsx", "/index.tsx", "/index.js", "/index.ts",
+];
+// Matches: import X from './foo', import './foo', import type X from './foo'
+const RELATIVE_IMPORT_RE = /(?:^|\n)\s*import\s+(?:type\s+)?(?:[^'"]*\bfrom\s+)?['"](\.[^'"]+)['"]/g;
+
+interface UnresolvedImport {
+  importedIn: string;
+  importPath: string;
+}
+
+async function auditWorkspaceIntegrity(workspaceDir: string): Promise<{
+  missing: UnresolvedImport[];
+  checked: number;
+}> {
+  const missing: UnresolvedImport[] = [];
+  let checked = 0;
+
+  async function walkDir(absDir: string, relDir: string): Promise<void> {
+    let entries: fsNode.Dirent[];
+    try {
+      entries = await fsPromises.readdir(absDir, { withFileTypes: true });
+    } catch { return; }
+
+    for (const entry of entries) {
+      if (EXCLUDED_NAMES.has(entry.name)) continue;
+      if (entry.name.startsWith(".")) continue;
+
+      const childAbs = path.join(absDir, entry.name);
+      const childRel = relDir ? `${relDir}/${entry.name}` : entry.name;
+
+      if (entry.isDirectory()) {
+        await walkDir(childAbs, childRel);
+      } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase();
+        if (!AUDIT_SCANNABLE.has(ext)) continue;
+
+        let content: string;
+        try { content = await fsPromises.readFile(childAbs, "utf-8"); }
+        catch { continue; }
+
+        checked++;
+        RELATIVE_IMPORT_RE.lastIndex = 0;
+        let match: RegExpExecArray | null;
+
+        while ((match = RELATIVE_IMPORT_RE.exec(content)) !== null) {
+          const importPath = match[1];
+          // Only check relative imports; skip bare specifiers and node_modules
+          if (!importPath.startsWith(".")) continue;
+
+          const resolvedBase = path.resolve(path.dirname(childAbs), importPath);
+          let found = false;
+
+          for (const suffix of AUDIT_RESOLVE_SUFFIXES) {
+            try {
+              await fsPromises.access(resolvedBase + suffix, fsNode.constants.F_OK);
+              found = true;
+              break;
+            } catch { /* try next */ }
+          }
+
+          if (!found) {
+            missing.push({ importedIn: childRel, importPath });
+          }
+        }
+      }
+    }
+  }
+
+  await walkDir(workspaceDir, "");
+  return { missing, checked };
+}
+
+// GET /api/fs/:projectId/audit — standalone integrity check for the Builder lens.
+// Returns { ok, checked, missing[] } so the client can surface specific missing
+// filenames to Atlas after LOCAL_APPLY_SUCCESS instead of a generic "check everything" prompt.
+router.get("/fs/:projectId/audit", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).authUser.id as number;
+    const projectId = parseProjectId(req.params.projectId);
+    if (!projectId) { res.status(400).json({ error: "Invalid project id" }); return; }
+    if (!await assertProjectOwner(projectId, userId)) { res.status(404).json({ error: "Project not found" }); return; }
+
+    const workspaceDir = projectWorkspaceDir(projectId);
+    try { await fsPromises.access(workspaceDir, fsNode.constants.F_OK); }
+    catch { res.status(404).json({ error: "Workspace not found" }); return; }
+
+    const { missing, checked } = await auditWorkspaceIntegrity(workspaceDir);
+    res.json({ ok: missing.length === 0, checked, missing });
+  } catch (err) {
+    req.log?.error({ err }, "fs audit error");
+    res.status(500).json({ error: "Audit failed" });
+  }
+});
+
 // GET /api/fs/:projectId/zip — stream the workspace as a downloadable ZIP archive
 router.get("/fs/:projectId/zip", async (req: Request, res: Response): Promise<void> => {
   try {
@@ -565,6 +668,21 @@ router.get("/fs/:projectId/zip", async (req: Request, res: Response): Promise<vo
     }
     if (entries.length === 0) {
       res.status(404).json({ error: "Workspace is empty" }); return;
+    }
+
+    // Integrity check — block export if any relative import cannot be resolved.
+    // This is deterministic (filesystem-based), not LLM-based, so it cannot lie.
+    const audit = await auditWorkspaceIntegrity(workspaceDir);
+    if (audit.missing.length > 0) {
+      const report = audit.missing
+        .map((m) => `  ${m.importedIn} → ${m.importPath}`)
+        .join("\n");
+      res.status(422).json({
+        error: "workspace_integrity_failure",
+        message: `Cannot export: ${audit.missing.length} unresolved import${audit.missing.length === 1 ? "" : "s"} found. These files are referenced but missing from the workspace:\n${report}`,
+        missing: audit.missing,
+      });
+      return;
     }
 
     // Fetch project name for the ZIP filename

@@ -4300,20 +4300,49 @@ export default function Workspace() {
 
   // When the server auto-applies FILE_EDIT blocks during a build handoff, send
   // LOCAL_APPLY_SUCCESS so Atlas knows files are on disk and can read them back.
+  // We run a deterministic import-resolution audit first and embed any specific
+  // missing filenames into the message — giving Atlas exact targets to fix rather
+  // than a generic "check for missing files" prompt.
   useEffect(() => {
     if (!pendingAutoApply || !sessionId) return;
     const count = pendingAutoApply.length;
     const fileList = pendingAutoApply.length > 0 ? `: ${pendingAutoApply.join(", ")}` : "";
-    doSend(
-      `[LOCAL_APPLY_SUCCESS] ${count} file${count === 1 ? "" : "s"} written to local workspace${fileList}. File tree updated.\n\nAUDIT REQUIRED: Check the file list above. Are all required project files present? Look for anything missing — package.json, remaining screens, component files, config files. If anything is missing, write it immediately using FILE_EDIT blocks. Repeat until the workspace is complete. When nothing is missing, output a clear completion message: "✅ Build complete. Your project workspace is ready — use the Files tab to browse, download, or preview your project."`,
-      sessionId,
-      messagesRef.current,
-      undefined,
-      undefined,
-      { displayAs: "autoVerify" },
-    );
-    setPendingAutoApply(null);
-  }, [pendingAutoApply, sessionId, doSend, messagesRef]);
+    const sendAuditMessage = (auditLines: string) => {
+      doSend(
+        `[LOCAL_APPLY_SUCCESS] ${count} file${count === 1 ? "" : "s"} written to local workspace${fileList}. File tree updated.\n\n${auditLines}`,
+        sessionId,
+        messagesRef.current,
+        undefined,
+        undefined,
+        { displayAs: "autoVerify" },
+      );
+      setPendingAutoApply(null);
+    };
+
+    // Run deterministic import audit — surfaces specific missing files so Atlas
+    // can fix them immediately rather than doing a probabilistic "check everything".
+    fetch(`/api/fs/${id}/audit`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() as Promise<{ ok: boolean; missing: Array<{ importedIn: string; importPath: string }> }> : null)
+      .then((audit) => {
+        if (audit && !audit.ok && audit.missing.length > 0) {
+          const missingList = audit.missing
+            .map((m) => `  • ${m.importPath} (imported in ${m.importedIn})`)
+            .join("\n");
+          sendAuditMessage(
+            `INTEGRITY FAILURE: The following imports are wired into the code but the target files are missing from the workspace. You MUST write each missing file immediately using FILE_EDIT blocks before this build is complete:\n${missingList}\n\nDo NOT output a completion message until every item above has been written.`
+          );
+        } else {
+          sendAuditMessage(
+            `AUDIT PASSED: All imports resolve to existing files. If any non-import files are missing (config, assets, etc.) write them now. When the workspace is complete, output: "✅ Build complete. Your project workspace is ready — use the Files tab to browse, download, or preview your project."`
+          );
+        }
+      })
+      .catch(() => {
+        sendAuditMessage(
+          `AUDIT REQUIRED: Check the file list above. Are all required project files present? Look for anything missing — package.json, remaining screens, component files, config files. If anything is missing, write it immediately using FILE_EDIT blocks. Repeat until the workspace is complete. When nothing is missing, output a clear completion message: "✅ Build complete. Your project workspace is ready — use the Files tab to browse, download, or preview your project."`
+        );
+      });
+  }, [pendingAutoApply, sessionId, doSend, messagesRef, id]);
 
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {
