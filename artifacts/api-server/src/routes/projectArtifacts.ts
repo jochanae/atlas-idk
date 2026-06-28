@@ -1,39 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, projectArtifactsTable, projectsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { logger } from "../lib/logger";
+
+export { logProjectArtifact } from "../lib/artifactLog";
 
 const router: IRouter = Router();
-
-// ── Shared helper: called by other routes to log an artifact ─────────────────
-export async function logProjectArtifact({
-  projectId,
-  type,
-  version,
-  title,
-  metadata = {},
-  payload = {},
-}: {
-  projectId: number;
-  type: string;
-  version: number;
-  title: string;
-  metadata?: Record<string, unknown>;
-  payload?: Record<string, unknown>;
-}): Promise<void> {
-  try {
-    await db.insert(projectArtifactsTable).values({
-      projectId,
-      type,
-      version,
-      title,
-      metadata,
-      payload,
-    });
-  } catch (err) {
-    logger.warn({ err, projectId, type }, "logProjectArtifact: failed to insert — non-fatal");
-  }
-}
 
 // GET /api/projects/:id/artifacts
 // Returns all artifacts for this project in reverse chronological order.

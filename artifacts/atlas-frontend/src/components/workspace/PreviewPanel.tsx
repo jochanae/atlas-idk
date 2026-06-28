@@ -75,6 +75,7 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   });
 
   const artifacts = artifactsData?.artifacts ?? [];
+  const [expandedArtifactId, setExpandedArtifactId] = useState<number | null>(null);
 
   // Device switcher
   type DeviceSize = "phone" | "tablet" | "desktop";
@@ -1115,10 +1116,10 @@ ${t}
 
             {!artifactsLoading && artifacts.map((artifact) => {
               const typeConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
-                design_plan: { label: "DESIGN", color: "var(--atlas-gold)", bg: "rgba(201,162,76,0.08)", border: "rgba(201,162,76,0.2)" },
-                blueprint_snapshot: { label: "BLUEPRINT", color: "rgba(96,165,250,0.9)", bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.18)" },
-                build_output: { label: "BUILD", color: "rgba(52,211,153,0.85)", bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.18)" },
-                visual_sketch: { label: "SKETCH", color: "rgba(167,139,250,0.85)", bg: "rgba(167,139,250,0.06)", border: "rgba(167,139,250,0.18)" },
+                design_plan:        { label: "DESIGN",    color: "var(--atlas-gold)",        bg: "rgba(201,162,76,0.08)",  border: "rgba(201,162,76,0.2)"  },
+                blueprint_snapshot: { label: "BLUEPRINT", color: "rgba(96,165,250,0.9)",     bg: "rgba(96,165,250,0.06)", border: "rgba(96,165,250,0.18)" },
+                build_output:       { label: "BUILD",     color: "rgba(52,211,153,0.85)",    bg: "rgba(52,211,153,0.06)", border: "rgba(52,211,153,0.18)" },
+                visual_sketch:      { label: "SKETCH",    color: "rgba(167,139,250,0.85)",   bg: "rgba(167,139,250,0.06)",border: "rgba(167,139,250,0.18)"},
               };
               const cfg = typeConfig[artifact.type] ?? { label: artifact.type.toUpperCase(), color: "var(--atlas-muted)", bg: "rgba(255,255,255,0.03)", border: "var(--atlas-border)" };
 
@@ -1134,57 +1135,155 @@ ${t}
                 return `${days}d ago`;
               })();
 
+              const isExpanded = expandedArtifactId === artifact.id;
               const isBuild = artifact.type === "build_output";
+              const isBlueprint = artifact.type === "blueprint_snapshot";
+              const isDesignPlan = artifact.type === "design_plan";
+              const isSketch = artifact.type === "visual_sketch";
+
+              // Typed payload helpers
+              const dp = artifact.payload as Record<string, unknown>;
+              const bpIdentity = (artifact.payload.identity as Record<string, unknown>) ?? {};
+              const bpIntent = (artifact.payload.intent as Record<string, unknown>) ?? {};
+              const bpPages = (artifact.payload.pages as Array<{ name?: string }>) ?? [];
               const fileCount = isBuild ? (artifact.metadata.fileCount as number | undefined) : undefined;
+              const buildAvailable = isBuild && wsDsStatus === "running";
 
               return (
-                <div
-                  key={artifact.id}
-                  style={{
-                    background: cfg.bg,
-                    border: `1px solid ${cfg.border}`,
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 5,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <span style={{
-                      fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
-                      color: cfg.color, background: "rgba(0,0,0,0.25)", borderRadius: 3,
-                      padding: "1px 5px", flexShrink: 0,
-                    }}>
-                      {cfg.label}
-                    </span>
-                    <span style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.85, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {artifact.title}
-                    </span>
-                    <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0 }}>
-                      {relTime}
-                    </span>
+                <div key={artifact.id} style={{ display: "flex", flexDirection: "column" }}>
+                  {/* Card header — click to toggle expansion */}
+                  <div
+                    onClick={() => setExpandedArtifactId(isExpanded ? null : artifact.id)}
+                    style={{
+                      background: cfg.bg,
+                      border: `1px solid ${cfg.border}`,
+                      borderRadius: isExpanded ? "6px 6px 0 0" : 6,
+                      padding: "8px 10px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{
+                        fontSize: 7.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em",
+                        color: cfg.color, background: "rgba(0,0,0,0.25)", borderRadius: 3,
+                        padding: "1px 5px", flexShrink: 0,
+                      }}>
+                        {cfg.label}
+                      </span>
+                      <span style={{ fontSize: 7.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0 }}>
+                        v{artifact.version}
+                      </span>
+                      <span style={{ fontSize: 10.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.85, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {artifact.title}
+                      </span>
+                      <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0 }}>
+                        {relTime}
+                      </span>
+                      <span style={{ fontSize: 8, color: "var(--atlas-muted)", opacity: 0.3, flexShrink: 0, lineHeight: 1, marginLeft: 2 }}>
+                        {isExpanded ? "▲" : "▼"}
+                      </span>
+                    </div>
+
+                    {/* Build preview row — always shown, state-aware */}
+                    {isBuild && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }} onClick={e => e.stopPropagation()}>
+                        {typeof fileCount === "number" && (
+                          <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5 }}>
+                            {fileCount} files
+                          </span>
+                        )}
+                        {buildAvailable ? (
+                          <button
+                            onClick={() => setPreviewMode("local")}
+                            style={{
+                              fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
+                              color: "rgba(52,211,153,0.8)", background: "rgba(52,211,153,0.08)",
+                              border: "1px solid rgba(52,211,153,0.2)", borderRadius: 3,
+                              padding: "2px 7px", cursor: "pointer",
+                            }}
+                          >
+                            → Preview
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.3 }}>
+                            preview not available — run Local Dev
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {(isBuild || artifact.type === "blueprint_snapshot") && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      {isBuild && typeof fileCount === "number" && (
-                        <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5 }}>
-                          {fileCount} files
-                        </span>
+                  {/* Expanded detail panel */}
+                  {isExpanded && (
+                    <div style={{
+                      background: "rgba(0,0,0,0.18)", border: `1px solid ${cfg.border}`, borderTop: "none",
+                      borderRadius: "0 0 6px 6px", padding: "10px 12px",
+                      display: "flex", flexDirection: "column", gap: 7,
+                    }}>
+                      {isDesignPlan && (
+                        <>
+                          {dp.navigationPattern && <DetailRow label="Navigation" value={String(dp.navigationPattern)} />}
+                          {dp.componentPatterns && <DetailRow label="Components" value={String(dp.componentPatterns)} />}
+                          {dp.motionPhilosophy && <DetailRow label="Motion" value={String(dp.motionPhilosophy)} />}
+                          {dp.typographyScale && <DetailRow label="Typography" value={String(dp.typographyScale)} />}
+                          {dp.cardDensity && <DetailRow label="Density" value={String(dp.cardDensity)} />}
+                          {(dp.responsiveIntent as Record<string, unknown>)?.mobile && (
+                            <DetailRow label="Mobile" value={String((dp.responsiveIntent as Record<string, unknown>).mobile)} />
+                          )}
+                          {(dp.interactionPatterns as Record<string, unknown>)?.primaryAction && (
+                            <DetailRow label="Primary action" value={String((dp.interactionPatterns as Record<string, unknown>).primaryAction)} />
+                          )}
+                          {Array.isArray(dp.informationHierarchy) && dp.informationHierarchy.length > 0 && (
+                            <div>
+                              <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, display: "block", marginBottom: 3 }}>INFO HIERARCHY</span>
+                              {(dp.informationHierarchy as string[]).map((h, i) => (
+                                <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.7, paddingLeft: 6, lineHeight: 1.8 }}>· {h}</div>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
-                      {isBuild && wsDsStatus === "running" && (
-                        <button
-                          onClick={() => setPreviewMode("local")}
-                          style={{
-                            fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.06em",
-                            color: "rgba(52,211,153,0.8)", background: "rgba(52,211,153,0.08)",
-                            border: "1px solid rgba(52,211,153,0.2)", borderRadius: 3,
-                            padding: "2px 7px", cursor: "pointer",
-                          }}
-                        >
-                          → Preview
-                        </button>
+
+                      {isBlueprint && (
+                        <>
+                          {bpIdentity.name && <DetailRow label="Project" value={String(bpIdentity.name)} />}
+                          {(bpIntent.summary as string | undefined) && <DetailRow label="Intent" value={String(bpIntent.summary)} />}
+                          {bpPages.length > 0 && (
+                            <div>
+                              <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.5, display: "block", marginBottom: 3 }}>PAGES ({bpPages.length})</span>
+                              {bpPages.slice(0, 6).map((p, i) => (
+                                <div key={i} style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.7, paddingLeft: 6, lineHeight: 1.8 }}>· {p.name ?? "Untitled"}</div>
+                              ))}
+                              {bpPages.length > 6 && <div style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.35, paddingLeft: 6 }}>+{bpPages.length - 6} more</div>}
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {isBuild && (
+                        <>
+                          {typeof fileCount === "number" && <DetailRow label="Source files" value={String(fileCount)} />}
+                          {artifact.metadata.builtAt && <DetailRow label="Built at" value={new Date(String(artifact.metadata.builtAt)).toLocaleString()} />}
+                        </>
+                      )}
+
+                      {isSketch && (
+                        <>
+                          {(artifact.payload.description as string | undefined) && (
+                            <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.7, lineHeight: 1.6 }}>
+                              {String(artifact.payload.description)}
+                            </div>
+                          )}
+                          {((artifact.payload.signals as Record<string, string[]> | undefined)?.emotionalRegister?.length ?? 0) > 0 && (
+                            <DetailRow label="Emotional register" value={(artifact.payload.signals as Record<string, string[]>).emotionalRegister.join(", ")} />
+                          )}
+                          {((artifact.payload.signals as Record<string, string[]> | undefined)?.visualLanguage?.length ?? 0) > 0 && (
+                            <DetailRow label="Visual language" value={(artifact.payload.signals as Record<string, string[]>).visualLanguage.join(", ")} />
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -1545,6 +1644,20 @@ ${t}
         </>,
         document.body
       )}
+    </div>
+  );
+}
+
+// Small read-only label+value row used inside artifact detail panels
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+      <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, flexShrink: 0, minWidth: 80, paddingTop: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", opacity: 0.75, lineHeight: 1.5 }}>
+        {value}
+      </span>
     </div>
   );
 }

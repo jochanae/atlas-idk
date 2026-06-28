@@ -4,7 +4,7 @@ import { eq, and, desc, inArray, isNotNull } from "drizzle-orm";
 import { ApplicationModelPatchSchema, ApplicationModelSchema, ApplicationModelHistorySchema } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { syncFlowCanvasFromModel } from "../lib/flowMapSync";
-import { logProjectArtifact } from "./projectArtifacts";
+import { logProjectArtifact } from "../lib/artifactLog";
 
 export { syncFlowCanvasFromModel };
 

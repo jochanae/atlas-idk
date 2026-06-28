@@ -4,7 +4,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { logger } from "../lib/logger";
 import Anthropic from "@anthropic-ai/sdk";
-import { logProjectArtifact } from "./projectArtifacts";
+import { logProjectArtifact } from "../lib/artifactLog";
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

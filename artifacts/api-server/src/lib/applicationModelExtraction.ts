@@ -13,6 +13,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, applicationModelsTable, applicationModelHistoryTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { logProjectArtifact } from "./artifactLog";
 import { logger } from "./logger";
 import { syncFlowCanvasFromModel } from "./flowMapSync";
 
@@ -465,6 +466,18 @@ export async function extractVisualMemoryFromAttachments({
         .where(eq(applicationModelsTable.projectId, projectId));
 
       logger.info({ projectId, description: result.description.slice(0, 80) }, "visual memory: sketch processed");
+
+      // Log to artifact gallery — fire and forget
+      void logProjectArtifact({
+        projectId,
+        type: "visual_sketch",
+        title: attachment.name ? `Sketch: ${attachment.name.slice(0, 60)}` : "Visual Sketch",
+        metadata: { analyzedAt: sketchEntry.analyzedAt },
+        payload: {
+          description: sketchEntry.description,
+          signals: sketchEntry.signals,
+        },
+      });
     } catch (err) {
       logger.warn({ err, projectId }, "visual memory extraction: failed for one attachment — non-fatal");
     }
