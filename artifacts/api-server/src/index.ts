@@ -146,6 +146,17 @@ async function ensureColumns(): Promise<void> {
   } catch (err) {
     logger.warn({ err }, "ensureColumns: entries.am_field failed — server will start anyway");
   }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE nexus_messages
+        ADD COLUMN IF NOT EXISTS metadata jsonb,
+        ADD COLUMN IF NOT EXISTS message_type text
+    `);
+    logger.info("ensureColumns: nexus_messages.metadata + message_type columns verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: nexus_messages columns failed — server will start anyway");
+  }
 }
 
 async function main() {
