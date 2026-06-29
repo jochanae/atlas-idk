@@ -4506,9 +4506,11 @@ export default function Workspace() {
     return () => window.removeEventListener("axiom:open-account-hub", open);
   }, []);
 
-  // Atlas Core center-button → switch to chat tab + focus composer
+  // Atlas Core center-button → switch to chat tab + focus composer + restore composer
   useEffect(() => {
     const onFocus = () => {
+      // Composer modes: gold "A" always returns composer to `full`.
+      useShellStore.getState().restoreComposer();
       setMobileTab("chat");
       setRightOpen(false);
       const el = textareaRef.current;
@@ -4521,6 +4523,7 @@ export default function Workspace() {
     window.addEventListener("atlas:focus-composer", onFocus);
     return () => window.removeEventListener("atlas:focus-composer", onFocus);
   }, []);
+
 
   // Chip Execute action → inject text into composer
   useEffect(() => {
