@@ -3894,7 +3894,6 @@ export default function Home() {
             paddingTop: globalInsightOpen ? 0 : 0,
             minWidth: 0,
             overflow: globalInsightOpen ? "hidden" : "visible",
-            transition: "padding-bottom 240ms cubic-bezier(.32,.72,0,1), min-height 240ms cubic-bezier(.32,.72,0,1)",
           }}>
             {/* Atmospheric pulse — behind everything, theme-aware */}
             <div className="atlas-home-atmosphere" style={{
