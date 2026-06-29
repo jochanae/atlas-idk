@@ -205,20 +205,19 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     const onFiles = () => props.onFiles?.();
     const onProjects = () => props.onProjects?.();
     const onSettings = () => props.onYou?.();
-    const onCapture = () => setLocation("/parking-lot?capture=1");
+    // Note: axiom:launcher-capture is handled globally by <CaptureLauncher/>
+    // mounted in UnifiedShell — do NOT navigate from here.
     window.addEventListener("axiom:launcher-decisions", onDecisions);
     window.addEventListener("axiom:launcher-files", onFiles);
     window.addEventListener("axiom:launcher-projects", onProjects);
     window.addEventListener("axiom:launcher-settings", onSettings);
-    window.addEventListener("axiom:launcher-capture", onCapture);
     return () => {
       window.removeEventListener("axiom:launcher-decisions", onDecisions);
       window.removeEventListener("axiom:launcher-files", onFiles);
       window.removeEventListener("axiom:launcher-projects", onProjects);
       window.removeEventListener("axiom:launcher-settings", onSettings);
-      window.removeEventListener("axiom:launcher-capture", onCapture);
     };
-  }, [props.onDecisions, props.onFiles, props.onProjects, props.onYou, setLocation]);
+  }, [props.onDecisions, props.onFiles, props.onProjects, props.onYou]);
 
   const pressStartTime = useRef<number>(0);
   const longPressTimer = useRef<number | null>(null);
