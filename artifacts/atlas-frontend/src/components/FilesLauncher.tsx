@@ -1,14 +1,36 @@
 // FilesLauncher — global mount that opens a Files surface in response to
-// `axiom:launcher-files`. Shows a project picker, then files for the
-// selected project. If no files exist, renders an elegant empty state
-// instead of silently routing to Home.
+// `axiom:launcher-files`. Lists projects, then shows the real workspace
+// file tree (via /api/fs/:projectId/tree) for the selected project.
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useListProjects } from "@workspace/api-client-react";
 import { LauncherOverlay } from "@/components/LauncherOverlay";
 
 const LAST_PROJECT_KEY = "axiom:last-project-id";
+
+interface FsNode {
+  name: string;
+  path: string;
+  type: "file" | "dir";
+  size?: number;
+  children?: FsNode[];
+}
+
+interface TreeResponse {
+  workspaceDir: string;
+  children: FsNode[];
+}
+
+async function fetchTree(projectId: number): Promise<TreeResponse> {
+  const res = await fetch(`/api/fs/${projectId}/tree`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
 
 export function FilesLauncher() {
   const [open, setOpen] = useState(false);
@@ -42,37 +64,38 @@ export function FilesLauncher() {
       title={selected ? selected.name : "Choose a project"}
     >
       {!selected && (
-        <>
-          {projects.length === 0 ? (
-            <EmptyState
-              title="No projects yet"
-              body="Create a project to start attaching files."
-            />
-          ) : (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
-              {projects.map((p) => (
-                <li key={p.id}>
-                  <button
-                    onClick={() => setSelectedId(p.id)}
-                    style={{
-                      width: "100%", textAlign: "left", cursor: "pointer",
-                      padding: "12px 14px",
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 10,
-                      color: "var(--atlas-fg)", fontSize: 14,
-                      fontFamily: "var(--app-font-sans)",
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                    }}
-                  >
-                    <span>{p.name}</span>
-                    <span style={{ color: "rgba(255,255,255,0.35)", fontFamily: "var(--app-font-mono)", fontSize: 10 }}>›</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+        projects.length === 0 ? (
+          <EmptyState
+            title="No projects yet"
+            body="Create a project to start attaching files."
+          />
+        ) : (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6 }}>
+            {projects.map((p) => (
+              <li key={p.id}>
+                <button
+                  onClick={() => {
+                    setSelectedId(p.id);
+                    try { localStorage.setItem(LAST_PROJECT_KEY, String(p.id)); } catch { /* noop */ }
+                  }}
+                  style={{
+                    width: "100%", textAlign: "left", cursor: "pointer",
+                    padding: "12px 14px",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: 10,
+                    color: "var(--atlas-fg)", fontSize: 14,
+                    fontFamily: "var(--app-font-sans)",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                  }}
+                >
+                  <span>{p.name}</span>
+                  <span style={{ color: "rgba(255,255,255,0.35)", fontFamily: "var(--app-font-mono)", fontSize: 10 }}>›</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
       )}
 
       {selected && (
@@ -83,22 +106,129 @@ export function FilesLauncher() {
               background: "transparent", border: "none", cursor: "pointer",
               fontFamily: "var(--app-font-mono)", fontSize: 10,
               color: "rgba(255,255,255,0.5)", letterSpacing: "0.16em",
-              padding: 0, marginBottom: 18, textTransform: "uppercase",
+              padding: 0, marginBottom: 14, textTransform: "uppercase",
             }}
           >
             ← All projects
           </button>
-          <EmptyState
-            title="No files yet"
-            body="Attach files from a conversation, drop them into the composer, or upload them from the project workspace."
-            action={{
-              label: "Open project workspace",
-              onClick: () => { setOpen(false); setLocation(`/project/${selected.id}`); },
+          <FileTree
+            projectId={selected.id}
+            onOpenWorkspace={() => {
+              setOpen(false);
+              setLocation(`/project/${selected.id}`);
             }}
           />
         </>
       )}
     </LauncherOverlay>
+  );
+}
+
+function FileTree({
+  projectId, onOpenWorkspace,
+}: {
+  projectId: number;
+  onOpenWorkspace: () => void;
+}) {
+  const { data, isLoading, error } = useQuery<TreeResponse>({
+    queryKey: ["launcher-fs-tree", projectId],
+    queryFn: () => fetchTree(projectId),
+    staleTime: 10_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: "24px 8px", textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 12, fontFamily: "var(--app-font-mono)", letterSpacing: "0.12em" }}>
+        LOADING…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <EmptyState
+        title="Couldn't load files"
+        body={error instanceof Error ? error.message : "Unknown error fetching the workspace tree."}
+      />
+    );
+  }
+  const children = data?.children ?? [];
+  if (children.length === 0) {
+    return (
+      <EmptyState
+        title="No files yet"
+        body="Attach files from a conversation, drop them into the composer, or upload them from the project workspace."
+        action={{ label: "Open project workspace", onClick: onOpenWorkspace }}
+      />
+    );
+  }
+  return (
+    <>
+      <div style={{
+        fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+        letterSpacing: "0.22em", textTransform: "uppercase",
+        color: "rgba(255,255,255,0.4)", padding: "0 2px 8px",
+      }}>
+        Workspace tree
+      </div>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 2 }}>
+        {children.map((node) => (
+          <TreeNode key={node.path} node={node} depth={0} />
+        ))}
+      </ul>
+      <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+        <button
+          onClick={onOpenWorkspace}
+          style={{
+            padding: "8px 14px", borderRadius: 8, cursor: "pointer",
+            background: "transparent",
+            border: "1px solid rgba(212,175,55,0.4)", color: "var(--atlas-gold)",
+            fontFamily: "var(--app-font-mono)", fontSize: 10,
+            fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase",
+          }}
+        >
+          Open in workspace →
+        </button>
+      </div>
+    </>
+  );
+}
+
+function TreeNode({ node, depth }: { node: FsNode; depth: number }) {
+  const [expanded, setExpanded] = useState(depth < 1);
+  const isDir = node.type === "dir";
+  return (
+    <li>
+      <div
+        onClick={() => isDir && setExpanded((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "6px 8px",
+          paddingLeft: 8 + depth * 14,
+          borderRadius: 6,
+          cursor: isDir ? "pointer" : "default",
+          color: isDir ? "var(--atlas-fg)" : "rgba(255,255,255,0.7)",
+          fontFamily: "var(--app-font-mono)", fontSize: 12,
+          background: "transparent",
+        }}
+      >
+        <span style={{ width: 12, color: "rgba(255,255,255,0.4)", fontSize: 10 }}>
+          {isDir ? (expanded ? "▾" : "▸") : ""}
+        </span>
+        <span style={{ color: isDir ? "var(--atlas-gold)" : "rgba(59,130,246,0.85)", fontSize: 11 }}>
+          {isDir ? "▣" : "·"}
+        </span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {node.name}
+        </span>
+      </div>
+      {isDir && expanded && node.children && node.children.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {node.children.map((c) => (
+            <TreeNode key={c.path} node={c} depth={depth + 1} />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 
