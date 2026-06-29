@@ -28,6 +28,8 @@ let scrollHidden = false;
 let atTop = true;
 let lastY = 0;
 let lastTarget: EventTarget | null = null;
+let touchStartY: number | null = null;
+let touchLastY: number | null = null;
 // Manual override from the floating handle. When set, wins over scroll/top
 // state until the next scroll movement (which clears it so auto resumes).
 let manual: "show" | "hide" | null = null;
@@ -133,11 +135,47 @@ function onFocusOut(e: FocusEvent) {
   }
 }
 
+function onTouchStart(e: TouchEvent) {
+  const touch = e.touches[0];
+  if (!touch) return;
+  touchStartY = touch.clientY;
+  touchLastY = touch.clientY;
+}
+
+function onTouchMove(e: TouchEvent) {
+  const touch = e.touches[0];
+  if (!touch || touchLastY == null) return;
+
+  const dy = touch.clientY - touchLastY;
+  const totalDy = touchStartY == null ? dy : touch.clientY - touchStartY;
+  let changed = false;
+
+  if (manual !== null && Math.abs(totalDy) > 6) {
+    manual = null;
+    changed = true;
+  }
+
+  // Finger moving up means content is scrolling down: hide the footer immediately.
+  if (dy < -6 && !scrollHidden) {
+    scrollHidden = true;
+    atTop = false;
+    changed = true;
+  } else if (dy > 6 && scrollHidden) {
+    scrollHidden = false;
+    changed = true;
+  }
+
+  touchLastY = touch.clientY;
+  if (changed) emit();
+}
+
 function install() {
   if (installed || typeof window === "undefined") return;
   installed = true;
   // Capture phase so nested scroll containers are caught.
   window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+  window.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+  window.addEventListener("touchmove", onTouchMove, { capture: true, passive: true });
   window.addEventListener("focusin", onFocusIn);
   window.addEventListener("focusout", onFocusOut);
 }
