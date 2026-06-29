@@ -109,9 +109,9 @@ function ShellDrawerButton() {
       onMouseLeave={e => { e.currentTarget.style.color = "rgba(201,162,76,0.45)"; }}
     >
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-        <line x1="3.5" y1="7" x2="18.5" y2="7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <line x1="3.5" y1="11" x2="18.5" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <line x1="3.5" y1="15" x2="18.5" y2="15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <line x1="5.5" y1="7.5" x2="16.5" y2="7.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+        <line x1="5.5" y1="11" x2="13.5" y2="11" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+        <line x1="5.5" y1="14.5" x2="10.5" y2="14.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
       </svg>
     </button>
   );
