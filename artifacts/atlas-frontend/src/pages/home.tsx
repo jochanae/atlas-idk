@@ -46,7 +46,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2 } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
@@ -5494,19 +5494,26 @@ export default function Home() {
         .atlas-overview-scrim {
           position: absolute;
           inset: 0;
-          background: rgba(0,0,0,0.5);
+          background: rgba(0,0,0,0.72);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
         }
         .atlas-overview-bottom-sheet {
           position: relative;
           width: 100%;
-          height: 78dvh;
-          background: var(--atlas-bg);
+          height: 55dvh;
+          background: #0a0a0c;
           border: 1px solid var(--atlas-border);
           border-bottom: none;
           border-radius: 20px 20px 0 0;
           display: flex;
           flex-direction: column;
+          box-shadow: 0 -24px 60px rgba(0,0,0,0.7);
+          transition: height 280ms cubic-bezier(0.4,0,0.2,1);
           animation: atlasOverviewSheetUp 300ms ease-out both;
+        }
+        .atlas-overview-bottom-sheet.is-expanded {
+          height: 96dvh;
         }
         .atlas-overview-bottom-sheet.is-closing {
           animation: atlasOverviewSheetDown 250ms ease-in both;
@@ -5567,6 +5574,29 @@ export default function Home() {
           transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
         }
         .atlas-overview-sheet-close:hover {
+          background: color-mix(in oklab, var(--atlas-gold) 16%, transparent);
+          border-color: color-mix(in oklab, var(--atlas-gold) 46%, transparent);
+        }
+        .atlas-overview-sheet-expand {
+          position: absolute;
+          top: 12px;
+          right: 54px;
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: color-mix(in oklab, var(--atlas-gold) 8%, transparent);
+          border: 1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent);
+          color: var(--atlas-gold);
+          cursor: pointer;
+          z-index: 2;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }
+        .atlas-overview-sheet-expand:hover {
           background: color-mix(in oklab, var(--atlas-gold) 16%, transparent);
           border-color: color-mix(in oklab, var(--atlas-gold) 46%, transparent);
         }
@@ -5751,12 +5781,13 @@ function OverviewBottomSheet({
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchStartScrollTopRef = useRef(0);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <div className="atlas-overview-sheet-layer" role="presentation">
       <div className="atlas-overview-scrim" onClick={onClose} />
       <section
-        className={`atlas-overview-bottom-sheet${closing ? " is-closing" : ""}`}
+        className={`atlas-overview-bottom-sheet${closing ? " is-closing" : ""}${expanded ? " is-expanded" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Overview"
@@ -5776,6 +5807,14 @@ function OverviewBottomSheet({
         }}
       >
         <div className="atlas-overview-sheet-handle" aria-hidden />
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Collapse workspace" : "Expand workspace"}
+          className="atlas-overview-sheet-expand"
+        >
+          {expanded ? <Minimize2 size={14} strokeWidth={1.6} /> : <Maximize2 size={14} strokeWidth={1.6} />}
+        </button>
         <button
           type="button"
           onClick={onClose}
