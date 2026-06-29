@@ -5494,19 +5494,26 @@ export default function Home() {
         .atlas-overview-scrim {
           position: absolute;
           inset: 0;
-          background: rgba(0,0,0,0.5);
+          background: rgba(0,0,0,0.72);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
         }
         .atlas-overview-bottom-sheet {
           position: relative;
           width: 100%;
-          height: 78dvh;
-          background: var(--atlas-bg);
+          height: 55dvh;
+          background: #0a0a0c;
           border: 1px solid var(--atlas-border);
           border-bottom: none;
           border-radius: 20px 20px 0 0;
           display: flex;
           flex-direction: column;
+          box-shadow: 0 -24px 60px rgba(0,0,0,0.7);
+          transition: height 280ms cubic-bezier(0.4,0,0.2,1);
           animation: atlasOverviewSheetUp 300ms ease-out both;
+        }
+        .atlas-overview-bottom-sheet.is-expanded {
+          height: 96dvh;
         }
         .atlas-overview-bottom-sheet.is-closing {
           animation: atlasOverviewSheetDown 250ms ease-in both;
