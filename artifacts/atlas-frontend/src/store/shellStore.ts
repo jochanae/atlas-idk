@@ -40,6 +40,26 @@ export interface ActiveThread {
   scrollPosition: number;
 }
 
+// Composer visibility (see mem://design/composer-modes and
+// hooks/useComposerVisibility.ts). Stage artifacts and reading-density
+// hints register claims; the highest-priority claim wins:
+//   hidden > compact > full.
+export type ComposerVisibility = 'full' | 'compact' | 'hidden';
+export interface ComposerClaim {
+  source: 'stage' | 'reading';
+  kind: string;
+  visibility: ComposerVisibility;
+}
+
+function resolveVisibility(claims: Record<string, ComposerClaim>): ComposerVisibility {
+  let best: ComposerVisibility = 'full';
+  for (const c of Object.values(claims)) {
+    if (c.visibility === 'hidden') return 'hidden';
+    if (c.visibility === 'compact') best = 'compact';
+  }
+  return best;
+}
+
 interface ShellStore {
   shellMode: ShellMode;
   setShellMode: (mode: ShellMode) => void;
@@ -60,6 +80,14 @@ interface ShellStore {
   updateDraft: (draft: string) => void;
   updateScrollPosition: (pos: number) => void;
   clearThread: () => void;
+  // Composer visibility
+  composerClaims: Record<string, ComposerClaim>;
+  composerVisibility: ComposerVisibility;
+  registerComposerClaim: (id: string, claim: ComposerClaim) => void;
+  releaseComposerClaim: (id: string) => void;
+  /** Forces composer back to `full` and drops all stage claims.
+   *  Wired to the gold "A" (atlas:focus-composer) and to send. */
+  restoreComposer: () => void;
 }
 
 const emptyThread: ActiveThread = {
@@ -102,5 +130,20 @@ export const useShellStore = create<ShellStore>((set, get) => ({
   updateScrollPosition: (pos) =>
     set((state) => ({ activeThread: { ...state.activeThread, scrollPosition: pos } })),
   clearThread: () => set({ activeThread: emptyThread, shellMode: 'ambient' }),
+  composerClaims: {},
+  composerVisibility: 'full',
+  registerComposerClaim: (id, claim) =>
+    set((state) => {
+      const next = { ...state.composerClaims, [id]: claim };
+      return { composerClaims: next, composerVisibility: resolveVisibility(next) };
+    }),
+  releaseComposerClaim: (id) =>
+    set((state) => {
+      if (!(id in state.composerClaims)) return state;
+      const next = { ...state.composerClaims };
+      delete next[id];
+      return { composerClaims: next, composerVisibility: resolveVisibility(next) };
+    }),
+  restoreComposer: () => set({ composerClaims: {}, composerVisibility: 'full' }),
 }));
 

@@ -5,6 +5,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
+import { useStageArtifact } from "@/hooks/useComposerVisibility";
 
 export type ManifestDecision = {
   firstArtifact: { name: string; description: string; steps: string[] };
@@ -27,6 +28,9 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   manifestDecision?: ManifestDecision | null;
   manifestPreviewHtml?: string | null;
 }) {
+
+  // Composer modes: Preview is a stage artifact — mobile=hidden, desktop=compact.
+  useStageArtifact("preview");
 
   const queryClient = useQueryClient();
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
