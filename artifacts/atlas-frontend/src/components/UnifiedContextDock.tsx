@@ -652,7 +652,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       {/* Atlas Command — radial launcher portal */}
       {showAtlasHub && typeof document !== "undefined" && createPortal(
         (() => {
-          const RADIUS = 132;
+          const RADIUS = 116;
           // Six utilities, 60° apart. All open as overlays/drawers — never navigate away from the current surface.
           // Layout:        Search (top)
           //          Capture   Decisions
