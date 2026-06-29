@@ -164,7 +164,8 @@ export function SearchModal({
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        maxHeight: "70vh",
+        maxHeight: "min(70vh, calc(100vh - 15% - 24px - env(safe-area-inset-bottom, 0px)))",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}>
         {/* Search input row */}
         <div style={{
