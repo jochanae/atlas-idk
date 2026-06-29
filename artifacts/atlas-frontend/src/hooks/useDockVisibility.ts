@@ -145,6 +145,7 @@ function install() {
 export const dockVisibility = {
   peek() {
     let changed = false;
+    if (manual === "hide") { manual = null; changed = true; }
     if (scrollHidden) { scrollHidden = false; changed = true; }
     if (inputActive) { inputActive = false; changed = true; }
     if (changed) emit();
@@ -154,6 +155,17 @@ export const dockVisibility = {
       inputActive = active;
       emit();
     }
+  },
+  /** Manual toggle from the floating handle. Flips current visible state. */
+  toggleManual() {
+    const visible = compute();
+    manual = visible ? "hide" : "show";
+    if (manual === "show") {
+      // Clearing scroll-hidden makes the show stick even after manual clears.
+      scrollHidden = false;
+      inputActive = false;
+    }
+    emit();
   },
 };
 
