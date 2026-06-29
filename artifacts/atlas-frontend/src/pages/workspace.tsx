@@ -7770,7 +7770,7 @@ export default function Workspace() {
                 </div>
               ) : null
             }
-            composerProps={isMobile && mobileTab !== "chat" ? null : {
+            composerProps={composerVisibility === "hidden" || (isMobile && mobileTab !== "chat") ? null : {
               leftTab,
               fileInputRef,
               processZip,
