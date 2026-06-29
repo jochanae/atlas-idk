@@ -82,6 +82,11 @@ function onScroll(e: Event) {
   }
 
   if (Math.abs(dy) > 2) {
+    // Any meaningful scroll clears manual override so auto behavior resumes.
+    if (manual !== null) {
+      manual = null;
+      changed = true;
+    }
     if (dy > SCROLL_THRESH && !scrollHidden) {
       scrollHidden = true;
       changed = true;
