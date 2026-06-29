@@ -15,8 +15,6 @@ import { StatCard } from "./stat-card";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { useProjectState } from "../hooks/useProjectState";
 import { fetchGitHubStatus } from "@/hooks/useGitHub";
-import { QuickEditRow, QuickActionLauncherButton, type QuickEditProjectOption } from "./home/QuickEditRow";
-import { QuickActionV2 } from "./home/QuickActionV2";
 
 type RecentProject = {
   id: number;
@@ -85,16 +83,6 @@ function formatRelative(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 const MODE_COLORS: Record<number, string> = {
   0: "#C9A24C",
   1: "#06B6D4",
@@ -114,17 +102,10 @@ const TYPE_LABEL: Record<ActivityItem["type"], string> = {
   session:  "session",
 };
 
-function ActivityHubCard({
-  onOpenProject,
-  projectOptions,
-}: {
-  onOpenProject: (id: number) => void;
-  projectOptions: QuickEditProjectOption[];
-}) {
+function ActivityHubCard({ onOpenProject }: { onOpenProject: (id: number) => void }) {
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const [launcherOpen, setLauncherOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/nexus/activity", { credentials: "include" })
@@ -135,21 +116,14 @@ function ActivityHubCard({
   }, []);
 
   const visible = expanded ? items : items.slice(0, 6);
-  const defaultLauncherProjectId =
-    projectOptions[0]?.id ?? items[0]?.projectId ?? 0;
-  const defaultLauncherProjectName =
-    projectOptions[0]?.name ?? items[0]?.projectName ?? "project";
 
   return (
     <div className="atlas-discovery-card">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: 9.5, fontWeight: 600, fontFamily: "var(--app-font-mono)", color: "var(--atlas-fg)", letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.7 }}>
             Activity
           </h3>
-          {defaultLauncherProjectId > 0 && (
-            <QuickActionLauncherButton onClick={() => setLauncherOpen(true)} />
-          )}
           {/* Legend */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, opacity: 0.55 }}>
             {(["commit", "decision", "session"] as const).map(t => (
@@ -165,18 +139,6 @@ function ActivityHubCard({
         </span>
       </div>
 
-      {launcherOpen && defaultLauncherProjectId > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <QuickActionV2
-            key="quick-action-v2"
-            projects={projectOptions}
-            defaultProjectId={defaultLauncherProjectId}
-            defaultProjectName={defaultLauncherProjectName}
-            onClose={() => setLauncherOpen(false)}
-          />
-        </div>
-      )}
-
       {loading ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0" }}>
           <div style={{ width: 14, height: 14, borderRadius: "50%", border: "1.5px solid rgba(201,162,76,0.2)", borderTopColor: "rgba(201,162,76,0.7)", animation: "spin 0.8s linear infinite" }} />
@@ -190,13 +152,7 @@ function ActivityHubCard({
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             {visible.map((item, i) => (
-              <QuickEditRow
-                key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`}
-                projectId={item.projectId}
-                projectName={item.projectName}
-                projects={projectOptions}
-                row={<ActivityRowBody item={item} />}
-              />
+              <ActivityRow key={`${item.type}-${item.projectId}-${item.timestamp}-${i}`} item={item} onOpenProject={onOpenProject} />
             ))}
           </div>
           {items.length > 6 && (
@@ -216,22 +172,20 @@ function ActivityHubCard({
   );
 }
 
-function ActivityRowBody({ item }: { item: ActivityItem }) {
+function ActivityRow({ item, onOpenProject }: { item: ActivityItem; onOpenProject: (id: number) => void }) {
   const dot = TYPE_COLOR[item.type];
   const label = TYPE_LABEL[item.type];
-  const [showSheet, setShowSheet] = useState(false);
 
-  return (
-    <div
-      style={{
-        display: "flex", alignItems: "flex-start", gap: 10,
-        padding: "7px 8px", borderRadius: 7,
-        transition: "background 140ms ease",
-      }}
+  const inner = (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 10,
+      padding: "7px 8px", borderRadius: 7,
+      cursor: "pointer", transition: "background 140ms ease",
+    }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(201,162,76,0.04)"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
     >
-      {/* Dot */}
+      {/* Dot + vertical line */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 3 }}>
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />
       </div>
@@ -239,6 +193,7 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+          {/* Project chip */}
           <span style={{
             fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
             background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)",
@@ -247,49 +202,17 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
           }}>
             {item.projectName}
           </span>
+          {/* Type badge */}
           <span style={{
             fontSize: 8.5, fontFamily: "var(--app-font-mono)", letterSpacing: "0.08em",
             textTransform: "uppercase", color: dot, opacity: 0.8, flexShrink: 0,
           }}>
             {label}
           </span>
-          {item.type === "commit" && item.sha ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowSheet(true);
-              }}
-              style={{
-                background: "transparent", border: "none", padding: 0, margin: 0,
-                cursor: "pointer", lineHeight: 1, flexShrink: 0,
-              }}
-              aria-label="Show commit details"
-            >
-              <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", letterSpacing: "0.04em", textDecoration: "underline", textDecorationThickness: "1px", textUnderlineOffset: 2 }}>
-                {item.sha}
-              </span>
-            </button>
-          ) : item.sha ? (
+          {item.sha && (
             <span style={{ fontSize: 8.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.45, letterSpacing: "0.04em" }}>
               {item.sha}
             </span>
-          ) : null}
-          {item.type === "commit" && item.url && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                fontSize: 9, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)",
-                opacity: 0.5, letterSpacing: "0.04em", textDecoration: "none",
-                padding: "1px 4px", borderRadius: 3,
-              }}
-              aria-label="Open commit on GitHub"
-            >
-              ↗
-            </a>
           )}
         </div>
         <div style={{ fontSize: 12, color: "var(--atlas-fg)", opacity: 0.82, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--app-font-sans)" }}>
@@ -306,97 +229,20 @@ function ActivityRowBody({ item }: { item: ActivityItem }) {
       <span style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4, flexShrink: 0, paddingTop: 2, letterSpacing: "0.02em" }}>
         {formatRelative(item.timestamp)}
       </span>
+    </div>
+  );
 
-      {showSheet && item.type === "commit" && item.sha && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Commit details"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 9999,
-            maxHeight: "70vh", overflowY: "auto",
-            background: "rgba(var(--atlas-bg-rgb),0.96)",
-            borderTop: "1px solid rgba(var(--atlas-gold-rgb),0.28)",
-            borderRadius: "18px 18px 0 0",
-            boxShadow: "0 -18px 48px rgba(var(--atlas-bg-rgb),0.85)",
-            backdropFilter: "blur(18px)",
-            padding: "18px 18px calc(18px + env(safe-area-inset-bottom))",
-          }}
-        >
-          <div style={{ width: 36, height: 3, borderRadius: 999, background: "rgba(var(--atlas-gold-rgb),0.28)", margin: "0 auto 16px" }} />
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowSheet(false);
-            }}
-            aria-label="Close commit details"
-            style={{
-              position: "absolute", top: 14, right: 16,
-              background: "transparent", border: "none", color: "var(--atlas-muted)",
-              fontSize: 20, cursor: "pointer", padding: 0, lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
-          <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>
-                Commit SHA
-              </div>
-              <div style={{ fontSize: 12, fontFamily: "var(--app-font-mono)", color: "var(--atlas-gold)", lineHeight: 1.5, overflowWrap: "anywhere" }}>
-                {item.sha}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
-                Project
-              </div>
-              <div style={{ fontSize: 13, color: "var(--atlas-fg)", opacity: 0.88, lineHeight: 1.4 }}>
-                {item.projectName}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
-                Commit message
-              </div>
-              <div style={{ fontSize: 13, color: "var(--atlas-fg)", opacity: 0.88, lineHeight: 1.5 }}>
-                {item.title}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 9.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.65, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 5 }}>
-                Timestamp
-              </div>
-              <div style={{ fontSize: 12, fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.8, lineHeight: 1.4 }}>
-                {formatTimestamp(item.timestamp)}
-              </div>
-            </div>
-            {item.url && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(item.url, "_blank", "noopener,noreferrer");
-                }}
-                style={{
-                  alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7,
-                  marginTop: 4, padding: "6px 10px", borderRadius: 7, cursor: "pointer",
-                  background: "transparent", border: "1px solid var(--atlas-border)",
-                  color: "var(--atlas-muted)", fontSize: 10.5, fontFamily: "var(--app-font-mono)",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-                </svg>
-                View on GitHub
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+  // Commits open in new tab, decisions/sessions navigate to project
+  if (item.type === "commit" && item.url) {
+    return (
+      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <div onClick={() => onOpenProject(item.projectId)} style={{ cursor: "pointer" }}>
+      {inner}
     </div>
   );
 }
@@ -532,7 +378,9 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
   if (projects.length === 0) return null;
 
 
-  const recent = projects.slice(0, 5);
+  const recent = [...projects]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 5);
   const actualCommitted = projectState.state ? projectState.decisions.length : committedCount;
   const actualParked = projectState.state ? projectState.parkedCount : parkedCount ?? projects.length;
 
@@ -625,11 +473,7 @@ export function BelowFoldDashboard({ projects, onOpenProject, onOpenLedger, onOp
 
       {/* 2. ACTIVITY HUB */}
       <RevealOnScroll delayMs={80} className="bfd-col-left">
-        <ActivityHubCard
-          onOpenProject={onOpenProject}
-          projectOptions={projects.map((p) => ({ id: p.id, name: p.name }))}
-        />
-
+        <ActivityHubCard onOpenProject={onOpenProject} />
       </RevealOnScroll>
 
       {/* 3. COGNITIVE MOMENTUM (parking) — right column, top */}

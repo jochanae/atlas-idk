@@ -26,7 +26,6 @@ import { ResearchCard } from "../components/ResearchCard";
 import { ComposerActions } from "../components/composer/ComposerActions";
 import { GlobalInsightSurface } from "@/components/home/GlobalInsightSurface";
 import { SessionHistorySheet } from "@/components/SessionHistorySheet";
-import { FocusModeAura } from "@/components/FocusModeAura";
 
 import { VisualVault } from "../components/VisualVault";
 import { InviteModal } from "../components/InviteModal";
@@ -45,21 +44,15 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { Briefcase, ChevronDown, Crosshair, FolderClosed } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
-import { CommitPill } from "@/components/home/CommitPill";
-import { HandoffCinemaOverlay } from "@/components/home/HandoffCinemaOverlay";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useNexusChatStream, type NexusProjectReadyDoneData } from "@/hooks/useNexusChatStream";
-import { usePortfolioFocus } from "@/hooks/usePortfolioFocus";
+import { useNexusChatStream } from "@/hooks/useNexusChatStream";
 import { followScrollIfNearBottom } from "@/lib/textPacer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fileToBase64Safe } from "@/lib/image-resize";
-import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
-import { LIFECYCLE_META } from "@/lib/lifecycle";
-import { pushHudEvent } from "@/lib/hudBus";
 
 
 const PLACEHOLDERS = [
@@ -87,54 +80,12 @@ const THINK_OUT_LOUD_STARTER = "I've been turning something over and want to thi
 const GLOBAL_INSIGHT_PORTFOLIO_SEED =
   "Across all my projects, what should I know right now — any conflicts between decisions, which projects are active versus stalled, and the one or two things most worth doing next?";
 
-function GlobalInsightTitleCarousel(_props: { earnedTitle: string | null }) {
-  // Header title rotation stripped (Pass 1). Header is permanently
-  // "Global Insight"; the project name lives in the CommitPill only.
-  return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "min(260px, 100%)", minWidth: 0 }}>
-      <span
-        aria-hidden
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          flexShrink: 0,
-          background: "var(--atlas-gold)",
-          boxShadow: "0 0 6px rgba(201,162,76,0.45)",
-        }}
-      />
-      <span
-        title="Global Insight"
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          minWidth: 0,
-          maxWidth: "100%",
-          color: "var(--atlas-gold)",
-          fontFamily: "var(--app-font-sans)",
-          fontSize: "var(--ts-body)",
-          fontWeight: 500,
-          lineHeight: "var(--lh-snug)",
-          letterSpacing: "var(--ls-tight)",
-          opacity: 0.92,
-        }}
-      >
-        Global Insight
-      </span>
-    </div>
-  );
-}
-
-
 type HomeHandoffSignal = {
   readyToHandoff: boolean;
   confidence: "high" | "medium" | "low";
   projectName: string | null;
   reason: string | null;
   projectId?: number | null;
-  /** True when Atlas explicitly emitted PROJECT_READY in the stream — bypasses the 5-message gate. */
-  explicit?: boolean;
 };
 
 type AmbientSurface = {
@@ -144,11 +95,6 @@ type AmbientSurface = {
   projectId?: number | null;
   workspaceId?: number | null;
 } | null;
-
-type ManualHomeFocus =
-  | { focus: "project"; projectId: number }
-  | { focus: "portfolio" }
-  | null;
 
 type HomeMessage = {
   role: "user" | "assistant";
@@ -193,25 +139,6 @@ type HomeMessage = {
   visualImageBase64?: string | null;
   visualCaption?: string | null;
 };
-
-const NAVIGATE_TO_RE = /\bNAVIGATE_TO:\s*(\{[^\n]+\})/;
-
-function parseNavigateTo(content: string): { projectId: number; cleanContent: string } | null {
-  const match = content.match(NAVIGATE_TO_RE);
-  if (!match) return null;
-
-  try {
-    const parsed = JSON.parse(match[1]) as { projectId?: unknown };
-    if (typeof parsed.projectId === "number") {
-      return {
-        projectId: parsed.projectId,
-        cleanContent: content.replace(NAVIGATE_TO_RE, "").replace(/\n{3,}/g, "\n\n").trim(),
-      };
-    }
-  } catch {}
-
-  return null;
-}
 
 function formatMessageTime(iso?: string): string {
   if (!iso) return "";
@@ -1777,25 +1704,6 @@ export default function Home() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [showQuickPrompt, setShowQuickPrompt] = useState(false);
   const { user: authUser } = useRequireAuth();
-  const { data: projectsRaw, isLoading } = useListProjects({
-    query: {
-      queryKey: getListProjectsQueryKey(),
-      refetchOnMount: "always",
-      refetchOnWindowFocus: true,
-    },
-  });
-  // Defensive: backend may return an error object or unexpected shape on schema mismatch.
-  // Coerce to an array so downstream `.filter`/`.map` never crash the page.
-  const projects = useMemo(() => {
-    if (Array.isArray(projectsRaw)) return projectsRaw;
-    if (projectsRaw && typeof projectsRaw === "object") {
-      const maybe = (projectsRaw as { projects?: unknown; data?: unknown; items?: unknown }).projects
-        ?? (projectsRaw as { data?: unknown }).data
-        ?? (projectsRaw as { items?: unknown }).items;
-      if (Array.isArray(maybe)) return maybe as typeof projectsRaw;
-    }
-    return [] as NonNullable<typeof projectsRaw>;
-  }, [projectsRaw]);
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -1828,9 +1736,13 @@ export default function Home() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
-    try { return localStorage.getItem("atlas-home-conversation-id"); } catch { return null; }
+    try {
+      return sessionStorage.getItem("atlas-home-conversation-id") ||
+        localStorage.getItem("atlas-home-conversation-id");
+    } catch {
+      return null;
+    }
   });
-  const homeResetGenerationRef = useRef(0);
   const rememberActiveConversationId = useCallback((conversationId: string) => {
     try { localStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
     try { sessionStorage.setItem("atlas-home-conversation-id", conversationId); } catch {}
@@ -1845,73 +1757,17 @@ export default function Home() {
     setActiveConversationId(conversationId);
   }, [activeConversationId, rememberActiveConversationId]);
   // ── Home context: repo / branch / model ────────────────────────────────────
-  const [manualFocus, setManualFocus] = useState<ManualHomeFocus>(null);
-  const [recentFocusUserMessages, setRecentFocusUserMessages] = useState<string[]>([]);
-  const detectedPortfolioFocus = usePortfolioFocus(recentFocusUserMessages);
-  const selectableFocusProjects = useMemo(
-    () => (projects ?? []).filter((p: Project) => p.status !== "shaping" && p.status !== "archived"),
-    [projects],
-  );
-  const detectedFocusProject = useMemo(() => {
-    const name = detectedPortfolioFocus.matchedProject?.trim().toLowerCase();
-    if (!name) return null;
-    return selectableFocusProjects.find((p: Project) => p.name.trim().toLowerCase() === name) ?? null;
-  }, [detectedPortfolioFocus.matchedProject, selectableFocusProjects]);
-  const manualFocusProject = useMemo(() => {
-    if (manualFocus?.focus !== "project") return null;
-    return selectableFocusProjects.find((p: Project) => p.id === manualFocus.projectId) ?? null;
-  }, [manualFocus, selectableFocusProjects]);
-  const homeFocus =
-    manualFocus?.focus === "project"
-      ? manualFocus.projectId
-      : manualFocus?.focus === "portfolio"
-        ? null
-        : detectedPortfolioFocus.focus === "project"
-          ? detectedFocusProject?.id ?? null
-          : null;
-  const resolvedPortfolioFocus =
-    manualFocus?.focus === "project"
-      ? "project"
-      : manualFocus?.focus === "portfolio"
-        ? "portfolio"
-        : detectedPortfolioFocus.focus;
-  const focusChipLabel =
-    resolvedPortfolioFocus === "project"
-      ? `FOCUS · ${manualFocusProject?.name ?? detectedFocusProject?.name ?? detectedPortfolioFocus.matchedProject ?? "Project"}`
-      : "FOCUS · ALL";
+  const [homeFocus, setHomeFocus] = useState<number | null>(null);
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
-  // Earned title: identity emerges, never derived from latest message.
-  // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
-  // Persisted per conversation id under `atlas-thread-title:<id>`.
-  const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
-  const handleNexusDataEvent = useCallback((data: unknown) => {
-    if (!data || typeof data !== "object") return;
-    const eventData = data as { type?: unknown; title?: unknown };
-    if (eventData.type === "conversationTitle" && typeof eventData.title === "string") {
-      setEarnedTitle(eventData.title);
-    }
-  }, []);
-  const [projectReadyAutoHandoffCount, setProjectReadyAutoHandoffCount] = useState(0);
-  const [projectReadyDoneData, setProjectReadyDoneData] = useState<NexusProjectReadyDoneData | null>(null);
-  const [isHandoffReady, setIsHandoffReady] = useState(false);
-  const handleNexusProjectReady = useCallback((doneData?: NexusProjectReadyDoneData) => {
-    if (doneData?.projectReady) {
-      setProjectReadyDoneData(doneData);
-      return;
-    }
-    setProjectReadyAutoHandoffCount(count => count + 1);
-  }, []);
   const nexusChat = useNexusChatStream({
     focusProjectId: homeFocus ?? null,
     model: homeModel,
     mode: homeMode,
     conversationId: activeConversationId,
-    onData: handleNexusDataEvent,
-    onProjectReady: handleNexusProjectReady,
     
     projectContext: homeFocus != null ? {
       projectId: homeFocus,
@@ -1919,41 +1775,7 @@ export default function Home() {
       decisions: homeProjectState.decisions,
     } : null,
   });
-  // Fork B: drive the global CommitPill (store-mode) from the live handoffSignal.
-  // Surface the pill the instant a project name is proposed (Pass 2 "early naming");
-  // promote to 'ready' when Atlas declares readyToHandoff OR the conversation
-  // crosses the same ≥5-user-message gate the inline card used.
-  const setShapingStatus = useShellStore((s) => s.setShapingStatus);
-  const setPendingWorkspace = useShellStore((s) => s.setPendingWorkspace);
-  const shapingStatus = useShellStore((s) => s.shapingStatus);
-  const userMsgCount = (nexusChat.messages as HomeMessage[]).filter(m => m.role === "user").length;
-  useEffect(() => {
-    if (nexusChat.handoffSignal?.readyToHandoff === true) {
-      setIsHandoffReady(true);
-    }
-    const suggestedName = nexusChat.handoffSignal?.projectName?.trim();
-    if (suggestedName) {
-      pushHudEvent("PROJECT", suggestedName, { projectName: suggestedName });
-    }
-    // Don't clobber the user-armed transition state.
-    if (shapingStatus === "transitioning") return;
-    if (suggestedName) {
-      setPendingWorkspace(null, suggestedName);
-      const ready =
-        nexusChat.handoffSignal?.readyToHandoff === true ||
-        nexusChat.handoffSignal?.explicit === true ||
-        userMsgCount >= 5;
-      setShapingStatus(ready ? "ready" : "shaping");
-    }
-  }, [nexusChat.handoffSignal, userMsgCount, shapingStatus, setShapingStatus, setPendingWorkspace]);
   const focusProjectId = homeFocus;
-  useEffect(() => {
-    setRecentFocusUserMessages(
-      nexusChat.messages
-        .filter((message) => message.role === "user" && message.content.trim().length > 0)
-        .map((message) => message.content),
-    );
-  }, [nexusChat.messages]);
   const [shapingPayload, setShapingPayload] = useState<{
     title: string;
     audience: string;
@@ -2004,6 +1826,11 @@ export default function Home() {
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   // Home lens state removed — lenses live in workspace only
 
+  // Earned title: identity emerges, never derived from latest message.
+  // Sources: manual rename, commit, or AI-proposed summary (≥4 exchanges + non-THINK intent).
+  // Persisted per conversation id under `atlas-thread-title:<id>`.
+  const [earnedTitle, setEarnedTitle] = useState<string | null>(null);
+
   const [threadLoading, setThreadLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [conversations, setConversations] = useState<Array<{ id: string; title: string; createdAt: string; messageCount: number }>>([]);
@@ -2017,10 +1844,10 @@ export default function Home() {
   const greetingRef = useRef<{ head: string; sub: string } | null>(null);
   const greetingNameRef = useRef<string | null>(null);
   const { isFree } = useSubscription();
-  const { setDepth, activeProjectId, setActiveProjectId, setActiveConversationTitle } = useShellState();
+  const { setDepth, setActiveProjectId, setActiveConversationTitle } = useShellState();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const handledNavigateToRef = useRef<Set<string>>(new Set());
+  const { data: projects, isLoading } = useListProjects();
   const mostRecentActiveProjectId = useMemo(() => {
     const activeProjects = (projects ?? []).filter((project: Project) => project.status === "committed" || (project as { entity_type?: string }).entity_type === "idea");
     const candidates = activeProjects.length > 0 ? activeProjects : projects ?? [];
@@ -2035,21 +1862,6 @@ export default function Home() {
   const previousHomeMessageCountRef = useRef(0);
   const [globalInsightComposerHeight, setGlobalInsightComposerHeight] = useState(148);
   const globalInsightSeedPendingRef = useRef(false);
-
-  useEffect(() => {
-    const messages = nexusChat.messages as HomeMessage[];
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== "assistant") return;
-
-    const parsed = parseNavigateTo(lastMessage.content);
-    if (!parsed) return;
-
-    const key = lastMessage.id ?? `${messages.length - 1}:${lastMessage.createdAt ?? ""}:${parsed.projectId}`;
-    if (handledNavigateToRef.current.has(key)) return;
-
-    handledNavigateToRef.current.add(key);
-    setLocation(`/project/${parsed.projectId}`);
-  }, [nexusChat.messages, setLocation]);
 
   useEffect(() => {
     const previousCount = previousHomeMessageCountRef.current;
@@ -2092,7 +1904,7 @@ export default function Home() {
   const [reviewingPlanIds, setReviewingPlanIds] = useState<Set<string>>(() => new Set());
 
   const homeConversationTitle = globalInsightOpen
-    ? null
+    ? "Global Insight"
     : homeFocus == null && nexusChat.messages.length > 0
       ? earnedTitle ?? "Untitled conversation"
       : null;
@@ -2186,20 +1998,6 @@ export default function Home() {
       }
       const projectId = Number(project.id);
       if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
-      const effectiveConversationId = activeConversationId;
-      void fetch("/api/nexus/handoff", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          messages: nexusChat.messages.map(m => ({ role: m.role, content: m.content })),
-          projectId: projectId,
-          conversationId: effectiveConversationId ?? undefined,
-        }),
-      }).catch(() => null);
       try {
         sessionStorage.setItem(THINK_FREELY_THREAD_STORAGE_KEY, JSON.stringify(messagesToKeep));
       } catch {}
@@ -2220,7 +2018,6 @@ export default function Home() {
       }
     }
   }, [
-    activeConversationId,
     callGlobalInsightMode,
     nexusChat.messages,
     queryClient,
@@ -2369,13 +2166,9 @@ export default function Home() {
       fetch(`/api/projects/${p.id}`, {
         method: "DELETE",
         credentials: "include",
-      })
-        .then((res) => {
-          if (res.ok) queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-        })
-        .catch(() => {});
+      }).catch(() => {});
     });
-  }, [projects, queryClient]);
+  }, [projects]);
   useEffect(() => {
     if (!projects || !Array.isArray(projects)) return;
     const existing = (projects as any[]).find(
@@ -2404,14 +2197,9 @@ export default function Home() {
       nexusChat.setShapingHeld(false);
     }
   }, [projects, nexusChat.shapingHeld, nexusChat.setShapingHeld, nexusChat.setShapingPayload]);
-  const handleHomeFocusAllProjects = useCallback(() => {
-    homeFocusUserInitiatedRef.current = false;
-    setManualFocus({ focus: "portfolio" });
-    setShowFocusPicker(false);
-  }, []);
   const handleHomeFocusSelect = useCallback((projectId: number) => {
     homeFocusUserInitiatedRef.current = true;
-    setManualFocus({ focus: "project", projectId });
+    setHomeFocus(projectId);
     setShowFocusPicker(false);
   }, []);
   const handleHomeSubheaderTabChange = useCallback((tab: UnifiedSubheaderTab) => {
@@ -2426,10 +2214,6 @@ export default function Home() {
     } catch {}
     setLocation(`/project/${homeFocus}`);
   }, [homeFocus, setLocation]);
-  const handleHomeLaunchWorkspace = useCallback(() => {
-    const projectId = homeFocus ?? mostRecentActiveProjectId;
-    setLocation(projectId ? `/project/${projectId}` : "/projects");
-  }, [homeFocus, mostRecentActiveProjectId, setLocation]);
   const createProject = useCreateProject();
   const createEntry = useCreateEntry();
 
@@ -2572,7 +2356,6 @@ export default function Home() {
     if (msgs.length === lastSavedTurnRef.current) return;
     lastSavedTurnRef.current = msgs.length;
     const conversationId = activeConversationId;
-    const resetGeneration = homeResetGenerationRef.current;
     fetch("/api/nexus/conversation/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2581,7 +2364,6 @@ export default function Home() {
     })
       .then(r => r.ok ? r.json().catch(() => null) : null)
       .then((data: any) => {
-        if (homeResetGenerationRef.current !== resetGeneration) return;
         const newId = data?.conversationId ?? data?.id;
         if (newId && newId !== activeConversationId) {
           rememberActiveConversationId(newId);
@@ -2621,7 +2403,6 @@ export default function Home() {
     }
     if (conversationThreadRequestRef.current?.conversationId === activeConversationId) return;
     const requestId = (conversationThreadRequestRef.current?.requestId ?? 0) + 1;
-    const resetGeneration = homeResetGenerationRef.current;
     conversationThreadRequestRef.current = { conversationId: activeConversationId, requestId };
     nexusChat.setMessages([]);
     setLoadedHistoryCount(0);
@@ -2635,7 +2416,6 @@ export default function Home() {
     fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(activeConversationId)}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(async (msgs: Array<{ role: string; content: string }>) => {
-        if (homeResetGenerationRef.current !== resetGeneration) return;
         if (conversationThreadRequestRef.current?.requestId !== requestId) return;
         const normalizedMessages = normalizeLoadedHomeMessages(msgs);
         if (normalizedMessages.length > 0) {
@@ -2646,12 +2426,22 @@ export default function Home() {
       })
       .catch(() => {})
       .finally(() => {
-        if (homeResetGenerationRef.current !== resetGeneration) return;
         if (conversationThreadRequestRef.current?.requestId === requestId) {
           setThreadLoading(false);
         }
       });
   }, [activeConversationId, nexusChat.setMessages]);
+
+  useEffect(() => {
+    if (nexusChat.messages.length > 0 && !globalInsightOpen) {
+      setGlobalInsightOpen(true);
+      if (mostRecentActiveProjectId) {
+        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
+      } else {
+        setLocation("/projects");
+      }
+    }
+  }, [globalInsightOpen, mostRecentActiveProjectId, nexusChat.messages.length, setLocation]);
 
   // Rehydrate Global Insight mode on hard refresh / initial load.
   // The server is the source of truth (reflection_mode is set per-session
@@ -2802,7 +2592,7 @@ export default function Home() {
         id: p.id,
         name: p.name,
         description: p.description,
-        updatedAt: p.createdAt,
+        updatedAt: p.updatedAt,
         latestSnapshotScore: p.latestSnapshotScore ?? null,
       }))}
       onOpenProject={(id) => {
@@ -2825,18 +2615,6 @@ export default function Home() {
     />
   );
 
-  const resolveProjectIdForDetection = useCallback((detection: PortfolioFocusDetection) => {
-    const name = detection.matchedProject?.trim().toLowerCase();
-    if (!name) return null;
-    return selectableFocusProjects.find((p: Project) => p.name.trim().toLowerCase() === name)?.id ?? null;
-  }, [selectableFocusProjects]);
-
-  const resolveFocusProjectIdForTurn = useCallback((turnDetection?: PortfolioFocusDetection) => {
-    if (manualFocus?.focus === "project") return manualFocus.projectId;
-    if (manualFocus?.focus === "portfolio") return null;
-    return resolveProjectIdForDetection(turnDetection ?? detectedPortfolioFocus);
-  }, [detectedPortfolioFocus, manualFocus, resolveProjectIdForDetection]);
-
   const handleSubmit = useCallback(async (
     messageOverride?: string,
     options?: { forceStayOnHome?: boolean },
@@ -2849,6 +2627,11 @@ export default function Home() {
     const shouldStayOnHome = true;
     if (!globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
+      if (mostRecentActiveProjectId) {
+        setLocation(`/project/${mostRecentActiveProjectId}?global=true`);
+      } else {
+        setLocation("/projects");
+      }
     }
     if (!shouldStayOnHome && !backendReady) {
       setCreateError(
@@ -2878,22 +2661,9 @@ export default function Home() {
         ? ` [${imageFiles.length} images attached — showing first]`
         : "";
     const messageText = fullText + imageNote;
-    const turnFocusDetection = detectPortfolioFocus([...recentFocusUserMessages, messageText]);
-    const turnFocusProjectId = resolveFocusProjectIdForTurn(turnFocusDetection);
 
     setCreateError(null);
     setIsAtlasStreaming(true);
-
-    // HUD emitters — surface what Atlas is hearing right now.
-    if (text) {
-      pushHudEvent("INTENT", text.length > 60 ? text.slice(0, 57) + "…" : text);
-    }
-    if (files.length > 0) {
-      const label = files.length === 1
-        ? files[0].name
-        : `${files.length} files (${imageFiles.length} image${imageFiles.length === 1 ? "" : "s"})`;
-      pushHudEvent("INGESTED", label);
-    }
     setIsSending(true);
 
     const handleSubmitError = (err: unknown) => {
@@ -2931,7 +2701,6 @@ export default function Home() {
         await nexusChat.send({
           text: messageText,
           attachments,
-          overrideOptions: { focusProjectId: turnFocusProjectId },
         });
       } catch (err) {
         handleSubmitError(err);
@@ -2985,13 +2754,12 @@ export default function Home() {
     attachedFiles,
     isSending,
     globalInsightOpen,
+    mostRecentActiveProjectId,
     backendReady,
     isFree,
     projects,
-    recentFocusUserMessages,
     queryClient,
     nexusChat.send,
-    resolveFocusProjectIdForTurn,
     setActiveProjectId,
     setLocation,
   ]);
@@ -3060,15 +2828,7 @@ export default function Home() {
         },
       ]);
       await new Promise(resolve => setTimeout(resolve, 700));
-      // Commit carryover: hand workspace the threshold marker + greeting payload.
-      try {
-        sessionStorage.setItem(
-          `atlas-commit-carryover-${projectId}`,
-          JSON.stringify({ committedAt: createdAt.toISOString(), greeting: null }),
-        );
-      } catch {}
-      pushHudEvent("DECISION", `Committed → ${name}`);
-      setLocation(`/project/${projectId}?from=home&source=commit-carryover`);
+      setLocation(`/project/${projectId}`);
     } catch (err) {
       const msg =
         extractApiErrorMessage(err) ??
@@ -3138,7 +2898,6 @@ export default function Home() {
 
   const handleHandoff = useCallback(async (signal?: HomeHandoffSignal, projectNameOverride?: string, plan?: Plan) => {
     if (!nexusChat.messages.length) return;
-    setIsHandoffReady(false);
     setHandoffLoading(true);
     setHandoffStage("Setting up your workspace...");
     try {
@@ -3170,7 +2929,7 @@ export default function Home() {
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ name, status: "committed" }),
+        body: JSON.stringify({ name }),
       });
       const project = await createRes.json();
       if (!createRes.ok || !project.id) throw new Error(project?.error ?? "Project creation failed");
@@ -3269,30 +3028,6 @@ export default function Home() {
     }
   }, [nexusChat.messages, queryClient, setActiveProjectId, setLocation]);
 
-  // Auto-detection NEVER navigates anymore — it only arms the CommitPill to "ready".
-  // The user must tap "Enter Workspace →" to actually hand off. This preserves control
-  // and prevents the thread from being yanked mid-read.
-  const handledProjectReadyAutoHandoffRef = useRef(0);
-  useEffect(() => {
-    if (projectReadyAutoHandoffCount === 0) return;
-    if (handledProjectReadyAutoHandoffRef.current === projectReadyAutoHandoffCount) return;
-    handledProjectReadyAutoHandoffRef.current = projectReadyAutoHandoffCount;
-    if (shapingStatus !== "transitioning") {
-      setShapingStatus("ready");
-    }
-  }, [projectReadyAutoHandoffCount, shapingStatus, setShapingStatus]);
-  const handledProjectReadyDoneDataRef = useRef<NexusProjectReadyDoneData | null>(null);
-  useEffect(() => {
-    if (!projectReadyDoneData) return;
-    if (handledProjectReadyDoneDataRef.current === projectReadyDoneData) return;
-    handledProjectReadyDoneDataRef.current = projectReadyDoneData;
-    const doneData = projectReadyDoneData;
-    if (doneData.projectReady && !activeProjectId && shapingStatus !== "transitioning") {
-      setPendingWorkspace(null, doneData.projectReady.projectName);
-      setShapingStatus("ready");
-    }
-  }, [activeProjectId, projectReadyDoneData, shapingStatus, setPendingWorkspace, setShapingStatus]);
-
   const handleAmbientSurfaceAction = useCallback(async (surface: NonNullable<AmbientSurface>) => {
     if (surface.type === "MAP") {
       if (surface.projectId) {
@@ -3340,8 +3075,6 @@ export default function Home() {
   }, [handleHandoff, homeProjectState.project?.id, mostRecentActiveProjectId, queryClient, setLocation]);
 
   const handleNewConversation = useCallback(() => {
-    homeResetGenerationRef.current += 1;
-    setIsHandoffReady(false);
     try { localStorage.removeItem("atlas-home-conversation-id"); } catch {}
     try { sessionStorage.removeItem("atlas-home-conversation-id"); } catch {}
     conversationThreadRequestRef.current = null;
@@ -3356,7 +3089,6 @@ export default function Home() {
   // Wordmark click while on /home resets the tray back to an ambient blank Nexus.
   useEffect(() => {
     const reset = () => {
-      void callGlobalInsightMode(false);
       setGlobalInsightOpen(false);
       handleNewConversation();
       setDepth("ambient");
@@ -3364,7 +3096,7 @@ export default function Home() {
     };
     window.addEventListener("axiom:home-reset", reset);
     return () => window.removeEventListener("axiom:home-reset", reset);
-  }, [callGlobalInsightMode, handleNewConversation, setDepth]);
+  }, [handleNewConversation, setDepth]);
 
 
   // Hydrate earned title when the active conversation changes.
@@ -3469,8 +3201,7 @@ export default function Home() {
     if (el.scrollHeight < currentH) {
       el.style.height = "auto";
     }
-    const maxH = parseFloat(getComputedStyle(el).maxHeight) || 160;
-    el.style.height = Math.min(el.scrollHeight, maxH) + "px";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
   useEffect(() => {
@@ -3492,55 +3223,11 @@ export default function Home() {
   const hasInput = input.trim().length > 0;
   const hasAttachments = attachedFiles.length > 0;
   const canSubmit = hasInput || hasAttachments;
-
-  // Option 2 — expand-on-focus bottom sheet (matches workspace ChatComposer).
-  // Sheet only activates on the ambient/active home composer, not when the
-  // Global Insight surface is open (it owns its own composer layout).
-  // Disabled: the focus-expanded sheet was intrusive on home. Composer now
-  // stays as a normal sticky composer when focused (workspace-style behavior
-  // is reserved for /project). Keep the variable false to preserve all the
-  // downstream conditional styling without restructuring the JSX.
-  const homeSheetVisible = false && inputFocused && !globalInsightOpen;
-  useEffect(() => {
-    if (!homeSheetVisible) return;
-    const prevBody = document.body.style.overflow;
-    const prevHtml = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevBody;
-      document.documentElement.style.overflow = prevHtml;
-    };
-  }, [homeSheetVisible]);
-
   const canSubmitNow = () => {
     const liveText = textareaRef.current?.value ?? input;
     return liveText.trim().length > 0 || attachedFiles.length > 0;
   };
-  const [globalInsightTitleSlot, setGlobalInsightTitleSlot] = useState<HTMLElement | null>(null);
   const [shapingHeaderSlot, setShapingHeaderSlot] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const header = document.querySelector(".atlas-app-header");
-    const titleRegion = header?.children[1] as HTMLElement | undefined;
-    if (!titleRegion) return;
-
-    const slot = document.createElement("div");
-    slot.setAttribute("data-home-global-insight-title-slot", "true");
-    slot.style.display = "flex";
-    slot.style.alignItems = "center";
-    slot.style.justifyContent = "center";
-    slot.style.maxWidth = "100%";
-    slot.style.minWidth = "0";
-
-    titleRegion.prepend(slot);
-    setGlobalInsightTitleSlot(slot);
-
-    return () => {
-      slot.remove();
-      setGlobalInsightTitleSlot(null);
-    };
-  }, []);
 
   useEffect(() => {
     const header = document.querySelector(".atlas-app-header");
@@ -3579,37 +3266,10 @@ export default function Home() {
     };
   }, []);
 
-  const homeUnifiedSubheader = globalInsightOpen ? null : (
-    <UnifiedSubheader
-      activeTab="chat"
-      onTabChange={handleHomeSubheaderTabChange}
-      hasProject={false}
-      isMobile={isMobile}
-      topOffset={50}
-      showWorkspaceMenu
-      showLaunchWhenNoProject
-      onLaunch={handleHomeLaunchWorkspace}
-      hasConversation={nexusChat.messages.length > 0}
-    />
-  );
-
-  const handleGlobalInsightCreateProject = useCallback((nameOverride?: string) => {
-    setIsHandoffReady(false);
-    // Pill-stored name (from handoffSignal) wins over tapped bold text.
-    const pillName = nexusChat.handoffSignal?.projectName?.trim();
-    const suggestedName = pillName || nameOverride?.trim();
-    if (suggestedName) {
-      void handleHandoff((nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined, suggestedName);
-    } else {
-      performCreateProjectFromConversation();
-    }
-  }, [handleHandoff, nexusChat.handoffSignal, performCreateProjectFromConversation]);
-
   return (
     <div
       ref={ptrContainerRef}
       className="atlas-home-bg"
-      data-handoff-ready={isHandoffReady ? "true" : undefined}
       style={{
         height: "100dvh",
         backgroundColor: "var(--atlas-bg)",
@@ -3619,14 +3279,10 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      <FocusModeAura focus={resolvedPortfolioFocus} />
-      {/* Global Insight runs inline through the ambient home shell:
-          header title only, no overlay, no duplicate header, no separate composer. */}
+      {/* Global Insight runs inline through the ambient home shell.
+          The "● Global Insight" pill in the subheader is the only visual marker —
+          no overlay, no duplicate header, no separate composer. */}
 
-      {globalInsightTitleSlot && globalInsightOpen && createPortal(
-        <GlobalInsightTitleCarousel earnedTitle={earnedTitle} />,
-        globalInsightTitleSlot
-      )}
       {shapingHeaderSlot && nexusChat.shapingPayload && createPortal(
         <div
           onClick={async () => {
@@ -3744,8 +3400,13 @@ export default function Home() {
         </div>
       )}
 
-      {/* Ambient home intentionally hides the workspace subheader (CHANGES/BLUEPRINTS/ARTIFACTS/CONSOLE).
-          The subheader belongs to project workspaces only. */}
+      <UnifiedSubheader
+        activeTab="chat"
+        onTabChange={handleHomeSubheaderTabChange}
+        hasProject={false}
+        isMobile={isMobile}
+        hasConversation={nexusChat.messages.length > 0}
+      />
       
 
 
@@ -3972,7 +3633,6 @@ export default function Home() {
                   }}
                   style={{
                     display: "flex", flexDirection: "column", gap: 12,
-                    justifyContent: globalInsightOpen ? "flex-end" : undefined,
                     flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden",
                     overscrollBehaviorY: "contain",
                     scrollbarWidth: "none", msOverflowStyle: "none",
@@ -4002,13 +3662,7 @@ export default function Home() {
                       Gone.
                     </div>
                   )}
-                  {(nexusChat.messages as HomeMessage[]).map((msg, i) => {
-                    const displayContent =
-                      msg.role === "assistant"
-                        ? (parseNavigateTo(msg.content)?.cleanContent ?? msg.content)
-                        : msg.content;
-
-                    return (
+                  {(nexusChat.messages as HomeMessage[]).map((msg, i) => (
                     <Fragment key={i}>
                       {loadedHistoryCount > 0 && i === loadedHistoryCount && nexusChat.messages.length > loadedHistoryCount && (
                         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0", opacity: 0.3 }}>
@@ -4047,7 +3701,7 @@ export default function Home() {
                             fontSize: 16, lineHeight: 1.85, color: "var(--atlas-fg)", opacity: 0.9,
                             fontFamily: "var(--app-font-sans)",
                           }}>
-                            <HomeChunkedBubbles text={displayContent} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
+                            <HomeChunkedBubbles text={msg.content} isNew={!!msg.isNew} isStreaming={!!msg.streaming} />
                             {msg.imageGen?.images?.map((img, i) => (
                               <img
                                 key={i}
@@ -4057,7 +3711,12 @@ export default function Home() {
                               />
                             ))}
                           </div>
-                          {/* Sketch offer is now an icon in the action row below, next to Copy. */}
+                          {!msg.streaming && !!msg.content && (
+                            <InlineSketchOffer
+                              text={msg.content}
+                              onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
+                            />
+                          )}
                           {msg.researchResult && (
                             <ResearchCard
                               url={msg.researchResult.url}
@@ -4103,7 +3762,7 @@ export default function Home() {
                           )}
 
                           {!msg.streaming && Boolean(msg.terminalCmd || msg.terminalResult) && (
-                            <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} projectId={focusProjectId ?? mostRecentActiveProjectId ?? undefined} />
+                            <InlineTerminalBlock terminalCmd={msg.terminalCmd} terminalResult={msg.terminalResult} />
                           )}
                           {msg.plan && !msg.streaming && (() => {
                             const planKey = msg.id ?? `home-plan-${i}`;
@@ -4134,43 +3793,45 @@ export default function Home() {
                               />
                             );
                           })()}
-                          {/* Fork B: inline HomeHandoffCard replaced by the global
-                              store-driven <CommitPill /> floating above the composer.
-                              See the useEffect that syncs handoffSignal → shellStore
-                              and the <CommitPill onArm={handleCommitPillArm} /> render
-                              near the bottom of this page. */}
-                          {/* Action row — Copy + Sketch this */}
-                          {displayContent && (
-                            <div style={{ display: "inline-flex", alignItems: "center", gap: 2, marginTop: 3 }}>
-                              <button
-                                title={copiedMsgIdx === i ? "Copied!" : "Copy"}
-                                onClick={() => {
-                                  navigator.clipboard.writeText(displayContent).catch(() => {});
-                                  setCopiedMsgIdx(i);
-                                  setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
-                                }}
-                                style={{
-                                  background: "transparent", border: "none", padding: "3px 2px", cursor: "pointer",
-                                  opacity: copiedMsgIdx === i ? 0.9 : 0.28,
-                                  color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
-                                  lineHeight: 1, transition: "opacity 140ms, color 140ms",
-                                }}
-                                onMouseEnter={e => (e.currentTarget.style.opacity = "0.65")}
-                                onMouseLeave={e => (e.currentTarget.style.opacity = copiedMsgIdx === i ? "0.9" : "0.28")}
-                              >
-                                {copiedMsgIdx === i ? (
-                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
-                                ) : (
-                                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
-                                )}
-                              </button>
-                              {!msg.streaming && (
-                                <InlineSketchOffer
-                                  text={displayContent}
-                                  onSend={(prompt) => { void nexusChat.send({ text: prompt }); }}
-                                />
+                          {msg.handoffSignal && i === firstHandoffMessageIndex && !handoffCardDismissed && !msg.streaming && nexusChat.messages.filter(m => m.role === "user").length >= 5 && (
+                            <HomeHandoffCard
+                              signal={msg.handoffSignal}
+                              projectName={handoffProjectName || msg.handoffSignal.projectName || "New Project"}
+                              projectId={msg.handoffSignal.projectId ?? null}
+                              onProjectNameChange={setHandoffProjectName}
+                              loading={handoffLoading}
+                              stage={handoffStage}
+                              onStart={() => void handleHandoff(msg.handoffSignal, handoffProjectName || msg.handoffSignal?.projectName || "New Project")}
+                              onDismiss={() => {
+                                try { sessionStorage.setItem(`atlas-home-handoff-dismissed-${activeConversationId}`, "1"); } catch {}
+                                setHandoffCardDismissed(true);
+                              }}
+                            />
+                          )}
+                          {/* Copy button */}
+                          {msg.content && (
+                            <button
+                              title={copiedMsgIdx === i ? "Copied!" : "Copy"}
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.content).catch(() => {});
+                                setCopiedMsgIdx(i);
+                                setTimeout(() => setCopiedMsgIdx(prev => prev === i ? null : prev), 1800);
+                              }}
+                              style={{
+                                background: "transparent", border: "none", padding: "3px 2px", cursor: "pointer",
+                                opacity: copiedMsgIdx === i ? 0.9 : 0.28,
+                                color: copiedMsgIdx === i ? "var(--atlas-gold)" : "var(--atlas-muted)",
+                                lineHeight: 1, transition: "opacity 140ms, color 140ms", marginTop: 3,
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.opacity = "0.65")}
+                              onMouseLeave={e => (e.currentTarget.style.opacity = copiedMsgIdx === i ? "0.9" : "0.28")}
+                            >
+                              {copiedMsgIdx === i ? (
+                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l4 4 6-7"/></svg>
+                              ) : (
+                                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="1" width="10" height="13" rx="1.5"/><path d="M3 3H2a1 1 0 00-1 1v11a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
                               )}
-                            </div>
+                            </button>
                           )}
                           {msg.createdAt && !msg.streaming && (
                             <div style={{ fontFamily: "var(--app-font-mono)", fontSize: "var(--ts-xs)", letterSpacing: "0.08em", color: "var(--atlas-muted)", opacity: 0.45, marginTop: 4, textTransform: "lowercase" }}>
@@ -4330,8 +3991,7 @@ export default function Home() {
                         )}
                     </div>
                     </Fragment>
-                    );
-                  })}
+                  ))}
 
                   {/* Thinking indicator — only before first token arrives.
                       Once the streaming assistant message has content, that
@@ -4404,62 +4064,22 @@ export default function Home() {
           {/* Continuity strip — moved below; anchors above quick-action pills */}
 
           {/* Input shell */}
-          {homeSheetVisible && createPortal(
-            <div
-              aria-hidden={!homeSheetVisible}
-              onPointerDown={(e) => {
-                // Tap-outside blur: collapses sheet without clearing draft
-                // (input state lives in parent useState, untouched on blur).
-                e.preventDefault();
-                textareaRef.current?.blur();
-              }}
-              style={{
-                position: "fixed", inset: 0, zIndex: 240,
-                background: "rgba(8,8,10,0.55)",
-                backdropFilter: "blur(6px) saturate(120%)",
-                WebkitBackdropFilter: "blur(6px) saturate(120%)",
-                opacity: 1,
-                transition: "opacity 280ms cubic-bezier(0.22, 1, 0.36, 1)",
-              }}
-            />,
-            document.body
-          )}
-          <div style={{ position: "relative", zIndex: 260, flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
-          <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" data-composer-expanded={homeSheetVisible ? "true" : "false"} style={{
-            position: globalInsightOpen ? "relative" : (homeSheetVisible ? "fixed" : "sticky"),
+          <div style={{ position: "relative", zIndex: 200, isolation: "isolate", flexShrink: 0, display: globalInsightOpen ? "none" : undefined }}>
+          <div ref={globalInsightOpen ? globalInsightComposerRef : null} className="atlas-input-shell" style={{
+            position: globalInsightOpen ? "relative" : "sticky",
             left: globalInsightOpen ? undefined : 0,
             right: globalInsightOpen ? undefined : 0,
-            bottom: globalInsightOpen ? undefined : (homeSheetVisible ? 0 : "calc(64px + env(safe-area-inset-bottom, 0px))"),
-            height: homeSheetVisible ? "60vh" : undefined,
+            bottom: globalInsightOpen ? undefined : 0,
             padding: globalInsightOpen
               ? "12px 0 0"
-              : (homeSheetVisible ? "18px 16px 20px" : "14px 20px 14px"),
+              : "14px 20px calc(14px + env(safe-area-inset-bottom, 0px))",
             flexShrink: 0,
-            zIndex: globalInsightOpen ? 1 : (homeSheetVisible ? 260 : 250),
+            zIndex: globalInsightOpen ? 1 : 250,
             pointerEvents: "auto",
-            background: homeSheetVisible ? "var(--atlas-surface, rgba(14,12,10,0.96))" : "transparent",
-            maxWidth: globalInsightOpen ? undefined : (homeSheetVisible ? undefined : 680),
+            background: "transparent",
+            maxWidth: globalInsightOpen ? undefined : 680,
             margin: globalInsightOpen ? 0 : undefined,
-            borderTopLeftRadius: homeSheetVisible ? 20 : undefined,
-            borderTopRightRadius: homeSheetVisible ? 20 : undefined,
-            boxShadow: homeSheetVisible ? "0 -24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(201,162,76,0.18)" : undefined,
-            display: "flex",
-            flexDirection: "column",
-            overflow: homeSheetVisible ? "hidden" : undefined,
-            transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           }}>
-          {homeSheetVisible && (
-            <div
-              onPointerDown={(e) => { e.preventDefault(); textareaRef.current?.blur(); }}
-              aria-label="Collapse composer"
-              style={{
-                alignSelf: "center", width: 44, height: 4, borderRadius: 999,
-                background: "rgba(201,162,76,0.35)", marginBottom: 10, cursor: "grab",
-                flexShrink: 0,
-              }}
-            />
-          )}
-
   
    {/* Hidden file input — uses id so label can trigger it natively on mobile */}
             <input
@@ -4482,32 +4102,23 @@ export default function Home() {
 
 
             {/* Project focus picker sheet */}
-            {showFocusPicker && createPortal(
+            {showFocusPicker && (
               <>
                 <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
                 <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
-                  <button
-                    type="button"
-                    onClick={handleHomeFocusAllProjects}
-                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                  >
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                    All Projects
-                  </button>
-                  {selectableFocusProjects.map((p: Project) => (
+                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus a project</div>
+                  {(projects ?? []).filter((p: any) => p.status !== "shaping" && p.status !== "archived").map((p: any) => (
                     <button
                       key={p.id}
                       onClick={() => handleHomeFocusSelect(p.id)}
-                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
                     >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(201,162,76,0.45)", flexShrink: 0 }} />
                       {p.name}
                     </button>
                   ))}
                 </div>
-              </>,
-              document.body
+              </>
             )}
 
             {/* Attached files preview strip */}
@@ -4607,9 +4218,8 @@ export default function Home() {
                   position: "relative",
                   zIndex: 1,
                   minHeight: 52,
-                  maxHeight: isMobile ? "25vh" : 160,
-                  overflowY: "auto",
-                  overscrollBehavior: "contain",
+                  maxHeight: 160,
+                  overflowY: "hidden",
                   display: "block",
                 }}
               />
@@ -4618,22 +4228,16 @@ export default function Home() {
             {/* Bottom action bar — hidden at rest, fades in when the surface anchors */}
             <div style={{
               display: "flex", alignItems: "center", marginTop: 12, gap: 2, position: "relative",
-              opacity: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker) ? 1 : 0,
-              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0 || showFocusPicker) ? "auto" : "none",
+              opacity: (inputFocused || hasInput || attachedFiles.length > 0) ? 1 : 0,
+              pointerEvents: (inputFocused || hasInput || attachedFiles.length > 0) ? "auto" : "none",
               transition: "opacity 200ms ease-in-out",
             }}>
-              <div
-                onPointerDown={(e) => {
-                  // Prevent the textarea from blurring on tap — blur would flip
-                  // this bar's pointer-events to "none" mid-tap and swallow the
-                  // click on +, ⋯, and the clock button.
-                  if ((e.target as HTMLElement).closest("input,textarea,select")) return;
-                  e.preventDefault();
-                }}
-                style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-start", minWidth: 0 }}>
 
-              {/* Global Insight history — gold clock pill, far left for quick "where were we?" access */}
+              {/* Global Insight history — gold clock pill. Always visible so
+                  users can resume any prior Global Insight thread from the
+                  home composer, even on a fresh page load. Separate from the
+                  workspace/projects browser so the home chat isn't lost. */}
               <button
                 type="button"
                 title="Where were we? · Resume Global Insight"
@@ -4691,10 +4295,13 @@ export default function Home() {
                   if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
                   setAttachedFiles(combined);
                 }}
-                onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
+                onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
                 onMenuAction={(action) => {
                   if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
+                  // Project-scoped items: route the user to the projects list so
+                  // whatever they pick up at home (attachments, intent) carries
+                  // into the same workspace. Keeps home + workspace menus identical.
                   if (action === "code") { setLocation("/code"); return; }
                   if (action === "connectors") { setLocation("/connectors"); return; }
                   if (action === "files" || action === "share" ||
@@ -4705,99 +4312,34 @@ export default function Home() {
               />
 
 
-              <button
-                type="button"
-                title="Focus scope"
-                aria-label={`Focus scope: ${focusChipLabel}`}
-                aria-expanded={showFocusPicker}
-                onPointerDown={(e) => { e.preventDefault(); }}
-                onMouseDown={(e) => { e.preventDefault(); }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFocusPicker((open) => !open);
-                }}
-                style={{
-                  height: 34,
-                  maxWidth: 178,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "0 10px",
-                  borderRadius: 999,
-                  background: resolvedPortfolioFocus === "project"
-                    ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
-                    : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-                  border: resolvedPortfolioFocus === "project"
-                    ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
-                    : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                  color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
-                  cursor: "pointer",
-                  fontFamily: "var(--app-font-mono)",
-                  fontSize: 10,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  whiteSpace: "nowrap",
-                  minWidth: 0,
-                  flexShrink: 1,
-                  WebkitTapHighlightColor: "transparent",
-                  transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
-                }}
-              >
-                <Crosshair
-                  size={13}
-                  strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
-                  style={{
-                    flexShrink: 0,
-                    filter: resolvedPortfolioFocus === "project"
-                      ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
-                      : "none",
-                    transition: "stroke-width 160ms ease, filter 160ms ease",
-                  }}
-                />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                  {focusChipLabel}
-                </span>
-                <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
-              </button>
-
-
-
-
 
               </div>
 
               {/* Mic + Send — pinned to right via auto left margin */}
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
-                {/* Mic morph: idle = mic icon, listening = waveform bars (single slot) */}
+                {/* Mic + waveform */}
                 <button
                   title={isListening ? "Stop listening" : "Voice input"}
-                  aria-label={isListening ? "Stop listening" : "Voice input"}
-                  aria-pressed={isListening}
                   onClick={toggleVoice}
                   style={{
-                    width: 36, height: 32, borderRadius: 8, border: "none",
-                    background: isListening ? "rgba(201,162,76,0.10)" : "transparent",
-                    color: isListening ? "var(--atlas-gold)" : "rgba(120,113,108,0.55)",
-                    cursor: "pointer",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    padding: 0, transition: "color 160ms ease, background 160ms ease",
-                    flexShrink: 0,
+                    height: 32, borderRadius: 8, border: "none",
+                    background: isListening ? "rgba(201,162,76,0.08)" : "transparent",
+                    color: isListening ? "var(--atlas-gold)" : "rgba(120,113,108,0.45)", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    padding: "0 8px", transition: "color 160ms ease, background 160ms ease", flexShrink: 0,
                   }}
                   onMouseEnter={(e) => { if (!isListening) e.currentTarget.style.color = "var(--atlas-fg)"; }}
-                  onMouseLeave={(e) => { if (!isListening) e.currentTarget.style.color = "rgba(120,113,108,0.55)"; }}
+                  onMouseLeave={(e) => { if (!isListening) e.currentTarget.style.color = "rgba(120,113,108,0.45)"; }}
                 >
-                  {isListening ? (
-                    <div className="atlas-waveform is-active" style={{ color: "var(--atlas-gold)" }}>
-                      <span /><span /><span />
-                    </div>
-                  ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="9" y="2" width="6" height="11" rx="3" />
-                      <path d="M5 10a7 7 0 0014 0" />
-                      <line x1="12" y1="19" x2="12" y2="23" />
-                      <line x1="8" y1="23" x2="16" y2="23" />
-                    </svg>
-                  )}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="2" width="6" height="11" rx="3" />
+                    <path d="M5 10a7 7 0 0014 0" />
+                    <line x1="12" y1="19" x2="12" y2="23" />
+                    <line x1="8" y1="23" x2="16" y2="23" />
+                  </svg>
+                  <div className={`atlas-waveform${isListening ? " is-active" : ""}`} style={{ color: "var(--atlas-gold)" }}>
+                    <span /><span /><span />
+                  </div>
                 </button>
 
                 {/* Send */}
@@ -5187,7 +4729,8 @@ export default function Home() {
         isListening={isListening}
         toggleVoice={toggleVoice}
         onOpenHistory={handleOpenHistory}
-        onCreateProject={handleGlobalInsightCreateProject}
+        onExit={handleLockTap}
+        onCreateProject={performCreateProjectFromConversation}
         onAddAsset={() => fileInputRef.current?.click()}
         onMore={() => setShowDrawer(true)}
         onFiles={(files) => {
@@ -5195,61 +4738,9 @@ export default function Home() {
           if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
           setAttachedFiles(combined);
         }}
-        onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
+        onSketch={(prompt) => { void nexusChat.send({ text: prompt }); }}
         attachedFiles={attachedFiles}
         onRemoveFile={(idx) => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-        subheader={homeUnifiedSubheader}
-        focusChip={
-          <button
-            type="button"
-            title="Focus scope"
-            aria-label={`Focus scope: ${focusChipLabel}`}
-            aria-expanded={showFocusPicker}
-            onClick={() => setShowFocusPicker((open) => !open)}
-            style={{
-              height: 34,
-              maxWidth: 178,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 10px",
-              borderRadius: 999,
-              background: resolvedPortfolioFocus === "project"
-                ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
-                : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-              border: resolvedPortfolioFocus === "project"
-                ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
-                : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-              color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
-              cursor: "pointer",
-              fontFamily: "var(--app-font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              whiteSpace: "nowrap",
-              minWidth: 0,
-              flexShrink: 1,
-              WebkitTapHighlightColor: "transparent",
-              transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
-            }}
-          >
-            <Crosshair
-              size={13}
-              strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
-              style={{
-                flexShrink: 0,
-                filter: resolvedPortfolioFocus === "project"
-                  ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
-                  : "none",
-                transition: "stroke-width 160ms ease, filter 160ms ease",
-              }}
-            />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-              {focusChipLabel}
-            </span>
-            <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
-          </button>
-        }
         onMenuAction={(action) => {
           if (action === "history") { setShowTimeTravel(true); return; }
           if (action === "settings") { setLocation("/account"); return; }
@@ -5261,34 +4752,6 @@ export default function Home() {
           toast("Open a project to use that");
         }}
       />
-
-      {globalInsightOpen && showFocusPicker && (
-        <>
-          <div onClick={() => setShowFocusPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 32px", maxHeight: "60vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-            <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Focus scope</div>
-            <button
-              type="button"
-              onClick={handleHomeFocusAllProjects}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-              All Projects
-            </button>
-            {selectableFocusProjects.map((p: Project) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleHomeFocusSelect(p.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                {p.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
 
       {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
       {!globalInsightOpen && (
@@ -5399,16 +4862,14 @@ export default function Home() {
         />
       )}
 
-      {/* Right-edge timeline rail — always in Global Insight, otherwise only when a thread exists. Hidden on ambient empty home. */}
-      {(globalInsightOpen || nexusChat.messages.length > 0) && (
-        <TimelineRail alwaysVisible={globalInsightOpen} messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
-      )}
+      {/* Right-edge timeline rail (ticks per assistant message, long-press for timeframe jump) */}
+      <TimelineRail messages={(nexusChat.messages as HomeMessage[]).map(m => ({ role: m.role, createdAt: m.createdAt, hasSurfacedMemory: !!(m.surfacedMemoriesCount && m.surfacedMemoriesCount > 0), text: m.content }))} />
 
       {/* Projects Drawer (slide-in menu) */}
       <ProjectsDrawer
         open={showDrawer}
         onClose={() => setShowDrawer(false)}
-        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
+        projects={(projects ?? []).map((p: Project) => ({ id: p.id, name: p.name, description: p.description, latestSnapshotScore: p.latestSnapshotScore ?? null, status: (p as { status?: "shaping" | "committed" | "archived" }).status }))}
         onOpenProject={navigateToProject}
         onNewProject={() => { setShowDrawer(false); handleNewProject("New Project"); }}
         onOpenLedger={(id) => setLocation(`/ledger/${id}`)}
@@ -5495,22 +4956,6 @@ export default function Home() {
               0 0 44px 12px rgba(212,175,55,0.14);
           }
         }
-        @keyframes atlasHandoffReadyPulse {
-          0%, 100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(212,175,55,0.00);
-          }
-          50% {
-            transform: scale(1.04);
-            box-shadow:
-              0 0 0 4px rgba(212,175,55,0.08),
-              0 0 18px rgba(212,175,55,0.22);
-          }
-        }
-        /* Pass 1 cleanup: removed dead selector targeting the deprecated
-           folder+ "Create project from this conversation" button — that button
-           no longer exists in the composer. */
-
         .atlas-home-chat-messages-scroll::-webkit-scrollbar {
           display: none;
         }
@@ -5639,40 +5084,12 @@ export default function Home() {
         }
 
       `}</style>
-
-      {/* Fork B: floating store-driven CommitPill — anchors above the bottom dock,
-          surfaces the instant a project name is proposed (shaping) and glows when
-          ready. Tap arms the same handleHandoff() the inline card used. */}
-      <div
-        style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
-          display: "flex",
-          justifyContent: "center",
-          pointerEvents: "none",
-          zIndex: 90,
-        }}
-      >
-        <div style={{ pointerEvents: "auto" }}>
-          <CommitPill
-            onArm={() => handleHandoff(
-              (nexusChat.handoffSignal ?? undefined) as HomeHandoffSignal | undefined,
-              nexusChat.handoffSignal?.projectName?.trim() || handoffProjectName || "New Project",
-            )}
-          />
-        </div>
-      </div>
-
-      <HandoffCinemaOverlay />
-
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
           mode="ambient"
           onAtlasCore={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          onProjects={() => setLocation("/projects")}
+          onProjects={() => setShowProjectsSheet(true)}
           onDecisions={() => setLocation("/ledger")}
           onYou={() => setShowProfile(true)}
           onMap={() => setLocation("/map")}
@@ -5822,14 +5239,14 @@ function ProjectsGridSheet({
       {/* Scrim */}
       <div
         onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", zIndex: 9990 }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", zIndex: 200 }}
       />
 
       {/* Sheet — slides up from bottom */}
       <div
         style={{
           position: "fixed", left: 0, right: 0, bottom: 0,
-          zIndex: 9991,
+          zIndex: 201,
           background: "var(--atlas-surface)",
           borderTop: "1px solid rgba(212,175,55,0.18)",
           borderRadius: "20px 20px 0 0",
