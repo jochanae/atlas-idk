@@ -340,11 +340,12 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           />
           {workspaceExpanded && (
             <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
-              <NavRow icon={<LayoutDashboard size={14} strokeWidth={1.6} />} label="Dashboard" onClick={() => navigate("/dashboard")} />
+              <NavRow icon={<LayoutDashboard size={14} strokeWidth={1.6} />} label="Dashboard" onClick={() => {
+                navigate("/");
+                setTimeout(() => window.dispatchEvent(new CustomEvent("axiom:open-overview")), 50);
+              }} />
               <NavRow icon={<Globe size={14} strokeWidth={1.6} />} label="Master Map" onClick={() => { navigate("/map"); onClose(); }} />
-              {activeProjectId && onOpenLedger && (
-                <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decisions" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
-              )}
+              <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decisions" onClick={() => { navigate("/ledger"); }} />
             </div>
           )}
 
