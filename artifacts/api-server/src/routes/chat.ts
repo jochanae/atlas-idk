@@ -7,7 +7,7 @@ import { atlasErrorLogsTable, atlasSelfMapTable, db, chatMessagesTable, sessions
 import { maybeExtractGenome } from "../lib/genomeExtract";
 import { extractAndUpdateApplicationModel, extractVisualMemoryFromAttachments } from "../lib/applicationModelExtraction";
 import { checkBuildReadiness } from "../lib/buildReadiness";
-import { eq, sql, and, gte, desc, ne, isNotNull } from "drizzle-orm";
+import { eq, sql, and, gte, desc, ne, isNotNull, inArray } from "drizzle-orm";
 import { decryptToken } from "../lib/tokenCrypto";
 import { loadVaultContext } from "../lib/vaultContext";
 import { extractPageUrls, screenshotUrlsToBlocks, buildUrlNote } from "../lib/urlScreenshot";
@@ -757,7 +757,7 @@ Opening posture example:
 
 This doesn't have a name yet — or maybe it does. What do you want to call this?"
 
-Never ask the user to re-explain anything already discovered in Global. Never repeat questions that were already answered. Carry the context forward as if you were in the room for the whole conversation.
+Never ask the user to re-explain anything already captured in memory or prior conversation. Never repeat questions that were already answered. Carry the context forward as if you were in the room for the whole conversation. You have portfolio-level awareness — when asked about other projects, cross-project patterns, or the big picture, answer from the portfolio context injected below without routing the user elsewhere.
 
 You are Atlas. Just be it.`;
 
@@ -2990,6 +2990,70 @@ HARD RULE: Never answer from the context of a different project unless the user 
     if (!isSelfContainedBuild) {
       systemPrompt += `\n\n--- ${portfolioLabel} ---\n${portfolioSummary}\n${portfolioMemory ? `\n### Background knowledge (do NOT surface unless cross-project question):\n${portfolioMemory}` : ""}\nTotal projects: ${portfolioRows.length}\n--- END PORTFOLIO ---`;
     }
+  }
+
+  // ── Portfolio Intelligence (always injected when portfolio context exists) ──────────
+  // Replaces Global Insights as a separate surface. Atlas carries this awareness into
+  // every workspace conversation — no need to route the user to another page.
+  if (!isSelfContainedBuild && userId && portfolioRows.length > 0) {
+    // 1. Aggregated memory across all projects (zero extra DB queries)
+    const aggregatedMemoryParts = portfolioRows
+      .filter((p) => p.memory)
+      .map((p) => {
+        const store = parseMemoryStore(p.memory ?? null);
+        const entries = store.entries
+          .filter((e) => e.text && e.tier <= 3) // tiers 1-3 only: foundational/identity/episodic
+          .map((e) => `• ${e.text}`);
+        if (entries.length === 0) return null;
+        return `=== ${p.name} ===\n${entries.join("\n")}`;
+      })
+      .filter((x): x is string => x !== null);
+    if (aggregatedMemoryParts.length > 0) {
+      systemPrompt += `\n\n--- AGGREGATED PROJECT MEMORY (what Atlas knows across all your work) ---\n${aggregatedMemoryParts.join("\n\n")}\nUse naturally — never recite as a list. Draw on this to avoid asking questions already answered.\n--- END AGGREGATED MEMORY ---`;
+    }
+
+    // 2. Portfolio health + recent activity (parallel DB fetch, non-blocking)
+    try {
+      const allPortfolioIds = [projectId, ...portfolioRows.map((p) => p.id)].filter((id): id is number => id != null);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [sessionsThisWeekResult, violationsResult, recentSessionsRows, committedCountResult] = await Promise.all([
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(sessionsTable)
+          .where(and(inArray(sessionsTable.projectId, allPortfolioIds), gte(sessionsTable.createdAt, sevenDaysAgo))),
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(entriesTable)
+          .where(and(inArray(entriesTable.projectId, allPortfolioIds), eq((entriesTable as any).isViolation, true))),
+        db.select({ projectId: sessionsTable.projectId, title: sessionsTable.title, messageCount: sessionsTable.messageCount, createdAt: sessionsTable.createdAt })
+          .from(sessionsTable)
+          .where(and(inArray(sessionsTable.projectId, allPortfolioIds), gte(sessionsTable.createdAt, sevenDaysAgo)))
+          .orderBy(desc(sessionsTable.createdAt))
+          .limit(10),
+        db.select({ count: sql<number>`count(*)::int` })
+          .from(entriesTable)
+          .where(and(inArray(entriesTable.projectId, allPortfolioIds), eq(entriesTable.status, "committed"))),
+      ]);
+
+      const portfolioProjectNameById = new Map<number, string>(portfolioRows.map((p) => [p.id, p.name] as [number, string]));
+      if (project) portfolioProjectNameById.set(projectId, project.name);
+
+      const healthLines = [
+        `Total projects: ${portfolioRows.length + 1}`,
+        `Sessions this week: ${sessionsThisWeekResult[0]?.count ?? 0}`,
+        `Committed decisions (total): ${committedCountResult[0]?.count ?? 0}`,
+        `Decision violations: ${violationsResult[0]?.count ?? 0}`,
+      ];
+      systemPrompt += `\n\n--- PORTFOLIO HEALTH ---\n${healthLines.join("\n")}\nUse this when the user asks about momentum, health, activity, or progress across the portfolio.\n--- END PORTFOLIO HEALTH ---`;
+
+      if (recentSessionsRows.length > 0) {
+        const activityLines = recentSessionsRows.map((s) => {
+          const name = portfolioProjectNameById.get(s.projectId) ?? "Unknown";
+          const daysAgo = Math.round((Date.now() - new Date(s.createdAt).getTime()) / 86400000);
+          const when = daysAgo === 0 ? "today" : `${daysAgo}d ago`;
+          return `  • [${name}] ${s.title || "Untitled session"} (${s.messageCount ?? 0} messages, ${when})`;
+        });
+        systemPrompt += `\n\n--- RECENT ACTIVITY ACROSS PORTFOLIO ---\nRecent conversations:\n${activityLines.join("\n")}\nInterpret as a thinking partner who has been paying attention — synthesize momentum and gaps, do not enumerate raw lists unless explicitly asked.\n--- END RECENT ACTIVITY ---`;
+      }
+    } catch { /* non-fatal — portfolio health is additive */ }
   }
 
   // If user is asking a portfolio-wide question from inside a workspace, pull committed
