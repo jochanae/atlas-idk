@@ -2207,6 +2207,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       )}
       <SpecifySheet />
       <CommandPalette />
+      <CaptureLauncher />
     </ShellStateContext.Provider>
   );
 }
