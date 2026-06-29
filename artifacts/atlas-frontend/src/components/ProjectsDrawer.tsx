@@ -312,15 +312,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             </div>
           )}
 
-          {/* NAVIGATE section */}
-          <SectionLabel>Navigate</SectionLabel>
-
-          <NavRow icon={<LayoutDashboard size={14} strokeWidth={1.6} />} label="Dashboard" onClick={() => navigate("/dashboard")} />
-          <NavRow icon={<Globe size={14} strokeWidth={1.6} />} label="Master Map" onClick={() => { navigate("/map"); onClose(); }} />
-
-          {activeProjectId && onOpenLedger && (
-            <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decision Ledger" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
-          )}
+          {/* PARKING LOT — top-level, single tap */}
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
           {activeProjectId && onOpenParking && (
             <NavRow
               icon={<Inbox size={14} strokeWidth={1.6} />}
@@ -336,14 +329,41 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             badge={parkedCount}
             onClick={() => { navigate("/parking"); onClose(); }}
           />
-          
 
+          {/* WORKSPACE — collapsed by default */}
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
+          <CollapsibleHeader
+            icon={<Briefcase size={11} strokeWidth={2} />}
+            label="Workspace"
+            expanded={workspaceExpanded}
+            onToggle={() => setWorkspaceExpanded(v => !v)}
+          />
+          {workspaceExpanded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
+              <NavRow icon={<LayoutDashboard size={14} strokeWidth={1.6} />} label="Dashboard" onClick={() => navigate("/dashboard")} />
+              <NavRow icon={<Globe size={14} strokeWidth={1.6} />} label="Master Map" onClick={() => { navigate("/map"); onClose(); }} />
+              {activeProjectId && onOpenLedger && (
+                <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decisions" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
+              )}
+            </div>
+          )}
+
+          {/* TOOLS — collapsed by default */}
           {(onOpenSpecify || onOpenWrite) && (
             <>
               <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
-              <SectionLabel>Tools</SectionLabel>
-              {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
-              {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
+              <CollapsibleHeader
+                icon={<Wrench size={11} strokeWidth={2} />}
+                label="Tools"
+                expanded={toolsExpanded}
+                onToggle={() => setToolsExpanded(v => !v)}
+              />
+              {toolsExpanded && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
+                  {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
+                  {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
+                </div>
+              )}
             </>
           )}
         </div>
