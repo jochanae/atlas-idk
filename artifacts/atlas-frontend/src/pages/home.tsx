@@ -5751,12 +5751,13 @@ function OverviewBottomSheet({
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchStartScrollTopRef = useRef(0);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <div className="atlas-overview-sheet-layer" role="presentation">
       <div className="atlas-overview-scrim" onClick={onClose} />
       <section
-        className={`atlas-overview-bottom-sheet${closing ? " is-closing" : ""}`}
+        className={`atlas-overview-bottom-sheet${closing ? " is-closing" : ""}${expanded ? " is-expanded" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Overview"
@@ -5776,6 +5777,14 @@ function OverviewBottomSheet({
         }}
       >
         <div className="atlas-overview-sheet-handle" aria-hidden />
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? "Collapse workspace" : "Expand workspace"}
+          className="atlas-overview-sheet-expand"
+        >
+          {expanded ? <Minimize2 size={14} strokeWidth={1.6} /> : <Maximize2 size={14} strokeWidth={1.6} />}
+        </button>
         <button
           type="button"
           onClick={onClose}
