@@ -7764,7 +7764,7 @@ export default function Workspace() {
                 </div>
               ) : null
             }
-            composerProps={{
+            composerProps={isMobile && mobileTab !== "chat" ? null : {
               leftTab,
               fileInputRef,
               processZip,
