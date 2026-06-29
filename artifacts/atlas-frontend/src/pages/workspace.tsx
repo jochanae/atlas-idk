@@ -8214,16 +8214,6 @@ export default function Workspace() {
             }} />
             {([
               {
-                id: "write" as const,
-                label: "Write",
-                icon: (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18M3 12h12M3 18h15"/>
-                  </svg>
-                ),
-                onSelect: () => { setMobileTab("write"); setRightOpen(true); setShowMoreSheet(false); },
-              },
-              {
                 id: "files" as const,
                 label: "Files",
                 icon: (
@@ -8762,6 +8752,7 @@ export default function Workspace() {
         onOpenLedger={(projectId) => { setLocation(`/ledger/${projectId}`); setShowDrawer(false); }}
         onOpenParking={() => { setLocation(`/parking?project=${id}`); setShowDrawer(false); }}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify", { detail: { projectName: project?.name ?? "" } })); }}
+        onOpenWrite={() => { setShowDrawer(false); if (isMobile) { setMobileTab("write"); setRightOpen(true); } else { setDesktopForceTab("write" as never); setTimeout(() => setDesktopForceTab(undefined), 120); } }}
         userLabel={loadProfile().name || null}
       />
 
