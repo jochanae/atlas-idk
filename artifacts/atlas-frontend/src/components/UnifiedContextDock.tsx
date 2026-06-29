@@ -728,11 +728,12 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 }}
               />
 
-              {/* Radial stage — centered on screen, shifted up slightly to clear dock */}
+              {/* Radial stage — centered on screen, lifted clear of safe-area dock */}
               <div style={{
                 position: "fixed",
                 left: 0, right: 0,
-                top: 0, bottom: 64,
+                top: 0,
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
                 zIndex: 2001,
                 display: "flex",
                 alignItems: "center",
