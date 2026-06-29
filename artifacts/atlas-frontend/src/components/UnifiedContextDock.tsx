@@ -875,13 +875,13 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 </button>
               </div>
 
-              {/* Dismiss hint — elegant whisper at the bottom of the menu surface */}
+              {/* Dismiss hint — elegant whisper anchored above the dock, clear of nodes */}
               <div style={{
-                position: "absolute",
-                bottom: 20,
+                position: "fixed",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
                 left: 0, right: 0,
                 textAlign: "center",
-                zIndex: 2001,
+                zIndex: 2002,
                 pointerEvents: "none",
                 opacity: hubOpen ? 1 : 0,
                 transition: "opacity 400ms ease 300ms",
