@@ -36,9 +36,9 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
-  const [sessionsExpanded, setSessionsExpanded] = useState(false);
+  const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>("all");
-  void sessionsExpanded;
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
   })();
