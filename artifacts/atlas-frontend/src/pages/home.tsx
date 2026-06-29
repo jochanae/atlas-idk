@@ -5577,6 +5577,29 @@ export default function Home() {
           background: color-mix(in oklab, var(--atlas-gold) 16%, transparent);
           border-color: color-mix(in oklab, var(--atlas-gold) 46%, transparent);
         }
+        .atlas-overview-sheet-expand {
+          position: absolute;
+          top: 12px;
+          right: 54px;
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: color-mix(in oklab, var(--atlas-gold) 8%, transparent);
+          border: 1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent);
+          color: var(--atlas-gold);
+          cursor: pointer;
+          z-index: 2;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }
+        .atlas-overview-sheet-expand:hover {
+          background: color-mix(in oklab, var(--atlas-gold) 16%, transparent);
+          border-color: color-mix(in oklab, var(--atlas-gold) 46%, transparent);
+        }
 
         @media (min-width: 1024px) {
           /* Hero stays a centered single column — chat down the middle */
