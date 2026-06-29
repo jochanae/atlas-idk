@@ -4384,6 +4384,11 @@ export default function Workspace() {
     messages,
   });
 
+  // Inline workspace activity (commits, decisions, etc.) rendered as
+  // SystemActivityCard inside the chat stream — see useWorkspaceActivity.
+  const { items: workspaceActivityItems } = useWorkspaceActivity(id);
+
+
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {
     if (thinkFreelyThreadLoadedRef.current) return;
