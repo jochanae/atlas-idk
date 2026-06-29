@@ -877,18 +877,26 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 </button>
               </div>
 
-              {/* Dismiss hint */}
+              {/* Dismiss hint — elegant whisper at the bottom of the menu surface */}
               <div style={{
-                position: "fixed",
-                bottom: "max(env(safe-area-inset-bottom), 80px)",
+                position: "absolute",
+                bottom: 20,
                 left: 0, right: 0,
                 textAlign: "center",
                 zIndex: 2001,
                 pointerEvents: "none",
-                opacity: hubOpen ? 0.38 : 0,
+                opacity: hubOpen ? 1 : 0,
                 transition: "opacity 400ms ease 300ms",
               }}>
-                <span style={{ fontSize: 10, fontFamily: "var(--app-font-mono)", letterSpacing: "0.1em", color: "#fff", textTransform: "uppercase" }}>
+                <span style={{
+                  fontSize: 8.5,
+                  fontFamily: "var(--app-font-mono)",
+                  fontWeight: 400,
+                  letterSpacing: "0.28em",
+                  color: "rgba(255,255,255,0.30)",
+                  textTransform: "uppercase",
+                  textShadow: "0 1px 10px rgba(0,0,0,0.8)",
+                }}>
                   Tap outside or center to close
                 </span>
               </div>
