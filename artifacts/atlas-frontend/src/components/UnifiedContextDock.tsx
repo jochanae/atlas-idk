@@ -419,46 +419,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   };
 
   return (
-    <>
-    <button
-      type="button"
-      aria-label={dockVisible ? "Hide navigation dock" : "Show navigation dock"}
-      title={dockVisible ? "Hide dock" : "Show dock"}
-      onClick={(e) => {
-        e.stopPropagation();
-        try { (navigator as any).vibrate?.(10); } catch {}
-        dockVisibility.toggleManual();
-      }}
-      style={{
-        position: "fixed",
-        right: 10,
-        bottom: `calc(env(safe-area-inset-bottom, 0px) + ${dockVisible ? 72 : 14}px)`,
-        zIndex: 1001,
-        width: 28,
-        height: 28,
-        borderRadius: 999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "color-mix(in oklab, var(--atlas-bg) 78%, transparent)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        border: "1px solid var(--atlas-gold-border)",
-        color: "var(--atlas-gold)",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.45), 0 0 12px rgba(var(--atlas-gold-rgb),0.18)",
-        cursor: "pointer",
-        opacity: dockVisible ? 0.55 : 0.95,
-        transition: "bottom 240ms cubic-bezier(.32,.72,0,1), opacity 200ms ease, transform 120ms ease",
-        WebkitTapHighlightColor: "transparent",
-        padding: 0,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "scale(1.06)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = dockVisible ? "0.55" : "0.95"; e.currentTarget.style.transform = "scale(1)"; }}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: dockVisible ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 220ms ease" }}>
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </button>
     <div
       data-dock-mode={mode}
       data-dock-visible={dockVisible ? "true" : "false"}
@@ -494,6 +454,54 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
           box-shadow: 0 0 18px rgba(var(--atlas-gold-rgb),0.55), 0 0 36px rgba(var(--atlas-gold-rgb),0.25) !important;
         }
       `}</style>
+
+      {/* Corner tap targets — generous invisible zones to expand dock when hidden */}
+      {!dockVisible && (
+        <>
+          <button
+            type="button"
+            aria-label="Expand navigation dock"
+            onClick={(e) => {
+              e.stopPropagation();
+              try { (navigator as any).vibrate?.(10); } catch {}
+              dockVisibility.toggleManual();
+            }}
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              width: 56,
+              height: 56,
+              zIndex: 1000,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Expand navigation dock"
+            onClick={(e) => {
+              e.stopPropagation();
+              try { (navigator as any).vibrate?.(10); } catch {}
+              dockVisibility.toggleManual();
+            }}
+            style={{
+              position: "fixed",
+              bottom: 0,
+              right: 0,
+              width: 56,
+              height: 56,
+              zIndex: 1000,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          />
+        </>
+      )}
 
       {/* Arch — fixed-width center dimple, flanks fill remaining width */}
       <div
@@ -847,7 +855,6 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       )}
 
     </div>
-    </>
   );
 }
 
