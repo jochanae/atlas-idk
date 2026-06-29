@@ -3939,6 +3939,37 @@ export default function Home() {
                 }}>
                   {globalInsightOpen ? "Ask across every thread." : greetingRef.current?.sub}
                 </p>
+                {!globalInsightOpen && projects && projects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={openOverviewSheet}
+                    aria-label="Open project briefcase"
+                    title="Open workspace"
+                    className="atlas-briefcase-toggle"
+                    style={{
+                      position: "absolute",
+                      top: -14,
+                      right: 8,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 999,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+                      color: "var(--atlas-gold)",
+                      cursor: "pointer",
+                      backdropFilter: "blur(10px)",
+                      WebkitBackdropFilter: "blur(10px)",
+                      boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                      transition: "transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <Briefcase size={17} strokeWidth={1.5} />
+                  </button>
+                )}
               </div>
             )}
 
