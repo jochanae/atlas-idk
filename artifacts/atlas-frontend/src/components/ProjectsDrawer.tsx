@@ -3,7 +3,7 @@ import { useParkedCount } from "@/hooks/useParkedCount";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
@@ -36,9 +36,9 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
-  const [sessionsExpanded, setSessionsExpanded] = useState(false);
+  const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>("all");
-  void sessionsExpanded;
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
   })();
@@ -312,15 +312,8 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             </div>
           )}
 
-          {/* NAVIGATE section */}
-          <SectionLabel>Navigate</SectionLabel>
-
-          <NavRow icon={<LayoutDashboard size={14} strokeWidth={1.6} />} label="Dashboard" onClick={() => navigate("/dashboard")} />
-          <NavRow icon={<Globe size={14} strokeWidth={1.6} />} label="Master Map" onClick={() => { navigate("/map"); onClose(); }} />
-
-          {activeProjectId && onOpenLedger && (
-            <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decision Ledger" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
-          )}
+          {/* PARKING LOT — top-level, single tap */}
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
           {activeProjectId && onOpenParking && (
             <NavRow
               icon={<Inbox size={14} strokeWidth={1.6} />}
@@ -336,14 +329,41 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             badge={parkedCount}
             onClick={() => { navigate("/parking"); onClose(); }}
           />
-          
 
+          {/* WORKSPACE — collapsed by default */}
+          <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
+          <CollapsibleHeader
+            icon={<Briefcase size={11} strokeWidth={2} />}
+            label="Workspace"
+            expanded={workspaceExpanded}
+            onToggle={() => setWorkspaceExpanded(v => !v)}
+          />
+          {workspaceExpanded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
+              <NavRow icon={<LayoutDashboard size={14} strokeWidth={1.6} />} label="Dashboard" onClick={() => navigate("/dashboard")} />
+              <NavRow icon={<Globe size={14} strokeWidth={1.6} />} label="Master Map" onClick={() => { navigate("/map"); onClose(); }} />
+              {activeProjectId && onOpenLedger && (
+                <NavRow icon={<BookOpen size={14} strokeWidth={1.6} />} label="Decisions" onClick={() => { onOpenLedger(activeProjectId); onClose(); }} />
+              )}
+            </div>
+          )}
+
+          {/* TOOLS — collapsed by default */}
           {(onOpenSpecify || onOpenWrite) && (
             <>
               <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "8px 6px" }} />
-              <SectionLabel>Tools</SectionLabel>
-              {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
-              {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
+              <CollapsibleHeader
+                icon={<Wrench size={11} strokeWidth={2} />}
+                label="Tools"
+                expanded={toolsExpanded}
+                onToggle={() => setToolsExpanded(v => !v)}
+              />
+              {toolsExpanded && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 4 }}>
+                  {onOpenSpecify && <NavRow icon={<Wand2 size={14} strokeWidth={1.6} />} label="Specify Change" onClick={() => { onOpenSpecify(); onClose(); }} />}
+                  {onOpenWrite && <NavRow icon={<PenLine size={14} strokeWidth={1.6} />} label="Write" onClick={() => { onOpenWrite(); onClose(); }} />}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -392,6 +412,24 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <div style={{ padding: "2px 12px 6px", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--atlas-muted)", fontFamily: "var(--app-font-mono)", opacity: 0.55 }}>
       {children}
     </div>
+  );
+}
+void SectionLabel;
+
+function CollapsibleHeader({ icon, label, expanded, onToggle }: { icon: React.ReactNode; label: string; expanded: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} style={{
+      display: "flex", alignItems: "center", gap: 6,
+      width: "100%", padding: "5px 12px", borderRadius: 6, border: "none",
+      background: "transparent", cursor: "pointer",
+      color: "var(--atlas-gold)",
+      fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+      fontFamily: "var(--app-font-mono)", textAlign: "left",
+    }}>
+      {expanded ? <ChevronDown size={11} strokeWidth={2.2} /> : <ChevronRight size={11} strokeWidth={2.2} />}
+      <span style={{ display: "flex", alignItems: "center", opacity: 0.7 }}>{icon}</span>
+      <span>{label}</span>
+    </button>
   );
 }
 
