@@ -2136,8 +2136,8 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
           }}
         >
           <div style={{ flexShrink: 0, minWidth: 0, position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 4 }}>
+            <ShellDrawerButton />
             <ShellWordmark />
-            <ShellNavMenu />
           </div>
           {/* True viewport-centered switcher — absolutely positioned so left/right cluster widths don't shift it off-center. */}
           <div
