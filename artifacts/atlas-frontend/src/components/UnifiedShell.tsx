@@ -2205,6 +2205,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
         />
       )}
       <SpecifySheet />
+      <CommandPalette />
     </ShellStateContext.Provider>
   );
 }
