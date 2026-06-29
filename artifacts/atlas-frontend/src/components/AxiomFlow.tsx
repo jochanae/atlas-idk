@@ -1200,10 +1200,8 @@ export function AxiomFlow({
   }, []);
 
   const resetView = useCallback(() => {
-    setDrillNode(null);
     setActiveCardNodeId(null);
-    setNodes(prev => layoutRadial(prev.map(node => ({ ...node, moved: false }))));
-    requestAnimationFrame(() => fitMap());
+    fitMap();
     toast("View Reset", {
       duration: 1000,
       style: {
@@ -2160,6 +2158,8 @@ export function AxiomFlow({
               resetView();
             }}
             onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
             style={{
               padding: "3px 10px",
               borderRadius: 6,
@@ -2189,6 +2189,8 @@ export function AxiomFlow({
             title={hydrateLoading ? "Hydrating…" : "Refresh flow from conversations"}
             onClick={(e) => { e.stopPropagation(); void hydrateFlow(); }}
             onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
             disabled={hydrateLoading}
             style={{
               width: 22, height: 22,

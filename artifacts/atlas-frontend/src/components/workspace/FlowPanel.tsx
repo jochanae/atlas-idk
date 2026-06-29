@@ -581,6 +581,9 @@ export function FlowPanel({ projectId, onHomeNav, onSendIntent, onFillIntent, on
                   key={lens}
                   type="button"
                   onClick={() => setLensView(lens)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
                   style={{
                     padding: "3px 9px 4px",
                     borderRadius: 999,
