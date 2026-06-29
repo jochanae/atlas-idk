@@ -1200,7 +1200,10 @@ export function AxiomFlow({
   }, []);
 
   const resetView = useCallback(() => {
-    fitMap();
+    setDrillNode(null);
+    setActiveCardNodeId(null);
+    setNodes(prev => layoutRadial(prev.map(node => ({ ...node, moved: false }))));
+    requestAnimationFrame(() => fitMap());
     toast("View Reset", {
       duration: 1000,
       style: {
