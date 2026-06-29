@@ -28,11 +28,16 @@ let scrollHidden = false;
 let atTop = true;
 let lastY = 0;
 let lastTarget: EventTarget | null = null;
+// Manual override from the floating handle. When set, wins over scroll/top
+// state until the next scroll movement (which clears it so auto resumes).
+let manual: "show" | "hide" | null = null;
 
 const listeners = new Set<Listener>();
 let installed = false;
 
 function compute(): boolean {
+  if (manual === "hide") return false;
+  if (manual === "show") return true;
   if (inputActive) return false;
   if (atTop) return true;
   return !scrollHidden;
