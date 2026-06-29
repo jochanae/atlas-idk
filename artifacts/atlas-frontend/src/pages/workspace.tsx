@@ -3964,6 +3964,7 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
 
 // ── Workspace ────────────────────────────────────────────────────────────────
 export default function Workspace() {
+  const composerVisibility = useComposerVisibility();
   const { projectId } = useParams();
   const [, setLocation] = useLocation();
   const id = Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]);
