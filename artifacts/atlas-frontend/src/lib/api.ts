@@ -1,7 +1,8 @@
-// API base URL. Empty string = same-origin (Replit proxy routes /api/* to
-// the local Express backend). Override at build time with VITE_API_URL when
-// pointing at a different backend (e.g. Cloud Run for production builds).
-const DEFAULT_API_BASE = "";
+// API base URL. Points to Cloud Run (production backend) by default so the
+// Lovable preview works out of the box. Override with VITE_API_URL at build
+// time when pointing at a different backend (e.g. the local Replit Express
+// server during development).
+const DEFAULT_API_BASE = "https://axiom-atlas-689827072865.us-east1.run.app";
 const configuredApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
 export const API_BASE = configuredApiBase.replace(/\/$/, "");
 
