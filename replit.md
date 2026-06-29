@@ -11,10 +11,14 @@ A unified development environment combining the Axiom frontend (atlas-idk) and b
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - Required env: `DATABASE_URL` — Replit built-in PostgreSQL (auto-provided, do NOT override with Supabase)
 
-## Sync Scripts (run these when source repos change)
+## Syncing with Lovable
 
-- `bash scripts/sync-frontend.sh` — pull latest from `jochanae/atlas-idk` (Lovable frontend repo) into `artifacts/atlas-frontend/src`
-- `bash scripts/sync-backend.sh` — pull latest from `jochanae/Axiom-Atlas` for backend migration review
+Replit and Lovable share the same repo (`jochanae/atlas-idk`). The sync scripts are no longer needed.
+
+- When **Lovable pushes** a change you want here: `git pull origin main`
+- When **Replit pushes** a change for Lovable: `git push` (Lovable sees it automatically)
+
+The old sync scripts (`scripts/sync-frontend.sh`, `scripts/sync-backend.sh`) are obsolete — ignore them.
 
 ## Stack
 
