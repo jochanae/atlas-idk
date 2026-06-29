@@ -201,23 +201,20 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   // with the same callbacks the mobile radial launcher uses. Single source of
   // truth for what each launcher action does.
   useEffect(() => {
+    // Decisions + Settings still resolve via page-supplied callbacks because
+    // they have real destinations everywhere (Ledger page / profile sheet).
+    // Files / Conversations / Search / Capture are owned by global launchers
+    // mounted in UnifiedShell — they MUST NOT fall back to per-page handlers,
+    // which historically caused silent routes back to Home.
     const onDecisions = () => props.onDecisions?.();
-    const onFiles = () => props.onFiles?.();
-    const onProjects = () => props.onProjects?.();
     const onSettings = () => props.onYou?.();
-    // Note: axiom:launcher-capture is handled globally by <CaptureLauncher/>
-    // mounted in UnifiedShell — do NOT navigate from here.
     window.addEventListener("axiom:launcher-decisions", onDecisions);
-    window.addEventListener("axiom:launcher-files", onFiles);
-    window.addEventListener("axiom:launcher-projects", onProjects);
     window.addEventListener("axiom:launcher-settings", onSettings);
     return () => {
       window.removeEventListener("axiom:launcher-decisions", onDecisions);
-      window.removeEventListener("axiom:launcher-files", onFiles);
-      window.removeEventListener("axiom:launcher-projects", onProjects);
       window.removeEventListener("axiom:launcher-settings", onSettings);
     };
-  }, [props.onDecisions, props.onFiles, props.onProjects, props.onYou]);
+  }, [props.onDecisions, props.onYou]);
 
   const pressStartTime = useRef<number>(0);
   const longPressTimer = useRef<number | null>(null);
