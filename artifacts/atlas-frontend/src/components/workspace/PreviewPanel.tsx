@@ -5,6 +5,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { LoadingSpinner } from "../ui/loading-spinner";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useIsMobile } from "@/hooks/useBreakpoints";
+import { useStageArtifact } from "@/hooks/useComposerVisibility";
 
 export type ManifestDecision = {
   firstArtifact: { name: string; description: string; steps: string[] };

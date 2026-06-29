@@ -9,6 +9,7 @@ import { useThemeMode } from "@/lib/theme";
 import { TheForge } from "../TheForge";
 import { fileToBase64Safe } from "@/lib/image-resize";
 import { reportError } from "../../lib/errorReporter";
+import { useStageArtifact } from "@/hooks/useComposerVisibility";
 
 const FLOW_NODE_TYPES = new Set<ArchNode["type"]>(["goal", "requirement", "blocker", "priority", "decision", "sprint", "wont"]);
 const FLOW_NODE_META = new Set(["must", "should", "could", "wont"]);
