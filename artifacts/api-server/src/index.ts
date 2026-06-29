@@ -316,22 +316,7 @@ async function ensureColumns(): Promise<void> {
   }
 }
 
-async function main() {
-  // Fire and forget — never block startup
-  initStripe().catch((err) => {
-    console.warn("Stripe init skipped:", err?.message ?? err);
-  });
-
-  // Sync schema before starting. Never block on failure.
-  // We await this so seeds that depend on the schema run after tables exist.
-  await pushSchema().catch((err) => {
-    logger.warn({ err }, "Schema push threw — server will start anyway");
-  });
-
-  // Belt-and-suspenders: ensure any columns that drizzle-kit push may have
-  // skipped (needs TTY for interactive prompts) are applied via raw SQL.
-  await ensureColumns();
-
+async function runMigrations(): Promise<void> {
   try {
     await migrate(db, { migrationsFolder: "../../lib/db/migrations" });
     logger.info("Boot migrate: applied cleanly (fresh/empty database).");
@@ -350,19 +335,34 @@ async function main() {
       message.includes("meta") ||
       message.includes("ENOENT");
     if (isDuplicateTable) {
-      // Live database schema is managed by drizzle-kit push, so duplicate tables are expected.
       logger.warn("Boot migrate: skipped — schema is managed by drizzle-kit push, not migration files. Expected on the live database; not an error.");
     } else if (isNoMigrationsFolder) {
-      // No migrations folder — schema is managed exclusively by drizzle-kit push. Non-fatal.
       logger.warn("Boot migrate: skipped — no migrations folder found. Schema is managed by drizzle-kit push.");
     } else {
-      logger.error({ err }, "Migration failed");
-      throw err;
+      // Non-fatal in production — log and continue rather than killing the process
+      logger.error({ err }, "Migration failed — server starting anyway");
     }
   }
+}
 
-  // Seed default genome rows for any existing projects that don't have one.
-  // Non-blocking — errors are logged, not thrown.
+async function backgroundInit(): Promise<void> {
+  // Fire and forget — never block port binding
+  initStripe().catch((err) => {
+    console.warn("Stripe init skipped:", err?.message ?? err);
+  });
+
+  // Sync schema. Never block on failure.
+  await pushSchema().catch((err) => {
+    logger.warn({ err }, "Schema push threw — server will continue anyway");
+  });
+
+  // Belt-and-suspenders: ensure columns drizzle-kit push may have skipped
+  await ensureColumns();
+
+  // Apply any migration files (no-ops on live DB managed by drizzle-kit push)
+  await runMigrations();
+
+  // Seeds — all fire-and-forget
   seedMissingGenomes().catch((err) => {
     logger.warn({ err }, "genome seed on startup failed — non-fatal");
   });
@@ -371,8 +371,6 @@ async function main() {
     logger.warn({ err }, "session seed on startup failed — non-fatal");
   });
 
-  // Backfill shaping data (wedge, differentiator, audience, purpose) for projects
-  // that have never had genome extraction run. Runs serially, non-blocking.
   backfillEmptyGenomes().catch((err) => {
     logger.warn({ err }, "genome backfill on startup failed — non-fatal");
   });
@@ -381,14 +379,10 @@ async function main() {
     logger.warn({ err }, "application model seed on startup failed — non-fatal");
   });
 
-  // One-time migration: copy any remaining genome data into Application Model rows.
-  // Safe to run on every boot (no-ops if already migrated). Non-blocking.
   migrateGenomeToApplicationModel().catch((err) => {
     logger.warn({ err }, "genome→AM migration on startup failed — non-fatal");
   });
 
-  // Backfill: set amField = 'intent' for all committed Decision entries that have no amField yet.
-  // Non-blocking — the column was just added; existing rows are null.
   db.execute(sql`
     UPDATE entries
     SET am_field = 'intent'
@@ -402,13 +396,25 @@ async function main() {
   }).catch((err) => {
     logger.warn({ err }, "ledger→AM backfill failed — non-fatal");
   });
+}
 
-  app.listen(port, () => {
-    console.log({ port }, "Server listening");
-    // Signal readiness immediately
+async function main() {
+  // Bind to the port FIRST so Replit's port-detection timeout never fires.
+  // All slow work (schema push, migrations, seeds) runs in backgroundInit
+  // which is launched from the listen callback after the port is already open.
+  const httpServer = app.listen(port, "0.0.0.0", () => {
+    logger.info({ port }, "Server listening");
     if (process.send) process.send("ready");
-    // Start background worker for scheduled health checks
     startScheduledChecksWorker();
+
+    backgroundInit().catch((err) => {
+      logger.error({ err }, "backgroundInit failed — server still running");
+    });
+  });
+
+  httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    logger.fatal({ err, port }, "Failed to bind port — process will exit");
+    process.exit(1);
   });
 }
 

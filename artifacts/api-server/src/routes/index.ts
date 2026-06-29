@@ -57,6 +57,9 @@ import ledgerRouter from "./ledger";
 
 const router: IRouter = Router();
 
+// Root ping — platform health probe hits GET /api; must return 200 without auth
+router.get("/", (_req, res) => { res.json({ ok: true }); });
+
 // Fully public — no auth
 router.use(stripeRouter);
 router.use(authRouter);
