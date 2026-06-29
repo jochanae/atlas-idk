@@ -345,6 +345,33 @@ export async function requireAdmin(
   next();
 }
 
+// POST /api/auth/admin/force-reset — force-set a user's password via ADMIN_SECRET
+// Gated by ADMIN_SECRET env var. Safe to leave deployed — without the secret it's unreachable.
+// Usage: POST /api/auth/admin/force-reset  { email, newPassword }
+//        Header: x-admin-secret: <ADMIN_SECRET>
+router.post("/auth/admin/force-reset", async (req, res): Promise<void> => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret) { res.status(404).json({ error: "Not found" }); return; }
+  const provided = req.headers["x-admin-secret"];
+  if (!provided || provided !== adminSecret) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { email, newPassword } = req.body as { email?: string; newPassword?: string };
+  if (!email || !newPassword) { res.status(400).json({ error: "email and newPassword are required" }); return; }
+  if (newPassword.length < 8) { res.status(400).json({ error: "Password must be at least 8 characters" }); return; }
+
+  const [user] = await db.select({ id: usersTable.id, email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.email, email.toLowerCase())).limit(1);
+  if (!user) { res.status(404).json({ error: `No user found with email: ${email}` }); return; }
+
+  const passwordHash = await hashPassword(newPassword);
+  await db.update(usersTable)
+    .set({ passwordHash, resetToken: null, resetTokenExpiresAt: null })
+    .where(eq(usersTable.id, user.id));
+  await db.delete(userSessionsTable).where(eq(userSessionsTable.userId, user.id));
+
+  res.json({ ok: true, message: `Password updated for ${user.email}. All existing sessions invalidated.` });
+});
+
 // GET /api/auth/dev-test-login — DEV ONLY: creates a fresh test account and sets session cookie
 // Blocked in production. Used by automated e2e tests to bypass OAuth UI.
 router.get("/auth/dev-test-login", async (req, res): Promise<void> => {
