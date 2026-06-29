@@ -2361,7 +2361,7 @@ export default function Home() {
 
   const [typewriterPaused, setTypewriterPaused] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
+  const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused || showOverviewSheet);
 
   useEffect(() => {
     if (!projects || projects.length === 0) return;
@@ -3904,7 +3904,7 @@ export default function Home() {
             {/* Greeting — same in ambient + Global Insight. GI is signaled
                 only by the subheader "● Global Insight" pill, so the home shell
                 stays visually identical. */}
-            {nexusChat.messages.length === 0 && (
+            {nexusChat.messages.length === 0 && !showOverviewSheet && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
@@ -4566,7 +4566,7 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
-              {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || globalInsightOpen) && (
+              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || globalInsightOpen) && (
                 <div
                   style={{
                     position: "absolute",
