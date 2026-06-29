@@ -1,19 +1,11 @@
 // API base URL — resolved once at startup.
-// Priority: explicit env var → environment detection → Cloud Run fallback
-// - Replit domains (.replit.dev, .replit.app, localhost): same-origin → local Express backend
-// - Everywhere else (Lovable preview, axiomsystem.app, etc.): Cloud Run
-const CLOUD_RUN = "https://axiom-atlas-689827072865.us-east1.run.app";
-
+// Priority: explicit VITE_API_URL env var → same-origin (Replit backend)
+// For Lovable preview: set VITE_API_URL to the Replit deployed URL in Lovable's
+// project settings (Settings → Environment → add VITE_API_URL).
 function resolveApiBase(): string {
   const explicit = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
   if (explicit) return explicit.replace(/\/$/, "");
-  if (typeof window !== "undefined") {
-    const h = window.location.hostname;
-    if (h === "localhost" || h.endsWith(".replit.dev") || h.endsWith(".replit.app")) {
-      return ""; // same-origin → Replit backend
-    }
-  }
-  return CLOUD_RUN;
+  return ""; // same-origin → Replit backend
 }
 
 export const API_BASE = resolveApiBase();
