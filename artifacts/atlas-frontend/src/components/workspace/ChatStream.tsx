@@ -402,6 +402,70 @@ export function ChatStream(props: ChatStreamProps) {
     return { buildGroupMap: bgMap, suppressedLedgerSet: supLedger };
   }, [messages]);
 
+  // ---- Inline activity interleaving -----------------------------------------
+  // Assign each event to the index of the message AFTER which it should render
+  // (based on timestamp). Events newer than the last message go at the tail.
+  // On mobile, runs of "quiet" events between two anchors collapse into one
+  // BatchedActivityCard; "important" events always render inline immediately.
+  const isMobile = useIsMobile();
+  const activityByAnchor = useMemo(() => {
+    const map = new Map<number, WorkspaceActivityItem[]>();
+    if (!activityEvents || activityEvents.length === 0) return map;
+
+    const msgTimes = messages.map((m) => m.sentAt ? new Date(m.sentAt).getTime() : 0);
+    for (const ev of activityEvents) {
+      const t = new Date(ev.timestamp).getTime();
+      let anchor = -1;
+      for (let i = 0; i < msgTimes.length; i++) {
+        if (msgTimes[i] && msgTimes[i] <= t) anchor = i;
+      }
+      const arr = map.get(anchor) ?? [];
+      arr.push(ev);
+      map.set(anchor, arr);
+    }
+    return map;
+  }, [activityEvents, messages]);
+
+  const renderActivityForAnchor = (anchor: number) => {
+    const evs = activityByAnchor.get(anchor);
+    if (!evs || evs.length === 0) return null;
+    if (!isMobile) {
+      return evs.map((ev, k) => (
+        <SystemActivityCard key={`act-${anchor}-${k}`} item={ev} />
+      ));
+    }
+    // Mobile: render important immediately, batch consecutive quiet.
+    const out: ReactNode[] = [];
+    let buf: WorkspaceActivityItem[] = [];
+    const flush = (key: string) => {
+      if (buf.length === 0) return;
+      if (buf.length === 1) out.push(<SystemActivityCard key={key} item={buf[0]} />);
+      else out.push(<BatchedActivityCard key={key} items={buf} />);
+      buf = [];
+    };
+    evs.forEach((ev, k) => {
+      if (classifyActivity(ev) === "important") {
+        flush(`act-${anchor}-b-${k}`);
+        out.push(<SystemActivityCard key={`act-${anchor}-${k}`} item={ev} />);
+      } else {
+        buf.push(ev);
+      }
+    });
+    flush(`act-${anchor}-tail`);
+    return out;
+  };
+
+  // ---- Suggestion chips -----------------------------------------------------
+  // Only when stream is idle AND the last message is a completed assistant msg.
+  const lastMsg = messages[messages.length - 1];
+  const showSuggestionChips =
+    !chatPending &&
+    !activityStream.active &&
+    lastMsg?.role === "assistant" &&
+    !lastMsg.streaming;
+  const lastAssistantText = showSuggestionChips ? (lastMsg?.content ?? "") : "";
+
+
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
