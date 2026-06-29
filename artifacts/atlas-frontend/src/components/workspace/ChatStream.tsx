@@ -745,8 +745,17 @@ export function ChatStream(props: ChatStreamProps) {
       ) : null}
       {thinkingBlock}
 
+      {showSuggestionChips && onSuggestionTap && (
+        <SuggestionChipRail
+          lastAssistantText={lastAssistantText}
+          onTap={onSuggestionTap}
+          onLongPress={onSuggestionPark ?? onSuggestionTap}
+        />
+      )}
 
       <div ref={bottomRef} />
+
+
 
 
     </div>
