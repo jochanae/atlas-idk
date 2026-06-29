@@ -573,7 +573,9 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
+      {renderActivityForAnchor(-1)}
       {messages.map((msg, i) => {
+
         // When a LOCAL_APPLY_SUCCESS follows an assistant message, we render
         // the LedgerSurface *after* that assistant bubble (sentence first, then
         // the APPLIED block).  Skip it here so it isn't double-rendered.
