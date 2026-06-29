@@ -96,6 +96,8 @@ import { ChatComposer } from "@/components/workspace/ChatComposer";
 import { DeepDiveSheet } from "@/components/DeepDiveSheet";
 import { ParkSheet } from "@/components/ParkSheet";
 import { UnifiedConversationSurface } from "@/components/UnifiedConversationSurface";
+import { useComposerVisibility } from "@/hooks/useComposerVisibility";
+import { useShellStore } from "@/store/shellStore";
 import { MemoryTab } from "@/components/workspace/MemoryTab";
 import { BlueprintsTab } from "@/components/BlueprintsTab";
 import { BlueprintPanel } from "@/components/workspace/BlueprintPanel";
