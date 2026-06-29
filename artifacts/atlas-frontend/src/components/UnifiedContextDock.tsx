@@ -175,11 +175,13 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const [showAtlasHub, setShowAtlasHub] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
 
-  // NOTE: --atlas-dock-height is intentionally held at a constant 64px reserve
-  // regardless of dock visibility. Shrinking it on hide caused the mobile
-  // right-panel overlay (hardcoded bottom: 64) to expose the composer on
-  // surfaces where it was previously hidden (preview / files / map / etc).
-  // The dock's visual slide is handled separately by its own transform.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.style.setProperty("--atlas-dock-height", dockVisible ? "64px" : "18px");
+    return () => {
+      document.documentElement.style.setProperty("--atlas-dock-height", "64px");
+    };
+  }, [dockVisible]);
 
   useEffect(() => {
     if (showAtlasHub) {
