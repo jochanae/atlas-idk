@@ -46,7 +46,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2 } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
