@@ -2361,7 +2361,7 @@ export default function Home() {
 
   const [typewriterPaused, setTypewriterPaused] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused);
+  const placeholder = useTypewriter(PLACEHOLDERS, typewriterPaused || showOverviewSheet);
 
   useEffect(() => {
     if (!projects || projects.length === 0) return;
