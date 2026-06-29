@@ -679,7 +679,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               angleDeg: 30,
               color: "#3B82F6",
               icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
-              action: () => { setShowAtlasHub(false); props.onFiles?.(); },
+              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:launcher-files")); },
             },
             {
               label: "Settings",
@@ -693,7 +693,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               angleDeg: 150,
               color: "#06B6D4",
               icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-              action: () => { setShowAtlasHub(false); props.onProjects?.(); },
+              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:launcher-conversations")); },
             },
             {
               label: "Capture",
