@@ -175,6 +175,17 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   const [showAtlasHub, setShowAtlasHub] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
 
+  // Mechanically link the composer + chat content to the dock's slide. When
+  // the dock hides we shrink --atlas-dock-height to the 18px peek so every
+  // consumer (workspace container paddingBottom, home --atlas-dock-clearance)
+  // reflows in lockstep instead of leaving an empty band at the bottom.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.style.setProperty("--atlas-dock-height", dockVisible ? "64px" : "18px");
+    return () => { root.style.removeProperty("--atlas-dock-height"); };
+  }, [dockVisible]);
+
   useEffect(() => {
     if (showAtlasHub) {
       // Double RAF ensures CSS transition fires after DOM insertion
