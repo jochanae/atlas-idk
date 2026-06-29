@@ -4,9 +4,9 @@
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "dev": "pnpm --filter @workspace/atlas-frontend dev",
-    "build": "pnpm --filter @workspace/atlas-frontend build",
-    "build:dev": "pnpm --filter @workspace/atlas-frontend build:dev",
+    "dev": "cd artifacts/atlas-frontend && npx vite --host 0.0.0.0",
+    "build": "cd artifacts/atlas-frontend && npx vite build",
+    "build:dev": "cd artifacts/atlas-frontend && npx vite build --mode development",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
