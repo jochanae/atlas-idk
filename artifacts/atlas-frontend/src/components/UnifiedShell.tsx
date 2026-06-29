@@ -22,6 +22,7 @@ import { HudToggleDot } from "@/components/HudToggleDot";
 import AtlasMemoryHUD from "@/components/workspace/AtlasMemoryHUD";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { SpecifySheet } from "@/components/SpecifySheet";
+import { CommandPalette } from "@/components/CommandPalette";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useQueryClient } from "@tanstack/react-query";
