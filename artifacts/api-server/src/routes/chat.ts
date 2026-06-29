@@ -2181,7 +2181,6 @@ router.post("/chat", async (req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
-  writeStep(res, { verb: "Reviewing", target: "workspace context", phase: "scan" });
 
   const { sessionId = 0, message, history = [], entries = [] } = body;
   const projectId = body.projectId ?? 0;

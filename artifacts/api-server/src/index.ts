@@ -95,6 +95,21 @@ async function pushSchema(): Promise<void> {
 async function ensureColumns(): Promise<void> {
   try {
     await db.execute(sql`
+      ALTER TABLE projects
+        ADD COLUMN IF NOT EXISTS conversation_id text
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS projects_conversation_id_uq
+        ON projects (conversation_id)
+        WHERE conversation_id IS NOT NULL
+    `);
+    logger.info("ensureColumns: projects.conversation_id verified");
+  } catch (err) {
+    logger.warn({ err }, "ensureColumns: projects.conversation_id failed — server will start anyway");
+  }
+
+  try {
+    await db.execute(sql`
       ALTER TABLE project_flow_canvas
         ADD COLUMN IF NOT EXISTS drill_cache jsonb NOT NULL DEFAULT '{}'::jsonb
     `);

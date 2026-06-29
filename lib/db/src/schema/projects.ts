@@ -30,6 +30,7 @@ export const projectsTable = pgTable("projects", {
   projectType: text("project_type").notNull().default("general"),
   appSourceFileCount: integer("app_source_file_count"),
   appBuildSucceeded: boolean("app_build_succeeded"),
+  conversationId: text("conversation_id"),
 });
 
 export const insertProjectSchema = createInsertSchema(projectsTable).omit({ id: true, createdAt: true, updatedAt: true, userId: true });

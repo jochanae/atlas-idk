@@ -54,6 +54,7 @@ import deployRouter from "./deploy";
 import zipRouter from "./zip";
 import searchRouter from "./search";
 import ledgerRouter from "./ledger";
+import conversationsRouter from "./conversations";
 
 const router: IRouter = Router();
 
@@ -137,6 +138,9 @@ router.use(requireAuth, fsRouter);
 
 // Obsidian Ledger — assets + transactions + summary
 router.use(requireAuth, ledgerRouter);
+
+// Conversation-first routing — create a conversation/project and resolve by conversationId
+router.use(requireAuth, conversationsRouter);
 
 // Self-repair routes — super_admin only
 router.use(requireAdmin, selfRouter);

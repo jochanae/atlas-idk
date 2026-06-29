@@ -2736,8 +2736,28 @@ export default function Home() {
       return;
     }
     setCreateError(null);
-    setShowNewProjectModal(true);
-  }, [isFree, projects]);
+    const authToken = localStorage.getItem("atlas-auth-token");
+    fetch("/api/conversations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+      },
+      credentials: "include",
+      body: JSON.stringify({}),
+    })
+      .then((r) => r.json())
+      .then((data: { id?: number; error?: string }) => {
+        if (data?.id) {
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          setLocation(`/project/${data.id}`);
+        }
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Failed to create project";
+        setCreateError(msg);
+      });
+  }, [isFree, projects, queryClient, setLocation]);
 
   useEffect(() => {
     try { sessionStorage.removeItem("atlas-from-landing"); } catch {}
@@ -2847,8 +2867,8 @@ export default function Home() {
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     submitInFlightRef.current = true;
-    const shouldStayOnHome = true;
-    if (!globalInsightOpen && !thinkOutLoudInlineRef.current) {
+    const shouldStayOnHome = options?.forceStayOnHome ?? false;
+    if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
     }
     if (!shouldStayOnHome && !backendReady) {
@@ -2952,17 +2972,18 @@ export default function Home() {
 
     try {
       const authToken = localStorage.getItem("atlas-auth-token");
-      const createRes = await fetch("/api/projects", {
+      const createRes = await fetch("/api/conversations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ name: "New Project" }),
+        body: JSON.stringify({ initialMessage: messageText }),
       });
       const project = (await createRes.json().catch(() => null)) as {
         id?: number | string;
+        conversationId?: string;
         error?: string;
         message?: string;
       } | null;

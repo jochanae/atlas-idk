@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, Component, type ReactNode } from "react";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, useParams } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
 import { Toaster } from "@/components/ui/toaster";
@@ -96,7 +96,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 const SKIP_TRANSITION = ["/landing", "/login", "/reset-password"];
 
 function isUnifiedShellPath(pathname: string): boolean {
-  return pathname === "/home" || pathname.startsWith("/project/");
+  return pathname === "/home" || pathname.startsWith("/project/") || pathname.startsWith("/workspace/");
 }
 
 function PageTransition() {
@@ -158,6 +158,45 @@ function PageTransition() {
 }
 
 
+// ── Workspace-by-conversationId resolver ──────────────────────────────────────
+// Resolves a UUID conversationId to the numeric projectId, then redirects to
+// /project/:id which is the canonical workspace URL. This gives a stable
+// conversation-first entry point without requiring the user to know the
+// internal project number.
+function WorkspaceByConversationId() {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!conversationId) { setLocation("/home"); return; }
+    const authToken = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+    fetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+      credentials: "include",
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+    })
+      .then((r) => r.json())
+      .then((data: { id?: number; error?: string }) => {
+        if (data?.id) {
+          setLocation(`/project/${data.id}`, { replace: true });
+        } else {
+          setLocation("/home");
+        }
+      })
+      .catch(() => setLocation("/home"));
+  }, [conversationId, setLocation]);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      height: "100vh", background: "var(--atlas-bg)",
+      color: "rgba(201,162,76,0.6)", fontSize: 12, letterSpacing: "0.2em",
+      textTransform: "uppercase", fontFamily: "var(--app-font-mono)",
+    }}>
+      opening workspace…
+    </div>
+  );
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 function UnifiedShellRoutes() {
   return (
@@ -165,6 +204,7 @@ function UnifiedShellRoutes() {
       <Switch>
         <Route path="/home" component={Home} />
         <Route path="/project/:projectId" component={Workspace} />
+        <Route path="/workspace/:conversationId" component={WorkspaceByConversationId} />
       </Switch>
     </UnifiedShell>
   );
