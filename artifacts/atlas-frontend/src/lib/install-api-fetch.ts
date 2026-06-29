@@ -57,11 +57,36 @@ if (typeof window !== "undefined" && !window.__atlasFetchPatched) {
     return false;
   };
 
+  // Read the best available auth token:
+  // 1. Our own session token (custom email/password login)
+  // 2. Supabase session token (Lovable / Supabase login flow)
+  //    Supabase stores sessions as: sb-<projectRef>-auth-token → { access_token, ... }
+  const getEffectiveToken = (): string | null => {
+    try {
+      const atlasToken = localStorage.getItem("atlas-auth-token");
+      if (atlasToken) return atlasToken;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && /^sb-[a-z0-9]+-auth-token$/.test(key)) {
+          try {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const session = JSON.parse(raw);
+              const token = session?.access_token;
+              if (typeof token === "string" && token.length > 0) return token;
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+    return null;
+  };
+
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const target = rewriteUrl(input);
     let nextInit = init;
     if (isApiTarget(target)) {
-      const token = localStorage.getItem("atlas-auth-token");
+      const token = getEffectiveToken();
       const headers = new Headers(init?.headers ?? (target instanceof Request ? target.headers : undefined));
       if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
       nextInit = {
