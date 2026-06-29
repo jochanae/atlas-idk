@@ -276,7 +276,17 @@ export interface ChatStreamProps {
 
   // Build Readiness Gate: re-send original message bypassing the gate
   onBuildAnyway?: (message: string) => void;
+
+  // Inline workspace activity (GitHub commits, decisions, etc.).
+  // Interleaved between messages by timestamp. Quiet events are batched on mobile.
+  activityEvents?: WorkspaceActivityItem[];
+
+  // Suggestion chip rail handlers. Rail appears below the last assistant
+  // message only when the stream is idle (chatPending=false, not streaming).
+  onSuggestionTap?: (text: string) => void;
+  onSuggestionPark?: (text: string) => void;
 }
+
 
 // Helper alias so we don't re-derive AssistantBubble prop types here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
