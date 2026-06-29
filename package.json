@@ -4,9 +4,9 @@
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "dev": "cd artifacts/atlas-frontend && PORT=${PORT:-8080} BASE_PATH=${BASE_PATH:-/} npx vite --host 0.0.0.0",
-    "build": "cd artifacts/atlas-frontend && PORT=${PORT:-8080} BASE_PATH=${BASE_PATH:-/} npx vite build",
-    "build:dev": "cd artifacts/atlas-frontend && PORT=${PORT:-8080} BASE_PATH=${BASE_PATH:-/} npx vite build --mode development",
+    "dev": "cd artifacts/atlas-frontend && PORT=${PORT:-8080} BASE_PATH=${BASE_PATH:-/} ./node_modules/.bin/vite --host 0.0.0.0",
+    "build": "cd artifacts/atlas-frontend && PORT=${PORT:-8080} BASE_PATH=${BASE_PATH:-/} ./node_modules/.bin/vite build",
+    "build:dev": "cd artifacts/atlas-frontend && PORT=${PORT:-8080} BASE_PATH=${BASE_PATH:-/} ./node_modules/.bin/vite build --mode development",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
