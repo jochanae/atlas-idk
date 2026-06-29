@@ -8055,6 +8055,7 @@ export default function Workspace() {
             <div
               onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
               onTouchEnd={(e) => {
+                if (mobileTab === "map") return;
                 if (rightFullscreen) return;
                 const dx = e.changedTouches[0].clientX - touchStartX.current;
                 if (dx > 60) setRightOpen(false);
