@@ -742,16 +742,26 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 justifyContent: "center",
                 pointerEvents: "none",
               }}>
-                {/* Orbital ring */}
+                {/* Orbital tracks — ultra-thin guide rings for spatial depth */}
                 <div style={{
                   position: "absolute",
                   width: RADIUS * 2 + 60,
                   height: RADIUS * 2 + 60,
                   borderRadius: "50%",
-                  border: "1px solid rgba(201,162,76,0.10)",
+                  border: "1px solid rgba(255,255,255,0.05)",
                   pointerEvents: "none",
                   opacity: hubOpen ? 1 : 0,
                   transition: "opacity 400ms ease 80ms",
+                }} />
+                <div style={{
+                  position: "absolute",
+                  width: RADIUS * 2 - 8,
+                  height: RADIUS * 2 - 8,
+                  borderRadius: "50%",
+                  border: "1px solid rgba(255,255,255,0.035)",
+                  pointerEvents: "none",
+                  opacity: hubOpen ? 1 : 0,
+                  transition: "opacity 500ms ease 140ms",
                 }} />
 
                 {/* Radial items */}
@@ -768,7 +778,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        gap: 6,
+                        gap: 14,
                         pointerEvents: "auto",
                         transform: hubOpen
                           ? `translate(${tx}px, ${ty}px) scale(1)`
@@ -784,44 +794,47 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                         style={{
                           width: 52, height: 52,
                           borderRadius: "50%",
-                          background: `radial-gradient(circle at 40% 35%, ${item.color}22, ${item.color}09)`,
-                          backdropFilter: "blur(16px)",
-                          WebkitBackdropFilter: "blur(16px)",
-                          border: `1px solid ${item.color}55`,
-                          boxShadow: `0 0 0 1px ${item.color}22, 0 4px 24px ${item.color}30, inset 0 1px 0 rgba(255,255,255,0.08)`,
+                          // Transparent vessel — the aura, not a hard ring, defines the node
+                          background: "transparent",
+                          backdropFilter: "blur(14px)",
+                          WebkitBackdropFilter: "blur(14px)",
+                          border: "none",
+                          // Volumetric drop-glow tinted by the icon's color signature
+                          boxShadow: `0 0 24px 2px ${item.color}33, 0 0 56px 8px ${item.color}1A, inset 0 0 18px ${item.color}14`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer",
                           color: item.color,
-                          transition: "transform 120ms ease, box-shadow 120ms ease",
+                          transition: "transform 160ms ease, box-shadow 200ms ease",
                           WebkitTapHighlightColor: "transparent",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "scale(1.12)";
-                          e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}44, 0 6px 32px ${item.color}55, inset 0 1px 0 rgba(255,255,255,0.12)`;
+                          e.currentTarget.style.transform = "scale(1.10)";
+                          e.currentTarget.style.boxShadow = `0 0 32px 4px ${item.color}55, 0 0 72px 12px ${item.color}26, inset 0 0 22px ${item.color}22`;
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = "scale(1)";
-                          e.currentTarget.style.boxShadow = `0 0 0 1px ${item.color}22, 0 4px 24px ${item.color}30, inset 0 1px 0 rgba(255,255,255,0.08)`;
+                          e.currentTarget.style.boxShadow = `0 0 24px 2px ${item.color}33, 0 0 56px 8px ${item.color}1A, inset 0 0 18px ${item.color}14`;
                         }}
-                        onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.92)"; }}
-                        onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1.12)"; }}
+                        onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.94)"; }}
+                        onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1.10)"; }}
                       >
                         {item.icon}
                       </button>
                       <span style={{
-                        fontSize: 9.5,
+                        fontSize: 8.5,
                         fontFamily: "var(--app-font-mono)",
-                        fontWeight: 600,
-                        letterSpacing: "0.07em",
-                        color: "rgba(255,255,255,0.72)",
+                        fontWeight: 500,
+                        letterSpacing: "0.22em",
+                        color: "rgba(255,255,255,0.55)",
                         textTransform: "uppercase",
                         textAlign: "center",
                         lineHeight: 1.25,
                         whiteSpace: "nowrap",
                         pointerEvents: "none",
-                        textShadow: "0 1px 8px rgba(0,0,0,0.9)",
+                        textShadow: "0 1px 12px rgba(0,0,0,0.95)",
+                        marginTop: 2,
                       }}>
                         {item.label}
                       </span>
@@ -829,7 +842,17 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                   );
                 })}
 
-                {/* Central anchor */}
+                {/* Central anchor — soft layered ambient halo, no hard ring */}
+                <div style={{
+                  position: "absolute",
+                  width: 200, height: 200,
+                  borderRadius: "50%",
+                  pointerEvents: "none",
+                  background: "radial-gradient(circle at 50% 50%, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.08) 28%, rgba(212,175,55,0.025) 55%, rgba(212,175,55,0) 78%)",
+                  opacity: hubOpen ? 1 : 0,
+                  transition: "opacity 500ms ease 80ms",
+                  filter: "blur(2px)",
+                }} />
                 <button
                   className="hub-center"
                   type="button"
@@ -838,14 +861,13 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                     position: "absolute",
                     width: 68, height: 68,
                     borderRadius: "50%",
-                    border: "2px solid var(--atlas-gold)",
-                    background: "var(--atlas-bg)",
+                    border: "none",
+                    background: "transparent",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     cursor: "pointer",
                     pointerEvents: "auto",
-                    boxShadow: "0 0 0 8px rgba(201,162,76,0.08), 0 0 40px rgba(201,162,76,0.35), 0 0 80px rgba(201,162,76,0.12)",
                     WebkitTapHighlightColor: "transparent",
                   }}
                 >
