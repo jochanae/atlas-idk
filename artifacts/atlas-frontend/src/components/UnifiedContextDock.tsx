@@ -201,23 +201,20 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
   // with the same callbacks the mobile radial launcher uses. Single source of
   // truth for what each launcher action does.
   useEffect(() => {
+    // Decisions + Settings still resolve via page-supplied callbacks because
+    // they have real destinations everywhere (Ledger page / profile sheet).
+    // Files / Conversations / Search / Capture are owned by global launchers
+    // mounted in UnifiedShell — they MUST NOT fall back to per-page handlers,
+    // which historically caused silent routes back to Home.
     const onDecisions = () => props.onDecisions?.();
-    const onFiles = () => props.onFiles?.();
-    const onProjects = () => props.onProjects?.();
     const onSettings = () => props.onYou?.();
-    // Note: axiom:launcher-capture is handled globally by <CaptureLauncher/>
-    // mounted in UnifiedShell — do NOT navigate from here.
     window.addEventListener("axiom:launcher-decisions", onDecisions);
-    window.addEventListener("axiom:launcher-files", onFiles);
-    window.addEventListener("axiom:launcher-projects", onProjects);
     window.addEventListener("axiom:launcher-settings", onSettings);
     return () => {
       window.removeEventListener("axiom:launcher-decisions", onDecisions);
-      window.removeEventListener("axiom:launcher-files", onFiles);
-      window.removeEventListener("axiom:launcher-projects", onProjects);
       window.removeEventListener("axiom:launcher-settings", onSettings);
     };
-  }, [props.onDecisions, props.onFiles, props.onProjects, props.onYou]);
+  }, [props.onDecisions, props.onYou]);
 
   const pressStartTime = useRef<number>(0);
   const longPressTimer = useRef<number | null>(null);
@@ -682,7 +679,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               angleDeg: 30,
               color: "#3B82F6",
               icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
-              action: () => { setShowAtlasHub(false); props.onFiles?.(); },
+              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:launcher-files")); },
             },
             {
               label: "Settings",
@@ -696,7 +693,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               angleDeg: 150,
               color: "#06B6D4",
               icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-              action: () => { setShowAtlasHub(false); props.onProjects?.(); },
+              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:launcher-conversations")); },
             },
             {
               label: "Capture",
@@ -731,11 +728,12 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 }}
               />
 
-              {/* Radial stage — centered on screen, shifted up slightly to clear dock */}
+              {/* Radial stage — centered on screen, lifted clear of safe-area dock */}
               <div style={{
                 position: "fixed",
                 left: 0, right: 0,
-                top: 0, bottom: 64,
+                top: 0,
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
                 zIndex: 2001,
                 display: "flex",
                 alignItems: "center",

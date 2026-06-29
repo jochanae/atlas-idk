@@ -24,6 +24,9 @@ import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { SpecifySheet } from "@/components/SpecifySheet";
 import { CommandPalette } from "@/components/CommandPalette";
 import { CaptureLauncher } from "@/components/CaptureLauncher";
+import { SearchLauncher } from "@/components/SearchLauncher";
+import { FilesLauncher } from "@/components/FilesLauncher";
+import { ConversationsLauncher } from "@/components/ConversationsLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useQueryClient } from "@tanstack/react-query";
@@ -2208,6 +2211,9 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       <SpecifySheet />
       <CommandPalette />
       <CaptureLauncher />
+      <SearchLauncher />
+      <FilesLauncher />
+      <ConversationsLauncher />
     </ShellStateContext.Provider>
   );
 }
