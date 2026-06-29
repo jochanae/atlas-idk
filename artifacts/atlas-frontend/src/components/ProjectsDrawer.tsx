@@ -3,7 +3,7 @@ import { useParkedCount } from "@/hooks/useParkedCount";
 import { Project } from "@workspace/api-client-react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
-import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine } from "lucide-react";
+import { Plus, X, ChevronDown, ChevronRight, BookOpen, Inbox, LayoutDashboard, Globe, Wand2, PenLine, Briefcase, Wrench } from "lucide-react";
 import { CompactReadinessRing } from "./ReadinessRing";
 import { LifecycleGlyph } from "./LifecycleGlyph";
 
