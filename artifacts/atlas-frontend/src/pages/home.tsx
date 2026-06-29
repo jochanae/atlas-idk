@@ -3871,7 +3871,6 @@ export default function Home() {
                     ? "calc(100dvh - var(--atlas-header-height) - var(--atlas-dock-clearance))"
                     : undefined,
                   minWidth: 0,
-                  transition: "padding-bottom 240ms cubic-bezier(.32,.72,0,1), height 240ms cubic-bezier(.32,.72,0,1), min-height 240ms cubic-bezier(.32,.72,0,1)",
                 }}
               >
 
