@@ -28,11 +28,16 @@ let scrollHidden = false;
 let atTop = true;
 let lastY = 0;
 let lastTarget: EventTarget | null = null;
+// Manual override from the floating handle. When set, wins over scroll/top
+// state until the next scroll movement (which clears it so auto resumes).
+let manual: "show" | "hide" | null = null;
 
 const listeners = new Set<Listener>();
 let installed = false;
 
 function compute(): boolean {
+  if (manual === "hide") return false;
+  if (manual === "show") return true;
   if (inputActive) return false;
   if (atTop) return true;
   return !scrollHidden;
@@ -77,6 +82,11 @@ function onScroll(e: Event) {
   }
 
   if (Math.abs(dy) > 2) {
+    // Any meaningful scroll clears manual override so auto behavior resumes.
+    if (manual !== null) {
+      manual = null;
+      changed = true;
+    }
     if (dy > SCROLL_THRESH && !scrollHidden) {
       scrollHidden = true;
       changed = true;
@@ -135,6 +145,7 @@ function install() {
 export const dockVisibility = {
   peek() {
     let changed = false;
+    if (manual === "hide") { manual = null; changed = true; }
     if (scrollHidden) { scrollHidden = false; changed = true; }
     if (inputActive) { inputActive = false; changed = true; }
     if (changed) emit();
@@ -144,6 +155,17 @@ export const dockVisibility = {
       inputActive = active;
       emit();
     }
+  },
+  /** Manual toggle from the floating handle. Flips current visible state. */
+  toggleManual() {
+    const visible = compute();
+    manual = visible ? "hide" : "show";
+    if (manual === "show") {
+      // Clearing scroll-hidden makes the show stick even after manual clears.
+      scrollHidden = false;
+      inputActive = false;
+    }
+    emit();
   },
 };
 
