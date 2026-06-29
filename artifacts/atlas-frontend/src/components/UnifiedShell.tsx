@@ -120,20 +120,26 @@ function ShellDrawerButton() {
 function ShellWordmark() {
   const [location, setLocation] = useLocation();
   const isTinyMobile = useIsTinyScreen();
-  const handleClick = () => {
+  const isMobile = useIsMobile();
+  const goHome = () => {
     if (location === "/home") {
       window.dispatchEvent(new CustomEvent("axiom:home-reset"));
     } else {
       setLocation("/home");
     }
   };
+  const openLauncher = () => window.dispatchEvent(new CustomEvent("axiom:open-launcher"));
+  // Desktop: A-logo opens the command palette (mirror of the mobile radial launcher).
+  // AXIOM wordmark stays as the "home" affordance. Mobile keeps the original
+  // home-on-tap behaviour for the whole button.
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
       <button
         type="button"
-        onClick={handleClick}
-        aria-label={location === "/home" ? "Return to ambient Nexus" : "Go home"}
-        style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: 6 }}
+        onClick={isMobile ? goHome : openLauncher}
+        aria-label={isMobile ? (location === "/home" ? "Return to ambient Nexus" : "Go home") : "Open command palette"}
+        title={isMobile ? undefined : "Open command palette  ⌘K"}
+        style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", borderRadius: 8 }}
       >
         <img
           src="/axiom-logo.svg"
@@ -143,22 +149,29 @@ function ShellWordmark() {
           height={isTinyMobile ? 22 : 24}
           style={{ flexShrink: 0, borderRadius: "20%", display: "block" }}
         />
-        {!isTinyMobile && (
-          <span
-            style={{
-              fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
-              fontSize: "var(--ts-label)",
-              fontWeight: 700,
-              letterSpacing: "0.18em",
-              lineHeight: "var(--lh-tight)",
-              color: "var(--atlas-gold)",
-              textTransform: "uppercase",
-            }}
-          >
-            AXIOM
-          </span>
-        )}
       </button>
+      {!isTinyMobile && (
+        <button
+          type="button"
+          onClick={goHome}
+          aria-label={location === "/home" ? "Return to ambient Nexus" : "Go home"}
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: "4px 4px 4px 2px",
+            fontFamily: "'IBM Plex Mono', var(--app-font-mono)",
+            fontSize: "var(--ts-label)",
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            lineHeight: "var(--lh-tight)",
+            color: "var(--atlas-gold)",
+            textTransform: "uppercase",
+          }}
+        >
+          AXIOM
+        </button>
+      )}
     </div>
   );
 }
