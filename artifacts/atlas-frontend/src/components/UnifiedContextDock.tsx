@@ -733,7 +733,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
                 position: "fixed",
                 left: 0, right: 0,
                 top: 0,
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 124px)",
                 zIndex: 2001,
                 display: "flex",
                 alignItems: "center",
