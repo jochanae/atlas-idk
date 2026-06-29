@@ -130,5 +130,20 @@ export const useShellStore = create<ShellStore>((set, get) => ({
   updateScrollPosition: (pos) =>
     set((state) => ({ activeThread: { ...state.activeThread, scrollPosition: pos } })),
   clearThread: () => set({ activeThread: emptyThread, shellMode: 'ambient' }),
+  composerClaims: {},
+  composerVisibility: 'full',
+  registerComposerClaim: (id, claim) =>
+    set((state) => {
+      const next = { ...state.composerClaims, [id]: claim };
+      return { composerClaims: next, composerVisibility: resolveVisibility(next) };
+    }),
+  releaseComposerClaim: (id) =>
+    set((state) => {
+      if (!(id in state.composerClaims)) return state;
+      const next = { ...state.composerClaims };
+      delete next[id];
+      return { composerClaims: next, composerVisibility: resolveVisibility(next) };
+    }),
+  restoreComposer: () => set({ composerClaims: {}, composerVisibility: 'full' }),
 }));
 
