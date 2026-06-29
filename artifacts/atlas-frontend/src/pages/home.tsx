@@ -46,7 +46,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
@@ -3939,6 +3939,37 @@ export default function Home() {
                 }}>
                   {globalInsightOpen ? "Ask across every thread." : greetingRef.current?.sub}
                 </p>
+                {!globalInsightOpen && projects && projects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={openOverviewSheet}
+                    aria-label="Open project briefcase"
+                    title="Open workspace"
+                    className="atlas-briefcase-toggle"
+                    style={{
+                      position: "absolute",
+                      top: -14,
+                      right: 8,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 999,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "color-mix(in oklab, var(--atlas-gold) 8%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--atlas-gold) 30%, transparent)",
+                      color: "var(--atlas-gold)",
+                      cursor: "pointer",
+                      backdropFilter: "blur(10px)",
+                      WebkitBackdropFilter: "blur(10px)",
+                      boxShadow: "0 6px 20px rgba(0,0,0,0.35)",
+                      transition: "transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <Briefcase size={17} strokeWidth={1.5} />
+                  </button>
+                )}
               </div>
             )}
 
@@ -5273,14 +5304,11 @@ export default function Home() {
         </>
       )}
 
-      {/* Below-the-fold: Recent Activity / Discovery section — hidden in Global Insight mode */}
-      {!globalInsightOpen && projects && projects.length > 0 && (
-        <div id="atlas-home-overview" className="atlas-home-tablet-overview" style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 24px 140px" }}>
-          <div style={{ display: "flex", alignItems: "center", width: "100%", gap: 12, marginBottom: 14 }}>
-            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(180,83,9,0.18), transparent)" }} />
-          </div>
-          {renderOverviewDashboard()}
-        </div>
+      {/* Below-the-fold workspace — now lives inside the Briefcase drawer. */}
+      {showOverviewSheet && (
+        <OverviewBottomSheet closing={isOverviewSheetClosing} onClose={closeOverviewSheet}>
+          {renderOverviewDashboard(true)}
+        </OverviewBottomSheet>
       )}
 
       <SessionHistorySheet
@@ -5509,9 +5537,38 @@ export default function Home() {
           .atlas-home-scroll-hint {
             display: none !important;
           }
-          .atlas-overview-sheet-layer {
-            display: none;
-          }
+        }
+        .atlas-briefcase-toggle:hover {
+          transform: translateY(-1px);
+          background: color-mix(in oklab, var(--atlas-gold) 14%, transparent) !important;
+          border-color: color-mix(in oklab, var(--atlas-gold) 48%, transparent) !important;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 0 18px color-mix(in oklab, var(--atlas-gold) 28%, transparent) !important;
+        }
+        .atlas-briefcase-toggle:active {
+          transform: translateY(0);
+        }
+        .atlas-overview-sheet-close {
+          position: absolute;
+          top: 12px;
+          right: 14px;
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: color-mix(in oklab, var(--atlas-gold) 8%, transparent);
+          border: 1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent);
+          color: var(--atlas-gold);
+          cursor: pointer;
+          z-index: 2;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }
+        .atlas-overview-sheet-close:hover {
+          background: color-mix(in oklab, var(--atlas-gold) 16%, transparent);
+          border-color: color-mix(in oklab, var(--atlas-gold) 46%, transparent);
         }
 
         @media (min-width: 1024px) {
@@ -5719,6 +5776,14 @@ function OverviewBottomSheet({
         }}
       >
         <div className="atlas-overview-sheet-handle" aria-hidden />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close workspace"
+          className="atlas-overview-sheet-close"
+        >
+          <X size={16} strokeWidth={1.6} />
+        </button>
         <div ref={scrollRef} className="atlas-overview-sheet-scroll">
           {children}
         </div>
