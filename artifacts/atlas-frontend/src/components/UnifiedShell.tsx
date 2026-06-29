@@ -23,6 +23,7 @@ import AtlasMemoryHUD from "@/components/workspace/AtlasMemoryHUD";
 import { LifecycleGlyph } from "@/components/LifecycleGlyph";
 import { SpecifySheet } from "@/components/SpecifySheet";
 import { CommandPalette } from "@/components/CommandPalette";
+import { CaptureLauncher } from "@/components/CaptureLauncher";
 import { deriveLifecycle, LIFECYCLE_META } from "@/lib/lifecycle";
 import { parseLinkedRepo } from "@/lib/githubRepo";
 import { useQueryClient } from "@tanstack/react-query";
@@ -2206,6 +2207,7 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
       )}
       <SpecifySheet />
       <CommandPalette />
+      <CaptureLauncher />
     </ShellStateContext.Provider>
   );
 }
