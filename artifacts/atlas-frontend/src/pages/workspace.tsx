@@ -7758,7 +7758,14 @@ export default function Workspace() {
               onPushSuccess: handleReviewPushSuccess,
               commitCarryover,
               onBuildAnyway: (msg: string) => doSend(msg, sessionId ?? 0, messagesRef.current, undefined, undefined, { buildMode: true, skipReadiness: true }),
+              activityEvents: workspaceActivityItems,
+              onSuggestionTap: (text: string) => {
+                setInput((prev: string) => prev ? `${prev} ${text}` : text);
+                setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
+              },
+              onSuggestionPark: (text: string) => handlePark(text),
             } : null}
+
             betweenSlot={
               agenticMode && agenticIterCount > 0 ? (
                 <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>
