@@ -198,10 +198,8 @@ export default function Login() {
   const handleOAuth = async (provider: "google" | "apple") => {
     setError(null);
     setLoading(true);
-    // OAuth goes through the Express backend (atlas-session cookie + bearer token).
-    // On Vercel, /api/auth/* is rewritten same-origin so the cookie lands on the
-    // app domain. On preview origins (Lovable), we fall back to the absolute
-    // Cloud Run URL — auth still works via the bearer token returned on /auth/callback.
+    // OAuth goes through the Express backend (axiomatlas.replit.app).
+    // VITE_API_URL in .env points all /api/* calls there regardless of preview domain.
     const { apiUrl } = await import("@/lib/api");
     window.location.href = apiUrl(`/api/auth/${provider}`);
   };
