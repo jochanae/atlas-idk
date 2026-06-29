@@ -5346,6 +5346,7 @@ export default function Home() {
         onOpenLedger={(id) => setLocation(`/ledger/${id}`)}
         onOpenParking={() => setLocation("/parking")}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify")); }}
+        onOpenWrite={() => { setShowDrawer(false); if (homeFocus) setLocation(`/project/${homeFocus}`); setTimeout(() => window.dispatchEvent(new CustomEvent("axiom:open-write")), 350); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
 
