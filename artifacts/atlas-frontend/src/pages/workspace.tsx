@@ -10,6 +10,8 @@ import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useBuildLifecycle } from "@/hooks/useBuildLifecycle";
+import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
+
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 
 import { useChatLens } from "@/hooks/useChatLens";
