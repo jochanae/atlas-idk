@@ -2747,10 +2747,15 @@ export default function Home() {
       body: JSON.stringify({}),
     })
       .then((r) => r.json())
-      .then((data: { id?: number; error?: string }) => {
+      .then((data: { id?: number; conversationId?: string; error?: string }) => {
         if (data?.id) {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          setLocation(`/project/${data.id}`);
+          if (data.conversationId) {
+            try { sessionStorage.setItem(`atlas-cid-${data.conversationId}`, String(data.id)); } catch {}
+            setLocation(`/workspace/${data.conversationId}`);
+          } else {
+            setLocation(`/project/${data.id}`);
+          }
         }
       })
       .catch((err) => {
@@ -2999,10 +3004,17 @@ export default function Home() {
       try {
         sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, messageText);
         sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
+        if (project.conversationId) {
+          sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
+        }
       } catch {}
       queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setActiveProjectId(projectId);
-      setLocation(`/project/${projectId}`);
+      if (project.conversationId) {
+        setLocation(`/workspace/${project.conversationId}`);
+      } else {
+        setLocation(`/project/${projectId}`);
+      }
     } catch (err) {
       handleSubmitError(err);
     } finally {

@@ -158,45 +158,6 @@ function PageTransition() {
 }
 
 
-// ── Workspace-by-conversationId resolver ──────────────────────────────────────
-// Resolves a UUID conversationId to the numeric projectId, then redirects to
-// /project/:id which is the canonical workspace URL. This gives a stable
-// conversation-first entry point without requiring the user to know the
-// internal project number.
-function WorkspaceByConversationId() {
-  const { conversationId } = useParams<{ conversationId: string }>();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!conversationId) { setLocation("/home"); return; }
-    const authToken = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
-    fetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
-      credentials: "include",
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-    })
-      .then((r) => r.json())
-      .then((data: { id?: number; error?: string }) => {
-        if (data?.id) {
-          setLocation(`/project/${data.id}`, { replace: true });
-        } else {
-          setLocation("/home");
-        }
-      })
-      .catch(() => setLocation("/home"));
-  }, [conversationId, setLocation]);
-
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "center",
-      height: "100vh", background: "var(--atlas-bg)",
-      color: "rgba(201,162,76,0.6)", fontSize: 12, letterSpacing: "0.2em",
-      textTransform: "uppercase", fontFamily: "var(--app-font-mono)",
-    }}>
-      opening workspace…
-    </div>
-  );
-}
-
 // ── Router ────────────────────────────────────────────────────────────────────
 function UnifiedShellRoutes() {
   return (
@@ -204,7 +165,7 @@ function UnifiedShellRoutes() {
       <Switch>
         <Route path="/home" component={Home} />
         <Route path="/project/:projectId" component={Workspace} />
-        <Route path="/workspace/:conversationId" component={WorkspaceByConversationId} />
+        <Route path="/workspace/:conversationId" component={Workspace} />
       </Switch>
     </UnifiedShell>
   );

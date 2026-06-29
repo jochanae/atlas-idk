@@ -6,9 +6,10 @@ description: How the homepage composer Send creates a conversation record and na
 ## Rules
 
 ### Entry point flow
-- Homepage composer Send → `POST /api/conversations` with `{ initialMessage }` → gets `{ id, conversationId }` → stores message in `OPENING_MESSAGE_STORAGE_KEY` + `OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY` → navigates to `/project/:id`
-- `handleNewProject` (drawer New, homepage New button) → `POST /api/conversations` with empty body → navigates to `/project/:id`
+- Homepage composer Send → `POST /api/conversations` with `{ initialMessage }` → gets `{ id, conversationId }` → stores message in `OPENING_MESSAGE_STORAGE_KEY` + `OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY` + pre-caches `atlas-cid-${conversationId}` → navigates to `/workspace/${conversationId}`
+- `handleNewProject` (drawer New, homepage New button) → `POST /api/conversations` with empty body → pre-caches `atlas-cid-${conversationId}` → navigates to `/workspace/${conversationId}`
 - `handleSubmit` in home.tsx: `shouldStayOnHome` defaults to `options?.forceStayOnHome ?? false` (was hardcoded true)
+- Existing project list navigations still go to `/project/:id` (backward compat — old projects may not have a conversationId)
 
 ### /api/conversations route
 - `POST /conversations` — creates project record + UUID conversationId, fires async Haiku title generation from `initialMessage`, returns `{ id, conversationId }`
@@ -21,9 +22,12 @@ description: How the homepage composer Send creates a conversation record and na
 - Migration via `ensureColumns()` in `api-server/src/index.ts` — runs on boot, idempotent
 
 ### Frontend routing
-- `/workspace/:conversationId` route renders `WorkspaceByConversationId` in `App.tsx`
-- `WorkspaceByConversationId` fetches `/api/conversations/:cid`, then `replace`-navigates to `/project/:id`
+- `/workspace/:conversationId` route renders `Workspace` directly in `App.tsx` (no redirect component)
+- `Workspace` reads `conversationId` param via `useParams<{projectId?:string; conversationId?:string}>()`
+- Resolution: `useState` lazy-initializer reads `sessionStorage.getItem('atlas-cid-${conversationId}')` (instant for fresh navigations from home.tsx). Deep links fall back to `GET /api/conversations/:cid` and cache the result.
+- Rules of Hooks: all three new hooks declared before any conditional branching
 - `isUnifiedShellPath` extended to include `pathname.startsWith("/workspace/")`
+- `/project/:projectId` route still works — backward compat for existing projects and project list links
 
 ### Streaming fix
 - Removed `writeStep(res, { verb: "Reviewing", target: "workspace context", phase: "scan" })` from chat.ts (line was ~2184 before edit)

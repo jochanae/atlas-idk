@@ -3962,9 +3962,45 @@ function ForgeIntake({ projectId, onComplete }: { projectId: number; onComplete:
 
 // ── Workspace ────────────────────────────────────────────────────────────────
 export default function Workspace() {
-  const { projectId } = useParams();
+  const { projectId, conversationId } = useParams<{ projectId?: string; conversationId?: string }>();
   const [, setLocation] = useLocation();
-  const id = Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]);
+
+  // conversationId-based routing: resolve UUID → numeric project ID.
+  // For navigations from home.tsx the mapping is pre-cached in sessionStorage (instant, no loading).
+  // For deep links the API resolves it once, caches the result, then re-renders.
+  const [cidResolvedId, setCidResolvedId] = useState<number>(() => {
+    if (!conversationId) return 0;
+    try {
+      const cached = sessionStorage.getItem(`atlas-cid-${conversationId}`);
+      return cached ? Number(cached) : 0;
+    } catch { return 0; }
+  });
+  const cidResolvingRef = useRef(false);
+  useEffect(() => {
+    if (!conversationId || cidResolvedId > 0 || cidResolvingRef.current) return;
+    cidResolvingRef.current = true;
+    const tok = typeof localStorage !== "undefined" ? localStorage.getItem("atlas-auth-token") : null;
+    fetch(`/api/conversations/${encodeURIComponent(conversationId)}`, {
+      credentials: "include",
+      headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+    })
+      .then((r) => r.json())
+      .then((data: { id?: number }) => {
+        if (data?.id) {
+          const num = Number(data.id);
+          try { sessionStorage.setItem(`atlas-cid-${conversationId}`, String(num)); } catch {}
+          setCidResolvedId(num);
+        } else {
+          setLocation("/home");
+        }
+      })
+      .catch(() => setLocation("/home"));
+  }, [conversationId, cidResolvedId, setLocation]);
+
+  const id = conversationId
+    ? cidResolvedId
+    : (Number(projectId) || Number(window.location.pathname.split('/project/')[1]?.split('/')[0]) || 0);
+
   const searchParams = new URLSearchParams(window.location.search);
   const [showIntake, setShowIntake] = useState(false);
   const globalMode = searchParams.get("global") === "true";
