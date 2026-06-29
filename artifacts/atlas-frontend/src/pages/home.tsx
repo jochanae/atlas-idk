@@ -5062,86 +5062,26 @@ export default function Home() {
             </div>
           )}
 
-          {/* Continuity strip — status + expand CTA anchored below the suggestion chips */}
+          {/* Resume Conversation — conversation-first, single card, signal-gated.
+              Replaces the old "last touched · N open" pill + scroll chevron.
+              Only renders when the most-recent project has genuine unfinished
+              work (active session, parked items, or fresh activity <6h). */}
           {!globalInsightOpen && projects && projects.length > 0 && (() => {
             const activeProjects = (projects as Project[]).filter((p: Project) => p.status !== "archived");
             const mostRecent = [...activeProjects].sort((a, b) => {
               const at = new Date((a as any).updatedAt ?? a.createdAt ?? 0).getTime();
               const bt = new Date((b as any).updatedAt ?? b.createdAt ?? 0).getTime();
               return bt - at;
-            })[0];
-            const lastTs = mostRecent ? new Date((mostRecent as any).updatedAt ?? mostRecent.createdAt ?? Date.now()).getTime() : null;
-            const formatAgo = (ts: number) => {
-              const diff = Math.max(0, Date.now() - ts);
-              const m = Math.floor(diff / 60000);
-              if (m < 1) return "just now";
-              if (m < 60) return `${m}m ago`;
-              const h = Math.floor(m / 60);
-              if (h < 24) return `${h}h ago`;
-              const d = Math.floor(h / 24);
-              return `${d}d ago`;
-            };
-            const lastTouched = lastTs ? formatAgo(lastTs) : null;
+            })[0] ?? null;
             return (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 14 }}>
-                {/* Static status pill — data only */}
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    padding: "6px 14px",
-                    background: isParchment ? "rgba(255,255,255,0.55)" : "rgba(28,25,23,0.35)",
-                    border: isParchment ? "1px solid rgba(17,17,17,0.06)" : "1px solid rgba(255,255,255,0.04)",
-                    borderRadius: 999,
-                    backdropFilter: "blur(6px)",
-                    boxSizing: "border-box",
-                    maxWidth: "100%",
-                  }}
-                >
-                  <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
-                    <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: isParchment ? "rgba(60,60,60,0.35)" : "rgba(201,162,76,0.5)" }} />
-                    <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: isParchment ? "rgba(40,40,40,0.85)" : "var(--atlas-gold)", opacity: 0.9 }} />
-                  </span>
-                  <span style={{ fontSize: "clamp(9px, 2.4vw, var(--ts-xs))", fontFamily: "var(--app-font-mono)", letterSpacing: "0.14em", textTransform: "uppercase", color: isParchment ? "rgba(50,45,40,0.85)" : "var(--atlas-muted)", opacity: 0.9, textAlign: "center", lineHeight: 1.4, overflowWrap: "anywhere" }}>
-                    {lastTouched ? <>last touched {lastTouched}</> : <>{activeProjects.length} in motion</>}
-                    &nbsp;·&nbsp; <span style={{ color: isParchment ? "rgba(17,17,17,0.95)" : "var(--atlas-fg)", fontWeight: isParchment ? 600 : 500, opacity: 0.85 }}>{activeProjects.length} open</span>
-                  </span>
-                </div>
-
-                {/* Subtle scroll hint — mobile only; dashboard sits right below */}
-                <button
-                  type="button"
-                  aria-label="Scroll to overview"
-                  className="atlas-home-scroll-hint"
-                  onClick={() => {
-                    const el = document.getElementById("atlas-home-overview");
-                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                    else window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" });
-                  }}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 28,
-                    height: 28,
-                    marginTop: 2,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: isParchment ? "rgba(120,52,8,0.55)" : "rgba(201,162,76,0.55)",
-                    animation: "atlasScrollHintBob 2.2s ease-in-out infinite",
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </button>
-              </div>
+              <ResumeConversationCard
+                mostRecent={mostRecent}
+                isParchment={isParchment}
+                onResume={(id) => setLocation(`/project/${id}`)}
+              />
             );
           })()}
+
 
 
           {/* Inline create error (kept for in-flow context) */}
