@@ -3648,7 +3648,7 @@ export default function Home() {
         overflowX: "hidden",
       }}
     >
-      <FocusModeAura focus={resolvedPortfolioFocus} />
+      {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
       {/* Global Insight runs inline through the ambient home shell:
           header title only, no overlay, no duplicate header, no separate composer. */}
 

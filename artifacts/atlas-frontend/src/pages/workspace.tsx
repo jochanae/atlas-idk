@@ -7006,7 +7006,7 @@ export default function Workspace() {
 
   return (
     <>
-      <FocusModeAura focus={project ? "project" : "none"} />
+      {/* FocusModeAura removed — aura now lives on the composer border (see composerAura.ts) */}
       {showIntake && (
         <ForgeIntake
           projectId={id}
