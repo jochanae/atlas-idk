@@ -4566,7 +4566,7 @@ export default function Home() {
               backdropFilter: (inputFocused || hasInput || attachedFiles.length > 0) ? "blur(6px)" : "none",
               transition: "border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out, padding 200ms ease-in-out",
             }}>
-              {!hasInput && !inputFocused && (nexusChat.messages.length === 0 || globalInsightOpen) && (
+              {!hasInput && !inputFocused && !showOverviewSheet && (nexusChat.messages.length === 0 || globalInsightOpen) && (
                 <div
                   style={{
                     position: "absolute",
