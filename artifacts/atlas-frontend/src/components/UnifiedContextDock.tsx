@@ -197,6 +197,29 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
     }
   }, [location]);
 
+  // Bridge: desktop CommandPalette dispatches these events; dock fulfils them
+  // with the same callbacks the mobile radial launcher uses. Single source of
+  // truth for what each launcher action does.
+  useEffect(() => {
+    const onDecisions = () => props.onDecisions?.();
+    const onFiles = () => props.onFiles?.();
+    const onProjects = () => props.onProjects?.();
+    const onSettings = () => props.onYou?.();
+    const onCapture = () => setLocation("/parking-lot?capture=1");
+    window.addEventListener("axiom:launcher-decisions", onDecisions);
+    window.addEventListener("axiom:launcher-files", onFiles);
+    window.addEventListener("axiom:launcher-projects", onProjects);
+    window.addEventListener("axiom:launcher-settings", onSettings);
+    window.addEventListener("axiom:launcher-capture", onCapture);
+    return () => {
+      window.removeEventListener("axiom:launcher-decisions", onDecisions);
+      window.removeEventListener("axiom:launcher-files", onFiles);
+      window.removeEventListener("axiom:launcher-projects", onProjects);
+      window.removeEventListener("axiom:launcher-settings", onSettings);
+      window.removeEventListener("axiom:launcher-capture", onCapture);
+    };
+  }, [props.onDecisions, props.onFiles, props.onProjects, props.onYou, setLocation]);
+
   const pressStartTime = useRef<number>(0);
   const longPressTimer = useRef<number | null>(null);
   const didLongPress = useRef(false);
