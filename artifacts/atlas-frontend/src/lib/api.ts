@@ -1,9 +1,8 @@
-// API base URL. Points to Cloud Run (production backend) by default so the
-// Lovable preview works out of the box. Override with VITE_API_URL at build
-// time when pointing at a different backend (e.g. the local Replit Express
-// server during development).
-const DEFAULT_API_BASE = "https://axiom-atlas-689827072865.us-east1.run.app";
-const configuredApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE;
+// API base URL.
+// - Replit (dev + deployed): no env var set → same-origin → Express backend
+// - Lovable preview: set VITE_API_URL=https://axiom-atlas-689827072865.us-east1.run.app
+//   in Lovable's environment settings so its preview hits Cloud Run.
+const configuredApiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "";
 export const API_BASE = configuredApiBase.replace(/\/$/, "");
 
 export function apiUrl(path: string): string {

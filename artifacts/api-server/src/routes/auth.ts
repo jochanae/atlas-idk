@@ -61,11 +61,19 @@ function createSessionCookie(token: string, res: import("express").Response) {
 }
 
 // ── Supabase JWT bridge ──────────────────────────────────────────────────────
-// When Lovable/Supabase sends a Bearer token that isn't in our local session
-// table, validate it against the Supabase auth API and auto-provision a local
-// user record so that all downstream route logic works identically.
-const SUPABASE_URL = (process.env.VITE_SUPABASE_URL ?? "").replace(/\/$/, "");
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
+// Validates Bearer tokens against production Supabase (SUPABASE_PROD_URL +
+// SUPABASE_PROD_ANON_KEY) so any client that logs in via Supabase (Lovable,
+// axiomsystem.app, etc.) is automatically provisioned as a local user.
+// Falls back to the Lovable project vars for local dev convenience.
+const SUPABASE_URL = (
+  process.env.SUPABASE_PROD_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  ""
+).replace(/\/$/, "");
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_PROD_ANON_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  "";
 
 async function getUserFromSupabaseToken(bearerToken: string): Promise<typeof usersTable.$inferSelect | null> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
