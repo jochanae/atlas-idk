@@ -683,9 +683,11 @@ export function ChatStream(props: ChatStreamProps) {
               executionTimeMs={nextMsg.executionTimeMs}
             />
           )}
+          {renderActivityForAnchor(i)}
         </Fragment>
         );
       })}
+
 
       {commitCarryover && messages.length > 0 && (
         <>
