@@ -633,58 +633,58 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
       {/* Atlas Command — radial launcher portal */}
       {showAtlasHub && typeof document !== "undefined" && createPortal(
         (() => {
-          const RADIUS = 148;
+          const RADIUS = 132;
+          // Six utilities, 60° apart. All open as overlays/drawers — never navigate away from the current surface.
+          // Layout:        Search (top)
+          //          Capture   Decisions
+          //                Atlas
+          //       Conversations   Files
+          //              Settings (bottom)
           const ITEMS: { label: string; angleDeg: number; color: string; icon: ReactNode; action: () => void }[] = [
             {
-              label: "Resume",
-              angleDeg: -90,
-              color: "#8B5CF6",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>,
-              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("atlas:focus-composer")); onAtlasCore(); },
-            },
-            {
-              label: "Parking Lot",
-              angleDeg: -90 + 360 / 7,
-              color: "#6366F1",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V7h5a3 3 0 010 6H9" /></svg>,
-              action: () => { setShowAtlasHub(false); setLocation("/parking-lot"); },
-            },
-            {
               label: "Search",
-              angleDeg: -90 + (360 / 7) * 2,
+              angleDeg: -90,
               color: "#10B981",
               icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35" /></svg>,
               action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:open-search")); },
             },
             {
-              label: "Projects",
-              angleDeg: -90 + (360 / 7) * 3,
+              label: "Decisions",
+              angleDeg: -30,
+              color: "#D4AF37",
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>,
+              action: () => { setShowAtlasHub(false); props.onDecisions?.(); },
+            },
+            {
+              label: "Files",
+              angleDeg: 30,
               color: "#3B82F6",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="9" y1="5" x2="9" y2="19"/></svg>,
-              action: () => { setShowAtlasHub(false); setLocation("/projects"); },
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>,
+              action: () => { setShowAtlasHub(false); props.onFiles?.(); },
             },
             {
-              label: "New Project",
-              angleDeg: -90 + (360 / 7) * 4,
-              color: "#22C55E",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
-              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:new-project")); },
+              label: "Settings",
+              angleDeg: 90,
+              color: "#9CA3AF",
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+              action: () => { setShowAtlasHub(false); props.onYou?.(); },
             },
             {
-              label: "Brain Dump",
-              angleDeg: -90 + (360 / 7) * 5,
+              label: "Conversations",
+              angleDeg: 150,
+              color: "#06B6D4",
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+              action: () => { setShowAtlasHub(false); props.onProjects?.(); },
+            },
+            {
+              label: "Capture",
+              angleDeg: -150,
               color: "#EC4899",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>,
-              action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:brain-dump")); },
-            },
-            {
-              label: "Global Insights",
-              angleDeg: -90 + (360 / 7) * 6,
-              color: "#14B8A6",
-              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>,
-              action: () => { setShowAtlasHub(false); setLocation("/"); window.dispatchEvent(new CustomEvent("axiom:home-reset")); },
+              icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>,
+              action: () => { setShowAtlasHub(false); setLocation("/parking-lot?capture=1"); },
             },
           ];
+
 
           return (
             <>
