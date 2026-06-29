@@ -29,6 +29,9 @@ export function PreviewPanel({ projectId, sandboxCode, onSandboxConsumed, refres
   manifestPreviewHtml?: string | null;
 }) {
 
+  // Composer modes: Preview is a stage artifact — mobile=hidden, desktop=compact.
+  useStageArtifact("preview");
+
   const queryClient = useQueryClient();
   const { data: project } = useGetProject(projectId, { query: { queryKey: getGetProjectQueryKey(projectId) } });
   const updateProject = useUpdateProject();
