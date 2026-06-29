@@ -3904,7 +3904,7 @@ export default function Home() {
             {/* Greeting — same in ambient + Global Insight. GI is signaled
                 only by the subheader "● Global Insight" pill, so the home shell
                 stays visually identical. */}
-            {nexusChat.messages.length === 0 && (
+            {nexusChat.messages.length === 0 && !showOverviewSheet && (
               <div style={{
                 textAlign: "center",
                 marginBottom: 24,
