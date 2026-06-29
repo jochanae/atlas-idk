@@ -311,7 +311,11 @@ export function ChatStream(props: ChatStreamProps) {
     onWriteFile,
     commitCarryover,
     onBuildAnyway,
+    activityEvents,
+    onSuggestionTap,
+    onSuggestionPark,
   } = props;
+
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
