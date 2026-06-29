@@ -1826,6 +1826,14 @@ export default function Home() {
   const [showOverviewSheet, setShowOverviewSheet] = useState(false);
   const [isOverviewSheetClosing, setIsOverviewSheetClosing] = useState(false);
   const overviewCloseTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    const open = () => {
+      setIsOverviewSheetClosing(false);
+      setShowOverviewSheet(true);
+    };
+    window.addEventListener("axiom:open-overview", open);
+    return () => window.removeEventListener("axiom:open-overview", open);
+  }, []);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
