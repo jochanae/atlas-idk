@@ -414,6 +414,24 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+void SectionLabel;
+
+function CollapsibleHeader({ icon, label, expanded, onToggle }: { icon: React.ReactNode; label: string; expanded: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} style={{
+      display: "flex", alignItems: "center", gap: 6,
+      width: "100%", padding: "5px 12px", borderRadius: 6, border: "none",
+      background: "transparent", cursor: "pointer",
+      color: "var(--atlas-gold)",
+      fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+      fontFamily: "var(--app-font-mono)", textAlign: "left",
+    }}>
+      {expanded ? <ChevronDown size={11} strokeWidth={2.2} /> : <ChevronRight size={11} strokeWidth={2.2} />}
+      <span style={{ display: "flex", alignItems: "center", opacity: 0.7 }}>{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
 
 function NavRow({ icon, label, sublabel, badge, onClick }: { icon: React.ReactNode; label: string; sublabel?: string; badge?: number; onClick: () => void }) {
   return (
