@@ -9,6 +9,10 @@ import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
 import { ExecutionJournal, LedgerSurface, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
+import { SystemActivityCard, BatchedActivityCard } from "@/components/workspace/SystemActivityCard";
+import { SuggestionChipRail } from "@/components/workspace/SuggestionChipRail";
+import { classifyActivity, type ActivityItem as WorkspaceActivityItem } from "@/hooks/useWorkspaceActivity";
+
 
 import type { ChatMessage, LinkedRepo, PushRecord } from "@/pages/workspace";
 import type { PlanExecution } from "@/lib/plan";
