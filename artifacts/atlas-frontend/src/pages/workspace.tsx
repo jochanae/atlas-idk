@@ -8038,7 +8038,7 @@ export default function Workspace() {
         {/* Mobile: overlay panel */}
         {isMobile && rightOpen && (
           <div
-            style={{ position: "fixed", top: 46, left: 0, right: 0, bottom: mobileTab === "map" ? 0 : 64, zIndex: 50, display: "flex", justifyContent: "flex-end" }}
+            style={{ position: "fixed", top: 46, left: 0, right: 0, bottom: mobileTab === "map" ? 0 : "calc(var(--atlas-dock-height, 64px) + env(safe-area-inset-bottom, 0px))", zIndex: 50, display: "flex", justifyContent: "flex-end" }}
           >
             {/* Backdrop — hidden in fullscreen */}
             {!rightFullscreen && (
