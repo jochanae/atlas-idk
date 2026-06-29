@@ -87,6 +87,122 @@ function projectIdFromPath(pathname: string): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
+function ShellNavMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
+
+  const items = [
+    {
+      label: "Projects",
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M1 5a2 2 0 012-2h2.5l1.5 2H13a2 2 0 012 2v5a2 2 0 01-2 2H3a2 2 0 01-2-2V5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+        </svg>
+      ),
+      action: () => { setOpen(false); window.dispatchEvent(new CustomEvent("axiom:open-projects-drawer")); },
+    },
+    {
+      label: "Dashboard",
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <rect x="1" y="1" width="5.5" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="8.5" y="1" width="6.5" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="8.5" y="9" width="6.5" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      ),
+      action: () => { setOpen(false); window.dispatchEvent(new CustomEvent("axiom:open-dashboard")); },
+    },
+  ];
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-label="Navigation menu"
+        aria-expanded={open}
+        style={{
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "4px 5px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: open ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)",
+          transition: "color 160ms ease",
+          borderRadius: 6,
+        }}
+        onMouseEnter={e => { if (!open) e.currentTarget.style.color = "rgba(201,162,76,0.8)"; }}
+        onMouseLeave={e => { if (!open) e.currentTarget.style.color = "rgba(201,162,76,0.45)"; }}
+      >
+        <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
+          <rect x="1" y="2" width="6" height="14" rx="2" stroke="currentColor" strokeWidth="1.3" />
+          <rect x="9.5" y="2" width="7.5" height="14" rx="2" stroke="currentColor" strokeWidth="1.3" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            background: "var(--atlas-surface)",
+            border: "1px solid rgba(201,162,76,0.2)",
+            borderRadius: 10,
+            padding: "4px 0",
+            minWidth: 148,
+            boxShadow: "0 8px 28px rgba(0,0,0,0.5)",
+            zIndex: 500,
+          }}
+        >
+          {items.map(item => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              onClick={item.action}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                width: "100%",
+                padding: "9px 14px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--atlas-fg)",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                textAlign: "left",
+                transition: "background 120ms ease, color 120ms ease",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(201,162,76,0.08)"; e.currentTarget.style.color = "var(--atlas-gold)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--atlas-fg)"; }}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ShellWordmark() {
   const [location, setLocation] = useLocation();
   const isTinyMobile = useIsTinyScreen();
@@ -2104,8 +2220,9 @@ export function UnifiedShell({ children }: { children: ReactNode }) {
             transition: "opacity var(--motion-deliberate) var(--ease-out-soft), background var(--motion-deliberate) var(--ease-out-soft), backdrop-filter var(--motion-deliberate) var(--ease-out-soft), border-color var(--motion-deliberate) var(--ease-out-soft)",
           }}
         >
-          <div style={{ flexShrink: 0, minWidth: 0, position: "relative", zIndex: 2 }}>
+          <div style={{ flexShrink: 0, minWidth: 0, position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 4 }}>
             <ShellWordmark />
+            <ShellNavMenu />
           </div>
           {/* True viewport-centered switcher — absolutely positioned so left/right cluster widths don't shift it off-center. */}
           <div

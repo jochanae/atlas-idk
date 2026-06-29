@@ -1804,6 +1804,11 @@ export default function Home() {
     };
   }, []);
   useEffect(() => {
+    const openDashboard = () => setShowOverviewSheet(true);
+    window.addEventListener("axiom:open-dashboard", openDashboard);
+    return () => window.removeEventListener("axiom:open-dashboard", openDashboard);
+  }, []);
+  useEffect(() => {
     const mountedAt = Date.now();
     const open = () => {
       if (Date.now() - mountedAt > 400) setShowProfile(true);
