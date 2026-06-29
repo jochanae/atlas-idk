@@ -5776,6 +5776,14 @@ function OverviewBottomSheet({
         }}
       >
         <div className="atlas-overview-sheet-handle" aria-hidden />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close workspace"
+          className="atlas-overview-sheet-close"
+        >
+          <X size={16} strokeWidth={1.6} />
+        </button>
         <div ref={scrollRef} className="atlas-overview-sheet-scroll">
           {children}
         </div>
