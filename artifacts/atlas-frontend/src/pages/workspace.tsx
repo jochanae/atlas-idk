@@ -10,6 +10,8 @@ import { useProjectState } from "@/hooks/useProjectState";
 import { useComposerDraft } from "@/hooks/useComposerDraft";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useBuildLifecycle } from "@/hooks/useBuildLifecycle";
+import { useWorkspaceActivity } from "@/hooks/useWorkspaceActivity";
+
 import { useSmartAutoScroll } from "@/hooks/useSmartAutoScroll";
 
 import { useChatLens } from "@/hooks/useChatLens";
@@ -4385,6 +4387,11 @@ export default function Workspace() {
     messages,
   });
 
+  // Inline workspace activity (commits, decisions, etc.) rendered as
+  // SystemActivityCard inside the chat stream — see useWorkspaceActivity.
+  const { items: workspaceActivityItems } = useWorkspaceActivity(id);
+
+
   const thinkFreelyThreadLoadedRef = useRef(false);
   useEffect(() => {
     if (thinkFreelyThreadLoadedRef.current) return;
@@ -7757,7 +7764,14 @@ export default function Workspace() {
               onPushSuccess: handleReviewPushSuccess,
               commitCarryover,
               onBuildAnyway: (msg: string) => doSend(msg, sessionId ?? 0, messagesRef.current, undefined, undefined, { buildMode: true, skipReadiness: true }),
+              activityEvents: workspaceActivityItems,
+              onSuggestionTap: (text: string) => {
+                setInput((prev: string) => prev ? `${prev} ${text}` : text);
+                setTimeout(() => { try { textareaRef.current?.focus(); } catch { /* noop */ } }, 80);
+              },
+              onSuggestionPark: (text: string) => handlePark(text),
             } : null}
+
             betweenSlot={
               agenticMode && agenticIterCount > 0 ? (
                 <div className="atlas-ledger-bar" style={{ opacity: 0.55 }}>

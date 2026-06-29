@@ -9,6 +9,10 @@ import { LiveGenerationCard } from "@/components/workspace/LiveGenerationCard";
 import { ExecutionJournal, LedgerSurface, isExecutionStream } from "@/components/workspace/ExecutionJournal";
 import { TimelineRail } from "../TimelineRail";
 import { WriteFileCard } from "@/components/workspace/WriteFileCard";
+import { SystemActivityCard, BatchedActivityCard } from "@/components/workspace/SystemActivityCard";
+import { SuggestionChipRail } from "@/components/workspace/SuggestionChipRail";
+import { classifyActivity, type ActivityItem as WorkspaceActivityItem } from "@/hooks/useWorkspaceActivity";
+
 
 import type { ChatMessage, LinkedRepo, PushRecord } from "@/pages/workspace";
 import type { PlanExecution } from "@/lib/plan";
@@ -272,7 +276,17 @@ export interface ChatStreamProps {
 
   // Build Readiness Gate: re-send original message bypassing the gate
   onBuildAnyway?: (message: string) => void;
+
+  // Inline workspace activity (GitHub commits, decisions, etc.).
+  // Interleaved between messages by timestamp. Quiet events are batched on mobile.
+  activityEvents?: WorkspaceActivityItem[];
+
+  // Suggestion chip rail handlers. Rail appears below the last assistant
+  // message only when the stream is idle (chatPending=false, not streaming).
+  onSuggestionTap?: (text: string) => void;
+  onSuggestionPark?: (text: string) => void;
 }
+
 
 // Helper alias so we don't re-derive AssistantBubble prop types here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -297,7 +311,11 @@ export function ChatStream(props: ChatStreamProps) {
     onWriteFile,
     commitCarryover,
     onBuildAnyway,
+    activityEvents,
+    onSuggestionTap,
+    onSuggestionPark,
   } = props;
+
 
   // Detect multi-round build chains so CommitPills can be deduplicated.
   // A chain is: assistant(autoPushed) → user([LOCAL_APPLY_SUCCESS]) → [repeat] → assistant(autoPushed)
@@ -384,16 +402,80 @@ export function ChatStream(props: ChatStreamProps) {
     return { buildGroupMap: bgMap, suppressedLedgerSet: supLedger };
   }, [messages]);
 
+  // ---- Inline activity interleaving -----------------------------------------
+  // Assign each event to the index of the message AFTER which it should render
+  // (based on timestamp). Events newer than the last message go at the tail.
+  // On mobile, runs of "quiet" events between two anchors collapse into one
+  // BatchedActivityCard; "important" events always render inline immediately.
+  const isMobile = useIsMobile();
+  const activityByAnchor = useMemo(() => {
+    const map = new Map<number, WorkspaceActivityItem[]>();
+    if (!activityEvents || activityEvents.length === 0) return map;
+
+    const msgTimes = messages.map((m) => m.sentAt ? new Date(m.sentAt).getTime() : 0);
+    for (const ev of activityEvents) {
+      const t = new Date(ev.timestamp).getTime();
+      let anchor = -1;
+      for (let i = 0; i < msgTimes.length; i++) {
+        if (msgTimes[i] && msgTimes[i] <= t) anchor = i;
+      }
+      const arr = map.get(anchor) ?? [];
+      arr.push(ev);
+      map.set(anchor, arr);
+    }
+    return map;
+  }, [activityEvents, messages]);
+
+  const renderActivityForAnchor = (anchor: number) => {
+    const evs = activityByAnchor.get(anchor);
+    if (!evs || evs.length === 0) return null;
+    if (!isMobile) {
+      return evs.map((ev, k) => (
+        <SystemActivityCard key={`act-${anchor}-${k}`} item={ev} />
+      ));
+    }
+    // Mobile: render important immediately, batch consecutive quiet.
+    const out: ReactNode[] = [];
+    let buf: WorkspaceActivityItem[] = [];
+    const flush = (key: string) => {
+      if (buf.length === 0) return;
+      if (buf.length === 1) out.push(<SystemActivityCard key={key} item={buf[0]} />);
+      else out.push(<BatchedActivityCard key={key} items={buf} />);
+      buf = [];
+    };
+    evs.forEach((ev, k) => {
+      if (classifyActivity(ev) === "important") {
+        flush(`act-${anchor}-b-${k}`);
+        out.push(<SystemActivityCard key={`act-${anchor}-${k}`} item={ev} />);
+      } else {
+        buf.push(ev);
+      }
+    });
+    flush(`act-${anchor}-tail`);
+    return out;
+  };
+
+  // ---- Suggestion chips -----------------------------------------------------
+  // Only when stream is idle AND the last message is a completed assistant msg.
+  const lastMsg = messages[messages.length - 1];
+  const showSuggestionChips =
+    !chatPending &&
+    !activityStream.active &&
+    lastMsg?.role === "assistant" &&
+    !lastMsg.streaming;
+  const lastAssistantText = showSuggestionChips ? (lastMsg?.content ?? "") : "";
+
+
   // Match home: parent padding "0 24px" + inner scroller paddingRight 80, paddingTop 56.
   // Bottom padding is generous so messages scroll *behind* the translucent glass composer.
   // On mobile, collapse the desktop rail gutter so content is edge-to-edge like /home.
-  const isMobile = useIsMobile();
   const containerStyle: CSSProperties = {
     flex: 1, overflowY: "auto", overflowX: "hidden",
     overscrollBehaviorY: "contain",
     padding: isMobile ? "32px 14px 20px 14px" : "56px 104px 28px 24px",
     position: "relative", scrollbarWidth: "none",
   };
+
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -491,7 +573,9 @@ export function ChatStream(props: ChatStreamProps) {
       )}
 
 
+      {renderActivityForAnchor(-1)}
       {messages.map((msg, i) => {
+
         // When a LOCAL_APPLY_SUCCESS follows an assistant message, we render
         // the LedgerSurface *after* that assistant bubble (sentence first, then
         // the APPLIED block).  Skip it here so it isn't double-rendered.
@@ -601,9 +685,11 @@ export function ChatStream(props: ChatStreamProps) {
               executionTimeMs={nextMsg.executionTimeMs}
             />
           )}
+          {renderActivityForAnchor(i)}
         </Fragment>
         );
       })}
+
 
       {commitCarryover && messages.length > 0 && (
         <>
@@ -661,8 +747,17 @@ export function ChatStream(props: ChatStreamProps) {
       ) : null}
       {thinkingBlock}
 
+      {showSuggestionChips && onSuggestionTap && (
+        <SuggestionChipRail
+          lastAssistantText={lastAssistantText}
+          onTap={onSuggestionTap}
+          onLongPress={onSuggestionPark ?? onSuggestionTap}
+        />
+      )}
 
       <div ref={bottomRef} />
+
+
 
 
     </div>
