@@ -36,6 +36,7 @@ import {
 } from "@/lib/atlas-history";
 import { toast } from "sonner";
 import { useThemeMode } from "@/lib/theme";
+import { MemoryTab } from "./workspace/MemoryTab";
 
 const OVERLAY: React.CSSProperties = {
   position: "fixed",
@@ -118,7 +119,7 @@ export function HistoryBookmarksSheet({
   onClose: () => void;
   onJumpToMessage?: (messageId: number) => void;
 }) {
-  const [tab, setTab] = useState<"history" | "checkpoints" | "bookmarks">(
+  const [tab, setTab] = useState<"history" | "checkpoints" | "bookmarks" | "memory">(
     "history",
   );
   const [revertedOpen, setRevertedOpen] = useState(false);
@@ -590,6 +591,11 @@ export function HistoryBookmarksSheet({
             label="Bookmarks"
             count={bookmarks.length}
           />
+          <TabButton
+            active={tab === "memory"}
+            onClick={() => setTab("memory")}
+            label="Memory"
+          />
         </div>
 
         {/* Body */}
@@ -836,19 +842,25 @@ export function HistoryBookmarksSheet({
                 </div>
               )}
             </>
-          ) : bookmarkSorted.length === 0 ? (
-            <EmptyState
-              icon={<Bookmark size={26} strokeWidth={1.4} />}
-              copy="No bookmarks yet."
-              sub="Tap the bookmark icon on any snapshot to pin it here."
-            />
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {bookmarkSorted.map((i) =>
-                renderHistoryRow(i, { dim: !!i.reverted }),
-              )}
+          ) : tab === "bookmarks" ? (
+            bookmarkSorted.length === 0 ? (
+              <EmptyState
+                icon={<Bookmark size={26} strokeWidth={1.4} />}
+                copy="No bookmarks yet."
+                sub="Tap the bookmark icon on any snapshot to pin it here."
+              />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {bookmarkSorted.map((i) =>
+                  renderHistoryRow(i, { dim: !!i.reverted }),
+                )}
+              </div>
+            )
+          ) : tab === "memory" && projectId !== null ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", margin: "-14px -16px -20px" }}>
+              <MemoryTab projectId={projectId} />
             </div>
-          )}
+          ) : null}
           </div>
         </div>
       </div>
@@ -880,7 +892,7 @@ function TabButton({
   active: boolean;
   onClick: () => void;
   label: string;
-  count: number;
+  count?: number;
   accent?: boolean;
 }) {
   const isParchment = useThemeMode() === "parchment";

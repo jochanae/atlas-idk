@@ -684,7 +684,19 @@ Max 3 paths. Use exact paths from the file tree (see LOCAL WORKSPACE FILES or LI
 File reads are fulfilled from GitHub (when a repo is linked) or from the local workspace (when initialized — see FILE SOURCE CONTEXT below). If neither is available you will receive [FILE_READ_UNAVAILABLE: <reason>] — in that case tell the user clearly why and what they need to set up. Never guess at file contents. Never emit a FILE_EDIT for a file you have not read in this session.
 
 CAPABILITY FRAMING — how to describe your own file access:
-Never frame file access as a limitation ("I don't have every file open," "I can only read files on demand"). Frame it as progressive analysis: "I have access to the project's structure, metadata, and source files and can progressively analyze deeper areas as we work." You don't load every file into memory at once — that is intentional and efficient, not a gap. You can inspect any part of the project as needed. Lead with capability, not constraint.
+Be precise about what you have actually read vs. what you have only seen the path for. These are meaningfully different.
+
+When file content includes a truncation marker like \`[first 600 of 1,247 lines]\`, state this clearly: "I read \`path/to/file\` — I have the first 600 of 1,247 lines. If the answer lies in content beyond that, I can read the next section." Never imply you have seen the full file when you have not.
+
+When answering questions about files you have not read yet, say "I can see \`path/to/file\` in the project structure but have not read it yet." Do not infer content from filenames alone — a file named \`paymentService.ts\` might contain anything.
+
+Use calibrated perception language:
+• "I read [file]" — you have the full or partial content of that file in context right now.
+• "I can see [path] in the tree" — you have the path but not the content.
+• "I inferred [fact]" — you derived it from conversation, structure, or patterns — not direct file access.
+• "I observed [fact]" — you saw it in file content, a screenshot, or a log you actually received.
+
+You can progressively read any file in the project as needed — this is by design, not a gap. Lead with what you have, then offer to go deeper.
 
 FILE_TREE:
 To get a fresh listing of all files in the local workspace, emit on its own line at the end of your response:
@@ -3229,6 +3241,36 @@ HARD RULE: Never answer from the context of a different project unless the user 
     } else if (fileSource === "none") {
       fileSourceLines.push("No file source available. Do not emit FILE_READ_REQUEST, FILE_TREE_REQUEST, or FILE_EDIT — they cannot be fulfilled. If the user asks to edit files, tell them to link a GitHub repo or open the Files tab to initialize a local workspace.");
     }
+
+    // Workspace sync awareness — compare local workspace HEAD to GitHub latest commit
+    if (localWsExists && localWsDir && repoData?.fullName && resolvedGithubToken && needsCodeContext) {
+      try {
+        const headContent = await fsPromises.readFile(nodePath.join(localWsDir, ".git", "HEAD"), "utf-8").catch(() => null);
+        if (headContent) {
+          let localSha: string | null = null;
+          if (headContent.startsWith("ref: ")) {
+            const refPath = headContent.slice(5).trim();
+            localSha = await fsPromises.readFile(nodePath.join(localWsDir, ".git", refPath), "utf-8").then(s => s.trim()).catch(() => null);
+          } else {
+            localSha = headContent.trim() || null;
+          }
+          if (localSha) {
+            const ghRes = await fetch(
+              `${GH_API}/repos/${repoData.fullName}/commits?sha=${repoData.defaultBranch ?? "main"}&per_page=1`,
+              { headers: ghHeaders(resolvedGithubToken), signal: AbortSignal.timeout(3000) }
+            ).catch(() => null);
+            if (ghRes?.ok) {
+              const commits = await ghRes.json() as Array<{ sha: string }>;
+              const remoteSha = commits[0]?.sha ?? null;
+              if (remoteSha && !remoteSha.startsWith(localSha.slice(0, 7)) && !localSha.startsWith(remoteSha.slice(0, 7))) {
+                fileSourceLines.push(`⚠️ WORKSPACE SYNC WARNING: local workspace is at commit ${localSha.slice(0, 7)} but GitHub ${repoData.defaultBranch ?? "main"} branch is at ${remoteSha.slice(0, 7)}. Files read from the local workspace may not reflect the latest code. Mention this if the user asks about specific file contents.`);
+              }
+            }
+          }
+        }
+      } catch { /* non-fatal — sync check is best-effort */ }
+    }
+
     systemPrompt += `\n\n--- FILE SOURCE CONTEXT ---\n${fileSourceLines.join("\n")}\n--- END FILE SOURCE CONTEXT ---`;
   }
 
@@ -3349,6 +3391,31 @@ PROHIBITED (when PROJECT CONTEXT block is present above): "What are we building 
   }
   if (combinedFileContext) {
     systemPrompt += `\n\n--- CODE CONTEXT (files Atlas read for this request — use these to write complete FILE_EDIT blocks) ---\n${combinedFileContext}\n--- END CODE CONTEXT ---`;
+  }
+
+  // Perception context — dynamic summary of what Atlas has actually accessed this turn
+  {
+    const perceptionLines: string[] = [];
+    if (repoTreeContext) {
+      const entryCount = repoTreeContext.split("\n").filter(Boolean).length;
+      perceptionLines.push(`repo file tree: loaded (${entryCount} paths visible)`);
+    }
+    if (localTreeContext && localTreeContext !== "[FILE_TREE_EMPTY]" && !localTreeContext.startsWith("[FILE_TREE_UNAVAILABLE")) {
+      perceptionLines.push("local workspace file tree: loaded");
+    }
+    if (autoFetchedContext) {
+      const autoFiles = [...autoFetchedContext.matchAll(/^=== ([^\s=]+)/gm)].map(m => m[1]);
+      if (autoFiles.length > 0) perceptionLines.push(`files auto-fetched this turn: ${autoFiles.join(", ")}`);
+    }
+    if (fileContext?.trim()) {
+      const ctxFiles = [...fileContext.matchAll(/^=== ([^\s=]+)/gm)].map(m => m[1]);
+      if (ctxFiles.length > 0) perceptionLines.push(`files in user-provided context: ${ctxFiles.join(", ")}`);
+    }
+    const memEntryCount = store?.entries?.length ?? 0;
+    perceptionLines.push(`project memory: ${memEntryCount > 0 ? `${memEntryCount} entries loaded` : "empty — nothing persisted yet"}`);
+    if (perceptionLines.length > 0) {
+      systemPrompt += `\n\n--- PERCEPTION CONTEXT (what you have actually accessed this turn) ---\n${perceptionLines.join("\n")}\nAnything NOT listed above is unknown until you explicitly read it. Distinguish "I can see [path] in the tree" (path only) from "I read [file]" (content in context).\n--- END PERCEPTION CONTEXT ---`;
+    }
   }
 
   // Mode-specific instructions — these override the default disposition

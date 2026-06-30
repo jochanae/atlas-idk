@@ -1624,4 +1624,36 @@ router.post("/:id/review", async (req, res) => {
   }
 });
 
+// DELETE /api/projects/:id/memory/:index — remove a single memory entry by array index
+router.delete("/projects/:id/memory/:index", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const entryIndex = parseInt(req.params.index, 10);
+  if (Number.isNaN(id) || id <= 0 || Number.isNaN(entryIndex) || entryIndex < 0) {
+    res.status(400).json({ error: "Invalid parameters" });
+    return;
+  }
+  const userId = (req as any).authUser.id as number;
+  const [project] = await db
+    .select({ id: projectsTable.id, memory: projectsTable.memory })
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, userId)))
+    .limit(1);
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  let store: { v: 2; entries: unknown[] } = { v: 2, entries: [] };
+  try {
+    const parsed = project.memory ? JSON.parse(project.memory) : null;
+    if (parsed?.v === 2 && Array.isArray(parsed.entries)) store = parsed as { v: 2; entries: unknown[] };
+  } catch {}
+  if (entryIndex >= store.entries.length) {
+    res.status(400).json({ error: "Entry index out of range" });
+    return;
+  }
+  store.entries.splice(entryIndex, 1);
+  await db.update(projectsTable).set({ memory: JSON.stringify(store) }).where(eq(projectsTable.id, id));
+  res.json({ ok: true, remaining: store.entries.length });
+});
+
 export default router;

@@ -1,18 +1,19 @@
 import { useState } from "react";
-import { useGetProject, getGetProjectQueryKey, updateProject, useUpdateProject } from "@workspace/api-client-react";
+import { useGetProject, getGetProjectQueryKey } from "@workspace/api-client-react";
 import type React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { X } from "lucide-react";
 
 export function MemoryTab({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient();
   const { data: project, isLoading } = useGetProject(projectId, {
     query: { queryKey: getGetProjectQueryKey(projectId) },
   });
-  const updateProject = useUpdateProject();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 
   const memory = project?.memory ?? "";
 
@@ -23,30 +24,42 @@ export function MemoryTab({ projectId }: { projectId: number }) {
 
   const save = async () => {
     setSaving(true);
-    updateProject.mutate(
-      { id: projectId, data: { memory: draft.trim() || null } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          setEditing(false);
-        },
-        onSettled: () => setSaving(false),
-      }
-    );
+    try {
+      await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memory: draft.trim() || null }),
+      });
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const clear = async () => {
     if (!window.confirm("Clear all project memory? This cannot be undone.")) return;
     setSaving(true);
-    updateProject.mutate(
-      { id: projectId, data: { memory: null } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-        },
-        onSettled: () => setSaving(false),
-      }
-    );
+    try {
+      await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memory: null }),
+      });
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteEntry = async (globalIdx: number) => {
+    setDeletingIndex(globalIdx);
+    try {
+      await fetch(`/api/projects/${projectId}/memory/${globalIdx}`, { method: "DELETE" });
+      queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+    } finally {
+      setDeletingIndex(null);
+    }
   };
 
   const sMono: React.CSSProperties = { fontFamily: "var(--app-font-mono)" };
@@ -81,7 +94,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.35")}
             >
-              clear
+              clear all
             </button>
           )}
           {!editing && (
@@ -91,7 +104,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.55")}
             >
-              edit
+              edit raw
             </button>
           )}
           {editing && (
@@ -153,6 +166,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
             }
 
             const totalCount = parsed.entries.length;
+            const entriesWithIdx = parsed.entries.map((e, idx) => ({ ...e, _idx: idx }));
 
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -160,7 +174,7 @@ export function MemoryTab({ projectId }: { projectId: number }) {
                   {totalCount} MEMORY {totalCount === 1 ? "ENTRY" : "ENTRIES"} ACROSS {tierConfig.filter(t => parsed!.entries.some(e => e.tier === t.tier)).length} TIERS
                 </div>
                 {tierConfig.map(({ tier, label, sublabel, color, bg, border }) => {
-                  const entries = parsed!.entries.filter(e => e.tier === tier);
+                  const entries = entriesWithIdx.filter(e => e.tier === tier);
                   if (entries.length === 0) return null;
                   return (
                     <div key={tier} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -169,9 +183,34 @@ export function MemoryTab({ projectId }: { projectId: number }) {
                         <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color: "var(--atlas-muted)", opacity: 0.4 }}>{sublabel}</span>
                         <span style={{ fontSize: "var(--ts-xs)", fontFamily: "var(--app-font-mono)", color, opacity: 0.5, marginLeft: "auto" }}>{entries.length}</span>
                       </div>
-                      {entries.map((entry, i) => (
-                        <div key={i} style={{ padding: "7px 10px", borderRadius: 6, background: bg, border: `1px solid ${border}`, fontSize: "var(--ts-caption)", color: "var(--atlas-fg)", lineHeight: 1.55, fontFamily: "var(--app-font-mono)", opacity: 0.85 }}>
-                          {entry.text}
+                      {entries.map((entry) => (
+                        <div
+                          key={entry._idx}
+                          style={{
+                            padding: "7px 10px", borderRadius: 6, background: bg,
+                            border: `1px solid ${border}`, fontSize: "var(--ts-caption)",
+                            color: "var(--atlas-fg)", lineHeight: 1.55, fontFamily: "var(--app-font-mono)",
+                            opacity: deletingIndex === entry._idx ? 0.4 : 0.85,
+                            display: "flex", alignItems: "flex-start", gap: 6, transition: "opacity 150ms ease",
+                          }}
+                        >
+                          <span style={{ flex: 1 }}>{entry.text}</span>
+                          <button
+                            onClick={() => deleteEntry(entry._idx)}
+                            disabled={deletingIndex !== null}
+                            title="Remove this memory"
+                            style={{
+                              background: "transparent", border: "none",
+                              cursor: deletingIndex !== null ? "not-allowed" : "pointer",
+                              padding: 2, flexShrink: 0, opacity: 0.25,
+                              display: "flex", alignItems: "center", color: "var(--atlas-muted)",
+                              transition: "opacity 120ms ease",
+                            }}
+                            onMouseEnter={(e) => { if (deletingIndex === null) e.currentTarget.style.opacity = "0.8"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.25"; }}
+                          >
+                            <X size={11} strokeWidth={2} />
+                          </button>
                         </div>
                       ))}
                     </div>
