@@ -5359,8 +5359,16 @@ export default function Home() {
         onOpenParking={() => setLocation("/parking")}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify")); }}
         onOpenWrite={() => { setShowDrawer(false); if (homeFocus) setLocation(`/project/${homeFocus}`); setTimeout(() => window.dispatchEvent(new CustomEvent("axiom:open-write")), 350); }}
+        onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
+
+      <AtlasComposerSheet
+        open={showComposerSheet}
+        onClose={() => setShowComposerSheet(false)}
+        projects={(projects ?? []).filter((p: Project) => (p as any).status === "committed").map((p: Project) => ({ id: p.id, name: p.name }))}
+      />
+
 
       {showVault && (
         <VisualVault
