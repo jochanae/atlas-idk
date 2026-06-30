@@ -62,7 +62,7 @@ import { fileToBase64Safe } from "@/lib/image-resize";
 import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfolioFocusDetection";
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
-import { ResumeConversationCard } from "@/components/ResumeConversationCard";
+import { ResumeSubtitle } from "@/components/ResumeSubtitle";
 
 
 const PLACEHOLDERS = [
