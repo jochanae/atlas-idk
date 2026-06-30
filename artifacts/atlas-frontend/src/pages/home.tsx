@@ -48,7 +48,8 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Check } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Globe } from "lucide-react";
+import { ParkSheet } from "@/components/ParkSheet";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
@@ -1894,22 +1895,30 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
-  // "Send to" routing: workspace (default), ask-atlas (overlay), parking (capture lot).
-  // Each surface answers a different intent — building / thinking / saving.
-  type SendTarget = "workspace" | "ask-atlas" | "parking";
+  // Composer mode: workspace (default) or ask-atlas (toggled on composer).
+  // Toggle lives inline on the home composer — no routing sheet, no second
+  // composer. AskAtlasOverlay only appears as the response surface AFTER a
+  // send while the toggle is ON.
+  type SendTarget = "workspace" | "ask-atlas";
   const [sendTo, setSendTo] = useState<SendTarget>("workspace");
-  const [showSendToPicker, setShowSendToPicker] = useState(false);
-  
   const sendToRef = useRef<SendTarget>("workspace");
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
   const [askAtlasOpen, setAskAtlasOpen] = useState(false);
   const [askAtlasSeed, setAskAtlasSeed] = useState<string | null>(null);
-  // Radial menu "Ask Atlas" → open the ephemeral overlay.
+  // One-time helper line on first Ask Atlas activation.
+  const [askAtlasHelperVisible, setAskAtlasHelperVisible] = useState(false);
+  // Quick-park sheet (matches workspace behavior — opened from composer Park icon).
+  const [showParkSheet, setShowParkSheet] = useState(false);
+  // Radial menu "Ask Atlas" → shortcut: flip toggle ON + focus composer.
+  // Does NOT auto-open the overlay; overlay is reached only by sending.
   useEffect(() => {
     const onAsk = (e: Event) => {
       const detail = (e as CustomEvent<{ seed?: string }>).detail;
-      setAskAtlasSeed(detail?.seed ?? null);
-      setAskAtlasOpen(true);
+      setSendTo("ask-atlas");
+      sendToRef.current = "ask-atlas";
+      if (detail?.seed) setInput(detail.seed);
+      // Defer focus to after the toggle/render flush.
+      window.setTimeout(() => { textareaRef.current?.focus(); }, 30);
     };
     window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
     return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
@@ -2898,26 +2907,16 @@ export default function Home() {
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     submitInFlightRef.current = true;
-    // "Send to" routing — intercept before the workspace-create / inline-send fork.
-    // Workspace is the default; ask-atlas opens the ephemeral overlay; parking
-    // hands off to the existing capture-lot route.
+    // Composer-mode routing — Ask Atlas opens overlay; workspace falls through
+    // to the standard create/inline-send fork below.
     const routeTarget = sendToRef.current;
     if (routeTarget === "ask-atlas" && text) {
       setAskAtlasSeed(text);
       setAskAtlasOpen(true);
       setInput("");
       setAttachedFiles([]);
-      setSendTo("workspace");
+      setAskAtlasHelperVisible(false);
       submitInFlightRef.current = false;
-      return;
-    }
-    if (routeTarget === "parking" && text) {
-      try { sessionStorage.setItem("atlas-parking-seed", text); } catch {}
-      setInput("");
-      setAttachedFiles([]);
-      setSendTo("workspace");
-      submitInFlightRef.current = false;
-      setLocation("/parking");
       return;
     }
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
@@ -4596,65 +4595,6 @@ export default function Home() {
             />
 
 
-            {/* Flat "Send to" sheet — one tap selects, check appears, sheet dismisses. */}
-            {showSendToPicker && createPortal(
-              <>
-                <div onClick={() => setShowSendToPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: isParchment ? "rgba(31,36,48,0.38)" : "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: isParchment ? "var(--bg-elevated)" : "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: isParchment ? "var(--shadow-soft)" : "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  <div style={{ width: 44, height: 4, borderRadius: 999, background: "rgba(201,162,76,0.35)", margin: "2px auto 10px" }} />
-                  {(() => {
-                    type Row = { key: string; label: string; selected: boolean; onPick: () => void };
-                    const rows: Row[] = [
-                      {
-                        key: "workspace",
-                        label: "Workspace",
-                        selected: sendTo === "workspace" && homeFocus == null,
-                        onPick: () => { setSendTo("workspace"); handleHomeFocusAllProjects(); },
-                      },
-                      {
-                        key: "ask-atlas",
-                        label: "Ask Atlas",
-                        selected: sendTo === "ask-atlas",
-                        onPick: () => { setSendTo("ask-atlas"); },
-                      },
-                      {
-                        key: "parking",
-                        label: "Parking Lot",
-                        selected: sendTo === "parking",
-                        onPick: () => { setSendTo("parking"); },
-                      },
-                    ];
-                    const projectRows: Row[] = selectableFocusProjects.map((p: Project) => ({
-                      key: `p-${p.id}`,
-                      label: p.name,
-                      selected: sendTo === "workspace" && homeFocus === p.id,
-                      onPick: () => { setSendTo("workspace"); handleHomeFocusSelect(p.id); },
-                    }));
-                    const renderRow = (r: Row) => (
-                      <button
-                        key={r.key}
-                        type="button"
-                        onClick={() => { r.onPick(); setTimeout(() => setShowSendToPicker(false), 150); }}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 18px", background: r.selected ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 15 }}
-                      >
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
-                        {r.selected && <Check size={16} strokeWidth={2} style={{ color: "var(--atlas-gold)", flexShrink: 0 }} />}
-                      </button>
-                    );
-                    return (
-                      <>
-                        {rows.map(renderRow)}
-                        {projectRows.length > 0 && (
-                          <div style={{ height: 1, background: "var(--atlas-border)", opacity: 0.5, margin: "8px 16px" }} />
-                        )}
-                        {projectRows.map(renderRow)}
-                      </>
-                    );
-                  })()}
-                </div>
-              </>,
-              document.body
-            )}
 
 
 
@@ -4682,6 +4622,42 @@ export default function Home() {
                     >×</button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Ask Atlas mode banner — fades in while toggle is ON.
+                Mirrors the workspace Plan Mode banner pattern. */}
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                display: "flex", justifyContent: "center", alignItems: "center", gap: 6,
+                marginBottom: sendTo === "ask-atlas" ? 6 : 0,
+                height: sendTo === "ask-atlas" ? "auto" : 0,
+                overflow: "hidden",
+                fontFamily: "var(--app-font-mono)",
+                fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase",
+                color: "var(--atlas-gold)",
+                opacity: sendTo === "ask-atlas" ? 0.85 : 0,
+                transition: "opacity 1.2s ease-out, margin-bottom 200ms ease",
+                pointerEvents: "none",
+              }}
+            >
+              <span style={{
+                width: 5, height: 5, borderRadius: "50%",
+                background: "var(--atlas-gold)",
+                boxShadow: "0 0 6px rgba(201,162,76,0.7)",
+              }} />
+              Portfolio Thinking · Not Building
+            </div>
+            {sendTo === "ask-atlas" && askAtlasHelperVisible && (
+              <div style={{
+                textAlign: "center", marginBottom: 6,
+                fontFamily: "var(--app-font-sans)", fontSize: 11, lineHeight: 1.4,
+                color: "var(--atlas-muted)", opacity: 0.8,
+                padding: "0 12px",
+              }}>
+                Think freely across your portfolio. Nothing here modifies a project until you continue in a workspace.
               </div>
             )}
 
@@ -4724,7 +4700,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {globalInsightOpen ? "Ask the global view..." : placeholder}
+                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : globalInsightOpen ? "Ask the global view..." : placeholder}
                   {!globalInsightOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
@@ -4811,7 +4787,6 @@ export default function Home() {
                 globalContext={true}
                 borderless={true}
                 hasAttachments={attachedFiles.length > 0}
-                hidePark={nexusChat.messages.length === 0 && !globalInsightOpen}
                 onFiles={(files) => {
                   const combined = [...attachedFiles, ...files].slice(0, 10);
                   if (files.length + attachedFiles.length > 10) toast("Max 10 items at a time");
@@ -4819,6 +4794,7 @@ export default function Home() {
                 }}
                 onSketch={(prompt) => { void nexusChat.send({ text: prompt, overrideOptions: { focusProjectId: resolveFocusProjectIdForTurn() } }); }}
                 onMenuAction={(action) => {
+                  if (action === "park") { setShowParkSheet(true); return; }
                   if (action === "history") { setShowTimeTravel(true); return; }
                   if (action === "settings") { setLocation("/account"); return; }
                   if (action === "code") { setLocation("/code"); return; }
@@ -4831,48 +4807,77 @@ export default function Home() {
               />
 
 
-              {/* Unified "Send to · <target>" pill — opens one grouped sheet
-                  with WHERE (workspace/ask-atlas/parking) + ABOUT (focus scope).
-                  Replaces the previous two-pill design on mobile. */}
+              {/* Ask Atlas toggle — inline mode switch on the home composer.
+                  OFF = Workspace (default); ON = composer routes to AskAtlasOverlay
+                  on Send. Inspired by the workspace Plan Mode button. */}
               <button
                 type="button"
-                title="Send to"
-                aria-label={`Send to: ${sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking Lot" : "Workspace"} · ${focusChipLabel}`}
-                aria-expanded={showSendToPicker}
+                title={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
+                aria-label={sendTo === "ask-atlas" ? "Exit Ask Atlas mode" : "Switch to Ask Atlas mode"}
+                aria-pressed={sendTo === "ask-atlas"}
                 onPointerDown={(e) => { e.preventDefault(); }}
                 onMouseDown={(e) => { e.preventDefault(); }}
-                onClick={(e) => { e.stopPropagation(); setShowSendToPicker((o) => !o); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSendTo((prev) => {
+                    const next: SendTarget = prev === "ask-atlas" ? "workspace" : "ask-atlas";
+                    if (next === "ask-atlas") {
+                      try {
+                        if (!localStorage.getItem("atlas-ask-atlas-helped")) {
+                          setAskAtlasHelperVisible(true);
+                          localStorage.setItem("atlas-ask-atlas-helped", "1");
+                        }
+                      } catch { /* noop */ }
+                    } else {
+                      setAskAtlasHelperVisible(false);
+                    }
+                    return next;
+                  });
+                }}
                 style={{
                   height: 34,
                   display: "inline-flex", alignItems: "center", gap: 6,
                   padding: "0 10px", borderRadius: 999,
-                  background: sendTo === "workspace"
-                    ? "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"
-                    : "color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                  color: "var(--atlas-gold)",
+                  background: sendTo === "ask-atlas"
+                    ? "linear-gradient(135deg, rgba(201,162,76,0.28), rgba(201,162,76,0.14))"
+                    : "transparent",
+                  border: `1px solid ${sendTo === "ask-atlas" ? "rgba(201,162,76,0.55)" : "rgba(255,255,255,0.10)"}`,
+                  boxShadow: sendTo === "ask-atlas"
+                    ? "0 0 14px -4px rgba(201,162,76,0.55), inset 0 0 0 1px rgba(201,162,76,0.15)"
+                    : "none",
+                  color: sendTo === "ask-atlas" ? "var(--atlas-gold)" : "var(--atlas-muted)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
-                  fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
+                  fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase",
                   whiteSpace: "nowrap",
                   minWidth: 0,
                   flexShrink: 1,
                   WebkitTapHighlightColor: "transparent",
+                  transition: "all 180ms ease",
                 }}
               >
-                <span style={{ opacity: 0.7 }}>Send to</span>
-                <span>·</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                  {sendTo === "ask-atlas"
-                    ? "Ask Atlas"
-                    : sendTo === "parking"
-                    ? "Parking"
-                    : homeFocus != null
-                    ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Workspace")
-                    : "Workspace"}
-                </span>
-                <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
+                <Globe
+                  size={13}
+                  strokeWidth={1.8}
+                  style={{
+                    flexShrink: 0,
+                    filter: sendTo === "ask-atlas"
+                      ? "drop-shadow(0 0 4px rgba(201,162,76,0.75))"
+                      : "none",
+                    transition: "filter 180ms ease",
+                  }}
+                />
+                <span>Ask Atlas</span>
+                {sendTo === "ask-atlas" && (
+                  <span style={{
+                    width: 5, height: 5, borderRadius: "50%",
+                    background: "var(--atlas-gold)",
+                    boxShadow: "0 0 6px rgba(201,162,76,0.85)",
+                    flexShrink: 0,
+                  }} />
+                )}
               </button>
+
 
               </div>
 
@@ -5822,6 +5827,19 @@ export default function Home() {
           window.setTimeout(() => { void handleSubmit(seed); }, 40);
         }}
       />
+
+      {/* Quick-park sheet — opened from the composer Park icon. Mirrors workspace behavior. */}
+      {showParkSheet && (
+        <ParkSheet
+          projectId={homeFocus ?? null}
+          projects={selectableFocusProjects.map((p: Project) => ({ id: p.id, name: p.name }))}
+          onClose={() => setShowParkSheet(false)}
+          onOpenFull={() => {
+            setShowParkSheet(false);
+            setLocation("/parking" + (homeFocus != null ? `?project=${homeFocus}` : ""));
+          }}
+        />
+      )}
 
 
 
