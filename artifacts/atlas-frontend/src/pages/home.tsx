@@ -4595,65 +4595,8 @@ export default function Home() {
             />
 
 
-            {/* Flat "Send to" sheet — one tap selects, check appears, sheet dismisses. */}
-            {showSendToPicker && createPortal(
-              <>
-                <div onClick={() => setShowSendToPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  <div style={{ width: 44, height: 4, borderRadius: 999, background: "rgba(201,162,76,0.35)", margin: "2px auto 10px" }} />
-                  {(() => {
-                    type Row = { key: string; label: string; selected: boolean; onPick: () => void };
-                    const rows: Row[] = [
-                      {
-                        key: "workspace",
-                        label: "Workspace",
-                        selected: sendTo === "workspace" && homeFocus == null,
-                        onPick: () => { setSendTo("workspace"); handleHomeFocusAllProjects(); },
-                      },
-                      {
-                        key: "ask-atlas",
-                        label: "Ask Atlas",
-                        selected: sendTo === "ask-atlas",
-                        onPick: () => { setSendTo("ask-atlas"); },
-                      },
-                      {
-                        key: "parking",
-                        label: "Parking Lot",
-                        selected: sendTo === "parking",
-                        onPick: () => { setSendTo("parking"); },
-                      },
-                    ];
-                    const projectRows: Row[] = selectableFocusProjects.map((p: Project) => ({
-                      key: `p-${p.id}`,
-                      label: p.name,
-                      selected: sendTo === "workspace" && homeFocus === p.id,
-                      onPick: () => { setSendTo("workspace"); handleHomeFocusSelect(p.id); },
-                    }));
-                    const renderRow = (r: Row) => (
-                      <button
-                        key={r.key}
-                        type="button"
-                        onClick={() => { r.onPick(); setTimeout(() => setShowSendToPicker(false), 150); }}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 18px", background: r.selected ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 15 }}
-                      >
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
-                        {r.selected && <Check size={16} strokeWidth={2} style={{ color: "var(--atlas-gold)", flexShrink: 0 }} />}
-                      </button>
-                    );
-                    return (
-                      <>
-                        {rows.map(renderRow)}
-                        {projectRows.length > 0 && (
-                          <div style={{ height: 1, background: "var(--atlas-border)", opacity: 0.5, margin: "8px 16px" }} />
-                        )}
-                        {projectRows.map(renderRow)}
-                      </>
-                    );
-                  })()}
-                </div>
-              </>,
-              document.body
-            )}
+            {/* Send-to pill + sheet removed — composer now self-toggles between
+                Workspace and Ask Atlas via the inline Ask Atlas button below. */}
 
 
 
