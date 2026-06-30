@@ -48,7 +48,7 @@ import { CompactReadinessRing, computeScoreFromNodeState } from "../components/R
 import { PlanCard } from "../components/PlanCard";
 import { detectPlanFromText } from "../lib/plan";
 import type { Plan } from "../lib/plan";
-import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2 } from "lucide-react";
+import { ChevronDown, Crosshair, FolderClosed, Briefcase, X, Maximize2, Minimize2, Check } from "lucide-react";
 import type { RunStatus, RunAction, RunArtifact } from "../components/RunSummary";
 import { useShellState } from "../components/UnifiedShell";
 import { useShellStore } from "../store/shellStore";
@@ -1899,7 +1899,7 @@ export default function Home() {
   type SendTarget = "workspace" | "ask-atlas" | "parking";
   const [sendTo, setSendTo] = useState<SendTarget>("workspace");
   const [showSendToPicker, setShowSendToPicker] = useState(false);
-  const [showProjectSubPicker, setShowProjectSubPicker] = useState(false);
+  
   const sendToRef = useRef<SendTarget>("workspace");
   useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
   const [askAtlasOpen, setAskAtlasOpen] = useState(false);
@@ -4596,113 +4596,66 @@ export default function Home() {
             />
 
 
-            {/* Unified "Send to" sheet — WHERE (target) + ABOUT (focus scope).
-                Replaces the previous separate focus picker on mobile. */}
+            {/* Flat "Send to" sheet — one tap selects, check appears, sheet dismisses. */}
             {showSendToPicker && createPortal(
               <>
                 <div onClick={() => setShowSendToPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  {/* WHERE */}
-                  <div style={{ padding: "4px 16px 8px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Where</div>
-                  {([
-                    { id: "workspace" as const, label: "Workspace", hint: "I am building" },
-                    { id: "ask-atlas" as const, label: "Ask Atlas", hint: "I am thinking" },
-                    { id: "parking" as const, label: "Parking Lot", hint: "Save for later" },
-                  ]).map((opt) => {
-                    const active = sendTo === opt.id;
-                    return (
+                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
+                  <div style={{ width: 44, height: 4, borderRadius: 999, background: "rgba(201,162,76,0.35)", margin: "2px auto 10px" }} />
+                  {(() => {
+                    type Row = { key: string; label: string; selected: boolean; onPick: () => void };
+                    const rows: Row[] = [
+                      {
+                        key: "workspace",
+                        label: "Workspace",
+                        selected: sendTo === "workspace" && homeFocus == null,
+                        onPick: () => { setSendTo("workspace"); handleHomeFocusAllProjects(); },
+                      },
+                      {
+                        key: "ask-atlas",
+                        label: "Ask Atlas",
+                        selected: sendTo === "ask-atlas",
+                        onPick: () => { setSendTo("ask-atlas"); },
+                      },
+                      {
+                        key: "parking",
+                        label: "Parking Lot",
+                        selected: sendTo === "parking",
+                        onPick: () => { setSendTo("parking"); },
+                      },
+                    ];
+                    const projectRows: Row[] = selectableFocusProjects.map((p: Project) => ({
+                      key: `p-${p.id}`,
+                      label: p.name,
+                      selected: sendTo === "workspace" && homeFocus === p.id,
+                      onPick: () => { setSendTo("workspace"); handleHomeFocusSelect(p.id); },
+                    }));
+                    const renderRow = (r: Row) => (
                       <button
-                        key={opt.id}
+                        key={r.key}
                         type="button"
-                        onClick={() => { setSendTo(opt.id); setShowSendToPicker(false); }}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", background: active ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
+                        onClick={() => { r.onPick(); setTimeout(() => setShowSendToPicker(false), 150); }}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "13px 18px", background: r.selected ? "color-mix(in oklab, var(--atlas-gold) 10%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 15 }}
                       >
-                        <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: active ? "var(--atlas-gold)" : "rgba(201,162,76,0.35)", flexShrink: 0 }} />
-                          {opt.label}
-                        </span>
-                        <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>{opt.hint}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
+                        {r.selected && <Check size={16} strokeWidth={2} style={{ color: "var(--atlas-gold)", flexShrink: 0 }} />}
                       </button>
                     );
-                  })}
-
-                  {/* divider */}
-                  <div style={{ height: 1, background: "var(--atlas-border)", opacity: 0.5, margin: "10px 16px" }} />
-
-                  {/* ABOUT (context scope) */}
-                  <div style={{ padding: "4px 16px 8px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Context</div>
-
-                  {/* All projects */}
-                  <button
-                    type="button"
-                    onClick={() => { handleHomeFocusAllProjects(); setShowSendToPicker(false); }}
-                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: homeFocus == null ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                  >
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus == null ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                    All projects
-                  </button>
-
-                  {/* Current project (auto-detected) */}
-                  {detectedFocusProject && (
-                    <button
-                      type="button"
-                      onClick={() => { handleHomeFocusSelect(detectedFocusProject.id); setShowSendToPicker(false); }}
-                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px", background: homeFocus === detectedFocusProject.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === detectedFocusProject.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                        Current project
-                      </span>
-                      <span style={{ fontFamily: "var(--app-font-mono)", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{detectedFocusProject.name}</span>
-                    </button>
-                  )}
-
-                  {/* Choose a project... — opens secondary sheet */}
-                  {selectableFocusProjects.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowProjectSubPicker(true)}
-                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 16px", background: "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus != null && homeFocus !== detectedFocusProject?.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                        {(() => {
-                          if (homeFocus != null && homeFocus !== detectedFocusProject?.id) {
-                            const p = selectableFocusProjects.find((pp: Project) => pp.id === homeFocus);
-                            if (p) return p.name;
-                          }
-                          return "Choose a project…";
-                        })()}
-                      </span>
-                      <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 16, lineHeight: 1 }}>›</span>
-                    </button>
-                  )}
+                    return (
+                      <>
+                        {rows.map(renderRow)}
+                        {projectRows.length > 0 && (
+                          <div style={{ height: 1, background: "var(--atlas-border)", opacity: 0.5, margin: "8px 16px" }} />
+                        )}
+                        {projectRows.map(renderRow)}
+                      </>
+                    );
+                  })()}
                 </div>
               </>,
               document.body
             )}
 
-            {/* Secondary project picker — full project list */}
-            {showProjectSubPicker && createPortal(
-              <>
-                <div onClick={() => setShowProjectSubPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
-                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10001, background: "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "16px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
-                  <div style={{ padding: "4px 16px 10px", fontFamily: "var(--app-font-mono)", fontSize: 9, letterSpacing: "0.12em", color: "var(--atlas-muted)", textTransform: "uppercase", opacity: 0.6 }}>Choose project</div>
-                  {selectableFocusProjects.map((p: Project) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => { handleHomeFocusSelect(p.id); setShowProjectSubPicker(false); setShowSendToPicker(false); }}
-                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", background: homeFocus === p.id ? "color-mix(in oklab, var(--atlas-gold) 9%, transparent)" : "transparent", border: "none", cursor: "pointer", color: "var(--atlas-fg)", textAlign: "left", fontFamily: "var(--app-font-sans)", fontSize: 14 }}
-                    >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: homeFocus === p.id ? "var(--atlas-gold)" : "rgba(201,162,76,0.45)", flexShrink: 0 }} />
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              </>,
-              document.body
-            )}
 
 
             {/* Attached files preview strip */}
@@ -4910,7 +4863,13 @@ export default function Home() {
                 <span style={{ opacity: 0.7 }}>Send to</span>
                 <span>·</span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                  {sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking" : "Workspace"}
+                  {sendTo === "ask-atlas"
+                    ? "Ask Atlas"
+                    : sendTo === "parking"
+                    ? "Parking"
+                    : homeFocus != null
+                    ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Workspace")
+                    : "Workspace"}
                 </span>
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
