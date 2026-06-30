@@ -33,17 +33,24 @@ type Props = {
   onOpenWrite?: () => void;
   onOpenComposer?: () => void;
   onOpenShell?: () => void;
+  onSelectConversation?: (id: string) => void;
   userLabel?: string | null;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, onOpenShell, userLabel }: Props) {
+type ConversationItem = { id: string; title: string; createdAt?: string; messageCount?: number };
+
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, onOpenShell, onSelectConversation, userLabel }: Props) {
   const activeRunsCount = useActiveRunsCount();
   const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
+  const [conversationsExpanded, setConversationsExpanded] = useState(true);
+  const [conversationsShowAll, setConversationsShowAll] = useState(false);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
   const [filter, setFilter] = useState<ProjectFilter>("recent");
+
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
   })();
