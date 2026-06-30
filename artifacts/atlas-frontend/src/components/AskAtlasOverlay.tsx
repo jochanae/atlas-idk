@@ -152,6 +152,18 @@ export function AskAtlasOverlay({
           transform: `translateX(-50%) translateY(${visible ? "0" : "16px"})`,
           opacity: visible ? 1 : 0,
           transition: `transform 260ms ${EASE}, opacity 220ms ease`,
+          zIndex: 2401,
+          width: "min(560px, calc(100vw - 24px))",
+          maxHeight: "min(78vh, 720px)",
+          display: "flex", flexDirection: "column",
+          background: "rgba(18,16,22,0.97)",
+          border: "1px solid rgba(212,175,55,0.28)",
+          borderRadius: 18,
+          boxShadow: "0 28px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          overflow: "hidden",
+          fontFamily: "var(--app-font-sans)",
+          willChange: "transform, opacity",
+        }}
       >
         {/* Header */}
         <header style={{
