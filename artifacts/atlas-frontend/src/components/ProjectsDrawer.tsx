@@ -16,7 +16,7 @@ export type DrawerProject = {
   status?: "shaping" | "committed" | "archived";
 };
 
-type ProjectFilter = "all" | "active" | "archived";
+type ProjectFilter = "recent" | "active" | "archived";
 
 
 type Props = {
@@ -41,7 +41,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [workspaceExpanded, setWorkspaceExpanded] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
-  const [filter, setFilter] = useState<ProjectFilter>("all");
+  const [filter, setFilter] = useState<ProjectFilter>("recent");
   const userPhoto: string = (() => {
     try { const r = localStorage.getItem("atlas-user-profile"); return r ? (JSON.parse(r).photoUrl ?? "") : ""; } catch { return ""; }
   })();
@@ -58,7 +58,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
   if (!open) return null;
 
   const filtered = projects.filter((p) => {
-    if (filter === "all") return true;
+    if (filter === "recent") return p.status !== "archived";
     if (filter === "active") return p.status !== "archived";
     if (filter === "archived") return p.status === "archived";
     return true;
@@ -141,7 +141,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
           `}</style>
           <button
             type="button"
-            onClick={() => { navigate("/"); window.dispatchEvent(new CustomEvent("axiom:home-reset")); }}
+            onClick={() => { onNewProject(); onClose(); }}
             style={{
               display: "flex", alignItems: "center", gap: 10,
               width: "100%", padding: "10px 12px", marginBottom: 10,
@@ -168,10 +168,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               background: "rgba(201,162,76,0.07)", border: "1px solid rgba(201,162,76,0.18)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--atlas-gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-              </svg>
+              <Plus size={15} strokeWidth={1.8} color="var(--atlas-gold)" />
             </div>
 
             {/* Labels */}
@@ -180,10 +177,10 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
                 fontSize: 11, fontFamily: "var(--app-font-mono)", fontWeight: 700,
                 letterSpacing: "0.12em", color: "var(--atlas-gold)", textTransform: "uppercase",
               }}>
-                Global Insights
+                New Conversation
               </div>
               <div style={{ fontSize: 9.5, color: "var(--atlas-muted)", fontFamily: "var(--app-font-sans)", marginTop: 1, opacity: 0.6 }}>
-                New conversation
+                Start thinking with Atlas
               </div>
             </div>
 
@@ -216,7 +213,7 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
               {/* Filter chips: All | Committed | Shaping */}
               <div role="tablist" aria-label="Project filter" style={{ display: "flex", gap: 4, padding: "2px 6px 8px" }}>
                 {([
-                  { key: "all", label: "All", count: projects.length },
+                  { key: "recent", label: "Recent", count: projects.filter(p => p.status !== "archived").length },
                   { key: "active", label: "Active", count: projects.filter(p => p.status !== "archived").length },
                   { key: "archived", label: "Archived", count: archivedCount },
                 ] as Array<{ key: ProjectFilter; label: string; count: number }>).map((chip) => {
