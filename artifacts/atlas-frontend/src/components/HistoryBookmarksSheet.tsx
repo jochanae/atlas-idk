@@ -64,7 +64,7 @@ const SHEET: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
-  color: "var(--atlas-fg)",
+  color: "rgba(244,236,220,0.92)",
 };
 
 const TAB_BAR: React.CSSProperties = {
@@ -285,7 +285,7 @@ export function HistoryBookmarksSheet({
           ...iconBtnStyle,
           color: item.isBookmarked
             ? "rgba(228,196,128,0.95)"
-            : "var(--atlas-muted)",
+            : isParchment ? "#68707C" : "rgba(244,236,220,0.55)",
         }}
       >
         {item.isBookmarked ? (
@@ -691,7 +691,7 @@ export function HistoryBookmarksSheet({
                       fontSize: 11.5,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      color: "var(--atlas-muted)",
+                      color: isParchment ? "rgba(115,92,60,0.65)" : "rgba(244,236,220,0.55)",
                       fontWeight: 600,
                     }}
                   >
@@ -724,7 +724,7 @@ export function HistoryBookmarksSheet({
                         color:
                           checkpointTitle.trim()
                             ? (isParchment ? "rgba(115,72,14,0.98)" : "rgba(244,224,176,0.98)")
-                            : "var(--atlas-muted)",
+                            : (isParchment ? "#9AA1AA" : "rgba(244,236,220,0.4)"),
                         fontSize: 12.5,
                         fontWeight: 600,
                         cursor:
@@ -752,9 +752,9 @@ export function HistoryBookmarksSheet({
                       style={{
                         padding: "7px 12px",
                         borderRadius: 7,
-                        border: isParchment ? "1px solid var(--border-soft)" : "1px solid rgba(255,255,255,0.08)",
+                        border: isParchment ? "1px solid rgba(115,92,60,0.18)" : "1px solid rgba(255,255,255,0.08)",
                         background: "transparent",
-                        color: "var(--atlas-muted)",
+                        color: isParchment ? "#68707C" : "rgba(244,236,220,0.5)",
                         fontSize: 12.5,
                         cursor: "pointer",
                         fontFamily: "inherit",
@@ -811,7 +811,7 @@ export function HistoryBookmarksSheet({
                     justifyContent: "center",
                     gap: 8,
                     padding: "32px 16px",
-                    color: "var(--atlas-muted)",
+                    color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.38)",
                     fontSize: 13,
                   }}
                 >
@@ -883,11 +883,14 @@ function TabButton({
   count: number;
   accent?: boolean;
 }) {
-  const accentColor = accent ? "rgba(140,200,160,0.95)" : "rgba(244,224,176,0.98)";
-  const accentBorder = accent ? "rgba(100,180,120,0.50)" : "rgba(196,160,80,0.45)";
+  const isParchment = useThemeMode() === "parchment";
+  const accentColor = accent ? "rgba(140,200,160,0.95)" : (isParchment ? "rgba(115,72,14,0.98)" : "rgba(244,224,176,0.98)");
+  const accentBorder = accent ? "rgba(100,180,120,0.50)" : (isParchment ? "rgba(115,92,60,0.45)" : "rgba(196,160,80,0.45)");
   const accentBg = accent
     ? "linear-gradient(180deg, rgba(60,160,80,0.18), rgba(60,160,80,0.08))"
-    : "linear-gradient(180deg, rgba(196,160,80,0.22), rgba(196,160,80,0.10))";
+    : (isParchment
+        ? "linear-gradient(180deg, rgba(115,92,60,0.14), rgba(115,92,60,0.07))"
+        : "linear-gradient(180deg, rgba(196,160,80,0.22), rgba(196,160,80,0.10))");
 
   return (
     <button
@@ -905,7 +908,7 @@ function TabButton({
         background: active ? accentBg : "transparent",
         color: active
           ? accentColor
-          : "var(--atlas-muted)",
+          : (isParchment ? "#68707C" : "rgba(244,236,220,0.55)"),
         border: active
           ? `1px solid ${accentBorder}`
           : "1px solid transparent",
@@ -928,13 +931,14 @@ function TabButton({
 }
 
 function DayLabel({ children }: { children: React.ReactNode }) {
+  const isParchment = useThemeMode() === "parchment";
   return (
     <div
       style={{
         fontSize: 10.5,
         letterSpacing: "0.16em",
         textTransform: "uppercase",
-        color: "var(--atlas-muted)",
+        color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.4)",
         padding: "2px 2px 8px",
         fontWeight: 600,
       }}
@@ -953,6 +957,7 @@ function MenuRow({
   onClick: () => void;
   danger?: boolean;
 }) {
+  const isParchment = useThemeMode() === "parchment";
   return (
     <button
       onClick={onClick}
@@ -967,11 +972,11 @@ function MenuRow({
         fontSize: 12.5,
         color: danger
           ? "rgba(232,120,110,0.95)"
-          : "var(--atlas-fg)",
+          : (isParchment ? "#1F2430" : "rgba(244,236,220,0.88)"),
         transition: "background 120ms ease",
       }}
       onMouseEnter={(e) =>
-        (e.currentTarget.style.background = "rgba(128,100,60,0.08)")
+        (e.currentTarget.style.background = isParchment ? "rgba(115,92,60,0.07)" : "rgba(255,255,255,0.05)")
       }
       onMouseLeave={(e) =>
         (e.currentTarget.style.background = "transparent")
@@ -989,6 +994,7 @@ function CheckpointInspectPanel({
   checkpoint: ProjectCheckpoint;
   onBack: () => void;
 }) {
+  const isParchment = useThemeMode() === "parchment";
   const icon = CHECKPOINT_ICON[cp.type] ?? "⭐";
   const color = CHECKPOINT_COLOR[cp.type] ?? "rgba(228,196,128,0.75)";
   const bg = CHECKPOINT_BG[cp.type] ?? "rgba(196,160,80,0.10)";
@@ -1040,13 +1046,13 @@ function CheckpointInspectPanel({
           alignItems: "center",
           gap: 4,
           fontSize: 12,
-          color: "var(--atlas-muted)",
+          color: isParchment ? "#68707C" : "rgba(244,236,220,0.5)",
           padding: "0 2px 14px",
           letterSpacing: "0.04em",
           transition: "color 120ms ease",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--atlas-fg)")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--atlas-muted)")}
+        onMouseEnter={(e) => (e.currentTarget.style.color = isParchment ? "#1F2430" : "rgba(244,236,220,0.85)")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = isParchment ? "#68707C" : "rgba(244,236,220,0.5)")}
       >
         <ChevronLeft size={13} strokeWidth={2} />
         Back to checkpoints
@@ -1094,7 +1100,7 @@ function CheckpointInspectPanel({
               style={{
                 fontSize: 15,
                 fontWeight: 600,
-                color: "var(--atlas-fg)",
+                color: isParchment ? "#1F2430" : "rgba(244,236,220,0.96)",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -1106,15 +1112,15 @@ function CheckpointInspectPanel({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "var(--atlas-muted)" }}>
+          <span style={{ fontSize: 11, color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.45)" }}>
             {formatSnapshotTimestamp(cp.created_at)}
           </span>
           {cp.created_by === "system" ? (
             <span
               style={{
                 fontSize: 10.5,
-                color: "var(--atlas-muted)",
-                background: "rgba(128,100,60,0.08)",
+                color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.35)",
+                background: isParchment ? "rgba(115,92,60,0.07)" : "rgba(255,255,255,0.06)",
                 borderRadius: 4,
                 padding: "1px 6px",
                 letterSpacing: "0.06em",
@@ -1126,8 +1132,8 @@ function CheckpointInspectPanel({
             <span
               style={{
                 fontSize: 10.5,
-                color: "var(--atlas-muted)",
-                background: "rgba(128,100,60,0.08)",
+                color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.35)",
+                background: isParchment ? "rgba(115,92,60,0.07)" : "rgba(255,255,255,0.06)",
                 borderRadius: 4,
                 padding: "1px 6px",
                 letterSpacing: "0.06em",
@@ -1143,7 +1149,7 @@ function CheckpointInspectPanel({
             style={{
               marginTop: 10,
               fontSize: 12,
-              color: "var(--atlas-muted)",
+              color: isParchment ? "#68707C" : "rgba(244,236,220,0.55)",
               lineHeight: 1.5,
             }}
           >
@@ -1167,7 +1173,7 @@ function CheckpointInspectPanel({
                 }}
               >
                 {creativePrinciples.map((p, i) => (
-                  <li key={i} style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>
+                  <li key={i} style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>
                     {String(p)}
                   </li>
                 ))}
@@ -1186,14 +1192,14 @@ function CheckpointInspectPanel({
                         fontWeight: 600,
                         textTransform: "capitalize",
                         letterSpacing: "0.06em",
-                        color: "var(--atlas-muted)",
+                        color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.42)",
                         paddingTop: 1,
                         minWidth: 72,
                       }}
                     >
                       {k.replace(/_/g, " ")}
                     </span>
-                    <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>
+                    <span style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>
                       {typeof v === "object" ? JSON.stringify(v) : String(v ?? "—")}
                     </span>
                   </div>
@@ -1210,44 +1216,44 @@ function CheckpointInspectPanel({
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {amName && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Name
                 </span>
-                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)" }}>{amName}</span>
+                <span style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)" }}>{amName}</span>
               </div>
             )}
             {amIntent && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Intent
                 </span>
-                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>{amIntent}</span>
+                <span style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>{amIntent}</span>
               </div>
             )}
             {amDesc && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   About
                 </span>
-                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)", lineHeight: 1.45 }}>{amDesc}</span>
+                <span style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)", lineHeight: 1.45 }}>{amDesc}</span>
               </div>
             )}
             {amPages !== null && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Pages
                 </span>
-                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)" }}>
+                <span style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)" }}>
                   {amPages} defined
                 </span>
               </div>
             )}
             {amEntities !== null && amEntities > 0 && (
               <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: "var(--atlas-muted)", letterSpacing: "0.06em", paddingTop: 1 }}>
+                <span style={{ flex: "0 0 72px", fontSize: 11, fontWeight: 600, color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.42)", letterSpacing: "0.06em", paddingTop: 1 }}>
                   Entities
                 </span>
-                <span style={{ fontSize: 12.5, color: "var(--atlas-fg)" }}>
+                <span style={{ fontSize: 12.5, color: isParchment ? "#1F2430" : "rgba(244,236,220,0.78)" }}>
                   {amEntities} defined
                 </span>
               </div>
@@ -1260,7 +1266,7 @@ function CheckpointInspectPanel({
         <div
           style={{
             fontSize: 12,
-            color: "var(--atlas-muted)",
+            color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.38)",
             padding: "12px 2px",
             lineHeight: 1.5,
           }}
@@ -1273,6 +1279,7 @@ function CheckpointInspectPanel({
 }
 
 function InspectSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const isParchment = useThemeMode() === "parchment";
   return (
     <div style={{ marginBottom: 12 }}>
       <div
@@ -1281,9 +1288,9 @@ function InspectSection({ title, children }: { title: string; children: React.Re
           fontWeight: 700,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          color: "var(--atlas-muted)",
+          color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.35)",
           padding: "0 2px 8px",
-          borderBottom: "1px solid var(--border-soft)",
+          borderBottom: isParchment ? "1px solid rgba(115,92,60,0.18)" : "1px solid rgba(244,236,220,0.07)",
           marginBottom: 10,
         }}
       >
@@ -1297,13 +1304,14 @@ function InspectSection({ title, children }: { title: string; children: React.Re
 }
 
 function InspectBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  const isParchment = useThemeMode() === "parchment";
   return (
     <div>
       <div
         style={{
           fontSize: 11,
           fontWeight: 600,
-          color: "var(--atlas-muted)",
+          color: isParchment ? "#68707C" : "rgba(244,236,220,0.48)",
           letterSpacing: "0.06em",
           marginBottom: 6,
         }}
@@ -1324,6 +1332,7 @@ function EmptyState({
   copy: string;
   sub?: string;
 }) {
+  const isParchment = useThemeMode() === "parchment";
   return (
     <div
       style={{
@@ -1333,7 +1342,7 @@ function EmptyState({
         justifyContent: "center",
         gap: 8,
         padding: "48px 16px",
-        color: "var(--atlas-muted)",
+        color: isParchment ? "#68707C" : "rgba(244,236,220,0.55)",
         textAlign: "center",
       }}
     >
@@ -1346,7 +1355,7 @@ function EmptyState({
           placeItems: "center",
           background: "rgba(196,160,80,0.08)",
           border: "1px solid rgba(196,160,80,0.18)",
-          color: "rgba(228,196,128,0.7)",
+          color: isParchment ? "rgba(115,72,14,0.7)" : "rgba(228,196,128,0.7)",
         }}
       >
         {icon}
@@ -1356,7 +1365,7 @@ function EmptyState({
         <div
           style={{
             fontSize: 12,
-            color: "var(--atlas-muted)",
+            color: isParchment ? "#9AA1AA" : "rgba(244,236,220,0.4)",
             maxWidth: 280,
           }}
         >

@@ -262,7 +262,7 @@ html, body {
 
 [data-theme="parchment"] {
   color-scheme: light;
-  /* Frosted Ice — cool desaturated neutrals, gold accent preserved */
+  /* Warm Ivory / Parchment — warm ivory luxury, gold accent preserved */
   --atlas-gold-rgb: 139, 94, 60;
 
   /* Semantic warm-ivory tokens (light mode only) */
@@ -276,22 +276,22 @@ html, body {
   --accent-gold:      #A87832;
   --accent-gold-soft: rgba(168, 120, 50, 0.14);
   --shadow-soft:      0 18px 45px rgba(68, 55, 35, 0.14);
-  --atlas-bg-rgb: 248, 250, 252;
-  --atlas-surface-rgb: 255, 255, 255;
+  --atlas-bg-rgb: 247, 244, 237;
+  --atlas-surface-rgb: 255, 253, 248;
   --atlas-muted-rgb: 100, 116, 139;
-  --atlas-flow-pane-bg: #ffffff;
+  --atlas-flow-pane-bg: #FFFDF8;
 
   /* Home page theme overrides */
   --atlas-home-atmosphere: none;
   --atlas-home-bg-gradient: none;
   --atlas-home-header-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.06);
-  --atlas-nav-arch-fill: rgba(248,250,252,0.92);
-  --atlas-home-btn-bg: #ffffff;
+  --atlas-nav-arch-fill: rgba(247,244,237,0.92);
+  --atlas-home-btn-bg: #FFFDF8;
 
-  /* Frosted Ice surfaces — desaturated cool gray-white */
-  --atlas-bg:           #F8FAFC;
-  --atlas-surface:      #FFFFFF;
-  --atlas-surface-alt:  #F1F5F9;
+  /* Warm Ivory surfaces */
+  --atlas-bg:           #F7F4ED;
+  --atlas-surface:      #FFFDF8;
+  --atlas-surface-alt:  #F2EDE3;
 
   /* Obsidian typography */
   --atlas-fg:           #0F172A;

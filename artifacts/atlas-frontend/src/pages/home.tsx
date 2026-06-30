@@ -4600,7 +4600,7 @@ export default function Home() {
             {showSendToPicker && createPortal(
               <>
                 <div onClick={() => setShowSendToPicker(false)} style={{ position: "fixed", inset: 0, zIndex: 9998, background: isParchment ? "rgba(31,36,48,0.38)" : "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }} />
-                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: isParchment ? "var(--bg-surface)" : "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: isParchment ? "var(--shadow-soft)" : "0 -8px 32px rgba(0,0,0,0.4)" }}>
+                <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999, background: isParchment ? "var(--bg-elevated)" : "var(--atlas-surface)", border: "1px solid var(--atlas-border)", borderRadius: "16px 16px 0 0", padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 32px)", maxHeight: "72vh", overflowY: "auto", boxShadow: isParchment ? "var(--shadow-soft)" : "0 -8px 32px rgba(0,0,0,0.4)" }}>
                   <div style={{ width: 44, height: 4, borderRadius: 999, background: "rgba(201,162,76,0.35)", margin: "2px auto 10px" }} />
                   {(() => {
                     type Row = { key: string; label: string; selected: boolean; onPick: () => void };
@@ -4690,7 +4690,7 @@ export default function Home() {
               borderRadius: 14,
               padding: (inputFocused || hasInput || attachedFiles.length > 0) ? "12px 14px" : 0,
               background: (inputFocused || hasInput || attachedFiles.length > 0)
-                ? (isParchment ? "rgba(255,252,244,0.92)" : "rgba(20,16,10,0.32)")
+                ? (isParchment ? "var(--bg-surface)" : "rgba(20,16,10,0.32)")
                 : "transparent",
               border: "1px solid",
               borderColor: (inputFocused || hasInput || attachedFiles.length > 0)
