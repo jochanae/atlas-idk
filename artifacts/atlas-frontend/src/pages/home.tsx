@@ -7,7 +7,7 @@ import { LoadingSpinner } from "../components/ui/loading-spinner";
 import { CollapsibleMessageText } from "@/components/CollapsibleMessageText";
 import { HistoryBookmarksSheet } from "@/components/HistoryBookmarksSheet";
 import { useQueryClient } from "@tanstack/react-query";
-import { useListProjects } from "@workspace/api-client-react";
+import { useListProjects, useUpdateProject } from "@workspace/api-client-react";
 import { getLinkedRepoFullName, normalizeGitHubRepoInput, serializeLinkedRepo } from "@/lib/githubRepo";
 import { API_BASE } from "@/lib/api";
 import { ProjectsDrawer } from "../components/ProjectsDrawer";
@@ -66,7 +66,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
-import { buildAskAtlasHandoffSeed, hasBuildIntent } from "@/components/AskAtlasOverlay";
+import { buildAskAtlasHandoffSeed, hasBuildIntent, matchRecommendedProject, deriveProjectTitle, type ProjectLike } from "@/components/AskAtlasOverlay";
 
 
 const PLACEHOLDERS = [
@@ -2048,6 +2048,15 @@ export default function Home() {
     () => buildAskAtlasHandoffSeed(askAtlasChat.messages, input),
     [askAtlasChat.messages, input],
   );
+  const updateProjectName = useUpdateProject();
+  // When Atlas mentions >1 of the user's projects, show an inline picker
+  // instead of guessing. Keyed by message index where the handoff button
+  // lives so it only shows under that specific message.
+  const [handoffPicker, setHandoffPicker] = useState<{
+    messageIndex: number;
+    options: ProjectLike[];
+  } | null>(null);
+
   useEffect(() => {
     if (!askAtlasConversationActive) return;
     const el = askAtlasScrollRef.current;
@@ -3185,6 +3194,162 @@ export default function Home() {
     setLocation,
   ]);
 
+  /** Ask Atlas → Workspace handoff.
+   *  - `targetProjectId` set → land directly in that existing project (no create, no rename).
+   *  - otherwise: match thread against the user's projects.
+   *      • 1 confident match → route to that project.
+   *      • >1 match → expose picker for this message (caller passes msg index).
+   *      • 0 matches → create new conversation with a derived project name,
+   *        rename after create, then navigate.
+   */
+  const performAskAtlasHandoff = useCallback(async (
+    messageIndex: number,
+    targetProjectId?: number | string,
+  ) => {
+    if (submitInFlightRef.current || isSending) return;
+
+    // Direct route to an existing project.
+    if (targetProjectId != null) {
+      askAtlasChat.abort();
+      askAtlasChat.clearMessages();
+      setHandoffPicker(null);
+      setActiveProjectId(Number(targetProjectId));
+      setLocation(`/project/${targetProjectId}`);
+      return;
+    }
+
+    // Try matching first.
+    const projectsForMatch = (projects ?? []) as ProjectLike[];
+    const { matches } = matchRecommendedProject(
+      askAtlasChat.messages,
+      projectsForMatch,
+    );
+    if (matches.length === 1) {
+      const p = matches[0];
+      askAtlasChat.abort();
+      askAtlasChat.clearMessages();
+      setHandoffPicker(null);
+      setActiveProjectId(Number(p.id));
+      setLocation(`/project/${p.id}`);
+      return;
+    }
+    if (matches.length > 1) {
+      setHandoffPicker({ messageIndex, options: matches.slice(0, 3) });
+      return;
+    }
+
+    // No match → create new, then rename to a derived title.
+    const derivedTitle = deriveProjectTitle(askAtlasChat.messages);
+    const seed = askAtlasHandoffSeed;
+    askAtlasChat.abort();
+    askAtlasChat.clearMessages();
+    setHandoffPicker(null);
+
+    if (!backendReady) {
+      setCreateError(
+        "Project creation is unavailable in this preview because the backend API URL is not configured.",
+      );
+      return;
+    }
+    if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowUpgrade(true);
+      return;
+    }
+
+    submitInFlightRef.current = true;
+    setIsSending(true);
+    setIsAtlasStreaming(true);
+    document.body.dataset.voiceActive = "true";
+    try {
+      const authToken = localStorage.getItem("atlas-auth-token");
+      const createRes = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ initialMessage: seed, projectName: derivedTitle }),
+      });
+      const project = (await createRes.json().catch(() => null)) as {
+        id?: number | string;
+        conversationId?: string;
+        error?: string;
+        message?: string;
+      } | null;
+      if (!createRes.ok || !project?.id) {
+        const err = new Error(
+          project?.error ?? project?.message ?? "Failed to create project",
+        ) as Error & { status?: number };
+        err.status = createRes.status;
+        throw err;
+      }
+      const projectId = Number(project.id);
+      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+
+      // Best-effort rename so the workspace header shows the derived title on
+      // first paint. Race a 1.5s timeout so a slow PATCH never blocks nav.
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          updateProjectName.mutate(
+            { id: projectId, data: { name: derivedTitle } },
+            {
+              onSettled: () => {
+                queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                resolve();
+              },
+            },
+          );
+        }),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 1500)),
+      ]);
+
+      try {
+        sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, seed);
+        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
+        if (project.conversationId) {
+          sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
+        }
+      } catch {}
+      setActiveProjectId(projectId);
+      if (project.conversationId) {
+        setLocation(`/workspace/${project.conversationId}`);
+      } else {
+        setLocation(`/project/${projectId}`);
+      }
+    } catch (err) {
+      const msg =
+        extractApiErrorMessage(err) ??
+        (err instanceof Error ? err.message : "Failed to create project");
+      if (
+        msg?.includes("PROJECT_LIMIT_REACHED") ||
+        (err as { status?: number } | null)?.status === 402
+      ) {
+        setShowUpgrade(true);
+      } else {
+        setCreateError(msg);
+      }
+    } finally {
+      setIsAtlasStreaming(false);
+      setIsSending(false);
+      document.body.dataset.voiceActive = "false";
+      submitInFlightRef.current = false;
+    }
+  }, [
+    askAtlasChat,
+    askAtlasHandoffSeed,
+    backendReady,
+    isFree,
+    isSending,
+    projects,
+    queryClient,
+    setActiveProjectId,
+    setLocation,
+    updateProjectName,
+  ]);
+
+
+
   const performCreateProjectFromConversation = useCallback(async () => {
     const conversationMessages = nexusChat.messages as HomeMessage[];
     if (conversationMessages.length === 0 || isSending) return;
@@ -4263,37 +4428,91 @@ export default function Home() {
                           ) : m.content}
                         </div>
                         {showHandoff && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const seed = askAtlasHandoffSeed;
-                              askAtlasChat.abort();
-                              askAtlasChat.clearMessages();
-                              setSendTo("workspace");
-                              sendToRef.current = "workspace";
-                              setInput(seed);
-                              window.setTimeout(() => { void handleSubmit(seed); }, 40);
-                            }}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              padding: "7px 12px",
-                              borderRadius: 999,
-                              background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
-                              color: "var(--atlas-gold)",
-                              border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
-                              cursor: "pointer",
-                              fontFamily: "var(--app-font-mono)",
-                              fontSize: 10.5,
-                              letterSpacing: "0.1em",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Continue in Workspace
-                            <ArrowRight size={12} strokeWidth={2} />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { void performAskAtlasHandoff(i); }}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "7px 12px",
+                                borderRadius: 999,
+                                background: "color-mix(in oklab, var(--atlas-gold) 14%, transparent)",
+                                color: "var(--atlas-gold)",
+                                border: "1px solid color-mix(in oklab, var(--atlas-gold) 40%, transparent)",
+                                cursor: "pointer",
+                                fontFamily: "var(--app-font-mono)",
+                                fontSize: 10.5,
+                                letterSpacing: "0.1em",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              Continue in Workspace
+                              <ArrowRight size={12} strokeWidth={2} />
+                            </button>
+                            {handoffPicker && handoffPicker.messageIndex === i && (
+                              <div style={{
+                                marginTop: 6,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                                maxWidth: "92%",
+                              }}>
+                                <div style={{
+                                  fontFamily: "var(--app-font-mono)",
+                                  fontSize: 10,
+                                  letterSpacing: "0.08em",
+                                  textTransform: "uppercase",
+                                  color: "var(--atlas-muted)",
+                                  opacity: 0.75,
+                                }}>
+                                  Atlas mentioned a few projects — which one?
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {handoffPicker.options.map((opt) => (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => { void performAskAtlasHandoff(i, opt.id); }}
+                                      style={{
+                                        padding: "6px 10px",
+                                        borderRadius: 999,
+                                        background: "transparent",
+                                        color: "var(--atlas-fg)",
+                                        border: "1px solid color-mix(in oklab, var(--atlas-gold) 36%, transparent)",
+                                        cursor: "pointer",
+                                        fontFamily: "var(--app-font-mono)",
+                                        fontSize: 10.5,
+                                        letterSpacing: "0.06em",
+                                      }}
+                                    >
+                                      {opt.name}
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => setHandoffPicker(null)}
+                                    style={{
+                                      padding: "6px 10px",
+                                      borderRadius: 999,
+                                      background: "transparent",
+                                      color: "var(--atlas-muted)",
+                                      border: "1px dashed var(--atlas-border)",
+                                      cursor: "pointer",
+                                      fontFamily: "var(--app-font-mono)",
+                                      fontSize: 10.5,
+                                      letterSpacing: "0.06em",
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
                         )}
+
                       </div>
                     );
                   })}
