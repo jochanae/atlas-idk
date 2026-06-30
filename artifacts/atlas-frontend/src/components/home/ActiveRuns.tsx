@@ -1245,6 +1245,29 @@ function RunCard({
           {isLive ? formatElapsed(elapsed) : formatAgo(now - (run.completedAt ?? run.createdAt))}
         </span>
 
+        {/* View full run inspection page */}
+        {!isLive && (
+          <a
+            href={`/runs/${run.id}`}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Open run inspection"
+            style={{
+              fontFamily: "var(--app-font-mono)", fontSize: 9,
+              letterSpacing: "0.10em",
+              color: "var(--atlas-gold)",
+              textDecoration: "none",
+              padding: "2px 6px",
+              borderRadius: 3,
+              border: "0.5px solid var(--atlas-border)",
+              opacity: hovered ? 1 : 0.6,
+              transition: "opacity 120ms ease",
+              flexShrink: 0,
+            }}
+          >
+            View →
+          </a>
+        )}
+
         {/* Dismiss (done/failed runs only) */}
         {!isLive && (
           <button type="button"
