@@ -2258,7 +2258,11 @@ function RightPanel({
           <ImageGenerator compact />
         </div>
       )}
-      {tab === "preview" && <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} rebuildTrigger={rebuildTrigger} onWsRunningChange={onWsRunningChange} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} manifestDecision={manifestDecision} manifestPreviewHtml={manifestPreviewHtml} />}
+      {tab === "preview" && (
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <PreviewPanel projectId={projectId} sandboxCode={sandboxCode} onSandboxConsumed={onSandboxConsumed} refreshTrigger={previewRefreshTrigger} rebuildTrigger={rebuildTrigger} onWsRunningChange={onWsRunningChange} sessionId={sessionId} onSwitchToFiles={() => setTab("files")} manifestDecision={manifestDecision} manifestPreviewHtml={manifestPreviewHtml} />
+        </div>
+      )}
       {tab === "manifest" && (
         <ManifestPanel
           projectId={projectId}
