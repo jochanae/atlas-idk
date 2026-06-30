@@ -710,7 +710,7 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
               label: "Ask Atlas",
               angleDeg: 150,
               color: "#D4AF37",
-              icon: <span style={{ fontFamily: "var(--app-font-serif, Georgia, serif)", fontWeight: 600, fontSize: 18, lineHeight: 1, letterSpacing: "-0.02em", filter: "drop-shadow(0 0 4px rgba(212,175,55,0.45))" }}>A</span>,
+              icon: <span style={{ fontFamily: "var(--app-font-serif, Georgia, serif)", fontWeight: 600, fontSize: 15, lineHeight: 1, letterSpacing: "-0.02em", opacity: 0.92, filter: "drop-shadow(0 0 2.5px rgba(212,175,55,0.22))" }}>A</span>,
               action: () => { setShowAtlasHub(false); window.dispatchEvent(new CustomEvent("axiom:ask-atlas")); },
             },
             {
