@@ -1360,6 +1360,7 @@ function ReadinessGateCard({
 export function AssistantBubble({
   message,
   isNew = false,
+  isLatestAssistant = false,
   projectId,
   sessionId,
   linkedRepo,
@@ -1390,6 +1391,7 @@ export function AssistantBubble({
 }: {
   message: ChatMessage;
   isNew?: boolean;
+  isLatestAssistant?: boolean;
   projectId: number;
   sessionId: number;
   linkedRepo: LinkedRepo | null;
