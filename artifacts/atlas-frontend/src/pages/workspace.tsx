@@ -4880,6 +4880,7 @@ export default function Workspace() {
     flow: false,
   });
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showComposerSheet, setShowComposerSheet] = useState(false);
   useEffect(() => {
     // The project-name chevron dispatches `open-projects-drawer` and opens the
     // full project dropdown (switch / rename / settings / clone / ledger /
