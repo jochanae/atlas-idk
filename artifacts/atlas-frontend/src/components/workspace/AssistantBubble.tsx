@@ -2459,11 +2459,23 @@ export function AssistantBubble({
           </div>
         )}
 
-        {/* Action row — primary cockpit + overflow menu */}
+        {/* Action row — feedback + primary cockpit + overflow menu */}
         {!message.streaming && (
-        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
 
-          {/* ───── PRIMARY ───── Roll back · Copy · Regenerate · Commit */}
+          {/* Feedback — only persistent on the newest Atlas response */}
+          {isLatestAssistant && (
+            <div style={{ marginRight: 2 }}>
+              <MessageFeedback messageId={message.id} />
+            </div>
+          )}
+
+          {/* ───── PRIMARY ───── Roll back · Copy · Regenerate · Commit
+              On older messages these stay hidden until the user hovers/taps,
+              keeping the transcript quiet. ⋯ More remains reachable below. */}
+          {(isLatestAssistant || hov) && (
+          <>
+
           {snapshotForMsg && !isReverted && (
             <button
               className="atlas-icon-action"
