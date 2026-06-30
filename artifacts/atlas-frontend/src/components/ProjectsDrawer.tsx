@@ -30,10 +30,12 @@ type Props = {
   onOpenParking?: () => void;
   onOpenSpecify?: () => void;
   onOpenWrite?: () => void;
+  onOpenComposer?: () => void;
   userLabel?: string | null;
 };
 
-export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, userLabel }: Props) {
+export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpenProject, onNewProject, onOpenLedger, onOpenParking, onOpenSpecify, onOpenWrite, onOpenComposer, userLabel }: Props) {
+  const activeRunsCount = useActiveRunsCount();
   const parkedCount = useParkedCount();
   const [, setLocation] = useLocation();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
