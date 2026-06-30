@@ -3833,6 +3833,16 @@ export default function Home() {
     } catch {}
   }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
 
+  // Resume marker set by ProjectsDrawer when navigating from another page.
+  useEffect(() => {
+    let id: string | null = null;
+    try { id = sessionStorage.getItem("atlas-resume-conversation-id"); } catch {}
+    if (!id) return;
+    try { sessionStorage.removeItem("atlas-resume-conversation-id"); } catch {}
+    void handleSwitchConversation(id);
+  }, [handleSwitchConversation]);
+
+
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
       method: "DELETE",
@@ -5934,6 +5944,8 @@ export default function Home() {
         }}
         onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
+        onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
+
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
 
@@ -6137,6 +6149,15 @@ export default function Home() {
           backdrop-filter: blur(6px);
           -webkit-backdrop-filter: blur(6px);
         }
+        /* Parchment / light mode: heavy black scrim feels like the lights got turned off.
+           Use a warm-neutral wash with a softer blur instead. */
+        :global([data-theme="parchment"]) .atlas-overview-scrim,
+        [data-theme="parchment"] .atlas-overview-scrim {
+          background: rgba(60, 42, 20, 0.18);
+          backdrop-filter: blur(3px) saturate(105%);
+          -webkit-backdrop-filter: blur(3px) saturate(105%);
+        }
+
         .atlas-overview-bottom-sheet {
           position: relative;
           width: 100%;
