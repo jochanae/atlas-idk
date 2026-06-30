@@ -4863,7 +4863,13 @@ export default function Home() {
                 <span style={{ opacity: 0.7 }}>Send to</span>
                 <span>·</span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                  {sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking" : "Workspace"}
+                  {sendTo === "ask-atlas"
+                    ? "Ask Atlas"
+                    : sendTo === "parking"
+                    ? "Parking"
+                    : homeFocus != null
+                    ? (selectableFocusProjects.find((p: Project) => p.id === homeFocus)?.name ?? "Workspace")
+                    : "Workspace"}
                 </span>
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
