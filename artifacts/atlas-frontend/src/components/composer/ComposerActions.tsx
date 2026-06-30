@@ -111,8 +111,8 @@ const SHEET_OVERLAY: React.CSSProperties = {
   display: "flex",
   alignItems: "flex-end",
   justifyContent: "center",
-  // Float clear of fixed bottom tab bar + device safe-area
-  padding: "16px 14px calc(env(safe-area-inset-bottom, 0px) + 96px)",
+  // Float clear of fixed bottom tab bar + device safe-area + browser chrome
+  padding: "16px 14px calc(env(safe-area-inset-bottom, 0px) + 140px)",
   overflow: "hidden",
 };
 
