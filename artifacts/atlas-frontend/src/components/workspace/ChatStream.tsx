@@ -617,6 +617,7 @@ export function ChatStream(props: ChatStreamProps) {
               <AssistantBubble
                 message={msg}
                 isNew={msg.role === "assistant" && i >= (historyMsgCountRef.current ?? 0) && i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
+                isLatestAssistant={i === messages.map((m, idx) => m.role === "assistant" ? idx : -1).reduce((a, b) => b > a ? b : a, -1)}
                 projectId={projectId}
                 sessionId={sessionId || 0}
                 linkedRepo={linkedRepo as LinkedRepoLike extends infer T ? T : never}

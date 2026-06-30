@@ -31,6 +31,7 @@ import type { Plan, PlanExecution, StructuredPlanArtifact, StructuredDecisionGat
 import { DecisionGateCard } from "./DecisionGateCard";
 import { haptic } from "@/lib/long-press-tip";
 import { runLinePatchTrustChecks, formatTrustErrors, type TrustCheckInput } from "./linePatchTrust";
+import { MessageFeedback } from "./MessageFeedback";
 
 
 import type {
@@ -1359,6 +1360,7 @@ function ReadinessGateCard({
 export function AssistantBubble({
   message,
   isNew = false,
+  isLatestAssistant = false,
   projectId,
   sessionId,
   linkedRepo,
@@ -1389,6 +1391,7 @@ export function AssistantBubble({
 }: {
   message: ChatMessage;
   isNew?: boolean;
+  isLatestAssistant?: boolean;
   projectId: number;
   sessionId: number;
   linkedRepo: LinkedRepo | null;
@@ -2456,11 +2459,23 @@ export function AssistantBubble({
           </div>
         )}
 
-        {/* Action row — primary cockpit + overflow menu */}
+        {/* Action row — feedback + primary cockpit + overflow menu */}
         {!message.streaming && (
-        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", opacity: hov ? 1 : 0.6, transition: "opacity 180ms ease" }}>
+        <div style={{ position: "relative", display: "flex", gap: 0, marginTop: 6, marginLeft: -6, alignItems: "center", transition: "opacity 180ms ease" }}>
 
-          {/* ───── PRIMARY ───── Roll back · Copy · Regenerate · Commit */}
+          {/* Feedback — only persistent on the newest Atlas response */}
+          {isLatestAssistant && (
+            <div style={{ marginRight: 2 }}>
+              <MessageFeedback messageId={message.id} />
+            </div>
+          )}
+
+          {/* ───── PRIMARY ───── Roll back · Copy · Regenerate · Commit
+              On older messages these stay hidden until the user hovers/taps,
+              keeping the transcript quiet. ⋯ More remains reachable below. */}
+          {(isLatestAssistant || hov) && (
+          <>
+
           {snapshotForMsg && !isReverted && (
             <button
               className="atlas-icon-action"
@@ -2514,18 +2529,21 @@ export function AssistantBubble({
           {!message.imageB64 && !message.imageGen && message.content && (
             <InlineSketchOffer text={message.content} onSend={onSend} />
           )}
+          </>
+          )}
 
-          {/* ───── OVERFLOW ───── three-dot menu */}
+          {/* ───── OVERFLOW ───── three-dot menu (always reachable) */}
           <button
             className="atlas-icon-action"
             title="More actions"
             aria-label="More actions"
             aria-expanded={menuOpen}
-            style={ICON_TOUCH_TARGET_STYLE}
+            style={{ ...ICON_TOUCH_TARGET_STYLE, opacity: isLatestAssistant || hov ? 1 : 0.45 }}
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
           >
             <MoreHorizontal size={13} strokeWidth={1.7} />
           </button>
+
 
           {menuOpen && createPortal(
             <>
