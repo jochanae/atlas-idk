@@ -5487,7 +5487,13 @@ export default function Home() {
         onOpenLedger={(id) => setLocation(`/ledger/${id}`)}
         onOpenParking={() => setLocation("/parking")}
         onOpenSpecify={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-specify")); }}
-        onOpenWrite={() => { setShowDrawer(false); if (homeFocus) setLocation(`/project/${homeFocus}`); setTimeout(() => window.dispatchEvent(new CustomEvent("axiom:open-write")), 350); }}
+        onOpenWrite={() => {
+          setShowDrawer(false);
+          // Open Write as an in-place overlay — NEVER navigate away from home.
+          const committed = (projects ?? []).filter((p: Project) => (p as any).status === "committed");
+          const target = homeFocus ?? committed[0]?.id ?? (projects ?? [])[0]?.id ?? null;
+          if (target != null) setWriteOverlayProjectId(target);
+        }}
         onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
