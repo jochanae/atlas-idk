@@ -1795,6 +1795,7 @@ export default function Home() {
   const [showProfile, setShowProfile] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showComposerSheet, setShowComposerSheet] = useState(false);
   useEffect(() => {
     const open = () => setShowDrawer(true);
     window.addEventListener("axiom:open-projects-drawer", open);
