@@ -2127,7 +2127,7 @@ export function AssistantBubble({
         )}
 
         {message.confidenceAssessment && (message.fileEdits?.length ?? 0) > 0 && (
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground/60">
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
             <span className={
               message.confidenceAssessment.confidence === "high" ? "text-emerald-400/70" :
               message.confidenceAssessment.confidence === "medium" ? "text-amber-400/70" :

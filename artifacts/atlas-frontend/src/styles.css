@@ -173,7 +173,7 @@ html, body {
   --secondary: 20 8% 13%;
   --secondary-foreground: 20 8% 90%;
   --muted: 20 8% 13%;
-  --muted-foreground: 20 5% 58%;
+  --muted-foreground: 20 6% 72%;
   --accent: 40 49% 54%;
   --accent-foreground: 20 14% 4%;
   --destructive: 0 63% 30%;
@@ -190,8 +190,8 @@ html, body {
   --atlas-bg:           #0B0A0F;
   --atlas-surface:      #121115;
   --atlas-surface-alt:  #16151B;
-  --atlas-fg:           rgba(255, 255, 255, 0.92);
-  --atlas-muted:        rgba(255, 255, 255, 0.72);
+  --atlas-fg:           rgba(255, 255, 255, 0.94);
+  --atlas-muted:        rgba(255, 255, 255, 0.82);
   --atlas-ember:        #C4521A;
   --atlas-ember-glow:   rgba(196, 82, 26, 0.40);
   --atlas-gold:         #E6C687;
@@ -271,8 +271,8 @@ html, body {
   --bg-surface:       #FFFDF8;
   --bg-elevated:      #F2EDE3;
   --text-primary:     #1F2430;
-  --text-secondary:   #68707C;
-  --text-muted:       #9AA1AA;
+  --text-secondary:   #4A5462;
+  --text-muted:       #5E6A78;
   --border-soft:      rgba(115, 92, 60, 0.18);
   --accent-gold:      #A87832;
   --accent-gold-soft: rgba(168, 120, 50, 0.14);
@@ -297,7 +297,7 @@ html, body {
 
   /* Obsidian typography */
   --atlas-fg:           #0F172A;
-  --atlas-muted:        #64748B;
+  --atlas-muted:        #475569;
 
   /* Signature gold accent — locked, brand-critical */
   --atlas-ember:        #6f4a30;
@@ -342,7 +342,7 @@ html, body {
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
   --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;  /* #64748B */
+  --muted-foreground: 215 19% 38%;  /* #4D5A6E — AA on parchment */
   --accent: 26 40% 39%;
   --accent-foreground: 0 0% 100%;
   --sidebar: 0 0% 100%;

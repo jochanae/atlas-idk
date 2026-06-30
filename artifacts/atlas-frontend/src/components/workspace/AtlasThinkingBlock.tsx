@@ -97,7 +97,7 @@ export function AtlasThinkingBlock({ thinkingState }: Props) {
         .atlas-thinking-quiet {
           font-family: var(--app-font-mono);
           font-size: 11px;
-          color: rgba(255,255,255,0.55);
+          color: var(--atlas-muted);
           animation: atlasPulse 2.4s ease-in-out infinite;
           letter-spacing: 0.02em;
         }
