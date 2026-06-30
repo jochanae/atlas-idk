@@ -2529,18 +2529,21 @@ export function AssistantBubble({
           {!message.imageB64 && !message.imageGen && message.content && (
             <InlineSketchOffer text={message.content} onSend={onSend} />
           )}
+          </>
+          )}
 
-          {/* ───── OVERFLOW ───── three-dot menu */}
+          {/* ───── OVERFLOW ───── three-dot menu (always reachable) */}
           <button
             className="atlas-icon-action"
             title="More actions"
             aria-label="More actions"
             aria-expanded={menuOpen}
-            style={ICON_TOUCH_TARGET_STYLE}
+            style={{ ...ICON_TOUCH_TARGET_STYLE, opacity: isLatestAssistant || hov ? 1 : 0.45 }}
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
           >
             <MoreHorizontal size={13} strokeWidth={1.7} />
           </button>
+
 
           {menuOpen && createPortal(
             <>
