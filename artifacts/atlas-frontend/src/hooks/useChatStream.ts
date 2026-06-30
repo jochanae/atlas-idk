@@ -602,6 +602,7 @@ export function useChatStream(
           const placeholderId = -Date.now();
           streamingId = placeholderId;
           let streamedText = "";
+          let tokenLineBuffer = "";
           let sawFirstToken = false;
           let githubAutoLinkStatus: string | null = null;
           let githubAutoLinkPromise: Promise<string> | null = null;
