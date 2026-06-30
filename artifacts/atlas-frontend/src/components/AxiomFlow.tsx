@@ -1228,19 +1228,42 @@ export function AxiomFlow({
   const fitMap = useCallback(() => {
     if (!containerRef.current || nodes.length === 0) return;
     const rect = containerRef.current.getBoundingClientRect();
+    // Reserve space for the absolute-positioned overlays so nodes never
+    // visually overlap the breadcrumb/header (top) or the CENTER control (bottom).
+    const TOP_INSET = 56;
+    const BOTTOM_INSET = 52;
+    const SIDE_INSET = 12;
+    const availW = Math.max(120, rect.width - SIDE_INSET * 2);
+    const availH = Math.max(120, rect.height - TOP_INSET - BOTTOM_INSET);
     const minX = Math.min(...nodes.map(n => n.x)) - 40;
     const maxX = Math.max(...nodes.map(n => n.x)) + 40;
     const minY = Math.min(...nodes.map(n => n.y)) - 30;
     const maxY = Math.max(...nodes.map(n => n.y)) + 60;
-    const mapW = maxX - minX + CANVAS_PADDING * 2;
-    const mapH = maxY - minY + CANVAS_PADDING * 2;
-    const scaleX = rect.width / mapW;
-    const scaleY = rect.height / mapH;
-    const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.min(scaleX, scaleY)));
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    let newZoom: number;
+    if (nodes.length <= 1 || (spanX < 1 && spanY < 1)) {
+      // Sparse / single-node graph — use a calm default zoom instead of
+      // blowing up to ZOOM_MAX, which parks the lone node in the corner.
+      newZoom = 1;
+    } else {
+      const mapW = spanX + CANVAS_PADDING * 2;
+      const mapH = spanY + CANVAS_PADDING * 2;
+      const scaleX = availW / mapW;
+      const scaleY = availH / mapH;
+      newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.min(scaleX, scaleY)));
+    }
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
+    // Target screen point sits in the middle of the visible canvas band
+    // (i.e. below the header inset, above the bottom controls).
+    const targetScreenX = SIDE_INSET + availW / 2;
+    const targetScreenY = TOP_INSET + availH / 2;
     setZoom(newZoom);
-    setPan({ x: rect.width / 2 / newZoom - centerX, y: rect.height / 2 / newZoom - centerY });
+    setPan({
+      x: targetScreenX / newZoom - centerX,
+      y: targetScreenY / newZoom - centerY,
+    });
   }, [nodes]);
 
   useEffect(() => {
