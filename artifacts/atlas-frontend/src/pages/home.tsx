@@ -4702,7 +4702,7 @@ export default function Home() {
                     pointerEvents: "none",
                   }}
                 >
-                  {globalInsightOpen ? "Ask the global view..." : placeholder}
+                  {sendTo === "ask-atlas" ? "Ask Atlas anything..." : globalInsightOpen ? "Ask the global view..." : placeholder}
                   {!globalInsightOpen && !typewriterPaused && <span className="atlas-cursor" />}
                 </div>
               )}
