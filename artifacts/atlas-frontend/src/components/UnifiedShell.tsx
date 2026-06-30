@@ -455,6 +455,20 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
   const hydrating = ps.loading && !ps.project;
   const resolvedName = project?.name?.trim();
   const name = resolvedName || (hydrating ? "" : "Untitled project");
+
+  // When the project just loaded but has a placeholder name (Haiku title not yet generated),
+  // treat it as still-pending: show shimmer and fast-poll until the real name arrives.
+  const PLACEHOLDER_NAMES = new Set(["New Conversation", "New Project"]);
+  const isTitlePending = project != null && PLACEHOLDER_NAMES.has(project.name ?? "");
+
+  useEffect(() => {
+    if (!isTitlePending || !projectId) return;
+    const interval = window.setInterval(() => {
+      void ps.refresh();
+    }, 3000);
+    return () => window.clearInterval(interval);
+  }, [isTitlePending, projectId, ps.refresh]);
+
   const hasActive = Boolean(ps.activeSession);
   const linkedRepo = useMemo(() => parseLinkedRepo(project?.linkedRepo ?? null), [project?.linkedRepo]);
   const linkedRepoName = linkedRepo ? repoNameFromFullName(linkedRepo.fullName) : null;
@@ -618,9 +632,9 @@ function ShellProjectSwitcher({ projectId }: { projectId: number | null }) {
               <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.53-1.35-1.3-1.71-1.31-1.71-1.07-.73.08-.71.08-.71 1.18.08 1.81 1.21 1.81 1.21 1.05 1.81 2.76 1.29 3.43.99.11-.76.41-1.29.75-1.59-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.2 1.19a11 11 0 0 1 5.83 0c2.22-1.5 3.2-1.19 3.2-1.19.63 1.6.23 2.78.11 3.07.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.42.36.79 1.08.79 2.18v3.23c0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
             </svg>
           )}
-          {hydrating ? (
+          {(hydrating || isTitlePending) ? (
             <span
-              aria-label="Loading project"
+              aria-label={isTitlePending ? "Generating title…" : "Loading project"}
               style={{
                 display: "inline-block",
                 width: 96,

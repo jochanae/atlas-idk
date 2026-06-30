@@ -24,6 +24,18 @@ export function classifyActivity(item: ActivityItem): Importance {
 const POLL_MS = 30_000;
 const SEEN_KEY = (pid: number) => `atlas-workspace-activity-seen:${pid}`;
 
+const STARTUP_SESSION_TITLES = new Set(["Session 1", "Session", ""]);
+
+function isStartupNoise(item: ActivityItem): boolean {
+  if (item.type === "session") {
+    return STARTUP_SESSION_TITLES.has(item.title?.trim() ?? "");
+  }
+  if (item.type === "decision" && item.title === "Project activated.") {
+    return true;
+  }
+  return false;
+}
+
 /**
  * useWorkspaceActivity — polls /api/nexus/activity, filters to this project,
  * returns chronologically ascending items. Tracks last-seen timestamp per
@@ -48,6 +60,7 @@ export function useWorkspaceActivity(projectId: number | null | undefined) {
         if (cancelled || !data.items) return;
         const filtered = data.items
           .filter((it) => it.projectId === projectId)
+          .filter((it) => !isStartupNoise(it))
           .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         setItems(filtered);
       } catch { /* noop */ }
