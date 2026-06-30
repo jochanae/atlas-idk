@@ -156,18 +156,28 @@ function onTouchMove(e: TouchEvent) {
   }
 
   // Finger moving up means content is scrolling down: hide the footer immediately.
-  if (dy < -6 && !scrollHidden) {
-    scrollHidden = true;
-    atTop = false;
-    changed = true;
-  } else if (dy > 6 && scrollHidden) {
-    scrollHidden = false;
-    changed = true;
+  // Set `manual` so a non-scrolling surface (e.g. Preview empty state) keeps the
+  // dock hidden even when no scroll event ever fires. Subsequent real scrolling
+  // clears `manual` (see onScroll), so workspace auto behavior is preserved.
+  if (dy < -4) {
+    if (!scrollHidden || manual !== "hide") {
+      scrollHidden = true;
+      atTop = false;
+      manual = "hide";
+      changed = true;
+    }
+  } else if (dy > 4) {
+    if (scrollHidden || manual !== "show") {
+      scrollHidden = false;
+      manual = "show";
+      changed = true;
+    }
   }
 
   touchLastY = touch.clientY;
   if (changed) emit();
 }
+
 
 function install() {
   if (installed || typeof window === "undefined") return;
