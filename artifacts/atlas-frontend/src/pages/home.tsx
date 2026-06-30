@@ -5934,6 +5934,8 @@ export default function Home() {
         }}
         onOpenComposer={() => { setShowDrawer(false); setShowComposerSheet(true); }}
         onOpenShell={() => { setShowDrawer(false); window.dispatchEvent(new CustomEvent("axiom:open-shell")); }}
+        onSelectConversation={(id) => { setShowDrawer(false); void handleSwitchConversation(id); }}
+
         userLabel={(() => { try { const r = localStorage.getItem("atlas-user-profile"); return r ? JSON.parse(r).name || null : null; } catch { return null; } })()}
       />
 
