@@ -3194,6 +3194,162 @@ export default function Home() {
     setLocation,
   ]);
 
+  /** Ask Atlas → Workspace handoff.
+   *  - `targetProjectId` set → land directly in that existing project (no create, no rename).
+   *  - otherwise: match thread against the user's projects.
+   *      • 1 confident match → route to that project.
+   *      • >1 match → expose picker for this message (caller passes msg index).
+   *      • 0 matches → create new conversation with a derived project name,
+   *        rename after create, then navigate.
+   */
+  const performAskAtlasHandoff = useCallback(async (
+    messageIndex: number,
+    targetProjectId?: number | string,
+  ) => {
+    if (submitInFlightRef.current || isSending) return;
+
+    // Direct route to an existing project.
+    if (targetProjectId != null) {
+      askAtlasChat.abort();
+      askAtlasChat.clearMessages();
+      setHandoffPicker(null);
+      setActiveProjectId(Number(targetProjectId));
+      setLocation(`/project/${targetProjectId}`);
+      return;
+    }
+
+    // Try matching first.
+    const projectsForMatch = (projects ?? []) as ProjectLike[];
+    const { matches } = matchRecommendedProject(
+      askAtlasChat.messages,
+      projectsForMatch,
+    );
+    if (matches.length === 1) {
+      const p = matches[0];
+      askAtlasChat.abort();
+      askAtlasChat.clearMessages();
+      setHandoffPicker(null);
+      setActiveProjectId(Number(p.id));
+      setLocation(`/project/${p.id}`);
+      return;
+    }
+    if (matches.length > 1) {
+      setHandoffPicker({ messageIndex, options: matches.slice(0, 3) });
+      return;
+    }
+
+    // No match → create new, then rename to a derived title.
+    const derivedTitle = deriveProjectTitle(askAtlasChat.messages);
+    const seed = askAtlasHandoffSeed;
+    askAtlasChat.abort();
+    askAtlasChat.clearMessages();
+    setHandoffPicker(null);
+
+    if (!backendReady) {
+      setCreateError(
+        "Project creation is unavailable in this preview because the backend API URL is not configured.",
+      );
+      return;
+    }
+    if (isFree && (projects?.length ?? 0) >= 1) {
+      setShowUpgrade(true);
+      return;
+    }
+
+    submitInFlightRef.current = true;
+    setIsSending(true);
+    setIsAtlasStreaming(true);
+    document.body.dataset.voiceActive = "true";
+    try {
+      const authToken = localStorage.getItem("atlas-auth-token");
+      const createRes = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        credentials: "include",
+        body: JSON.stringify({ initialMessage: seed, projectName: derivedTitle }),
+      });
+      const project = (await createRes.json().catch(() => null)) as {
+        id?: number | string;
+        conversationId?: string;
+        error?: string;
+        message?: string;
+      } | null;
+      if (!createRes.ok || !project?.id) {
+        const err = new Error(
+          project?.error ?? project?.message ?? "Failed to create project",
+        ) as Error & { status?: number };
+        err.status = createRes.status;
+        throw err;
+      }
+      const projectId = Number(project.id);
+      if (!Number.isFinite(projectId)) throw new Error("Failed to create project");
+
+      // Best-effort rename so the workspace header shows the derived title on
+      // first paint. Race a 1.5s timeout so a slow PATCH never blocks nav.
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          updateProjectName.mutate(
+            { id: projectId, data: { name: derivedTitle } },
+            {
+              onSettled: () => {
+                queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+                resolve();
+              },
+            },
+          );
+        }),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 1500)),
+      ]);
+
+      try {
+        sessionStorage.setItem(OPENING_MESSAGE_STORAGE_KEY, seed);
+        sessionStorage.setItem(OPENING_MESSAGE_PROJECT_ID_STORAGE_KEY, String(projectId));
+        if (project.conversationId) {
+          sessionStorage.setItem(`atlas-cid-${project.conversationId}`, String(projectId));
+        }
+      } catch {}
+      setActiveProjectId(projectId);
+      if (project.conversationId) {
+        setLocation(`/workspace/${project.conversationId}`);
+      } else {
+        setLocation(`/project/${projectId}`);
+      }
+    } catch (err) {
+      const msg =
+        extractApiErrorMessage(err) ??
+        (err instanceof Error ? err.message : "Failed to create project");
+      if (
+        msg?.includes("PROJECT_LIMIT_REACHED") ||
+        (err as { status?: number } | null)?.status === 402
+      ) {
+        setShowUpgrade(true);
+      } else {
+        setCreateError(msg);
+      }
+    } finally {
+      setIsAtlasStreaming(false);
+      setIsSending(false);
+      document.body.dataset.voiceActive = "false";
+      submitInFlightRef.current = false;
+    }
+  }, [
+    askAtlasChat,
+    askAtlasHandoffSeed,
+    backendReady,
+    isFree,
+    isSending,
+    projects,
+    queryClient,
+    setActiveProjectId,
+    setLocation,
+    updateProjectName,
+  ]);
+
+
+
   const performCreateProjectFromConversation = useCallback(async () => {
     const conversationMessages = nexusChat.messages as HomeMessage[];
     if (conversationMessages.length === 0 || isSending) return;
