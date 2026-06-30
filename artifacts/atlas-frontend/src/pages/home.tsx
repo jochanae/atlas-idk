@@ -63,6 +63,7 @@ import { detectPortfolioFocus, type PortfolioFocusDetection } from "@/lib/portfo
 import { LIFECYCLE_META } from "@/lib/lifecycle";
 import { pushHudEvent } from "@/lib/hudBus";
 import { ResumeSubtitle } from "@/components/ResumeSubtitle";
+import { AskAtlasOverlay } from "@/components/AskAtlasOverlay";
 
 
 const PLACEHOLDERS = [
@@ -1891,6 +1892,25 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
+  // "Send to" routing: workspace (default), ask-atlas (overlay), parking (capture lot).
+  // Each surface answers a different intent — building / thinking / saving.
+  type SendTarget = "workspace" | "ask-atlas" | "parking";
+  const [sendTo, setSendTo] = useState<SendTarget>("workspace");
+  const [showSendToPicker, setShowSendToPicker] = useState(false);
+  const sendToRef = useRef<SendTarget>("workspace");
+  useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
+  const [askAtlasOpen, setAskAtlasOpen] = useState(false);
+  const [askAtlasSeed, setAskAtlasSeed] = useState<string | null>(null);
+  // Radial menu "Ask Atlas" → open the ephemeral overlay.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent<{ seed?: string }>).detail;
+      setAskAtlasSeed(detail?.seed ?? null);
+      setAskAtlasOpen(true);
+    };
+    window.addEventListener("axiom:ask-atlas", onAsk as EventListener);
+    return () => window.removeEventListener("axiom:ask-atlas", onAsk as EventListener);
+  }, []);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
@@ -2875,6 +2895,28 @@ export default function Home() {
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     submitInFlightRef.current = true;
+    // "Send to" routing — intercept before the workspace-create / inline-send fork.
+    // Workspace is the default; ask-atlas opens the ephemeral overlay; parking
+    // hands off to the existing capture-lot route.
+    const routeTarget = sendToRef.current;
+    if (routeTarget === "ask-atlas" && text) {
+      setAskAtlasSeed(text);
+      setAskAtlasOpen(true);
+      setInput("");
+      setAttachedFiles([]);
+      setSendTo("workspace");
+      submitInFlightRef.current = false;
+      return;
+    }
+    if (routeTarget === "parking" && text) {
+      try { sessionStorage.setItem("atlas-parking-seed", text); } catch {}
+      setInput("");
+      setAttachedFiles([]);
+      setSendTo("workspace");
+      submitInFlightRef.current = false;
+      setLocation("/parking");
+      return;
+    }
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
     if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
@@ -4807,11 +4849,94 @@ export default function Home() {
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
 
-
-
-
+              {/* Send to — routes the next message to Workspace (build),
+                  Ask Atlas (think), or Parking Lot (save for later). */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  title="Send to"
+                  aria-label={`Send to: ${sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking Lot" : "Workspace"}`}
+                  aria-expanded={showSendToPicker}
+                  onPointerDown={(e) => { e.preventDefault(); }}
+                  onMouseDown={(e) => { e.preventDefault(); }}
+                  onClick={(e) => { e.stopPropagation(); setShowSendToPicker((o) => !o); }}
+                  style={{
+                    height: 34,
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "0 10px", borderRadius: 999,
+                    background: sendTo === "workspace"
+                      ? "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"
+                      : "color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                    color: "var(--atlas-gold)",
+                    cursor: "pointer",
+                    fontFamily: "var(--app-font-mono)",
+                    fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  <span style={{ opacity: 0.7 }}>Send to</span>
+                  <span>·</span>
+                  <span>
+                    {sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking" : "Workspace"}
+                  </span>
+                  <ChevronDown size={12} strokeWidth={1.8} style={{ opacity: 0.75 }} />
+                </button>
+                {showSendToPicker && (
+                  <>
+                    <div
+                      onClick={() => setShowSendToPicker(false)}
+                      style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+                    />
+                    <div
+                      role="menu"
+                      style={{
+                        position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                        zIndex: 9999, minWidth: 220,
+                        background: "rgba(18,16,22,0.98)",
+                        border: "1px solid rgba(212,175,55,0.22)",
+                        borderRadius: 12,
+                        boxShadow: "0 12px 32px rgba(0,0,0,0.55)",
+                        padding: 6,
+                        fontFamily: "var(--app-font-sans)",
+                      }}
+                    >
+                      {([
+                        { id: "workspace" as const, label: "Workspace", hint: "I am building" },
+                        { id: "ask-atlas" as const, label: "Ask Atlas", hint: "I am thinking" },
+                        { id: "parking" as const, label: "Parking Lot", hint: "Save for later" },
+                      ]).map((opt) => {
+                        const active = sendTo === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            onClick={() => { setSendTo(opt.id); setShowSendToPicker(false); }}
+                            style={{
+                              width: "100%", display: "flex", alignItems: "center",
+                              justifyContent: "space-between", gap: 12,
+                              padding: "8px 10px", borderRadius: 8,
+                              background: active ? "rgba(212,175,55,0.12)" : "transparent",
+                              border: "none", cursor: "pointer",
+                              color: "var(--atlas-fg)", textAlign: "left",
+                            }}
+                          >
+                            <span style={{ fontSize: 13.5 }}>{opt.label}</span>
+                            <span style={{
+                              fontFamily: "var(--app-font-mono)", fontSize: 10,
+                              letterSpacing: "0.08em", textTransform: "uppercase",
+                              color: "rgba(255,255,255,0.45)",
+                            }}>{opt.hint}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
 
               </div>
+
 
               {/* Mic + Send — pinned to right via auto left margin */}
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
@@ -5682,6 +5807,27 @@ export default function Home() {
       </div>
 
       <HandoffCinemaOverlay />
+
+      <AskAtlasOverlay
+        open={askAtlasOpen}
+        onClose={() => { setAskAtlasOpen(false); setAskAtlasSeed(null); }}
+        seedMessage={askAtlasSeed}
+        onOpenHistory={() => {
+          window.dispatchEvent(new CustomEvent("axiom:launcher-conversations"));
+        }}
+        onContinueInWorkspace={(seed) => {
+          // Hand off to the real workspace flow — closes overlay, seeds the
+          // home composer, and triggers the standard project-create submit.
+          setAskAtlasOpen(false);
+          setAskAtlasSeed(null);
+          setSendTo("workspace");
+          sendToRef.current = "workspace";
+          setInput(seed);
+          window.setTimeout(() => { void handleSubmit(seed); }, 40);
+        }}
+      />
+
+
 
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
