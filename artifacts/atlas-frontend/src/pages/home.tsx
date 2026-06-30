@@ -5422,9 +5422,9 @@ export default function Home() {
       <SessionHistorySheet
         open={showHistory}
         onClose={() => setShowHistory(false)}
-        title="GLOBAL INSIGHT · HISTORY"
+        title="ASK ATLAS HISTORY"
         loading={historyLoading}
-        emptyHint="No saved Global Insight threads yet. Start a conversation above — it will appear here."
+        emptyHint="No saved Ask Atlas threads yet. Start a conversation above — it will appear here."
         items={conversations
           .filter((c) => {
             const t = (c.title ?? "").trim();
