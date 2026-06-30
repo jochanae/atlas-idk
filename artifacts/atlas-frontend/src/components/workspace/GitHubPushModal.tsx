@@ -93,7 +93,48 @@ export function GitHubPushModal({
     }
     setPushing(true);
     setError(null);
+    setTypecheckResult(null);
     try {
+      // ── Phase 0: typecheck all TS/JS files before touching GitHub ──────────
+      const TC_EXTS = new Set(["ts", "tsx", "js", "jsx"]);
+      const tcResults = await Promise.all(
+        fileEdits.map(async (fe, idx) => {
+          const ext = (fe.path ?? "").split(".").pop()?.toLowerCase() ?? "";
+          if (!TC_EXTS.has(ext)) return { idx, path: fe.path, clean: true, errors: [] as Array<{ line: number; col: number; message: string }> };
+          try {
+            const r = await fetch("/api/github/typecheck", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ content: fe.content, path: fe.path }),
+            });
+            if (!r.ok) return { idx, path: fe.path, clean: true, errors: [] };
+            const data = await r.json() as { errors?: Array<{ line: number; col: number; message: string }>; clean?: boolean; skipped?: boolean };
+            const isClean = data.skipped === true || (data.clean ?? true);
+            return { idx, path: fe.path, clean: isClean, errors: data.errors ?? [] };
+          } catch {
+            return { idx, path: fe.path, clean: true, errors: [] }; // service unavailable → allow
+          }
+        })
+      );
+
+      const failed = tcResults.filter((r) => !r.clean);
+      if (failed.length > 0) {
+        const first = failed[0];
+        // Surface errors for the first failing file in the existing typecheck panel
+        setTypecheckResult({ clean: false, errors: first.errors });
+        setSelectedIdx(first.idx);
+        const names = failed.map((f) => (f.path ?? "").split("/").pop() ?? f.path).join(", ");
+        setError(
+          failed.length === 1
+            ? `Typecheck failed — fix errors in ${names} before pushing`
+            : `Typecheck failed on ${failed.length} files: ${names}`
+        );
+        setPushing(false);
+        return;
+      }
+
+      // ── Phase 1: create branch + commit ────────────────────────────────────
       const targetBranch = useNewBranch ? branchName : linkedRepo.defaultBranch;
       if (useNewBranch) {
         const branchRes = await fetch("/api/github/branch", {
@@ -102,7 +143,7 @@ export function GitHubPushModal({
           body: JSON.stringify({ repo: linkedRepo.fullName, branch: branchName, baseBranch: linkedRepo.defaultBranch }),
         });
         if (!branchRes.ok) {
-          const d = await branchRes.json().catch(() => ({})) as any;
+          const d = await branchRes.json().catch(() => ({})) as { error?: string };
           throw new Error(d.error || `Branch creation failed: HTTP ${branchRes.status}`);
         }
       }
@@ -118,7 +159,7 @@ export function GitHubPushModal({
           }),
         });
         if (!commitRes.ok) {
-          const d = await commitRes.json().catch(() => ({})) as any;
+          const d = await commitRes.json().catch(() => ({})) as { error?: string };
           throw new Error(d.error || `Commit failed for ${fe.path}: HTTP ${commitRes.status}`);
         }
         const cd = await commitRes.json() as { commitUrl: string };
@@ -137,35 +178,8 @@ export function GitHubPushModal({
       }));
       onPushSuccess(records);
       setSuccess({ commitUrl: lastCommitUrl, branch: targetBranch });
-      if (autoRunCmd.trim()) {
-        try {
-          const termRes = await fetch("/api/terminal/exec", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ command: autoRunCmd }),
-          });
-          const reader = termRes.body?.getReader();
-          const decoder = new TextDecoder();
-          let termOutput = "";
-          if (reader) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              termOutput += decoder.decode(value);
-            }
-          }
-          if (termOutput.toLowerCase().includes("error")) {
-            toast.error("Post-push typecheck found issues — check Terminal tab");
-          } else {
-            toast.success("✓ typecheck passed");
-          }
-        } catch {
-          // terminal exec failed silently
-        }
-      }
-    } catch (e: any) {
-      setError(e.message ?? "Push failed");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Push failed");
     } finally {
       setPushing(false);
     }

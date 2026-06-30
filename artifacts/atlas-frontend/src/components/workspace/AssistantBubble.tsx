@@ -303,7 +303,38 @@ function InlineDiffCard({
     setInlineApplying(true);
     setInlineApplyError(null);
     try {
-      // Checkpoint before writing so the user can undo
+      // ── Phase 0: typecheck all TS/JS files before writing to disk ──────────
+      const TC_EXTS = new Set(["ts", "tsx", "js", "jsx"]);
+      const tcResults = await Promise.all(
+        edits.map(async (fe) => {
+          const ext = (fe.path ?? "").split(".").pop()?.toLowerCase() ?? "";
+          if (!TC_EXTS.has(ext)) return { path: fe.path, clean: true, errors: [] as Array<{ line: number; col: number; message: string }> };
+          try {
+            const r = await fetch("/api/github/typecheck", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ content: fe.content, path: fe.path }),
+            });
+            if (!r.ok) return { path: fe.path, clean: true, errors: [] };
+            const data = await r.json() as { errors?: Array<{ line: number; col: number; message: string }>; clean?: boolean; skipped?: boolean };
+            const isClean = data.skipped === true || (data.clean ?? true);
+            return { path: fe.path, clean: isClean, errors: data.errors ?? [] };
+          } catch {
+            return { path: fe.path, clean: true, errors: [] }; // service unavailable → allow
+          }
+        })
+      );
+      const failed = tcResults.filter((r) => !r.clean);
+      if (failed.length > 0) {
+        const names = failed.map((f) => (f.path ?? "").split("/").pop() ?? f.path).join(", ");
+        const firstErrors = failed[0].errors.slice(0, 3).map((e) => `L${e.line}: ${e.message}`).join(" · ");
+        throw new Error(
+          `Typecheck failed — ${names}${firstErrors ? `: ${firstErrors}` : ""}`
+        );
+      }
+
+      // ── Checkpoint before writing so the user can undo ────────────────────
       const pathsToCheckpoint = [
         ...edits.map(e => e.path),
         ...fileDeletes.map(d => d.path),
