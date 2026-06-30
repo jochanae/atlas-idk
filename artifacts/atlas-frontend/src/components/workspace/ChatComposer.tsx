@@ -412,7 +412,7 @@ export function ChatComposer(props: ChatComposerProps) {
           transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           overflow: "hidden",
         } : {
-          padding: isCompact ? "6px 14px 8px" : "12px 14px 14px",
+          padding: isCompact ? "2px 12px 4px" : "12px 14px 14px",
           flexShrink: 0,
           position: "sticky",
           bottom: 0,
