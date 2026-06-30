@@ -26,6 +26,7 @@ import { runBuildCheck, runWorkspaceBuildCheck } from "./devserver";
 import fsPromises from "node:fs/promises";
 import nodePath from "node:path";
 import { projectWorkspaceDir, ensureProjectWorkspaceDir, resolveWorkspacePath } from "../lib/projectWorkspace";
+import { runArtifactOrchestrator } from "../lib/artifactOrchestrator";
 
 const genai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY || "not-configured" });
 const MAX_VAULT_B64_SIZE = 1500000;
@@ -4830,6 +4831,13 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       userMessage: message,
     }).catch((err) => {
       logger.warn({ err, projectId }, "visual memory extraction failed — non-fatal");
+    });
+  }
+  // Artifact Orchestrator — evaluate the artifact pipeline after every turn.
+  // v1: read-only; logs rule evaluations only, no artifact creation or modification.
+  if (projectId) {
+    void runArtifactOrchestrator(projectId).catch((err) => {
+      logger.warn({ err, projectId }, "ArtifactOrchestrator: evaluation failed — non-fatal");
     });
   }
 });

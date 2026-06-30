@@ -30,6 +30,7 @@
 - [Application Model Phase 2A](application-model-2a.md) — application_models + application_model_history tables live; GET/PATCH/history routes at /api/projects/:id/model; all existing projects seeded on boot
 - [Application Model Phase 2B](application-model-2b.md) — conversation extraction (async Haiku after each chat), genome clarity boost (0–20 pts from AM richness), ledger→history bridge (Decision entries), flow sync endpoint; all additive/non-breaking
 - [Extraction fire-and-forget confirmation](extraction-fire-and-forget.md) — confirmed working in prod trace; "request aborted" does NOT kill extraction; CORS regex fix for multi-level Replit domains
+- [ArtifactOrchestrator architecture](orchestrator-architecture.md) — post-turn evaluator at lib/artifactOrchestrator.ts; 8 rules R001–R008; v1 read-only log; productIntelligence slot null until Phase 2
 - [Global Insights Absorbed Into Workspace](global-insights-absorbed.md) — product decision: no separate Global Insights surface; portfolio intelligence injected into every workspace chat via chat.ts; conversation is the primary entity
 - [Lovable + Replit backend routing](lovable-backend-routing.md) — Cloud Run deleted; api.ts defaults to same-origin (Replit); Lovable preview needs VITE_API_URL in Lovable env settings pointing to deployed Replit URL
 - [ComposerActions menu items](composer-actions-structure.md) — Write removed from ComposerMenuAction type + MORE_ITEMS; always grep ComposerActions.tsx + workspace.tsx more sheet together when removing menu items
