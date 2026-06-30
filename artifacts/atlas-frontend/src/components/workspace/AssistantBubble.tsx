@@ -1607,6 +1607,7 @@ export function AssistantBubble({
       groups[patch.path].push(patch);
     }
     const edits: FileEdit[] = [];
+    const trustInputs: TrustCheckInput[] = [];
     for (const [filePath, patches] of Object.entries(groups)) {
       const r = await fetch(
         `/api/github/file?repo=${encodeURIComponent(linkedRepo.fullName)}&path=${encodeURIComponent(filePath)}&branch=${encodeURIComponent(linkedRepo.defaultBranch)}`,
@@ -1614,7 +1615,8 @@ export function AssistantBubble({
       );
       if (!r.ok) throw new Error(`Could not fetch ${filePath.split("/").pop()} (${r.status})`);
       const data = await r.json() as { content: string };
-      let content = data.content;
+      const original = data.content;
+      let content = original;
       for (const patch of patches) {
         const idx = content.indexOf(patch.find);
         if (idx === -1) throw new Error(`Anchor not found in ${filePath.split("/").pop()}. Ask Atlas to re-read the file first.`);
@@ -1623,7 +1625,10 @@ export function AssistantBubble({
       const ext = filePath.split(".").pop() ?? "";
       const language = ["ts", "tsx"].includes(ext) ? "typescript" : ["js", "jsx"].includes(ext) ? "javascript" : ext;
       edits.push({ path: filePath, language, content });
+      trustInputs.push({ path: filePath, patched: content, original });
     }
+    const trustErrors = await runLinePatchTrustChecks(trustInputs);
+    if (trustErrors.length > 0) throw new Error(formatTrustErrors(trustErrors));
     return edits;
   };
 
