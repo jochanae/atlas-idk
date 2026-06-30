@@ -273,9 +273,13 @@ export interface ChatMessage {
     summary: string;
     originalMessage?: string;
   };
+  /** Repo-wide code search results when Atlas detected a REPO_SEARCH_REQUEST signal. */
+  repoSearch?: { query: string; files: Array<{ name: string; path: string; url: string }> };
+  /** True when Atlas queued background extraction after this response. */
+  extractionQueued?: boolean;
 }
 
-export type MemoryChip = { label: string; insight?: string };
+export type MemoryChip = { label: string; insight?: string; tier?: 1 | 2 | 3 | 4 | 5 };
 
 export interface LinkedRepo {
   fullName: string;

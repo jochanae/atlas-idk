@@ -219,6 +219,7 @@ export function useChatStream(
   const [activityStream, setActivityStream] = useState<ActivityStreamState>({ active: false, content: "" });
   const [liveStep, setLiveStep] = useState<LiveStepState>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const prevLensRef = useRef<string>("");
 
   const handleStop = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -424,6 +425,7 @@ export function useChatStream(
         ...(effectiveModel ? { model: effectiveModel } : {}),
         orchestrate: !effectiveModel,
         workspaceLens: lensCtx.wsLens,
+        ...(prevLensRef.current && prevLensRef.current !== lensCtx.wsLens ? { previousLens: prevLensRef.current } : {}),
         scenarioMode: isScenario,
         history,
         entries: ledgerEntries,
@@ -519,6 +521,8 @@ export function useChatStream(
             const aff = res.autoFetchedFiles ?? [];
             const rawChips = res.memoryChips ?? [];
             const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
+            const repoSearchPayload = res.repoSearch ?? null;
+            const extractionQueuedFlag = res.extractionQueued ?? false;
             setMessages((prev) => [...prev, {
               ...res,
               id: res.messageId ?? Date.now(), role: "assistant",
@@ -539,6 +543,8 @@ export function useChatStream(
               ...(fds.length > 0 ? { fileDeletes: fds } : {}),
               ...(fms.length > 0 ? { fileMoves: fms } : {}),
               ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
+              ...(repoSearchPayload ? { repoSearch: repoSearchPayload } : {}),
+              ...(extractionQueuedFlag ? { extractionQueued: true } : {}),
               ...(res.imageB64
                 ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType }
                 : res.imageGen?.images?.[0]?.imageUrl
@@ -879,6 +885,8 @@ export function useChatStream(
           const aff = res.autoFetchedFiles ?? [];
           const rawChips = res.memoryChips ?? [];
           const normalizedChips = rawChips.map((c: any) => typeof c === "string" ? { label: c } : c);
+          const repoSearchPayload = res.repoSearch ?? null;
+          const extractionQueuedFlag = res.extractionQueued ?? false;
           setMessages((prev) => [...prev, {
             ...res,
             id: res.messageId, role: "assistant",
@@ -898,6 +906,8 @@ export function useChatStream(
             ...(fds.length > 0 ? { fileDeletes: fds } : {}),
             ...(fms.length > 0 ? { fileMoves: fms } : {}),
             ...(normalizedChips.length > 0 ? { memoryChips: normalizedChips } : {}),
+            ...(repoSearchPayload ? { repoSearch: repoSearchPayload } : {}),
+            ...(extractionQueuedFlag ? { extractionQueued: true } : {}),
             ...(res.imageB64
               ? { imageB64: res.imageB64, imageMimeType: res.imageMimeType }
               : res.imageGen?.images?.[0]?.imageUrl
@@ -986,6 +996,7 @@ export function useChatStream(
           setActivityStream({ active: false, content: "" });
           setChatPending(false);
           setLiveStep(null);
+          prevLensRef.current = sendCtxRef.current.wsLens;
           abortControllerRef.current = null;
         }
       })();

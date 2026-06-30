@@ -830,10 +830,14 @@ MEMORY_T5: [passing thought — 7 days]
 
 Save up to 3 MEMORY_Tn lines per response when she shares something significant.
 
+When answering a question that requires scanning the linked repo for relevant files, end your response on its own line with:
+REPO_SEARCH_REQUEST: {"query": "the search terms"}
+This triggers a real-time GitHub code search and surfaces matching files inline below your response.
+
 You are Atlas. Just be it.`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-export type MemoryChipRich = { label: string; insight?: string };
+export type MemoryChipRich = { label: string; insight?: string; tier?: 1 | 2 | 3 | 4 | 5 };
 
 type SurfaceType = "MAP" | "WORKSPACE" | "DECISION";
 
@@ -1075,6 +1079,7 @@ function detectMemoryChips(content: string): { content: string; memoryChips: Mem
           return {
             label: c.label,
             insight: typeof c.insight === "string" ? c.insight : undefined,
+            tier: (typeof c.tier === "number" && c.tier >= 1 && c.tier <= 5) ? c.tier as 1 | 2 | 3 | 4 | 5 : undefined,
           };
         }
         return { label: String(c) };
@@ -1083,6 +1088,30 @@ function detectMemoryChips(content: string): { content: string; memoryChips: Mem
     }
   } catch {}
   return { content, memoryChips: [] };
+}
+
+function detectRepoSearchRequest(content: string): { content: string; repoSearchQuery: string | null } {
+  const match = content.match(/REPO_SEARCH_REQUEST:\s*\{[^}]*"query"\s*:\s*"([^"]+)"[^}]*\}/);
+  if (!match) return { content, repoSearchQuery: null };
+  const query = (match[1] ?? "").trim() || null;
+  const cleaned = content.replace(/REPO_SEARCH_REQUEST:\s*\{[^}]+\}/g, "").trim();
+  return { content: cleaned, repoSearchQuery: query };
+}
+
+async function githubSearchCode(
+  query: string,
+  repoFull: string,
+  ghToken: string,
+): Promise<Array<{ name: string; path: string; url: string }>> {
+  try {
+    const resp = await fetch(
+      `https://api.github.com/search/code?q=${encodeURIComponent(query)}+repo:${encodeURIComponent(repoFull)}&per_page=8`,
+      { headers: { Authorization: `token ${ghToken}`, Accept: "application/vnd.github.v3+json", "User-Agent": "axiom-atlas" } },
+    );
+    if (!resp.ok) return [];
+    const data = await resp.json() as { items?: Array<{ name: string; path: string; html_url: string }> };
+    return (data.items ?? []).slice(0, 8).map(item => ({ name: item.name, path: item.path, url: item.html_url }));
+  } catch { return []; }
 }
 
 function extractMemoryLines(content: string): {
@@ -2176,6 +2205,7 @@ router.post("/chat", async (req, res): Promise<void> => {
     flowNodes?: Array<{ type: string; label: string; question?: string; strategicAnswer?: string }>;
     forgeContext?: string;
     planMode?: boolean;
+    previousLens?: string;
   };
 
   const isFlowMode = !!body.flowMode;
@@ -3448,18 +3478,24 @@ You are in SCENARIO lens. This is exploratory "what if" territory. No commitment
   };
   systemPrompt += workspaceLensInstructions[workspaceLens] ?? workspaceLensInstructions.flow;
 
-  // NOTE: legacy lens system, coexists with workspaceLens FLOW/BUILD/LOOK/SCENARIO — review for consolidation in Step 6.
-  // Legacy project-level lens — style modifier (builder/strategist/reviewer/teacher)
-  const activeLens = (body.lens ?? "builder").toLowerCase();
-  const lensInstructions: Record<string, string> = {
-    builder: "",
-    strategist: `\n\n--- PROJECT STYLE: STRATEGIST ---\nZoom out. Before answering any tactical question, check if there's a strategic implication worth surfacing. Think like a co-founder who's read the whole roadmap.`,
-    reviewer: `\n\n--- PROJECT STYLE: REVIEWER ---\nBe critical. Lead with what's fragile or missing before validating what's working. Ask hard questions. Don't soften the assessment.`,
-    teacher: `\n\n--- PROJECT STYLE: TEACHER ---\nExplain everything. No jargon without definition. Name concepts, explain patterns, give context before code.`,
-  };
-  if (activeLens !== "builder") {
-    systemPrompt += lensInstructions[activeLens] ?? "";
+  // Lens context carry-forward — when switching lenses, surface key context from the prior lens
+  const prevLensParam = (body.previousLens ?? "").toLowerCase();
+  if (prevLensParam && prevLensParam !== workspaceLens && ["flow", "build", "look", "scenario"].includes(prevLensParam)) {
+    const recentHistory: Array<{ role: string; content: string }> = body.history ?? [];
+    const lastAssistant = [...recentHistory].reverse().find(m => m.role === "assistant");
+    if (lastAssistant && typeof lastAssistant.content === "string") {
+      const preview = lastAssistant.content
+        .replace(/FILE_EDIT_START[\s\S]*?FILE_EDIT_END/g, "[code edit]")
+        .replace(/LINE_PATCH_START[\s\S]*?LINE_PATCH_END/g, "[patch]")
+        .replace(/CONFIDENCE_ASSESSMENT:\{[^}]+\}/g, "")
+        .trim()
+        .slice(0, 600);
+      if (preview) {
+        systemPrompt += `\n\n--- LENS TRANSITION: ${prevLensParam.toUpperCase()} → ${workspaceLens.toUpperCase()} ---\nSwitching from ${prevLensParam} to ${workspaceLens} lens. Most recent ${prevLensParam} context:\n${preview}\nCarry forward any constraints, decisions, or framing established in that session — do not restart from zero.\n--- END LENS TRANSITION ---`;
+      }
+    }
   }
+
   if (allAttachments.length > 0) {
     systemPrompt += "\n\nThe user has attached an image to this message. You can see and interpret it directly.";
   }
@@ -4157,7 +4193,8 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
   const { content: afterMemory, newFacts } = extractMemoryLines(visibleContent);
   const { content: afterNodeResolved, resolvedNodes } = extractNodeResolved(afterMemory);
   const { content: afterIntent, intentType: detectedIntentType } = extractIntentType(afterNodeResolved);
-  const { content: finalContent, memoryChips: aiMemoryChips } = detectMemoryChips(afterIntent);
+  const { content: finalContentRaw, memoryChips: aiMemoryChips } = detectMemoryChips(afterIntent);
+  const { content: finalContent, repoSearchQuery } = detectRepoSearchRequest(finalContentRaw);
 
   // Auto-match ledger entries referenced in the response
   const entryChipStrings = matchEntryChips(
@@ -4190,6 +4227,13 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
       .update(usersTable)
       .set({ memory: JSON.stringify(userStore) } as any)
       .where(eq(usersTable.id, userId));
+  }
+
+  // Execute repo search if Atlas embedded a REPO_SEARCH_REQUEST signal
+  let repoSearchResult: { query: string; files: Array<{ name: string; path: string; url: string }> } | undefined;
+  if (repoSearchQuery && repoData?.fullName && resolvedGithubToken) {
+    const files = await githubSearchCode(repoSearchQuery, repoData.fullName, resolvedGithubToken);
+    repoSearchResult = { query: repoSearchQuery, files };
   }
 
   // Extract FLOW_NODE lines before persisting
@@ -4552,6 +4596,8 @@ Do not suggest style improvements or preferences. Only flag genuine problems.`,
     memoryChips: allChips.length > 0 ? allChips : undefined,
     messageId: savedMsgId,
     memoryUpdated: newFacts.length > 0,
+    ...(projectId ? { extractionQueued: true } : {}),
+    ...(repoSearchResult ? { repoSearch: repoSearchResult } : {}),
     confidenceAssessment: confidenceAssessment ?? undefined,
     reviewNotes: reviewNotes.length > 0 ? reviewNotes : undefined,
     fileEdits: responseFileEdits.length > 0 ? responseFileEdits : undefined,

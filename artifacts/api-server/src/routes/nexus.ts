@@ -4,7 +4,7 @@ import fsPromises from "fs/promises";
 import nodePath from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
-import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable } from "@workspace/db";
+import { db, nexusMessagesTable, projectsTable, entriesTable, sessionsTable, conversationsTable, scheduledChecksTable, checkResultsTable, readinessSnapshotsTable, applicationModelsTable } from "@workspace/db";
 import { getProjectDNA, getOrCreateProjectDNA, getMultipleProjectDNA } from "../lib/projectDNA";
 import { eq, asc, and, inArray, desc, isNull, isNotNull, sql, gte, type SQL } from "drizzle-orm";
 import { loadVaultContext } from "../lib/vaultContext";
@@ -19,6 +19,9 @@ import { ATLAS_IDENTITY } from "../lib/atlasIdentity";
 import { createProjectForUser, ProjectLimitReachedError } from "../lib/projectCreation";
 import { ensureProjectWorkspaceDir, resolveWorkspacePath, assertProjectOwner } from "../lib/projectWorkspace";
 import { maybeExtractGenome } from "../lib/genomeExtract";
+
+// In-memory cache for cross-project behavioral pattern analysis (30-min TTL per user)
+const patternCache = new Map<string, { text: string; ts: number }>();
 
 const router: IRouter = Router();
 
@@ -1501,6 +1504,30 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     .map(([name, lines]) => `[${name}]\n${lines.join("\n")}`)
     .join("\n\n");
 
+  // Parked ideas across all projects
+  const parkedEntries = projectIds.length > 0
+    ? await db
+        .select({ id: entriesTable.id, projectId: entriesTable.projectId, title: entriesTable.title, summary: entriesTable.summary })
+        .from(entriesTable)
+        .where(and(inArray(entriesTable.projectId, projectIds), eq(entriesTable.status, "parked")))
+    : [];
+
+  // Detect end of previous nexus conversation for "since you were last here"
+  const prevConvTimestamp: Date | null = await (async () => {
+    if (!conversationId || dbMessages.length > 0) return null;
+    const lastMsg = await db
+      .select({ createdAt: nexusMessagesTable.createdAt })
+      .from(nexusMessagesTable)
+      .where(and(
+        eq(nexusMessagesTable.userId, userId),
+        isNotNull(nexusMessagesTable.conversationId),
+        sql`${nexusMessagesTable.conversationId} != ${conversationId}`,
+      ))
+      .orderBy(desc(nexusMessagesTable.createdAt))
+      .limit(1);
+    return lastMsg[0]?.createdAt ?? null;
+  })();
+
   // Project roster — always list every project by name so Atlas knows the full portfolio
   const projectRoster = projects.length > 0
     ? projects.map((p) => `• ${p.name}`).join("\n")
@@ -1536,6 +1563,55 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
       violations: violationsResult[0]?.count ?? 0,
       totalProjects: projects.length,
     };
+  })();
+
+  // "Since you were last here" — delta since the previous nexus conversation
+  const sinceLastVisit: string | null = await (async () => {
+    if (!prevConvTimestamp || projectIds.length === 0 || ideaMode) return null;
+    const [newDecisions, newSessions] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(entriesTable)
+        .where(and(inArray(entriesTable.projectId, projectIds), eq(entriesTable.status, "committed"), gte(entriesTable.createdAt, prevConvTimestamp))),
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(sessionsTable)
+        .where(and(inArray(sessionsTable.projectId, projectIds), gte(sessionsTable.createdAt, prevConvTimestamp))),
+    ]);
+    const decisionCount = newDecisions[0]?.count ?? 0;
+    const sessionCount = newSessions[0]?.count ?? 0;
+    if (decisionCount === 0 && sessionCount === 0) return null;
+    const daysSince = Math.floor((Date.now() - prevConvTimestamp.getTime()) / 86_400_000);
+    const timeLabel = daysSince === 0 ? "earlier today" : daysSince === 1 ? "yesterday" : `${daysSince} days ago`;
+    const lines: string[] = [`Since your last conversation (${timeLabel}):`];
+    if (sessionCount > 0) lines.push(`  • ${sessionCount} workspace session${sessionCount !== 1 ? "s" : ""} completed`);
+    if (decisionCount > 0) lines.push(`  • ${decisionCount} decision${decisionCount !== 1 ? "s" : ""} committed to the ledger`);
+    if (parkedEntries.length > 0) lines.push(`  • ${parkedEntries.length} idea${parkedEntries.length !== 1 ? "s" : ""} remain parked across the portfolio`);
+    return lines.join("\n");
+  })();
+
+  // Cross-project behavioral pattern recognition — Haiku pass (30-min in-memory cache per user)
+  const crossProjectPatterns: string | null = await (async () => {
+    if (ideaMode || projects.length < 2) return null;
+    const cacheKey = `patterns:${userId}`;
+    const cached = patternCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < 30 * 60 * 1000) return cached.text;
+    try {
+      const summaries = projects.map(p => {
+        const c = committedEntries.filter(e => e.projectId === p.id).length;
+        const k = parkedEntries.filter(e => e.projectId === p.id).length;
+        return `${p.name}: ${c} committed decisions, ${k} parked`;
+      }).join("\n");
+      const resp = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 200,
+        system: `You detect behavioral patterns across a product portfolio. Look at commit/park ratios and identify 1-3 honest, specific patterns about HOW this person works across projects — not what they're building. Focus on: where decisions stall, which projects move vs. sit, repeated tendencies.
+One pattern per line starting with "·". Short and specific. If nothing meaningful: respond with exactly: none`,
+        messages: [{ role: "user", content: `Portfolio:\n${summaries}\nSessions this week: ${portfolioHealth?.sessionsThisWeek ?? 0}` }],
+      });
+      const text = ((resp.content[0] as { type: string; text?: string })?.text ?? "").trim();
+      if (!text || text.toLowerCase() === "none") return null;
+      patternCache.set(cacheKey, { text, ts: Date.now() });
+      return text;
+    } catch { return null; }
   })();
 
   // Scheduled health check awareness — summarise per-project monitor status for Atlas
@@ -1716,6 +1792,9 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
     ].join("\n");
     systemPrompt += `\n\n--- PORTFOLIO HEALTH ---\n${healthLines}\nUse this when the user asks about momentum, health, activity, or progress across the portfolio.\n--- END PORTFOLIO HEALTH ---`;
   }
+  if (sinceLastVisit) {
+    systemPrompt += `\n\n--- SINCE YOUR LAST CONVERSATION ---\n${sinceLastVisit}\nOpen your first response by weaving this in naturally — not as a bullet list, not as a preamble. Make it feel like a collaborator who has been paying attention.\n--- END SINCE LAST CONVERSATION ---`;
+  }
   if (monitorContext) {
     systemPrompt += `\n\n--- LIVE APP HEALTH (scheduled monitor results) ---\n${monitorContext}\nUse this when the user asks about app health, uptime, or "how is my app doing". Report HEALTHY/ISSUE status directly from these results. If an issue is listed, surface it proactively.\n--- END LIVE APP HEALTH ---`;
   }
@@ -1725,8 +1804,21 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
   if (committedLedger) {
     systemPrompt += `\n\n--- COMMITTED DECISIONS ACROSS PORTFOLIO (use for cross-project tension detection) ---\n${committedLedger}\n--- END COMMITTED DECISIONS ---`;
   }
+  if (parkedEntries.length > 0) {
+    const parkedByProject = new Map<string, string[]>();
+    for (const e of parkedEntries) {
+      const name = projectNameById.get(e.projectId) ?? "Unknown";
+      if (!parkedByProject.has(name)) parkedByProject.set(name, []);
+      parkedByProject.get(name)!.push(`  • ${e.title}${e.summary ? ` — ${e.summary.slice(0, 80)}` : ""}`);
+    }
+    const parkedLedger = [...parkedByProject.entries()].map(([name, lines]) => `[${name}]\n${lines.join("\n")}`).join("\n\n");
+    systemPrompt += `\n\n--- PARKED IDEAS ACROSS PORTFOLIO ---\n${parkedLedger}\nThese ideas were deliberately deferred. Reference them if the conversation is relevant — e.g. "you've parked X before, is now the time?" Do not enumerate them unprompted.\n--- END PARKED IDEAS ---`;
+  }
   if (aggregatedMemory) {
     systemPrompt += `\n\n--- AGGREGATED PROJECT MEMORY (Atlas knows this across all projects) ---\n${aggregatedMemory}\n--- END AGGREGATED MEMORY ---`;
+  }
+  if (crossProjectPatterns) {
+    systemPrompt += `\n\n--- CROSS-PROJECT BEHAVIORAL PATTERNS ---\n${crossProjectPatterns}\nUse these patterns only when the conversation explicitly touches on working habits, momentum, or stalled progress. Do not insert them into every response.\n--- END PATTERNS ---`;
   }
   if (focusProjectId) {
     const focusProject = projects.find(p => p.id === focusProjectId);
@@ -1844,6 +1936,14 @@ router.post("/nexus/chat", async (req, res): Promise<void> => {
         ? projectTensions.map((tension) => `${tension.projectA.name} ↔ ${tension.projectB.name}: "${tension.entryA.title}" conflicts with "${tension.entryB.title}"`).join("\n")
         : "None detected.";
 
+      // Application Model for focused project — pages, components, data entities
+      const focusAMRows = await db.select({
+        pages: applicationModelsTable.pages,
+        components: applicationModelsTable.components,
+        data: applicationModelsTable.data,
+      }).from(applicationModelsTable).where(eq(applicationModelsTable.projectId, focusProjectId)).limit(1);
+      const focusAM = focusAMRows[0] ?? null;
+
       // Atlas State — fetch DNA to determine conversational posture
       const focusGenomeRow = await getProjectDNA(focusProjectId);
 
@@ -1916,6 +2016,26 @@ Atlas should flag in-tension items if the conversation touches them.`;
       if (ledgerGroups.parked.length > 0) {
         systemPrompt += `\n\nPARKING LOT AWARENESS:
 The user has ${ledgerGroups.parked.length} parked item${ledgerGroups.parked.length === 1 ? "" : "s"}: ${formatTitles(ledgerGroups.parked)}. Reference them naturally if the conversation is relevant. Do not list them all at once unprompted.`;
+      }
+      if (focusAM) {
+        const amPages = Array.isArray(focusAM.pages) ? focusAM.pages as Array<{ name?: string; route?: string; purpose?: string }> : [];
+        const amComponents = Array.isArray(focusAM.components) ? focusAM.components as Array<{ name?: string; type?: string }> : [];
+        const amData = focusAM.data as { entities?: Array<{ name?: string }>; relationships?: unknown[] } | null;
+        const amEntities = amData?.entities ?? [];
+        if (amPages.length > 0 || amComponents.length > 0 || amEntities.length > 0) {
+          let amBlock = `\n\n--- APPLICATION MODEL: ${focusProject.name.toUpperCase()} ---`;
+          if (amPages.length > 0) {
+            amBlock += `\nPages (${amPages.length}): ${amPages.map(p => `${p.name ?? "?"}${p.route ? ` (${p.route})` : ""}${p.purpose ? ` — ${p.purpose.slice(0, 60)}` : ""}`).join("; ")}`;
+          }
+          if (amComponents.length > 0) {
+            amBlock += `\nComponents (${amComponents.length}): ${amComponents.slice(0, 12).map(c => `${c.name ?? "?"}${c.type ? ` [${c.type}]` : ""}`).join(", ")}`;
+          }
+          if (amEntities.length > 0) {
+            amBlock += `\nData entities (${amEntities.length}): ${amEntities.map(e => e.name ?? "?").join(", ")}`;
+          }
+          amBlock += `\nReference this when asked about app structure, pages, components, or data — it reflects what has been extracted from the actual application.\n--- END APPLICATION MODEL ---`;
+          systemPrompt += amBlock;
+        }
       }
       systemPrompt += `\n\nCROSS-PROJECT TENSIONS:
 ${tensionLines}

@@ -1830,6 +1830,27 @@ export function AssistantBubble({
           </div>
         )}
 
+        {message.repoSearch && message.repoSearch.files.length > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: "var(--atlas-muted)", letterSpacing: "0.06em", opacity: 0.55, marginBottom: 5, fontFamily: "var(--app-font-mono)" }}>
+              REPO · {message.repoSearch.query}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: 2 }}>
+              {message.repoSearch.files.slice(0, 6).map((f) => (
+                <a
+                  key={f.path}
+                  href={f.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11.5, fontFamily: "var(--app-font-mono)", color: "var(--atlas-accent)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, opacity: 0.8 }}
+                >
+                  {f.path}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {message.pendingSketch && !message.imageB64 && !imageGenDataUrl && !inlineImageUrl && (
           <div style={{ marginBottom: 12 }}>
             <SketchReveal src={null} loading alt="Atlas sketch" />

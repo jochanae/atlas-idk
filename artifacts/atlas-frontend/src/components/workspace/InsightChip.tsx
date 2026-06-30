@@ -48,8 +48,13 @@ export function InsightChip({
             position: "relative", zIndex: 5,
           }}
         >
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: hasInsight ? 6 : 8, letterSpacing: "-0.01em" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--atlas-fg)", marginBottom: hasInsight ? 6 : 8, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 6 }}>
             {chip.label}
+            {chip.tier && (
+              <span style={{ fontSize: 9, fontFamily: "var(--app-font-mono)", opacity: 0.4, fontWeight: 400, letterSpacing: "0.04em" }}>
+                T{chip.tier}
+              </span>
+            )}
           </div>
           {chip.insight && (
             <div style={{ fontSize: 11.5, color: "var(--atlas-muted)", lineHeight: 1.65, marginBottom: 10, fontStyle: "italic", opacity: 0.85 }}>
