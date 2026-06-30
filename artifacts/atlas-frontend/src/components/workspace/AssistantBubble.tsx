@@ -29,6 +29,7 @@ import type { CommitCardPayload } from "@/lib/DecisionCatchEngine";
 import { detectPlanFromText } from "../../lib/plan";
 import type { Plan, PlanExecution, StructuredPlanArtifact } from "../../lib/plan";
 import { haptic } from "@/lib/long-press-tip";
+import { runLinePatchTrustChecks, formatTrustErrors, type TrustCheckInput } from "./linePatchTrust";
 
 
 import type {
