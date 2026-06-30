@@ -118,7 +118,9 @@ export function AskAtlasOverlay({
     void chat.send({ text });
   };
 
-  if (!open || typeof document === "undefined") return null;
+  if (!mounted || typeof document === "undefined") return null;
+
+  const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
   return createPortal(
     <>
@@ -129,12 +131,17 @@ export function AskAtlasOverlay({
           background: "rgba(4,3,6,0.78)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
-          animation: "askAtlasScrimIn 200ms ease",
+          opacity: visible ? 1 : 0,
+          transition: "opacity 200ms ease",
         }}
       />
       <style>{`
-        @keyframes askAtlasScrimIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes askAtlasSheetIn { from { transform: translateY(24px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes askAtlasDot { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
+        @keyframes askAtlasMsgIn { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
+        .ask-atlas-msg { animation: askAtlasMsgIn 220ms ${EASE} both; }
+        .ask-atlas-chip { transition: background 160ms, border-color 160ms, transform 160ms; }
+        .ask-atlas-chip:hover { background: rgba(212,175,55,0.10); border-color: rgba(212,175,55,0.32); }
+        .ask-atlas-chip:active { transform: scale(0.97); }
       `}</style>
       <div
         role="dialog"
@@ -142,19 +149,9 @@ export function AskAtlasOverlay({
         style={{
           position: "fixed",
           left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
-          transform: "translateX(-50%)",
-          zIndex: 2401,
-          width: "min(560px, calc(100vw - 24px))",
-          maxHeight: "min(78vh, 720px)",
-          display: "flex", flexDirection: "column",
-          background: "rgba(18,16,22,0.97)",
-          border: "1px solid rgba(212,175,55,0.28)",
-          borderRadius: 18,
-          boxShadow: "0 28px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
-          overflow: "hidden",
-          fontFamily: "var(--app-font-sans)",
-          animation: "askAtlasSheetIn 260ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
+          transform: `translateX(-50%) translateY(${visible ? "0" : "16px"})`,
+          opacity: visible ? 1 : 0,
+          transition: `transform 260ms ${EASE}, opacity 220ms ease`,
       >
         {/* Header */}
         <header style={{
