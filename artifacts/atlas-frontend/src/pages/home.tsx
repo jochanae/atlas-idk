@@ -1892,6 +1892,15 @@ export default function Home() {
       : "FOCUS · ALL";
   const homeFocusUserInitiatedRef = useRef(false);
   const [showFocusPicker, setShowFocusPicker] = useState(false);
+  // "Send to" routing: workspace (default), ask-atlas (overlay), parking (capture lot).
+  // Each surface answers a different intent — building / thinking / saving.
+  type SendTarget = "workspace" | "ask-atlas" | "parking";
+  const [sendTo, setSendTo] = useState<SendTarget>("workspace");
+  const [showSendToPicker, setShowSendToPicker] = useState(false);
+  const sendToRef = useRef<SendTarget>("workspace");
+  useEffect(() => { sendToRef.current = sendTo; }, [sendTo]);
+  const [askAtlasOpen, setAskAtlasOpen] = useState(false);
+  const [askAtlasSeed, setAskAtlasSeed] = useState<string | null>(null);
   const [homeModel] = useState<string>("claude");
   const [homeMode] = useState<string>("strategic");
   const homeProjectState = useProjectState(homeFocus);
