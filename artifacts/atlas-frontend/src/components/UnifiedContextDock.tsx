@@ -492,53 +492,35 @@ export function UnifiedContextDock(props: UnifiedContextDockProps) {
         }
       `}</style>
 
-      {/* Corner tap targets — generous invisible zones to expand dock when hidden */}
-      {!dockVisible && (
-        <>
-          <button
-            type="button"
-            aria-label="Expand navigation dock"
-            onClick={(e) => {
-              e.stopPropagation();
-              try { (navigator as any).vibrate?.(10); } catch {}
-              dockVisibility.toggleManual();
-            }}
-            style={{
-              position: "fixed",
-              bottom: 0,
-              left: 0,
-              width: 56,
-              height: 56,
-              zIndex: 1000,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          />
-          <button
-            type="button"
-            aria-label="Expand navigation dock"
-            onClick={(e) => {
-              e.stopPropagation();
-              try { (navigator as any).vibrate?.(10); } catch {}
-              dockVisibility.toggleManual();
-            }}
-            style={{
-              position: "fixed",
-              bottom: 0,
-              right: 0,
-              width: 56,
-              height: 56,
-              zIndex: 1000,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          />
-        </>
-      )}
+      {/* Corner tap targets — always present so user can collapse/expand the
+          dock with a tap when there's nothing to scroll. When hidden, the
+          targets sit at the bottom corners to expand the dock. When visible,
+          they sit just ABOVE the dock so they don't intercept taps on the
+          CHAT / MAP icons in the dock's own bottom corners. */}
+      {[ "left", "right" ].map((side) => (
+        <button
+          key={side}
+          type="button"
+          aria-label={dockVisible ? "Collapse navigation dock" : "Expand navigation dock"}
+          onClick={(e) => {
+            e.stopPropagation();
+            try { (navigator as any).vibrate?.(10); } catch {}
+            dockVisibility.toggleManual();
+          }}
+          style={{
+            position: "fixed",
+            bottom: dockVisible ? 96 : 0,
+            [side]: 0,
+            width: 56,
+            height: 56,
+            zIndex: 1000,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            WebkitTapHighlightColor: "transparent",
+          } as React.CSSProperties}
+        />
+      ))}
 
       {/* Arch — fixed-width center dimple, flanks fill remaining width */}
       <div
