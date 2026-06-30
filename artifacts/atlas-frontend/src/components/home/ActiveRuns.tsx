@@ -576,6 +576,37 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
   const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
   const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
 
+  // Track which run IDs were present last render so we can detect removals.
+  // Covers both manual dismiss and auto-dismiss timer paths.
+  const prevRunIdsRef = useRef<Set<string>>(new Set(runs.map((r) => r.id)));
+  useEffect(() => {
+    const currentIds = new Set(runs.map((r) => r.id));
+    const removed = [...prevRunIdsRef.current].filter((id) => !currentIds.has(id));
+    prevRunIdsRef.current = currentIds;
+    if (removed.length === 0) return;
+    setRetryingFiles((prev) => {
+      const next = new Set(prev);
+      for (const id of removed) {
+        const prefix = `${id}:`;
+        for (const key of prev) if (key.startsWith(prefix)) next.delete(key);
+      }
+      return next;
+    });
+    setRetryErrors((prev) => {
+      const next = new Map(prev);
+      for (const id of removed) {
+        const prefix = `${id}:`;
+        for (const key of prev.keys()) if (key.startsWith(prefix)) next.delete(key);
+      }
+      return next;
+    });
+  }, [runs]);
+
+  const handleDismiss = useCallback((runId: string) => {
+    _removeRun(runId);
+    // retry-state cleanup is handled by the runs useEffect above
+  }, []);
+
   const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
     const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
     if (!fileEdit) return;
@@ -977,7 +1008,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
               key={run.id}
               run={run}
               onEnter={() => setLocation(`/project/${run.projectId}`)}
-              onDismiss={() => _removeRun(run.id)}
+              onDismiss={() => handleDismiss(run.id)}
               retryingFiles={retryingFiles}
               retryErrors={retryErrors}
               onForceApply={handleForceApply}
@@ -998,7 +1029,7 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
                   key={run.id}
                   run={run}
                   onEnter={() => setLocation(`/project/${run.projectId}`)}
-                  onDismiss={() => _removeRun(run.id)}
+                  onDismiss={() => handleDismiss(run.id)}
                   retryingFiles={retryingFiles}
                   retryErrors={retryErrors}
                   onForceApply={handleForceApply}
