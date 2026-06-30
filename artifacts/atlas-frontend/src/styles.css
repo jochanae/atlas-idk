@@ -674,6 +674,17 @@ body[data-axiom-global-insight="true"] .atlas-input-shell input {
   border-right-color: color-mix(in oklab, var(--atlas-gold) 35%, transparent);
 }
 
+/* Collapsed/resting composer must be fully opaque so workspace text
+   never bleeds through from underneath. */
+.atlas-composer-glass[data-composer-expanded="false"] {
+  background: var(--atlas-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-theme="parchment"] .atlas-composer-glass[data-composer-expanded="false"] {
+  background: var(--atlas-surface);
+}
+
 /* ── Side drawer mobile sizing ──
    The mobile footer is 64px tall + safe-area-inset-bottom and sits at zIndex 150.
    Cap the drawer height below it so the footer (Edit profile, Sign out, etc.) is visible. */
