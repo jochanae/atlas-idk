@@ -14,6 +14,7 @@ import type {
   PushRecord,
 } from "@/pages/workspace";
 import type { PlanState } from "@/components/workspace/chatShared";
+import { runLinePatchTrustChecks, formatTrustErrors, type TrustCheckInput } from "./linePatchTrust";
 
 export function LinePatchReviewCard({
   linePatches,
