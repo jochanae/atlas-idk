@@ -232,7 +232,69 @@ export function ProjectsDrawer({ open, onClose, projects, activeProjectId, onOpe
             </svg>
           </button>
 
+          {/* CONVERSATIONS section — recent Ask Atlas threads (same source as gold-clock history). */}
+          {conversations.length > 0 && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", padding: "2px 4px", marginBottom: 2 }}>
+                <button type="button" onClick={() => setConversationsExpanded(v => !v)} style={{
+                  flex: 1, display: "flex", alignItems: "center", gap: 6,
+                  padding: "5px 8px", borderRadius: 6, border: "none",
+                  background: "transparent", cursor: "pointer",
+                  color: "var(--atlas-gold)",
+                  fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                  fontFamily: "var(--app-font-mono)",
+                }}>
+                  {conversationsExpanded ? <ChevronDown size={11} strokeWidth={2.2} /> : <ChevronRight size={11} strokeWidth={2.2} />}
+                  Conversations
+                  <span style={{ opacity: 0.55, marginLeft: 4, fontWeight: 500, letterSpacing: "0.04em" }}>{conversations.length}</span>
+                </button>
+              </div>
+              {conversationsExpanded && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 10 }}>
+                  {(conversationsShowAll ? conversations : conversations.slice(0, 5)).map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleConversationClick(c.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 9,
+                        width: "100%", padding: "6px 10px",
+                        borderRadius: 8, border: "none",
+                        background: "transparent",
+                        cursor: "pointer", textAlign: "left",
+                        transition: "background 140ms ease",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,162,76,0.05)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <MessageSquare size={12} strokeWidth={1.6} style={{ color: "var(--atlas-muted)", flexShrink: 0, opacity: 0.7 }} />
+                      <span style={{
+                        flex: 1, minWidth: 0,
+                        fontSize: 12.5, color: "var(--atlas-fg)",
+                        fontFamily: "var(--app-font-sans)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {c.title}
+                      </span>
+                    </button>
+                  ))}
+                  {conversations.length > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setConversationsShowAll((v) => !v)}
+                      style={{ ...linkBtn, padding: "4px 14px" }}
+                    >
+                      {conversationsShowAll ? "Show less" : `+${conversations.length - 5} more`}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div style={{ height: 1, background: "var(--atlas-gold-border)", margin: "4px 6px 8px" }} />
+            </>
+          )}
+
           {/* PROJECTS section */}
+
           <div style={{ display: "flex", alignItems: "center", padding: "2px 4px", marginBottom: 2 }}>
             <button type="button" onClick={() => setProjectsExpanded(v => !v)} style={{
               flex: 1, display: "flex", alignItems: "center", gap: 6,
