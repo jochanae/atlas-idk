@@ -85,11 +85,19 @@ router.get("/projects/:projectId/sessions", async (req, res): Promise<void> => {
   if (!(await projectBelongsToUser(params.data.projectId, userId))) {
     res.status(404).json({ error: "Project not found" }); return;
   }
-  const sessions = await db
+  const allSessions = await db
     .select()
     .from(sessionsTable)
     .where(eq(sessionsTable.projectId, params.data.projectId))
     .orderBy(sessionsTable.updatedAt);
+
+  // Temporary safeguard: hide legacy placeholder sessions with no messages.
+  // These were auto-seeded on activation before the no-auto-seed policy.
+  const LEGACY_PLACEHOLDER_TITLES = new Set(["Session 1", "Session", ""]);
+  const sessions = allSessions.filter(
+    s => !(LEGACY_PLACEHOLDER_TITLES.has((s.title ?? "").trim()) && (s.messageCount ?? 0) === 0)
+  );
+
   res.json(sessions.map(s => ({
     ...s,
     createdAt: s.createdAt.toISOString(),

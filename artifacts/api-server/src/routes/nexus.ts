@@ -2627,29 +2627,17 @@ Atlas should offer to help fill unanswered nodes if the conversation provides re
         getOrCreateProjectDNA(project.id),
         ensureProjectWorkspaceDir(project.id),
       ]);
-      const [newSession] = await db
+      // Seed session with blank title — first user message will auto-title it.
+      // No entry seeded; conversation history is empty until the user speaks.
+      await db
         .insert(sessionsTable)
         .values({
           projectId: project.id,
-          title: "Session 1",
+          title: "",
           status: "active",
           buildIntent: effectiveBuildIntent,
         })
         .returning({ id: sessionsTable.id });
-      if (newSession?.id) {
-        await db.insert(entriesTable).values({
-          projectId: project.id,
-          sessionId: newSession.id,
-          title: "Project created.",
-          summary: effectiveBuildIntent
-            ? `Workspace initialized from build request: "${effectiveBuildIntent.slice(0, 120)}"`
-            : "Workspace initialized.",
-          status: "committed",
-          severity: "committed",
-          mode: "decide",
-          amField: "intent",
-        });
-      }
 
       const projectCreated = {
         id: project.id,

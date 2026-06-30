@@ -501,48 +501,10 @@ router.post("/projects/:id/activate", async (req, res): Promise<void> => {
       await getOrCreateProjectDNA(projectId);
     }
 
-    const [existingSession] = await db
-      .select({ id: sessionsTable.id })
-      .from(sessionsTable)
-      .where(eq(sessionsTable.projectId, projectId))
-      .limit(1);
-
-    // Conversation-first projects (created via POST /api/conversations and identified
-    // by a conversationId) start fresh — the user's first message IS the project start.
-    // Skip seeding a placeholder "Session 1" / "Project activated." for them; those
-    // records only add chat-stream noise with no informational value.
-    const isConversationFirst = Boolean(project.conversationId);
-
-    let seedSessionId = existingSession?.id ?? null;
-    if (!seedSessionId && !isConversationFirst) {
-      const [newSession] = await db
-        .insert(sessionsTable)
-        .values({ projectId, title: "Session 1", status: "active" })
-        .returning({ id: sessionsTable.id });
-      seedSessionId = newSession?.id ?? null;
-    }
-
-    if (!isConversationFirst) {
-      const [existingEntry] = await db
-        .select({ id: entriesTable.id })
-        .from(entriesTable)
-        .where(eq(entriesTable.projectId, projectId))
-        .limit(1);
-
-      if (!existingEntry && seedSessionId) {
-        await db.insert(entriesTable).values({
-          projectId,
-          sessionId: seedSessionId,
-          title: "Project activated.",
-          summary: project.linkedRepo
-            ? `Workspace opened from GitHub repo: ${project.linkedRepo.replace(/^github:\/\//, "")}`
-            : "Workspace initialized.",
-          status: "committed",
-          severity: "committed",
-          mode: "decide",
-        });
-      }
-    }
+    // Sessions and entries are no longer pre-seeded on activation.
+    // The workspace creates a session on demand when the user sends their first message,
+    // and that first message becomes the session title. Legacy "Session 1" / "Project
+    // activated." rows are hidden client-side as a temporary safeguard.
 
     const [updated] = await db
       .update(projectsTable)
@@ -605,25 +567,12 @@ router.post("/projects/create-and-activate", async (req, res): Promise<void> => 
     // 2. Seed Application Model (canonical DNA store)
     await getOrCreateProjectDNA(projectId);
 
-    // 3. Seed session — carry the build intent so workspace Atlas knows what to build
+    // 3. Seed session — blank title; first user message will auto-title it
     const buildIntentStr = typeof buildIntent === "string" && buildIntent.trim() ? buildIntent.trim() : null;
-    const [session] = await db
+    await db
       .insert(sessionsTable)
-      .values({ projectId, title: "Session 1", status: "active", buildIntent: buildIntentStr })
+      .values({ projectId, title: "", status: "active", buildIntent: buildIntentStr })
       .returning({ id: sessionsTable.id });
-
-    // 4. Seed activation entry
-    if (session?.id) {
-      await db.insert(entriesTable).values({
-        projectId,
-        sessionId: session.id,
-        title: "Project created.",
-        summary: "Workspace initialized from Global Insight build request.",
-        status: "committed",
-        severity: "committed",
-        mode: "decide",
-      });
-    }
 
     // Fire-and-forget memory refresh (non-blocking)
     pushAtlasMdToRepo(projectId, userId, req.log).catch(() => {});

@@ -24,10 +24,9 @@ export function classifyActivity(item: ActivityItem): Importance {
 const POLL_MS = 30_000;
 const SEEN_KEY = (pid: number) => `atlas-workspace-activity-seen:${pid}`;
 
-// "Session 1" is the exact title the activate route uses for auto-seeded sessions.
-// Blank sessions are also auto-created noise. Bare "Session" is NOT filtered here
-// because it could be a user-created session name in other flows.
-const STARTUP_SESSION_TITLES = new Set(["Session 1", ""]);
+// Legacy placeholder titles seeded before the no-auto-seed policy.
+// "Session" is included as a temporary safeguard for older data.
+const STARTUP_SESSION_TITLES = new Set(["Session 1", "Session", ""]);
 
 function isStartupNoise(item: ActivityItem): boolean {
   if (item.type === "session") {

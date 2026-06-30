@@ -5423,13 +5423,18 @@ export default function Home() {
         title="GLOBAL INSIGHT · HISTORY"
         loading={historyLoading}
         emptyHint="No saved Global Insight threads yet. Start a conversation above — it will appear here."
-        items={conversations.map((c) => ({
-          id: c.id,
-          title: c.title || "Untitled thread",
-          msgCount: c.messageCount ?? 0,
-          timestamp: c.createdAt ?? null,
-          active: c.id === activeConversationId,
-        }))}
+        items={conversations
+          .filter((c) => {
+            const t = (c.title ?? "").trim();
+            return t !== "" && t !== "Session" && t !== "Session 1";
+          })
+          .map((c) => ({
+            id: c.id,
+            title: c.title || "Untitled thread",
+            msgCount: c.messageCount ?? 0,
+            timestamp: c.createdAt ?? null,
+            active: c.id === activeConversationId,
+          }))}
         onNew={() => {
           setShowHistory(false);
           handleNewConversation();

@@ -2379,18 +2379,30 @@ router.post("/chat", async (req, res): Promise<void> => {
       : Promise.resolve([] as Array<{ id: number }>),
     !isFoundationMode && sessionId
       ? db
-          .select({ buildIntent: sessionsTable.buildIntent, messageCount: sessionsTable.messageCount })
+          .select({ buildIntent: sessionsTable.buildIntent, messageCount: sessionsTable.messageCount, title: sessionsTable.title })
           .from(sessionsTable)
           .where(eq(sessionsTable.id, sessionId))
           .limit(1)
-          .catch(() => [] as Array<{ buildIntent: string | null; messageCount: number }>)
-      : Promise.resolve([] as Array<{ buildIntent: string | null; messageCount: number }>),
+          .catch(() => [] as Array<{ buildIntent: string | null; messageCount: number; title: string | null }>)
+      : Promise.resolve([] as Array<{ buildIntent: string | null; messageCount: number; title: string | null }>),
   ]);
   const [project] = projectRows;
   const [user] = userRows;
   const hasVercelConnection = vercelRows.length > 0;
   const sessionBuildIntent = sessionRows[0]?.buildIntent ?? null;
   const sessionMessageCount = sessionRows[0]?.messageCount ?? 1;
+
+  // Auto-title: when this is the very first message in a session, use the user's
+  // message text (truncated) as the session title, replacing any placeholder.
+  const SESSION_PLACEHOLDER_TITLES = new Set(["Session 1", "New session", ""]);
+  if (sessionMessageCount === 0 && sessionId && message.trim()) {
+    const currentTitle = (sessionRows[0]?.title ?? "").trim();
+    if (SESSION_PLACEHOLDER_TITLES.has(currentTitle)) {
+      const raw = message.trim();
+      const autoTitle = raw.length > 60 ? raw.slice(0, 60) + "…" : raw;
+      db.update(sessionsTable).set({ title: autoTitle }).where(eq(sessionsTable.id, sessionId)).catch(() => {});
+    }
+  }
   // Hoisted so auto-apply and file-source logic share the same flag
   // Keep build-handoff mode active for the first few turns so the audit/completion
   // rounds after LOCAL_APPLY_SUCCESS still run with the BUILD_HANDOFF system prompt.
