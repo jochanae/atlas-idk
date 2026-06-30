@@ -5798,6 +5798,27 @@ export default function Home() {
 
       <HandoffCinemaOverlay />
 
+      <AskAtlasOverlay
+        open={askAtlasOpen}
+        onClose={() => { setAskAtlasOpen(false); setAskAtlasSeed(null); }}
+        seedMessage={askAtlasSeed}
+        onOpenHistory={() => {
+          window.dispatchEvent(new CustomEvent("axiom:launcher-conversations"));
+        }}
+        onContinueInWorkspace={(seed) => {
+          // Hand off to the real workspace flow — closes overlay, seeds the
+          // home composer, and triggers the standard project-create submit.
+          setAskAtlasOpen(false);
+          setAskAtlasSeed(null);
+          setSendTo("workspace");
+          sendToRef.current = "workspace";
+          setInput(seed);
+          window.setTimeout(() => { void handleSubmit(seed); }, 40);
+        }}
+      />
+
+
+
       <div className="atlas-home-bottom-nav">
         <UnifiedContextDock
           mode="ambient"
