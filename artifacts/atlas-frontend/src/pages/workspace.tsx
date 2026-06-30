@@ -5536,25 +5536,72 @@ export default function Workspace() {
     const today = new Date().toISOString().slice(0, 10);
     const branch = `atlas/auto-${today}-${Date.now().toString(36).slice(-4)}`;
     try {
+      // ── Phase 0: typecheck all TS/JS files before touching GitHub ─────────
+      const TC_EXTS = new Set(["ts", "tsx", "js", "jsx"]);
+      const tcResults = await Promise.all(
+        fileEdits.map(async (fe) => {
+          const ext = (fe.path ?? "").split(".").pop()?.toLowerCase() ?? "";
+          if (!TC_EXTS.has(ext)) return { path: fe.path, clean: true, errors: [] as Array<{ line: number; col: number; message: string }> };
+          try {
+            const tcRes = await fetch("/api/github/typecheck", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ content: fe.content, path: fe.path }),
+            });
+            if (!tcRes.ok) return { path: fe.path, clean: true, errors: [] };
+            const data = await tcRes.json() as { errors?: Array<{ line: number; col: number; message: string }>; clean?: boolean; skipped?: boolean };
+            const isClean = data.skipped === true || (data.clean ?? true);
+            return { path: fe.path, clean: isClean, errors: data.errors ?? [] };
+          } catch {
+            return { path: fe.path, clean: true, errors: [] }; // service unavailable → allow
+          }
+        })
+      );
+
+      const blockedFiles = tcResults.filter((r) => !r.clean);
+      const cleanEdits = fileEdits.filter(
+        (fe) => tcResults.find((r) => r.path === fe.path)?.clean !== false
+      );
+
+      // If everything failed typecheck, abort before creating a branch
+      if (blockedFiles.length > 0 && cleanEdits.length === 0) {
+        const names = blockedFiles.map((b) => (b.path ?? "").split("/").pop() ?? b.path).join(", ");
+        toast.error(`Push blocked — typecheck failed: ${names}`, { duration: 7000 });
+        return;
+      }
+
+      // If only some files failed, warn and continue with the clean ones
+      if (blockedFiles.length > 0) {
+        const names = blockedFiles.map((b) => (b.path ?? "").split("/").pop() ?? b.path).join(", ");
+        toast.error(
+          `Skipped ${blockedFiles.length} file${blockedFiles.length > 1 ? "s" : ""} — typecheck failed: ${names}`,
+          { duration: 6000 }
+        );
+      }
+
+      const editsToCommit = cleanEdits;
+
       await fetch("/api/github/branch", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
         body: JSON.stringify({ repo: linkedRepo.fullName, branch, baseBranch: linkedRepo.defaultBranch }),
       });
-      for (let i = 0; i < fileEdits.length; i++) {
-        const fe = fileEdits[i];
+      for (let i = 0; i < editsToCommit.length; i++) {
+        const fe = editsToCommit[i];
         await fetch("/api/github/commit", {
           method: "PUT",
           headers: { "Content-Type": "application/json", ...getAuthHeaders(), "x-github-token": token },
           body: JSON.stringify({
             repo: linkedRepo.fullName, branch, path: fe.path, content: fe.content,
-            message: fileEdits.length === 1
+            message: editsToCommit.length === 1
               ? `Atlas: update ${fe.path?.split("/").pop() ?? "file"}`
-              : `Atlas: update ${fileEdits.length} files (${i + 1}/${fileEdits.length})`,
+              : `Atlas: update ${editsToCommit.length} files (${i + 1}/${editsToCommit.length})`,
           }),
         });
       }
-      toast.success(`AUTO: pushed ${fileEdits.length} file${fileEdits.length > 1 ? "s" : ""} to ${branch}`);
+      const blockedNote = blockedFiles.length > 0 ? ` · ${blockedFiles.length} skipped (typecheck)` : "";
+      toast.success(`AUTO: pushed ${editsToCommit.length} file${editsToCommit.length > 1 ? "s" : ""}${blockedNote} to ${branch}`);
       if (autoRunCmd.trim()) {
         try {
           const termRes = await fetch("/api/terminal/exec", {
