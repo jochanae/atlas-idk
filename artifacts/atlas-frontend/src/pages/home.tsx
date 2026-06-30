@@ -4797,148 +4797,46 @@ export default function Home() {
               />
 
 
+              {/* Unified "Send to · <target>" pill — opens one grouped sheet
+                  with WHERE (workspace/ask-atlas/parking) + ABOUT (focus scope).
+                  Replaces the previous two-pill design on mobile. */}
               <button
                 type="button"
-                title="Focus scope"
-                aria-label={`Focus scope: ${focusChipLabel}`}
-                aria-expanded={showFocusPicker}
+                title="Send to"
+                aria-label={`Send to: ${sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking Lot" : "Workspace"} · ${focusChipLabel}`}
+                aria-expanded={showSendToPicker}
                 onPointerDown={(e) => { e.preventDefault(); }}
                 onMouseDown={(e) => { e.preventDefault(); }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowFocusPicker((open) => !open);
-                }}
+                onClick={(e) => { e.stopPropagation(); setShowSendToPicker((o) => !o); }}
                 style={{
                   height: 34,
-                  maxWidth: 178,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "0 10px",
-                  borderRadius: 999,
-                  background: resolvedPortfolioFocus === "project"
-                    ? "color-mix(in oklab, var(--atlas-phosphor) 10%, transparent)"
-                    : "color-mix(in oklab, var(--atlas-gold) 10%, transparent)",
-                  border: resolvedPortfolioFocus === "project"
-                    ? "1px solid color-mix(in oklab, var(--atlas-phosphor) 28%, transparent)"
-                    : "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                  color: resolvedPortfolioFocus === "project" ? "var(--atlas-phosphor)" : "var(--atlas-gold)",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "0 10px", borderRadius: 999,
+                  background: sendTo === "workspace"
+                    ? "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"
+                    : "color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
+                  color: "var(--atlas-gold)",
                   cursor: "pointer",
                   fontFamily: "var(--app-font-mono)",
-                  fontSize: 10,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
+                  fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
                   whiteSpace: "nowrap",
                   minWidth: 0,
                   flexShrink: 1,
                   WebkitTapHighlightColor: "transparent",
-                  transition: "background 160ms ease, border-color 160ms ease, color 160ms ease",
                 }}
               >
-                <Crosshair
-                  size={13}
-                  strokeWidth={resolvedPortfolioFocus === "project" ? 2.2 : 1.6}
-                  style={{
-                    flexShrink: 0,
-                    filter: resolvedPortfolioFocus === "project"
-                      ? "drop-shadow(0 0 4px color-mix(in oklab, var(--atlas-phosphor) 60%, transparent))"
-                      : "none",
-                    transition: "stroke-width 160ms ease, filter 160ms ease",
-                  }}
-                />
+                <span style={{ opacity: 0.7 }}>Send to</span>
+                <span>·</span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>
-                  {focusChipLabel}
+                  {sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking" : "Workspace"}
                 </span>
                 <ChevronDown size={12} strokeWidth={1.8} style={{ flexShrink: 0, opacity: 0.75 }} />
               </button>
 
-              {/* Send to — routes the next message to Workspace (build),
-                  Ask Atlas (think), or Parking Lot (save for later). */}
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button
-                  type="button"
-                  title="Send to"
-                  aria-label={`Send to: ${sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking Lot" : "Workspace"}`}
-                  aria-expanded={showSendToPicker}
-                  onPointerDown={(e) => { e.preventDefault(); }}
-                  onMouseDown={(e) => { e.preventDefault(); }}
-                  onClick={(e) => { e.stopPropagation(); setShowSendToPicker((o) => !o); }}
-                  style={{
-                    height: 34,
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "0 10px", borderRadius: 999,
-                    background: sendTo === "workspace"
-                      ? "color-mix(in oklab, var(--atlas-gold) 8%, transparent)"
-                      : "color-mix(in oklab, var(--atlas-gold) 16%, transparent)",
-                    border: "1px solid color-mix(in oklab, var(--atlas-gold) 28%, transparent)",
-                    color: "var(--atlas-gold)",
-                    cursor: "pointer",
-                    fontFamily: "var(--app-font-mono)",
-                    fontSize: 10, letterSpacing: "0.06em", textTransform: "uppercase",
-                    whiteSpace: "nowrap",
-                    WebkitTapHighlightColor: "transparent",
-                  }}
-                >
-                  <span style={{ opacity: 0.7 }}>Send to</span>
-                  <span>·</span>
-                  <span>
-                    {sendTo === "ask-atlas" ? "Ask Atlas" : sendTo === "parking" ? "Parking" : "Workspace"}
-                  </span>
-                  <ChevronDown size={12} strokeWidth={1.8} style={{ opacity: 0.75 }} />
-                </button>
-                {showSendToPicker && (
-                  <>
-                    <div
-                      onClick={() => setShowSendToPicker(false)}
-                      style={{ position: "fixed", inset: 0, zIndex: 9998 }}
-                    />
-                    <div
-                      role="menu"
-                      style={{
-                        position: "absolute", bottom: "calc(100% + 6px)", left: 0,
-                        zIndex: 9999, minWidth: 220,
-                        background: "rgba(18,16,22,0.98)",
-                        border: "1px solid rgba(212,175,55,0.22)",
-                        borderRadius: 12,
-                        boxShadow: "0 12px 32px rgba(0,0,0,0.55)",
-                        padding: 6,
-                        fontFamily: "var(--app-font-sans)",
-                      }}
-                    >
-                      {([
-                        { id: "workspace" as const, label: "Workspace", hint: "I am building" },
-                        { id: "ask-atlas" as const, label: "Ask Atlas", hint: "I am thinking" },
-                        { id: "parking" as const, label: "Parking Lot", hint: "Save for later" },
-                      ]).map((opt) => {
-                        const active = sendTo === opt.id;
-                        return (
-                          <button
-                            key={opt.id}
-                            onClick={() => { setSendTo(opt.id); setShowSendToPicker(false); }}
-                            style={{
-                              width: "100%", display: "flex", alignItems: "center",
-                              justifyContent: "space-between", gap: 12,
-                              padding: "8px 10px", borderRadius: 8,
-                              background: active ? "rgba(212,175,55,0.12)" : "transparent",
-                              border: "none", cursor: "pointer",
-                              color: "var(--atlas-fg)", textAlign: "left",
-                            }}
-                          >
-                            <span style={{ fontSize: 13.5 }}>{opt.label}</span>
-                            <span style={{
-                              fontFamily: "var(--app-font-mono)", fontSize: 10,
-                              letterSpacing: "0.08em", textTransform: "uppercase",
-                              color: "rgba(255,255,255,0.45)",
-                            }}>{opt.hint}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
               </div>
 
-              </div>
+
 
 
               {/* Mic + Send — pinned to right via auto left margin */}
