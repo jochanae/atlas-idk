@@ -8,6 +8,8 @@ import type { WorkspaceLens } from "@/hooks/useChatLens";
 import type { ChatMessage } from "@/pages/workspace";
 import { ComposerActions, type ComposerMenuAction } from "@/components/composer/ComposerActions";
 import { ensureComposerAuraCSS, getAuraVars, type AuraContext } from "@/lib/composerAura";
+import { useShellStore } from "@/store/shellStore";
+import { haptics } from "@/lib/haptics";
 // CaptureBar removed from composer (2026-06-09) — intake lives in ForgeIntakeSheet.
 
 
@@ -354,6 +356,11 @@ export function ChatComposer(props: ChatComposerProps) {
 
   const composerActive = leftTab !== "terminal" && leftTab !== "blueprints" && leftTab !== "artifacts";
   const sheetVisible = inputFocused && composerActive;
+  const composerVisibility = useShellStore((s) => s.composerVisibility);
+  const toggleComposerCollapsed = useShellStore((s) => s.toggleComposerCollapsed);
+  const setUserComposerPreference = useShellStore((s) => s.setUserComposerPreference);
+  // Compact mode applies only when the input isn't actively expanded as a sheet.
+  const isCompact = composerVisibility === 'compact' && !sheetVisible;
 
   return (
 
@@ -405,7 +412,7 @@ export function ChatComposer(props: ChatComposerProps) {
           transition: "height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           overflow: "hidden",
         } : {
-          padding: "12px 14px 14px",
+          padding: isCompact ? "6px 14px 8px" : "12px 14px 14px",
           flexShrink: 0,
           position: "sticky",
           bottom: 0,
@@ -413,6 +420,27 @@ export function ChatComposer(props: ChatComposerProps) {
           transition: "padding 320ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 320ms cubic-bezier(0.22, 1, 0.36, 1)",
           ...auraVars,
         } as React.CSSProperties}>
+        {/* User-controlled collapse chevron — only in resting (non-sheet) mode. */}
+        {!sheetVisible && (
+          <button
+            type="button"
+            aria-label={isCompact ? "Expand composer" : "Collapse composer"}
+            title={isCompact ? "Expand composer" : "Collapse composer"}
+            onClick={() => { haptics.tap(); toggleComposerCollapsed(); }}
+            style={{
+              position: "absolute", top: 4, right: 8, zIndex: 4,
+              width: 22, height: 22, padding: 0,
+              background: "transparent", border: "none",
+              color: "var(--atlas-muted)", opacity: 0.55, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCompact ? "rotate(180deg)" : "none", transition: "transform 200ms ease" }}>
+              <path d="M3 4.5l3 3 3-3" />
+            </svg>
+          </button>
+        )}
         {/* Grip handle — visible only in expanded sheet mode. */}
         {sheetVisible && (
           <div
@@ -514,7 +542,7 @@ export function ChatComposer(props: ChatComposerProps) {
             Blueprints tab empty state instead. */}
 
         {/* Attachment preview strip */}
-        {attachedFiles.length > 0 && (
+        {attachedFiles.length > 0 && !isCompact && (
           <div style={{ display: "flex", gap: 6, marginBottom: 8, overflowX: "auto", paddingBottom: 2, flexShrink: 0 }}>
             {attachedFiles.map((file, idx) => (
               <div key={idx} style={{ position: "relative", flexShrink: 0 }}>
@@ -540,7 +568,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
         )}
 
-        {(() => {
+        {!isCompact && (() => {
           const bannerActive = composerModeIsPlan && (planBannerVisible || chatPending);
           return (
             <div
@@ -652,8 +680,8 @@ export function ChatComposer(props: ChatComposerProps) {
                   color: "var(--atlas-fg)", fontSize: 14, lineHeight: 1.6,
                   resize: "none", fontFamily: "var(--app-font-sans)",
                   position: "relative", zIndex: 1,
-                  minHeight: sheetVisible ? "calc(60vh - 160px)" : 24,
-                  maxHeight: sheetVisible ? "calc(60vh - 160px)" : (isMobile ? "25vh" : 180),
+                  minHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 22 : 24),
+                  maxHeight: sheetVisible ? "calc(60vh - 160px)" : (isCompact ? 28 : (isMobile ? "25vh" : 180)),
                   overflowY: "auto", overscrollBehavior: "contain", display: "block",
                   padding: "2px 2px",
                   transition: "min-height 320ms cubic-bezier(0.22, 1, 0.36, 1), max-height 320ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -663,7 +691,7 @@ export function ChatComposer(props: ChatComposerProps) {
           </div>
 
 
-          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, flexWrap: "nowrap", gap: 4 }}>
+          <div className="atlas-input-actionrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: isCompact ? 6 : 20, flexWrap: "nowrap", gap: 4 }}>
 
 
             {/* Universal composer actions: [clock] + [+] + [...] */}
@@ -711,7 +739,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
 
             {/* Model chip — only renders when the setting is enabled */}
-            {showModelPicker && onOpenModelSheet && (
+            {showModelPicker && onOpenModelSheet && !isCompact && (
               <button
                 type="button"
                 onClick={onOpenModelSheet}
@@ -749,6 +777,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
             {/* Right: plan mode + voice input + send */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
+              {!isCompact && (<>
               <button
                 onClick={togglePlanMode}
                 title="Plan mode"
@@ -806,6 +835,7 @@ export function ChatComposer(props: ChatComposerProps) {
                   <line x1="8" y1="14" x2="8" y2="16" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                 </svg>
               </button>
+              </>)}
 
               <button
                 className="atlas-send-btn"
@@ -817,6 +847,8 @@ export function ChatComposer(props: ChatComposerProps) {
                 }}
                 onClick={() => {
                   if (chatPending && onAbort) { onAbort(); return; }
+                  // Sending returns the composer to its default full state.
+                  setUserComposerPreference(null);
                   handleSend({ mode: composerMode });
                 }}
                 disabled={chatPending ? !onAbort : (!(hasInput || hasAttachments) || createSessionPending)}
