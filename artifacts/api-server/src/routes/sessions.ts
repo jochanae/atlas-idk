@@ -91,12 +91,19 @@ router.get("/projects/:projectId/sessions", async (req, res): Promise<void> => {
     .where(eq(sessionsTable.projectId, params.data.projectId))
     .orderBy(sessionsTable.updatedAt);
 
-  // Temporary safeguard: hide legacy placeholder sessions with no messages.
-  // These were auto-seeded on activation before the no-auto-seed policy.
-  const LEGACY_PLACEHOLDER_TITLES = new Set(["Session 1", "Session", ""]);
-  const sessions = allSessions.filter(
-    s => !(LEGACY_PLACEHOLDER_TITLES.has((s.title ?? "").trim()) && (s.messageCount ?? 0) === 0)
-  );
+  // Temporary safeguard: hide legacy placeholder sessions that have no messages.
+  // Preserve any session that carries a buildIntent (create-and-activate sessions
+  // intentionally start blank and need to be visible so the workspace can find them).
+  const LEGACY_NAMED_PLACEHOLDERS = new Set(["Session 1", "Session"]);
+  const sessions = allSessions.filter(s => {
+    const title = (s.title ?? "").trim();
+    const msgCount = (s.messageCount ?? 0);
+    const hasBuildIntent = Boolean((s as any).buildIntent);
+    if (hasBuildIntent) return true;
+    if (LEGACY_NAMED_PLACEHOLDERS.has(title) && msgCount === 0) return false;
+    if (title === "" && msgCount === 0) return false;
+    return true;
+  });
 
   res.json(sessions.map(s => ({
     ...s,
