@@ -684,12 +684,9 @@ export function AxiomFlow({
       }).catch(() => {});
     }
     haptics.cardConfirmed?.();
-    requestAnimationFrame(() => {
-      // Re-fit after layout reset so user sees the regenerated arrangement
-      // resetView is defined later in the component; defer through rAF.
-      try { (window as unknown as { __axiomFlowResetView?: () => void }).__axiomFlowResetView?.(); } catch {}
-    });
   }, [nodes, edges, projectId]);
+
+
 
 
 
