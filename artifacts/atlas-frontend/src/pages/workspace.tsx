@@ -8475,7 +8475,7 @@ export default function Workspace() {
       <SessionHistorySheet
         open={sessionsSheetOpen}
         onClose={() => setSessionsSheetOpen(false)}
-        title={`${(project?.name ?? "PROJECT").toString().toUpperCase()} · SESSIONS`}
+        title="PROJECT SESSIONS"
         loading={allSessionsForSheetLoading}
         emptyHint="No sessions yet. Tap NEW to start one."
         items={(allSessionsForSheet ?? []).map((s: Session) => ({
