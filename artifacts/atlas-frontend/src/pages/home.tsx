@@ -4774,6 +4774,7 @@ export default function Home() {
               <ComposerActions
                 scope="home"
                 hasProjectContext={false}
+                globalContext={true}
                 borderless={true}
                 hasAttachments={attachedFiles.length > 0}
                 hidePark={nexusChat.messages.length === 0 && !globalInsightOpen}
