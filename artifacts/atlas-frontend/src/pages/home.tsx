@@ -2885,6 +2885,28 @@ export default function Home() {
     const hasImages = files.some((f) => f.type.startsWith("image/"));
     if (submitInFlightRef.current || (!text && !hasImages) || isSending) return;
     submitInFlightRef.current = true;
+    // "Send to" routing — intercept before the workspace-create / inline-send fork.
+    // Workspace is the default; ask-atlas opens the ephemeral overlay; parking
+    // hands off to the existing capture-lot route.
+    const routeTarget = sendToRef.current;
+    if (routeTarget === "ask-atlas" && text) {
+      setAskAtlasSeed(text);
+      setAskAtlasOpen(true);
+      setInput("");
+      setAttachedFiles([]);
+      setSendTo("workspace");
+      submitInFlightRef.current = false;
+      return;
+    }
+    if (routeTarget === "parking" && text) {
+      try { sessionStorage.setItem("atlas-parking-seed", text); } catch {}
+      setInput("");
+      setAttachedFiles([]);
+      setSendTo("workspace");
+      submitInFlightRef.current = false;
+      setLocation("/parking");
+      return;
+    }
     const shouldStayOnHome = options?.forceStayOnHome ?? false;
     if (shouldStayOnHome && !globalInsightOpen && !thinkOutLoudInlineRef.current) {
       setGlobalInsightOpen(true);
