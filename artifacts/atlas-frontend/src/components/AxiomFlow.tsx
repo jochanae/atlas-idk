@@ -2202,6 +2202,36 @@ export function AxiomFlow({
             {getPivotQuestion(activeCardNode)}
           </div>
 
+          {/* Optional analyzer confidence + reasons — render only if backend supplied them. */}
+          {(typeof activeCardNode.confidence === "number" || (activeCardNode.reasons && activeCardNode.reasons.length > 0)) && (
+            <div style={{
+              marginBottom: 12, paddingBottom: 10,
+              borderBottom: `1px solid rgba(${palette.goldRgb},0.10)`,
+              fontFamily: "var(--app-font-sans)",
+            }}>
+              {typeof activeCardNode.confidence === "number" && (
+                <div style={{
+                  fontFamily: "var(--app-font-mono)", fontSize: 9.5,
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: `rgba(${palette.goldRgb},0.75)`, marginBottom: 6,
+                }}>
+                  Atlas believes · {activeCardNode.confidence <= 1
+                    ? Math.round(activeCardNode.confidence * 100)
+                    : Math.round(activeCardNode.confidence)}%
+                </div>
+              )}
+              {activeCardNode.reasons && activeCardNode.reasons.length > 0 && (
+                <ul style={{
+                  margin: 0, paddingLeft: 14,
+                  fontSize: 11, lineHeight: 1.55,
+                  color: `rgba(${palette.fgRgb},0.72)`,
+                }}>
+                  {activeCardNode.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
           {/* Lock In Answer — replaces the legacy Mark resolved toggle */}
           <AnswerCapture
             key={activeCardNode.id}
