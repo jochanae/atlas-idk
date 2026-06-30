@@ -660,6 +660,35 @@ export function AxiomFlow({
   // has time to run before the canvas becomes visible (prevents the zoom=1 flash).
   const [canvasReady, setCanvasReady] = useState(false);
   const [centerFlash, setCenterFlash] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  // Long-press Center button → reset this project's layout to Atlas's auto arrangement.
+  // Clears every node's `moved` flag (which marked it as user-positioned) and re-runs
+  // layoutRadial, then persists. Scoped to this project — never global.
+  const resetLayoutToAuto = useCallback(() => {
+    const hasManual = nodes.some(n => n.moved);
+    const confirmMsg = hasManual
+      ? "Reset this project's layout to Atlas's automatic arrangement? Your manual node positions will be lost."
+      : "Re-run automatic layout for this project?";
+    if (!window.confirm(confirmMsg)) return;
+    const cleared = nodes.map(n => ({ ...n, moved: false }));
+    const relaidOut = layoutRadial(cleared);
+    setNodes(relaidOut);
+    if (projectId) {
+      fetch(`/api/projects/${projectId}/flow`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nodes: relaidOut, edges }),
+      }).catch(() => {});
+    }
+    haptics.cardConfirmed?.();
+  }, [nodes, edges, projectId]);
+
+
+
+
 
 
   // If projectName arrives or changes after mount and the goal node still
@@ -2149,13 +2178,40 @@ export function AxiomFlow({
         {!flowLoading && !flowEmpty && nodes.length > 0 && (
           <button
             type="button"
-            title="Center map (double-tap also works)"
+            title="Tap: center map · Long-press: reset to Atlas's auto layout"
             onClick={(e) => {
               e.stopPropagation();
+              if (longPressFiredRef.current) {
+                // Long-press already handled this gesture — swallow the click.
+                longPressFiredRef.current = false;
+                return;
+              }
               haptics.tap();
               setCenterFlash(true);
               setTimeout(() => setCenterFlash(false), 350);
               resetView();
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              longPressFiredRef.current = false;
+              if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+              longPressTimerRef.current = setTimeout(() => {
+                longPressFiredRef.current = true;
+                resetLayoutToAuto();
+              }, 600);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
+            }}
+            onPointerLeave={() => {
+              if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+              }
             }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
@@ -2181,6 +2237,7 @@ export function AxiomFlow({
           >
             ⊙ Center
           </button>
+
         )}
         {/* Refresh / re-hydrate button — always accessible even in drill-down mode */}
         {!flowLoading && projectId && (
