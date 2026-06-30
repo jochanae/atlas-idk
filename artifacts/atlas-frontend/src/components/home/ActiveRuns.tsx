@@ -519,6 +519,42 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
   const [runs, setRuns] = useState<ActiveRun[]>(() => _getRuns());
   useEffect(() => _subscribeToRuns(() => setRuns([..._getRuns()])), []);
 
+  // per-file force-apply state (keyed by "<runId>:<path>")
+  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
+  const [retryErrors, setRetryErrors] = useState<Map<string, string>>(new Map());
+
+  const handleForceApply = useCallback(async (run: ActiveRun, filePath: string) => {
+    const fileEdit = run.fileEdits?.find((fe) => fe.path === filePath);
+    if (!fileEdit) return;
+    const key = `${run.id}:${filePath}`;
+
+    setRetryingFiles((prev) => new Set(prev).add(key));
+    setRetryErrors((prev) => { const m = new Map(prev); m.delete(key); return m; });
+
+    try {
+      const res = await fetch("/api/github/apply-local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ files: [fileEdit], projectId: run.projectId }),
+      });
+      if (res.ok) {
+        // Move from applyErrors → appliedFiles
+        _patchRun(run.id, {
+          applyErrors: (run.applyErrors ?? []).filter((ae) => ae.path !== filePath),
+          appliedFiles: [...(run.appliedFiles ?? []), filePath],
+        });
+      } else {
+        const errBody = await res.json().catch(() => ({})) as { error?: string };
+        setRetryErrors((prev) => new Map(prev).set(key, `Apply failed (${res.status}): ${errBody.error ?? "Server error"}`));
+      }
+    } catch (err) {
+      setRetryErrors((prev) => new Map(prev).set(key, `Apply failed: ${err instanceof Error ? err.message : String(err)}`));
+    } finally {
+      setRetryingFiles((prev) => { const s = new Set(prev); s.delete(key); return s; });
+    }
+  }, []);
+
   // ticker for elapsed time display
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -889,6 +925,9 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
               run={run}
               onEnter={() => setLocation(`/project/${run.projectId}`)}
               onDismiss={() => _removeRun(run.id)}
+              retryingFiles={retryingFiles}
+              retryErrors={retryErrors}
+              onForceApply={handleForceApply}
             />
           ))}
           {doneRuns.length > 0 && (
@@ -907,6 +946,9 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
                   run={run}
                   onEnter={() => setLocation(`/project/${run.projectId}`)}
                   onDismiss={() => _removeRun(run.id)}
+                  retryingFiles={retryingFiles}
+                  retryErrors={retryErrors}
+                  onForceApply={handleForceApply}
                 />
               ))}
             </>
@@ -925,10 +967,16 @@ function _ActiveRunsInner({ projects, setLocation, onClose }: Props & { setLocat
 function RunCard({
   run,
   onDismiss,
+  retryingFiles,
+  retryErrors,
+  onForceApply,
 }: {
   run: ActiveRun;
   onEnter: () => void;  // kept in props for call-site compat, unused here
   onDismiss: () => void;
+  retryingFiles: Set<string>;
+  retryErrors: Map<string, string>;
+  onForceApply: (run: ActiveRun, filePath: string) => void;
 }) {
   const isLive = run.status === "running" || run.status === "queued";
   // Auto-expand while running so you see the stream; collapse when done
@@ -1245,7 +1293,11 @@ function RunCard({
               {/* ── Typecheck failures — files that were blocked from applying ── */}
               {(run.applyErrors?.length ?? 0) > 0 && (
                 <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                  {run.applyErrors!.map((ae) => (
+                  {run.applyErrors!.map((ae) => {
+                    const retryKey = `${run.id}:${ae.path}`;
+                    const isRetrying = retryingFiles.has(retryKey);
+                    const retryError = retryErrors.get(retryKey);
+                    return (
                     <div key={ae.path} style={{
                       borderRadius: 7,
                       border: "1px solid rgba(248,113,113,0.28)",
@@ -1274,12 +1326,30 @@ function RunCard({
                         }}>
                           {ae.path}
                         </span>
-                        <span style={{
-                          fontSize: 9, fontFamily: "var(--app-font-mono)",
-                          color: "rgba(248,113,113,0.5)", flexShrink: 0,
-                        }}>
-                          typecheck failed · not written
-                        </span>
+                        <button
+                          disabled={isRetrying}
+                          onClick={() => onForceApply(run, ae.path)}
+                          style={{
+                            flexShrink: 0,
+                            display: "flex", alignItems: "center", gap: 4,
+                            padding: "2px 7px", borderRadius: 4,
+                            fontSize: 9, fontFamily: "var(--app-font-mono)",
+                            letterSpacing: "0.06em", fontWeight: 600,
+                            textTransform: "uppercase",
+                            background: isRetrying ? "rgba(248,113,113,0.05)" : "rgba(248,113,113,0.10)",
+                            border: "1px solid rgba(248,113,113,0.28)",
+                            color: isRetrying ? "rgba(248,113,113,0.4)" : "rgba(248,113,113,0.8)",
+                            cursor: isRetrying ? "not-allowed" : "pointer",
+                            transition: "background 140ms ease, color 140ms ease",
+                          }}
+                          onMouseEnter={(e) => { if (!isRetrying) e.currentTarget.style.background = "rgba(248,113,113,0.18)"; }}
+                          onMouseLeave={(e) => { if (!isRetrying) e.currentTarget.style.background = "rgba(248,113,113,0.10)"; }}
+                        >
+                          {isRetrying
+                            ? <><Loader size={9} style={{ animation: "ar-spin 0.8s linear infinite" }} /> applying…</>
+                            : <>force apply</>
+                          }
+                        </button>
                       </div>
                       {/* Error list */}
                       <div style={{ padding: "6px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
@@ -1306,9 +1376,22 @@ function RunCard({
                             +{ae.errors.length - 6} more errors
                           </div>
                         )}
+                        {retryError && (
+                          <div style={{
+                            marginTop: 4,
+                            padding: "4px 7px", borderRadius: 4,
+                            background: "rgba(248,113,113,0.08)",
+                            border: "1px solid rgba(248,113,113,0.22)",
+                            fontSize: 10, fontFamily: "var(--app-font-mono)", lineHeight: 1.5,
+                            color: "rgba(248,113,113,0.8)", wordBreak: "break-word",
+                          }}>
+                            {retryError}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
