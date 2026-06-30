@@ -40,6 +40,8 @@ export function AskAtlasOverlay({
   onContinueInWorkspace,
 }: AskAtlasOverlayProps) {
   const [draft, setDraft] = useState("");
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const seededRef = useRef<string | null>(null);
 
