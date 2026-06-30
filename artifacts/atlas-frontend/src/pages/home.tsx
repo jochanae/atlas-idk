@@ -3833,6 +3833,16 @@ export default function Home() {
     } catch {}
   }, [setActiveConversationId, nexusChat.setMessages, setDepth]);
 
+  // Resume marker set by ProjectsDrawer when navigating from another page.
+  useEffect(() => {
+    let id: string | null = null;
+    try { id = sessionStorage.getItem("atlas-resume-conversation-id"); } catch {}
+    if (!id) return;
+    try { sessionStorage.removeItem("atlas-resume-conversation-id"); } catch {}
+    void handleSwitchConversation(id);
+  }, [handleSwitchConversation]);
+
+
   const handleDeleteConversation = useCallback(async (id: string) => {
     await fetch(`/api/nexus/thread?conversationId=${encodeURIComponent(id)}`, {
       method: "DELETE",
